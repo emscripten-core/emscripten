@@ -40,7 +40,12 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 }
 #endif
 
-#if !SANITIZER_FUCHSIA
+#if SANITIZER_EMSCRIPTEN
+
+// Most JavaScript consoles do not handle colors.
+static INLINE bool ReportSupportsColors() { return false; }
+
+#elif !SANITIZER_FUCHSIA
 
 bool ReportFile::SupportsColors() {
   SpinMutexLock l(mu);
@@ -57,7 +62,7 @@ static INLINE bool ReportSupportsColors() {
 // Fuchsia's logs always go through post-processing that handles colorization.
 static INLINE bool ReportSupportsColors() { return true; }
 
-#endif  // !SANITIZER_FUCHSIA
+#endif  // SANITIZER_EMSCRIPTEN, !SANITIZER_FUCHSIA
 
 bool ColorizeReports() {
   // FIXME: Add proper Windows support to AnsiColorDecorator and re-enable color

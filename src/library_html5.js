@@ -828,16 +828,26 @@ var LibraryJSEvents = {
 
   _fillDeviceMotionEventData__deps: ['$JSEvents'],
   _fillDeviceMotionEventData: function(eventStruct, e, target) {
+    var supportedFields = 0;
+    var a = e['acceleration'];
+    supportedFields |= a && {{{ cDefine('EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION') }}};
+    var ag = e['accelerationIncludingGravity'];
+    supportedFields |= ag && {{{ cDefine('EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY') }}};
+    var rr = e['rotationRate'];
+    supportedFields |= rr && {{{ cDefine('EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE') }}};
+    a = a || {};
+    ag = ag || {};
+    rr = rr || {};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'e.acceleration.x', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'e.acceleration.y', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'e.acceleration.z', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'e.accelerationIncludingGravity.x', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'e.accelerationIncludingGravity.y', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'e.accelerationIncludingGravity.z', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'e.rotationRate.alpha', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'e.rotationRate.beta', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'e.rotationRate.gamma', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityX, 'ag["x"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityY, 'ag["y"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationIncludingGravityZ, 'ag["z"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateAlpha, 'rr["alpha"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateBeta, 'rr["beta"]', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.rotationRateGamma, 'rr["gamma"]', 'double') }}};
   },
 
   _registerDeviceMotionEventCallback__deps: ['$JSEvents', '_fillDeviceMotionEventData', '_findEventTarget'],
@@ -1077,7 +1087,7 @@ var LibraryJSEvents = {
   emscripten_set_fullscreenchange_callback_on_thread__sig: 'iiiiii',
   emscripten_set_fullscreenchange_callback_on_thread__deps: ['$JSEvents', '_registerFullscreenChangeEventCallback', '_findEventTarget', '_specialEventTargets'],
   emscripten_set_fullscreenchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
 #else
@@ -1095,7 +1105,7 @@ var LibraryJSEvents = {
   emscripten_get_fullscreen_status__sig: 'ii',
   emscripten_get_fullscreen_status__deps: ['$JSEvents', '_fillFullscreenChangeEventData'],
   emscripten_get_fullscreen_status: function(fullscreenStatus) {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __fillFullscreenChangeEventData(fullscreenStatus);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1118,11 +1128,7 @@ var LibraryJSEvents = {
     } else if (target.webkitRequestFullscreen) {
       target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
     } else {
-      if (typeof JSEvents.fullscreenEnabled() === 'undefined') {
-        return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-      } else {
-        return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
-      }
+      return JSEvents.fullscreenEnabled() ? {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
     if (strategy.canvasResizedCallback) {
@@ -1376,8 +1382,7 @@ var LibraryJSEvents = {
   // https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Using_full_screen_mode  
   _emscripten_do_request_fullscreen__deps: ['$JSEvents', '_setLetterbox', 'emscripten_set_canvas_element_size', 'emscripten_get_canvas_element_size', '_get_canvas_element_size', '_set_canvas_element_size', 'JSEvents_requestFullscreen', '_findEventTarget'],
   _emscripten_do_request_fullscreen: function(target, strategy) {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
-    if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
+    if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (!target) target = '#canvas';
 #endif
@@ -1510,7 +1515,7 @@ var LibraryJSEvents = {
   emscripten_exit_fullscreen__proxy: 'sync',
   emscripten_exit_fullscreen__sig: 'i',
   emscripten_exit_fullscreen: function() {
-    if (typeof JSEvents.fullscreenEnabled() === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // Make sure no queued up calls will fire after this.
     JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
 

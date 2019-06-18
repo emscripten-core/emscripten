@@ -51,7 +51,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
     TEST_RESULT(emscripten_get_fullscreen_status);
     if (!fsce.isFullscreen) {
       printf("Requesting fullscreen..\n");
-      ret = emscripten_request_fullscreen(0, 1);
+      ret = emscripten_request_fullscreen("#canvas", 1);
       TEST_RESULT(emscripten_request_fullscreen);
     } else {
       printf("Exiting fullscreen..\n");
@@ -134,11 +134,14 @@ EM_BOOL deviceorientation_callback(int eventType, const EmscriptenDeviceOrientat
 
 EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *e, void *userData)
 {
-  printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g)\n", 
+  printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g), supportedFields: %s %s %s\n",
     emscripten_event_type_to_string(eventType), 
     e->accelerationX, e->accelerationY, e->accelerationZ,
     e->accelerationIncludingGravityX, e->accelerationIncludingGravityY, e->accelerationIncludingGravityZ,
-    e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma);
+    e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma,
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION" : "",
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY" : "",
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE" : "");
 
   return 0;
 }

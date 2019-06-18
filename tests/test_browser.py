@@ -110,9 +110,8 @@ def requires_threads(f):
   def decorated(self):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    # FIXME when the wasm backend gets threads
-    if is_chrome() and self.is_wasm_backend():
-      self.skipTest('wasm backend lacks threads')
+    if is_chrome():
+      self.skipTest('Chrome leaks pthreads memory, https://bugs.chromium.org/p/v8/issues/detail?id=9075')
     return f(self)
 
   return decorated
@@ -1875,8 +1874,8 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
-      self.btest('gl_textures.cpp', '0', args=['-lGL'])
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
+      self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
   def test_gl_ps(self):
@@ -1926,7 +1925,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
-    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328', '2411982848'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
@@ -2750,9 +2749,9 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_glfw3(self):
-    for opts in [[], ['-Os', '--closure', '1']]:
+    for opts in [[], ['-s', 'LEGACY_GL_EMULATION=1'], ['-Os', '--closure', '1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
@@ -3001,6 +3000,7 @@ Module['onRuntimeInitialized'] = function() {
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_threads
+  @no_wasm_backend('need sdl2 build with pthreads')
   def test_sdl2_threads(self):
       self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS=1', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -3044,7 +3044,7 @@ Module['onRuntimeInitialized'] = function() {
     self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-b.js'])
 
   def test_sdl2_swsurface(self):
-    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
+    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2', '-s', 'TOTAL_MEMORY=64MB'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
@@ -3449,6 +3449,7 @@ window.close = function() {
   def test_dylink_dso_needed_asmjs_inworker(self):
     self._test_dylink_dso_needed(0, 1)
 
+  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
   def _test_dylink_dso_needed(self, wasm, inworker):
     # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
@@ -3538,11 +3539,13 @@ window.close = function() {
 
   # Test that the emscripten_ atomics api functions work.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit atomics.
   @requires_threads
+  @flaky # TODO - fix final pthreads tests (#8718)
   def test_pthread_64bit_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
@@ -3555,6 +3558,7 @@ window.close = function() {
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
@@ -3562,6 +3566,8 @@ window.close = function() {
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
         for f32 in [[], ['-s', 'PRECISE_F32=1', '--separate-asm', '-s', 'WASM=0']]:
           print(opt, debug, f32)
+          if self.is_wasm_backend() and '--separate-asm' in f32:
+            continue
           self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=opt + debug + f32 + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
@@ -3585,6 +3591,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
@@ -3592,6 +3599,7 @@ window.close = function() {
 
   # Test that basic thread creation works.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create(self):
     def test(args):
       print(args)
@@ -3608,6 +3616,7 @@ window.close = function() {
 
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
@@ -3624,6 +3633,7 @@ window.close = function() {
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_std_thread_detach(self):
     self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
 
@@ -3734,6 +3744,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '--profiling'] + modularize)
 
   # Test the operation of Module.pthreadMainPrefixURL variable
+  @no_wasm_backend('uses js')
   @requires_threads
   def test_pthread_custom_pthread_main_url(self):
     self.clear()
@@ -3766,6 +3777,8 @@ window.close = function() {
     create_test_file('shell.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function (path, prefix) {if (path.endsWith(".wasm")) {return prefix + path;} else {return "cdn/" + path;}}, '))
     self.compile_btest(['main.cpp', '--shell-file', 'shell.html', '-s', 'WASM=0', '-s', 'IN_TEST_HARNESS=1', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-o', 'test.html'])
     shutil.move('test.worker.js', os.path.join('cdn', 'test.worker.js'))
+    if self.is_wasm_backend():
+      shutil.copyfile('test.html.mem', os.path.join('cdn', 'test.html.mem'))
     self.run_browser('test.html', '', '/report_result?1')
 
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
@@ -3780,6 +3793,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that sbrk() operates properly in multithreaded conditions
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_sbrk(self):
     for aborting_malloc in [0, 1]:
@@ -3814,6 +3828,7 @@ window.close = function() {
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_call_async_on_main_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
@@ -4297,10 +4312,10 @@ window.close = function() {
     self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   @requires_threads
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_locale(self):
     for args in [
         [],
-        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
         ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
     ]:
       print("Testing with: ", args)
@@ -4346,6 +4361,7 @@ window.close = function() {
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
@@ -4357,6 +4373,7 @@ window.close = function() {
 
   # Tests memory growth in a pthread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth(self):
     def run(emcc_args=[]):
@@ -4597,6 +4614,10 @@ window.close = function() {
   @requires_threads
   def test_emscripten_performance_now(self):
     self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  @requires_threads
+  def test_embind_with_pthreads(self):
+    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-std=c++11', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

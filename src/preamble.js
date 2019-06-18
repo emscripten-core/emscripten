@@ -162,39 +162,6 @@ function cwrap(ident, returnType, argTypes, opts) {
   }
 }
 
-/** @type {function(number, number, string, boolean=)} */
-function setValue(ptr, value, type, noSafe) {
-  type = type || 'i8';
-  if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
-#if SAFE_HEAP
-  if (noSafe) {
-    switch(type) {
-      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1', undefined, undefined, undefined, '1') }}}; break;
-      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8', undefined, undefined, undefined, '1') }}}; break;
-      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16', undefined, undefined, undefined, '1') }}}; break;
-      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32', undefined, undefined, undefined, '1') }}}; break;
-      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64', undefined, undefined, undefined, '1') }}}; break;
-      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float', undefined, undefined, undefined, '1') }}}; break;
-      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double', undefined, undefined, undefined, '1') }}}; break;
-      default: abort('invalid type for setValue: ' + type);
-    }
-  } else {
-#endif
-    switch(type) {
-      case 'i1': {{{ makeSetValue('ptr', '0', 'value', 'i1') }}}; break;
-      case 'i8': {{{ makeSetValue('ptr', '0', 'value', 'i8') }}}; break;
-      case 'i16': {{{ makeSetValue('ptr', '0', 'value', 'i16') }}}; break;
-      case 'i32': {{{ makeSetValue('ptr', '0', 'value', 'i32') }}}; break;
-      case 'i64': {{{ makeSetValue('ptr', '0', 'value', 'i64') }}}; break;
-      case 'float': {{{ makeSetValue('ptr', '0', 'value', 'float') }}}; break;
-      case 'double': {{{ makeSetValue('ptr', '0', 'value', 'double') }}}; break;
-      default: abort('invalid type for setValue: ' + type);
-    }
-#if SAFE_HEAP
-  }
-#endif
-}
-
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_DYNAMIC = 2; // Cannot be freed except through sbrk
@@ -538,9 +505,6 @@ function preRun() {
 function ensureInitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
-#endif
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
@@ -892,6 +856,16 @@ function getBinaryPromise() {
   });
 }
 
+#if LOAD_SOURCE_MAP
+var wasmSourceMap;
+#include "source_map_support.js"
+#endif
+
+#if 'emscripten_generate_pc' in addedLibraryItems
+var wasmOffsetConverter;
+#include "wasm_offset_converter.js"
+#endif
+
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
@@ -1019,6 +993,15 @@ function createWasm(env) {
   addRunDependency('wasm-instantiate');
 #endif
 
+#if LOAD_SOURCE_MAP
+  addRunDependency('source-map');
+
+  function receiveSourceMapJSON(sourceMap) {
+    wasmSourceMap = new WasmSourceMap(sourceMap);
+    removeRunDependency('source-map');
+  }
+#endif
+
 #if ASSERTIONS
   // Async compilation can be confusing when an error on the page overwrites Module
   // (for example, if the order of elements is wrong, and the one defining Module is
@@ -1041,8 +1024,16 @@ function createWasm(env) {
 #endif
   }
 
+#if 'emscripten_generate_pc' in addedLibraryItems
+  addRunDependency('offset-converter');
+#endif
+
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
+#if 'emscripten_generate_pc' in addedLibraryItems
+      wasmOffsetConverter = new WasmOffsetConverter(binary);
+      removeRunDependency('offset-converter');
+#endif
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
@@ -1057,14 +1048,24 @@ function createWasm(env) {
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
-      return WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
-        .then(receiveInstantiatedSource, function(reason) {
-          // We expect the most common failure cause to be a bad MIME type for the binary,
-          // in which case falling back to ArrayBuffer instantiation should work.
-          err('wasm streaming compile failed: ' + reason);
-          err('falling back to ArrayBuffer instantiation');
-          instantiateArrayBuffer(receiveInstantiatedSource);
+      fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+#if 'emscripten_generate_pc' in addedLibraryItems
+        // This doesn't actually do another request, it only copies the Response object.
+        // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
+        response.clone().arrayBuffer().then(function (buffer) {
+          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
+          removeRunDependency('offset-converter');
         });
+#endif
+        return WebAssembly.instantiateStreaming(response, info)
+          .then(receiveInstantiatedSource, function(reason) {
+            // We expect the most common failure cause to be a bad MIME type for the binary,
+            // in which case falling back to ArrayBuffer instantiation should work.
+            err('wasm streaming compile failed: ' + reason);
+            err('falling back to ArrayBuffer instantiation');
+            instantiateArrayBuffer(receiveInstantiatedSource);
+          });
+      });
     } else {
       return instantiateArrayBuffer(receiveInstantiatedSource);
     }
@@ -1073,8 +1074,14 @@ function createWasm(env) {
   function instantiateSync() {
     var instance;
     var module;
+    var binary;
     try {
-      module = new WebAssembly.Module(getBinary());
+      binary = getBinary();
+#if 'emscripten_generate_pc' in addedLibraryItems
+      wasmOffsetConverter = new WasmOffsetConverter(binary);
+      removeRunDependency('offset-converter');
+#endif
+      module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
     } catch (e) {
       err('failed to compile wasm module: ' + e);
@@ -1083,6 +1090,9 @@ function createWasm(env) {
       }
       return false;
     }
+#if LOAD_SOURCE_MAP
+    receiveSourceMapJSON(getSourceMap());
+#endif
     receiveInstance(instance, module);
   }
 #endif
@@ -1103,6 +1113,9 @@ function createWasm(env) {
   err('asynchronously preparing wasm');
 #endif
   instantiateAsync();
+#if LOAD_SOURCE_MAP
+  getSourceMapPromise().then(receiveSourceMapJSON);
+#endif
   return {}; // no exports yet; we'll fill them in later
 #else
   instantiateSync();
