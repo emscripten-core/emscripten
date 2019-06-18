@@ -500,7 +500,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 
   var reportReadyStateChange = function(fetch, xhr, e) {
 #if FETCH_DEBUG
-    console.log('fetch: headers received successfully. e: ' + e);
+    console.log('fetch: ready state change. e: ' + e);
 #endif
     if (onreadystatechange) {{{ makeDynCall('vi') }}}(onreadystatechange, fetch);
     else if (readystatechangecb) readystatechangecb(fetch);
