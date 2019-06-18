@@ -239,7 +239,6 @@ class EmccOptions(object):
     self.valid_abspaths = []
     self.separate_asm = False
     self.cfi = False
-    self.color = True
     # Specifies the line ending format to use for all generated text files.
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
@@ -810,9 +809,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       # Compiling C code with .c files, don't enforce a default C++ std.
       clang_compiler = CC
-
-    if not options.color:
-      colored_logger.disable()
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -2597,7 +2593,7 @@ def parse_args(newargs):
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
     elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
-      options.color = False
+      colored_logger.disable()
 
   if should_exit:
     sys.exit(0)
