@@ -48,27 +48,12 @@ Emscripten makes some trade-offs that make the generated code faster and smaller
 
 The main tips for improving build time are:
 
-- Create fully optimized builds less frequently — use ``-O0`` during frequent development iterations (or don't specify an optimization level).
-
-  - Compiling with higher levels of optimization can in some cases be noticeably slower: ``-O2`` is slower than ``-O1``, which is in turn slower than ``-O0``.
-  - Compiling with ``-O3`` is **especially** slow — this can be mitigated by also enabling ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1`` (removing variables makes the ``-O3`` regalloc easier).
-
-- Compile without :ref:`line number debug information <emcc-g>` (use ``-O1`` or ``-g0`` instead of ``-g``):
-
-  - Currently builds with line-number debug information are slow (see issue `#216 <https://github.com/emscripten-core/emscripten/issues/216>`_). Stripping the debug information significantly improves compile times.
+- Use ``-O0`` for fast iteration builds. You can still compile with higher optimization levels, but specifying ``-O0`` during link will make the link step much faster.
 
 - Compile on a machine with more cores:
 
-  - Emscripten can run some passes in parallel (specifically, the JavaScript optimisations). Increasing the number of cores results in an almost linear improvement.
-  - Emscripten will automatically use more cores if they are available. You can control how many cores are used  with ``EMCC_CORES=N`` (this is useful if you have many cores but relatively less memory).
-
-- Make sure that the native optimizer is being used, which greatly speeds up optimized builds as of 1.28.2. ``EMCC_DEBUG=1`` output should not report errors about the native optimizer failing to build or not being used because of a previous failed build (if it previously failed, do ``emcc --clear-cache`` then compile your file again, and the optimizer will be automatically rebuilt).
-
-- When you have multiple bitcode files as inputs, put the largest file first (LLVM linking links the second and later ones into the first, so less copying is done on the first input to the linker).
-
-- Having fewer bitcode files can be faster, so you might want to link files into larger files in parallel in your build system (you might already do this if you have logical libraries), and then the final command has fewer things to operate on.
-
-- You don't need to link into a single bitcode file yourself, you can call the final ``emcc`` command that emits JS with a list of files. ``emcc`` can then defer linking and avoid an intermediary step, if possible (this optimization is disabled by LTO and by `EMCC_DEBUG=2`).
+  - For compiling your source files, use a parallel build system (for example, in ``make`` you can do something like ``make -j8`` to run using 8 cores).
+  - For the link step, Emscripten can run some optimizations in parallel (specifically, Binaryen optimizations for wasm, and our JavaScript optimizations). Increasing the number of cores results in an almost linear improvement. Emscripten will automatically use more cores if they are available, but you can control that with ``EMCC_CORES=N`` in the environment (which is useful if you have many cores but relatively less memory).
 
 
 Why does my code run slowly?
