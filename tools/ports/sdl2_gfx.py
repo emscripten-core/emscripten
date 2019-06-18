@@ -8,6 +8,7 @@ import shutil
 import logging
 
 TAG = '2b147ffef10ec541d3eace326eafe11a54e635f8'
+HASH = 'f39f1f50a039a1667fe92b87d28548d32adcf0eb8526008656de5315039aa21f29d230707caa47f80f6b3a412a577698cd4bbfb9458bb92ac47e6ba993b8efe6'
 
 
 def get(ports, settings, shared):
@@ -16,7 +17,7 @@ def get(ports, settings, shared):
 
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_gfx'
-  ports.fetch_project('sdl2_gfx', 'https://github.com/svn2github/sdl2_gfx/archive/' + TAG + '.zip', 'sdl2_gfx-' + TAG)
+  ports.fetch_project('sdl2_gfx', 'https://github.com/svn2github/sdl2_gfx/archive/' + TAG + '.zip', 'sdl2_gfx-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2_gfx')
 
   def create():
