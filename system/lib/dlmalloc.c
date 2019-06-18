@@ -852,8 +852,6 @@ extern "C" {
 #ifndef USE_DL_PREFIX
 // XXX Emscripten XXX
 #if defined(__EMSCRIPTEN__) && !defined(__asmjs__)
-// XXX fastcomp HACK: in fastcomp, weak aliases loses to JavaScript versions of the function.
-// Therefore, we must define real functions. Remove this hack when fastcomp is removed.
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
 void* calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));
@@ -881,6 +879,10 @@ void** independent_calloc(size_t, size_t, void**) __attribute__((weak, alias("dl
 void** independent_comalloc(size_t, size_t*, void**) __attribute__((weak, alias("dlindependent_comalloc")));
 size_t bulk_free(void**, size_t n_elements) __attribute__((weak, alias("dlbulk_free")));
 #else
+// XXX fastcomp HACK: in fastcomp, weak aliases loses to JavaScript versions of the function.
+// Therefore, we must define real functions. We use macros to remove the dl prefix, but this
+// forces the user to override all or none of the functions below.
+// Remove the else block once fastcomp is removed.
 #define dlcalloc               calloc
 #define dlfree                 free
 #define dlmalloc               malloc
@@ -6065,6 +6067,8 @@ int mspace_mallopt(int param_number, int value) {
 // This allows an easy mechanism for hooking into memory allocation.
 #if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
 #ifdef __asmjs__
+// XXX This is to support the fastcomp hack above where we remove the dl prefix.
+// TODO: Remove this branch when fastcomp is removed.
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("malloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((alias("free")));
 extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("memalign")));

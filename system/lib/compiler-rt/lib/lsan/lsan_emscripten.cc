@@ -91,7 +91,7 @@ LoadedModule *GetLinker() { return linker; }
 void ProcessPlatformSpecificAllocations(Frontier *frontier) {}
 
 // While calling Die() here is undefined behavior and can potentially
-// cause race conditions, it isn't possible to intercept exit on linux,
+// cause race conditions, it isn't possible to intercept exit on Emscripten,
 // so we have no choice but to call Die() from the atexit handler.
 void HandleLeaks() {
   if (common_flags()->exitcode) Die();
