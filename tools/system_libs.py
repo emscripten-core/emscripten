@@ -1075,7 +1075,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force = ','.join(key for key, value in system_libs_map.items() if not value.never_force)
+    force = ','.join(key for key, lib in system_libs_map.items() if not lib.never_force)
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
