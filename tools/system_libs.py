@@ -179,6 +179,9 @@ class Library(object):
   # dependencies of this library working.
   js_depends = []
 
+  # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
+  never_force = False
+
   # The C compile executable to use. You can override this to shared.EMXX for C++.
   emcc = shared.EMCC
 
@@ -961,6 +964,7 @@ class libc_rt_wasm(CompilerRTWasmLibrary, MuslInternalLibrary):
 
 class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libubsan_minimal_rt_wasm'
+  never_force = True
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
   src_files = ['ubsan_minimal_handlers.cpp']
@@ -970,6 +974,7 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
   js_depends = ['memalign']
+  never_force = True
 
   cflags = ['-std=c++11']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
@@ -980,6 +985,7 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libubsan_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libubsan_rt_wasm'
   depends = ['libsanitizer_common_rt_wasm']
+  never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
   cflags = ['-std=c++11', '-DUBSAN_CAN_USE_CXXABI']
@@ -1069,7 +1075,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # You can provide 1 to include everything, or a comma-separated list with the ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force = ','.join(system_libs_map.keys())
+    force = ','.join(key for key, lib in system_libs_map.items() if not lib.never_force)
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
