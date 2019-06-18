@@ -31,6 +31,10 @@
 #include "sanitizer_common/sanitizer_quarantine.h"
 #include "lsan/lsan_common.h"
 
+#if SANITIZER_EMSCRIPTEN
+#include "asan_emscripten.h"
+#endif
+
 namespace __asan {
 
 // Valid redzone sizes are 16, 32, 64, ... 2048, so we encode them in 3 bits.
@@ -463,7 +467,7 @@ struct Allocator {
       ReportOutOfMemory(size, stack);
     }
 
-    if (*(u8 *)MEM_TO_SHADOW((uptr)allocated) == 0 && CanPoisonMemory()) {
+    if (emasan_shadow_read((uptr) allocated) == 0 && CanPoisonMemory()) {
       // Heap poisoning is enabled, but the allocator provides an unpoisoned
       // chunk. This is possible if CanPoisonMemory() was false for some
       // time, for example, due to flags()->start_disabled.

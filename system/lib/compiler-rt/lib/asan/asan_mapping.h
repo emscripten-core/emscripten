@@ -271,6 +271,8 @@ extern uptr kHighMemEnd, kMidMemBeg, kMidMemEnd;  // Initialized in __asan_init.
 
 #if SANITIZER_MYRIAD2
 #include "asan_mapping_myriad.h"
+#elif SANITIZER_EMSCRIPTEN
+#include "asan_emscripten.h"
 #else
 #define MEM_TO_SHADOW(mem) (((mem) >> SHADOW_SCALE) + (SHADOW_OFFSET))
 
@@ -358,19 +360,34 @@ namespace __asan {
 
 static inline bool AddrIsInMem(uptr a) {
   PROFILE_ASAN_MAPPING();
+#if SANITIZER_EMSCRIPTEN
+  return true;
+#else
   return AddrIsInLowMem(a) || AddrIsInMidMem(a) || AddrIsInHighMem(a) ||
       (flags()->protect_shadow_gap == 0 && AddrIsInShadowGap(a));
+#endif
 }
 
 static inline uptr MemToShadow(uptr p) {
+#if SANITIZER_EMSCRIPTEN
+  // On Emscripten, the shadow memory cannot be accessed directly.
+  Abort();
+  return p;
+#else
   PROFILE_ASAN_MAPPING();
   CHECK(AddrIsInMem(p));
   return MEM_TO_SHADOW(p);
+#endif
 }
 
 static inline bool AddrIsInShadow(uptr a) {
   PROFILE_ASAN_MAPPING();
+#if SANITIZER_EMSCRIPTEN
+  // On Emscripten, the shadow memory is outside of the address space.
+  return false;
+#else
   return AddrIsInLowShadow(a) || AddrIsInMidShadow(a) || AddrIsInHighShadow(a);
+#endif
 }
 
 static inline bool AddrIsAlignedByGranularity(uptr a) {
@@ -382,6 +399,9 @@ static inline bool AddressIsPoisoned(uptr a) {
   PROFILE_ASAN_MAPPING();
   if (SANITIZER_MYRIAD2 && !AddrIsInMem(a) && !AddrIsInShadow(a))
     return false;
+#if SANITIZER_EMSCRIPTEN
+  return emasan_is_poisoned(a);
+#else
   const uptr kAccessSize = 1;
   u8 *shadow_address = (u8*)MEM_TO_SHADOW(a);
   s8 shadow_value = *shadow_address;
@@ -391,6 +411,7 @@ static inline bool AddressIsPoisoned(uptr a) {
     return (last_accessed_byte >= shadow_value);
   }
   return false;
+#endif
 }
 
 // Must be after all calls to PROFILE_ASAN_MAPPING().

@@ -71,6 +71,10 @@ void DescribeThread(AsanThreadContext *context) {
 // Shadow descriptions
 static bool GetShadowKind(uptr addr, ShadowKind *shadow_kind) {
   CHECK(!AddrIsInMem(addr));
+#if SANITIZER_EMSCRIPTEN
+  CHECK(0 && "Emscripten has no accessible shadow memory");
+  return false;
+#else
   if (AddrIsInShadowGap(addr)) {
     *shadow_kind = kShadowKindGap;
   } else if (AddrIsInHighShadow(addr)) {
@@ -82,6 +86,7 @@ static bool GetShadowKind(uptr addr, ShadowKind *shadow_kind) {
     return false;
   }
   return true;
+#endif
 }
 
 bool DescribeAddressIfShadow(uptr addr) {
