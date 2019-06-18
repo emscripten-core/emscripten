@@ -9313,14 +9313,14 @@ int main () {
 
   @parameterized({
     'c': ['c', [
-      r'in malloc.*wasm-function',
+      r'in malloc.*a\.out\.wasm\+0x',
       r'(?m)in f /.*/test\.c:6:21$',
       r'(?m)in main /.*/test\.c:10:16$',
       r'(?m)in main /.*/test\.c:12:3$',
       r'(?m)in main /.*/test\.c:13:3$',
     ]],
     'cpp': ['cpp', [
-      r'in operator new\[\]\(unsigned long\).*wasm-function',
+      r'in operator new\[\]\(unsigned long\).*a\.out\.wasm\+0x',
       r'(?m)in f\(\) /.*/test\.cpp:4:21$',
       r'(?m)in main /.*/test\.cpp:8:16$',
       r'(?m)in main /.*/test\.cpp:10:3$',
