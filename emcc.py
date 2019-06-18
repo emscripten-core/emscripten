@@ -38,7 +38,7 @@ import sys
 import time
 from subprocess import PIPE
 
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun
+from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 import tools.line_endings
@@ -2595,6 +2595,8 @@ def parse_args(newargs):
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
+    elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
+      colored_logger.disable()
 
   if should_exit:
     sys.exit(0)
