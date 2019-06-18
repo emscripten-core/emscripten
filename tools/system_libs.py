@@ -1013,6 +1013,12 @@ class liblsan_rt_wasm(CompilerRTWasmLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
 
 
+class libasan_rt_wasm(SanitizerLibrary):
+  name = 'libasan_rt_wasm'
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
+
+
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
