@@ -43,8 +43,8 @@ extern "C" {
 		return queue;
 	}
 
-	int32_t _fetch_get_response_headers_length(int32_t fetchID);
-	int32_t _fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
+	int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
+	int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
 }
 
 void emscripten_proxy_fetch(emscripten_fetch_t *fetch)
@@ -241,14 +241,14 @@ size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch)
 {
 	if (!fetch || fetch->readyState < 2) return 0;
 
-	return (size_t)_fetch_get_response_headers_length((int32_t)fetch->id);
+	return (size_t)_emscripten_fetch_get_response_headers_length((int32_t)fetch->id);
 }
 
 size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes)
 {
 	if (!fetch || fetch->readyState < 2) return 0;
 
-	return (size_t)_fetch_get_response_headers((int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
+	return (size_t)_emscripten_fetch_get_response_headers((int32_t)fetch->id, (int32_t)dst, (int32_t)dstSizeBytes);
 }
 
 char **emscripten_fetch_unpack_response_headers(const char *headersString)
