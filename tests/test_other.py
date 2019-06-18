@@ -9322,10 +9322,3 @@ int main () {
       for error, file in zip(errors, files):
         if not re.search(error, stderr):
           self.fail('try %d: cannot find the error message for %s:\n%s' % (n + 1, file, stderr))
-
-  @no_windows('ptys and select are not available on windows')
-  def test_build_error_color(self):
-    create_test_file('src.c', 'int main() {')
-    returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
-    self.assertNotEqual(returncode, 0)
-    self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
