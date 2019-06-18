@@ -7508,7 +7508,7 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('BINARYEN_TRAP_MODE not meaningfull with llvm backend')
+  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm():
       self.skipTest('wasm test')
