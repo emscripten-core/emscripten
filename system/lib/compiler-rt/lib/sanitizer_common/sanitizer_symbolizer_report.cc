@@ -41,9 +41,13 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+#include <emscripten/em_js.h>
 
-// Most JavaScript consoles do not handle colors.
-static INLINE bool ReportSupportsColors() { return false; }
+EM_JS(bool, emsan_support_colors, (), {
+  return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+});
+
+static INLINE bool ReportSupportsColors() { return emsan_support_colors(); }
 
 #elif !SANITIZER_FUCHSIA
 
