@@ -2380,7 +2380,7 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
       buf += 8;
     } else if (c == 'i') {
       buf = align_to(buf, 4);
-      args.push(HEAPU32[(buf >> 2)]);
+      args.push(HEAP32[(buf >> 2)]);
       buf += 4;
     }
   }
