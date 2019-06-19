@@ -1040,22 +1040,33 @@ class libubsan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
 
 
+class liblsan_common_rt_wasm(SanitizerLibrary):
+  name = 'liblsan_common_rt_wasm'
+  js_depends = ['__data_end', '__heap_base']
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_glob = 'lsan_common*.cc'
+
+
 # TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
 # and clean up the duplicate code.
 class liblsan_rt_wasm(CompilerRTWasmLibrary):
   name = 'liblsan_rt_wasm'
-  depends = ['libsanitizer_common_rt_wasm']
-  js_depends = ['__data_end', '__heap_base', 'emscripten_builtin_malloc', 'emscripten_builtin_free']
+  depends = ['liblsan_common_rt_wasm']
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
   cflags = ['-std=c++11']
-  src_glob = '*.cc'
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_glob = '*.cc'
+  src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
+                      'lsan_common_emscripten.cc']
 
 
 class libasan_rt_wasm(SanitizerLibrary):
   name = 'libasan_rt_wasm'
+  depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
