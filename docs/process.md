@@ -160,3 +160,23 @@ itself doesn't have any binaries to build). (Note: If you are packaging the olde
 fastcomp compiler backend then you must also get the fastcomp and fastcomp-clang
 repos, and build them together to get LLVM and clang.)
 
+When packaging build results, you need the following executables (when using
+the wasm backend):
+
+  * From LLVM:
+    * clang
+    * clang++
+    * wasm-ld
+    * llvm-nm
+    * llvm-ar
+    * llvm-as
+    * llvm-dis
+    * llvm-dwarfdump
+  * From Binaryen:
+    * wasm-emscripten-finalize
+    * wasm-opt
+    * wasm-dis
+    * wasm-as
+    * wasm2js
+    * wasm-metadce
+
