@@ -9314,5 +9314,18 @@ int main () {
     self.assertNotEqual(returncode, 0)
     self.assertNotIn(b'\x1b', output)
 
+  def test_sanitizer_color(self):
+    create_test_file('src.c', '''
+      #include <emscripten.h>
+      int main() {
+        int *p = 0, q;
+        EM_ASM({ Module.sanitizer_use_color = true; });
+        q = *p;
+      }
+    ''')
+    run_process([PYTHON, EMCC, '-fsanitize=null', 'src.c'])
+    output = run_js('a.out.js', stderr=PIPE, full_output=True)
+    self.assertIn('\x1b[1msrc.c', output)
+
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
