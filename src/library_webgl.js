@@ -513,7 +513,7 @@ var LibraryGL = {
 #if TRACE_WEBGL_CALLS
       if (ctx) GL.hookWebGL(ctx);
 #endif
-      return ctx && GL.registerContext(ctx, webGLContextAttributes);
+      return ctx ? GL.registerContext(ctx, webGLContextAttributes) : 0;
     },
 
 #if OFFSCREEN_FRAMEBUFFER
