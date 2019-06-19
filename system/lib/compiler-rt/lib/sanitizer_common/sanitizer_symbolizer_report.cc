@@ -44,7 +44,12 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 #include <emscripten/em_js.h>
 
 EM_JS(bool, emsan_support_colors, (), {
-  return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+  var setting = Module['sanitizer_use_color'];
+  if (setting != null) {
+    return setting;
+  } else {
+    return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+  }
 });
 
 static INLINE bool ReportSupportsColors() { return emsan_support_colors(); }
