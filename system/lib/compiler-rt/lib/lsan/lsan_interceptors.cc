@@ -340,6 +340,8 @@ INTERCEPTOR(void, thr_exit, tid_t *state) {
 #define LSAN_MAYBE_INTERCEPT_THR_EXIT
 #endif
 
+// TODO: Implement thread support.
+#if !SANITIZER_EMSCRIPTEN
 struct ThreadParam {
   void *(*callback)(void *arg);
   void *param;
@@ -419,6 +421,7 @@ INTERCEPTOR(void, _exit, int status) {
   if (status == 0 && HasReportedLeaks()) status = common_flags()->exitcode;
   REAL(_exit)(status);
 }
+#endif
 
 #if SANITIZER_EMSCRIPTEN
 namespace __lsan {

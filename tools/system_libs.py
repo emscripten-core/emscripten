@@ -518,10 +518,7 @@ class AsanOverridenLibrary(Library):
     super(AsanOverridenLibrary, self).__init__(**kwargs)
 
   def asan_filter_files(self, files):
-    if self.is_asan:
-      return [file for file in files if os.path.basename(file) not in ASAN_OVERRIDES]
-    else:
-      return files
+    return files
 
   def get_files(self):
     return self.asan_filter_files(super(AsanOverridenLibrary, self).get_files())
