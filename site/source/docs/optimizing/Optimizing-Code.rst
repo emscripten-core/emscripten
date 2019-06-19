@@ -33,6 +33,18 @@ In addition to the ``-Ox`` options, there are separate compiler options that can
 
   -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
 
+How Emscripten optimizes
+========================
+
+Compiling source files to object files works as you'd expect in a native build system that uses clang and LLVM. When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
+
+- For wasm, the Binaryen optimizer is run. Binaryen does both general-purpose optimizations to the wasm that LLVM does not, and also does some whole-program optimization. (Note that Binaryen's whole-program optimizations may do things like inlining, which can be surprising in some cases as LLVM IR attributes like ``noinline`` have been lost at this point.)
+- For asm.js, the Emscripten asm.js optimizer is run.
+- JavaScript is generated at this phase, and is optimized by Emscripten's JS optimizer. Optionally you can also run :ref:`the closure compiler <emcc-closure>`, which is highly recommended for code size.
+- Emscripten also optimizes the combined wasm+JS, by minifying imports and exports between them, and by running meta-dce which removes unused code in cycles that span the two worlds.
+
+To skip extra optimization work at link time, link with ``-O0`` (or no optimization level), which works regardless of how the source files were compiled and optimized. Linking in this way with ``-O0`` is useful for fast iteration builds, while final release builds may want something like ``-O3 --closure 1``.
+
 
 Advanced compiler settings
 ==========================
@@ -119,11 +131,9 @@ If you hit memory limits in browsers, it can help to run your project by itself,
 Aggressive variable elimination
 -------------------------------
 
-Aggressive variable elimination attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
+Aggressive variable elimination is an asm.js feature (not relevant for wasm) that attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
 
 You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``.
-
-.. note:: This setting is useful for asm.js, but generally not helpful for WebAssembly.
 
 .. note:: This setting can be harmful in some cases. Test before using it.
 

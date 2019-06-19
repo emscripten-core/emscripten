@@ -1585,6 +1585,19 @@ int main() {
     self.set_setting('LINKABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
+  def test_emscripten_run_script_string_int(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("1+1");
+        printf("got string: %s\n", str);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''got string: 2''')
+
   def test_emscripten_run_script_string_utf8(self):
     src = r'''
       #include <stdio.h>
@@ -1599,6 +1612,23 @@ int main() {
       }
     '''
     self.do_run(src, '''length of returned string: 18. Position of substring 'Hello': 12''')
+
+  def test_emscripten_run_script_string_null(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("void(0)");
+        if (str) {
+          printf("got string: %s\n", str);
+        } else {
+          puts("got null");
+        }
+        return 0;
+      }
+    '''
+    self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
@@ -2399,9 +2429,6 @@ The current type of b is: 9
 
   @needs_dlfcn
   def test_dlfcn_i64(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     lib_src = '''
@@ -3765,8 +3792,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_jslib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -4167,9 +4192,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_zlib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
@@ -6001,8 +6023,6 @@ return malloc(size);
   @is_slow_test
   def test_fuzz(self):
     self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
-    # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
 
     skip_lto_tests = [
       # LLVM LTO bug
@@ -7488,7 +7508,7 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
+  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm():
       self.skipTest('wasm test')
@@ -7725,9 +7745,26 @@ extern "C" {
       "which does not point to an object of type 'R'",
     ])
 
+  @parameterized({
+    'g': ('-g', [
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main',
+    ]),
+    'g4': ('-g4', [
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main /',
+      '/src.cpp:3:8'
+    ]),
+  })
   @no_fastcomp('ubsan not supported on fastcomp')
-  def test_ubsan_full_stack_trace(self):
-    self.emcc_args += ['-std=c++11', '-fsanitize=null', '-g']
+  def test_ubsan_full_stack_trace(self, g_flag, expected_output):
+    self.emcc_args += ['-std=c++11', '-fsanitize=null', g_flag, '-s', 'ALLOW_MEMORY_GROWTH=1']
+
+    if g_flag == '-g4':
+      if not self.get_setting('WASM'):
+        self.skipTest('wasm2js has no source map support')
+      elif '-Oz' in self.emcc_args:
+        self.skipTest('-Oz breaks stack traces')
 
     def modify_env(filename):
       with open(filename) as f:
@@ -7737,10 +7774,7 @@ extern "C" {
         f.write(contents)
 
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
-                post_build=modify_env, assert_all=True, expected_output=[
-      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
-      'in main wasm-function',
-    ])
+                post_build=modify_env, assert_all=True, expected_output=expected_output)
 
 
 # Generate tests for everything

@@ -19,6 +19,33 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+ - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
+   or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
+ - Add a new system for managing system libraries. (#8780)
+   This may require minor changes when performing certain operations:
+     - When using `embuilder.py` to build a specific library, the name may have
+       changed: for consistency, all library names are prefixed with lib now.
+     - `embuilder.py` now only builds the requested library, and not its dependencies
+       and certain system libraries that are always built. For example, running
+       `embuilder.py build libc` no longer builds `libcompiler_rt` if it hasn't be built.
+     - When using `EMCC_FORCE_STDLIBS` with a list of libraries, you must now use
+       the simplified names, for example, `libmalloc` and `libpthreads` instead of
+       `libdlmalloc` or `libpthreads_stub`. These names will link in the correct
+       version of the library: if the build is configured to use `emmalloc`, `libmalloc`
+       will mean `libemmalloc`, and if thread support is disabled, `libpthreads` will
+       mean `libpthreads_stub`. This allows you to say `libmalloc` or `libpthreads` without
+       worrying about which implementation is supposed to be used, and avoid duplicate
+       symbols if you used the wrong implementation.
+
+v1.38.36: 06/15/2019
+--------------------
+
+v1.38.35: 06/13/2019
+--------------------
+ - Include some [waterfall fixes](https://github.com/WebAssembly/waterfall/pull/541)
+   for the emsdk builds on linux regarding libtinfo.
+ - NOTE: due to a CI failure, builds for mac and windows were not generated.
+
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
@@ -37,6 +64,11 @@ v1.38.32: SKIPPED
  - The transition from the old to the new CI occured around here. To avoid ambiguity while
    both CIs were still generating builds, we just tagged a new one (1.38.33) on the new CI
    and skipped 1.38.32.
+ - The transition also moves all builds and downloads away from the old mozilla-games
+   infrastructure to the new chromium ones. As a result all links to *mozilla-games* URLs
+   will not work (these were never documented, but could be seen from the internals of the
+   emsdk; the new emsdk uses the proper new URLs, so you can either use the sdk normally
+   or find the URLs from there).
 
 v1.38.31: 04/24/2019
 --------------------

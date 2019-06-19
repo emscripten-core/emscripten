@@ -8,13 +8,14 @@ import os
 import shutil
 
 TAG = 'release-62-1'
+HASH = 'a990529dc03901f40424b506b6ad748010db98bbb29249e7106f259cc11e03a17cb3054bd7f7cb86116b169ff39c90f232603d762d39271fb5be94550d03f9fb'
 
 
 def get(ports, settings, shared):
   if settings.USE_ICU != 1:
     return []
 
-  ports.fetch_project('icu', 'https://github.com/unicode-org/icu/archive/' + TAG + '.zip', 'icu-' + TAG)
+  ports.fetch_project('icu', 'https://github.com/unicode-org/icu/archive/' + TAG + '.zip', 'icu-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libicuuc')
 
   def create():

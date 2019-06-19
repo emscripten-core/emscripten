@@ -43,4 +43,4 @@ This step also contains the command to add an additional build tool *make*.
 
 In the script stage we can now run the commands we want. In this sample we are using *make*, but you can call *emcc* directly if you prefer.
 
-For an example of this setup in practice, see `the Example Emscripten site using GitLab Pages <https://pages.gitlab.io/emscripten>`_.
+For an example of this setup in practice, see `the Example Emscripten site using GitLab Pages <https://lramage.gitlab.io/emscripten>`_.
