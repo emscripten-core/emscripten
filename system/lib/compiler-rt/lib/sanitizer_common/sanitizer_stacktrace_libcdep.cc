@@ -29,9 +29,15 @@ void StackTrace::Print() const {
   int dedup_frames = common_flags()->dedup_token_length;
   uptr frame_num = 0;
   for (uptr i = 0; i < size && trace[i]; i++) {
+#if !SANITIZER_EMSCRIPTEN
     // PCs in stack traces are actually the return addresses, that is,
     // addresses of the next instructions after the call.
     uptr pc = GetPreviousInstructionPc(trace[i]);
+#else
+    // On Emscripten, the stack traces are obtained from JavaScript, and the
+    // addresses are not return addresses.
+    uptr pc = trace[i];
+#endif
     SymbolizedStack *frames = Symbolizer::GetOrInit()->SymbolizePC(pc);
     CHECK(frames);
     for (SymbolizedStack *cur = frames; cur; cur = cur->next) {

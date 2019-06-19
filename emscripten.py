@@ -167,6 +167,14 @@ def parse_fastcomp_output(backend_output, DEBUG):
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
 
+  # In MINIMAL_RUNTIME stackSave() and stackRestore are JS library functions. If LLVM backend generated
+  # calls to invoke_*() functions that save and restore the stack, we must include the stack functions
+  # explicitly into the build. (In traditional runtime the stack functions are always present, so this
+  # tracking is not needed)
+  if shared.Settings.MINIMAL_RUNTIME and (len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE):
+    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
+
   return funcs, metadata, mem_init
 
 
@@ -2293,7 +2301,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   cmd += ['--detect-features']
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     cmd.append('--no-legalize-javascript-ffi')
@@ -2372,7 +2380,7 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
       buf += 8;
     } else if (c == 'i') {
       buf = align_to(buf, 4);
-      args.push(HEAPU32[(buf >> 2)]);
+      args.push(HEAP32[(buf >> 2)]);
       buf += 4;
     }
   }
@@ -2596,13 +2604,13 @@ def run(infile, outfile, memfile, libraries):
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
     generated_struct_info_name = 'generated_struct_info.json'
 
-    def ensure_struct_info():
+    def generate_struct_info():
       with ToolchainProfiler.profile_block('gen_struct_info'):
         out = shared.Cache.get_path(generated_struct_info_name)
-        gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
+        gen_struct_info.main(['-q', '-c', '-o', out])
         return out
 
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info)
+    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
   # do we need an else, to define it for the bootstrap case?
 
   outfile_obj = open(outfile, 'w')

@@ -90,6 +90,14 @@ void PollThreadExit(void *)
 
 int main()
 {
+  if (!emscripten_supports_offscreencanvas())
+  {
+    printf("Current browser does not support OffscreenCanvas. Skipping this test.\n");
+#ifdef REPORT_RESULT
+    REPORT_RESULT(0);
+#endif
+    return 0;
+  }
   EM_ASM(Module['noExitRuntime'] = true;);
   CreateThread();
   emscripten_async_call(PollThreadExit, 0, 100);
