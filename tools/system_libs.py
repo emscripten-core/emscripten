@@ -286,7 +286,8 @@ class Library(object):
     """
     sources = self.get_files()
     cflags = self.get_cflags()
-    command = [shared.PYTHON, self.emcc, '-c'] + cflags + sources
+    command = [self.emcc, '-c'] + cflags + sources
+    command = [shared.PYTHON] + shared.Building.get_command_with_possible_response_file(command)
     shared.run_process(command, cwd=self.in_temp())
     return [self.in_temp(os.path.splitext(os.path.basename(src))[0] + '.o') for src in sources]
 
