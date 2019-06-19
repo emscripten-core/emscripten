@@ -41,18 +41,18 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 #endif
 
 #if SANITIZER_EMSCRIPTEN
-#include <emscripten/em_js.h>
+#include <emscripten/em_asm.h>
 
-EM_JS(bool, emsan_support_colors, (), {
-  var setting = Module['sanitizer_use_color'];
-  if (setting != null) {
-    return setting;
-  } else {
-    return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
-  }
-});
-
-static INLINE bool ReportSupportsColors() { return emsan_support_colors(); }
+static INLINE bool ReportSupportsColors() {
+  return !!EM_ASM_INT({
+    var setting = Module['sanitizer_use_color'];
+    if (setting != null) {
+      return setting;
+    } else {
+      return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+    }
+  });
+}
 
 #elif !SANITIZER_FUCHSIA
 
