@@ -1464,6 +1464,10 @@ var UBSAN_RUNTIME = 0;
 // by -fsanitize=leak instead of used directly.
 var USE_LSAN = 0;
 
+// Whether we should link in ASan's runtime library. This is intended to be used invoked`
+// by -fsanitize=leak instead of used directly.
+var USE_ASAN = 0;
+
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;

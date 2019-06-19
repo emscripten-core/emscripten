@@ -1486,6 +1486,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.USE_PTHREADS:
           exit_with_error('LSan currently does not support threads')
 
+      if 'address' in sanitize:
+        shared.Settings.USE_ASAN = 1
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 
