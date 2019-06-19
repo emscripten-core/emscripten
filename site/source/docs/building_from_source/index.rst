@@ -4,28 +4,26 @@
 Building Emscripten from Source
 ===============================
 
-Building from source allows you to access the very latest features and bug fixes, and is essential for developers who are :ref:`Contributing` to Emscripten.
+Building Emscripten yourself is an alternative to getting binaries using the emsdk.
 
-There are two approaches to building from source:
+Emscripten's core codebase, which is in the main "emscripten" repo, does not need to be compiled (it uses Python for most of the scripting that glues together all the tools). What do need to be compiled are LLVM (which in particular provides clang and wasm-ld) and Binaryen. After compiling them, simply edit the ``.emscripten`` file to point to the right place for each of those tools (if the file doesn't exist yet, run ``emcc`` for the first time).
 
-- Manually setting up the sources and dependencies.
-- Using the SDK package manager to set up the environment and get the sources.
+Building LLVM
+-------------
 
-The manual approach gives you a better understanding of the toolchain and all the build steps. The SDK method is easier because it automates and tests much of the setup process. It also enables a workflow where you can easily switch between source builds and SDK environments.
+For using the LLVM wasm backend (recommended), simply build normal upstream LLVM, including clang and wasm-ld, following `that project's instructions <http://llvm.org/docs/CMake.html>`_. The build must not disable the WebAssembly backend (which is included by default).
 
-.. note:: You can't use both approaches at the same time because the SDK overwrites manual changes made to the user's :ref:`compiler configuration file <configuring-emscripten-settings>`.
+For using the older fastcomp backend, see :ref:`the fastcomp docs <building-fastcomp-from-source>`.
 
-The instructions for building Emscripten using both methods are given below, followed by guidance on how to update the configuration file and validate your environment once it is complete:
+Building Binaryen
+-----------------
+
+See the `Binaryen build instructions <https://github.com/WebAssembly/binaryen#building>`_.
 
 .. toctree::
    :maxdepth: 1
 
    toolchain_what_is_needed
-   building_emscripten_from_source_using_the_sdk
-   building_emscripten_from_source_on_linux
-   building_emscripten_from_source_on_windows
-   building_emscripten_from_source_on_mac_os_x
-   LLVM-Backend
    building_fastcomp_manually_from_source
    configuring_emscripten_settings
    verify_emscripten_environment
