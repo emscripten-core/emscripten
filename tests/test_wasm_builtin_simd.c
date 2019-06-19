@@ -576,7 +576,7 @@ static int failures = 0;
       }                                                         \
     })
 
-int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
+int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv) {
   {
     i8x16 vec = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
     expect_vec(i8x16_load(&vec),

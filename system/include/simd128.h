@@ -5,7 +5,7 @@ WebAssembly SIMD128 Intrinsics
 #include <stdint.h>
 
 // User-facing type
-typedef int32_t v128_t __attribute__((vector_size(16), __aligned__(16)));
+typedef int32_t v128_t __attribute__((__vector_size__(16), __aligned__(16)));
 
 // Internal types determined by clang builtin definitions
 typedef int32_t __v128_u __attribute__((__vector_size__(16), __aligned__(1)));
@@ -24,6 +24,7 @@ typedef double __f64x2 __attribute__((__vector_size__(16), __aligned__(16)));
 
 // v128 wasm_v128_load(void* mem)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_load(const void* __mem) {
+  // UB-free unaligned access copied from xmmintrin.h
   struct __wasm_v128_load_struct {
     __v128_u __v;
   } __attribute__((__packed__, __may_alias__));
@@ -32,6 +33,7 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_load(const void* __mem) {
 
 // wasm_v128_store(void* mem, v128 a)
 static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(void* __mem, v128_t __a) {
+  // UB-free unaligned access copied from xmmintrin.h
   struct __wasm_v128_store_struct {
     __v128_u __v;
   } __attribute__((__packed__, __may_alias__));
@@ -361,14 +363,15 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_or(v128_t a, v128_t b) { r
 // v128_t wasm_v128_xor(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_xor(v128_t a, v128_t b) { return a ^ b; }
 
-// v128_t wasm_v128_bitselect(v128_t a, v128_t b, v128_t c)
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_bitselect(v128_t a, v128_t b, v128_t c) {
-  return (v128_t)__builtin_wasm_bitselect((__i32x4)a, (__i32x4)b, (__i32x4)c);
+// v128_t wasm_v128_bitselect(v128_t a, v128_t b, v128_t mask)
+// `a` is selected for each lane for which `mask` is nonzero.
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_bitselect(v128_t a, v128_t b, v128_t mask) {
+  return (v128_t)__builtin_wasm_bitselect((__i32x4)a, (__i32x4)b, (__i32x4)mask);
 }
 
 // v128_t wasm_i8x16_neg(v128_t a)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_neg(v128_t a) {
-  return (v128_t)(-(__i8x16)a);
+  return (v128_t)(-(__u8x16)a);
 }
 
 // bool wasm_i8x16_any_true(v128_t a)
@@ -428,12 +431,12 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_u8x16_sub_saturate(v128_t a, v1
 
 // v128_t wasm_i8x16_mul(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_mul(v128_t a, v128_t b) {
-  return (v128_t)((__i8x16)a * (__i8x16)b);
+  return (v128_t)((__u8x16)a * (__u8x16)b);
 }
 
 // v128_t wasm_i16x8_neg(v128_t a)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_neg(v128_t a) {
-  return (v128_t)(-(__i16x8)a);
+  return (v128_t)(-(__u16x8)a);
 }
 
 // bool wasm_i16x8_any_true(v128_t a)
@@ -493,12 +496,12 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_u16x8_sub_saturate(v128_t a, v1
 
 // v128_t wasm_i16x8_mul(v128_t a v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_mul(v128_t a, v128_t b) {
-  return (v128_t)((__i16x8)a * (__i16x8)b);
+  return (v128_t)((__u16x8)a * (__u16x8)b);
 }
 
 // v128_t wasm_i32x4_neg(v128_t a)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_neg(v128_t a) {
-  return (v128_t)(-(__i32x4)a);
+  return (v128_t)(-(__u32x4)a);
 }
 
 // bool wasm_i32x4_any_true(v128_t a)
@@ -538,14 +541,14 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_sub(v128_t a, v128_t b) {
 
 // v128_t wasm_i32x4_mul(v128_t a v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_mul(v128_t a, v128_t b) {
-  return (v128_t)((__i32x4)a * (__i32x4)b);
+  return (v128_t)((__u32x4)a * (__u32x4)b);
 }
 
 #ifdef __wasm_unimplemented_simd128__
 
 // v128_t wasm_i64x2_neg(v128_t a)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i64x2_neg(v128_t a) {
-  return (v128_t)(-(__i64x2)a);
+  return (v128_t)(-(__u64x2)a);
 }
 
 // bool wasm_i64x2_any_true(v128_t a)

@@ -168,7 +168,7 @@ v128_t TESTFN i8x16_gt_u(v128_t x, v128_t y) {
 v128_t TESTFN i8x16_le_s(v128_t x, v128_t y) {
   return wasm_i8x16_le(x,y);
 }
-v128_t TESTFN u8x16_le_u(v128_t x, v128_t y) {
+v128_t TESTFN i8x16_le_u(v128_t x, v128_t y) {
    return wasm_u8x16_le(x, y);
 }
 v128_t TESTFN i8x16_ge_s(v128_t x, v128_t y) {
@@ -339,7 +339,7 @@ v128_t TESTFN i16x8_neg(v128_t vec) {
 bool TESTFN i16x8_any_true(v128_t vec) {
   return wasm_i16x8_any_true(vec);
 }
-int32_t TESTFN i16x8_all_true(v128_t vec) {
+bool TESTFN i16x8_all_true(v128_t vec) {
   return wasm_i16x8_all_true(vec);
 }
 v128_t TESTFN i16x8_shl(v128_t vec, int32_t shift) {
@@ -477,22 +477,22 @@ v128_t TESTFN f64x2_abs(v128_t vec) {
   return wasm_f64x2_abs(vec);
 }
 v128_t TESTFN f64x2_neg(v128_t vec) {
-  return -vec;
+  return wasm_f64x2_neg(vec);
 }
 v128_t TESTFN f64x2_sqrt(v128_t vec) {
   return wasm_f64x2_sqrt(vec);
 }
 v128_t TESTFN f64x2_add(v128_t x, v128_t y) {
-  return x + y;
+  return wasm_f64x2_add(x, y);
 }
 v128_t TESTFN f64x2_sub(v128_t x, v128_t y) {
-  return x - y;
+  return wasm_f64x2_sub(x, y);
 }
 v128_t TESTFN f64x2_mul(v128_t x, v128_t y) {
-  return x * y;
+  return wasm_f64x2_mul(x, y);
 }
 v128_t TESTFN f64x2_div(v128_t x, v128_t y) {
-  return x / y;
+  return wasm_f64x2_div(x, y);
 }
 v128_t TESTFN f64x2_min(v128_t x, v128_t y) {
   return wasm_f64x2_min(x, y);
@@ -644,7 +644,7 @@ static int failures = 0;
   (__extension__(double __attribute__((__vector_size__(16)))) {c1, c2})
 
 
-int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
+int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv) {
   {
     v128_t vec = (v128_t)u8x16(3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3);
     expect_vec(i8x16_load(&vec),
@@ -825,14 +825,13 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
     ),
     u8x16(-1, 0, -1, -1, 0, -1, -1, 0, -1, 0, -1, -1, 0, -1, -1, 0)
   );
-  // bugs.chromium.org/p/v8/issues/detail?id=8635
-  // expect_vec(
-  //   i8x16_le_u(
-  //     (v128_t)i8x16(0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42),
-  //     (v128_t)i8x16(0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128)
-  //   ),
-  //   i8x16(-1, -1, -1, 0, -1, -1, 0, -1, -1, -1, 0, -1, -1, -1, 0, -1)
-  // );
+  expect_vec(
+    i8x16_le_u(
+      (v128_t)i8x16(0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42),
+      (v128_t)i8x16(0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128)
+    ),
+    i8x16(-1, -1, -1, 0, -1, -1, 0, -1, -1, -1, 0, -1, -1, -1, 0, -1)
+  );
   expect_vec(
     i8x16_ge_s(
       (v128_t)i8x16(0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42),
@@ -840,13 +839,13 @@ int EMSCRIPTEN_KEEPALIVE main(int argc, char** argv) {
     ),
     u8x16(-1, -1, -1, 0, -1, 0, 0, -1, -1, -1, 0, -1, -1, 0, 0, -1)
   );
-  // expect_vec(
-  //   i8x16_ge_u(
-  //     (v128_t)i8x16(0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42),
-  //     (v128_t)i8x16(0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128)
-  //   ),
-  //   i8x16(-1, 0, -1, -1, 0, 0, -1, 0, -1, 0, -1, -1, 0, 0, -1, 0)
-  // );
+  expect_vec(
+    i8x16_ge_u(
+      (v128_t)i8x16(0, 127, 13, 128,  1,  13, 129,  42, 0, 127, 255, 42,   1,  13, 129,  42),
+      (v128_t)i8x16(0, 255, 13, 42, 129, 127,   0, 128, 0, 255,  13, 42, 129, 127,   0, 128)
+    ),
+    i8x16(-1, 0, -1, -1, 0, 0, -1, 0, -1, 0, -1, -1, 0, 0, -1, 0)
+  );
 
   // i16x8 comparisons
   expect_vec(
