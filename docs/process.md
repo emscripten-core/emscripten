@@ -99,7 +99,7 @@ Requirements:
 
 How:
 
-1. 1First, follow all the steps for a minor version update.
+1. Follow all the steps for a minor version update.
 2. Merge the `incoming` branch to `master`. This should not be done immediately,
    rather first we should at minimum see that CI and new builds are all green.
    If a problem occurs, we may only merge to master the minor version update
