@@ -105,6 +105,7 @@ How:
    If a problem occurs, we may only merge to master the minor version update
    that fixes things.
 
+
 Updating the `emscripten.org` Website
 --------------------------------------
 
@@ -118,3 +119,44 @@ that is:
 3. Go to the site repo, commit the changes, and push.
 
 [site_repo]: https://github.com/kripken/emscripten-site
+
+
+Packaging Emscripten
+--------------------
+
+If you package Emscripten for users in some manner, the above docs should be
+helpful with understanding versioning and so forth. This section goes into that
+in more detail.
+
+The core
+[DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
+file in the chromium `emscripten-releases` contains all the information about versions
+in all the repos. This is the repo used by our CI to build and test emscripten. How
+this works is that you look at the DEPS file at a particular time (a git commit; that
+is a normal git repo). It has lines like these:
+```
+  'binaryen_revision': '06698d7a32cb4eeb24fea942e83d1b15e86a73e6',
+  'emscripten_revision': '7224b7930ec2a6abca332300e247619e1aea1719',
+  'llvm_project_revision': '33ef687d94604aeb73bedbcf3050524465a3439f',
+```
+Those are the git hashes in those repos. For building that git commit in
+emscripten-releases, our CI fetched and built those revisions.
+
+In principle you can build any git hash in that repo. You can look at the
+[CI UI](https://ci.chromium.org/p/emscripten-releases/g/main/console) to see
+if our CI shows green for any hash, and if so, it should be safe to build.
+
+Alternatively, you may want to build our official emscripten release tags, which
+are the versions the emsdk lets users install. To find the mapping between the
+emscripten versions and the git hash for the DEPS file, the emsdk has
+[emscripten-releases-tags.txt](https://github.com/emscripten-core/emsdk/blob/master/emscripten-releases-tags.txt).
+All versions listed there should be safe to build, as we check that the CI
+was green on them.
+
+To see how our CI builds things, the relevant script is
+[build.py](https://github.com/WebAssembly/waterfall/blob/master/src/build.py).
+In general, the repos you need to build are LLVM and Binaryen (as emscripten
+itself doesn't have any binaries to build). (Note: If you are packaging the older
+fastcomp compiler backend then you must also get the fastcomp and fastcomp-clang
+repos, and build them together to get LLVM and clang.)
+
