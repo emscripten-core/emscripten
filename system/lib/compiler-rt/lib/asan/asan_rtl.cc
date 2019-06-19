@@ -488,7 +488,9 @@ static void AsanInitInternal() {
   InitializeShadowMemory();
 
   AsanTSDInit(PlatformTSDDtor);
+#if !SANITIZER_EMSCRIPTEN
   InstallDeadlySignalHandlers(AsanOnDeadlySignal);
+#endif
 
   AllocatorOptions allocator_options;
   allocator_options.SetFrom(flags(), common_flags());

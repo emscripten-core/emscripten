@@ -10,8 +10,9 @@ using namespace __asan;
 extern "C" {
 
 EM_JS(void, emasan_poison_init, (), {
-  Module._asan_shadow = new Uint8Array();
-  Module._asan_can_poison = false;
+  Module._asan_shadow_buffer = new ArrayBuffer(HEAP8.length);
+  Module._asan_shadow = new Uint8Array(Module._asan_shadow_buffer);
+  Module._asan_shadow_signed = new Int8Array(Module._asan_shadow_buffer);
 });
 
 EM_JS(void, emasan_set_can_poison, (bool value), {
@@ -51,7 +52,7 @@ EM_JS(void, emasan_intra_object_red_zone, (uptr ptr, uptr end, bool poison), {
   }
   for (; ptr < end; ptr += 8) {
     // kAsanIntraObjectRedzone is 0xbb
-    shadow[ptr >> 8] = poison ? 0xbb : 0;
+    shadow[ptr >> 3] = poison ? 0xbb : 0;
   }
 });
 
@@ -65,9 +66,9 @@ EM_JS(bool, emasan_is_poisoned, (uptr a), {
 });
 
 EM_JS(bool, emasan_check_poison, (uptr addr, uptr size), {
-  var buffer = Module._asan_shadow;
-  var s1 = buffer[addr >> 8];
-  var s2 = size > 8 ? buffer[(addr >> 8) + 1] : 0;
+  var buffer = Module._asan_shadow_signed;
+  var s1 = buffer[addr >> 3];
+  var s2 = size > 8 ? buffer[(addr >> 3) + 1] : 0;
   if (s1 || s2) {
     return size > 8 || (addr & 7) + size - 1 >= s1;
   } else {
