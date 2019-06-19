@@ -3,6 +3,7 @@
 #if SANITIZER_EMSCRIPTEN
 #include "asan_emscripten.h"
 #include <emscripten.h>
+#include <cstddef>
 
 using namespace __asan;
 
@@ -22,7 +23,8 @@ EM_JS(bool, emasan_can_poison, (), {
 });
 
 EM_JS(void, emasan_poison, (uptr aligned_beg, uptr aligned_size, u8 value), {
-  Module._asan_shadow.fill(value, begin >> 3, (begin + size) >> 3);
+  Module._asan_shadow.fill(value, aligned_beg >> 3,
+                           (aligned_beg + aligned_size) >> 3);
 });
 
 EM_JS(void, emasan_poison_right, (uptr aligned_addr, uptr size,
@@ -120,5 +122,9 @@ void GetAllocatorCacheRange(uptr *begin, uptr *end) {
 }
 
 } // namespace __lsan
+
+extern "C" void *emscripten_builtin_memset(void * ptr, int value, std::size_t num) {
+  return internal_memset(ptr, value, num);
+}
 
 #endif // SANITIZER_EMSCRIPTEN
