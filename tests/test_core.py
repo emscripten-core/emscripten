@@ -7808,9 +7808,12 @@ extern "C" {
     'use_after_free_cpp': ('test_asan_use_after_free.cpp', [
       'AddressSanitizer: heap-use-after-free on address',
     ]),
+    'use_after_return': ('test_asan_use_after_return.c', [
+      'AddressSanitizer: stack-use-after-return on address',
+    ], ['-Wno-return-stack-address']),
   })
   @no_fastcomp('asan not supported on fastcomp')
-  def test_asan(self, name, expected_output):
+  def test_asan(self, name, expected_output, cflags=None):
     if '-Oz' in self.emcc_args:
       self.skipTest('-Oz breaks source maps')
 
@@ -7818,6 +7821,8 @@ extern "C" {
       self.skipTest('wasm2js has no ASan support')
 
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    if cflags:
+      self.emcc_args += cflags
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
                 basename='src.c' if name.endswith('.c') else 'src.cpp',
                 expected_output=expected_output, assert_all=True,
