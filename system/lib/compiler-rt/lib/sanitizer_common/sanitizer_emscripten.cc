@@ -83,13 +83,21 @@ uptr internal_munmap(void *addr, uptr length) {
   return emscripten_builtin_munmap(addr, length);
 }
 
-extern "C" uptr emscripten_get_stack_top();
-extern "C" uptr emscripten_get_stack_base();
+extern "C" {
+  extern char __data_end;
+  extern char __heap_base;
+}
+
+inline uptr get_stack_bottom() {
+  // Align to 8 byte
+  return ((uptr) &__data_end + 7) & ~7;
+}
+
 
 void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
                                 uptr *stack_bottom) {
-  *stack_top = emscripten_get_stack_top();
-  *stack_bottom = emscripten_get_stack_base();
+  *stack_top = (uptr) &__heap_base;
+  *stack_bottom = get_stack_bottom();
 }
 
 char *fake_argv[] = {0};
@@ -112,6 +120,10 @@ void InitTlsSize() {}
 void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
                           uptr *tls_addr, uptr *tls_size) {
   *stk_addr = *stk_size = *tls_addr = *tls_size = 0;
+  if (main) {
+    *stk_addr = get_stack_bottom();
+    *stk_size = (uptr) &__heap_base - get_stack_bottom();
+  }
 }
 
 void StopTheWorld(StopTheWorldCallback callback, void *argument) {
