@@ -91,7 +91,7 @@ uptr GetTlsSize() {
   return 0;
 }
 
-void InitTlsSize() { }
+void InitTlsSize() {}
 
 void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
                           uptr *tls_addr, uptr *tls_size) {

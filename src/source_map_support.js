@@ -57,12 +57,14 @@ function WasmSourceMap(sourceMap) {
 WasmSourceMap.prototype.lookup = function (offset) {
   var normalized = this.normalizeOffset(offset);
 #if 'emscripten_generate_pc' in addedLibraryItems
-  if (!wasmOffsetConverter.isSameFunc(offset, normalized))
+  if (!wasmOffsetConverter.isSameFunc(offset, normalized)) {
     return null;
+  }
 #endif
   var info = this.mapping[normalized];
-  if (!info)
+  if (!info) {
     return null;
+  }
   return {
     source: this.sources[info.source],
     line: info.line,
