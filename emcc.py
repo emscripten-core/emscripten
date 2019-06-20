@@ -1203,7 +1203,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.WASM_BACKEND:
         # setjmp/longjmp and exception handling JS code depends on this so we
         # include it by default.  Should be eliminated by meta-DCE if unused.
-        shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew', '_emscripten_builtin_malloc', '_emscripten_builtin_free']
+        shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')

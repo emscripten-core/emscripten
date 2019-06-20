@@ -1003,7 +1003,7 @@ class libubsan_rt_wasm(SanitizerLibrary):
 class liblsan_rt_wasm(CompilerRTWasmLibrary):
   name = 'liblsan_rt_wasm'
   depends = ['libsanitizer_common_rt_wasm']
-  js_depends = ['__data_end', '__heap_base']
+  js_depends = ['__data_end', '__heap_base', 'emscripten_builtin_malloc', 'emscripten_builtin_free']
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
