@@ -425,7 +425,7 @@ def check_llvm_version():
 
 def get_llc_targets():
   if not os.path.exists(LLVM_COMPILER):
-    exit_with_error('llc exectuable not found at `%s`' % LLVM_COMPILER)
+    exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
   except Exception as e:
