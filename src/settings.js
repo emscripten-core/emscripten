@@ -1468,6 +1468,10 @@ var USE_LSAN = 0;
 // by -fsanitize=leak instead of used directly.
 var USE_ASAN = 0;
 
+// The size of our shadow memory.
+// By default, we have 32 MiB. This supports 256 MiB of real memory.
+var ASAN_SHADOW_SIZE = 33554432;
+
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;

@@ -1,102 +1,12 @@
 #include "asan_internal.h"
 
 #if SANITIZER_EMSCRIPTEN
-#include "asan_emscripten.h"
 #include <emscripten.h>
 #include <cstddef>
 
-using namespace __asan;
-
-extern "C" {
-
-EM_JS(void, emasan_poison_init, (), {
-  Module._asan_shadow_buffer = new ArrayBuffer(HEAP8.length);
-  Module._asan_shadow = new Uint8Array(Module._asan_shadow_buffer);
-  Module._asan_shadow_signed = new Int8Array(Module._asan_shadow_buffer);
-});
-
-EM_JS(void, emasan_set_can_poison, (bool value), {
-  Module._asan_can_poison = value;
-});
-
-EM_JS(bool, emasan_can_poison, (), {
-  return !!Module._asan_can_poison;
-});
-
-EM_JS(void, emasan_poison, (uptr aligned_beg, uptr aligned_size, u8 value), {
-  Module._asan_shadow.fill(value, aligned_beg >> 3,
-                           (aligned_beg + aligned_size) >> 3);
-});
-
-EM_JS(void, emasan_poison_right, (uptr aligned_addr, uptr size,
-                                  uptr redzone_size, u8 value, bool partial), {
-  var shadow = aligned_addr >> 3;
-  var buffer = Module._asan_shadow;
-  for (var i = 0; i < redzone_size; i += 8, ++shadow) {
-    if (i + 8 <= size) {
-      buffer[shadow] = 0; // fully addressable
-    } else if (i >= size) {
-      buffer[shadow] = value;
-    } else {
-      // first i bytes are addressable
-      buffer[shadow] = partial ? size - i : 0;
-    }
-  }
-});
-
-EM_JS(void, emasan_intra_object_red_zone, (uptr ptr, uptr end, bool poison), {
-  var shadow = Module._asan_shadow;
-  if (ptr & 7) {
-    shadow[ptr >> 3] = poison ? ptr & 7 : 0;
-    ptr = (ptr | 7) + 1;
-  }
-  for (; ptr < end; ptr += 8) {
-    // kAsanIntraObjectRedzone is 0xbb
-    shadow[ptr >> 3] = poison ? 0xbb : 0;
-  }
-});
-
-EM_JS(bool, emasan_is_poisoned, (uptr a), {
-  var shadow_value = Module._asan_shadow[a >> 3];
-  if (shadow_value) {
-    var last_accessed_byte = a & 7;
-    return last_accessed_byte >= shadow_value;
-  }
-  return false;
-});
-
-EM_JS(bool, emasan_check_poison, (uptr addr, uptr size), {
-  var buffer = Module._asan_shadow_signed;
-  var s1 = buffer[addr >> 3];
-  var s2 = size > 8 ? buffer[(addr >> 3) + 1] : 0;
-  if (s1 || s2) {
-    return size > 8 || (addr & 7) + size - 1 >= s1;
-  } else {
-    return 0;
-  }
-});
-
-EM_JS(bool, emasan_range_good_aligned, (uptr begin, uptr end), {
-  var buffer = Module._asan_shadow.subarray(begin >> 3, end >> 3);
-  return buffer.every(function (a) { return !a; });
-});
-
-EM_JS(u8, emasan_shadow_read, (uptr addr), {
-  return Module._asan_shadow[addr >> 3];
-});
-
-EM_JS(void, emasan_shadow_write, (uptr addr, u8 value), {
-  Module._asan_shadow[addr >> 3] = value;
-});
-
-} // extern "C"
-
 namespace __asan {
 
-void InitializeShadowMemory() {
-  emasan_poison_init();
-}
-
+void InitializeShadowMemory() {}
 void AsanCheckDynamicRTPrereqs() {}
 void AsanCheckIncompatibleRT() {}
 void InitializePlatformInterceptors() {}
@@ -125,7 +35,7 @@ void GetAllocatorCacheRange(uptr *begin, uptr *end) {
 } // namespace __lsan
 
 extern "C" void *emscripten_builtin_memset(void * ptr, int value, std::size_t num) {
-  return internal_memset(ptr, value, num);
+  return __asan::internal_memset(ptr, value, num);
 }
 
 #endif // SANITIZER_EMSCRIPTEN

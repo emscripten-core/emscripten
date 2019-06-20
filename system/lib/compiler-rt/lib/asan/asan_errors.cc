@@ -366,16 +366,9 @@ void ErrorInvalidPointerPair::Print() {
   ReportErrorSummary(scariness.GetDescription(), &stack);
 }
 
-#if SANITIZER_EMSCRIPTEN
-static bool AdjacentShadowValuesAreFullyPoisoned(uptr s) {
-  return emasan_shadow_read(s - SHADOW_GRANULARITY) > 127 &&
-         emasan_shadow_read(s + SHADOW_GRANULARITY) > 127;
-}
-#else
 static bool AdjacentShadowValuesAreFullyPoisoned(u8 *s) {
   return s[-1] > 127 && s[1] > 127;
 }
-#endif
 
 ErrorGeneric::ErrorGeneric(u32 tid, uptr pc_, uptr bp_, uptr sp_, uptr addr,
                            bool is_write_, uptr access_size_)
@@ -401,25 +394,13 @@ ErrorGeneric::ErrorGeneric(u32 tid, uptr pc_, uptr bp_, uptr sp_, uptr addr,
     // Determine the error type.
     bug_descr = "unknown-crash";
     if (AddrIsInMem(addr)) {
-#if SANITIZER_EMSCRIPTEN
-      uptr shadow_addr = addr;
-      shadow_val = emasan_shadow_read(addr);
-      // If we are accessing 16 bytes, look at the second shadow byte.
-      if (shadow_val == 0 && access_size > SHADOW_GRANULARITY) {
-        shadow_addr += SHADOW_GRANULARITY;
-      }
-      // If we are in the partial right redzone, look at the next shadow byte.
-      if (shadow_val > 0 && shadow_val < 128) shadow_addr += SHADOW_GRANULARITY;
-      if (shadow_addr != addr) shadow_val = emasan_shadow_read(shadow_addr);
-#else
       u8 *shadow_addr = (u8 *)MemToShadow(addr);
       // If we are accessing 16 bytes, look at the second shadow byte.
       if (*shadow_addr == 0 && access_size > SHADOW_GRANULARITY) shadow_addr++;
       // If we are in the partial right redzone, look at the next shadow byte.
       if (*shadow_addr > 0 && *shadow_addr < 128) shadow_addr++;
-      shadow_val = *shadow_addr;
-#endif
       bool far_from_bounds = false;
+      shadow_val = *shadow_addr;
       int bug_type_score = 0;
       // For use-after-frees reads are almost as bad as writes.
       int read_after_free_bonus = 0;
@@ -541,41 +522,6 @@ static void PrintLegend(InternalScopedString *str) {
   PrintShadowByte(str, "  Shadow gap:              ", kAsanShadowGap);
 }
 
-#if SANITIZER_EMSCRIPTEN
-static void PrintShadowBytes(InternalScopedString *str, const char *before,
-                             uptr row_addr, uptr guilty, uptr n) {
-  Decorator d;
-  if (before) str->append("%s0x%08x:", before, row_addr);
-  for (uptr i = 0; i < n; i++) {
-    uptr p = row_addr + i * SHADOW_GRANULARITY;
-    const char *before = p == guilty ? "[" :
-      (p - SHADOW_GRANULARITY == guilty && i != 0) ? "" : " ";
-    const char *after = p == guilty ? "]" : "";
-    PrintShadowByte(str, before, emasan_shadow_read(p), after);
-  }
-  str->append("\n");
-}
-
-static void PrintShadowMemoryForAddress(uptr addr) {
-  addr &= ~7;
-  if (!AddrIsInMem(addr)) return;
-  const uptr n_bytes_per_row = 16;
-  uptr aligned_addr = addr & ~(n_bytes_per_row * SHADOW_GRANULARITY - 1);
-  InternalScopedString str(4096 * 8);
-  str.append("Shadow bytes around the buggy address:\n");
-  for (int i = -5; i <= 5; i++) {
-    uptr row_addr = addr + i * n_bytes_per_row * SHADOW_GRANULARITY;
-    // Overflow or underflow.
-    if ((i < 0) != (row_addr < addr)) continue;
-    const char *prefix = (i == 0) ? "=>" : "  ";
-    PrintShadowBytes(&str, prefix, row_addr, addr, n_bytes_per_row);
-  }
-  if (flags()->print_legend) PrintLegend(&str);
-  Printf("%s", str.data());
-}
-
-#else
-
 static void PrintShadowBytes(InternalScopedString *str, const char *before,
                              u8 *bytes, u8 *guilty, uptr n) {
   Decorator d;
@@ -610,7 +556,6 @@ static void PrintShadowMemoryForAddress(uptr addr) {
   if (flags()->print_legend) PrintLegend(&str);
   Printf("%s", str.data());
 }
-#endif // SANITIZER_EMSCRIPTEN
 
 void ErrorGeneric::Print() {
   Decorator d;

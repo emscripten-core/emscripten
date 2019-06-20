@@ -1064,6 +1064,7 @@ class liblsan_rt_wasm(CompilerRTWasmLibrary):
 class libasan_rt_wasm(SanitizerLibrary):
   name = 'libasan_rt_wasm'
   depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
+  js_depends = ['__global_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 

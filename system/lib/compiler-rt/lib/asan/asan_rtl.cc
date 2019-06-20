@@ -32,10 +32,6 @@
 #include "ubsan/ubsan_init.h"
 #include "ubsan/ubsan_platform.h"
 
-#if SANITIZER_EMSCRIPTEN
-#include "asan_emscripten.h"
-#endif
-
 uptr __asan_shadow_memory_dynamic_address;  // Global interface symbol.
 int __asan_option_detect_stack_use_after_return;  // Global interface symbol.
 uptr *__asan_test_only_reported_buggy_pointer;  // Used only for testing asan.
@@ -152,17 +148,6 @@ void __asan_report_ ## type ## _n_noabort(uptr addr, uptr size) {           \
 ASAN_REPORT_ERROR_N(load, false)
 ASAN_REPORT_ERROR_N(store, true)
 
-#if SANITIZER_EMSCRIPTEN
-#define ASAN_MEMORY_ACCESS_CALLBACK_BODY(type, is_write, size, exp_arg, fatal) \
-    if (UNLIKELY(emasan_check_poison(addr, size))) {                           \
-      if (__asan_test_only_reported_buggy_pointer) {                           \
-        *__asan_test_only_reported_buggy_pointer = addr;                       \
-      } else {                                                                 \
-        GET_CALLER_PC_BP_SP;                                                   \
-        ReportGenericError(pc, bp, sp, addr, is_write, size, exp_arg, fatal);  \
-      }                                                                        \
-    }
-#else
 #define ASAN_MEMORY_ACCESS_CALLBACK_BODY(type, is_write, size, exp_arg, fatal) \
     if (SANITIZER_MYRIAD2 && !AddrIsInMem(addr) && !AddrIsInShadow(addr))      \
       return;                                                                  \
@@ -182,7 +167,6 @@ ASAN_REPORT_ERROR_N(store, true)
         }                                                                      \
       }                                                                        \
     }
-#endif
 
 #define ASAN_MEMORY_ACCESS_CALLBACK(type, is_write, size)                      \
   extern "C" NOINLINE INTERFACE_ATTRIBUTE                                      \
@@ -345,9 +329,6 @@ static void InitializeHighMemEnd() {
 }
 
 void PrintAddressSpaceLayout() {
-#if SANITIZER_EMSCRIPTEN
-  Printf("|| `[0x00000000, 0xFFFFFFFF]` || Memory ||\n");
-#else
   if (kHighMemBeg) {
     Printf("|| `[%p, %p]` || HighMem    ||\n",
            (void*)kHighMemBeg, (void*)kHighMemEnd);
@@ -385,7 +366,6 @@ void PrintAddressSpaceLayout() {
            (void*)MEM_TO_SHADOW(kMidShadowBeg),
            (void*)MEM_TO_SHADOW(kMidShadowEnd));
   }
-#endif // SANITIZER_EMSCRIPTEN
   Printf("\n");
   Printf("redzone=%zu\n", (uptr)flags()->redzone);
   Printf("max_redzone=%zu\n", (uptr)flags()->max_redzone);
@@ -399,12 +379,10 @@ void PrintAddressSpaceLayout() {
   Printf("SHADOW_GRANULARITY: %d\n", (int)SHADOW_GRANULARITY);
   Printf("SHADOW_OFFSET: 0x%zx\n", (uptr)SHADOW_OFFSET);
   CHECK(SHADOW_SCALE >= 3 && SHADOW_SCALE <= 7);
-#if !SANITIZER_EMSCRIPTEN
   if (kMidMemBeg)
     CHECK(kMidShadowBeg > kLowShadowEnd &&
           kMidMemBeg > kMidShadowEnd &&
           kHighShadowBeg > kMidMemEnd);
-#endif
 }
 
 #if defined(__thumb__) && defined(__linux__)

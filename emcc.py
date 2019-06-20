@@ -1489,6 +1489,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
 
+        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+        shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 

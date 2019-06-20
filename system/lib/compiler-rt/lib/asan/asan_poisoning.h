@@ -17,10 +17,6 @@
 #include "asan_mapping.h"
 #include "sanitizer_common/sanitizer_flags.h"
 
-#if SANITIZER_EMSCRIPTEN
-#include "asan_emscripten.h"
-#endif
-
 namespace __asan {
 
 // Enable/disable memory poisoning.
@@ -43,9 +39,6 @@ void PoisonShadowPartialRightRedzone(uptr addr,
 ALWAYS_INLINE void FastPoisonShadow(uptr aligned_beg, uptr aligned_size,
                                     u8 value) {
   DCHECK(!value || CanPoisonMemory());
-#if SANITIZER_EMSCRIPTEN
-  emasan_poison(aligned_beg, aligned_size, value);
-#else
   uptr shadow_beg = MEM_TO_SHADOW(aligned_beg);
   uptr shadow_end = MEM_TO_SHADOW(
       aligned_beg + aligned_size - SHADOW_GRANULARITY) + 1;
@@ -61,6 +54,8 @@ ALWAYS_INLINE void FastPoisonShadow(uptr aligned_beg, uptr aligned_size,
       // RTEMS doesn't have have pages, let alone a fast way to zero
       // them, so default to memset.
       SANITIZER_RTEMS == 1 ||
+      // Emscripten doesn't have a nice way to zero ranges
+      SANITIZER_EMSCRIPTEN == 1 ||
       shadow_end - shadow_beg < common_flags()->clear_shadow_mmap_threshold) {
     REAL(memset)((void*)shadow_beg, value, shadow_end - shadow_beg);
   } else {
@@ -80,16 +75,12 @@ ALWAYS_INLINE void FastPoisonShadow(uptr aligned_beg, uptr aligned_size,
       ReserveShadowMemoryRange(page_beg, page_end - 1, nullptr);
     }
   }
-#endif // SANITIZER_EMSCRIPTEN
 }
 
 ALWAYS_INLINE void FastPoisonShadowPartialRightRedzone(
     uptr aligned_addr, uptr size, uptr redzone_size, u8 value) {
   DCHECK(CanPoisonMemory());
   bool poison_partial = flags()->poison_partial;
-#if SANITIZER_EMSCRIPTEN
-  emasan_poison_right(aligned_addr, size, redzone_size, value, poison_partial);
-#else
   u8 *shadow = (u8*)MEM_TO_SHADOW(aligned_addr);
   for (uptr i = 0; i < redzone_size; i += SHADOW_GRANULARITY, shadow++) {
     if (i + SHADOW_GRANULARITY <= size) {
@@ -101,7 +92,6 @@ ALWAYS_INLINE void FastPoisonShadowPartialRightRedzone(
       *shadow = poison_partial ? static_cast<u8>(size - i) : 0;
     }
   }
-#endif
 }
 
 // Calls __sanitizer::ReleaseMemoryPagesToOS() on
