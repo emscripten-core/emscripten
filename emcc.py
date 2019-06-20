@@ -243,6 +243,7 @@ class EmccOptions(object):
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
     self.output_eol = os.linesep
+    self.binaryen_passes = []
 
 
 def use_source_map(options):
@@ -1489,9 +1490,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_opts = None
 
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
-        # we run the optimizer during asm2wasm itself). use it, if not overridden
-        if 'BINARYEN_PASSES' not in settings_key_changes:
-          passes = []
+        # we run the optimizer during asm2wasm itself). use it, if not overridden.
+
+        # BINARYEN_PASSES and BINARYEN_EXTRA_PASSES are comma-separated, and we support both '-'-prefixed and unprefixed pass names
+        def parse_passes(string):
+          passes = string.split(',')
+          passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
+          return passes
+
+        passes = []
+        if 'BINARYEN_PASSES' in settings_key_changes:
+          if shared.Settings.BINARYEN_PASSES:
+            passes += parse_passes(shared.Settings.BINARYEN_PASSES)
+        else:
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
@@ -1510,25 +1521,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
           if shared.Settings.BYSYNCIFY:
-            # TODO: pass list of relevant imports
             # TODO: allow whitelist as in asyncify
             passes += ['--bysyncify']
-          if passes:
-            shared.Settings.BINARYEN_PASSES = ','.join(passes)
+            if shared.Settings.BYSYNCIFY_IMPORTS:
+              passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(shared.Settings.BYSYNCIFY_IMPORTS)]
+        if shared.Settings.BINARYEN_EXTRA_PASSES:
+          passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
+        options.binaryen_passes = passes
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
       # run safe-heap as a binaryen pass
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
-        if shared.Settings.BINARYEN_PASSES:
-          shared.Settings.BINARYEN_PASSES += ','
-        shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        options.binaryen_passes += ['safe-heap']
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         # emulated function pointer casts is emulated in wasm using a binaryen pass
-        if shared.Settings.BINARYEN_PASSES:
-          shared.Settings.BINARYEN_PASSES += ','
-        shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
+        options.binaryen_passes += ['fpcast-emu']
         if not shared.Settings.WASM_BACKEND:
           # we also need emulated function pointers for that, as we need a single flat
           # table, as is standard in wasm, and not asm.js split ones.
@@ -2777,13 +2786,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         os.unlink(memfile)
     log_time('asm2wasm')
-  if shared.Settings.BINARYEN_PASSES or shared.Settings.BINARYEN_EXTRA_PASSES:
+  if options.binaryen_passes:
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
-    # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
-    passes = shared.Settings.BINARYEN_PASSES.split(',') + shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
-    passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
     cmd += shared.Building.get_binaryen_feature_flags()
     if intermediate_debug_info:
       cmd += ['-g'] # preserve the debug info
@@ -2793,7 +2799,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       if DEBUG:
         shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
-    logger.debug('wasm-opt on BINARYEN_PASSES: %s', cmd)
+    logger.debug('wasm-opt on binaryen passes: %s', cmd)
     shared.print_compiler_stage(cmd)
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
