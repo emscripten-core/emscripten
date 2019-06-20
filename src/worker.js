@@ -193,8 +193,9 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
       {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
 #endif
-
+#if OFFSCREENCANVAS_SUPPORT
       PThread.receiveObjectTransfer(e.data);
+#endif
       PThread.setThreadStatus({{{ makeAsmGlobalAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
