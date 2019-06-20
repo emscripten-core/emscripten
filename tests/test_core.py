@@ -7793,6 +7793,15 @@ extern "C" {
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
 
   @parameterized({
+    'c': ['test_asan_no_error.c'],
+    'cpp': ['test_asan_no_error.cpp'],
+  })
+  def test_asan_no_error(self, name):
+    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.do_run(open(path_from_root('tests', 'core', name)).read(),
+                basename=name, expected_output=[''])
+
+  @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
     ]),
@@ -7806,7 +7815,7 @@ extern "C" {
       self.skipTest('-Oz breaks source maps')
 
     if not self.get_setting('WASM'):
-      self.skipTest('wasm2js has no source map support')
+      self.skipTest('wasm2js has no ASan support')
 
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
