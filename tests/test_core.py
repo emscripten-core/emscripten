@@ -7792,6 +7792,28 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
 
+  @parameterized({
+    'use_after_free_c': ('test_asan_use_after_free.c', [
+      'AddressSanitizer: heap-use-after-free on address',
+    ]),
+    'use_after_free_cpp': ('test_asan_use_after_free.cpp', [
+      'AddressSanitizer: heap-use-after-free on address',
+    ]),
+  })
+  @no_fastcomp('asan not supported on fastcomp')
+  def test_asan(self, name, expected_output):
+    if '-Oz' in self.emcc_args:
+      self.skipTest('-Oz breaks source maps')
+
+    if not self.get_setting('WASM'):
+      self.skipTest('wasm2js has no source map support')
+
+    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.do_run(open(path_from_root('tests', 'core', name)).read(),
+                basename='src.c' if name.endswith('.c') else 'src.cpp',
+                expected_output=expected_output, assert_all=True,
+                check_for_error=False)
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

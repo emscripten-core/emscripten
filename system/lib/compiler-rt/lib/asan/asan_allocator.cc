@@ -520,9 +520,15 @@ struct Allocator {
       PoisonShadow(user_beg, size_rounded_down_to_granularity, 0);
     // Deal with the end of the region if size is not aligned to granularity.
     if (size != size_rounded_down_to_granularity && CanPoisonMemory()) {
+#if SANITIZER_EMSCRIPTEN
+      emasan_shadow_write(user_beg + size_rounded_down_to_granularity,
+                          fl.poison_partial ?
+                          (size & (SHADOW_GRANULARITY - 1)) : 0);
+#else
       u8 *shadow =
           (u8 *)MemToShadow(user_beg + size_rounded_down_to_granularity);
       *shadow = fl.poison_partial ? (size & (SHADOW_GRANULARITY - 1)) : 0;
+#endif
     }
 
     AsanStats &thread_stats = GetCurrentThreadStats();
