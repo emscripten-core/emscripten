@@ -1015,6 +1015,7 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 //   allow: allow creating operations that can trap. this is the most
 //          compact, as we just emit a single wasm operation, with no
 //          guards to trapping values, and also often the fastest.
+// This setting is only meaningfull with the fastcomp backend.
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for

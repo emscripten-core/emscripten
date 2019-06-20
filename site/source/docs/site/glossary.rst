@@ -23,9 +23,6 @@ General
   SDL
     `Simple DirectMedia Layer <https://www.libsdl.org/>`_ (SDL) is a cross-platform development library designed to provide low level access to audio, keyboard, mouse, joystick, and graphics hardware via OpenGL and Direct3D.
 
-  Typed Arrays Mode 2
-    *Typed Arrays Mode 2* is the name of the approach used for the current :ref:`emscripten-memory-model`. This is the only memory model supported by the (current) :ref:`Fastcomp <LLVM-Backend>` compiler and is the default memory model for the :ref:`old compiler <original-compiler-core>`.
-
     The original compiler supported a number of other memory models and compilation modes (see `Code Generation Modes <https://github.com/emscripten-core/emscripten/wiki/Code-Generation-Modes>`_) but *Typed Arrays Mode 2* proved to have, among other benefits, the greatest support for arbitrary code.
 
 
@@ -57,7 +54,10 @@ Emscripten tools and dependencies
     `LLVM <http://en.wikipedia.org/wiki/LLVM>`_ is a compiler infrastructure designed to allow optimization of programs written in arbitrary programming languages.
 
   Fastcomp
-    :ref:`Fastcomp <LLVM-Backend>` is Emscripten's current compiler core.
+    Fastcomp is Emscripten's second compiler core, after the JS compiler and before the new LLVM wasm backend.
+
+  Binaryen
+    `Binaryen <https://github.com/WebAssembly/binaryen/>`_ is a WebAssembly compiler toolkit, which Emscripten uses to modify and optimize wasm.
 
   node.js
     **Node.js** is a cross-platform runtime environment for server-side and networking applications written in JavaScript. Essentially it allows you to run JavaScript applications outside of a browser context.

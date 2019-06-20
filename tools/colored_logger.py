@@ -102,6 +102,7 @@ def add_coloring_to_emit_windows(fn):
     args[0]._set_color(old_color)
     return ret
 
+  new.orig_func = fn
   return new
 
 
@@ -124,6 +125,7 @@ def add_coloring_to_emit_ansi(fn):
     args[1].msg = color + args[1].msg + '\x1b[0m'  # normal
     return fn(*args)
 
+  new.orig_func = fn
   return new
 
 
@@ -133,3 +135,8 @@ def enable():
       logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
     else:
       logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
+
+
+def disable():
+  if hasattr(logging.StreamHandler.emit, 'orig_func'):
+    logging.StreamHandler.emit = logging.StreamHandler.emit.orig_func

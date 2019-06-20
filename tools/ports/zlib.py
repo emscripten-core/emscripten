@@ -7,13 +7,14 @@ import os
 import shutil
 
 TAG = 'version_1'
+HASH = '77f7d8f18fe11bb66a57e358325b7422d721f7b506bd63293cfde74079f958864db66ead5a36c311a76dd8c2b089b7659641a5522de650de0f9e6865782a60dd'
 
 
 def get(ports, settings, shared):
   if settings.USE_ZLIB != 1:
     return []
 
-  ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG)
+  ports.fetch_project('zlib', 'https://github.com/emscripten-ports/zlib/archive/' + TAG + '.zip', 'zlib-' + TAG, sha512hash=HASH)
 
   def create():
     ports.clear_project_build('zlib')
