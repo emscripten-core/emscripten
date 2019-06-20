@@ -3,6 +3,7 @@ WebAssembly SIMD128 Intrinsics
 */
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // User-facing type
 typedef int32_t v128_t __attribute__((__vector_size__(16), __aligned__(16)));
@@ -605,17 +606,17 @@ static __inline__ bool __DEFAULT_FN_ATTRS wasm_i64x2_all_true(v128_t a) {
 
 // v128_t wasm_i64x2_shl(v128_t a, int32_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i64x2_shl(v128_t a, int32_t b) {
-  return (v128_t)((__i64x2)a << b);
+  return (v128_t)((__i64x2)a << (int64_t)b);
 }
 
 // v128_t wasm_i64x2_shr(v128_t a, int32_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i64x2_shr(v128_t a, int32_t b) {
-  return (v128_t)((__i64x2)a >> b);
+  return (v128_t)((__i64x2)a >> (int64_t)b);
 }
 
 // v128_t wasm_u64x2_shr_u(v128_t a, int32_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_u64x2_shr(v128_t a, int32_t b) {
-  return (v128_t)((__u64x2)a >> b);
+  return (v128_t)((__u64x2)a >> (int64_t)b);
 }
 
 // v128_t wasm_i64x2_add(v128_t a v128_t b)

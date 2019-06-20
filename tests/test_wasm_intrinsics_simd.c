@@ -150,8 +150,8 @@ v128_t TESTFN f32x4_replace_lane_last(v128_t vec, float val) {
 
 #ifdef __wasm_unimplemented_simd128__
 
-v128_t TESTFN f64x2_splat(int64_t x) {
-  return wasm_f64x2_splat((double ) x);
+v128_t TESTFN f64x2_splat(double x) {
+  return wasm_f64x2_splat(x);
 }
 double TESTFN f64x2_extract_lane_first(v128_t vec) {
     return wasm_f64x2_extract_lane(vec, 0);
