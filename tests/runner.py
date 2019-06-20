@@ -1501,7 +1501,6 @@ class BrowserCore(RunnerCore):
   def check_btest_skip(self, args):
     if self.is_wasm_backend() and 'WASM=0' in args:
       self.skipTest('wasm2js does not yet support threads, dynamic linking, and some other features; skip browser testing for now')
-    pass
 
   def compile_btest(self, args):
     self.check_btest_skip(args)

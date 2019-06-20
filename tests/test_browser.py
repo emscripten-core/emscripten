@@ -2664,6 +2664,7 @@ Module["preRun"].push(function () {
   def test_wget_data(self):
     create_test_file('test.txt', 'emscripten')
     self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2'] + self.get_async_args())
+    # in the emterpreter, check the special assertions mode as well
     if not self.is_wasm_backend():
       self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASSERTIONS=1'] + self.get_async_args())
 
