@@ -502,11 +502,13 @@ function preRun() {
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
-function ensureInitRuntime() {
+function initRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  if (runtimeInitialized) return;
+#if ASSERTIONS
+  assert(!runtimeInitialized);
+#endif
   runtimeInitialized = true;
 #if USE_PTHREADS
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
