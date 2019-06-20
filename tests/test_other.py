@@ -9314,6 +9314,7 @@ int main () {
     self.assertNotEqual(returncode, 0)
     self.assertNotIn(b'\x1b', output)
 
+  @no_fastcomp('sanitizers are not supported on fastcomp')
   def test_sanitizer_color(self):
     create_test_file('src.c', '''
       #include <emscripten.h>
