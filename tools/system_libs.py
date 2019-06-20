@@ -993,6 +993,7 @@ class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
 
 class libubsan_rt_wasm(SanitizerLibrary):
   name = 'libubsan_rt_wasm'
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
 
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
