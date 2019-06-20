@@ -1525,6 +1525,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--bysyncify']
             if shared.Settings.BYSYNCIFY_IMPORTS:
               passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(shared.Settings.BYSYNCIFY_IMPORTS)]
+            if shared.Settings.BYSYNCIFY_IGNORE_INDIRECT:
+              passes += ['--pass-arg=bysyncify-ignore-indirect']
         if shared.Settings.BINARYEN_EXTRA_PASSES:
           passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
         options.binaryen_passes = passes

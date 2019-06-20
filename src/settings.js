@@ -560,6 +560,11 @@ var BYSYNCIFY = 0;
 // add them to here.
 var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
 
+// Whether indirect calls can be on the stack during an unwind/rewind. If you know
+// they cannot, then setting this can be extremely helpful, as otherwise bysyncify
+// must assume an indirect call can reach almost everywhere.
+var BYSYNCIFY_IGNORE_INDIRECT = 1;
+
 // Runtime debug logging from bysyncify internals.
 var BYSYNCIFY_DEBUG = 0;
 
