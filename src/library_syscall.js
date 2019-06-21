@@ -710,11 +710,29 @@ var SyscallsLibrary = {
       });
     });
 #else
+#if BYSYNCIFY
+    return Bysyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
     if (stream.stream_ops && stream.stream_ops.fsync) {
       return -stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif
+#endif // BYSYNCIFY
+#endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};

@@ -5499,7 +5499,6 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
-  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in core_test_modes
     if self.run_name == 'asm3':
@@ -5551,6 +5550,11 @@ return malloc(size);
       test()
       print('emterpreter/async/assertions/whitelist')
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
+      test()
+
+    if self.is_wasm_backend():
+      print('bysyncify') # extra coverage
+      self.emcc_args += ['-s', 'BYSYNCIFY=1']
       test()
 
   @needs_dlfcn
@@ -7087,13 +7091,16 @@ Success!
     self.set_setting('EXIT_RUNTIME', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
-    if not emterpretify:
-      if self.is_emterpreter():
-        self.skipTest("don't test both emterpretify and asyncify at once")
-      self.set_setting('ASYNCIFY', 1)
+    if self.is_wasm_backend():
+      self.set_setting('BYSYNCIFY', 1)
     else:
-      self.set_setting('EMTERPRETIFY', 1)
-      self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      if not emterpretify:
+        if self.is_emterpreter():
+          self.skipTest("don't test both emterpretify and asyncify at once")
+        self.set_setting('ASYNCIFY', 1)
+      else:
+        self.set_setting('EMTERPRETIFY', 1)
+        self.set_setting('EMTERPRETIFY_ASYNC', 1)
 
     src = r'''
 #include <stdio.h>

@@ -546,6 +546,192 @@ mergeInto(LibraryManager.library, {
 
 #else // EMTERPRETIFY_ASYNC
 
+#if BYSYNCIFY
+  $Bysyncify__deps: ['$Browser'],
+  $Bysyncify: {
+    State: {
+      Normal: 0,
+      Unwinding: 1,
+      Rewinding: 2
+    },
+    state: 0,
+    DataSize: 4096,
+    currData: null,
+    // A map from data pointers to extra info about the data.
+    // That includes the name of the function on the bottom
+    // of the call stack, that we need to call to rewind.
+    dataInfo: {},
+    // The return value from a synchronous call is stored here,
+    // so we can return it later after rewinding finishes.
+    returnValue: 0,
+    // We must track which wasm exports are called into and
+    // exited, so that we know where the call stack began,
+    // which is where we must call to rewind it.
+    exportCallStack: [],
+    instrumentWasmExports: function(exports) {
+      var ret = {};
+      for (var x in exports) {
+        (function(x) {
+          var original = exports[x];
+          if (typeof original === 'function') {
+            ret[x] = function() {
+              Bysyncify.exportCallStack.push(x);
+#if BYSYNCIFY_DEBUG >= 2
+              err('BYSYNCIFY: try', x);
+#endif
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                var y = Bysyncify.exportCallStack.pop(x);
+                assert(y === x);
+#if BYSYNCIFY_DEBUG >= 2
+                err('BYSYNCIFY: finally', x, Bysyncify.currData, Bysyncify.state, ' : ', Bysyncify.exportCallStack);
+#endif
+                if (Bysyncify.currData &&
+                    Bysyncify.state === Bysyncify.State.Unwinding &&
+                    Bysyncify.exportCallStack.length === 0) {
+                  // We just finished unwinding for a sleep.
+#if BYSYNCIFY_DEBUG
+                  err('BYSYNCIFY: stop unwind');
+#endif
+                  Bysyncify.state = Bysyncify.State.Normal;
+                  Module['_bysyncify_stop_unwind']();
+                }
+              }
+            };
+          } else {
+            ret[x] = original;
+          }
+        })(x);
+      }
+      return ret;
+    },
+    allocateData: function() {
+      // A bysyncify data structure has two fields: the
+      // current stack pos, and the max pos.
+      var ptr = _malloc(Bysyncify.DataSize);
+      HEAP32[ptr >> 2] = ptr + 8;
+      HEAP32[ptr + 4 >> 2] = ptr + Bysyncify.DataSize;
+      Bysyncify.dataInfo[ptr] = {
+        bottomOfCallStack: Bysyncify.exportCallStack[0]
+      };
+      return ptr;
+    },
+    freeData: function(ptr) {
+      _free(ptr);
+      Bysyncify.dataInfo[ptr] = null;
+    },
+    handleSleep: function(startAsync) {
+      Module['noExitRuntime'] = true;
+#if BYSYNCIFY_DEBUG
+      err('BYSYNCIFY: handleSleep ' + Bysyncify.state);
+#endif
+      if (Bysyncify.state === Bysyncify.State.Normal) {
+        // Prepare to sleep. Call startAsync, and see what happens:
+        // if the code decided to call our callback synchronously,
+        // then no async operation was in fact begun, and we don't
+        // need to do anything.
+        var reachedCallback = false;
+        var reachedAfterCallback = false;
+        startAsync(function(returnValue) {
+#if ASSERTIONS
+          assert(!returnValue || typeof returnValue === 'number'); // old emterpretify API supported other stuff
+#endif
+          Bysyncify.returnValue = returnValue || 0;
+          reachedCallback = true;
+          if (!reachedAfterCallback) {
+            // We are happening synchronously, so no need for async.
+            return;
+          }
+#if BYSYNCIFY_DEBUG
+          err('BYSYNCIFY: start rewind ' + Bysyncify.currData);
+#endif
+          Bysyncify.state = Bysyncify.State.Rewinding;
+          Module['_bysyncify_start_rewind'](Bysyncify.currData);
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.resume();
+          }
+          var start = Bysyncify.dataInfo[Bysyncify.currData].bottomOfCallStack;
+#if BYSYNCIFY_DEBUG
+          err('BYSYNCIFY: start: ' + start);
+#endif
+          Module['asm'][start]();
+        });
+        reachedAfterCallback = true;
+        if (!reachedCallback) {
+          // A true async operation was begun; start a sleep.
+          Bysyncify.state = Bysyncify.State.Unwinding;
+          Bysyncify.currData = Bysyncify.allocateData();
+#if BYSYNCIFY_DEBUG
+          err('BYSYNCIFY: start unwind ' + Bysyncify.currData);
+#endif
+          Module['_bysyncify_start_unwind'](Bysyncify.currData);
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.pause();
+          }
+        }
+      } else if (Bysyncify.state === Bysyncify.State.Rewinding) {
+        // Stop a resume.
+#if BYSYNCIFY_DEBUG
+        err('BYSYNCIFY: stop rewind');
+#endif
+        Bysyncify.state = Bysyncify.State.Normal;
+        Module['_bysyncify_stop_rewind']();
+        Bysyncify.freeData(Bysyncify.currData);
+        Bysyncify.currData = null;
+      } else {
+        abort('invalid state: ' + Bysyncify.state);
+      }
+      return Bysyncify.returnValue;
+    }
+  },
+  emscripten_sleep: function(ms) {
+    Bysyncify.handleSleep(function(wakeUp) {
+      Browser.safeSetTimeout(wakeUp, ms);
+    });
+  },
+
+  emscripten_wget__deps: ['$PATH_FS', '$FS'],
+  emscripten_wget: function(url, file) {
+    Bysyncify.handleSleep(function(wakeUp) {
+      var _url = UTF8ToString(url);
+      var _file = UTF8ToString(file);
+      _file = PATH_FS.resolve(FS.cwd(), _file);
+      var destinationDirectory = PATH.dirname(_file);
+      FS.createPreloadedFile(
+        destinationDirectory,
+        PATH.basename(_file),
+        _url, true, true,
+        wakeUp,
+        wakeUp,
+        undefined, // dontCreateFile
+        undefined, // canOwn
+        function() { // preFinish
+          // if the destination directory does not yet exist, create it
+          FS.mkdirTree(destinationDirectory);
+        }
+      );
+    });
+  },
+
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    Bysyncify.handleSleep(function(wakeUp) {
+      Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
+        // can only allocate the buffer after the wakeUp, not during an asyncing
+        var buffer = _malloc(byteArray.length); // must be freed by caller!
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        wakeUp();
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        wakeUp();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
+  },
+
+#else // BYSYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
@@ -564,6 +750,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
+#endif // BYSYNCIFY
 #endif // EMTERPRETIFY_ASYNC
 #endif // ASYNCIFY
 });
@@ -571,3 +758,7 @@ mergeInto(LibraryManager.library, {
 if (EMTERPRETIFY_ASYNC && !EMTERPRETIFY) {
   error('You must enable EMTERPRETIFY to use EMTERPRETIFY_ASYNC');
 }
+if (BYSYNCIFY) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Bysyncify');
+}
+
