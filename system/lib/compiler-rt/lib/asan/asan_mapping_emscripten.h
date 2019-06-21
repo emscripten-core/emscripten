@@ -14,7 +14,7 @@
 #ifndef ASAN_MAPPING_EMSCRIPTEN_H
 #define ASAN_MAPPING_EMSCRIPTEN_H
 
-extern void *__global_base;
+extern char __global_base;
 
 #define kLowMemBeg     ((uptr) &__global_base)
 #define kLowMemEnd     (kLowShadowBeg + (kLowShadowBeg << SHADOW_SCALE) - 1)
@@ -39,9 +39,7 @@ extern void *__global_base;
 #define kShadowGap3Beg 0
 #define kShadowGap3End 0
 
-// TODO: we should do ((mem - kLowMemEnd) >> SHADOW_SCALE),
-// but that means fixing the instrumentation pass as well.
-#define MEM_TO_SHADOW(mem) ((mem) >> SHADOW_SCALE)
+#define MEM_TO_SHADOW(mem) ((mem - kLowMemBeg) >> SHADOW_SCALE)
 
 namespace __asan {
 
