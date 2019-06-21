@@ -3555,7 +3555,6 @@ window.close = function() {
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
@@ -3596,7 +3595,6 @@ window.close = function() {
 
   # Test that basic thread creation works.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create(self):
     def test(args):
       print(args)
@@ -3629,7 +3627,6 @@ window.close = function() {
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_std_thread_detach(self):
     self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
 
