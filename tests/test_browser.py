@@ -3658,6 +3658,10 @@ window.close = function() {
     for arg in [[], ['-DSPINLOCK_TEST']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
 
+  @requires_threads
+  def test_pthread_attr_getstack(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+
   # Test that memory allocation is thread-safe.
   @requires_threads
   def test_pthread_malloc(self):
