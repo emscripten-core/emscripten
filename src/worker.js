@@ -191,7 +191,9 @@ this.onmessage = function(e) {
       assert(selfThreadId);
       assert(parentThreadId);
       assert(STACK_BASE != 0);
-#if !WASM_BACKEND
+#if WASM_BACKEND
+      assert(STACK_MAX < STACK_BASE);
+#else
       assert(STACK_MAX > STACK_BASE);
 #endif
 #endif
