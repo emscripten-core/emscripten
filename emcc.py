@@ -1539,10 +1539,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # run safe-heap as a binaryen pass
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
-        options.binaryen_passes += ['safe-heap']
+        options.binaryen_passes += ['--safe-heap']
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         # emulated function pointer casts is emulated in wasm using a binaryen pass
-        options.binaryen_passes += ['fpcast-emu']
+        options.binaryen_passes += ['--fpcast-emu']
         if not shared.Settings.WASM_BACKEND:
           # we also need emulated function pointers for that, as we need a single flat
           # table, as is standard in wasm, and not asm.js split ones.
