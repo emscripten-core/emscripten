@@ -1585,6 +1585,19 @@ int main() {
     self.set_setting('LINKABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
+  def test_emscripten_run_script_string_int(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("1+1");
+        printf("got string: %s\n", str);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''got string: 2''')
+
   def test_emscripten_run_script_string_utf8(self):
     src = r'''
       #include <stdio.h>
@@ -1599,6 +1612,23 @@ int main() {
       }
     '''
     self.do_run(src, '''length of returned string: 18. Position of substring 'Hello': 12''')
+
+  def test_emscripten_run_script_string_null(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("void(0)");
+        if (str) {
+          printf("got string: %s\n", str);
+        } else {
+          puts("got null");
+        }
+        return 0;
+      }
+    '''
+    self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
@@ -2399,9 +2429,6 @@ The current type of b is: 9
 
   @needs_dlfcn
   def test_dlfcn_i64(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     lib_src = '''
@@ -3765,8 +3792,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_jslib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -4167,9 +4192,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_zlib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
@@ -6005,8 +6027,6 @@ return malloc(size);
   @is_slow_test
   def test_fuzz(self):
     self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
-    # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
 
     skip_lto_tests = [
       # LLVM LTO bug
@@ -6740,7 +6760,6 @@ someweirdtext
     self.do_run(src, '418')
 
   @sync
-  @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in core_test_modes
     if self.run_name == 'asm2':
@@ -7495,7 +7514,7 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
+  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm():
       self.skipTest('wasm test')

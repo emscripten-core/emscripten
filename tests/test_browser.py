@@ -1277,6 +1277,10 @@ keydown(100);keyup(100); // trigger the end
     self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
     self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
 
+  @requires_graphics_hardware
+  def test_webgl_no_double_error(self):
+    self.btest('webgl_error.cpp', '0')
+
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
@@ -3652,6 +3656,10 @@ window.close = function() {
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+
+  @requires_threads
+  def test_pthread_attr_getstack(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that memory allocation is thread-safe.
   @requires_threads

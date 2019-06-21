@@ -15,9 +15,11 @@ import json
 import os
 import pipes
 import re
+import select
 import shlex
 import shutil
 import struct
+import subprocess
 import sys
 import time
 import tempfile
@@ -133,6 +135,23 @@ class other(RunnerCore):
     expected = open(path_from_root('tests', dirname, 'test.out')).read()
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
+
+  def run_on_pty(self, cmd):
+    master, slave = os.openpty()
+    output = []
+
+    try:
+      env = os.environ.copy()
+      env['TERM'] = 'xterm-color'
+      proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, env=env)
+      while proc.poll() is None:
+        r, w, x = select.select([master], [], [], 1)
+        if r:
+          output.append(os.read(master, 1024))
+      return (proc.returncode, b''.join(output))
+    finally:
+      os.close(master)
+      os.close(slave)
 
   def expect_fail(self, cmd, **args):
     """Run a subprocess and assert that it returns non-zero.
@@ -4654,7 +4673,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4673,7 +4692,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -7969,7 +7988,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1603, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7989,7 +8008,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1565, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1566, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -9272,3 +9291,42 @@ int main () {
   def test_malloc_none(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
     self.assertContained('undefined symbol: malloc', stderr)
+
+  @no_windows('ptys and select are not available on windows')
+  @no_fastcomp('fastcomp clang detects colors differently')
+  def test_build_error_color(self):
+    create_test_file('src.c', 'int main() {')
+    returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
+    self.assertIn(b"shared:ERROR: \x1b[31mcompiler frontend failed to generate LLVM bitcode, halting\x1b[0m\r\n", output)
+
+  @parameterized({
+    'fno_diagnostics_color': ['-fno-diagnostics-color'],
+    'fdiagnostics_color_never': ['-fdiagnostics-color=never'],
+  })
+  @no_windows('ptys and select are not available on windows')
+  def test_pty_no_color(self, flag):
+    with open('src.c', 'w') as f:
+      f.write('int main() {')
+
+    returncode, output = self.run_on_pty([PYTHON, EMCC, flag, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertNotIn(b'\x1b', output)
+
+  @no_fastcomp('sanitizers are not supported on fastcomp')
+  def test_sanitizer_color(self):
+    create_test_file('src.c', '''
+      #include <emscripten.h>
+      int main() {
+        int *p = 0, q;
+        EM_ASM({ Module.sanitizer_use_color = true; });
+        q = *p;
+      }
+    ''')
+    run_process([PYTHON, EMCC, '-fsanitize=null', 'src.c'])
+    output = run_js('a.out.js', stderr=PIPE, full_output=True)
+    self.assertIn('\x1b[1msrc.c', output)
+
+  def test_llvm_includes(self):
+    self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')

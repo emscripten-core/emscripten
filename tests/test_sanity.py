@@ -511,7 +511,7 @@ fi
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     # building libraries is disallowed
-    output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    output = self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
 
   # Test that if multiple processes attempt to access or build stuff to the

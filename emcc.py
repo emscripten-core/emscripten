@@ -38,7 +38,7 @@ import sys
 import time
 from subprocess import PIPE
 
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun
+from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 import tools.line_endings
@@ -409,6 +409,9 @@ def apply_settings(changes):
       setattr(shared.Settings, key, parse_value(value))
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+
+    if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
+      exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
@@ -2607,6 +2610,8 @@ def parse_args(newargs):
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
+    elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
+      colored_logger.disable()
 
   if should_exit:
     sys.exit(0)
@@ -2726,10 +2731,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       # save the asm.js input
       shared.safe_copy(asm_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(asm_target)))
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-    if shared.Settings.BINARYEN_TRAP_MODE in ('js', 'clamp', 'allow'):
-      cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
-    else:
+    if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
       exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
+    cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
