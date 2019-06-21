@@ -1566,6 +1566,7 @@
                 "onsuccess",
                 "onerror",
                 "onprogress",
+                "onreadystatechange",
                 "attributes",
                 "timeoutMSecs",
                 "withCredentials",
