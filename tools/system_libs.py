@@ -1011,7 +1011,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
-  js_depends = ['memalign', 'emscripten_builtin_memalign']
+  js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
   cflags = ['-std=c++11']
@@ -1039,7 +1039,6 @@ class libubsan_rt_wasm(SanitizerLibrary):
 
 class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
-  js_depends = ['__data_end', '__heap_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
   src_glob = 'lsan_common*.cc'
