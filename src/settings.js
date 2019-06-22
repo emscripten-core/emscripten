@@ -563,7 +563,7 @@ var BYSYNCIFY_IMPORTS = ['env.emscripten_sleep', 'env.emscripten_wget', 'env.ems
 // Whether indirect calls can be on the stack during an unwind/rewind. If you know
 // they cannot, then setting this can be extremely helpful, as otherwise bysyncify
 // must assume an indirect call can reach almost everywhere.
-var BYSYNCIFY_IGNORE_INDIRECT = 1;
+var BYSYNCIFY_IGNORE_INDIRECT = 0;
 
 // Runtime debug logging from bysyncify internals.
 var BYSYNCIFY_DEBUG = 0;
