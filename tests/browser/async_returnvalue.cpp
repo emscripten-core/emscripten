@@ -12,6 +12,20 @@
 extern "C" int sync_tunnel(int);
 
 int main() {
+#ifdef BAD
+  EM_ASM({
+    window.onerror = function(err) {
+      assert(err.toString().indexOf("wakan") > 0, "expect good error message");
+      // manually REPORT_RESULT; we shoudln't call back into native code at this point
+      var xhr = new XMLHttpRequest();
+      xhr.open("GET", "http://localhost:8888/report_result?0");
+      xhr.onload = xhr.onerror = function() {
+        window.close();
+      };
+      xhr.send();
+    };
+  });
+#endif
   int x;
   x = sync_tunnel(0);
   assert(x == 1);
@@ -26,7 +40,14 @@ int main() {
   x = sync_tunnel(-2);
   assert(x == -1);
 
+#ifdef BAD
+  // We should not get here.
+  REPORT_RESULT(1);
+#else
+  // Success!
   REPORT_RESULT(0);
+#endif
+
   return 0;
 }
 
