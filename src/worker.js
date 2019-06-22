@@ -191,8 +191,14 @@ this.onmessage = function(e) {
       assert(selfThreadId);
       assert(parentThreadId);
       assert(STACK_BASE != 0);
-#if !WASM_BACKEND
-      assert(STACK_MAX > STACK_BASE);
+#if WASM_BACKEND
+      assert(max === e.data.stackBase);
+      assert(top > max);
+      assert(e.data.stackBase == max);
+#else
+      assert(max > e.data.stackBase);
+      assert(max > top);
+      assert(e.data.stackBase === top);
 #endif
 #endif
       // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
