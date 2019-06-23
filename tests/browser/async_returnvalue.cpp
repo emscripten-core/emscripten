@@ -14,15 +14,19 @@ extern "C" int sync_tunnel(int);
 int main() {
 #ifdef BAD
   EM_ASM({
-    window.onerror = function(err) {
-      assert(err.toString().indexOf("wakan") > 0, "expect good error message");
-      // manually REPORT_RESULT; we shoudln't call back into native code at this point
-      var xhr = new XMLHttpRequest();
-      xhr.open("GET", "http://localhost:8888/report_result?0");
-      xhr.onload = xhr.onerror = function() {
-        window.close();
-      };
-      xhr.send();
+    window.onerror = function(e) {
+      var success = e.toString().indexOf("import sync_tunnel was not in BYSYNCIFY_IMPORTS, but changed the state") > 0;
+      if (success && !Module.reported) {
+        Module.reported = true;
+        console.log("reporting success");
+        // manually REPORT_RESULT; we shouldn't call back into native code at this point
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "http://localhost:8888/report_result?0");
+        xhr.onload = xhr.onerror = function() {
+          window.close();
+        };
+        xhr.send();
+      }
     };
   });
 #endif
@@ -42,7 +46,7 @@ int main() {
 
 #ifdef BAD
   // We should not get here.
-  REPORT_RESULT(1);
+  printf("We should not get here\n");
 #else
   // Success!
   REPORT_RESULT(0);

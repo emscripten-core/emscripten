@@ -3276,14 +3276,14 @@ window.close = function() {
   # Test an async return value. The value goes through a custom JS library
   # method that uses bysyncify, and therefore it needs to be declared in
   # BYSYNCIFY_IMPORTS.
+  # To make the test more precise we also use BYSYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
     'normal': (['-s', 'BYSYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
     'bad': (['-DBAD'],) # noqa
   })
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
-    print('waka ' + str(args))
-    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args)
+    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
 
   @requires_sync_compilation
   def test_modularize(self):
