@@ -167,6 +167,7 @@ the wasm backend):
     * clang
     * clang++
     * wasm-ld
+    * llc
     * llvm-nm
     * llvm-ar
     * llvm-as
