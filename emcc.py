@@ -1544,6 +1544,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
       logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
+    if shared.Settings.BYSYNCIFY:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('bysyncify is only available in the upstream wasm backend path')
+
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
       shared.Settings.EMITTING_JS = 0
