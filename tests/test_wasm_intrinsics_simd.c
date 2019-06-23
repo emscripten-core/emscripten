@@ -13,22 +13,30 @@ void TESTFN i8x16_store(void *ptr, v128_t vec) {
   wasm_v128_store(ptr, vec);
 }
 v128_t TESTFN i8x16_const(void) {
-  return wasm_i8x16_const(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
+  return wasm_i8x16_const(
+      (int8_t)1, (int8_t)2, (int8_t)3, (int8_t)4,
+      (int8_t)5, (int8_t)6, (int8_t)7, (int8_t)8,
+      (int8_t)9, (int8_t)10, (int8_t)11, (int8_t)12,
+      (int8_t)13, (int8_t)14, (int8_t)15, (int8_t)16
+  );
 }
 v128_t TESTFN i16x8_const(void) {
-  return wasm_i16x8_const(1, 2, 3, 4, 5, 6, 7, 8);
+  return wasm_i16x8_const(
+      (int16_t)1, (int16_t)2, (int16_t)3, (int16_t)4,
+      (int16_t)5, (int16_t)6, (int16_t)7, (int16_t)8
+  );
 }
 v128_t TESTFN i32x4_const(void) {
-  return wasm_i32x4_const(1, 2, 3, 4);
+  return wasm_i32x4_const((int32_t)1, (int32_t)2, (int32_t)3, (int32_t)4);
 }
 v128_t TESTFN f32x4_const(void) {
-  return wasm_f32x4_const(1., 2., 3., 4.);
+  return wasm_f32x4_const(1.f, 2.f, 3.f, 4.f);
 }
 
 #ifdef __wasm_unimplemented_simd128__
 
 v128_t TESTFN i64x2_const(void) {
-  return wasm_i64x2_const(1, 2);
+  return wasm_i64x2_const((int64_t)1, (int64_t)2);
 }
 v128_t TESTFN f64x2_const(void) {
   return wasm_f64x2_const(1., 2.);

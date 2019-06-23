@@ -23,6 +23,15 @@ typedef double __f64x2 __attribute__((__vector_size__(16), __aligned__(16)));
 
 #define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__, __target__("simd128"), __min_vector_width__(128)))
 
+#ifdef __cplusplus
+#include <type_traits>
+#define __SAME_TYPE(t1, t2) (std::is_same<t1, t2>::value)
+#else
+#define __SAME_TYPE(t1, t2) (__builtin_types_compatible_p(t1, t2))
+#endif
+
+#define __REQUIRE_CONSTANT(e, ty, msg) _Static_assert(__builtin_constant_p(e) && __SAME_TYPE(__typeof__(e), ty), msg)
+
 // v128 wasm_v128_load(void* mem)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_load(const void* __mem) {
   // UB-free unaligned access copied from xmmintrin.h
@@ -42,51 +51,78 @@ static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(void* __mem, v128_t __
 }
 
 // v128_t wasm_i8x16_constant(...)
-// All arguments to this function must be constant.
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_const(
-  int8_t c0, int8_t c1, int8_t c2, int8_t c3, int8_t c4, int8_t c5, int8_t c6,
-  int8_t c7, int8_t c8, int8_t c9, int8_t c10,int8_t c11, int8_t c12,
-  int8_t c13, int8_t c14, int8_t c15) {
-  return (v128_t)(__i8x16){c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15};
-}
+#define wasm_i8x16_const(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10,c11, c12, c13, c14, c15) \
+  __extension__({                                                       \
+      __REQUIRE_CONSTANT(c0, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c1, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c2, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c3, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c4, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c5, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c6, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c7, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c8, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c9, int8_t, "expected constant int8_t");       \
+      __REQUIRE_CONSTANT(c10, int8_t, "expected constant int8_t");      \
+      __REQUIRE_CONSTANT(c11, int8_t, "expected constant int8_t");      \
+      __REQUIRE_CONSTANT(c12, int8_t, "expected constant int8_t");      \
+      __REQUIRE_CONSTANT(c13, int8_t, "expected constant int8_t");      \
+      __REQUIRE_CONSTANT(c14, int8_t, "expected constant int8_t");      \
+      __REQUIRE_CONSTANT(c15, int8_t, "expected constant int8_t");      \
+      (v128_t)(__i8x16){c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15}; \
+    })
 
 // v128_t wasm_i16x8_constant(...)
-// All arguments to this function must be constant.
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_const(
-  int16_t c0, int16_t c1, int16_t c2, int16_t c3, int16_t c4, int16_t c5,
-  int16_t c6, int16_t c7) {
-  return (v128_t)(__i16x8){c0, c1, c2, c3, c4, c5, c6, c7};
-}
+#define wasm_i16x8_const(c0, c1, c2, c3, c4, c5, c6, c7) \
+  __extension__({                                                       \
+      __REQUIRE_CONSTANT(c0, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c1, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c2, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c3, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c4, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c5, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c6, int16_t, "expected constant int16_t");     \
+      __REQUIRE_CONSTANT(c7, int16_t, "expected constant int16_t");     \
+      (v128_t)(__i16x8){c0, c1, c2, c3, c4, c5, c6, c7}; \
+    })
 
 // v128_t wasm_i32x4_constant(...)
-// All arguments to this function must be constant.
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_const(
-  int32_t c0, int32_t c1, int32_t c2, int32_t c3) {
-  return (v128_t)(__i32x4){c0, c1, c2, c3};
-}
+#define wasm_i32x4_const(c0, c1, c2, c3) \
+  __extension__({                                                       \
+      __REQUIRE_CONSTANT(c0, int32_t, "expected constant int32_t");     \
+      __REQUIRE_CONSTANT(c1, int32_t, "expected constant int32_t");     \
+      __REQUIRE_CONSTANT(c2, int32_t, "expected constant int32_t");     \
+      __REQUIRE_CONSTANT(c3, int32_t, "expected constant int32_t");     \
+      (v128_t)(__i32x4){c0, c1, c2, c3};                                \
+    })
 
 // v128_t wasm_f32x4_constant(...)
-// All arguments to this function must be constant.
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_f32x4_const(
-  float c0, float c1, float c2, float c3) {
-  return (v128_t)(__f32x4){c0, c1, c2, c3};
-}
+#define wasm_f32x4_const(c0, c1, c2, c3)                        \
+  __extension__({                                               \
+      __REQUIRE_CONSTANT(c0, float, "expected constant float"); \
+      __REQUIRE_CONSTANT(c1, float, "expected constant float"); \
+      __REQUIRE_CONSTANT(c2, float, "expected constant float"); \
+      __REQUIRE_CONSTANT(c3, float, "expected constant float"); \
+      (v128_t)(__f32x4){c0, c1, c2, c3};                        \
+    })
 
 #ifdef __wasm_unimplemented_simd128__
 
 // v128_t wasm_i64x2_constant(...)
-// All arguments to this function must be constant.
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i64x2_const(
-  int64_t c0, int64_t c1) {
-  return (v128_t)(__i64x2){c0, c1};
-}
+#define wasm_i64x2_const(c0, c1)                                        \
+  __extension__({                                                       \
+      __REQUIRE_CONSTANT(c0, int64_t, "expected constant int64_t");     \
+      __REQUIRE_CONSTANT(c1, int64_t, "expected constant int64_t");     \
+      (v128_t)(__i64x2){c0, c1};                                        \
+    })
 
 // v128_t wasm_f64x2_constant(...)
-// All arguments to this function must be constant.
-static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_f64x2_const(
-  double c0, double c1) {
-  return (v128_t)(__f64x2){c0, c1};
-}
+#define wasm_f64x2_const(c0, c1)                                        \
+  __extension__({                                                       \
+      __REQUIRE_CONSTANT(c0, double, "expected constant double");     \
+      __REQUIRE_CONSTANT(c1, double, "expected constant double");     \
+      (v128_t)(__f64x2){c0, c1};                                        \
+    })
 
 #endif // __wasm_unimplemented_sidm128__
 
