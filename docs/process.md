@@ -180,3 +180,17 @@ the wasm backend):
     * wasm2js
     * wasm-metadce
 
+You also need to set up the `~/.emscripten` file for your users. Emscripten
+will try to do so on first run if such a file does not exist; the simplest
+thing is to look at those contents, edit the paths as needed if anything is
+wrong, and then use that file. (You can also look at how the emsdk generates
+the `.emscripten` file, which it does at the `activate step.) Some of the
+key values in that file include:
+
+ * `LLVM_ROOT`: The path to the LLVM binaries.
+ * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` there).
+ * `NODE_JS`: The path to Node.js, which is needed internally.
+ * `TEMP_DIR`: The default temp directory.
+ * `COMPILER_ENGINE`: The VM used internally for the JS compiler. Normally this should be `NODE_JS`.
+ * `JS_ENGINES`: The full list of JS engines (or just `[NODE_JS]`). Used in the test suite.
+
