@@ -420,12 +420,12 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically specify the memory length with Module['TOTAL_MEMORY'].
-INITIAL_TOTAL_MEMORY = buffer.length;
+// specifically provide the memory length with Module['TOTAL_MEMORY'].
+INITIAL_TOTAL_MEMORY = buffer.byteLength;
 #ifdef ASSERTIONS && WASM
 assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 #ifdef ALLOW_MEMORY_GROWTH
-assert({{{WASM_PAGE_SIZE}}} % WASM_PAGE_SIZE === 0);
+assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif
 updateGlobalBufferViews();
