@@ -7811,6 +7811,12 @@ extern "C" {
     'use_after_return': ('test_asan_use_after_return.c', [
       'AddressSanitizer: stack-use-after-return on address',
     ], ['-Wno-return-stack-address']),
+    'heap_buffer_overflow_c': ('test_asan_heap_buffer_overflow.c', [
+      'AddressSanitizer: heap-buffer-overflow on address',
+    ], ['-fno-builtin-memset']),
+    'heap_buffer_overflow_cpp': ('test_asan_heap_buffer_overflow.cpp', [
+      'AddressSanitizer: heap-buffer-overflow on address',
+    ], ['-fno-builtin-memset']),
     'stack_buffer_overflow': ('test_asan_stack_buffer_overflow.c', [
       'AddressSanitizer: stack-buffer-overflow'
     ], ['-fno-builtin-memset']),
