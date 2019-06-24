@@ -7814,6 +7814,15 @@ extern "C" {
     'stack_buffer_overflow': ('test_asan_stack_buffer_overflow.c', [
       'AddressSanitizer: stack-buffer-overflow'
     ], ['-fno-builtin-memset']),
+    'bitfield_unround_size': ('test_asan_bitfield_unround_size.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
+    'bitfield_unround_offset': ('test_asan_bitfield_unround_offset.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
+    'bitfield_round': ('test_asan_bitfield_round.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
   })
   @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):
