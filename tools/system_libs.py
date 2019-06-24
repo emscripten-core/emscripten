@@ -126,12 +126,6 @@ def get_wasm_libc_rt_files():
   return math_files + string_files + other_files
 
 
-ASAN_OVERRIDES = {
-  'memset.c', 'emscripten_memcpy.c', 'memchr.c', 'frexp.c', 'fwrite.c',
-  'vfprintf.c', 'fprintf.c'
-}
-
-
 class Library(object):
   """
   `Library` is the base class of all system libraries.
@@ -512,36 +506,30 @@ class MuslInternalLibrary(Library):
   ]
 
 
-class AsanOverridenLibrary(Library):
+class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
     self.is_asan = kwargs.pop('is_asan')
-    super(AsanOverridenLibrary, self).__init__(**kwargs)
-
-  def asan_filter_files(self, files):
-    return files
-
-  def get_files(self):
-    return self.asan_filter_files(super(AsanOverridenLibrary, self).get_files())
+    super(AsanInstrumentedLibrary, self).__init__(**kwargs)
 
   def get_cflags(self):
-    cflags = super(AsanOverridenLibrary, self).get_cflags()
+    cflags = super(AsanInstrumentedLibrary, self).get_cflags()
     if self.is_asan:
-      cflags += ['-DEMSCRIPTEN_ASAN_OVERRIDE']
+      cflags += ['-fsanitize=address']
     return cflags
 
   def get_base_name(self):
-    name = super(AsanOverridenLibrary, self).get_base_name()
+    name = super(AsanInstrumentedLibrary, self).get_base_name()
     if self.is_asan:
       name += '-asan'
     return name
 
   @classmethod
   def vary_on(cls):
-    return super(AsanOverridenLibrary, cls).vary_on() + ['is_asan']
+    return super(AsanInstrumentedLibrary, cls).vary_on() + ['is_asan']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(AsanOverridenLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
+    return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
 
 class CXXLibrary(Library):
@@ -568,7 +556,7 @@ class libcompiler_rt(Library):
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
 
-class libc(AsanOverridenLibrary, MuslInternalLibrary, MTLibrary):
+class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libc'
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
@@ -647,7 +635,7 @@ class libc(AsanOverridenLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
-    return self.asan_filter_files(libc_files)
+    return libc_files
 
   def get_depends(self):
     depends = super(libc, self).get_depends()
@@ -899,7 +887,7 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class libpthreads(AsanOverridenLibrary, MuslInternalLibrary, MTLibrary):
+class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libpthreads'
   depends = ['libc']
   cflags = ['-O2']
@@ -993,11 +981,11 @@ class libcompiler_rt_wasm(CompilerRTWasmLibrary):
     return super(libcompiler_rt_wasm, self).get_files() + [shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c')]
 
 
-class libc_rt_wasm(AsanOverridenLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
+class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
   name = 'libc_rt_wasm'
 
   def get_files(self):
-    return self.asan_filter_files(get_wasm_libc_rt_files())
+    return get_wasm_libc_rt_files()
 
 
 class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):

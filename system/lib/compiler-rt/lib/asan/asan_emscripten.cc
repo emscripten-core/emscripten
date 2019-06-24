@@ -41,8 +41,4 @@ void GetAllocatorCacheRange(uptr *begin, uptr *end) {
 
 } // namespace __lsan
 
-extern "C" void *emscripten_builtin_memset(void * ptr, int value, std::size_t num) {
-  return __asan::internal_memset(ptr, value, num);
-}
-
 #endif // SANITIZER_EMSCRIPTEN

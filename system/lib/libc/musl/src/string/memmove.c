@@ -4,6 +4,13 @@
 #define WT size_t
 #define WS (sizeof(WT))
 
+// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memmove
+#if defined(__EMSCRIPTEN__) && defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define memmove __attribute__((no_sanitize("address"))) emscripten_builtin_memmove
+#endif
+#endif
+
 void *memmove(void *dest, const void *src, size_t n)
 {
 	char *d = dest;
