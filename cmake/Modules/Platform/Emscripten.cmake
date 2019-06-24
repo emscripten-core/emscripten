@@ -45,9 +45,6 @@ set(UNIX 1)
 if (CMAKE_TOOLCHAIN_FILE)
 endif()
 
-# Use a single file to avoid issues with a separate .wasm file, and make startup synchronous.
-set(CMAKE_REQUIRED_FLAGS "-s SINGLE_FILE -s WASM_ASYNC_COMPILATION")
-
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
 	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
