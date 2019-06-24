@@ -12,7 +12,7 @@ At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/
 
        #include <simd128.h>
 
-Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `simd128.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/simd.h>`.
+Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `simd128.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/simd.h>`. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself.
 
 WebAssembly SIMD is not supported when using the Fastcomp backend.
 
