@@ -39,15 +39,6 @@ var wasmTable;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-
-#if MODULARIZE
-// In pthreads mode the wasmMemory and others are received in an onmessage, and that
-// onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
-// it to a local so it can be used normally.
-if (ENVIRONMENT_IS_PTHREAD) {
-  wasmMemory = Module['wasmMemory'];
-}
-#endif // MODULARIZE
 #endif // USE_PTHREADS
 
 //========================================
@@ -377,7 +368,14 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #include "runtime_sab_polyfill.js"
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
+if (ENVIRONMENT_IS_PTHREAD) {
+#if MODULARIZE
+  // In pthreads mode the wasmMemory and others are received in an onmessage, and that
+  // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
+  // it to a local so it can be used normally.
+  wasmMemory = Module['wasmMemory'];
+#endif
+} else {
 #endif
 #if WASM
   if (Module['wasmMemory']) {
@@ -411,13 +409,13 @@ if (!ENVIRONMENT_IS_PTHREAD) {
   else {
     buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
   }
-
-  if (wasmMemory) {
-    buffer = wasmMemory.buffer;
-  }
 #if USE_PTHREADS
 }
 #endif
+
+if (wasmMemory) {
+  buffer = wasmMemory.buffer;
+}
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
 // specifically provide the memory length with Module['TOTAL_MEMORY'].
