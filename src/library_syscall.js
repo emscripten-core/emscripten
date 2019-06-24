@@ -455,7 +455,7 @@ var SyscallsLibrary = {
       FS.munmap(stream);
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
-#if WASM_BACKEND
+#if USE_LSAN
         _emscripten_builtin_free(info.malloc);
 #else
         _free(info.malloc);
@@ -986,7 +986,7 @@ var SyscallsLibrary = {
     var ptr;
     var allocated = false;
     if (fd === -1) {
-#if WASM_BACKEND
+#if USE_LSAN
       ptr = _emscripten_builtin_memalign(PAGE_SIZE, len);
 #else
       ptr = _memalign(PAGE_SIZE, len);
