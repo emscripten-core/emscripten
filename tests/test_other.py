@@ -9320,7 +9320,7 @@ int main () {
       #include <emscripten.h>
       int main() {
         int *p = 0, q;
-        EM_ASM({ Module.sanitizer_use_color = true; });
+        EM_ASM({ Module.printWithColors = true; });
         q = *p;
       }
     ''')
