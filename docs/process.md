@@ -181,6 +181,9 @@ the wasm backend):
     * wasm2js
     * wasm-metadce
 
+(If you are packaging the older fastcomp backend instead of the wasm backend,
+you don't need wasm-ld or wasm2js, and you do need llvm-link and opt.)
+
 You also need to set up the `~/.emscripten` file for your users. Emscripten
 will try to do so on first run if such a file does not exist; the simplest
 thing is to look at those contents, edit the paths as needed if anything is
