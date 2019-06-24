@@ -9332,11 +9332,8 @@ int main () {
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
 
   def test_mmap_and_munmap(self):
-    cmd = [PYTHON, EMCC, path_from_root('tests', 'mmap_and_munmap.c')]
+    emcc_args = []
     for f in ['data_ro.dat', 'data_rw.dat']:
         create_test_file(f, 'Test file')
-        cmd.extend(['--embed-file', f])
-    run_process(cmd)
-    result = run_js('a.out.js')
-    self.assertContained('failures: 0', result)
-    self.assertNotContained('FAILED', result)
+        emcc_args.extend(['--embed-file', f])
+    self.do_other_test('mmap_and_munmap', emcc_args)

@@ -59,7 +59,7 @@ int test_mmap_read() {
     TEST_START();
     errno = 0;
 
-    char *m = mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     for (size_t i = 0; i < file_len(); ++i) {
         ASSERT(m[i] == file_data[i], "Wrong file data mmaped");
@@ -72,7 +72,7 @@ int test_mmap_write() {
     TEST_START();
     errno = 0;
 
-    char *m = mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(f_rw), 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(f_rw), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     for (size_t i = 0; i < file_len(); ++i) {
         size_t k = file_len() - i;
@@ -80,7 +80,7 @@ int test_mmap_write() {
     }
     ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
 
-    m = mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_rw), 0);
+    m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_rw), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     for (size_t i = 0; i < file_len(); ++i) {
         size_t k = file_len() - i;
@@ -100,7 +100,7 @@ int test_mmap_write_private() {
      * says that it should be possible to set PROT_WRITE flag for file opened
      * in RO mode if we use MAP_PRIVATE flag.
      */
-    char *m = mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_PRIVATE, fileno(f_ro), 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_PRIVATE, fileno(f_ro), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     for (size_t i = 0; i < file_len(); ++i) {
         size_t k = file_len() - i;
@@ -112,7 +112,7 @@ int test_mmap_write_private() {
      * It is undefined however, if subsequent maps in the same process will or won't
      * see data written by such mmap.
      */
-    m = mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
+    m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     for (size_t i = 0; i < file_len(); ++i) {
         size_t k = file_len() - i;
@@ -128,7 +128,7 @@ int test_mmap_write_to_ro_file() {
     TEST_START();
     errno = 0;
 
-    char *m = mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(f_ro), 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_SHARED, fileno(f_ro), 0);
     ASSERT(m == MAP_FAILED && errno == EACCES,
            "Expected EACCES when requesting writing to file opened in read-only mode");
     TEST_PASS();
@@ -138,7 +138,7 @@ int test_mmap_anon() {
     TEST_START();
     errno = 0;
 
-    void *m = mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    void *m = (char *)mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap pages");
     ASSERT(munmap(m, file_len()) == 0, "Failed to unmmap allocated pages");
     TEST_PASS();
@@ -149,7 +149,7 @@ int test_mmap_fixed() {
     errno = 0;
     size_t page_size = sysconf(_SC_PAGE_SIZE);
 
-    char *m = (char*)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     char *invalid_addr = m;
     if (((uintptr_t)m) % page_size == 0) {
@@ -171,7 +171,7 @@ int test_mmap_wrong_fd() {
     TEST_START();
     errno = 0;
 
-    char *m = (char*)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, -1, 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, -1, 0);
     ASSERT(m == MAP_FAILED && errno == EBADF, "Expected EBADF error");
     TEST_PASS();
 }
@@ -189,7 +189,7 @@ int test_unmap_zero_len() {
     TEST_START();
     errno = 0;
 
-    char *m = mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
+    char *m = (char *)mmap(NULL, file_len(), PROT_READ, MAP_PRIVATE, fileno(f_ro), 0);
     ASSERT(m != MAP_FAILED, "Failed to mmap file");
     ASSERT(munmap(m, 0) == -1 && errno == EINVAL,
            "Expected EINVAL, as munmap should fail when len argument is 0");
@@ -231,7 +231,6 @@ void tear_down() {
 }
 
 int main() {
-
     int failures = 0;
     test_fn tests[] = {
         test_mmap_read,
