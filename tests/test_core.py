@@ -24,7 +24,7 @@ from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
-from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
+from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
 
 # decorators for limiting which modes a test can run in
 
@@ -1858,6 +1858,12 @@ int main(int argc, char **argv) {
 
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
+
+  @no_asmjs()
+  def test_module_wasm_memory(self, js_engines=None):
+    self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_module_wasm_memory.js')]
+    src = open(path_from_root('tests', 'core', 'test_module_wasm_memory.c')).read()
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_ssr(self): # struct self-ref
       src = '''
