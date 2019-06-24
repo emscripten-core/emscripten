@@ -10,5 +10,6 @@ int main() {
   char *x = malloc(10);
   static char y[10];
   x[0] = 0;
+  strcpy(x, "hello");
   return f(x) + y[9];
 }
