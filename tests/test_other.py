@@ -149,8 +149,7 @@ class other(RunnerCore):
       self.assertContained([literal], seen)
 
     for regex in regexes:
-      if not re.search(regex, seen):
-        self.fail('Expected regex "%s" to match on:\n%s' % (regex, seen))
+      self.assertTrue(re.search(regex, seen), 'Expected regex "%s" to match on:\n%s' % (regex, seen))
 
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
