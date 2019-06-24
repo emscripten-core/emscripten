@@ -8,5 +8,6 @@ int f(int *x) {
 
 int main() {
   int *x = new int[10];
-  return f(x);
+  static char y[10];
+  return f(x) + y[9];
 }

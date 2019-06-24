@@ -8,6 +8,7 @@ int f(char *x) {
 
 int main() {
   char *x = malloc(10);
+  static char y[10];
   x[0] = 0;
-  return f(x);
+  return f(x) + y[9];
 }
