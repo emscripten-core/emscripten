@@ -641,7 +641,6 @@ emscripten_autodebug_i16
 emscripten_autodebug_i32
 emscripten_autodebug_i64
 emscripten_autodebug_i8
-emscripten_builtin_memalign
 emscripten_call_worker
 emscripten_cancel_animation_frame
 emscripten_cancel_main_loop
