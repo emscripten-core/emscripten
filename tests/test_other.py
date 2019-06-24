@@ -7664,20 +7664,12 @@ int main() {
       # we use dlmalloc here, as emmalloc has a bunch of asserts that contain the text "malloc" in them, which makes counting harder
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args + ['-s', 'MALLOC="dlmalloc"'])
       code = open('a.out.wasm', 'rb').read()
-      if self.is_wasm_backend():
-        if expect_names:
-          # name section adds the name of malloc (there is also another one for the exports: malloc and emscripten_builtin_malloc)
-          self.assertEqual(code.count(b'malloc'), 3)
-        else:
-          # should be just malloc and emscripten_builtin_malloc, for the export
-          self.assertEqual(code.count(b'malloc'), 2)
+      if expect_names:
+        # name section adds the name of malloc (there is also another one for the export)
+        self.assertEqual(code.count(b'malloc'), 2)
       else:
-        if expect_names:
-          # name section adds the name of malloc (there is also another one for the export)
-          self.assertEqual(code.count(b'malloc'), 2)
-        else:
-          # should be just malloc for the export
-          self.assertEqual(code.count(b'malloc'), 1)
+        # should be just malloc for the export
+        self.assertEqual(code.count(b'malloc'), 1)
       sizes[str(args)] = os.path.getsize('a.out.wasm')
     print(sizes)
     self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
