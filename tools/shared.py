@@ -6,7 +6,7 @@
 from __future__ import print_function
 
 from distutils.spawn import find_executable
-from subprocess import PIPE, STDOUT # noqa
+from subprocess import PIPE, STDOUT
 import atexit
 import base64
 import difflib
@@ -32,7 +32,6 @@ if sys.version_info[0] == 3 and sys.version_info < (3, 5):
 
 from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
-from . import arfile
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
 
@@ -426,7 +425,7 @@ def check_llvm_version():
 
 def get_llc_targets():
   if not os.path.exists(LLVM_COMPILER):
-    exit_with_error('llc exectuable not found at `%s`' % LLVM_COMPILER)
+    exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
   except Exception as e:
@@ -1050,7 +1049,6 @@ def emsdk_opts():
   c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
-    path_from_root('system', 'include', 'SSE'),
     path_from_root('system', 'include', 'libc'),
     path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
@@ -1061,7 +1059,7 @@ def emsdk_opts():
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  c_opts = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+  c_opts = ['-Xclang', '-nostdsysteminc']
 
   def include_directive(paths):
     result = []
@@ -1302,22 +1300,60 @@ Settings = SettingsManager()
 verify_settings()
 
 
+# llvm-ar appears to just use basenames inside archives. as a result, files with the same basename
+# will trample each other when we extract them. to help warn of such situations, we warn if there
+# are duplicate entries in the archive
+def warn_if_duplicate_entries(archive_contents, archive_filename):
+  if len(archive_contents) != len(set(archive_contents)):
+    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
+    warned = set()
+    for i in range(len(archive_contents)):
+      curr = archive_contents[i]
+      if curr not in warned and curr in archive_contents[i + 1:]:
+        logger.warning('   duplicate: %s' % curr)
+        warned.add(curr)
+
+
 # This function creates a temporary directory specified by the 'dir' field in
 # the returned dictionary. Caller is responsible for cleaning up those files
 # after done.
 def extract_archive_contents(archive_file):
+  lines = run_process([LLVM_AR, 't', archive_file], stdout=PIPE).stdout.splitlines()
+  # ignore empty lines
+  contents = [l for l in lines if len(l)]
+  if len(contents) == 0:
+    logger.debug('Archive %s appears to be empty (recommendation: link an .so instead of .a)' % archive_file)
+    return {
+      'returncode': 0,
+      'dir': None,
+      'files': []
+    }
+
+  # `ar` files can only contains filenames. Just to be sure,  verify that each
+  # file has only as filename component and is not absolute
+  for f in contents:
+    assert not os.path.dirname(f)
+    assert not os.path.isabs(f)
+
+  warn_if_duplicate_entries(contents, archive_file)
+
   # create temp dir
   temp_dir = tempfile.mkdtemp('_archive_contents', 'emscripten_temp_')
 
-  try:
-    with arfile.open(archive_file) as f:
-      contents = f.extractall(temp_dir)
-  except arfile.ArError as e:
-    logging.error(str(e))
-    return archive_file, [], temp_dir, False
-
+  # extract file in temp dir
+  proc = run_process([LLVM_AR, 'xo', archive_file], stdout=PIPE, stderr=STDOUT, cwd=temp_dir)
   abs_contents = [os.path.join(temp_dir, c) for c in contents]
-  return archive_file, abs_contents, temp_dir, True
+
+  # check that all files were created
+  missing_contents = [x for x in abs_contents if not os.path.exists(x)]
+  if missing_contents:
+    exit_with_error('llvm-ar failed to extract file(s) ' + str(missing_contents) + ' from archive file ' + f + '! Error:' + str(proc.stdout))
+
+  return {
+    'returncode': proc.returncode,
+    'dir': temp_dir,
+    'files': abs_contents
+  }
 
 
 class ObjectFileInfo(object):
@@ -1720,18 +1756,20 @@ class Building(object):
       pool = Building.get_multiprocessing_pool()
       object_names_in_archives = pool.map(extract_archive_contents, archive_names)
 
-      def clean_temporary_directory(directory):
+      def clean_temporary_archive_contents_directory(directory):
         def clean_at_exit():
           try_delete(directory)
         if directory:
           atexit.register(clean_at_exit)
 
-      for name, files, tmpdir, success in object_names_in_archives:
-        if not success:
-          exit_with_error('failed to extract archive: ' + name)
-        Building.ar_contents[name] = files
-        clean_temporary_directory(tmpdir)
-        for f in files:
+      for n in range(len(archive_names)):
+        if object_names_in_archives[n]['returncode'] != 0:
+          raise Exception('llvm-ar failed on archive ' + archive_names[n] + '!')
+        Building.ar_contents[archive_names[n]] = object_names_in_archives[n]['files']
+        clean_temporary_archive_contents_directory(object_names_in_archives[n]['dir'])
+
+      for o in object_names_in_archives:
+        for f in o['files']:
           if f not in Building.uninternal_nm_cache:
             object_names.append(f)
 
@@ -2065,6 +2103,7 @@ class Building(object):
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
+    cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
     try:
       run_process(cmd, stdout=PIPE)
@@ -2478,7 +2517,7 @@ class Building(object):
     if not Settings.LINKABLE:
       # if we are optimizing for size, shrink the combined wasm+JS
       # TODO: support this when a symbol map is used
-      if expensive_optimizations and not emit_symbol_map:
+      if expensive_optimizations:
         js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
         # now that we removed unneeded communication between js and wasm, we can clean up
         # the js some more.
@@ -2656,6 +2695,28 @@ class Building(object):
     if not DEBUG:
       try_delete(wasm_file)
     return js_file
+
+  @staticmethod
+  def apply_wasm_memory_growth(js_file):
+    logger.debug('supporting wasm memory growth with pthreads')
+    fixed = Building.js_optimizer_no_asmjs(js_file, ['growableHeap'])
+    ret = js_file + '.pgrow.js'
+    with open(fixed, 'r') as fixed_f:
+      with open(ret, 'w') as ret_f:
+        with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
+          ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
+    return ret
+
+  @staticmethod
+  def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):
+    logger.debug('emit_wasm_symbol_map')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--print-function-map', wasm_file]
+    if not debug_info:
+      # to remove debug info, we just write to that same file, and without -g
+      cmd += ['-o', wasm_file]
+    output = run_process(cmd, stdout=PIPE).stdout
+    with open(symbols_file, 'w') as f:
+      f.write(output)
 
   # the exports the user requested
   user_requested_exports = []

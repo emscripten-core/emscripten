@@ -8,6 +8,7 @@ import glob
 import hashlib
 import json
 import os
+import random
 import re
 import shutil
 import sys
@@ -49,7 +50,7 @@ def wasm_simd(f):
       self.skipTest('wasm simd not compatible with asm.js or asm2wasm')
     if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
       self.skipTest('wasm simd only supported in d8 for now')
-    if self.get_setting('WASM2JS'):
+    if self.is_wasm_backend() and not self.get_setting('WASM'):
       self.skipTest('wasm2js only supports MVP for now')
     self.set_setting('SIMD', 1)
     self.emcc_args.append('-fno-lax-vector-conversions')
@@ -67,6 +68,14 @@ def no_wasm(note=''):
 
   def decorated(f):
     return skip_if(f, 'is_wasm', note)
+  return decorated
+
+
+def no_wasm2js(f):
+  def decorated(self):
+    if self.is_wasm_backend() and not self.get_setting('WASM'):
+      self.skipTest('wasm2js not supported')
+    f(self)
   return decorated
 
 
@@ -962,42 +971,30 @@ int main() {
 
   def test_exceptions(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
-    # needs to flush stdio streams
-    self.set_setting('EXIT_RUNTIME', 1)
-
     self.maybe_closure()
-
     for support_longjmp in [0, 1]:
-      src = '''
-        #include <stdio.h>
-        void thrower() {
-          printf("infunc...");
-          throw(99);
-          printf("FAIL");
-        }
-        int main() {
-          try {
-            printf("*throw...");
-            throw(1);
-            printf("FAIL");
-          } catch(...) {
-            printf("caught!");
-          }
-          try {
-            thrower();
-          } catch(...) {
-            printf("done!*\\n");
-          }
-          return 0;
-        }
-      '''
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
-      self.do_run(src, '*throw...caught!infunc...done!*')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run(src, 'exception')
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
+
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_exceptions_minimal_runtime(self):
+    self.set_setting('EXCEPTION_DEBUG', 1)
+    self.maybe_closure()
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    for support_longjmp in [0, 1]:
+      self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
+
+      self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
@@ -1588,6 +1585,19 @@ int main() {
     self.set_setting('LINKABLE', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_emscripten_api')
 
+  def test_emscripten_run_script_string_int(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("1+1");
+        printf("got string: %s\n", str);
+        return 0;
+      }
+    '''
+    self.do_run(src, '''got string: 2''')
+
   def test_emscripten_run_script_string_utf8(self):
     src = r'''
       #include <stdio.h>
@@ -1602,6 +1612,23 @@ int main() {
       }
     '''
     self.do_run(src, '''length of returned string: 18. Position of substring 'Hello': 12''')
+
+  def test_emscripten_run_script_string_null(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        const char *str = emscripten_run_script_string("void(0)");
+        if (str) {
+          printf("got string: %s\n", str);
+        } else {
+          puts("got null");
+        }
+        return 0;
+      }
+    '''
+    self.do_run(src, 'got null')
 
   def test_emscripten_get_now(self):
     self.banned_js_engines = [V8_ENGINE] # timer limitations in v8 shell
@@ -1815,6 +1842,16 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
+  def test_memorygrowth_memory_growth_step(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
+    if not self.is_wasm():
+      self.skipTest('wasm memory specific test')
+
+    # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_STACK=1Mb', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=130Mb', '-s', 'MEMORY_GROWTH_STEP=1Mb']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_memory_growth_step')
+
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -1862,6 +1899,7 @@ int main(int argc, char **argv) {
   def test_cxx03_do_run(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_cxx03_do_run')
 
+  @no_wasm2js # massive switches can break js engines
   @no_emterpreter
   def test_bigswitch(self):
     src = open(path_from_root('tests', 'bigswitch.cpp')).read()
@@ -1871,6 +1909,7 @@ int main(int argc, char **argv) {
 3060: what?
 ''', args=['34962', '26214', '35040', str(0xbf4)])
 
+  @no_wasm2js # massive switches can break js engines
   @no_emterpreter
   @is_slow_test
   def test_biggerswitch(self):
@@ -2390,9 +2429,6 @@ The current type of b is: 9
 
   @needs_dlfcn
   def test_dlfcn_i64(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     lib_src = '''
@@ -3756,8 +3792,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_jslib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -4158,9 +4192,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_zlib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
@@ -4893,6 +4924,10 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'fs', 'test_llseek.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
+  def test_fs_64bit(self, js_engines=None):
+    src = open(path_from_root('tests', 'fs', 'test_64bit.c')).read()
+    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
@@ -5163,11 +5198,11 @@ PORT: 3979
         return 0;
       }
     '''
-    num = 3
+    num = 5
 
     def test():
       print('(iteration)')
-      time.sleep(1.0)
+      time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
       self.do_run(src, 'hello world\n77.\n')
       ret = open('src.cpp.o.js', 'rb').read()
       if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
@@ -5175,13 +5210,14 @@ PORT: 3979
       return ret
 
     builds = [test() for i in range(num)]
-    print([len(b) for b in builds])
+    print(list(map(len, builds)))
     uniques = set(builds)
     if len(uniques) != 1:
-      for i, unique in enumerate(uniques):
+      i = 0
+      for unique in uniques:
         open('unique_' + str(i) + '.js', 'wb').write(unique)
-      # builds must be deterministic, see unique_N.js
-      self.assertEqual(len(uniques), 1)
+        i += 1
+      assert 0, 'builds must be deterministic, see unique_X.js'
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
@@ -5463,7 +5499,6 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
-  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in core_test_modes
     if self.run_name == 'asm3':
@@ -5515,6 +5550,11 @@ return malloc(size);
       test()
       print('emterpreter/async/assertions/whitelist')
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
+      test()
+
+    if self.is_wasm_backend():
+      print('bysyncify') # extra coverage
+      self.emcc_args += ['-s', 'BYSYNCIFY=1']
       test()
 
   @needs_dlfcn
@@ -5987,8 +6027,6 @@ return malloc(size);
   @is_slow_test
   def test_fuzz(self):
     self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
-    # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
 
     skip_lto_tests = [
       # LLVM LTO bug
@@ -6400,6 +6438,7 @@ return malloc(size);
                 ('|1.266,1|',                 # asm.js, double <-> int
                  '|1.266,1413754136|')) # wasm, reinterpret the bits
 
+  @no_wasm2js # TODO: nicely printed names in wasm2js
   def test_demangle_stacks(self):
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
@@ -6721,7 +6760,6 @@ someweirdtext
     self.do_run(src, '418')
 
   @sync
-  @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in core_test_modes
     if self.run_name == 'asm2':
@@ -6778,6 +6816,7 @@ err = err = function(){};
 
   ### Tests for tools
 
+  @no_wasm2js # TODO: source maps in wasm2js
   @no_emterpreter
   def test_source_map(self):
     if not jsrun.check_engine(NODE_JS):
@@ -7052,13 +7091,16 @@ Success!
     self.set_setting('EXIT_RUNTIME', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
-    if not emterpretify:
-      if self.is_emterpreter():
-        self.skipTest("don't test both emterpretify and asyncify at once")
-      self.set_setting('ASYNCIFY', 1)
+    if self.is_wasm_backend():
+      self.set_setting('BYSYNCIFY', 1)
     else:
-      self.set_setting('EMTERPRETIFY', 1)
-      self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      if not emterpretify:
+        if self.is_emterpreter():
+          self.skipTest("don't test both emterpretify and asyncify at once")
+        self.set_setting('ASYNCIFY', 1)
+      else:
+        self.set_setting('EMTERPRETIFY', 1)
+        self.set_setting('EMTERPRETIFY_ASYNC', 1)
 
     src = r'''
 #include <stdio.h>
@@ -7472,7 +7514,7 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
+  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm():
       self.skipTest('wasm test')
@@ -7653,7 +7695,7 @@ extern "C" {
   def test_ubsan_full_overflow(self, args):
     self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_overflow.c')).read(),
-                expected_output=[
+                assert_all=True, expected_output=[
       "src.cpp:3:5: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
       "src.cpp:7:7: runtime error: signed integer overflow: 2147483647 + 1 cannot be represented in type 'int'",
     ])
@@ -7677,9 +7719,9 @@ extern "C" {
   def test_ubsan_full_left_shift(self, args):
     self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_left_shift.c')).read(),
-                expected_output=[
+                assert_all=True, expected_output=[
       'src.cpp:3:5: runtime error: left shift of negative value -1',
-      "src.cpp:7:5: left shift of 16 by 29 places cannot be represented in type 'int'"
+      "src.cpp:7:5: runtime error: left shift of 16 by 29 places cannot be represented in type 'int'"
     ])
 
   @parameterized({
@@ -7690,7 +7732,7 @@ extern "C" {
   def test_ubsan_full_null_ref(self, args):
     self.emcc_args += ['-std=c++11'] + args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
-                expected_output=[
+                assert_all=True, expected_output=[
       "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       "src.cpp:4:13: runtime error: reference binding to null pointer of type 'int'",
       "src.cpp:5:14: runtime error: reference binding to null pointer of type 'int'",
@@ -7704,12 +7746,41 @@ extern "C" {
   def test_ubsan_full_static_cast(self, args):
     self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_static_cast.cpp')).read(),
-                expected_output=[
-      "vptr.cc:18:10: runtime error: downcast of address",
+                assert_all=True, expected_output=[
+      "src.cpp:18:10: runtime error: downcast of address",
       "which does not point to an object of type 'R'",
-      "note: object is of type 'T'",
-      "vptr for 'T'",
     ])
+
+  @parameterized({
+    'g': ('-g', [
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main',
+    ]),
+    'g4': ('-g4', [
+      "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
+      'in main /',
+      '/src.cpp:3:8'
+    ]),
+  })
+  @no_fastcomp('ubsan not supported on fastcomp')
+  def test_ubsan_full_stack_trace(self, g_flag, expected_output):
+    self.emcc_args += ['-std=c++11', '-fsanitize=null', g_flag, '-s', 'ALLOW_MEMORY_GROWTH=1']
+
+    if g_flag == '-g4':
+      if not self.get_setting('WASM'):
+        self.skipTest('wasm2js has no source map support')
+      elif '-Oz' in self.emcc_args:
+        self.skipTest('-Oz breaks stack traces')
+
+    def modify_env(filename):
+      with open(filename) as f:
+        contents = f.read()
+      contents = re.sub('(?<=ENV=){}', "{'UBSAN_OPTIONS': 'print_stacktrace=1'}", contents)
+      with open(filename, 'w') as f:
+        f.write(contents)
+
+    self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
+                post_build=modify_env, assert_all=True, expected_output=expected_output)
 
 
 # Generate tests for everything

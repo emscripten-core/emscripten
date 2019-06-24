@@ -252,6 +252,16 @@ ___cxa_current_primary_exception
 ___cxa_decrement_exception_refcount
 ___cxa_end_catch
 ___cxa_find_matching_catch
+___cxa_find_matching_catch_0
+___cxa_find_matching_catch_1
+___cxa_find_matching_catch_2
+___cxa_find_matching_catch_3
+___cxa_find_matching_catch_4
+___cxa_find_matching_catch_5
+___cxa_find_matching_catch_6
+___cxa_find_matching_catch_7
+___cxa_find_matching_catch_8
+___cxa_find_matching_catch_9
 ___cxa_free_exception
 ___cxa_get_exception_ptr
 ___cxa_increment_exception_refcount
@@ -262,6 +272,10 @@ ___cxa_thread_atexit
 ___cxa_thread_atexit_impl
 ___cxa_throw
 ___cxa_uncaught_exception
+___exception_addRef
+___exception_clearRef
+___exception_deAdjust
+___exception_decRef
 ___execvpe
 ___gcc_personality_v0
 ___gxx_personality_v0
@@ -332,7 +346,6 @@ ___syscall219
 ___syscall220
 ___syscall221
 ___syscall252
-___syscall265
 ___syscall268
 ___syscall269
 ___syscall272
@@ -398,6 +411,7 @@ __computeUnpackAlignedImageSize
 __emscripten_do_request_fullscreen
 __emscripten_push_main_loop_blocker
 __emscripten_push_uncounted_main_loop_blocker
+__emscripten_save_in_unwind_cache
 __emscripten_traverse_stack
 __exit
 __fillBatteryEventData
@@ -645,6 +659,7 @@ _emscripten_exit_pointerlock
 _emscripten_exit_soft_fullscreen
 _emscripten_exit_with_live_runtime
 _emscripten_force_exit
+_emscripten_generate_pc
 _emscripten_get_battery_status
 _emscripten_get_callstack
 _emscripten_get_callstack_js
@@ -883,6 +898,11 @@ _emscripten_longjmp
 _emscripten_main_browser_thread_id
 _emscripten_memcpy_big
 _emscripten_pause_main_loop
+_emscripten_pc_get_column
+_emscripten_pc_get_file
+_emscripten_pc_get_function
+_emscripten_pc_get_line
+_emscripten_pc_get_source_js
 _emscripten_performance_now
 _emscripten_print_double
 _emscripten_random
@@ -956,6 +976,8 @@ _emscripten_set_webglcontextlost_callback_on_thread
 _emscripten_set_webglcontextrestored_callback_on_thread
 _emscripten_set_wheel_callback_on_thread
 _emscripten_sleep
+_emscripten_stack_snapshot
+_emscripten_stack_unwind_buffer
 _emscripten_supports_offscreencanvas
 _emscripten_throw_number
 _emscripten_throw_string

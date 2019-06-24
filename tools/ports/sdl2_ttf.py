@@ -7,13 +7,14 @@ import os
 import shutil
 
 TAG = 'version_1'
+HASH = '6ce426de0411ba51dd307027c4ef00ff3de4ee396018e524265970039132ab20adb29c2d2e61576c393056374f03fd148dd96f0c4abf8dcee51853dd32f0778f'
 
 
 def get(ports, settings, shared):
   if settings.USE_SDL_TTF != 2:
     return []
 
-  ports.fetch_project('sdl2_ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG)
+  ports.fetch_project('sdl2_ttf', 'https://github.com/emscripten-ports/SDL2_ttf/archive/' + TAG + '.zip', 'SDL2_ttf-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2_ttf')
 
   def create():

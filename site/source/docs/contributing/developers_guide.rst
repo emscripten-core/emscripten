@@ -22,14 +22,7 @@ The Emscripten main repository is https://github.com/emscripten-core/emscripten.
 -  **master** - The "master" branch. This is always safe to pull from and the test suite always passes.
 -  **incoming** - The branch for new code. Code in **incoming** is merged with the **master** only after it is code reviewed and has passed all the automated tests.
 
-
-Emscripten's compiler core (:ref:`Fastcomp <LLVM-Backend>`) is maintained in two other repositories, which use the same master/incoming branch approach:
-
-- https://github.com/emscripten-core/emscripten-fastcomp (Emscripten LLVM fork)
-- https://github.com/emscripten-core/emscripten-fastcomp-clang (Emscripten Clang fork)
-
-When :ref:`building Emscripten from source <installing-from-source>` you should use the same branch (incoming, or master) for building all three repositories. The topic :ref:`building-fastcomp-from-source-branches` explains how to ensure that the versions are kept in sync.
-
+Emscripten with the LLVM wasm backend can use normal upstream LLVM, at https://github.com/llvm/llvm-project (or, with the older fastcomp backend, it is in https://github.com/emscripten-core/emscripten-fastcomp and https://github.com/emscripten-core/emscripten-fastcomp-clang).
 
 .. _developers-guide-submitting-patches:
 
@@ -62,21 +55,13 @@ Exceptions are sub-projects that are 'owned' by other people. These owners can p
 
 
 Compiler overview
-=========================
+=================
 
 The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that manages the entire compilation process:
 
 - *emcc* calls :term:`Clang` to convert C++ to bitcode, ``llvm-opt`` to optimize it, ``llvm-link`` to link it, etc.
-- *emcc* then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/master/emscripten.py>`_, which performs the LLVM IR to JavaScript conversion:
-
-  - **emscripten.py** first runs the :ref:`Fastcomp <LLVM-Backend>` core compiler (previously it ran the :ref:`old core compiler <original-compiler-core>` — `src/compiler.js <https://github.com/emscripten-core/emscripten/blob/master/src/compiler.js>`_).
-  - **emscripten.py** then receives the core compiler output, modifies it slightly (some regexps) and then adds some necessary code around it. This generates the basic emitted JavaScript, which is called **emcc-2-original** in the intermediate files saved in :ref:`debug mode <debugging-EMCC_DEBUG>`.
-
-- *emcc* runs `tools/js_optimizer.py <https://github.com/emscripten-core/emscripten/blob/master/tools/js_optimizer.py>`_ to further process and optimize the generated JavaScript.
-
-  - **js_optimizer.py** breaks up the generated JavaScript file into the relevant parts for optimization and calls `js-optimizer.js <https://github.com/emscripten-core/emscripten/blob/master/tools/js-optimizer.js>`_ to actually optimize it.
-
-  - **js-optimizer.js** parses and transforms the JavaScript into better JavaScript using the ``UglifyJS`` :term:`node.js` script.
+- *emcc* then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/master/emscripten.py>`_, which performs any final compilation to wasm (including invoking *wasm-emscripten-finalize* from Binaryen, for wasm) and emits the JavaScript.
+- If optimizing wasm, *emcc* will then call Binaryen's optimizer, run meta-dce, and other useful things. It will also run JS optimizations on the JS that is emitted alongside the wasm.
 
 Emscripten Test Suite
 =====================

@@ -38,7 +38,7 @@ import sys
 import time
 from subprocess import PIPE
 
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun
+from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 import tools.line_endings
@@ -395,7 +395,7 @@ def apply_settings(changes):
     key, value = standardize_setting_change(key, value)
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'GL_MAX_TEMP_BUFFER_SIZE',
+    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'MEMORY_GROWTH_STEP', 'GL_MAX_TEMP_BUFFER_SIZE',
                'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
@@ -408,6 +408,9 @@ def apply_settings(changes):
       setattr(shared.Settings, key, parse_value(value))
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+
+    if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
+      exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')
 
     if key == 'EXPORTED_FUNCTIONS':
       # used for warnings in emscripten.py
@@ -1067,6 +1070,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
     if options.bind:
+      shared.Settings.EMBIND = 1
       # If we are using embind and generating JS, now is the time to link in bind.cpp
       if final_suffix in JS_CONTAINING_ENDINGS:
         input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
@@ -1263,11 +1267,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('Memory growth is not supported with pthreads without wasm')
         else:
           logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
-          options.force_js_opts = options.js_opts = True # for JS instrumentation
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
       options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
+      if shared.Settings.WASM_BACKEND:
+        newargs += ['-pthread']
+        # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
+        # manually export them
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self']
+
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
     else:
@@ -1347,6 +1356,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
     if shared.Settings.WASM_MEM_MAX != -1 and shared.Settings.WASM_MEM_MAX % 65536 != 0:
       exit_with_error('WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX))
+    if shared.Settings.MEMORY_GROWTH_STEP != -1 and shared.Settings.MEMORY_GROWTH_STEP % 65536 != 0:
+      exit_with_error('MEMORY_GROWTH_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_STEP))
     if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
       exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
 
@@ -1474,6 +1485,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           shared.Settings.UBSAN_RUNTIME = 2
 
+      if sanitize and '-g4' in args:
+        shared.Settings.LOAD_SOURCE_MAP = 1
+
       if shared.Settings.WASM_BACKEND:
         options.js_opts = None
 
@@ -1498,6 +1512,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--log-execution']
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
+          if shared.Settings.BYSYNCIFY:
+            # TODO: pass list of relevant imports
+            # TODO: allow whitelist as in asyncify
+            passes += ['--bysyncify']
           if passes:
             shared.Settings.BINARYEN_PASSES = ','.join(passes)
 
@@ -1522,6 +1540,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
+      if use_source_map(options):
+        exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
       logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
     # wasm outputs are only possible with a side wasm
@@ -1688,7 +1708,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return args
 
       # -E preprocessor-only support
-      if '-E' in newargs or '-M' in newargs or '-MM' in newargs:
+      if '-E' in newargs or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
         input_files = [x[1] for x in input_files]
         cmd = get_clang_args(input_files)
         if specified_target:
@@ -2417,6 +2437,7 @@ def parse_args(newargs):
       options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       options.emit_symbol_map = True
+      shared.Settings.EMIT_SYMBOL_MAP = 1
       newargs[i] = ''
     elif newargs[i] == '--bind':
       options.bind = True
@@ -2543,6 +2564,8 @@ def parse_args(newargs):
       options.thread_profiler = True
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
+    elif newargs[i] == '-fno-exceptions':
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -2576,6 +2599,8 @@ def parse_args(newargs):
     # Record USE_PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif newargs[i] == '-pthread':
       settings_changes.append('USE_PTHREADS=1')
+    elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
+      colored_logger.disable()
 
   if should_exit:
     sys.exit(0)
@@ -2683,8 +2708,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   global final
   logger.debug('using binaryen')
   binaryen_bin = shared.Building.get_binaryen_bin()
-  # normally we emit binary, but for debug info, we might emit text first
+  # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = options.debug_level >= 2 or options.profiling_funcs
+  # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
+  # this is necessary for emitting a symbol map at the end.
+  intermediate_debug_info = debug_info or options.emit_symbol_map
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
@@ -2692,10 +2720,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       # save the asm.js input
       shared.safe_copy(asm_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(asm_target)))
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
-    if shared.Settings.BINARYEN_TRAP_MODE in ('js', 'clamp', 'allow'):
-      cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
-    else:
+    if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
       exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
+    cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
@@ -2721,7 +2748,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--wasm-only'] # this asm.js is code not intended to run as asm.js, it is only ever going to be wasm, an can contain special fastcomp-wasm support
     if shared.Settings.USE_PTHREADS:
       cmd += ['--enable-threads']
-    if debug_info:
+    if intermediate_debug_info:
       cmd += ['-g']
     if emit_symbol_map:
       cmd += ['--symbolmap=' + target + '.symbols']
@@ -2740,7 +2767,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
     if not target_binary:
       cmd = [os.path.join(binaryen_bin, 'wasm-as'), wasm_text_target, '-o', wasm_binary_target, '--all-features', '--disable-bulk-memory']
-      if debug_info:
+      if intermediate_debug_info:
         cmd += ['-g']
         if use_source_map(options):
           cmd += ['--source-map=' + wasm_source_map_target]
@@ -2754,7 +2781,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         os.unlink(memfile)
     log_time('asm2wasm')
-  if shared.Settings.BINARYEN_PASSES:
+  if shared.Settings.BINARYEN_PASSES or shared.Settings.BINARYEN_EXTRA_PASSES:
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
@@ -2762,7 +2789,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
     cmd += shared.Building.get_binaryen_feature_flags()
-    if debug_info:
+    if intermediate_debug_info:
       cmd += ['-g'] # preserve the debug info
     if use_source_map(options):
       cmd += ['--input-source-map=' + wasm_source_map_target]
@@ -2787,7 +2814,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
       save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
-    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=debug_info)
+    shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
@@ -2805,6 +2832,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.SIDE_MODULE:
     sys.exit(0) # and we are done.
 
+  # pthreads memory growth requires some additional JS fixups
+  if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
+    final = shared.Building.apply_wasm_memory_growth(final)
+
   if options.opt_level >= 2 and options.debug_level <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
@@ -2813,7 +2844,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                            wasm_file=wasm_binary_target,
                                            expensive_optimizations=will_metadce(options),
                                            minify_whitespace=optimizer.minify_whitespace,
-                                           debug_info=debug_info,
+                                           debug_info=intermediate_debug_info,
                                            emit_symbol_map=emit_symbol_map)
     save_intermediate_with_wasm('postclean', wasm_binary_target)
 
@@ -2831,10 +2862,16 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     opt_level=options.opt_level,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
-                                    debug_info=debug_info)
+                                    debug_info=intermediate_debug_info)
     save_intermediate('wasm2js')
 
     shared.try_delete(wasm_binary_target)
+
+  # emit a symbol map if requested. this will also remove debug info if we only
+  # kept it around in the intermediate invocations for the sake of the symbol map
+  if options.emit_symbol_map:
+    shared.Building.emit_wasm_symbol_map(wasm_file=wasm_binary_target, symbols_file=target + '.symbols', debug_info=debug_info)
+    save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:

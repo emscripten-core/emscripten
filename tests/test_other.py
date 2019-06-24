@@ -15,9 +15,11 @@ import json
 import os
 import pipes
 import re
+import select
 import shlex
 import shutil
 import struct
+import subprocess
 import sys
 import time
 import tempfile
@@ -133,6 +135,23 @@ class other(RunnerCore):
     expected = open(path_from_root('tests', dirname, 'test.out')).read()
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
+
+  def run_on_pty(self, cmd):
+    master, slave = os.openpty()
+    output = []
+
+    try:
+      env = os.environ.copy()
+      env['TERM'] = 'xterm-color'
+      proc = subprocess.Popen(cmd, stdout=slave, stderr=slave, env=env)
+      while proc.poll() is None:
+        r, w, x = select.select([master], [], [], 1)
+        if r:
+          output.append(os.read(master, 1024))
+      return (proc.returncode, b''.join(output))
+    finally:
+      os.close(master)
+      os.close(slave)
 
   def expect_fail(self, cmd, **args):
     """Run a subprocess and assert that it returns non-zero.
@@ -1450,10 +1469,16 @@ int f() {
     ''')
     run_process([PYTHON, EMCC, os.path.join('b', 'common.c'), '-c', '-o', os.path.join('b', 'common.o')])
 
-    try_delete('libdup.a')
-    run_process([PYTHON, EMAR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
-    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
-    self.assertEqual(text.count('common.o'), 2)
+    try_delete('liba.a')
+    run_process([PYTHON, EMAR, 'rc', 'liba.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+
+    # Verify that archive contains basenames with hashes to avoid duplication
+    text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
+    self.assertEqual(text.count('common.o'), 1)
+    self.assertContained('common_', text)
+    for line in text.split('\n'):
+      # should not have huge hash names
+      self.assertLess(len(line), 20, line)
 
     create_test_file('main.c', r'''
       void a(void);
@@ -1463,8 +1488,29 @@ int f() {
         b();
       }
     ''')
-    run_process([PYTHON, EMCC, 'main.c', '-L.', '-ldup'])
+    err = run_process([PYTHON, EMCC, 'main.c', '-L.', '-la'], stderr=PIPE).stderr
+    self.assertNotIn('archive file contains duplicate entries', err)
     self.assertContained('a\nb...\n', run_js('a.out.js'))
+
+    # Using llvm-ar directly should cause duplicate basenames
+    try_delete('libdup.a')
+    run_process([LLVM_AR, 'rc', 'libdup.a', os.path.join('a', 'common.o'), os.path.join('b', 'common.o')])
+    text = run_process([PYTHON, EMAR, 't', 'libdup.a'], stdout=PIPE).stdout
+    assert text.count('common.o') == 2, text
+
+    # With fastcomp we don't support duplicate members so this should generate
+    # a warning.  With the wasm backend (lld) this is fully supported.
+    cmd = [PYTHON, EMCC, 'main.c', '-L.', '-ldup']
+    if self.is_wasm_backend():
+      run_process(cmd)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
+    else:
+      err = self.expect_fail(cmd)
+      self.assertIn('libdup.a: archive file contains duplicate entries', err)
+      self.assertIn('error: undefined symbol: a', err)
+      # others are not duplicates - the hashing keeps them separate
+      self.assertEqual(err.count('duplicate: '), 1)
+      self.assertContained('a\nb...\n', run_js('a.out.js'))
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
@@ -2464,6 +2510,18 @@ done.
     assert '''#line 1 ''' in out or '''# 1 ''' in out
     assert '''hello_world.c"''' in out
     assert '''printf("hello, world!''' in out
+
+  def test_syntax_only_valid(self):
+    result = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-fsyntax-only'], stdout=PIPE, stderr=STDOUT)
+    self.assertEqual(result.stdout, '')
+    self.assertNotExists('a.out.js')
+
+  def test_syntax_only_invalid(self):
+    create_test_file('src.c', 'int main() {')
+    result = run_process([PYTHON, EMCC, 'src.c', '-fsyntax-only'], stdout=PIPE, check=False, stderr=STDOUT)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertContained("src.c:1:13: error: expected '}'", result.stdout)
+    self.assertNotExists('a.out.js')
 
   def test_demangle(self):
     create_test_file('src.cpp', '''
@@ -3775,27 +3833,58 @@ int main()
       }
     ''', [[3, 2], 1, 1])
 
-  @no_wasm_backend('relies on --emit-symbol-map')
   def test_symbol_map(self):
-    for gen_map in [0, 1]:
+    for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1]:
-        print(gen_map, wasm)
+        print(opts, wasm)
         self.clear()
-        cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2']
-        if gen_map:
-          cmd += ['--emit-symbol-map']
+        create_test_file('src.c', r'''
+#include <emscripten.h>
+
+EM_JS(int, run_js, (), {
+out(new Error().stack);
+return 0;
+});
+
+EMSCRIPTEN_KEEPALIVE
+void middle() {
+  if (run_js()) {
+    // fake recursion that is never reached, to avoid inlining in binaryen and LLVM
+    middle();
+  }
+}
+
+int main() {
+EM_ASM({ _middle() });
+}
+''')
+        cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
         if not wasm:
           if self.is_wasm_backend():
             continue
           cmd += ['-s', 'WASM=0']
-        print(cmd)
         run_process(cmd)
-        if gen_map:
-          self.assertTrue(os.path.exists('a.out.js.symbols'))
-          symbols = open('a.out.js.symbols').read()
-          self.assertContained(':_main', symbols)
-        else:
-          self.assertFalse(os.path.exists('a.out.js.symbols'))
+        # check that the map is correct
+        with open('a.out.js.symbols') as f:
+          symbols = f.read()
+        lines = [line.split(':') for line in symbols.strip().split('\n')]
+        minified_middle = None
+        for minified, full in lines:
+          # handle both fastcomp and wasm backend notation
+          if full == '_middle' or full == 'middle':
+            minified_middle = minified
+            break
+        self.assertNotEqual(minified_middle, None)
+        if wasm:
+          # stack traces are standardized enough that we can easily check that the
+          # minified name is actually in the output
+          stack_trace_reference = 'wasm-function[%s]' % minified_middle
+          out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+          self.assertContained(stack_trace_reference, out)
+          # make sure there are no symbols in the wasm itself
+          wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+          for func_start in ('(func $middle', '(func $_middle'):
+            self.assertNotContained(func_start, wast)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
@@ -4584,7 +4673,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4603,7 +4692,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libdlmalloc,libpthreads_stub', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -4808,7 +4897,7 @@ Size of file is: 32
     # with suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
     self.assertContained('Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"', stderr)
-    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING?', stderr)
+    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
     # no suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
     self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
@@ -7871,13 +7960,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  33, 560) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  32, 559) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 34, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
+    'normal': (['-O2'], 31, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
     'enumated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        34, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
+                        31, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -7899,7 +7988,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1582, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 517336, 172, 1484, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -7919,7 +8008,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1544, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1566, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -8845,7 +8934,6 @@ ok.
     ''', 'getpeername error: Socket not connected')
 
   def test_getaddrinfo(self):
-    self.emcc_args = []
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
 
   def test_getnameinfo(self):
@@ -9198,6 +9286,50 @@ int main () {
     assert lf - 900 <= f <= lf - 500
     # both is a little bigger still
     assert both - 100 <= lf <= both - 50
+
+  # Tests that passing -s MALLOC=none will not include system malloc() to the build.
+  def test_malloc_none(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
+    self.assertContained('undefined symbol: malloc', stderr)
+
+  @no_windows('ptys and select are not available on windows')
+  @no_fastcomp('fastcomp clang detects colors differently')
+  def test_build_error_color(self):
+    create_test_file('src.c', 'int main() {')
+    returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
+    self.assertIn(b"shared:ERROR: \x1b[31mcompiler frontend failed to generate LLVM bitcode, halting\x1b[0m\r\n", output)
+
+  @parameterized({
+    'fno_diagnostics_color': ['-fno-diagnostics-color'],
+    'fdiagnostics_color_never': ['-fdiagnostics-color=never'],
+  })
+  @no_windows('ptys and select are not available on windows')
+  def test_pty_no_color(self, flag):
+    with open('src.c', 'w') as f:
+      f.write('int main() {')
+
+    returncode, output = self.run_on_pty([PYTHON, EMCC, flag, 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertNotIn(b'\x1b', output)
+
+  @no_fastcomp('sanitizers are not supported on fastcomp')
+  def test_sanitizer_color(self):
+    create_test_file('src.c', '''
+      #include <emscripten.h>
+      int main() {
+        int *p = 0, q;
+        EM_ASM({ Module.sanitizer_use_color = true; });
+        q = *p;
+      }
+    ''')
+    run_process([PYTHON, EMCC, '-fsanitize=null', 'src.c'])
+    output = run_js('a.out.js', stderr=PIPE, full_output=True)
+    self.assertIn('\x1b[1msrc.c', output)
+
+  def test_llvm_includes(self):
+    self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
 
   def test_mmap_and_munmap(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'mmap_and_munmap.c')]

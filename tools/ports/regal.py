@@ -8,6 +8,7 @@ import os
 import shutil
 
 TAG = 'version_4'
+HASH = 'db702ee677d6ee276663922560012fe8d28c5f414ba50a628320432212bdcb606c34bc71f7a533416f43bd0226ceb819f79af822f11518d53552a071a27fc841'
 
 
 def get(ports, settings, shared):
@@ -15,7 +16,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
-                      'regal-' + TAG)
+                      'regal-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libregal')
 
   def create():
