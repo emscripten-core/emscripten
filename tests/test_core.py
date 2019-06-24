@@ -7811,6 +7811,9 @@ extern "C" {
     'use_after_return': ('test_asan_use_after_return.c', [
       'AddressSanitizer: stack-use-after-return on address',
     ], ['-Wno-return-stack-address']),
+    'stack_buffer_overflow': ('test_asan_stack_buffer_overflow.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
   })
   @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):
