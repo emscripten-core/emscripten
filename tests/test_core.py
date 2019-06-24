@@ -7774,7 +7774,7 @@ extern "C" {
     def modify_env(filename):
       with open(filename) as f:
         contents = f.read()
-      contents = re.sub('(?<=ENV=){}', "{'UBSAN_OPTIONS': 'print_stacktrace=1'}", contents)
+      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"}' + contents
       with open(filename, 'w') as f:
         f.write(contents)
 
