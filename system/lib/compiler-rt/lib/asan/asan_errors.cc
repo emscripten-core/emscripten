@@ -469,7 +469,7 @@ ErrorGeneric::ErrorGeneric(u32 tid, uptr pc_, uptr bp_, uptr sp_, uptr addr,
     }
 #if SANITIZER_EMSCRIPTEN
     else if (AddrIsInShadow(addr)) {
-      bug_descr = "null-pointer-deference";
+      bug_descr = "null-pointer-dereference";
       scariness.Scare(25, bug_descr);
     }
 #endif

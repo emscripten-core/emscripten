@@ -190,6 +190,10 @@ uptr __asan_region_is_poisoned(uptr beg, uptr size) {
     if (!AddrIsInMem(beg) && !AddrIsInShadow(beg)) return 0;
     if (!AddrIsInMem(end) && !AddrIsInShadow(end)) return 0;
   } else {
+#if SANITIZER_EMSCRIPTEN
+    // Null pointer handling, since Emscripten does not crash on null pointer
+    if (!beg) return 1;
+#endif
     if (!AddrIsInMem(beg)) return beg;
     if (!AddrIsInMem(end)) return end;
   }

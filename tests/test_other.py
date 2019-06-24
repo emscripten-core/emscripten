@@ -9389,7 +9389,7 @@ int main () {
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_null_deref.c'),
                        emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'],
                        name='test.c', assert_returncode=None, literals=[
-      'AddressSanitizer: null-pointer-deference on address',
+      'AddressSanitizer: null-pointer-dereference on address',
     ])
 
   @no_windows('ptys and select are not available on windows')

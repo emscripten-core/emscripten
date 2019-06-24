@@ -7832,6 +7832,12 @@ extern "C" {
     'bitfield_round': ('test_asan_bitfield_round.c', [
       'AddressSanitizer: stack-buffer-overflow'
     ], ['-fno-builtin-memset']),
+    'memset_null':  ('test_asan_memset_null.c', [
+      'AddressSanitizer: null-pointer-dereference on address 0x00000001'
+    ], ['-fno-builtin-memset']),
+    'memset_freed':  ('test_asan_memset_freed.c', [
+      'AddressSanitizer: heap-use-after-free on address'
+    ], ['-fno-builtin-memset']),
   })
   @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):
