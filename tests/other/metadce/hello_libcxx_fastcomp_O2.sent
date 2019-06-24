@@ -15,8 +15,6 @@ __addDays
 __arraySum
 __isLeapYear
 _abort
-_emscripten_builtin_free
-_emscripten_builtin_malloc
 _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap

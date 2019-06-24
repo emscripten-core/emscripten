@@ -638,8 +638,6 @@ _emscripten_autodebug_i16
 _emscripten_autodebug_i32
 _emscripten_autodebug_i64
 _emscripten_autodebug_i8
-_emscripten_builtin_free
-_emscripten_builtin_malloc
 _emscripten_builtin_memalign
 _emscripten_call_worker
 _emscripten_cancel_animation_frame
