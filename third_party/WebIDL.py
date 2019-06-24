@@ -2697,8 +2697,10 @@ class IDLAttribute(IDLInterfaceMember):
             raise WebIDLError("An attribute cannot be of a dictionary type",
                               [self.location])
         if self.type.isSequence() and not self.getExtendedAttribute("Cached"):
-            raise WebIDLError("A non-cached attribute cannot be of a sequence "
-                              "type", [self.location])
+            # Pass on this error until FrozenArray attributes are implemented.
+            # raise WebIDLError("A non-cached attribute cannot be of a sequence "
+            #                   "type", [self.location])
+            pass
         if self.type.isUnion():
             for f in self.type.unroll().flatMemberTypes:
                 if f.isDictionary():

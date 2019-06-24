@@ -147,21 +147,21 @@ interface StructInArray {
 
 interface ArrayClass {
   void ArrayClass();
-  [BoundsChecked] attribute long[] int_array;
-  [Value] attribute StructInArray[] struct_array;
-  attribute StructInArray[] struct_ptr_array;
+  [BoundsChecked] attribute sequence<long> int_array;
+  [Value] attribute sequence<StructInArray> struct_array;
+  attribute sequence<StructInArray> struct_ptr_array;
 };
 
 interface ReceiveArrays {
   void ReceiveArrays();
 
-  void giveMeArrays(float[] vertices, long[] triangles, long num);
+  void giveMeArrays(sequence<float> vertices, sequence<long> triangles, long num);
 };
 
 interface StoreArray {
   void StoreArray();
 
-  void setArray([Const] long[] array);
+  void setArray([Const] sequence<long> array);
   long getArrayValue(long index);
 };
 

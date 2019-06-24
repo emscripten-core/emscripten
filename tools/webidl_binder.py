@@ -276,53 +276,42 @@ void array_bounds_check(const int array_size, const int array_idx) {
 
 C_FLOATS = ['float', 'double']
 
-def full_typename(arg):
-  return ('const ' if arg.getExtendedAttribute('Const') else '') + arg.type.name + ('[]' if arg.type.isArray() else '')
-
-def type_to_c(t, non_pointing=False):
-  #print 'to c ', t
-  def base_type_to_c(t):
-    if t == 'Long':
-      ret = 'int'
-    elif t == 'UnsignedLong':
-      ret = 'unsigned int'
-    elif t == 'Short':
-      ret = 'short'
-    elif t == 'UnsignedShort':
-      ret = 'unsigned short'
-    elif t == 'Byte':
-      ret = 'char'
-    elif t == 'Octet':
-      ret = 'unsigned char'
-    elif t == 'Void':
-      ret = 'void'
-    elif t == 'String':
-      ret = 'char*'
-    elif t == 'Float':
-      ret = 'float'
-    elif t == 'Double':
-      ret = 'double'
-    elif t == 'Boolean':
-      ret = 'bool'
-    elif t == 'Any' or t == 'VoidPtr':
-      ret = 'void*'
-    elif t in interfaces:
-      ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
-    else:
-      ret = t
-    return ret
-
+def base_type_to_c(t, non_pointing=False):
   t = t.replace(' (Wrapper)', '')
+  if t == 'Long':
+    ret = 'int'
+  elif t == 'UnsignedLong':
+    ret = 'unsigned int'
+  elif t == 'Short':
+    ret = 'short'
+  elif t == 'UnsignedShort':
+    ret = 'unsigned short'
+  elif t == 'Byte':
+    ret = 'char'
+  elif t == 'Octet':
+    ret = 'unsigned char'
+  elif t == 'Void':
+    ret = 'void'
+  elif t == 'String':
+    ret = 'char*'
+  elif t == 'Float':
+    ret = 'float'
+  elif t == 'Double':
+    ret = 'double'
+  elif t == 'Boolean':
+    ret = 'bool'
+  elif t == 'Any' or t == 'VoidPtr':
+    ret = 'void*'
+  elif t in interfaces:
+    ret = (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
+  else:
+    ret = t
+  return ret
 
-  prefix = ''
-  suffix = ''
-  if '[]' in t:
-    t = t.replace('[]', '')
-    suffix = '*'
-  if 'const ' in t:
-    t = t.replace('const ', '')
-    prefix = 'const '
-  return prefix + base_type_to_c(t) + suffix
+def type_to_c(typ, non_pointing=False):
+  if typ.isSequence():
+    return base_type_to_c(typ.inner.name, non_pointing) + '*'
+  return base_type_to_c(typ.name, non_pointing)
 
 def take_addr_if_nonpointer(m):
   if m.getExtendedAttribute('Ref') or m.getExtendedAttribute('Value'):
@@ -335,7 +324,7 @@ def deref_if_nonpointer(m):
   return ''
 
 def type_to_cdec(raw):
-  name = ret = type_to_c(raw.type.name, non_pointing=True)
+  name = ret = type_to_c(raw.type, non_pointing=True)
   if raw.getExtendedAttribute('Const'): ret = 'const ' + ret
   if raw.type.name not in interfaces: return ret
   if raw.getExtendedAttribute('Ref'):
@@ -344,8 +333,11 @@ def type_to_cdec(raw):
     return ret
   return ret + '*'
 
-def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False, array_attribute=False):
+def render_function(class_name, func_name, sigs, return_type, non_pointer, copy, operator, constructor, func_scope, call_content=None, const=False, sequence_attribute=False):
   global mid_c, mid_js, js_impl_methods
+
+  if return_type is None:
+    return_type = WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.void]
 
   legacy_mode = CHECKS not in ['ALL', 'FAST']
   all_checks = CHECKS  == 'ALL'
@@ -353,11 +345,13 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   bindings_name = class_name + '_' + func_name
   min_args = min(sigs.keys())
   max_args = max(sigs.keys())
+  if return_type.isSequence():
+    return_type = return_type.inner
 
   all_args = sigs.get(max_args)
 
   if DEBUG:
-    print('renderfunc', class_name, func_name, list(sigs.keys()), return_type, constructor)
+    print('renderfunc', class_name, func_name, list(sigs.keys()), return_type.name, constructor)
     for i in range(max_args):
       a = all_args[i]
       if isinstance(a, WebIDL.IDLArgument):
@@ -370,15 +364,18 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   cache = ('getCache(%s)[this.ptr] = this;' % class_name) if constructor else ''
   call_prefix = '' if not constructor else 'this.ptr = '
   call_postfix = ''
-  if return_type != 'Void' and not constructor: call_prefix = 'return '
+  if not return_type.isVoid() and not constructor: call_prefix = 'return '
   if not constructor:
-    if return_type in interfaces:
+    if return_type.isInterface():
       call_prefix += 'wrapPointer('
-      call_postfix += ', ' + return_type + ')'
-    elif return_type == 'String':
+      call_postfix += ', ' + return_type.name + ')'
+    elif return_type.isSequence():
+      call_prefix += 'wrapPointer('
+      call_postfix += ', ' + return_type.inner.name + ')'
+    elif return_type.isString():
       call_prefix += 'UTF8ToString('
       call_postfix += ')'
-    elif return_type == 'Boolean':
+    elif return_type.isBoolean():
       call_prefix += '!!('
       call_postfix += ')'
 
@@ -390,7 +387,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     body = ''
     pre_arg = []
 
-  if any(arg.type.isString() or arg.type.isArray() for arg in all_args):
+  if any(arg.type.isString() or arg.type.isSequence() for arg in all_args):
     body += '  ensureCache.prepare();\n'
 
   full_name = "%s::%s" % (class_name, func_name)
@@ -450,13 +447,13 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       do_default = True
 
     if do_default:
-      if not (arg.type.isArray() and not array_attribute):
+      if not (arg.type.isSequence() and not sequence_attribute):
         body += "  if ({0} && typeof {0} === 'object') {0} = {0}.ptr;\n".format(js_arg)
         if arg.type.isString():
           body += "  else {0} = ensureString({0});\n".format(js_arg)
       else:
         # an array can be received here
-        arg_type = arg.type.name
+        arg_type = arg.type.inner.name
         if arg_type in ['Byte', 'Octet']:
           body += "  if (typeof {0} == 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
         elif arg_type in ['Short', 'UnsignedShort']:
@@ -485,20 +482,28 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   for i in range(min_args, max_args+1):
     raw = sigs.get(i)
     if raw is None: continue
-    sig = list(map(full_typename, raw))
-    if array_attribute:
-      sig = [x.replace('[]', '') for x in sig] # for arrays, ignore that this is an array - our get/set methods operate on the elements
 
-    c_arg_types = list(map(type_to_c, sig))
+    if sequence_attribute:
+      # For array attributes, the get/set methods operate on the
+      # elements, not the array as a whole.
+      arg_types = [arg.type.inner if arg.type.isSequence() else arg.type
+                   for arg in raw]
+    else:
+      arg_types = [arg.type for arg in raw]
+
+    const_qualifiers = ['const ' if arg.getExtendedAttribute('Const') else ''
+                        for arg in raw]
+    c_arg_types = [c + type_to_c(typ)
+                   for c, typ in zip(const_qualifiers, arg_types)]
 
     normal_args = ', '.join(['%s %s' % (c_arg_types[j], args[j]) for j in range(i)])
     if constructor:
       full_args = normal_args
     else:
-      full_args = type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
+      full_args = base_type_to_c(class_name, non_pointing=True) + '* self' + ('' if not normal_args else ', ' + normal_args)
     call_args = ', '.join(['%s%s' % ('*' if raw[j].getExtendedAttribute('Ref') else '', args[j]) for j in range(i)])
     if constructor:
-      call = 'new ' + type_to_c(class_name, non_pointing=True)
+      call = 'new ' + base_type_to_c(class_name, non_pointing=True)
       call += '(' + call_args + ')'
     elif call_content is not None:
       call = call_content
@@ -510,7 +515,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       cast_self = 'self'
       if class_name != func_scope:
         # this function comes from an ancestor class; for operators, we must cast it
-        cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
+        cast_self = 'dynamic_cast<' + base_type_to_c(func_scope) + '>(' + cast_self + ')'
       maybe_deref = deref_if_nonpointer(raw[0])
       if '=' in operator:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
@@ -521,7 +526,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     pre = ''
 
-    basic_return = 'return ' if constructor or return_type is not 'Void' else ''
+    basic_return = 'return ' if constructor or not return_type.isVoid() else ''
     return_prefix = basic_return
     return_postfix = ''
     if non_pointer:
@@ -537,12 +542,12 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 %s%s EMSCRIPTEN_KEEPALIVE %s(%s) {
 %s  %s%s%s;
 }
-''' % (maybe_const, type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
+''' % (maybe_const, base_type_to_c(class_name) if constructor else c_return_type, c_names[i], full_args, pre, return_prefix, call, return_postfix)]
 
     if not constructor:
       if i == max_args:
         dec_args = ', '.join([type_to_cdec(raw[j]) + ' ' + args[j] for j in range(i)])
-        js_call_args = ', '.join(['%s%s' % (('(int)' if sig[j] in interfaces else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
+        js_call_args = ', '.join(['%s%s' % (('(int)' if arg_types[j].isInterface() else '') + take_addr_if_nonpointer(raw[j]), args[j]) for j in range(i)])
 
         js_impl_methods += [r'''  %s %s(%s) %s {
     %sEM_ASM_%s({
@@ -630,9 +635,9 @@ for name in names:
     return_type = None
     for ret, args in m.signatures():
       if return_type is None:
-        return_type = ret.name
+        return_type = ret
       else:
-        assert return_type == ret.name, 'overloads must have the same return type'
+        assert return_type == ret, 'overloads must have the same return type'
       for i in range(len(args)+1):
         if i == len(args) or args[i].optional:
           assert i not in sigs, 'overloading must differentiate by # of arguments (cannot have two signatures that differ by types but not by length)'
@@ -653,7 +658,7 @@ for name in names:
     if not m.isAttr(): continue
     attr = m.identifier.name
 
-    if m.type.isArray():
+    if m.type.isSequence():
       get_sigs = { 1: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] })] }
       set_sigs = { 2: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] }),
                        Dummy({ 'type': m.type })] }
@@ -673,7 +678,7 @@ for name in names:
     mid_js += [r'''
   %s.prototype['%s'] = %s.prototype.%s = ''' % (name, get_name, name, get_name)]
     render_function(name,
-                    get_name, get_sigs, m.type.name,
+                    get_name, get_sigs, m.type,
                     None,
                     None,
                     None,
@@ -681,7 +686,7 @@ for name in names:
                     func_scope=interface,
                     call_content=get_call_content,
                     const=m.getExtendedAttribute('Const'),
-                    array_attribute=m.type.isArray())
+                    sequence_attribute=m.type.isSequence())
 
     if m.readonly:
       mid_js += [r'''
@@ -691,7 +696,7 @@ for name in names:
       mid_js += [r'''
     %s.prototype['%s'] = %s.prototype.%s = ''' % (name, set_name, name, set_name)]
       render_function(name,
-                      set_name, set_sigs, 'Void',
+                      set_name, set_sigs, None,
                       None,
                       None,
                       None,
@@ -699,7 +704,7 @@ for name in names:
                       func_scope=interface,
                       call_content=set_call_content,
                       const=m.getExtendedAttribute('Const'),
-                      array_attribute=m.type.isArray())
+                      sequence_attribute=m.type.isSequence())
       mid_js += [r'''
     Object.defineProperty(%s.prototype, '%s', { get: %s.prototype.%s, set: %s.prototype.%s });''' % (name, attr, name, get_name, name, set_name)]
 
@@ -708,7 +713,7 @@ for name in names:
     mid_js += [r'''
   %s.prototype['__destroy__'] = %s.prototype.__destroy__ = ''' % (name, name)]
     render_function(name,
-                    '__destroy__', { 0: [] }, 'Void',
+                    '__destroy__', { 0: [] }, None,
                     None,
                     None,
                     None,
@@ -724,7 +729,7 @@ class %s : public %s {
 public:
 %s
 };
-''' % (name, type_to_c(js_impl, non_pointing=True), '\n'.join(js_impl_methods))]
+''' % (name, base_type_to_c(js_impl, non_pointing=True), '\n'.join(js_impl_methods))]
 
 deferred_js = []
 
