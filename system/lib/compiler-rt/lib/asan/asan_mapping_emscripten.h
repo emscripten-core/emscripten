@@ -17,7 +17,7 @@
 extern char __global_base;
 
 #define kLowMemBeg     ((uptr) &__global_base)
-#define kLowMemEnd     (kLowShadowBeg + (kLowShadowBeg << SHADOW_SCALE) - 1)
+#define kLowMemEnd     ((kLowShadowBeg << SHADOW_SCALE) - 1)
 
 #define kLowShadowBeg  0
 #define kLowShadowEnd  ((uptr) &__global_base - 1)
@@ -39,7 +39,10 @@ extern char __global_base;
 #define kShadowGap3Beg 0
 #define kShadowGap3End 0
 
-#define MEM_TO_SHADOW(mem) ((mem - kLowMemBeg) >> SHADOW_SCALE)
+// The first 1/8 of the shadow memory space is wasted shadowing itself,
+// but that's better than introducing a branch to handle nullptr which will
+// wrap around and end up with no shadow.
+#define MEM_TO_SHADOW(mem) ((mem) >> SHADOW_SCALE)
 
 namespace __asan {
 

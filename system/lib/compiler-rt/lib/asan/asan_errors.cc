@@ -467,6 +467,12 @@ ErrorGeneric::ErrorGeneric(u32 tid, uptr pc_, uptr bp_, uptr sp_, uptr addr,
       scariness.Scare(bug_type_score + read_after_free_bonus, bug_descr);
       if (far_from_bounds) scariness.Scare(10, "far-from-bounds");
     }
+#if SANITIZER_EMSCRIPTEN
+    else if (AddrIsInShadow(addr)) {
+      bug_descr = "null-pointer-deference";
+      scariness.Scare(25, bug_descr);
+    }
+#endif
   }
 }
 

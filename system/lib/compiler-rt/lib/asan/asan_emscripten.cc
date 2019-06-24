@@ -1,4 +1,6 @@
 #include "asan_internal.h"
+#include "asan_mapping.h"
+#include "asan_poisoning.h"
 
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
@@ -6,7 +8,12 @@
 
 namespace __asan {
 
-void InitializeShadowMemory() {}
+void InitializeShadowMemory() {
+  // Poison the shadow memory of the shadow area at the start of the address
+  // space. This helps catching null pointer dereference.
+  FastPoisonShadow(kLowShadowBeg, kLowShadowEnd - kLowShadowBeg, 0xff);
+}
+
 void AsanCheckDynamicRTPrereqs() {}
 void AsanCheckIncompatibleRT() {}
 void InitializePlatformInterceptors() {}
