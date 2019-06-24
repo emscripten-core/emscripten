@@ -382,10 +382,14 @@ if (ENVIRONMENT_IS_PTHREAD) {
     wasmMemory = Module['wasmMemory'];
   } else if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
     wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE,
+      'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
+#if WASM_MEM_MAX != -1
+      ,
       'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE
+#endif
 #else
+      ,
       'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #endif
 #if USE_PTHREADS
@@ -422,7 +426,7 @@ if (wasmMemory) {
 INITIAL_TOTAL_MEMORY = buffer.byteLength;
 #ifdef ASSERTIONS && WASM
 assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#ifdef ALLOW_MEMORY_GROWTH
+#ifdef ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
 assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif
