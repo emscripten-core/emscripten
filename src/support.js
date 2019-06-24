@@ -28,16 +28,14 @@ function dynamicAlloc(size) {
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];
   var end = (ret + size + 15) & -16;
-  if (end <= _emscripten_get_heap_size()) {
-    HEAP32[DYNAMICTOP_PTR>>2] = end;
-  } else {
-#if ALLOW_MEMORY_GROWTH
-    var success = _emscripten_resize_heap(end);
-    if (!success) return 0;
+  if (end > _emscripten_get_heap_size()) {
+#if ASSERTIONS
+    abort('failure to dynamicAlloc - memory growth etc. is not supported there, call malloc/sbrk directly');
 #else
-    return 0;
+    abort();
 #endif
   }
+  HEAP32[DYNAMICTOP_PTR>>2] = end;
   return ret;
 }
 
@@ -968,7 +966,7 @@ GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 // The wasm backend path does not have a way to set the stack max, so we can
 // just implement this function in a trivial way
 function establishStackSpace(base, max) {
-  stackRestore(base);
+  stackRestore(max);
 }
 
 // JS library code refers to Atomics in the manner used from asm.js, provide

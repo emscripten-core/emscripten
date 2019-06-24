@@ -285,7 +285,7 @@ var LibraryGLEmulation = {
 
       function ensurePrecision(source) {
         if (!/precision +(low|medium|high)p +float *;/.test(source)) {
-          source = 'precision mediump float;\n' + source;
+          source = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n' + source;
         }
         return source;
       }
@@ -363,7 +363,6 @@ var LibraryGLEmulation = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
-          source = ensurePrecision(source);
         } else { // Fragment shader
           for (i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             old = source;

@@ -86,6 +86,8 @@ var TOTAL_MEMORY = 16777216;
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
+//  * none     - no malloc() implementation is provided, but you must implement
+//               malloc() and free() yourself.
 // dlmalloc is necessary for multithreading, split memory, and other special
 // modes, and will be used automatically in those cases.
 // In general, if you don't need one of those special modes, and if you don't
@@ -125,6 +127,11 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // returning 0 when it fails, and also of being able to allocate more
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
+
+// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_STEP == -1, memory roughly
+// doubles in size each time is grows. Set MEMORY_GROWTH_STEP to a multiple of
+// WASM page size (64KB), eg. 16MB to enable a slower growth rate.
+var MEMORY_GROWTH_STEP = -1;
 
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
@@ -198,7 +205,7 @@ var USE_CLOSURE_COMPILER = 0;
 // case, no "var" is created for each export, and instead a loop (of small
 // constant code size, no matter how many exports you have) writes all the
 // exports received into the global scope. Doing so is dangerous since such
-// modifications of the global scope can confuse external JS minifer tools, and
+// modifications of the global scope can confuse external JS minifier tools, and
 // also things can break if the scope the code is in is not the global scope
 // (e.g. if you manually enclose them in a function scope).
 var DECLARE_ASM_MODULE_EXPORTS = 1;
@@ -533,6 +540,25 @@ var ASYNCIFY_WHITELIST = ['qsort',
                           '__fwritex',
                           'MUSL_vfprintf'];
 
+// Runs the binaryen "bysyncify" pass to transform sync code into async.
+// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
+// wasm backend.
+//
+// Done:
+//  * Sleep support.
+//  * Emscripten APIs (emscripten_wget* and other sync APIs).
+//  * Synchronous fsync syscall.
+//  * Browser integration.
+//
+// Not done:
+//  * No whitelist/blacklist support (hopefully with the simpler model
+//    and lower overhead they may not be needed?)
+//  * No coroutine support.
+var BYSYNCIFY = 0;
+
+// Runtime debug logging from bysyncify internals.
+var BYSYNCIFY_DEBUG = 0;
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
@@ -611,20 +637,6 @@ var EXPORT_FUNCTION_TABLES = 0;
 
 var RETAIN_COMPILER_SETTINGS = 0;
 
-// this will contain the emscripten version. you should not modify it. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
-var EMSCRIPTEN_VERSION = '';
-
-// this will contain the optimization level (-Ox). you should not modify it.
-var OPT_LEVEL = 0;
-
-// this will contain the debug level (-gx). you should not modify it.
-var DEBUG_LEVEL = 0;
-
-// Whether we are profiling functions. you should not modify it.
-var PROFILING_FUNCS = 0;
-
 // JS library elements (C functions implemented in JS) that we include by
 // default. If you want to make sure something is included by the JS compiler,
 // add it here.  For example, if you do not use some emscripten_* C API call
@@ -639,7 +651,6 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
 	'malloc',
 	'free',
 	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-	'emscripten_resize_heap' // Used by dynamicAlloc() and -s FETCH=1
 	];
 
 // This list is also used to determine auto-exporting of library dependencies
@@ -712,7 +723,9 @@ var PROXY_TO_PTHREAD = 0;
 // are linked with.
 //
 // MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
-// to set this explicitly.
+// to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
+// *not* set this, so that we still do normal DCE on them, and in that case
+// you must keep relevant things alive yourself using exporting.
 var LINKABLE = 0;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
@@ -1002,14 +1015,28 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 //   allow: allow creating operations that can trap. this is the most
 //          compact, as we just emit a single wasm operation, with no
 //          guards to trapping values, and also often the fastest.
+// This setting is only meaningfull with the fastcomp backend.
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for
-// example, "dce,precompute,vacuum".  When set, this overrides the default
-// passes we would normally run.
+// example, "dce,precompute,vacuum".  When set, this overrides/replaces
+// the default passes we would normally run.
+// Note that you can put any binaryen wasm-opt flag here, not just
+// passes. The key thing is that these flags are sent to the main wasm-opt
+// invocation to optimize the wasm binary, which is when we run several
+// important passes. We may also run wasm-opt for various other reasons,
+// like as part of metadce, and these flags are not passed at those times,
+// so they are a bunch of passes (+ other flags) for that one main
+// invocation.
 var BINARYEN_PASSES = "";
 
-// Set the maximum size of memory in the wasm module (in bytes).  Without this,
+// A comma-separated list of passes to run in the binaryen optimizer, like
+// BINARYEN_PASSES, but that is in addition to any default ones. That is,
+// setting this does not override/replace the default passes, and it is
+// appended at the end of the list of passes.
+var BINARYEN_EXTRA_PASSES = "";
+
+// Set the maximum size of memory in the wasm module (in bytes). Without this,
 // TOTAL_MEMORY is used (as it is used for the initial value), or if memory
 // growth is enabled, the default value here (-1) is to have no limit, but you
 // can set this to set a maximum size that growth will stop at.
@@ -1264,8 +1291,26 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-
+//==============================
 // Internal use only, from here
+//==============================
+
+// This will contain the emscripten version. You should not modify this. This
+// and the following few settings are useful in combination with
+// RETAIN_COMPILER_SETTINGS
+var EMSCRIPTEN_VERSION = '';
+
+// This will contain the optimization level (-Ox). You should not modify this.
+var OPT_LEVEL = 0;
+
+// This will contain the debug level (-gx). You should not modify this.
+var DEBUG_LEVEL = 0;
+
+// Whether we are profiling functions. You should not modify this.
+var PROFILING_FUNCS = 0;
+
+// Whether we are emitting a symbol map. You should not modify this.
+var EMIT_SYMBOL_MAP = 0;
 
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
@@ -1318,6 +1363,12 @@ var WASM_TABLE_SIZE = 0;
 // POSIX errno variable. Setting this to 0 also requires using --closure
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
+
+// Internal: Tracks whether Emscripten should link in exception throwing (C++ 'throw')
+// support library. This does not need to be set directly, but pass -fno-exceptions
+// to the build disable exceptions support. (This is basically -fno-exceptions, but
+// checked at final link time instead of individual .cpp file compile time)
+var DISABLE_EXCEPTION_THROWING = 0;
 
 // Internal: An array of all symbols exported from asm.js/wasm module.
 var MODULE_EXPORTS = [];
@@ -1393,6 +1444,19 @@ var AUTODEBUG = 0;
 // wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
 // wasm normally, then compile that to JS).
 var WASM2JS = 0;
+
+// Whether we should link in the runtime for ubsan.
+// 0 means do not link ubsan, 1 means link minimal ubsan runtime.
+// This is not meant to be used with `-s`. Instead, to use ubsan, use clang flag
+// -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
+var UBSAN_RUNTIME = 0;
+
+// Whether we should load the WASM source map at runtime.
+// This is enabled automatically when using -g4 with sanitizers.
+var LOAD_SOURCE_MAP = 0;
+
+// Whether embind has been enabled.
+var EMBIND = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

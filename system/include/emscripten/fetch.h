@@ -22,6 +22,7 @@ extern "C" {
 
 // If passed, the intermediate streamed bytes will be passed in to the onprogress() handler. If not specified, the
 // onprogress() handler will still be called, but without data bytes.
+// Note: Firefox only as it depends on 'moz-chunked-arraybuffer'.
 #define EMSCRIPTEN_FETCH_STREAM_DATA 2
 
 // If passed, the final download will be stored in IndexedDB. If not specified, the file will only reside in browser memory.
@@ -67,6 +68,7 @@ typedef struct emscripten_fetch_attr_t
 	void (*onsuccess)(struct emscripten_fetch_t *fetch);
 	void (*onerror)(struct emscripten_fetch_t *fetch);
 	void (*onprogress)(struct emscripten_fetch_t *fetch);
+	void (*onreadystatechange)(struct emscripten_fetch_t *fetch);
 
 	// EMSCRIPTEN_FETCH_* attributes
 	uint32_t attributes;
@@ -183,6 +185,24 @@ EMSCRIPTEN_RESULT emscripten_fetch_wait(emscripten_fetch_t *fetch, double timeou
 // Closes a finished or an executing fetch operation and frees up all memory. If the fetch operation was still executing, the
 // onerror() handler will be called in the calling thread before this function returns.
 EMSCRIPTEN_RESULT emscripten_fetch_close(emscripten_fetch_t *fetch);
+
+// Gets the size (in bytes) of the response headers as plain text.
+// This must be called on the same thread as the fetch originated on.
+// Note that this will return 0 if readyState < HEADERS_RECEIVED.
+size_t emscripten_fetch_get_response_headers_length(emscripten_fetch_t *fetch);
+
+// Gets the response headers as plain text. dstSizeBytes should be headers_length + 1 (for the null terminator).
+// This must be called on the same thread as the fetch originated on.
+size_t emscripten_fetch_get_response_headers(emscripten_fetch_t *fetch, char *dst, size_t dstSizeBytes);
+
+// Converts the plain text headers into an array of strings. This array takes the form
+// {"key1", "value1", "key2", "value2", "key3", "value3", ..., 0 }; Note especially that the array
+// is terminated with a null pointer.
+char **emscripten_fetch_unpack_response_headers(const char *headersString);
+
+// This frees the memory used by the array of headers. Call this when finished with the data returned
+// by emscripten_fetch_unpack_response_headers.
+void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders);
 
 #define emscripten_asmfs_open_t int
 

@@ -45,7 +45,7 @@ A high level view of the Emscripten toolchain is given below. The main tool is t
 
 .. image:: EmscriptenToolchain.png
 
-*Emcc* uses :term:`Clang` to convert C/C++ files to LLVM bitcode, and :ref:`Fastcomp <LLVM-Backend>` (Emscripten's Compiler Core — an LLVM backend) to compile the bitcode to JavaScript. The output JavaScript can be executed by :term:`node.js`, or from within HTML in a browser.
+*Emcc* uses :term:`Clang` and LLVM to compile to wasm or asm.js. Emscripten emits JavaScript that can run that compiled code and provide the necessary runtime support. That JavaScript can be executed by :term:`node.js`, or from within HTML in a browser.
 
 The :ref:`emsdk` is used to manage multiple SDKs and tools, and to specify the particular SDK/set of tools currently being used to compile code (the :term:`Active Tool/SDK`). It can even "install" (download and build) the latest toolchain from GitHub!
 

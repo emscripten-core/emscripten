@@ -100,14 +100,6 @@ function JSify(data, functionsOnly) {
 
   // functionStub
   function functionStubHandler(item) {
-    // special logic
-    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
-      var num = +item.ident.split('_').slice(-1)[0];
-      LibraryManager.library[item.ident.substr(1)] = function() {
-        return ___cxa_find_matching_catch.apply(null, arguments);
-      };
-    }
-
     function addFromLibrary(ident) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;

@@ -710,8 +710,29 @@ var SyscallsLibrary = {
       });
     });
 #else
+#if BYSYNCIFY
+    return Bysyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
+    if (stream.stream_ops && stream.stream_ops.fsync) {
+      return -stream.stream_ops.fsync(stream);
+    }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif
+#endif // BYSYNCIFY
+#endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
@@ -748,12 +769,16 @@ var SyscallsLibrary = {
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    // Can't handle 64-bit integers
-    if (!(offset_high == -1 && offset_low < 0) &&
-        !(offset_high == 0 && offset_low >= 0)) {
+    var HIGH_OFFSET = 0x100000000; // 2^32
+    // use an unsigned operator on low and shift high by 32-bits
+    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
+
+    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
       return -{{{ cDefine('EOVERFLOW') }}};
     }
-    var offset = offset_low;
+
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
@@ -968,6 +993,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
+  __syscall192__deps: ['memalign'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
     off <<= 12; // undo pgoffset
@@ -1175,10 +1201,9 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall265: function(which, varargs) { // clock_nanosleep
-#if SYSCALL_DEBUG
-    err('warning: ignoring SYS_clock_nanosleep');
-#endif
+  __syscall252: function(which, varargs) { // exit_group
+    var status = SYSCALLS.get();
+    exit(status);
     return 0;
   },
   __syscall268: function(which, varargs) { // statfs64

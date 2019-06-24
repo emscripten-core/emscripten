@@ -23,7 +23,6 @@ var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer 
 var DYNAMICTOP_PTR = 0;
 var DYNAMIC_BASE = 0;
 
-var ENVIRONMENT_IS_PTHREAD = true;
 var PthreadWorkerInit = {};
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
@@ -35,6 +34,12 @@ var __performance_now_clock_drift = 0;
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
+
+// These modes need to assign to these variables because of how scoping works in them.
+#if EXPORT_ES6 || MODULARIZE
+var PThread;
+var HEAPU32;
+#endif
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -128,7 +133,19 @@ this.onmessage = function(e) {
 #endif
 
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
+      Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
+#if MODULARIZE && EXPORT_ES6
+      import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
+        Module = {{{ EXPORT_NAME }}}.default(Module);
+        PThread = Module['PThread'];
+        HEAPU32 = Module['HEAPU32'];
+#if !ASMFS
+        if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
+#endif
+        postMessage({ cmd: 'loaded' });
+      });
+#else
       if (typeof e.data.urlOrBlob === 'string') {
         importScripts(e.data.urlOrBlob);
       } else {
@@ -136,7 +153,6 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-
 #if MODULARIZE
 #if !MODULARIZE_INSTANCE
       Module = {{{ EXPORT_NAME }}}(Module);
@@ -149,6 +165,7 @@ this.onmessage = function(e) {
       if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
 #endif
       postMessage({ cmd: 'loaded' });
+#endif
     } else if (e.data.cmd === 'objectTransfer') {
       PThread.receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
@@ -158,14 +175,31 @@ this.onmessage = function(e) {
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = e.data.stackBase;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = STACK_BASE + e.data.stackSize;
+#if WASM_BACKEND
+      // The stack grows downwards
+      var max = e.data.stackBase;
+      var top = e.data.stackBase + e.data.stackSize;
+#else
+      var max = e.data.stackBase + e.data.stackSize;
+      var top = e.data.stackBase;
+#endif
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = e.data.stackBase;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = top;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = max;
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
       assert(STACK_BASE != 0);
-      assert(STACK_MAX > STACK_BASE);
+#if WASM_BACKEND
+      assert(max === e.data.stackBase);
+      assert(top > max);
+      assert(e.data.stackBase == max);
+#else
+      assert(max > e.data.stackBase);
+      assert(max > top);
+      assert(e.data.stackBase === top);
+#endif
 #endif
       // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
       Module['establishStackSpace'](e.data.stackBase, e.data.stackBase + e.data.stackSize);

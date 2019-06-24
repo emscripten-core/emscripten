@@ -19,6 +19,7 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 from __future__ import print_function
 from subprocess import PIPE, STDOUT
+from functools import wraps
 import argparse
 import atexit
 import contextlib
@@ -105,13 +106,14 @@ def skip_if(func, condition, explanation='', negate=False):
   assert callable(func)
   explanation_str = ' : %s' % explanation if explanation else ''
 
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     choice = self.__getattribute__(condition)()
     if negate:
       choice = not choice
     if choice:
       self.skipTest(condition + explanation_str)
-    func(self)
+    func(self, *args, **kwargs)
 
   return decorated
 
@@ -119,6 +121,7 @@ def skip_if(func, condition, explanation='', negate=False):
 def needs_dlfcn(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self):
     self.check_dlfcn()
     return func(self)
@@ -129,6 +132,7 @@ def needs_dlfcn(func):
 def is_slow_test(func):
   assert callable(func)
 
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     if EMTEST_SKIP_SLOW:
       return self.skipTest('skipping slow tests')
@@ -167,6 +171,7 @@ def flaky(f):
   assert callable(f)
   max_tries = 3
 
+  @wraps(f)
   def decorated(self):
     for i in range(max_tries - 1):
       try:
@@ -275,24 +280,105 @@ non_core_test_modes = [
 test_index = 0
 
 
-class RunnerCore(unittest.TestCase):
-  emcc_args = []
+def parameterized(parameters):
+  """
+  Mark a test as parameterized.
 
+  Usage:
+    @parameterized({
+      'subtest1': (1, 2, 3),
+      'subtest2': (4, 5, 6),
+    })
+    def test_something(self, a, b, c):
+      ... # actual test body
+
+  This is equivalent to defining two tests:
+
+    def test_something_subtest1(self):
+      # runs test_something(1, 2, 3)
+
+    def test_something_subtest2(self):
+      # runs test_something(4, 5, 6)
+  """
+  def decorator(func):
+    func._parameterize = parameters
+    return func
+  return decorator
+
+
+class RunnerMeta(type):
+  @classmethod
+  def make_test(mcs, name, func, suffix, args):
+    """
+    This is a helper function to create new test functions for each parameterized form.
+
+    :param name: the original name of the function
+    :param func: the original function that we are parameterizing
+    :param suffix: the suffix to append to the name of the function for this parameterization
+    :param args: the positional arguments to pass to the original function for this parameterization
+    :returns: a tuple of (new_function_name, new_function_object)
+    """
+
+    # Create the new test function. It calls the original function with the specified args.
+    # We use @functools.wraps to copy over all the function attributes.
+    @wraps(func)
+    def resulting_test(self):
+      return func(self, *args)
+
+    # Add suffix to the function name so that it displays correctly.
+    resulting_test.__name__ = '%s_%s' % (name, suffix)
+
+    # On python 3, functions have __qualname__ as well. This is a full dot-separated path to the function.
+    # We add the suffix to it as well.
+    if hasattr(func, '__qualname__'):
+      resulting_test.__qualname__ = '%s_%s' % (func.__qualname__, suffix)
+
+    return resulting_test.__name__, resulting_test
+
+  def __new__(mcs, name, bases, attrs):
+    # This metaclass expands parameterized methods from `attrs` into separate ones in `new_attrs`.
+    new_attrs = {}
+
+    for attr_name, value in attrs.items():
+      # Check if a member of the new class has _parameterize, the tag inserted by @parameterized.
+      if hasattr(value, '_parameterize'):
+        # If it does, we extract the parameterization information, build new test functions.
+        for suffix, args in value._parameterize.items():
+          new_name, func = mcs.make_test(attr_name, value, suffix, args)
+          assert new_name not in new_attrs, 'Duplicate attribute name generated when parameterizing %s' % attr_name
+          new_attrs[new_name] = func
+      else:
+        # If not, we just copy it over to new_attrs verbatim.
+        assert attr_name not in new_attrs, '%s collided with an attribute from parameterization' % attr_name
+        new_attrs[attr_name] = value
+
+    # We invoke type, the default metaclass, to actually create the new class, with new_attrs.
+    return type.__new__(mcs, name, bases, new_attrs)
+
+
+# This is a hack to make the metaclass work on both python 2 and python 3.
+#
+# On python 3, the code should be:
+#   class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
+#     ...
+#
+# On python 2, the code should be:
+#   class RunnerCore(unittest.TestCase):
+#     __metaclass__ = RunnerMeta
+#     ...
+#
+# To be compatible with both python 2 and python 3, we create a class by directly invoking the
+# metaclass, which is done in the same way on both python 2 and 3, and inherit from it,
+# since a class inherits the metaclass by default.
+class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = TEMP_DIR
   canonical_temp_dir = get_canonical_temp_dir(TEMP_DIR)
 
-  save_dir = EMTEST_SAVE_DIR
-  save_JS = 0
   # This avoids cluttering the test runner output, which is stderr too, with compiler warnings etc.
   # Change this to None to get stderr reporting, for debugging purposes
   stderr_redirect = STDOUT
-
-  env = {}
-  settings_mods = {}
-
-  temp_files_before_run = []
 
   def is_emterpreter(self):
     return self.get_setting('EMTERPRETIFY')
@@ -335,6 +421,11 @@ class RunnerCore(unittest.TestCase):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
+    self.emcc_args = []
+    self.save_dir = EMTEST_SAVE_DIR
+    self.save_JS = False
+    self.env = {}
+    self.temp_files_before_run = []
 
     if EMTEST_DETECT_TEMPFILE_LEAKS:
       for root, dirnames, filenames in os.walk(self.temp_dir):
@@ -733,15 +824,15 @@ class RunnerCore(unittest.TestCase):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
-  def assertContained(self, values, string, additional_info=''):
+  def assertContained(self, values, string, additional_info='', check_all=False):
     if type(values) not in [list, tuple]:
       values = [values]
     values = list(map(asstr, values))
     if callable(string):
       string = string()
-    for value in values:
-      if value in string:
-        return # success
+
+    if (all if check_all else any)(value in string for value in values):
+      return # success
     self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
       limit_size(values[0]), limit_size(string),
       limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
@@ -996,7 +1087,7 @@ class RunnerCore(unittest.TestCase):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False):
+             assert_returncode=None, assert_identical=False, assert_all=False):
     if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
       self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -1036,7 +1127,7 @@ class RunnerCore(unittest.TestCase):
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
           else:
-            self.assertContained(expected_output, js_output)
+            self.assertContained(expected_output, js_output, check_all=assert_all)
             self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
@@ -1407,7 +1498,12 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
+  def check_btest_skip(self, args):
+    if self.is_wasm_backend() and 'WASM=0' in args:
+      self.skipTest('wasm2js does not yet support threads, dynamic linking, and some other features; skip browser testing for now')
+
   def compile_btest(self, args):
+    self.check_btest_skip(args)
     run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
@@ -1416,15 +1512,21 @@ class BrowserCore(RunnerCore):
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
+    self.check_btest_skip(args)
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args and not self.is_wasm_backend() and 'ALLOW_MEMORY_GROWTH=1' not in args:
-      if EMTEST_WASM_PTHREADS:
-        also_asmjs = True
-      elif 'WASM=0' not in args:
-        args += ['-s', 'WASM=0']
+    if 'USE_PTHREADS=1' in args:
+      if not self.is_wasm_backend():
+        if 'ALLOW_MEMORY_GROWTH=1' not in args:
+          if EMTEST_WASM_PTHREADS:
+            also_asmjs = True
+          elif 'WASM=0' not in args:
+            args += ['-s', 'WASM=0']
+      else:
+        # wasm2js does not support threads yet
+        also_asmjs = False
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']

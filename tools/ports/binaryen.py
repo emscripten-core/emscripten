@@ -7,6 +7,7 @@ import os
 import logging
 
 TAG = 'version_84'
+HASH = '8ac3dc8dc63e76925c4c0cbe1da2fb3a936fb4ff9563c11b360fc483411ee1960b8b4d32fb61505e559e451724c632830bacd2158ead2efc52b5313354bf35f7'
 
 
 def needed(settings, shared, ports):
@@ -24,7 +25,7 @@ def get(ports, settings, shared):
   if not needed(settings, shared, ports):
     return []
 
-  ports.fetch_project('binaryen', 'https://github.com/WebAssembly/binaryen/archive/' + TAG + '.zip', 'binaryen-' + TAG)
+  ports.fetch_project('binaryen', 'https://github.com/WebAssembly/binaryen/archive/' + TAG + '.zip', 'binaryen-' + TAG, sha512hash=HASH)
 
   def create():
     logging.info('building port: binaryen')
