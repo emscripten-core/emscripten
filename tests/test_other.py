@@ -5065,6 +5065,26 @@ main(const int argc, const char * const * const argv)
     self.assertContained('locale set to waka: waka;waka;waka;waka;waka;waka',
                          run_js('a.out.js', args=['waka']))
 
+  def test_browser_language_detection(self):
+    # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
+    run_process([PYTHON, EMCC,
+                 path_from_root('tests', 'test_browser_language_detection.c')])
+    self.assertContained('C.UTF-8', run_js('a.out.js'))
+
+    # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
+    create_test_file('preamble.js', r'''navigator = {};
+      navigator.languages = [ "fr", "fr-FR", "en-US", "en" ];''')
+    run_process([PYTHON, EMCC, '--pre-js', 'preamble.js',
+                 path_from_root('tests', 'test_browser_language_detection.c')])
+    self.assertContained('fr.UTF-8', run_js('a.out.js'))
+
+    # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
+    create_test_file('preamble.js', r'''navigator = {};
+      navigator.languages = [ "fr-FR", "fr", "en-US", "en" ];''')
+    run_process([PYTHON, EMCC, '--pre-js', 'preamble.js',
+                 path_from_root('tests', 'test_browser_language_detection.c')])
+    self.assertContained('fr_FR.UTF-8', run_js('a.out.js'))
+
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
     # compiler needs to know at compile time about main).
