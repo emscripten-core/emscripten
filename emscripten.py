@@ -2225,6 +2225,10 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   all_implemented = metadata['exports']
+
+  if shared.Settings.BYSYNCIFY:
+    all_implemented += ['bysyncify_start_unwind', 'bysyncify_stop_unwind', 'bysyncify_start_rewind', 'bysyncify_stop_rewind']
+
   check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
@@ -2380,7 +2384,7 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
       buf += 8;
     } else if (c == 'i') {
       buf = align_to(buf, 4);
-      args.push(HEAPU32[(buf >> 2)]);
+      args.push(HEAP32[(buf >> 2)]);
       buf += 4;
     }
   }

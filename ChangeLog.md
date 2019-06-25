@@ -18,8 +18,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
 
+ - Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
+ - Set ENV['LANG'] following the user's preferred language (HTTP Accept-Language / navigator.languages[0])
  - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
    or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
  - Add a new system for managing system libraries. (#8780)

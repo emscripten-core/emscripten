@@ -540,6 +540,25 @@ var ASYNCIFY_WHITELIST = ['qsort',
                           '__fwritex',
                           'MUSL_vfprintf'];
 
+// Runs the binaryen "bysyncify" pass to transform sync code into async.
+// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
+// wasm backend.
+//
+// Done:
+//  * Sleep support.
+//  * Emscripten APIs (emscripten_wget* and other sync APIs).
+//  * Synchronous fsync syscall.
+//  * Browser integration.
+//
+// Not done:
+//  * No whitelist/blacklist support (hopefully with the simpler model
+//    and lower overhead they may not be needed?)
+//  * No coroutine support.
+var BYSYNCIFY = 0;
+
+// Runtime debug logging from bysyncify internals.
+var BYSYNCIFY_DEBUG = 0;
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
@@ -996,6 +1015,7 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 //   allow: allow creating operations that can trap. this is the most
 //          compact, as we just emit a single wasm operation, with no
 //          guards to trapping values, and also often the fastest.
+// This setting is only meaningfull with the fastcomp backend.
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for

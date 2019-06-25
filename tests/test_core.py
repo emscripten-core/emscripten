@@ -2424,9 +2424,6 @@ The current type of b is: 9
 
   @needs_dlfcn
   def test_dlfcn_i64(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.prep_dlfcn_lib()
     self.set_setting('EXPORTED_FUNCTIONS', ['_foo'])
     lib_src = '''
@@ -3790,8 +3787,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_jslib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
     create_test_file('lib.js', r'''
       mergeInto(LibraryManager.library, {
         test_lib_func: function(x) {
@@ -4192,9 +4187,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_zlib(self):
-    # avoid using asm2wasm imports, which don't work in side modules yet (should they?)
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
-
     self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
     self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
@@ -5502,7 +5494,6 @@ return malloc(size);
       src = open(path_from_root('tests', 'mmap_file.c')).read()
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
-  @no_wasm_backend('FixFunctionBitcasts pass invalidates otherwise-ok function pointer casts')
   def test_cubescript(self):
     assert 'asm3' in core_test_modes
     if self.run_name == 'asm3':
@@ -5554,6 +5545,11 @@ return malloc(size);
       test()
       print('emterpreter/async/assertions/whitelist')
       self.emcc_args += ['-s', 'EMTERPRETIFY_WHITELIST=["_frexpl"]'] # test double call assertions
+      test()
+
+    if self.is_wasm_backend():
+      print('bysyncify') # extra coverage
+      self.emcc_args += ['-s', 'BYSYNCIFY=1']
       test()
 
   @needs_dlfcn
@@ -6026,8 +6022,6 @@ return malloc(size);
   @is_slow_test
   def test_fuzz(self):
     self.emcc_args += ['-I' + path_from_root('tests', 'fuzz', 'include'), '-w']
-    # some of these tests - 2.c', '9.c', '19.c', '21.c', '20.cpp' - div or rem i32 by 0, which traps in wasm
-    self.set_setting('BINARYEN_TRAP_MODE', 'clamp')
 
     skip_lto_tests = [
       # LLVM LTO bug
@@ -6761,7 +6755,6 @@ someweirdtext
     self.do_run(src, '418')
 
   @sync
-  @no_wasm_backend()
   def test_webidl(self):
     assert 'asm2' in core_test_modes
     if self.run_name == 'asm2':
@@ -7093,13 +7086,16 @@ Success!
     self.set_setting('EXIT_RUNTIME', 1)
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
-    if not emterpretify:
-      if self.is_emterpreter():
-        self.skipTest("don't test both emterpretify and asyncify at once")
-      self.set_setting('ASYNCIFY', 1)
+    if self.is_wasm_backend():
+      self.set_setting('BYSYNCIFY', 1)
     else:
-      self.set_setting('EMTERPRETIFY', 1)
-      self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      if not emterpretify:
+        if self.is_emterpreter():
+          self.skipTest("don't test both emterpretify and asyncify at once")
+        self.set_setting('ASYNCIFY', 1)
+      else:
+        self.set_setting('EMTERPRETIFY', 1)
+        self.set_setting('EMTERPRETIFY_ASYNC', 1)
 
     src = r'''
 #include <stdio.h>
@@ -7513,7 +7509,7 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('Wasm backend emits non-trapping float-to-int conversion')
+  @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm():
       self.skipTest('wasm test')

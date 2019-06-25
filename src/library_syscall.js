@@ -446,6 +446,9 @@ var SyscallsLibrary = {
   },
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
+    if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
@@ -456,7 +459,7 @@ var SyscallsLibrary = {
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
 #if USE_LSAN
-        if (info.fd === -1) {
+        if (info.anonymous) {
           _emscripten_builtin_free(info.malloc);
         } else {
           _free(info.malloc);
@@ -718,11 +721,29 @@ var SyscallsLibrary = {
       });
     });
 #else
+#if BYSYNCIFY
+    return Bysyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
     if (stream.stream_ops && stream.stream_ops.fsync) {
       return -stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif
+#endif // BYSYNCIFY
+#endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
@@ -989,7 +1010,17 @@ var SyscallsLibrary = {
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
-    if (fd === -1) {
+    var anonymous = false;
+
+    // addr argument must be page aligned if MAP_FIXED flag is set.
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+
+    // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
+    // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
+    // In this case fd argument is ignored.
+    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
 #if USE_LSAN
       ptr = _emscripten_builtin_memalign(PAGE_SIZE, len);
 #else
@@ -998,6 +1029,7 @@ var SyscallsLibrary = {
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;
+      anonymous = true;
     } else {
       var info = FS.getStream(fd);
       if (!info) return -{{{ cDefine('EBADF') }}};
@@ -1005,7 +1037,7 @@ var SyscallsLibrary = {
       ptr = res.ptr;
       allocated = res.allocated;
     }
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, anonymous: anonymous };
     return ptr;
   },
   __syscall193: function(which, varargs) { // truncate64
