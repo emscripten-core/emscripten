@@ -124,16 +124,16 @@ that is:
 Packaging Emscripten
 --------------------
 
-If you package Emscripten for users in some manner, the above docs should be
-helpful with understanding versioning and so forth. This section goes into that
-in more detail.
+If you package Emscripten for users in some manner, the details in the rest of
+this document should be helpful with understanding versioning and so forth.
+This section goes into that in more detail.
 
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the chromium `emscripten-releases` contains all the information about versions
 in all the repos. This is the repo used by our CI to build and test emscripten. How
-this works is that you look at the DEPS file at a particular time (a git commit; that
-is a normal git repo). It has lines like these:
+this works is that you look at the the DEPS file at a particular git revision. It has
+lines like these:
 ```
   'binaryen_revision': '06698d7a32cb4eeb24fea942e83d1b15e86a73e6',
   'emscripten_revision': '7224b7930ec2a6abca332300e247619e1aea1719',
@@ -165,7 +165,7 @@ the wasm backend):
 
   * From LLVM:
     * clang
-    * clang++
+    * clang++ (note: this is a symlink to clang)
     * wasm-ld
     * llc
     * llvm-nm
