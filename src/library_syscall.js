@@ -446,6 +446,9 @@ var SyscallsLibrary = {
   },
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
+    if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
     // TODO: support unmmap'ing parts of allocations
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
@@ -999,7 +1002,16 @@ var SyscallsLibrary = {
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
-    if (fd === -1) {
+
+    // addr argument must be page aligned if MAP_FIXED flag is set.
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+
+    // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
+    // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
+    // In this case fd argument is ignored.
+    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
       ptr = _memalign(PAGE_SIZE, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);

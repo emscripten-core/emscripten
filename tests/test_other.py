@@ -9350,3 +9350,10 @@ int main () {
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
+
+  def test_mmap_and_munmap(self):
+    emcc_args = []
+    for f in ['data_ro.dat', 'data_rw.dat']:
+        create_test_file(f, 'Test file')
+        emcc_args.extend(['--embed-file', f])
+    self.do_other_test('mmap_and_munmap', emcc_args)

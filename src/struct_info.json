@@ -895,7 +895,11 @@
     {
         "file": "bits/mman.h",
         "defines": [
-            "MAP_PRIVATE"
+            "MAP_ANONYMOUS",
+            "MAP_FAILED",
+            "MAP_FIXED",
+            "MAP_PRIVATE",
+            "PROT_WRITE"
         ],
         "structs": {}
     },
