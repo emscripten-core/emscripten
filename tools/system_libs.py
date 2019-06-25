@@ -614,7 +614,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ]
 
     if self.is_asan:
-      blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c']
+      blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
+                    'aligned_alloc.c']
       libc_files += [
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_strcpy.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_memchr.c'),
