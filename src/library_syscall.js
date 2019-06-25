@@ -456,7 +456,11 @@ var SyscallsLibrary = {
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
 #if USE_LSAN
-        _emscripten_builtin_free(info.malloc);
+        if (info.fd === -1) {
+          _emscripten_builtin_free(info.malloc);
+        } else {
+          _free(info.malloc);
+        }
 #else
         _free(info.malloc);
 #endif
