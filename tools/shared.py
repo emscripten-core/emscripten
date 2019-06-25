@@ -542,7 +542,7 @@ def perform_sanify_checks():
       exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+    for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
@@ -786,7 +786,6 @@ LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
-LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
 LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
@@ -2118,13 +2117,6 @@ class Building(object):
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
-
-  @staticmethod
-  def llvm_dis(input_filename, output_filename):
-    # LLVM binary ==> LLVM assembly
-    try_delete(output_filename)
-    output = run_process([LLVM_DIS, input_filename, '-o', output_filename], stdout=PIPE).stdout
-    assert os.path.exists(output_filename), 'Could not create .ll file: ' + output
 
   @staticmethod
   def llvm_as(input_filename, output_filename):
