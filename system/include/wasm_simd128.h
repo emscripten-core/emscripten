@@ -50,8 +50,42 @@ static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(void* __mem, v128_t __
   ((struct __wasm_v128_store_struct*)__mem)->__v = __a;
 }
 
+// wasm_i8x16_make(...)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_make(int8_t c0, int8_t c1, int8_t c2, int8_t c3, int8_t c4, int8_t c5, int8_t c6, int8_t c7, int8_t c8, int8_t c9, int8_t c10, int8_t c11, int8_t c12, int8_t c13, int8_t c14, int8_t c15) {
+  return (v128_t)(__i8x16){c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15};
+}
+
+// wasm_i16x8_make(...)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_make(int16_t c0, int16_t c1, int16_t c2, int16_t c3, int16_t c4, int16_t c5, int16_t c6, int16_t c7) {
+  return (v128_t)(__i16x8){c0, c1, c2, c3, c4, c5, c6, c7};
+}
+
+// wasm_i32x4_make(...)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_make(int32_t c0, int32_t c1, int32_t c2, int32_t c3) {
+  return (v128_t)(__i32x4){c0, c1, c2, c3};
+}
+
+// wasm_f32x4_make(...)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_f32x4_make(float c0, float c1, float c2, float c3) {
+  return (v128_t)(__f32x4){c0, c1, c2, c3};
+}
+
+#ifdef __wasm_unimplemented_simd128__
+
+// wasm_i64x2_make(...)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i64x2_make(int64_t c0, int64_t c1) {
+  return (v128_t)(__i64x2){c0, c1};
+}
+
+// wasm_f64x2_make(...)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_f64x2_make(double c0, double c1) {
+  return (v128_t)(__f64x2){c0, c1};
+}
+
+#endif // __wasm_unimplemented_simd128__
+
 // v128_t wasm_i8x16_constant(...)
-#define wasm_i8x16_const(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10,c11, c12, c13, c14, c15) \
+#define wasm_i8x16_const(c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15) \
   __extension__({                                                       \
       __REQUIRE_CONSTANT(c0, int8_t, "expected constant int8_t");       \
       __REQUIRE_CONSTANT(c1, int8_t, "expected constant int8_t");       \

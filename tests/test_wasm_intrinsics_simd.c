@@ -44,6 +44,38 @@ v128_t TESTFN f64x2_const(void) {
 
 #endif // __wasm_unimplemented_sidm128__
 
+v128_t TESTFN i8x16_make(int8_t first) {
+  return wasm_i8x16_make(
+      first, (int8_t)2, (int8_t)3, (int8_t)4,
+      (int8_t)5, (int8_t)6, (int8_t)7, (int8_t)8,
+      (int8_t)9, (int8_t)10, (int8_t)11, (int8_t)12,
+      (int8_t)13, (int8_t)14, (int8_t)15, (int8_t)16
+  );
+}
+v128_t TESTFN i16x8_make(int16_t first) {
+  return wasm_i16x8_make(
+      first, (int16_t)2, (int16_t)3, (int16_t)4,
+      (int16_t)5, (int16_t)6, (int16_t)7, (int16_t)8
+  );
+}
+v128_t TESTFN i32x4_make(int32_t first) {
+  return wasm_i32x4_make(first, (int32_t)2, (int32_t)3, (int32_t)4);
+}
+v128_t TESTFN f32x4_make(float first) {
+  return wasm_f32x4_make(first, 2.f, 3.f, 4.f);
+}
+
+#ifdef __wasm_unimplemented_simd128__
+
+v128_t TESTFN i64x2_make(int64_t first) {
+  return wasm_i64x2_make(first, (int64_t)2);
+}
+v128_t TESTFN f64x2_make(double first) {
+  return wasm_f64x2_make(first, 2.);
+}
+
+#endif // __wasm_unimplemented_sidm128__
+
 v128_t TESTFN i8x16_shuffle_interleave_bytes(v128_t x, v128_t y) {
   return wasm_v8x16_shuffle(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
 }
@@ -691,6 +723,18 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
 
   expect_vec(i64x2_const(), u64x2(1, 2));
   expect_vec(f64x2_const(), f64x2(1., 2.));
+
+#endif // __wasm_unimplemented_simd128__
+
+  expect_vec(i8x16_make(1), u8x16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16));
+  expect_vec(i16x8_make(1), u16x8(1, 2, 3, 4, 5, 6, 7, 8));
+  expect_vec(i32x4_make(1), u32x4(1, 2, 3, 4));
+  expect_vec(f32x4_make(1), f32x4(1., 2., 3., 4.));
+
+#ifdef __wasm_unimplemented_simd128__
+
+  expect_vec(i64x2_make(1), u64x2(1, 2));
+  expect_vec(f64x2_make(1), f64x2(1., 2.));
 
 #endif // __wasm_unimplemented_simd128__
 
