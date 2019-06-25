@@ -14,5 +14,6 @@ int main() {
   strcpy(x, "hello");
   memchr("hello", 0, 6);
   strchr("hello", 'z');
+  strlen("hello");
   return f(x) + y[9];
 }
