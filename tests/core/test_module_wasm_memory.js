@@ -5,4 +5,4 @@
  * found in the LICENSE file.
  */
 
-Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': 256, 'maximum': 256});
+Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': 256, 'maximum': 256 });
