@@ -12,5 +12,6 @@ int main() {
   static char y[10];
   x[0] = 0;
   strcpy(x, "hello");
+  memchr("hello", 0, 6);
   return f(x) + y[9];
 }
