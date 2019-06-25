@@ -45,7 +45,7 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 
 static INLINE bool ReportSupportsColors() {
   return !!EM_ASM_INT({
-    var setting = Module['sanitizer_use_color'];
+    var setting = Module['printWithColors'];
     if (setting != null) {
       return setting;
     } else {
