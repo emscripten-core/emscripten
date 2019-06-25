@@ -6619,7 +6619,7 @@ int main() {
   std::cout << txtTestString.data() << std::endl;
   return 0;
 }
-      ''', '''std_string(const char* s)
+      ''', '''std_string(const char* s) 
 someweirdtext
 212121
 212121
