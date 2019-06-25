@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 int f(char *x) {
   int z = *x;

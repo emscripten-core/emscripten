@@ -1,13 +1,6 @@
 #include <string.h>
 #include <stdint.h>
 
-// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memset
-#if defined(__EMSCRIPTEN__) && defined(__has_feature)
-#if __has_feature(address_sanitizer)
-#define memset __attribute__((no_sanitize("address"))) emscripten_builtin_memset
-#endif
-#endif
-
 void *memset(void *dest, int c, size_t n)
 {
 	unsigned char *s = dest;

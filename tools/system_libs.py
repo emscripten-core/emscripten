@@ -117,13 +117,11 @@ def get_wasm_libc_rt_files():
       'scalbn.c', '__fpclassifyl.c',
       '__signbitl.c', '__signbitf.c', '__signbit.c'
     ])
-  string_files = files_in_path(
-    path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
-    filenames=['memset.c', 'memmove.c'])
   other_files = files_in_path(
     path_components=['system', 'lib', 'libc'],
-    filenames=['emscripten_memcpy.c'])
-  return math_files + string_files + other_files
+    filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+               'emscripten_memmove.c'])
+  return math_files + other_files
 
 
 class Library(object):
@@ -614,6 +612,12 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
         'rintf.c'
     ]
+
+    if self.is_asan:
+      blacklist += ['strcpy.c']
+      libc_files += [
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_strcpy.c'),
+      ]
 
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
