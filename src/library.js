@@ -569,6 +569,9 @@ LibraryManager.library = {
 
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
+#if USE_ASAN
+    LIMIT = Math.min(LIMIT, {{{ 8 * GLOBAL_BASE }}});
+#endif
 
     if (requestedSize > LIMIT) {
 #if ASSERTIONS
