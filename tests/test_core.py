@@ -7832,21 +7832,24 @@ extern "C" {
     'bitfield_round': ('test_asan_bitfield_round.c', [
       'AddressSanitizer: stack-buffer-overflow'
     ], ['-fno-builtin-memset']),
-    'memset_null':  ('test_asan_memset_null.c', [
+    'memset_null': ('test_asan_memset_null.c', [
       'AddressSanitizer: null-pointer-dereference on address 0x00000001'
     ], ['-fno-builtin-memset']),
-    'memset_freed':  ('test_asan_memset_freed.c', [
+    'memset_freed': ('test_asan_memset_freed.c', [
       'AddressSanitizer: heap-use-after-free on address'
     ], ['-fno-builtin-memset']),
-    'strcpy':  ('test_asan_strcpy.c', [
+    'strcpy': ('test_asan_strcpy.c', [
       'AddressSanitizer: heap-buffer-overflow on address'
     ], ['-fno-builtin-strcpy']),
-    'memcpy':  ('test_asan_memcpy.c', [
+    'memcpy': ('test_asan_memcpy.c', [
       'AddressSanitizer: heap-buffer-overflow on address'
     ], ['-fno-builtin-memcpy']),
-    'memchr':  ('test_asan_memchr.c', [
+    'memchr': ('test_asan_memchr.c', [
       'AddressSanitizer: global-buffer-overflow on address'
     ], ['-fno-builtin-memchr']),
+    'vector': ('test_asan_vector.cpp', [
+      'AddressSanitizer: container-overflow on address'
+    ], ['-std=c++11']),
   })
   @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):
