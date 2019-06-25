@@ -19,7 +19,7 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, flaky, create_test_file
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, flaky, create_test_file, parameterized
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
 from tools.shared import try_delete, Building, run_process, run_js
@@ -3273,9 +3273,17 @@ window.close = function() {
   def test_async_iostream(self):
     self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
 
+  # Test an async return value. The value goes through a custom JS library
+  # method that uses bysyncify, and therefore it needs to be declared in
+  # BYSYNCIFY_IMPORTS.
+  # To make the test more precise we also use BYSYNCIFY_IGNORE_INDIRECT here.
+  @parameterized({
+    'normal': (['-s', 'BYSYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
+    'bad': (['-DBAD'],) # noqa
+  })
   @no_fastcomp('emterpretify never worked here')
-  def test_async_returnvalue(self):
-    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')])
+  def test_async_returnvalue(self, args):
+    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
 
   @requires_sync_compilation
   def test_modularize(self):
