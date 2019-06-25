@@ -3155,9 +3155,11 @@ var LibrarySDL = {
   TTF_Init__proxy: 'sync',
   TTF_Init__sig: 'i',
   TTF_Init: function() {
+    // OffscreenCanvas 2D is faster than Canvas for text operations, so we use
+    // it if it's available.
     try {
-      var offscreen_canvas = new OffscreenCanvas(0, 0);
-      SDL.ttfContext = offscreen_canvas.getContext('2d');
+      var offscreenCanvas = new OffscreenCanvas(0, 0);
+      SDL.ttfContext = offscreenCanvas.getContext('2d');
     } catch (ex) {
       var canvas = document.createElement('canvas');
       SDL.ttfContext = canvas.getContext('2d');
