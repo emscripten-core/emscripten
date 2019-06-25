@@ -614,11 +614,11 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ]
 
     if self.is_asan:
-      blacklist += ['strcpy.c', 'memchr.c', 'strchr.c']
+      blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c']
       libc_files += [
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_strcpy.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_memchr.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_strchr.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_strchrnul.c'),
       ]
 
     if shared.Settings.WASM_BACKEND:
