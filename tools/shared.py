@@ -542,7 +542,7 @@ def perform_sanify_checks():
       exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+    for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
