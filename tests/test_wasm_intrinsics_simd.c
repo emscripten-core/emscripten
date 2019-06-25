@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <emscripten.h>
-#include <simd128.h>
+#include <wasm_simd128.h>
 
 #define TESTFN EMSCRIPTEN_KEEPALIVE __attribute__((noinline))
 
