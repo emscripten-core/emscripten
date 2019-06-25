@@ -677,13 +677,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cmd += ['-s', 'NO_EXIT_RUNTIME=0']
       # use node.js raw filesystem access, to behave just like a native executable
       cmd += ['-s', 'NODERAWFS=1']
-      # Disable wasm in configuration checks so that (1) we do not depend on
-      # wasm support just for configuration (perhaps the user does not intend
-      # to build to wasm; using asm.js only depends on js which we need anyhow),
-      # and (2) we don't have issues with a separate .wasm file
-      # on the side, async startup, etc..
-      if not shared.Settings.WASM_BACKEND:
-        cmd += ['-s', 'WASM=0']
 
     logger.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure:
