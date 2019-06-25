@@ -72,6 +72,14 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   If set, stderr will log when any file is read.
 
+.. js:attribute:: Module.printWithColors
+
+  Controls whether Emscripten runtime libraries try to print with colors. Currently, this only affects sanitizers.
+
+  If unset, colors will be enabled if printing to a terminal with ``node``.
+
+  If set to ``true``, colors will always be used if possible. If set to ``false``, colors will never be used.
+
 .. js:attribute:: Module.onAbort
 
   If set, this function is called when abnormal program termination occurs. That can happen due to the C method ``abort()`` being called directly, or called from JavaScript, or due to a fatal problem such as being unable to fetch a necessary file during startup (like the wasm binary when running wasm), etc. After calling this function, program termination occurs (i.e., you can't use this to try to do something else instead of stopping; there is no possibility of recovering here).

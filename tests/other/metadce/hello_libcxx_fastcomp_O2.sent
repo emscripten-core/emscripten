@@ -1,11 +1,8 @@
 DYNAMICTOP_PTR
-___cxa_find_matching_catch
-___cxa_free_exception
 ___cxa_uncaught_exception
 ___gxx_personality_v0
 ___lock
 ___map_file
-___resumeException
 ___setErrNo
 ___syscall140
 ___syscall145

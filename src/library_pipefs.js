@@ -79,6 +79,9 @@ mergeInto(LibraryManager.library, {
       ioctl: function (stream, request, varargs) {
         return ERRNO_CODES.EINVAL;
       },
+      fsync: function (stream) {
+        return ERRNO_CODES.EINVAL;
+      },
       read: function (stream, buffer, offset, length, position /* ignored */) {
         var pipe = stream.node.pipe;
         var currentLength = 0;

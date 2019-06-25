@@ -456,34 +456,26 @@ fi
     self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
   def test_emcc_caching(self):
-    INCLUDING_MESSAGE = 'including X'
-    BUILDING_MESSAGE = 'building X for cache'
+    BUILDING_MESSAGE = 'generating system library: X'
     ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
     self.erase_cache()
 
-    with env_modify({'EMCC_DEBUG': '1'}):
-      # Building a file that *does* need something *should* trigger cache
-      # generation, but only the first time
-      for filename, libname in [('hello_libcxx.cpp', 'libc++')]:
-        for i in range(3):
-          print(filename, libname, i)
-          self.clear()
-          output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-          # print '\n\n\n', output
-          assert INCLUDING_MESSAGE.replace('X', libname) in output
-          if libname == 'libc':
-            assert INCLUDING_MESSAGE.replace('X', 'libc++') not in output # we don't need libc++ in this code
-          else:
-            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
-          assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
-          self.assertContained('hello, world!', run_js('a.out.js'))
-          self.assertExists(Cache.dirname)
-          full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-          self.assertExists(os.path.join(Cache.dirname, full_libname))
+    # Building a file that *does* need something *should* trigger cache
+    # generation, but only the first time
+    libname = 'libc++'
+    for i in range(3):
+      print(i)
+      self.clear()
+      output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+      print ('\n\n\n', output)
+      assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      self.assertExists(Cache.dirname)
+      full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
+      self.assertExists(os.path.join(Cache.dirname, full_libname))
 
-    try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
     # Manual cache clearing
@@ -519,7 +511,7 @@ fi
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     # building libraries is disallowed
-    output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    output = self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
 
   # Test that if multiple processes attempt to access or build stuff to the

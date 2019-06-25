@@ -8,13 +8,14 @@ import shutil
 import logging
 
 TAG = 'version_1'
+HASH = 'a19ede8a4339f2745a490c22f3893899e1a5eae9d2b270e49d88d3a85239fbbaa26c9a352d0e6fb8bb69b4f45bd00c1ae9eff29b60cf03e79c5df45a4409992f'
 
 
 def get(ports, settings, shared):
   if settings.USE_LIBPNG != 1:
     return []
 
-  ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG)
+  ports.fetch_project('libpng', 'https://github.com/emscripten-ports/libpng/archive/' + TAG + '.zip', 'libpng-' + TAG, sha512hash=HASH)
 
   libname = ports.get_lib_name('libpng')
 

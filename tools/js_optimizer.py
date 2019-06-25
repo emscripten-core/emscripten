@@ -475,8 +475,7 @@ EMSCRIPTEN_FUNCS();
       temp_files.note(filename)
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
-    wasm_pthreads_memory_growth = shared.Settings.WASM and shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH
-    if closure or cleanup or wasm_pthreads_memory_growth:
+    if closure or cleanup:
       # run on the shell code, everything but what we js-optimize
       start_asm = '// EMSCRIPTEN_START_ASM\n'
       end_asm = '// EMSCRIPTEN_END_ASM\n'
@@ -490,17 +489,6 @@ EMSCRIPTEN_FUNCS();
           f.write(cl_sep)
           f.write(post_2)
         cld = cle
-        if wasm_pthreads_memory_growth:
-          if DEBUG:
-            print('supporting wasm memory growth with pthreads', file=sys.stderr)
-          cld = run_on_chunk(js_engine + [JS_OPTIMIZER, cld, 'growableHeap'])
-          with open(cld, 'r') as f:
-            src = f.read()
-          with open(cld, 'w') as f:
-            with open(shared.path_from_root('src', 'growableHeap.js')) as g:
-              f.write(g.read() + '\n')
-            f.write(src)
-            f.write(suffix_marker)
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)

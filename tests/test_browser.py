@@ -19,7 +19,7 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_wasm_backend, flaky, create_test_file
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, flaky, create_test_file
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
 from tools.shared import try_delete, Building, run_process, run_js
@@ -110,6 +110,8 @@ def requires_threads(f):
   def decorated(self):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
+    if is_chrome():
+      self.skipTest('Chrome leaks pthreads memory, https://bugs.chromium.org/p/v8/issues/detail?id=9075')
     return f(self)
 
   return decorated
@@ -826,20 +828,23 @@ window.close = function() {
     self.btest('sdl_canvas_alpha.c', args=['-lSDL', '-lGL'], reference='sdl_canvas_alpha.png', reference_slack=12)
     self.btest('sdl_canvas_alpha.c', args=['--pre-js', 'flag_0.js', '-lSDL', '-lGL'], reference='sdl_canvas_alpha_flag_0.png', reference_slack=12)
 
+  def get_async_args(self):
+    if self.is_wasm_backend():
+      return ['-s', 'BYSYNCIFY']
+    else:
+      return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
+
   def test_sdl_key(self):
     for delay in [0, 1]:
       for defines in [
         [],
         ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']
       ]:
-        for emterps in [
+        for async in [
           [],
-          ['-DTEST_SLEEP', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'ASSERTIONS=1', '-s', "SAFE_HEAP=1"]
+          ['-DTEST_SLEEP', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'] + self.get_async_args()
         ]:
-          print(delay, defines, emterps)
-
-          if emterps and self.is_wasm_backend():
-            return self.skipTest('no emterpretify with wasm backend')
+          print(delay, defines, async)
 
           create_test_file('pre.js', '''
             function keydown(c) {
@@ -858,7 +863,7 @@ window.close = function() {
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
           create_test_file('sdl_key.c', self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + emterps + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
+          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + async + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
           self.run_browser('page.html', '', '/report_result?223092870')
 
   def test_sdl_key_proxy(self):
@@ -1272,6 +1277,10 @@ keydown(100);keyup(100); // trigger the end
     self.btest('test_webgl_context_attributes_sdl.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
     self.btest('test_webgl_context_attributes_glfw.c', '1', args=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
 
+  @requires_graphics_hardware
+  def test_webgl_no_double_error(self):
+    self.btest('webgl_error.cpp', '0')
+
   # Test that -s GL_PREINITIALIZED_CONTEXT=1 works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
@@ -1306,7 +1315,6 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
-  @no_wasm_backend('emterpretify')
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     create_test_file('pre.js', '''
@@ -1322,14 +1330,13 @@ keydown(100);keyup(100); // trigger the end
       };
     ''')
 
-    args = ['--pre-js', 'pre.js', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-lidbfs.js', '-s', 'EXIT_RUNTIME=1']
+    args = ['--pre-js', 'pre.js', '-lidbfs.js', '-s', 'EXIT_RUNTIME=1'] + self.get_async_args()
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
     self.btest(path_from_root('tests', 'fs', 'test_idbfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_success']'''])
 
-  @no_wasm_backend('emterpretify')
   def test_fs_memfs_fsync(self):
-    args = ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-s', 'EXIT_RUNTIME=1']
+    args = self.get_async_args() + ['-s', 'EXIT_RUNTIME=1']
     secret = str(time.time())
     self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
 
@@ -1419,17 +1426,15 @@ keydown(100);keyup(100); // trigger the end
       self.clear()
       self.btest(path_from_root('tests', 'idbstore.c'), str(stage), force_c=True, args=['-lidbstore.js', '-DSTAGE=' + str(stage), '-DSECRET=\"' + secret + '\"'])
 
-  @no_wasm_backend('emterpretify')
   def test_idbstore_sync(self):
     secret = str(time.time())
     self.clear()
-    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2'])
+    self.btest(path_from_root('tests', 'idbstore_sync.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
   def test_idbstore_sync_worker(self):
     secret = str(time.time())
     self.clear()
-    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=80MB'])
+    self.btest(path_from_root('tests', 'idbstore_sync_worker.c'), '6', force_c=True, args=['-lidbstore.js', '-DSECRET=\"' + secret + '\"', '--memory-init-file', '1', '-O3', '-g2', '--proxy-to-worker', '-s', 'TOTAL_MEMORY=80MB'] + self.get_async_args())
 
   def test_force_exit(self):
     self.btest('force_exit.c', force_c=True, expected='17', args=['-s', 'EXIT_RUNTIME=1'])
@@ -1872,7 +1877,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
       self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
@@ -1923,7 +1928,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_matrix_identity(self):
-    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
+    self.btest('gl_matrix_identity.c', expected=['-1882984448', '460451840', '1588195328', '2411982848'], args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
   @no_swiftshader
@@ -2363,9 +2368,8 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'worker_api_3_worker.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'])
     self.btest('worker_api_3_main.cpp', expected='5')
 
-  @no_wasm_backend('emterpretify')
   def test_worker_api_sleep(self):
-    self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]', '-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+    self.compile_btest([path_from_root('tests', 'worker_api_worker_sleep.cpp'), '-o', 'worker.js', '-s', 'BUILD_AS_WORKER=1', '-s', 'EXPORTED_FUNCTIONS=["_one"]'] + self.get_async_args())
     self.btest('worker_api_main.cpp', expected='566')
 
   def test_emscripten_async_wget2(self):
@@ -2650,22 +2654,23 @@ Module["preRun"].push(function () {
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=1'])
       self.btest(path_from_root('tests', 'codemods.cpp'), expected='1', args=opts + ['-s', 'PRECISE_F32=2', '--separate-asm']) # empty polyfill, but browser has support, so semantics are like float
 
-  @no_wasm_backend('emterpretify')
   def test_wget(self):
-    with open('test.txt', 'w') as f:
-      f.write('emscripten')
-    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
-    print('asyncify+emterpreter')
-    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
-    print('emterpreter by itself')
-    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+    create_test_file('test.txt', 'emscripten')
+    if not self.is_wasm_backend():
+      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+      print('asyncify+emterpreter')
+      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
+      print('emterpreter by itself')
+      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+    else:
+      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'BYSYNCIFY=1'])
 
-  @no_wasm_backend('emterpretify')
   def test_wget_data(self):
-    with open('test.txt', 'w') as f:
-      f.write('emscripten')
-    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2'])
-    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O2', '-g2', '-s', 'ASSERTIONS=1'])
+    create_test_file('test.txt', 'emscripten')
+    self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2'] + self.get_async_args())
+    # in the emterpreter, check the special assertions mode as well
+    if not self.is_wasm_backend():
+      self.btest(path_from_root('tests', 'test_wget_data.c'), expected='1', args=['-O2', '-g2', '-s', 'ASSERTIONS=1'] + self.get_async_args())
 
   def test_locate_file(self):
     for wasm in ([0, 1] if not self.is_wasm_backend() else [1]):
@@ -2747,9 +2752,9 @@ Module["preRun"].push(function () {
 
   @requires_graphics_hardware
   def test_glfw3(self):
-    for opts in [[], ['-Os', '--closure', '1']]:
+    for opts in [[], ['-s', 'LEGACY_GL_EMULATION=1'], ['-Os', '--closure', '1']]:
       print(opts)
-      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'LEGACY_GL_EMULATION=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
+      self.btest(path_from_root('tests', 'glfw3.c'), args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'] + opts, expected='1')
 
   @requires_graphics_hardware
   def test_glfw_events(self):
@@ -3042,7 +3047,7 @@ Module['onRuntimeInitialized'] = function() {
     self.btest('sdl2_canvas_palette_2.c', reference='sdl_canvas_palette_b.png', args=['-s', 'USE_SDL=2', '--pre-js', 'args-b.js'])
 
   def test_sdl2_swsurface(self):
-    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2'])
+    self.btest('sdl2_swsurface.c', expected='1', args=['-s', 'USE_SDL=2', '-s', 'TOTAL_MEMORY=64MB'])
 
   @requires_graphics_hardware
   def test_sdl2_image_prepare(self):
@@ -3197,40 +3202,36 @@ window.close = function() {
                message='You should see Cocos2d logo',
                timeout=30)
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async(self):
+  def test_async(self):
     for opts in [0, 1, 2, 3]:
       print(opts)
-      self.btest('emterpreter_async.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-g2'])
+      self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_2(self):
+  def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
     create_test_file('pre.js', 'Error.stackTraceLimit = 80;\n')
-    self.btest('emterpreter_async_2.cpp', '40', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O3', '--pre-js', 'pre.js', ])
+    self.btest('browser/async_2.cpp', '40', args=['-O3', '--pre-js', 'pre.js'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_virtual(self):
-    for opts in [0, 1, 2, 3]:
+  def test_async_virtual(self):
+    for opts in [0, 3]:
       print(opts)
-      self.btest('emterpreter_async_virtual.cpp', '5', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-profiling'])
+      self.btest('browser/async_virtual.cpp', '5', args=['-O' + str(opts), '-profiling'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_virtual_2(self):
-    for opts in [0, 1, 2, 3]:
+  def test_async_virtual_2(self):
+    for opts in [0, 3]:
       print(opts)
-      self.btest('emterpreter_async_virtual_2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'])
+      self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad(self):
-    for opts in [0, 1, 2, 3]:
+    for opts in [0, 3]:
       print(opts)
       self.btest('emterpreter_async_bad.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=1'])
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad_2(self):
-    for opts in [0, 1, 2, 3]:
+    for opts in [0, 3]:
       for assertions in [0, 1]:
         # without assertions, we end up continuing to run more non-emterpreted code in this testcase, returning 1
         # with assertions, we hit the emterpreter-async assertion on that, and report a  clear error
@@ -3238,43 +3239,43 @@ window.close = function() {
         print(opts, assertions, expected)
         self.btest('emterpreter_async_bad_2.cpp', expected, args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_middle"]', '-s', 'ASSERTIONS=%s' % assertions, '-g'])
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_mainloop(self):
-    for opts in [0, 1, 2, 3]:
+  def test_async_mainloop(self):
+    for opts in [0, 3]:
       print(opts)
-      self.btest('emterpreter_async_mainloop.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts)], timeout=20)
+      self.btest('browser/async_mainloop.cpp', '121', args=['-O' + str(opts)] + self.get_async_args(), timeout=20)
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - specific behavior wrt other async calls being paused or not')
   def test_emterpreter_async_with_manual(self):
-    for opts in [0, 1, 2, 3]:
+    for opts in [0, 3]:
       print(opts)
       self.btest('emterpreter_async_with_manual.cpp', '121', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-O' + str(opts), '-s', 'EMTERPRETIFY_BLACKLIST=["_acall"]'], timeout=20)
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - yielding behavior')
   def test_emterpreter_async_sleep2(self):
     self.btest('emterpreter_async_sleep2.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz'])
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - safe-heap specific issues')
   def test_emterpreter_async_sleep2_safeheap(self):
     # check that safe-heap machinery does not cause errors in async operations
     self.btest('emterpreter_async_sleep2_safeheap.cpp', '17', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz', '-profiling', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main","_callback","_fix"]', '-s', 'EXIT_RUNTIME=1'])
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - yield-specific')
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
-    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1', '-lSDL'], timeout=90)
+    self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1', '-lSDL'] + self.get_async_args(), timeout=90)
 
-  @no_wasm_backend('emterpretify')
   def test_mainloop_reschedule(self):
-    self.btest('mainloop_reschedule.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Os'], timeout=30)
+    self.btest('mainloop_reschedule.cpp', '1', args=['-Os'] + self.get_async_args(), timeout=30)
 
-  @no_wasm_backend('emterpretify')
   def test_mainloop_infloop(self):
-    self.btest('mainloop_infloop.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'], timeout=30)
+    self.btest('mainloop_infloop.cpp', '1', args=self.get_async_args(), timeout=30)
 
-  @no_wasm_backend('emterpretify')
-  def test_emterpreter_async_iostream(self):
-    self.btest('emterpreter_async_iostream.cpp', '1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
+  def test_async_iostream(self):
+    self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
+
+  @no_fastcomp('emterpretify never worked here')
+  def test_async_returnvalue(self):
+    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')])
 
   @requires_sync_compilation
   def test_modularize(self):
@@ -3447,6 +3448,7 @@ window.close = function() {
   def test_dylink_dso_needed_asmjs_inworker(self):
     self._test_dylink_dso_needed(0, 1)
 
+  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8753')
   @requires_sync_compilation
   def _test_dylink_dso_needed(self, wasm, inworker):
     # here we reuse runner._test_dylink_dso_needed, but the code is run via browser.
@@ -3536,13 +3538,11 @@ window.close = function() {
 
   # Test that the emscripten_ atomics api functions work.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit atomics.
   @requires_threads
-  @flaky # TODO - fix final pthreads tests (#8718)
   def test_pthread_64bit_atomics(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
@@ -3555,17 +3555,17 @@ window.close = function() {
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_gcc_atomic_fetch_and_op(self):
     # We need to resort to using regexes to optimize out SharedArrayBuffer when pthreads are not supported, which is brittle!
     # Therefore perform very extensive testing of different codegen modes to catch any problems.
-    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-O3', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1'], ['-Os'], ['-Oz']]:
+    for opt in [[], ['-O1'], ['-O2'], ['-O3'], ['-O3', '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1'], ['-Os']]:
       for debug in [[], ['-g1'], ['-g2'], ['-g4']]:
         for f32 in [[], ['-s', 'PRECISE_F32=1', '--separate-asm', '-s', 'WASM=0']]:
-          print(opt, debug, f32)
-          if self.is_wasm_backend() and '--separate-asm' in f32:
+          args = opt + debug + f32
+          print(args)
+          if self.is_wasm_backend() and '--separate-asm' in args or 'AGGRESSIVE_VARIABLE_ELIMINATION=1' in args:
             continue
-          self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=opt + debug + f32 + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+          self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # 64 bit version of the above test.
   @requires_threads
@@ -3588,7 +3588,6 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
@@ -3596,7 +3595,6 @@ window.close = function() {
 
   # Test that basic thread creation works.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create(self):
     def test(args):
       print(args)
@@ -3613,7 +3611,6 @@ window.close = function() {
 
   # Test that a pthread can spawn another pthread of its own.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
@@ -3630,7 +3627,6 @@ window.close = function() {
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_std_thread_detach(self):
     self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
 
@@ -3655,6 +3651,10 @@ window.close = function() {
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+
+  @requires_threads
+  def test_pthread_attr_getstack(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
 
   # Test that memory allocation is thread-safe.
   @requires_threads
@@ -3790,7 +3790,6 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Test that sbrk() operates properly in multithreaded conditions
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_sbrk(self):
     for aborting_malloc in [0, 1]:
@@ -3943,7 +3942,7 @@ window.close = function() {
       print('see a fail')
       self.run_browser('test.html', None, '[no http server activity]', timeout=5) # fail without the asm
 
-  @no_wasm_backend('emterpretify')
+  @no_wasm_backend('emterpretify - bytecode in a file')
   def test_emterpretify_file(self):
     create_test_file('shell.html', '''
       <!--
@@ -4358,6 +4357,7 @@ window.close = function() {
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
@@ -4369,6 +4369,7 @@ window.close = function() {
 
   # Tests memory growth in a pthread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
+  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth(self):
     def run(emcc_args=[]):
@@ -4609,6 +4610,10 @@ window.close = function() {
   @requires_threads
   def test_emscripten_performance_now(self):
     self.btest(path_from_root('tests', 'emscripten_performance_now.c'), '0', args=['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+
+  @requires_threads
+  def test_embind_with_pthreads(self):
+    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-std=c++11', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
