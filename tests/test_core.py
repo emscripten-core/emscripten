@@ -7841,6 +7841,9 @@ extern "C" {
     'strcpy':  ('test_asan_strcpy.c', [
       'AddressSanitizer: heap-buffer-overflow on address'
     ], ['-fno-builtin-strcpy']),
+    'memcpy':  ('test_asan_memcpy.c', [
+      'AddressSanitizer: heap-buffer-overflow on address'
+    ], ['-fno-builtin-memcpy']),
   })
   @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):
