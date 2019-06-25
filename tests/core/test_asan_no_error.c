@@ -13,5 +13,6 @@ int main() {
   x[0] = 0;
   strcpy(x, "hello");
   memchr("hello", 0, 6);
+  strchr("hello", 'z');
   return f(x) + y[9];
 }
