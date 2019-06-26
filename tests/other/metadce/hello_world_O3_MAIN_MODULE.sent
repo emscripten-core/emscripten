@@ -406,6 +406,8 @@ _emscripten_do_request_fullscreen
 _emscripten_push_main_loop_blocker
 _emscripten_push_uncounted_main_loop_blocker
 _emscripten_save_in_unwind_cache
+_emscripten_syscall_mmap2
+_emscripten_syscall_munmap
 _emscripten_traverse_stack
 _exit
 _fillBatteryEventData
