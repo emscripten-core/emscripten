@@ -1052,10 +1052,8 @@ var LibrarySDL = {
 #if ASSERTIONS
       assert(tempCtx, 'TTF_Init must have been called');
 #endif
-      tempCtx.save();
       tempCtx.font = fontString;
       var ret = tempCtx.measureText(text).width | 0;
-      tempCtx.restore();
       return ret;
     },
 
@@ -3157,8 +3155,16 @@ var LibrarySDL = {
   TTF_Init__proxy: 'sync',
   TTF_Init__sig: 'i',
   TTF_Init: function() {
-    var canvas = document.createElement('canvas');
-    SDL.ttfContext = canvas.getContext('2d');
+    // OffscreenCanvas 2D is faster than Canvas for text operations, so we use
+    // it if it's available.
+    try {
+      var offscreenCanvas = new OffscreenCanvas(0, 0);
+      SDL.ttfContext = offscreenCanvas.getContext('2d');
+    } catch (ex) {
+      var canvas = document.createElement('canvas');
+      SDL.ttfContext = canvas.getContext('2d');
+    }
+
     return 0;
   },
 

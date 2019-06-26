@@ -20,6 +20,10 @@ Current Trunk
 -------------
 
  - Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
+
+v1.38.37: 06/26/2019
+--------------------
+
  - Set ENV['LANG'] following the user's preferred language (HTTP Accept-Language / navigator.languages[0])
  - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
    or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
@@ -38,6 +42,7 @@ Current Trunk
        mean `libpthreads_stub`. This allows you to say `libmalloc` or `libpthreads` without
        worrying about which implementation is supposed to be used, and avoid duplicate
        symbols if you used the wrong implementation.
+ - LLVM wasm backend pthreads fixes, see #8811, #8718
 
 v1.38.36: 06/15/2019
 --------------------

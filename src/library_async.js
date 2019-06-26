@@ -582,10 +582,11 @@ mergeInto(LibraryManager.library, {
               try {
                 return original.apply(null, arguments);
               } finally {
+                if (ABORT) return;
                 var y = Bysyncify.exportCallStack.pop(x);
                 assert(y === x);
 #if BYSYNCIFY_DEBUG >= 2
-                err('BYSYNCIFY: finally', x, Bysyncify.currData, Bysyncify.state, ' : ', Bysyncify.exportCallStack);
+                err('BYSYNCIFY: finally', x);
 #endif
                 if (Bysyncify.currData &&
                     Bysyncify.state === Bysyncify.State.Unwinding &&
@@ -622,6 +623,7 @@ mergeInto(LibraryManager.library, {
       Bysyncify.dataInfo[ptr] = null;
     },
     handleSleep: function(startAsync) {
+      if (ABORT) return;
       Module['noExitRuntime'] = true;
 #if BYSYNCIFY_DEBUG
       err('BYSYNCIFY: handleSleep ' + Bysyncify.state);
@@ -637,6 +639,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
           assert(!returnValue || typeof returnValue === 'number'); // old emterpretify API supported other stuff
 #endif
+          if (ABORT) return;
           Bysyncify.returnValue = returnValue || 0;
           reachedCallback = true;
           if (!reachedAfterCallback) {
