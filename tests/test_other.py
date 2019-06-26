@@ -3686,7 +3686,11 @@ int main()
     # compile a minimal program, with as few dependencies as possible, as
     # native building on CI may not always work well
     create_test_file('minimal.cpp', 'int main() { return 0; }')
-    run_process([CLANG, 'minimal.cpp', '-c', '-emit-llvm', '-o', 'a.bc'] + shared.get_clang_native_args(), env=shared.get_clang_native_env())
+    try:
+      vs_env = shared.get_clang_native_env()
+    except:
+      self.skipTest('Native clang env not found')
+    run_process([CLANG, 'minimal.cpp', '-c', '-emit-llvm', '-o', 'a.bc'] + shared.get_clang_native_args(), env=vs_env)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     if self.is_wasm_backend():
       self.assertContained('machine type must be wasm32', err)
