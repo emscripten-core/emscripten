@@ -219,7 +219,11 @@ var SyscallsLibrary = {
     }
   },
 
-  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS', '$FS'],
+  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS',
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    '$FS',
+#endif
+  ],
   _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
     off <<= 12; // undo pgoffset
     var ptr;
@@ -249,7 +253,11 @@ var SyscallsLibrary = {
     return ptr;
   },
 
-  _emscripten_syscall_munmap__deps: ['$SYSCALLS', '$FS'],
+  _emscripten_syscall_munmap__deps: ['$SYSCALLS',
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    '$FS',
+#endif
+  ],
   _emscripten_syscall_munmap: function(addr, len) {
     if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
       return -{{{ cDefine('EINVAL') }}};
