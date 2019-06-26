@@ -810,7 +810,7 @@ class libgl(MTLibrary):
   src_dir = ['system', 'lib', 'gl']
   src_glob = '*.c'
 
-  cflags = ['-Oz', '-Wno-return-type']
+  cflags = ['-Oz']
 
   def __init__(self, **kwargs):
     self.is_legacy = kwargs.pop('is_legacy')
@@ -864,7 +864,7 @@ class libhtml5(Library):
 class libpthreads(MuslInternalLibrary, MTLibrary):
   name = 'libpthreads'
   depends = ['libc']
-  cflags = ['-O2', '-Wno-return-type', '-Wno-visibility']
+  cflags = ['-O2']
 
   def get_files(self):
     if self.is_mt:
