@@ -459,6 +459,9 @@ var SyscallsLibrary = {
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
 #if USE_LSAN
+        // The memory allocator in sanitizers uses MAP_ANONYMOUS to allocate memory.
+        // To avoid calling back into the sanitizer memory allocator, we use the builtin memalign.
+        // Therefore, if we are using sanitizer and MAP_ANONYMOUS, the memory must be freed with the builtin free.
         if (info.anonymous) {
           _emscripten_builtin_free(info.malloc);
         } else {
@@ -1022,6 +1025,9 @@ var SyscallsLibrary = {
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
 #if USE_LSAN
+      // The memory allocator in sanitizers uses MAP_ANONYMOUS to allocate memory.
+      // It is very important that we call the builtin version of memalign in this instance,
+      // for otherwise the memalign call would call back into the sanitizer's memory allocator.
       ptr = _emscripten_builtin_memalign(PAGE_SIZE, len);
 #else
       ptr = _memalign(PAGE_SIZE, len);
