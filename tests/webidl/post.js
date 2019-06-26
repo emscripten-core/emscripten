@@ -77,9 +77,11 @@ try {
 console.log(succeeded);
 
 TheModule.Child2.printStatic(); // static calls do not go through the prototype
+TheModule.Child2.prototype.printStatic();
 
 // virtual function
 c2.virtualFunc();
+TheModule.Child2.prototype.runVirtualFunc(c2);
 TheModule.Child2.runVirtualFunc(c2);
 c2.virtualFunc2();
 
@@ -97,6 +99,7 @@ c3.virtualFunc3 = function(x) {
 };
 
 c3.virtualFunc();
+TheModule.Child2.prototype.runVirtualFunc(c3);
 TheModule.Child2.runVirtualFunc(c3);
 c3.virtualFunc2();
 c3.virtualFunc3(123); // this one is not replaced!
@@ -107,9 +110,11 @@ try {
 }
 
 // Test virtual method dispatch from c++
+TheModule.Child2.prototype.runVirtualFunc3(c3, 43);
 TheModule.Child2.runVirtualFunc3(c3, 43);
 
 c2.virtualFunc(); // original should remain the same
+TheModule.Child2.prototype.runVirtualFunc(c2);
 TheModule.Child2.runVirtualFunc(c2);
 c2.virtualFunc2();
 console.log('*ok*');
