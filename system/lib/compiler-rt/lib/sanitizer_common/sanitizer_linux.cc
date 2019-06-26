@@ -174,7 +174,7 @@ namespace __sanitizer {
 
 // --------------- sanitizer_libc.h
 #if !SANITIZER_SOLARIS && !SANITIZER_NETBSD
-#if !SANITIZER_S390 && !SANITIZER_OPENBSD
+#if !SANITIZER_S390 && !SANITIZER_OPENBSD && !SANITIZER_EMSCRIPTEN
 uptr internal_mmap(void *addr, uptr length, int prot, int flags, int fd,
                    OFF_T offset) {
 #if SANITIZER_FREEBSD || SANITIZER_LINUX_USES_64BIT_SYSCALLS
@@ -187,13 +187,15 @@ uptr internal_mmap(void *addr, uptr length, int prot, int flags, int fd,
                           offset / 4096);
 #endif
 }
-#endif // !SANITIZER_S390 && !SANITIZER_OPENBSD
+#endif // !SANITIZER_S390 && !SANITIZER_OPENBSD && !SANITIZER_NETBSD
 
-#if !SANITIZER_OPENBSD
+#if !SANITIZER_OPENBSD && !SANITIZER_EMSCRIPTEN
 uptr internal_munmap(void *addr, uptr length) {
   return internal_syscall(SYSCALL(munmap), (uptr)addr, length);
 }
+#endif
 
+#if !SANITIZER_OPENBSD
 int internal_mprotect(void *addr, uptr length, int prot) {
   return internal_syscall(SYSCALL(mprotect), (uptr)addr, length, prot);
 }

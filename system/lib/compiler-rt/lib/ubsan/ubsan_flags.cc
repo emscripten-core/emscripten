@@ -82,8 +82,9 @@ void InitializeFlags() {
   // Override from environment variable.
 #if SANITIZER_EMSCRIPTEN
   char *options = (char*) EM_ASM_INT({
-    return allocateUTF8(Module['UBSAN_OPTIONS'] || 0,
-                        _emscripten_builtin_malloc);
+    return _emscripten_with_builtin_malloc(function () {
+      return allocateUTF8(Module['UBSAN_OPTIONS'] || 0);
+    });
   });
   parser.ParseString(options);
   emscripten_builtin_free(options);

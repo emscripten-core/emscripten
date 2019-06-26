@@ -13,6 +13,52 @@ var SyscallsLibrary = {
 #endif
   ],
   $SYSCALLS: {
+    doMmap2: function(addr, len, prot, flags, fd, off) {
+      off <<= 12; // undo pgoffset
+      var ptr;
+      var allocated = false;
+
+      // addr argument must be page aligned if MAP_FIXED flag is set.
+      if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
+        return -{{{ cDefine('EINVAL') }}};
+      }
+
+      // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
+      // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
+      // In this case fd argument is ignored.
+      if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
+        ptr = _memalign(PAGE_SIZE, len);
+        if (!ptr) return -{{{ cDefine('ENOMEM') }}};
+        _memset(ptr, 0, len);
+        allocated = true;
+      } else {
+        var info = FS.getStream(fd);
+        if (!info) return -{{{ cDefine('EBADF') }}};
+        var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+        ptr = res.ptr;
+        allocated = res.allocated;
+      }
+      SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+      return ptr;
+    },
+    doMunmap: function(addr, len) {
+      if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
+        return -{{{ cDefine('EINVAL') }}};
+      }
+      // TODO: support unmmap'ing parts of allocations
+      var info = SYSCALLS.mappings[addr];
+      if (!info) return 0;
+      if (len === info.len) {
+        var stream = FS.getStream(info.fd);
+        SYSCALLS.doMsync(addr, stream, len, info.flags)
+        FS.munmap(stream);
+        SYSCALLS.mappings[addr] = null;
+        if (info.allocated) {
+          _free(info.malloc);
+        }
+      }
+      return 0;
+    },
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
@@ -446,33 +492,7 @@ var SyscallsLibrary = {
   },
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
-    if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
-    // TODO: support unmmap'ing parts of allocations
-    var info = SYSCALLS.mappings[addr];
-    if (!info) return 0;
-    if (len === info.len) {
-      var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags)
-      FS.munmap(stream);
-      SYSCALLS.mappings[addr] = null;
-      if (info.allocated) {
-#if USE_LSAN
-        // The memory allocator in sanitizers uses MAP_ANONYMOUS to allocate memory.
-        // To avoid calling back into the sanitizer memory allocator, we use the builtin memalign.
-        // Therefore, if we are using sanitizer and MAP_ANONYMOUS, the memory must be freed with the builtin free.
-        if (info.anonymous) {
-          _emscripten_builtin_free(info.malloc);
-        } else {
-          _free(info.malloc);
-        }
-#else
-        _free(info.malloc);
-#endif
-      }
-    }
-    return 0;
+    return SYSCALLS.doMunmap(addr, len);
   },
   __syscall94: function(which, varargs) { // fchmod
     var fd = SYSCALLS.get(), mode = SYSCALLS.get();
@@ -1010,41 +1030,7 @@ var SyscallsLibrary = {
   __syscall192__deps: ['emscripten_builtin_memalign', 'memalign'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
-    off <<= 12; // undo pgoffset
-    var ptr;
-    var allocated = false;
-    var anonymous = false;
-
-    // addr argument must be page aligned if MAP_FIXED flag is set.
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
-      return -{{{ cDefine('EINVAL') }}};
-    }
-
-    // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
-    // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
-    // In this case fd argument is ignored.
-    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-#if USE_LSAN
-      // The memory allocator in sanitizers uses MAP_ANONYMOUS to allocate memory.
-      // It is very important that we call the builtin version of memalign in this instance,
-      // for otherwise the memalign call would call back into the sanitizer's memory allocator.
-      ptr = _emscripten_builtin_memalign(PAGE_SIZE, len);
-#else
-      ptr = _memalign(PAGE_SIZE, len);
-#endif
-      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      _memset(ptr, 0, len);
-      allocated = true;
-      anonymous = true;
-    } else {
-      var info = FS.getStream(fd);
-      if (!info) return -{{{ cDefine('EBADF') }}};
-      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
-      ptr = res.ptr;
-      allocated = res.allocated;
-    }
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, anonymous: anonymous };
-    return ptr;
+    return SYSCALLS.doMmap2(addr, len, prot, flags, fd, off);
   },
   __syscall193: function(which, varargs) { // truncate64
     var path = SYSCALLS.getStr(), zero = SYSCALLS.getZero(), length = SYSCALLS.get64();

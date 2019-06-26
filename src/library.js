@@ -4522,7 +4522,7 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return 0;
@@ -4536,8 +4536,10 @@ LibraryManager.library = {
     }
     if (!name) return 0;
 
-    if (_emscripten_pc_get_function.ret) _emscripten_builtin_free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = allocateUTF8(name, _emscripten_builtin_malloc);
+    _emscripten_with_builtin_malloc(function () {
+      if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+      _emscripten_pc_get_function.ret = allocateUTF8(name);
+    });
     return _emscripten_pc_get_function.ret;
   },
 
@@ -4573,13 +4575,15 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _emscripten_builtin_free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(result.file, _emscripten_builtin_malloc);
+    _emscripten_with_builtin_malloc(function () {
+      if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+      _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    });
     return _emscripten_pc_get_file.ret;
   },
 
@@ -4599,6 +4603,37 @@ LibraryManager.library = {
 
   emscripten_get_module_name: function(buf, length) {
     return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
+  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc'],
+  emscripten_with_builtin_malloc: function (func) {
+    var prev_malloc = _malloc;
+    var prev_memalign = _memalign;
+    var prev_free = _free;
+    _malloc = _emscripten_builtin_malloc;
+    _memalign = _emscripten_builtin_memalign;
+    _free = _emscripten_builtin_free;
+    try {
+      return func();
+    } finally {
+      _malloc = prev_malloc;
+      _memalign = prev_memalign;
+      _free = prev_free;
+    }
+  },
+
+  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$SYSCALLS'],
+  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
+    return _emscripten_with_builtin_malloc(function () {
+      return SYSCALLS.doMmap2(addr, len, prot, flags, fd, off);
+    });
+  },
+
+  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$SYSCALLS'],
+  emscripten_builtin_munmap: function (addr, len) {
+    return _emscripten_with_builtin_malloc(function () {
+      return SYSCALLS.doMunmap(addr, len);
+    });
   },
 
   emscripten_get_stack_top: function() {

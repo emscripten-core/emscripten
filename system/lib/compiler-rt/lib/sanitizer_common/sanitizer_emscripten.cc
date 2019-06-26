@@ -67,6 +67,22 @@ int internal_sigaction(int signum, const void *act, void *oldact) {
                    (struct sigaction *)oldact);
 }
 
+extern "C" {
+  uptr emscripten_builtin_mmap2(void *addr, uptr length, int prot, int flags,
+                               int fd, unsigned offset);
+  uptr emscripten_builtin_munmap(void *addr, uptr length);
+}
+
+uptr internal_mmap(void *addr, uptr length, int prot, int flags, int fd,
+                   OFF_T offset) {
+  CHECK(IsAligned(offset, 4096));
+  return emscripten_builtin_mmap2(addr, length, prot, flags, fd, offset / 4096);
+}
+
+uptr internal_munmap(void *addr, uptr length) {
+  return emscripten_builtin_munmap(addr, length);
+}
+
 extern "C" uptr emscripten_get_stack_top();
 extern "C" uptr emscripten_get_stack_base();
 
