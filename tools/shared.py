@@ -1638,10 +1638,12 @@ class Building(object):
     if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
       args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
-    # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
+    # On Windows specify MinGW Makefiles or ninja if we have them and no other toolchain was specified, to avoid CMake
     # pulling in a native Visual Studio, or Unix Makefiles.
     if WINDOWS and '-G' not in args and Building.which('mingw32-make'):
       args += ['-G', 'MinGW Makefiles']
+    if WINDOWS and '-G' not in args and Building.which('ninja'):
+      args += ['-G', 'Ninja']
 
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
     # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
