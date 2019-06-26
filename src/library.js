@@ -4622,17 +4622,17 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$SYSCALLS'],
+  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_mmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
     return _emscripten_with_builtin_malloc(function () {
-      return SYSCALLS.doMmap2(addr, len, prot, flags, fd, off);
+      return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$SYSCALLS'],
+  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_munmap'],
   emscripten_builtin_munmap: function (addr, len) {
     return _emscripten_with_builtin_malloc(function () {
-      return SYSCALLS.doMunmap(addr, len);
+      return __emscripten_syscall_munmap(addr, len);
     });
   },
 
