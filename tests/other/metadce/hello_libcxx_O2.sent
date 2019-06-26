@@ -1,6 +1,7 @@
 DYNAMICTOP_PTR
 __cxa_atexit
-__cxa_uncaught_exception
+__cxa_pure_virtual
+__cxa_uncaught_exceptions
 __lock
 __map_file
 __setErrNo
