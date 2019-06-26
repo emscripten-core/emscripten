@@ -132,7 +132,7 @@ The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the chromium `emscripten-releases` contains all the information about versions
 in all the repos. This is the repo used by our CI to build and test emscripten. How
-this works is that you look at the the DEPS file at a particular git revision. It has
+this works is that you look at the DEPS file at a particular git revision. It has
 lines like these:
 ```
   'binaryen_revision': '06698d7a32cb4eeb24fea942e83d1b15e86a73e6',
