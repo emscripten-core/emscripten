@@ -4605,7 +4605,7 @@ LibraryManager.library = {
     return stringToUTF8(wasmBinaryFile, buf, length);
   },
 
-  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc'],
+  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
   emscripten_with_builtin_malloc: function (func) {
     var prev_malloc = _malloc;
     var prev_memalign = _memalign;

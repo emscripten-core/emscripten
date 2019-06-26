@@ -641,6 +641,8 @@ emscripten_autodebug_i16
 emscripten_autodebug_i32
 emscripten_autodebug_i64
 emscripten_autodebug_i8
+emscripten_builtin_mmap2
+emscripten_builtin_munmap
 emscripten_call_worker
 emscripten_cancel_animation_frame
 emscripten_cancel_main_loop
@@ -1024,6 +1026,7 @@ emscripten_webgl_init_context_attributes
 emscripten_webgl_make_context_current
 emscripten_wget
 emscripten_wget_data
+emscripten_with_builtin_malloc
 emscripten_worker_respond
 emscripten_worker_respond_provisionally
 emscripten_yield
