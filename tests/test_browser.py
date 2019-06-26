@@ -1578,10 +1578,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
-    create_test_file('test_egl_createcontext_error.c', self.with_report_result(open(path_from_root('tests', 'test_egl_createcontext_error.c')).read()))
-
-    self.compile_btest(['test_egl_createcontext_error.c', '-o', 'page.html', '-lEGL', '-lGL'])
-    self.run_browser('page.html', '', '/report_result?1')
+    self.btest('test_egl_createcontext_error.c', '1', args=['-lEGL', '-lGL'])
 
   def do_test_worker(self, args=[]):
     # Test running in a web worker
