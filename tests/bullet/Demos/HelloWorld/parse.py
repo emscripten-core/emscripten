@@ -1,3 +1,4 @@
+from __future__ import print_function
 # Copyright 2014 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -72,4 +73,4 @@ for line in data.split('\n'):
     bins[i] = fps
 
 for i in range(len(bins)):
-  print i * bin_size, bins[i]
+  print(i * bin_size, bins[i])
