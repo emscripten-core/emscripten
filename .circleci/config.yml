@@ -234,7 +234,7 @@ jobs:
           command: |
             pip install sphinx==1.7.8
       - run: make -C site html
-  flake8-python2:
+  flake8:
     <<: *defaults
     steps:
       - checkout
@@ -246,18 +246,6 @@ jobs:
       - run: pip install --upgrade pip
       - run: pip install flake8==3.7.7
       - run: flake8
-  flake8-python3:
-    <<: *defaults
-    steps:
-      - checkout
-      - run:
-          name: install pip
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3-pip
-      - run: pip install --upgrade pip
-      - run: pip install flake8==3.7.7
-      - run: flake8 --exit-zero
   test-other:
     <<: *test-defaults
     environment:
@@ -413,8 +401,7 @@ workflows:
 
   build-test:
     jobs:
-      - flake8-python2
-      - flake8-python3
+      - flake8
       - build-docs
       - build
       - test-other:
