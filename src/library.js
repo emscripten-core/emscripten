@@ -569,9 +569,6 @@ LibraryManager.library = {
 
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
     var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
-#if USE_ASAN
-    LIMIT = Math.min(LIMIT, {{{ 8 * GLOBAL_BASE }}});
-#endif
 
     if (requestedSize > LIMIT) {
 #if ASSERTIONS
@@ -620,6 +617,16 @@ LibraryManager.library = {
       return false;
     }
 #endif // WASM_MEM_MAX
+
+#if USE_ASAN
+    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (newSize == oldSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
+#endif
+      return false;
+    }
+#endif
 
 #if ASSERTIONS
     var start = Date.now();
