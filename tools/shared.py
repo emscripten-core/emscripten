@@ -1638,8 +1638,8 @@ class Building(object):
     if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
       args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
-    # On Windows specify MinGW Makefiles or ninja if we have them and no other toolchain was specified, to avoid CMake
-    # pulling in a native Visual Studio, or Unix Makefiles.
+    # On Windows specify MinGW Makefiles or ninja if we have them and no other toolchain was specified, to keep CMake
+    # from pulling in a native Visual Studio, or Unix Makefiles.
     if WINDOWS and '-G' not in args:
       if Building.which('mingw32-make'):
         args += ['-G', 'MinGW Makefiles']
