@@ -4930,6 +4930,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'fs', 'test_64bit.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
@@ -5025,6 +5026,7 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'login.out')).read()
     self.do_run(src, expected)
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
@@ -5089,6 +5091,7 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
     orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'misc.c')).read()
