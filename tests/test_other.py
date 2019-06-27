@@ -219,7 +219,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # -dumpversion
       output = run_process([PYTHON, compiler, '-dumpversion'], stdout=PIPE, stderr=PIPE)
-      self.assertEqual(shared.EMSCRIPTEN_VERSION + os.linesep, output.stdout, 'results should be identical')
+      self.assertEqual(shared.EMSCRIPTEN_VERSION, output.stdout.strip(), 'results should be identical')
 
       # emcc src.cpp ==> writes a.out.js and a.out.wasm
       self.clear()
@@ -8294,9 +8294,9 @@ int main() {
 
   # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):
-    run_process([CLANG, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', 'hello_world.o'])
-    err = self.expect_fail([PYTHON, EMCC, 'hello_world.o', '-o', 'hello_world.js'])
-    self.assertContained('hello_world.o is not a valid input', err)
+    run_process([CLANG_CC, '-c', path_from_root('tests', 'hello_123.c'), '-o', 'hello_123.o'])
+    err = self.expect_fail([PYTHON, EMCC, 'hello_123.o', '-o', 'hello_123.js'])
+    self.assertContained('hello_123.o is not a valid input', err)
 
   # Tests that we should give a clear error on TOTAL_MEMORY not being enough for static initialization + stack
   def test_clear_error_on_massive_static_data(self):
