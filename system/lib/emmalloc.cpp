@@ -1193,7 +1193,7 @@ struct mallinfo mallinfo() {
 // in their code, and make those replacements refer to the original malloc
 // and free from this file.
 // This allows an easy mechanism for hooking into memory allocation.
-#if defined(__EMSCRIPTEN__) && !defined(TESTING_EMMALLOC)
+#if defined(__EMSCRIPTEN__)
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("malloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((alias("free")));
 extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("memalign")));
