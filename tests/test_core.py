@@ -751,24 +751,20 @@ base align: 0, 0, 0, 0'''])
   def test_mallocstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
-  def test_emmalloc(self):
+  @parameterized({
+    'normal': [],
+    'debug': ['-DEMMALLOC_DEBUG'],
+    'debug_log': ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG', '-DRANDOM_ITERS=130'],
+  })
+  def test_emmalloc(self, *args):
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
-    self.emcc_args += ['-fno-builtin']
+    self.set_setting('MALLOC', 'none')
+    self.emcc_args += ['-fno-builtin'] + list(args)
 
-    def test():
-      self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
-                  open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
-    print('normal')
-    test()
-    print('debug')
-    self.emcc_args += ['-DEMMALLOC_DEBUG']
-    test()
-    print('debug log')
-    self.emcc_args += ['-DEMMALLOC_DEBUG_LOG']
-    self.emcc_args += ['-DRANDOM_ITERS=130']
-    test()
+    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+                open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
@@ -7789,7 +7785,7 @@ extern "C" {
     def modify_env(filename):
       with open(filename) as f:
         contents = f.read()
-      contents = re.sub('(?<=ENV=){}', "{'UBSAN_OPTIONS': 'print_stacktrace=1'}", contents)
+      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"}' + contents
       with open(filename, 'w') as f:
         f.write(contents)
 
@@ -7889,6 +7885,8 @@ wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 # emterpreter
 asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})
 asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
+
+lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

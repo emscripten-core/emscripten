@@ -7,6 +7,7 @@
 # noqa: E241
 
 from __future__ import print_function
+from functools import wraps
 import difflib
 import filecmp
 import glob
@@ -66,6 +67,7 @@ def uses_canonical_tmp(func):
   This decorator takes care of cleaning the directory after the
   test to satisfy the leak detector.
   """
+  @wraps(func)
   def decorated(self):
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
@@ -135,6 +137,22 @@ class other(RunnerCore):
     expected = open(path_from_root('tests', dirname, 'test.out')).read()
     seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True) + '\n'
     self.assertContained(expected, seen)
+
+  # Another utility to run a test in this suite. This receives a source file
+  # to compile, with optional compiler and execution flags.
+  # Output can be checked by seeing if literals are contained, and that a list
+  # of regexes match. The return code can also be checked.
+  def do_smart_test(self, source, literals=[], regexes=[],
+                    emcc_args=[], run_args=[], assert_returncode=0):
+    run_process([PYTHON, EMCC, source] + emcc_args)
+    seen = run_js('a.out.js', args=run_args, stderr=PIPE, full_output=True,
+                  assert_returncode=assert_returncode) + '\n'
+
+    for literal in literals:
+      self.assertContained([literal], seen)
+
+    for regex in regexes:
+      self.assertTrue(re.search(regex, seen), 'Expected regex "%s" to match on:\n%s' % (regex, seen))
 
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
@@ -7677,7 +7695,7 @@ int main() {
         # name section adds the name of malloc (there is also another one for the export)
         self.assertEqual(code.count(b'malloc'), 2)
       else:
-        # should be just one name, for the export
+        # should be just malloc for the export
         self.assertEqual(code.count(b'malloc'), 1)
       sizes[str(args)] = os.path.getsize('a.out.wasm')
     print(sizes)
@@ -7985,13 +8003,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 32, [], ['waka'], 226582,  21,  32, 559) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582,  21,  32, 559) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 31, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
+    'normal': (['-O2'], 32, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
     'enumated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        31, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
+                        32, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8013,7 +8031,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 517336, 172, 1484, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1610, [], [], 517336, 172, 1506, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
@@ -8033,7 +8051,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1566, [], [], 226403, 30, 96, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1575, [], [], 226403, 30, 96, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
@@ -9316,6 +9334,56 @@ int main () {
   def test_malloc_none(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'malloc_none.c'), '-s', 'MALLOC=none'])
     self.assertContained('undefined symbol: malloc', stderr)
+
+  @parameterized({
+    'c': ['c'],
+    'cpp': ['cpp'],
+  })
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_leaks(self, ext):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.' + ext),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+                       assert_returncode=None, literals=[
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+    ])
+
+  @parameterized({
+    'c': ['c', [
+      r'in malloc.*a\.out\.wasm\+0x',
+      r'(?m)in f /.*/test_lsan_leaks\.c:6:21$',
+      r'(?m)in main /.*/test_lsan_leaks\.c:10:16$',
+      r'(?m)in main /.*/test_lsan_leaks\.c:12:3$',
+      r'(?m)in main /.*/test_lsan_leaks\.c:13:3$',
+    ]],
+    'cpp': ['cpp', [
+      r'in operator new\[\]\(unsigned long\).*a\.out\.wasm\+0x',
+      r'(?m)in f\(\) /.*/test_lsan_leaks\.cpp:4:21$',
+      r'(?m)in main /.*/test_lsan_leaks\.cpp:8:16$',
+      r'(?m)in main /.*/test_lsan_leaks\.cpp:10:3$',
+      r'(?m)in main /.*/test_lsan_leaks\.cpp:11:3$',
+    ]],
+  })
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_stack_trace(self, ext, regexes):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.' + ext),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-g4'],
+                       assert_returncode=None, literals=[
+      'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
+      'Direct leak of 42 byte(s) in 1 object(s) allocated from',
+    ], regexes=regexes)
+
+  @parameterized({
+    'c': ['c'],
+    'cpp': ['cpp'],
+  })
+  @no_fastcomp('lsan not supported on fastcomp')
+  def test_lsan_no_leak(self, ext):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.' + ext),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+                       regexes=[r'^\s*$'])
 
   @no_windows('ptys and select are not available on windows')
   @no_fastcomp('fastcomp clang detects colors differently')

@@ -973,7 +973,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
-  js_depends = ['memalign']
+  js_depends = ['memalign', 'emscripten_builtin_memalign']
   never_force = True
 
   cflags = ['-std=c++11']
@@ -982,15 +982,35 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   src_glob_exclude = ['sanitizer_common_nolibc.cc']
 
 
-class libubsan_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
-  name = 'libubsan_rt_wasm'
+class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   depends = ['libsanitizer_common_rt_wasm']
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  cflags = ['-std=c++11', '-DUBSAN_CAN_USE_CXXABI']
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
+  cflags = ['-std=c++11']
   src_glob = '*.cc'
+
+
+class libubsan_rt_wasm(SanitizerLibrary):
+  name = 'libubsan_rt_wasm'
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
+
+  cflags = ['-DUBSAN_CAN_USE_CXXABI']
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
+
+
+# TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
+# and clean up the duplicate code.
+class liblsan_rt_wasm(CompilerRTWasmLibrary):
+  name = 'liblsan_rt_wasm'
+  depends = ['libsanitizer_common_rt_wasm']
+  js_depends = ['__data_end', '__heap_base', 'emscripten_builtin_malloc', 'emscripten_builtin_free']
+  never_force = True
+
+  includes = [['system', 'lib', 'compiler-rt', 'lib']]
+  cflags = ['-std=c++11']
+  src_glob = '*.cc'
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
 
 
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
@@ -1146,6 +1166,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(system_libs_map['libubsan_minimal_rt_wasm'])
   elif shared.Settings.UBSAN_RUNTIME == 2:
     add_library(system_libs_map['libubsan_rt_wasm'])
+
+  if shared.Settings.USE_LSAN:
+    force_include.add('liblsan_rt_wasm')
+    add_library(system_libs_map['liblsan_rt_wasm'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

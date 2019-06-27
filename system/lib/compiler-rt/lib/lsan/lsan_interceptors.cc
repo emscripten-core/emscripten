@@ -420,6 +420,7 @@ INTERCEPTOR(void, _exit, int status) {
   REAL(_exit)(status);
 }
 
+#if !SANITIZER_EMSCRIPTEN
 #define COMMON_INTERCEPT_FUNCTION(name) INTERCEPT_FUNCTION(name)
 #include "sanitizer_common/sanitizer_signal_interceptors.inc"
 
@@ -458,3 +459,4 @@ void InitializeInterceptors() {
 }
 
 } // namespace __lsan
+#endif

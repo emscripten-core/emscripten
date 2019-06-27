@@ -412,6 +412,8 @@ __emscripten_do_request_fullscreen
 __emscripten_push_main_loop_blocker
 __emscripten_push_uncounted_main_loop_blocker
 __emscripten_save_in_unwind_cache
+__emscripten_syscall_mmap2
+__emscripten_syscall_munmap
 __emscripten_traverse_stack
 __exit
 __fillBatteryEventData
@@ -638,6 +640,11 @@ _emscripten_autodebug_i16
 _emscripten_autodebug_i32
 _emscripten_autodebug_i64
 _emscripten_autodebug_i8
+_emscripten_builtin_free
+_emscripten_builtin_malloc
+_emscripten_builtin_memalign
+_emscripten_builtin_mmap2
+_emscripten_builtin_munmap
 _emscripten_call_worker
 _emscripten_cancel_animation_frame
 _emscripten_cancel_main_loop
@@ -1020,6 +1027,7 @@ _emscripten_webgl_init_context_attributes
 _emscripten_webgl_make_context_current
 _emscripten_wget
 _emscripten_wget_data
+_emscripten_with_builtin_malloc
 _emscripten_worker_respond
 _emscripten_worker_respond_provisionally
 _emscripten_yield
@@ -1422,6 +1430,7 @@ _pixelRGBA
 _posix_spawn
 _posix_spawnp
 _pthread_attr_destroy
+_pthread_attr_getdetachstate
 _pthread_attr_getstack
 _pthread_attr_init
 _pthread_attr_setdetachstate
