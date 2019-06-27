@@ -1645,7 +1645,6 @@ class Building(object):
     elif WINDOWS and '-G' not in args and Building.which('ninja'):
       args += ['-G', 'Ninja']
 
-
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
     # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
     if WINDOWS and 'MinGW Makefiles' in args:
