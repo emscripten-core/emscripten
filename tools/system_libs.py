@@ -506,7 +506,10 @@ class MuslInternalLibrary(Library):
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
-    self.is_asan = kwargs.pop('is_asan')
+    if shared.Settings.WASM_BACKEND:
+      self.is_asan = kwargs.pop('is_asan')
+    else:
+      self.is_asan = False
     super(AsanInstrumentedLibrary, self).__init__(**kwargs)
 
   def get_cflags(self):
@@ -523,7 +526,10 @@ class AsanInstrumentedLibrary(Library):
 
   @classmethod
   def vary_on(cls):
-    return super(AsanInstrumentedLibrary, cls).vary_on() + ['is_asan']
+    vary_on = super(AsanInstrumentedLibrary, cls).vary_on()
+    if shared.Settings.WASM_BACKEND:
+      vary_on += ['is_asan']
+    return vary_on
 
   @classmethod
   def get_default_variation(cls, **kwargs):
