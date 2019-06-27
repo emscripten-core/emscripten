@@ -506,10 +506,7 @@ class MuslInternalLibrary(Library):
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
-    if shared.Settings.WASM_BACKEND:
-      self.is_asan = kwargs.pop('is_asan')
-    else:
-      self.is_asan = False
+    self.is_asan = kwargs.pop('is_asan', False)
     super(AsanInstrumentedLibrary, self).__init__(**kwargs)
 
   def get_cflags(self):
