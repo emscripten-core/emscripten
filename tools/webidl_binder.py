@@ -345,8 +345,6 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
   bindings_name = class_name + '_' + func_name
   min_args = min(sigs.keys())
   max_args = max(sigs.keys())
-  if return_type.isSequence():
-    return_type = return_type.inner
 
   all_args = sigs.get(max_args)
 
@@ -659,6 +657,7 @@ for name in names:
     attr = m.identifier.name
 
     if m.type.isSequence():
+      get_return_type = m.type.inner
       get_sigs = { 1: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] })] }
       set_sigs = { 2: [Dummy({ 'type': WebIDL.BuiltinTypes[WebIDL.IDLBuiltinType.Types.long] }),
                        Dummy({ 'type': m.type })] }
@@ -669,6 +668,7 @@ for name in names:
         get_call_content = "(%s, %s)" % (bounds_check, get_call_content)
         set_call_content = "(%s, %s)" % (bounds_check, set_call_content)
     else:
+      get_return_type = m.type
       get_sigs = { 0: [] }
       set_sigs = { 1: [Dummy({ 'type': m.type })] }
       get_call_content = take_addr_if_nonpointer(m) + 'self->' + attr
@@ -678,7 +678,7 @@ for name in names:
     mid_js += [r'''
   %s.prototype['%s'] = %s.prototype.%s = ''' % (name, get_name, name, get_name)]
     render_function(name,
-                    get_name, get_sigs, m.type,
+                    get_name, get_sigs, get_return_type,
                     None,
                     None,
                     None,
