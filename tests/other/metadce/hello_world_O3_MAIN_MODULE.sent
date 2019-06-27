@@ -643,6 +643,7 @@ emscripten_autodebug_i16
 emscripten_autodebug_i32
 emscripten_autodebug_i64
 emscripten_autodebug_i8
+emscripten_builtin_memalign
 emscripten_builtin_mmap2
 emscripten_builtin_munmap
 emscripten_call_worker
