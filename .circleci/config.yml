@@ -254,8 +254,8 @@ jobs:
           command: |
             apt-get update -q
             apt-get install -q -y python3-pip
-      - run: pip install --upgrade pip
-      - run: pip install flake8==3.7.7
+      - run: pip3 install --upgrade pip
+      - run: pip3 install flake8==3.7.7
       - run: flake8 --exit-zero
   test-other:
     <<: *test-defaults
