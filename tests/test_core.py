@@ -1860,10 +1860,10 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @no_asmjs()
-  def test_module_wasm_memory(self, js_engines=None):
+  def test_module_wasm_memory(self):
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_module_wasm_memory.js')]
     src = open(path_from_root('tests', 'core', 'test_module_wasm_memory.c')).read()
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    self.do_run(src, 'success', force_c=True)
 
   def test_ssr(self): # struct self-ref
       src = '''
