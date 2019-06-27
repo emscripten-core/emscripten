@@ -17,27 +17,15 @@
 -------- T atan2f
 -------- T atan2l
 -------- T atanf
--------- d atanhi
--------- d atanhi.1
 -------- T atanl
--------- d atanlo
--------- d atanlo.2
--------- d bp
--------- d bp.4
 -------- T cos
 -------- T cosf
 -------- T cosl
--------- d dp_h
--------- d dp_h.6
--------- d dp_l
--------- d dp_l.5
 -------- T exp
 -------- T expf
 -------- T expl
          U fabs
          U fabsf
--------- d half
--------- d half.3
 -------- T log
 -------- T logf
 -------- T logl
