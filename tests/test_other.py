@@ -9385,10 +9385,11 @@ int main () {
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
                        regexes=[r'^\s*$'])
 
+  @no_fastcomp('ASan is not supported on fastcomp')
   def test_asan_null_deref(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_null_deref.c'),
                        emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'],
-                       name='test.c', assert_returncode=None, literals=[
+                       assert_returncode=None, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
