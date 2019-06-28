@@ -28,4 +28,3 @@
 -------- T emscripten_atomic_store_u64
 -------- T emscripten_atomic_sub_u64
 -------- T emscripten_atomic_xor_u64
--------- d emulated64BitAtomicsLocks

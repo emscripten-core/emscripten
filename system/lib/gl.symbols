@@ -1,5 +1,3 @@
--------- t ImageSize
--------- t InitWebGLTls
 -------- C currentActiveWebGLContext
 -------- C currentThreadOwnsItsWebGLContext
 -------- T emscripten_GetProcAddress
@@ -317,9 +315,9 @@
 -------- T emscripten_webgl_create_context
          U emscripten_webgl_do_commit_frame
          U emscripten_webgl_do_create_context
-         U emscripten_webgl_make_context_current_calling_thread
 -------- T emscripten_webgl_get_current_context
 -------- T emscripten_webgl_make_context_current
+         U emscripten_webgl_make_context_current_calling_thread
 -------- T glActiveTexture
 -------- T glAttachShader
 -------- T glBeginQuery
@@ -596,7 +594,6 @@
 -------- T glViewport
 -------- T glWaitSync
          U malloc
--------- t memdup
          U pthread_getspecific
          U pthread_key_create
          U pthread_once
@@ -606,4 +603,3 @@
          U strcpy
          U strlen
          U strstr
--------- d tlsInit
