@@ -795,8 +795,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = path1.replace('\\', '/').replace('//', '/')
+    path2 = path2.replace('\\', '/').replace('//', '/')
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
