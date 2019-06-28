@@ -1,5 +1,11 @@
 [flake8]
-ignore = E111,E114,E501,E261,E266,E121,E402,E241
+# should be fixed in future pull requests
+# E722 do not use bare 'except'
+# E741 ambiguous variable name 'l'
+# F632 use ==/!= to compare str, bytes, and int literals
+# W605 invalid escape sequence '\ ' -- Should be fixed or # noqa added
+# W606 ‘async’ and ‘await’ are reserved keywords starting with Python 3.7
+ignore = E111,E114,E121,E241,E261,E266,E402,E501,E722,F632,W504,W605,W606
 exclude =
  ./third_party/, # third-party code
  ./tools/filelock.py, # third-party code
