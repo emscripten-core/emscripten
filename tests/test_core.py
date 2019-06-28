@@ -7768,7 +7768,7 @@ extern "C" {
     ]),
     'g4': ('-g4', [
       "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
-      'in main /',
+      'in main ',
       '/src.cpp:3:8'
     ]),
   })
