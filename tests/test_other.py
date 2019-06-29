@@ -9352,17 +9352,17 @@ int main () {
   @parameterized({
     'c': ['c', [
       r'in malloc.*a\.out\.wasm\+0x',
-      r'(?m)in f /.*/test_lsan_leaks\.c:6:21$',
-      r'(?m)in main /.*/test_lsan_leaks\.c:10:16$',
-      r'(?m)in main /.*/test_lsan_leaks\.c:12:3$',
-      r'(?m)in main /.*/test_lsan_leaks\.c:13:3$',
+      r'(?m)in f (/|[a-z]:).*/test_lsan_leaks\.c:6:21$',
+      r'(?m)in main (/|[a-z]:).*/test_lsan_leaks\.c:10:16$',
+      r'(?m)in main (/|[a-z]:).*/test_lsan_leaks\.c:12:3$',
+      r'(?m)in main (/|[a-z]:).*/test_lsan_leaks\.c:13:3$',
     ]],
     'cpp': ['cpp', [
       r'in operator new\[\]\(unsigned long\).*a\.out\.wasm\+0x',
-      r'(?m)in f\(\) /.*/test_lsan_leaks\.cpp:4:21$',
-      r'(?m)in main /.*/test_lsan_leaks\.cpp:8:16$',
-      r'(?m)in main /.*/test_lsan_leaks\.cpp:10:3$',
-      r'(?m)in main /.*/test_lsan_leaks\.cpp:11:3$',
+      r'(?m)in f\(\) (/|[a-z]:).*/test_lsan_leaks\.cpp:4:21$',
+      r'(?m)in main (/|[a-z]:).*/test_lsan_leaks\.cpp:8:16$',
+      r'(?m)in main (/|[a-z]:).*/test_lsan_leaks\.cpp:10:3$',
+      r'(?m)in main (/|[a-z]:).*/test_lsan_leaks\.cpp:11:3$',
     ]],
   })
   @no_fastcomp('lsan not supported on fastcomp')
