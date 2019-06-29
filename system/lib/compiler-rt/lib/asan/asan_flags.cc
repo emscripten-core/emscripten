@@ -135,7 +135,9 @@ void InitializeFlags() {
   // Override from Emscripten Module.
 #define MAKE_OPTION_LOAD(parser, name) \
     options = (char*) EM_ASM_INT({ \
-      return allocateUTF8(Module[name] || 0, _emscripten_builtin_malloc); \
+      return _emscripten_with_builtin_malloc(function () { \
+        return allocateUTF8(Module[name] || 0); \
+      }); \
     }); \
     parser.ParseString(options); \
     emscripten_builtin_free(options);
