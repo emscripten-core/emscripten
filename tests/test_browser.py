@@ -3225,6 +3225,13 @@ window.close = function() {
       print(opts)
       self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
 
+  @parameterized({
+    '0': ([],), # noqa
+    '1': (['-O1'],), # noqa
+  })
+  def test_async_longjmp(self, args):
+    self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
+
   @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad(self):
     for opts in [0, 3]:
