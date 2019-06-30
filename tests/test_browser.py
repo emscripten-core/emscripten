@@ -3227,7 +3227,7 @@ window.close = function() {
 
   @parameterized({
     '0': ([],), # noqa
-    '1': (['-O1'],), # noqa
+    '3': (['-O3'],), # noqa
   })
   def test_async_longjmp(self, args):
     self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
