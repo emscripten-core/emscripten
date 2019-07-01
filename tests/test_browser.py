@@ -3228,8 +3228,8 @@ window.close = function() {
   # Test async sleeps in the presence of invoke_* calls, which can happen with
   # longjmp or exceptions.
   @parameterized({
-    '0': ([],), # noqa
-    '3': (['-O3'],), # noqa
+    'O0': ([],), # noqa
+    'O3': (['-O3'],), # noqa
   })
   def test_async_longjmp(self, args):
     self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
