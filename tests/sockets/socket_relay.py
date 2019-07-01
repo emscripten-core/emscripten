@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 """Listens on 2 ports and relays between them.
 
 Listens to ports A and B. When someone connects to port A, and then
@@ -13,7 +15,6 @@ This is different than say socat which will listen to one port
 and then make a connection to another port, and do bidirectional
 communication. We need to actually listen on both ports.
 """
-from __future__ import print_function
 
 import sys
 import socket
