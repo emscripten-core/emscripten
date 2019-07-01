@@ -951,7 +951,7 @@ class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
   def get_base_name_prefix(self):
-    return 'libpthreads' if self.is_mt else 'libpthreads-stub'
+    return 'libpthreads' if self.is_mt else 'libpthreads_stub'
 
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
   asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
