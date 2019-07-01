@@ -1491,6 +1491,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
         shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+        assert shared.Settings.TOTAL_MEMORY < 2**32
 
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
