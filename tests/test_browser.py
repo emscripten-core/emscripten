@@ -1315,6 +1315,11 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
+  def test_fs_idbfs_sync_force_exit(self):
+    secret = str(time.time())
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT'])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT'])
+
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     create_test_file('pre.js', '''
