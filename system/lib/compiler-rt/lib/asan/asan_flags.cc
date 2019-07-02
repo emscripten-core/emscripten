@@ -67,7 +67,7 @@ void InitializeFlags() {
     cf.detect_leaks = cf.detect_leaks && CAN_SANITIZE_LEAKS;
 #if !SANITIZER_EMSCRIPTEN
     // getenv on emscripten uses malloc, which we can't when using LSan.
-    // You can't run external symbolizers anyway.
+    // You can't run external symbolizer executables anyway.
     cf.external_symbolizer_path = GetEnv("ASAN_SYMBOLIZER_PATH");
 #endif
     cf.malloc_context_size = kDefaultMallocContextSize;

@@ -21,7 +21,8 @@ void InitializePlatformExceptionHandlers() {}
 bool IsSystemHeapAddress (uptr addr) { return false; }
 
 void *AsanDoesNotSupportStaticLinkage() {
-  // Actually, we have to do static linkage on Emscripten.
+  // On Linux, this is some magic that fails linking with -static.
+  // On Emscripten, we have to do static linking, so we stub this out.
   return nullptr;
 }
 

@@ -617,6 +617,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     ]
 
     if self.is_asan:
+      # With ASan, we need to use specialized implementations of certain libc
+      # functions that do not rely on undefined behavior, for example, reading
+      # multiple bytes at once as an int and overflowing a buffer.
+      # Otherwise, ASan will catch these errors and terminate the program.
       blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
                     'aligned_alloc.c']
       libc_files += [

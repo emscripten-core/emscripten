@@ -39,9 +39,10 @@ extern char __global_base;
 #define kShadowGap3Beg 0
 #define kShadowGap3End 0
 
-// The first 1/8 of the shadow memory space is wasted shadowing itself,
-// but that's better than introducing a branch to handle nullptr which will
-// wrap around and end up with no shadow.
+// The first 1/8 of the shadow memory space is shadowing itself.
+// This allows attempted accesses into the shadow memory, as well as null
+// pointer dereferences, to be detected properly.
+// The shadow memory of the shadow memory is poisoned.
 #define MEM_TO_SHADOW(mem) ((mem) >> SHADOW_SCALE)
 
 namespace __asan {
