@@ -1576,6 +1576,10 @@ keydown(100);keyup(100); // trigger the end
   def test_egl_width_height_with_proxy_to_pthread(self):
     self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD=1')
 
+  @requires_graphics_hardware
+  def test_egl_createcontext_error(self):
+    self.btest('test_egl_createcontext_error.c', '1', args=['-lEGL', '-lGL'])
+
   def do_test_worker(self, args=[]):
     # Test running in a web worker
     create_test_file('file.dat', 'data for worker')
