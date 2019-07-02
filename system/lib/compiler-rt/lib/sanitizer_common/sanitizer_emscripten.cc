@@ -28,6 +28,8 @@ extern "C" {
 }
 
 void ListOfModules::init() {
+  modules_.Initialize(2);
+
   char name[256];
   emscripten_get_module_name(name, 256);
 
