@@ -9,7 +9,9 @@
 int main() {
   EM_ASM({
     window.onerror = function(e) {
-      var success = e.toString().indexOf("unreachable") > 0;
+      var message = e.toString();
+      var success = message.indexOf("unreachable") >= 0 || // firefox
+                    message.indexOf("Script error.") >= 0; // chrome
       if (success && !Module.reported) {
         Module.reported = true;
         console.log("reporting success");
