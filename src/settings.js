@@ -565,6 +565,12 @@ var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget
 // must assume an indirect call can reach almost everywhere.
 var BYSYNCIFY_IGNORE_INDIRECT = 0;
 
+// The size of the Bysyncify stack - the region used to store unwind/rewind info.
+// This must be large enough to store the call stack and locals. If it is too
+// small, you will see a wasm trap due to executing an "unreachable" instruction.
+// In that case, you should increase this size.
+var BYSYNCIFY_STACK_SIZE = 4096;
+
 // Runtime debug logging from bysyncify internals.
 var BYSYNCIFY_DEBUG = 0;
 
