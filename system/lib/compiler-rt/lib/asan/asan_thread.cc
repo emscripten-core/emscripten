@@ -301,13 +301,10 @@ void AsanThread::SetThreadStackAndTls(const InitOptions *options) {
   tls_end_ = tls_begin_ + tls_size;
   dtls_ = DTLS_Get();
 
-// XXX EMSCRIPTEN: No idea why this sometimes fails, so removing it.
-#if !SANITIZER_EMSCRIPTEN
   if (stack_top_ != stack_bottom_) {
     int local;
     CHECK(AddrIsInStack((uptr)&local));
   }
-#endif
 }
 
 #endif  // !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
