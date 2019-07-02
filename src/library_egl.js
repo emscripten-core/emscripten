@@ -321,7 +321,9 @@ var LibraryEGL = {
   eglCreateContext__deps: ['$GL'],
 
   // EGLAPI EGLContext EGLAPIENTRY eglCreateContext(EGLDisplay dpy, EGLConfig config, EGLContext share_context, const EGLint *attrib_list);
+#if !OFFSCREENCANVAS_SUPPORT
   eglCreateContext__proxy: 'sync',
+#endif
   eglCreateContext__sig: 'iiiii',
   eglCreateContext: function(display, config, hmm, contextAttribs) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
@@ -620,7 +622,9 @@ var LibraryEGL = {
 
   // EGLAPI EGLBoolean EGLAPIENTRY eglMakeCurrent(EGLDisplay dpy, EGLSurface draw, EGLSurface read, EGLContext ctx);
   eglMakeCurrent__deps: ['$GL'],
+#if !OFFSCREENCANVAS_SUPPORT
   eglMakeCurrent__proxy: 'sync',
+#endif
   eglMakeCurrent__sig: 'iiiii',
   eglMakeCurrent: function(display, draw, read, context) {
     if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
