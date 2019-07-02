@@ -1536,10 +1536,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BYSYNCIFY:
             # TODO: allow whitelist as in asyncify
             passes += ['--bysyncify']
-            if shared.Settings.BYSYNCIFY_IMPORTS:
-              passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
             if shared.Settings.BYSYNCIFY_IGNORE_INDIRECT:
               passes += ['--pass-arg=bysyncify-ignore-indirect']
+            else:
+              # if we are not ignoring indirect calls, then we must treat invoke_* as if
+              # they are indirect calls, since that is what they do - we can't see their
+              # targets statically.
+              shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
+            if shared.Settings.BYSYNCIFY_IMPORTS:
+              passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
         if shared.Settings.BINARYEN_EXTRA_PASSES:
           passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
         options.binaryen_passes = passes

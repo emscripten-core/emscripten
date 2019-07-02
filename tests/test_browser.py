@@ -1576,6 +1576,10 @@ keydown(100);keyup(100); // trigger the end
   def test_egl_width_height_with_proxy_to_pthread(self):
     self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD=1')
 
+  @requires_graphics_hardware
+  def test_egl_createcontext_error(self):
+    self.btest('test_egl_createcontext_error.c', '1', args=['-lEGL', '-lGL'])
+
   def do_test_worker(self, args=[]):
     # Test running in a web worker
     create_test_file('file.dat', 'data for worker')
@@ -1609,6 +1613,7 @@ keydown(100);keyup(100); // trigger the end
     self.do_test_worker()
     self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
 
+  @flaky
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
     worker_filename = "download_and_checksum_worker.js"
@@ -3097,6 +3102,7 @@ window.close = function() {
     ''')
     self.btest('sdl2_pumpevents.c', expected='7', args=['--pre-js', 'pre.js', '-s', 'USE_SDL=2'])
 
+  @flaky
   def test_sdl2_timer(self):
     self.btest('sdl2_timer.c', expected='5', args=['-s', 'USE_SDL=2'])
 
@@ -3222,6 +3228,15 @@ window.close = function() {
     for opts in [0, 3]:
       print(opts)
       self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
+
+  # Test async sleeps in the presence of invoke_* calls, which can happen with
+  # longjmp or exceptions.
+  @parameterized({
+    'O0': ([],), # noqa
+    'O3': (['-O3'],), # noqa
+  })
+  def test_async_longjmp(self, args):
+    self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
 
   @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad(self):

@@ -164,6 +164,14 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def no_asmjs(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm', note, negate=True)
+  return decorated
+
+
 # used for tests that fail now and then on CI, due to timing or other
 # random causes. this tries the test a few times, looking for at least
 # one pass
@@ -795,8 +803,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = path1.replace('\\', '/').replace('//', '/')
+    path2 = path2.replace('\\', '/').replace('//', '/')
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
