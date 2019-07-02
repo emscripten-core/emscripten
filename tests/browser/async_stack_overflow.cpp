@@ -7,7 +7,7 @@
 #include <emscripten.h>
 
 int main() {
-  EM_ASM({
+  int x = EM_ASM_INT({
     window.onerror = function(e) {
       var message = e.toString();
       var success = message.indexOf("unreachable") >= 0 || // firefox
@@ -24,16 +24,15 @@ int main() {
         xhr.send();
       }
     };
+    return 0;
   });
 
-  volatile int x = 0;
-  volatile int y = 0;
-  volatile int z = 0;
+  int y = x * x;
+  int z = y * y;
   x++;
   y++;
   z++;
   emscripten_sleep(1);
-
   // We should not get here - the unwind will fail as the stack is too small
   printf("We should not get here %d %d %d\n", x, y, z);
 
@@ -41,4 +40,3 @@ int main() {
 
   return 0;
 }
-
