@@ -531,7 +531,7 @@ class AsanInstrumentedLibrary(Library):
   @classmethod
   def variations(cls):
     return [variation for variation in super(AsanInstrumentedLibrary, cls).variations()
-            if variation['is_asan'] != variation.get('is_mt')]
+            if not shared.Settings.WASM_BACKEND or variation['is_asan'] != variation.get('is_mt')]
 
   @classmethod
   def get_default_variation(cls, **kwargs):
