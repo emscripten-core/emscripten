@@ -78,13 +78,19 @@ def handle_symbol_file(args, symbol_file):
     cache_dir = cache.Cache().dirname
     pattern = os.path.join(cache_dir, basename + '.*')
     libs = glob.glob(pattern)
+    if basename == 'libgl':
+      # For libgl we generate the symbol list based on a superset of all
+      # library variants.
+      pattern = os.path.join(cache_dir, basename + '-*.*')
+      libs += glob.glob(pattern)
     if not libs:
       print(cache_dir)
       print("%s: Unable to find library to generate symbols from" % symbol_file)
       return
-    assert len(libs) == 1
-    print('Generating syms for: %s' % libs[0])
-    output = shared.run_process([shared.LLVM_NM, '-g', libs[0]], stdout=shared.PIPE).stdout
+    print('Generating %s based on syms from: %s' % (basename, libs))
+    output = ''
+    for lib in libs:
+      output += shared.run_process([shared.LLVM_NM, '-g', lib], stdout=shared.PIPE).stdout
   new_symbols = filter_and_sort(output)
 
   with open(symbol_file, 'w') as f:
