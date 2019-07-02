@@ -39,15 +39,6 @@ var wasmTable;
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
-
-#if MODULARIZE
-// In pthreads mode the wasmMemory and others are received in an onmessage, and that
-// onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
-// it to a local so it can be used normally.
-if (ENVIRONMENT_IS_PTHREAD) {
-  wasmMemory = Module['wasmMemory'];
-}
-#endif // MODULARIZE
 #endif // USE_PTHREADS
 
 //========================================
@@ -377,67 +368,74 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #include "runtime_sab_polyfill.js"
 
 #if USE_PTHREADS
-#if !WASM
-if (typeof SharedArrayBuffer !== 'undefined') {
-  if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(INITIAL_TOTAL_MEMORY);
-} else {
-  if (!ENVIRONMENT_IS_PTHREAD) buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
-}
-updateGlobalBufferViews();
-
-#else
-if (!ENVIRONMENT_IS_PTHREAD) {
-#if ALLOW_MEMORY_GROWTH
-  wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
-#else
-  wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
-#endif
-  buffer = wasmMemory.buffer;
-  assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-}
-
-updateGlobalBufferViews();
-#endif // !WASM
-#else // USE_PTHREADS
-
-// Use a provided buffer, if there is one, or else allocate a new one
-if (Module['buffer']) {
-  buffer = Module['buffer'];
-#if ASSERTIONS
-  assert(buffer.byteLength === INITIAL_TOTAL_MEMORY, 'provided buffer should be ' + INITIAL_TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+if (ENVIRONMENT_IS_PTHREAD) {
+#if MODULARIZE && WASM
+  // In pthreads mode the wasmMemory and others are received in an onmessage, and that
+  // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
+  // it to a local so it can be used normally.
+  wasmMemory = Module['wasmMemory'];
 #endif
 } else {
-  // Use a WebAssembly memory where available
+#endif // USE_PTHREADS
 #if WASM
-  if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
-#if ASSERTIONS
-    assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#endif // ASSERTIONS
+  if (Module['wasmMemory']) {
+    wasmMemory = Module['wasmMemory'];
+  } else {
+    wasmMemory = new WebAssembly.Memory({
+      'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
 #if WASM_MEM_MAX != -1
-#if ASSERTIONS
-    assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
+      ,
+      'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE
 #endif
-    wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
 #else
-    wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE });
-#endif // WASM_MEM_MAX
-#else
-    wasmMemory = new WebAssembly.Memory({ 'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE });
+      ,
+      'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #endif // ALLOW_MEMORY_GROWTH
-    buffer = wasmMemory.buffer;
-  } else
-#endif // WASM
-  {
+#if USE_PTHREADS
+      ,
+      'shared': true
+#endif
+    });
+#if USE_PTHREADS
+    assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+#endif
+  }
+
+#else // WASM
+
+  if (Module['buffer']) {
+    buffer = Module['buffer'];
+  }
+#ifdef USE_PTHREADS
+  else if (typeof SharedArrayBuffer !== 'undefined') {
+    buffer = new SharedArrayBuffer(INITIAL_TOTAL_MEMORY);
+  }
+#endif
+  else {
     buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
   }
-#if ASSERTIONS
-  assert(buffer.byteLength === INITIAL_TOTAL_MEMORY);
-#endif // ASSERTIONS
+#endif // WASM
+#if USE_PTHREADS
 }
-updateGlobalBufferViews();
+#endif
 
-#endif // USE_PTHREADS
+#if WASM
+if (wasmMemory) {
+  buffer = wasmMemory.buffer;
+}
+#endif
+
+// If the user provides an incorrect length, just use that length instead rather than providing the user to
+// specifically provide the memory length with Module['TOTAL_MEMORY'].
+INITIAL_TOTAL_MEMORY = buffer.byteLength;
+#ifdef ASSERTIONS && WASM
+assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
+#ifdef ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
+assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
+#endif
+#endif
+updateGlobalBufferViews();
 
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
