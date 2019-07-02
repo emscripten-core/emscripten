@@ -2142,10 +2142,11 @@ class Building(object):
     undefs = []
     commons = []
     for line in output.split('\n'):
-      if len(line) == 0:
+      if not line or line[0] == '#':
         continue
+      # e.g.  filename.o:  , saying which file it's from
       if ':' in line:
-        continue # e.g.  filename.o:  , saying which file it's from
+        continue
       parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
       if len(parts) == 3 and parts[0] == "--------" or re.match(r'^[\da-f]{8}$', parts[0]):
