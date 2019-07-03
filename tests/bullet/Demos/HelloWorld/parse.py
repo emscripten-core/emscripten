@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from __future__ import print_function
 import math
 
 data = '''
@@ -72,4 +73,4 @@ for line in data.split('\n'):
     bins[i] = fps
 
 for i in range(len(bins)):
-  print i * bin_size, bins[i]
+  print(i * bin_size, bins[i])
