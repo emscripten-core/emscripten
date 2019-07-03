@@ -627,12 +627,13 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       # multiple bytes at once as an int and overflowing a buffer.
       # Otherwise, ASan will catch these errors and terminate the program.
       blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
-                    'aligned_alloc.c']
+                    'aligned_alloc.c', 'fcntl.c']
       libc_files += [
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_strcpy.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_memchr.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_strchrnul.c'),
         shared.path_from_root('system', 'lib', 'libc', 'emscripten_strlen.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_fcntl.c'),
       ]
 
     if shared.Settings.WASM_BACKEND:
