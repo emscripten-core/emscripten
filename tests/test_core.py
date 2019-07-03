@@ -7874,6 +7874,12 @@ extern "C" {
                 expected_output=expected_output, assert_all=True,
                 check_for_error=False)
 
+  @no_fastcomp('asan not supported on fastcomp')
+  def test_asan_js_stack_op(self):
+    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
+                basename='src.c', expected_output='Hello, World!')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
