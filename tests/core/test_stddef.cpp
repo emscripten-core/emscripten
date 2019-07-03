@@ -25,10 +25,15 @@ void abort(void);
 #endif
 
 int main() {
-  if (_Alignof(max_align_t) < sizeof(long double))
+  // max_align_t on wasm backend is 16 due to sizeof(long double) being 16.
+  // On asmjs sizeof(long double) is 8.
+#if __asmjs__
+  if (_Alignof(max_align_t) != 8)
     abort();
-  if (_Alignof(max_align_t) < sizeof(long long))
+#else
+  if (_Alignof(max_align_t) != 16)
     abort();
+#endif
   puts("success");
   return 0;
 }
