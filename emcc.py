@@ -1536,6 +1536,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               # they are indirect calls, since that is what they do - we can't see their
               # targets statically.
               shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
+            # with pthreads we may call main through the __call_main mechanism, which can
+            # therefore reach anything in the program, so mark it as possibly causing a
+            # sleep (the bysyncify analysis doesn't look through JS, just wasm, so it can't
+            # see what it itself calls)
+            if shared.Settings.USE_PTHREADS:
+              shared.Settings.BYSYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.BYSYNCIFY_IMPORTS:
               passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
         if shared.Settings.BINARYEN_EXTRA_PASSES:
