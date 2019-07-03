@@ -252,6 +252,16 @@ ___cxa_current_primary_exception
 ___cxa_decrement_exception_refcount
 ___cxa_end_catch
 ___cxa_find_matching_catch
+___cxa_find_matching_catch_0
+___cxa_find_matching_catch_1
+___cxa_find_matching_catch_2
+___cxa_find_matching_catch_3
+___cxa_find_matching_catch_4
+___cxa_find_matching_catch_5
+___cxa_find_matching_catch_6
+___cxa_find_matching_catch_7
+___cxa_find_matching_catch_8
+___cxa_find_matching_catch_9
 ___cxa_free_exception
 ___cxa_get_exception_ptr
 ___cxa_increment_exception_refcount
@@ -262,6 +272,10 @@ ___cxa_thread_atexit
 ___cxa_thread_atexit_impl
 ___cxa_throw
 ___cxa_uncaught_exception
+___exception_addRef
+___exception_clearRef
+___exception_deAdjust
+___exception_decRef
 ___execvpe
 ___gcc_personality_v0
 ___gxx_personality_v0
@@ -331,7 +345,7 @@ ___syscall218
 ___syscall219
 ___syscall220
 ___syscall221
-___syscall265
+___syscall252
 ___syscall268
 ___syscall269
 ___syscall272
@@ -388,10 +402,6 @@ ___syscall91
 ___syscall94
 ___syscall96
 ___syscall97
-___ubsan_handle_add_overflow
-___ubsan_handle_float_cast_overflow
-___ubsan_handle_pointer_overflow
-___ubsan_handle_type_mismatch_v1
 ___unlock
 ___wait
 __addDays
@@ -401,6 +411,9 @@ __computeUnpackAlignedImageSize
 __emscripten_do_request_fullscreen
 __emscripten_push_main_loop_blocker
 __emscripten_push_uncounted_main_loop_blocker
+__emscripten_save_in_unwind_cache
+__emscripten_syscall_mmap2
+__emscripten_syscall_munmap
 __emscripten_traverse_stack
 __exit
 __fillBatteryEventData
@@ -627,6 +640,11 @@ _emscripten_autodebug_i16
 _emscripten_autodebug_i32
 _emscripten_autodebug_i64
 _emscripten_autodebug_i8
+_emscripten_builtin_free
+_emscripten_builtin_malloc
+_emscripten_builtin_memalign
+_emscripten_builtin_mmap2
+_emscripten_builtin_munmap
 _emscripten_call_worker
 _emscripten_cancel_animation_frame
 _emscripten_cancel_main_loop
@@ -648,6 +666,7 @@ _emscripten_exit_pointerlock
 _emscripten_exit_soft_fullscreen
 _emscripten_exit_with_live_runtime
 _emscripten_force_exit
+_emscripten_generate_pc
 _emscripten_get_battery_status
 _emscripten_get_callstack
 _emscripten_get_callstack_js
@@ -658,10 +677,12 @@ _emscripten_get_device_pixel_ratio
 _emscripten_get_devicemotion_status
 _emscripten_get_deviceorientation_status
 _emscripten_get_element_css_size
+_emscripten_get_env
 _emscripten_get_fullscreen_status
 _emscripten_get_gamepad_status
 _emscripten_get_heap_size
 _emscripten_get_main_loop_timing
+_emscripten_get_module_name
 _emscripten_get_mouse_status
 _emscripten_get_now
 _emscripten_get_now_is_monotonic
@@ -671,6 +692,8 @@ _emscripten_get_orientation_status
 _emscripten_get_pointerlock_status
 _emscripten_get_preloaded_image_data
 _emscripten_get_preloaded_image_data_from_FILE
+_emscripten_get_stack_base
+_emscripten_get_stack_top
 _emscripten_get_visibility_status
 _emscripten_get_worker_queue_size
 _emscripten_glActiveTexture
@@ -882,6 +905,11 @@ _emscripten_longjmp
 _emscripten_main_browser_thread_id
 _emscripten_memcpy_big
 _emscripten_pause_main_loop
+_emscripten_pc_get_column
+_emscripten_pc_get_file
+_emscripten_pc_get_function
+_emscripten_pc_get_line
+_emscripten_pc_get_source_js
 _emscripten_performance_now
 _emscripten_print_double
 _emscripten_random
@@ -955,6 +983,8 @@ _emscripten_set_webglcontextlost_callback_on_thread
 _emscripten_set_webglcontextrestored_callback_on_thread
 _emscripten_set_wheel_callback_on_thread
 _emscripten_sleep
+_emscripten_stack_snapshot
+_emscripten_stack_unwind_buffer
 _emscripten_supports_offscreencanvas
 _emscripten_throw_number
 _emscripten_throw_string
@@ -997,6 +1027,7 @@ _emscripten_webgl_init_context_attributes
 _emscripten_webgl_make_context_current
 _emscripten_wget
 _emscripten_wget_data
+_emscripten_with_builtin_malloc
 _emscripten_worker_respond
 _emscripten_worker_respond_provisionally
 _emscripten_yield
@@ -1399,6 +1430,7 @@ _pixelRGBA
 _posix_spawn
 _posix_spawnp
 _pthread_attr_destroy
+_pthread_attr_getdetachstate
 _pthread_attr_getstack
 _pthread_attr_init
 _pthread_attr_setdetachstate

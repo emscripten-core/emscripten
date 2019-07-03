@@ -4,7 +4,7 @@
 Download and install
 ====================
 
-.. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should :ref:`build Emscripten from source <installing-from-source>`.
+.. note:: You can also :ref:`build Emscripten from source <installing-from-source>` if you prefer that to downloading binaries using the emsdk.
 
 .. _sdk-installation-instructions:
 
@@ -81,8 +81,6 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
   -  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
 
-#. Install *node.js* from http://nodejs.org/
-
   .. _getting-started-on-macos-install-python2:
 
 Linux
@@ -90,15 +88,12 @@ Linux
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- *Python*, *node.js*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
   ::
 
     # Install Python
     sudo apt-get install python2.7
-
-    # Install node.js
-    sudo apt-get install nodejs
 
     # Install CMake (optional, only needed for tests and building Binaryen)
     sudo apt-get install cmake
@@ -108,7 +103,7 @@ Linux
 
 .. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
-.. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
+.. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``~/.emscripten`` file to point to it.
 
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**:
 
@@ -116,8 +111,6 @@ Linux
 
     # Install git
     sudo apt-get install git-core
-
-More detailed instructions on the toolchain are provided in: :ref:`building-emscripten-on-linux`.
 
 
 Verifying the installation

@@ -6,7 +6,13 @@ Porting SIMD code targeting WebAssembly
 
 Emscripten supports the `WebAssembly SIMD proposal <https://github.com/webassembly/simd/>`_ when using the WebAssembly LLVM backend. To enable SIMD, pass the -msimd128 flag at compile time. This will also turn on LLVM's autovectorization passes, so no source modifications are necessary to benefit from SIMD.
 
-At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/onlinedocs/gcc/Vector-Extensions.html>`_ can be used and will be lowered to WebAssembly SIMD instructions where possible. A portable intrinsics header for WebAssembly SIMD is also being actively developed.
+At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/onlinedocs/gcc/Vector-Extensions.html>`_ can be used and will be lowered to WebAssembly SIMD instructions where possible. In addition, there is a portable intrinsics header file that can be used.
+
+    .. code-block:: cpp
+
+       #include <wasm_simd128.h>
+
+Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `wasm_simd128.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/wasm_simd128.h>`. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself.
 
 WebAssembly SIMD is not supported when using the Fastcomp backend.
 

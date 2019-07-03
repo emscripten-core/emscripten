@@ -10,6 +10,7 @@
 #include <GLES2/gl2.h>
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
 
 void report_result(int result)
 {
@@ -41,7 +42,7 @@ void draw()
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
-  unsigned char imageData[256*256*4];
+  unsigned char* imageData = (unsigned char*)malloc(256*256*4*sizeof(unsigned char));
   glReadPixels(0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
   for(int y = 0; y < 256; ++y)
     for(int x = 0; x < 256; ++x)
@@ -129,7 +130,7 @@ int main()
   glBindTexture(GL_TEXTURE_2D, tex);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  float texData[256*256];
+  float* texData = (float*)malloc(256*256*sizeof(float));
   for(int y = 0; y < 256; ++y)
     for(int x = 0; x < 256; ++x)
     {

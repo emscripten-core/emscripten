@@ -45,13 +45,6 @@ set(UNIX 1)
 if (CMAKE_TOOLCHAIN_FILE)
 endif()
 
-# In order for check_function_exists() detection to work, we must signal it to pass an additional flag, which causes the compilation
-# to abort if linking results in any undefined symbols. The CMake detection mechanism depends on the undefined symbol error to be raised.
-# Disable wasm in cmake checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
-# to build to wasm; using asm.js only depends on js which we need anyhow), and (2) we don't have issues with a separate .wasm file
-# on the side, async startup, etc..
-set(CMAKE_REQUIRED_FLAGS "-s WASM=0")
-
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
 	get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)

@@ -40,7 +40,21 @@ void ReportErrorSummary(const char *error_type, const AddressInfo &info,
 }
 #endif
 
-#if !SANITIZER_FUCHSIA
+#if SANITIZER_EMSCRIPTEN
+#include <emscripten/em_asm.h>
+
+static INLINE bool ReportSupportsColors() {
+  return !!EM_ASM_INT({
+    var setting = Module['printWithColors'];
+    if (setting != null) {
+      return setting;
+    } else {
+      return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
+    }
+  });
+}
+
+#elif !SANITIZER_FUCHSIA
 
 bool ReportFile::SupportsColors() {
   SpinMutexLock l(mu);
@@ -57,7 +71,7 @@ static INLINE bool ReportSupportsColors() {
 // Fuchsia's logs always go through post-processing that handles colorization.
 static INLINE bool ReportSupportsColors() { return true; }
 
-#endif  // !SANITIZER_FUCHSIA
+#endif  // SANITIZER_EMSCRIPTEN, !SANITIZER_FUCHSIA
 
 bool ColorizeReports() {
   // FIXME: Add proper Windows support to AnsiColorDecorator and re-enable color

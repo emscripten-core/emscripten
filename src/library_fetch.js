@@ -18,6 +18,8 @@ var LibraryFetch = {
   _emscripten_get_fetch_work_queue: function() {
     return _fetch_work_queue;
   },
+  _emscripten_fetch_get_response_headers_length: _fetch_get_response_headers_length,
+  _emscripten_fetch_get_response_headers: _fetch_get_response_headers,
 
 #if FETCH_SUPPORT_INDEXEDDB
   $__emscripten_fetch_delete_cached_data: __emscripten_fetch_delete_cached_data,

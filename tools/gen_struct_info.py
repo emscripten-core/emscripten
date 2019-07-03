@@ -80,7 +80,13 @@ The JSON output format is based on the return value of Runtime.generateStructInf
 
 '''
 
-import sys, os, re, json, argparse, tempfile, subprocess
+import sys
+import os
+import re
+import json
+import argparse
+import tempfile
+import subprocess
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -88,9 +94,11 @@ from tools import shared
 
 QUIET = (__name__ != '__main__')
 
+
 def show(msg):
   if shared.DEBUG or not QUIET:
     sys.stderr.write('gen_struct_info: ' + msg + '\n')
+
 
 # Try to load pycparser.
 try:
@@ -121,18 +129,17 @@ else:
       self.named_structs = {}
 
     def visit_Struct(self, node):
-      if node.decls == None:
+      if node.decls is None:
         self.named_structs[self._name] = DelayedRef(node.name)
         return
 
-
       fields = []
       for decl in node.decls:
-        if decl.name == None:
+        if decl.name is None:
           # Well, this field doesn't have a name.
           continue
 
-        if decl.type != None and isinstance(decl.type, pycparser.c_ast.PtrDecl):
+        if decl.type is not None and isinstance(decl.type, pycparser.c_ast.PtrDecl):
           # This field is a pointer, there's no point in looking for nested structs.
           fields.append(decl.name)
         else:
@@ -147,7 +154,7 @@ else:
             # Just store the field name.
             fields.append(decl.name)
 
-      if node.name != None:
+      if node.name is not None:
         self.structs[node.name] = fields
 
       self.named_structs[self._name] = fields
@@ -191,7 +198,7 @@ else:
       cur_level = cur_level[p]
       path[i] = cur_level
 
-    path = [ obj ] + path
+    path = [obj] + path
 
     while len(path):
       if name in path[-1]:
@@ -203,21 +210,21 @@ else:
 
   # Use the above function to resolve all DelayedRef() inside a list or dict recursively.
   def resolve_delayed(item, root=None, path=[]):
-    if root == None:
+    if root is None:
       root = item
 
     if isinstance(item, DelayedRef):
       if item.dest in path:
         show('WARN: Circular reference found! Field "' + path[-1] + '" references "' + item.dest + '"! (Path = ' + '/'.join([str(part) for part in path]) + ')')
-        return { '__ref__': item.dest }
+        return {'__ref__': item.dest}
       else:
         return look_through(root, path[:-1], item.dest)
     elif isinstance(item, dict):
       for name, val in item.items():
-        item[name] = resolve_delayed(val, root, path + [ name ])
+        item[name] = resolve_delayed(val, root, path + [name])
     elif isinstance(item, list):
       for i, val in enumerate(item):
-        item[i] = resolve_delayed(val, root, path + [ i ])
+        item[i] = resolve_delayed(val, root, path + [i])
 
     return item
 
@@ -240,6 +247,7 @@ else:
       'defines': defines,
       'structs': walker.structs
     }
+
 
 # The following three functions generate C code. The output of the compiled code will be
 # parsed later on and then put back together into a dict structure by parse_c_output().
@@ -265,11 +273,14 @@ def c_set(name, type_, value, code):
   code.append('printf("K' + name + '\\n");')
   code.append('printf("V' + type_ + '\\n", ' + value + ');')
 
+
 def c_descent(name, code):
   code.append('printf("D' + name + '\\n");')
 
+
 def c_ascent(code):
   code.append('printf("A\\n");')
+
 
 def parse_c_output(lines):
   result = {}
@@ -305,6 +316,7 @@ def parse_c_output(lines):
 
   return result
 
+
 def gen_inspect_code(path, struct, code):
   if path[0][-1] == '#':
     path[0] = path[0][:-1]
@@ -318,7 +330,7 @@ def gen_inspect_code(path, struct, code):
     c_set('__size__', 'i%zu', 'sizeof (' + prefix + path[0] + ')', code)
   else:
     c_set('__size__', 'i%zu', 'sizeof ((' + prefix + path[0] + ' *)0)->' + '.'.join(path[1:]), code)
-    #c_set('__offset__', 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
+    # c_set('__offset__', 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:]) + ')', code)
 
   for field in struct:
     if isinstance(field, dict):
@@ -329,6 +341,7 @@ def gen_inspect_code(path, struct, code):
       c_set(field, 'i%zu', 'offsetof(' + prefix + path[0] + ', ' + '.'.join(path[1:] + [field]) + ')', code)
 
   c_ascent(code)
+
 
 def inspect_code(headers, cpp_opts, structs, defines):
   show('Generating C code...')
@@ -391,8 +404,8 @@ def inspect_code(headers, cpp_opts, structs, defines):
   cmd = [shared.PYTHON, shared.EMCC] + cpp_opts + ['-o', js_file[1], src_file[1], '-s', 'BOOTSTRAPPING_STRUCT_INFO=1', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-O0', '--js-opts', '0', '--memory-init-file', '0', '-s', 'SINGLE_FILE=1', '-Wno-format']
   if not shared.Settings.WASM_BACKEND:
     cmd += ['-s', 'WASM=0']
-  if shared.Settings.WASM_OBJECT_FILES:
-    cmd += ['-s', 'WASM_OBJECT_FILES=1']
+  if not shared.Settings.WASM_OBJECT_FILES:
+    cmd += ['-s', 'WASM_OBJECT_FILES=0']
 
   try:
     try:
@@ -419,13 +432,14 @@ def inspect_code(headers, cpp_opts, structs, defines):
   # Parse the output of the program into a dict.
   return parse_c_output(info)
 
+
 def parse_json(path, header_files, structs, defines):
   with open(path, 'r') as stream:
     # Remove comments before loading the JSON.
     data = json.loads(re.sub(r'//.*\n', '', stream.read()))
 
   if not isinstance(data, list):
-    data = [ data ]
+    data = [data]
 
   for item in data:
     header_files.append(item['file'])
@@ -445,8 +459,9 @@ def parse_json(path, header_files, structs, defines):
 
       defines[part[1]] = part[0]
 
+
 def output_json(obj, compressed=True, stream=None):
-  if stream == None:
+  if stream is None:
     stream = sys.stdout
   elif isinstance(stream, str):
     stream = open(stream, 'w')
@@ -458,6 +473,7 @@ def output_json(obj, compressed=True, stream=None):
 
   stream.close()
 
+
 def filter_opts(opts):
   # Only apply compiler options regarding syntax, includes and defines.
   # We have to compile for the current system, we aren't compiling to bitcode after all.
@@ -468,18 +484,29 @@ def filter_opts(opts):
 
   return out
 
+
 def main(args):
   global QUIET
 
+  default_json = shared.path_from_root('src', 'struct_info.json')
   parser = argparse.ArgumentParser(description='Generate JSON infos for structs.')
-  parser.add_argument('headers', nargs='+', help='A header (.h) file or a JSON file with a list of structs and their fields')
-  parser.add_argument('-q', dest='quiet', action='store_true', default=False, help='Don\'t output anything besides error messages.')
-  parser.add_argument('-f', dest='list_fields', action='store_true', default=False, help='Output a list of structs and fields for the given headers.')
-  parser.add_argument('-p', dest='pretty_print', action='store_true', default=False, help='Pretty print the outputted JSON.')
-  parser.add_argument('-o', dest='output', metavar='path', default=None, help='Path to the JSON file that will be written. If omitted, the generated data will be printed to stdout.')
-  parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[], help='Add directory to include search path')
-  parser.add_argument('-D', dest='defines', metavar='define', action='append', default=[], help='Pass a define to the preprocessor')
-  parser.add_argument('-U', dest='undefines', metavar='undefine', action='append', default=[], help='Pass an undefine to the preprocessor')
+  parser.add_argument('headers', nargs='*',
+                      help='A header (.h) file or a JSON file with a list of structs and their fields (defaults to src/struct_info.json)',
+                      default=[default_json])
+  parser.add_argument('-q', dest='quiet', action='store_true', default=False,
+                      help='Don\'t output anything besides error messages.')
+  parser.add_argument('-f', dest='list_fields', action='store_true', default=False,
+                      help='Output a list of structs and fields for the given headers.')
+  parser.add_argument('-c', dest='pretty_print', action='store_false', default=True,
+                      help="Compress JSON output (don't pretty print)")
+  parser.add_argument('-o', dest='output', metavar='path', default=None,
+                      help='Path to the JSON file that will be written. If omitted, the generated data will be printed to stdout.')
+  parser.add_argument('-I', dest='includes', metavar='dir', action='append', default=[],
+                      help='Add directory to include search path')
+  parser.add_argument('-D', dest='defines', metavar='define', action='append', default=[],
+                      help='Pass a define to the preprocessor')
+  parser.add_argument('-U', dest='undefines', metavar='undefine', action='append', default=[],
+                      help='Pass an undefine to the preprocessor')
   args = parser.parse_args(args)
 
   QUIET = args.quiet
@@ -507,7 +534,7 @@ def main(args):
         data.append(parse_header(path, cpp_opts))
 
     output_json(data, not args.pretty_print, args.output)
-    sys.exit(0)
+    return 0
 
   # Look for structs in all passed headers.
   header_files = []
@@ -528,6 +555,8 @@ def main(args):
   # Inspect all collected structs.
   struct_info = inspect_code(header_files, cpp_opts, structs, defines)
   output_json(struct_info, not args.pretty_print, args.output)
+  return 0
+
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  sys.exit(main(sys.argv[1:]))
