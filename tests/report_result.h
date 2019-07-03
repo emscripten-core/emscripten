@@ -20,14 +20,14 @@
 #error "EMTEST_PORT_NUMBER not defined"
 #endif
 
-static void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
+void EMSCRIPTEN_KEEPALIVE _ReportResult(int result, int sync)
 {
   EM_ASM({
     reportResultToServer($0, $1, $2);
   }, result, sync, EMTEST_PORT_NUMBER);
 }
 
-static void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync)
+void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync)
 {
   EM_ASM({
     maybeReportResultToServer($0, $1, $2);

@@ -512,6 +512,9 @@ function initRuntime() {
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
+#if WASM_BACKEND // This is marked as a constructor in C, and fastcomp runs it; in the backend we must do so manually.
+  ___emscripten_pthread_data_constructor();
+#endif
 #endif
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
