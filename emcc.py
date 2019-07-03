@@ -1493,6 +1493,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
         assert shared.Settings.TOTAL_MEMORY < 2**32
 
+        if shared.Settings.SAFE_HEAP:
+          exit_with_error('ASan does not work with SAFE_HEAP')
+
         if shared.Settings.USE_PTHREADS:
           exit_with_error('ASan currently does not support threads')
 
