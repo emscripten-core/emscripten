@@ -2935,3 +2935,22 @@ EMSCRIPTEN_BINDINGS(static_member) {
         .class_property("v", &HasStaticMember::v)
         ;
 }
+
+class BaseProtected
+{
+protected:
+	void func() {}
+};
+
+class DerivedPublic : public BaseProtected
+{
+public:
+	using BaseProtected::func;
+};
+
+EMSCRIPTEN_BINDINGS(DerivedPublic)
+{
+	emscripten::class_<DerivedPublic>("DerivedPublic")
+		.function("func", &DerivedPublic::func)
+	;
+}
