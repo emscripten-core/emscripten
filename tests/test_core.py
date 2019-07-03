@@ -6309,7 +6309,7 @@ return malloc(size);
   def test_response_file(self):
     response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
-    run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
+    run_process([PYTHON, EMCC, "@rsp_file"] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_linker_response_file(self):
