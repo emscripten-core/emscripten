@@ -8,6 +8,7 @@
 
 CSMITH_PATH should be set to something like /usr/local/include/csmith
 """
+from __future__ import print_function
 
 import os
 import sys
@@ -24,7 +25,7 @@ from tools import shared
 # can add flags like --no-threads --ion-offthread-compile=off
 engine = eval('shared.' + sys.argv[1]) if len(sys.argv) > 1 else shared.JS_ENGINES[0]
 
-print 'testing js engine', engine
+print('testing js engine', engine)
 
 TEST_BINARYEN = 1
 
@@ -52,14 +53,14 @@ while 1:
       opts = '-Os'
     else:
       opts = '-Oz'
-  print 'opt level:', opts
+  print('opt level:', opts)
 
   llvm_opts = []
   if random.random() < 0.5:
     llvm_opts = ['--llvm-opts', str(random.randint(0, 3))]
 
-  print 'Tried %d, notes: %s' % (tried, notes)
-  print '1) Generate source'
+  print('Tried %d, notes: %s' % (tried, notes))
+  print('1) Generate source')
   extra_args = []
   if random.random() < 0.5:
     extra_args += ['--no-math64']
@@ -73,16 +74,16 @@ while 1:
   check_call([CSMITH, '--no-volatiles', '--no-packed-struct'] + extra_args,
              # ['--max-block-depth', '2', '--max-block-size', '2', '--max-expr-complexity', '2', '--max-funcs', '2'],
              stdout=open(fullname, 'w'))
-  print '1) Generate source... %.2f K' % (len(open(fullname).read()) / 1024.)
+  print('1) Generate source... %.2f K' % (len(open(fullname).read()) / 1024.))
 
   tried += 1
 
-  print '2) Compile natively'
+  print('2) Compile natively')
   shared.try_delete(filename)
   try:
     shared.run_process([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) # + shared.EMSDK_OPTS
   except CalledProcessError as e:
-    print 'Failed to compile natively using clang'
+    print('Failed to compile natively using clang')
     notes['invalid'] += 1
     continue
 
@@ -90,7 +91,7 @@ while 1:
   shared.run_process([shared.path_from_root('tools', 'nativize_llvm.py'), filename + '.bc'], stderr=PIPE)
   shutil.move(filename + '.bc.run', filename + '2')
   shared.run_process([COMP, fullname, '-o', filename + '3'] + CSMITH_CFLAGS + ['-w'])
-  print '3) Run natively'
+  print('3) Run natively')
   try:
     correct1 = shared.jsrun.timeout_run(Popen([filename + '1'], stdout=PIPE, stderr=PIPE), 3)
     if 'Segmentation fault' in correct1 or len(correct1) < 10:
@@ -104,13 +105,13 @@ while 1:
     if correct1 != correct3:
       raise Exception('clang opts change result')
   except Exception, e:
-    print 'Failed or infinite looping in native, skipping', e
+    print('Failed or infinite looping in native, skipping', e)
     notes['invalid'] += 1
     continue
 
   fail_output_name = 'newfail_%d_%d%s' % (os.getpid(), fails, suffix)
 
-  print '4) Compile JS-ly and compare'
+  print('4) Compile JS-ly and compare')
 
   def try_js(args=[]):
     shared.try_delete(filename + '.js')
@@ -170,7 +171,7 @@ while 1:
       js_args += ["--memory-init-file", "0", "-s", "MEM_INIT_METHOD=2"]
     if random.random() < 0.5:
       js_args += ['-s', 'ASSERTIONS=1']
-    print '(compile)', ' '.join(js_args)
+    print('(compile)', ' '.join(js_args))
     short_args = [shared.PYTHON, shared.EMCC, fail_output_name] + js_args[5:]
     escaped_short_args = map(lambda x: ("'" + x + "'") if '"' in x else x, short_args)
     open(fullname, 'a').write('\n// ' + ' '.join(escaped_short_args) + '\n\n')
@@ -182,18 +183,18 @@ while 1:
       return False
 
   def execute_js(engine):
-    print '(run in %s)' % engine
+    print('(run in %s)' % engine)
     try:
       js = shared.jsrun.run_js(filename + '.js', engine=engine, check_timeout=True, assert_returncode=None)
     except CalledProcessError:
-      print 'failed to run in primary'
+      print('failed to run in primary')
       return False
     js = js.split('\n')[0] + '\n' # remove any extra printed stuff (node workarounds)
     return correct1 == js or correct2 == js
 
   def fail():
     global fails
-    print "EMSCRIPTEN BUG"
+    print("EMSCRIPTEN BUG")
     notes['embug'] += 1
     fails += 1
     shutil.copyfile(fullname, fail_output_name)
