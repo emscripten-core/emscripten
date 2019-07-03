@@ -1270,8 +1270,8 @@ namespace emscripten {
                 ;
         }
 
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const {
+        template<typename ReturnType, typename ClassOrBase, typename... Args, typename... Policies>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassOrBase::*memberFunction)(Args...), Policies...) const {
             using namespace internal;
 
             auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
@@ -1289,8 +1289,8 @@ namespace emscripten {
             return *this;
         }
 
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const {
+        template<typename ReturnType, typename ClassOrBase, typename... Args, typename... Policies>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassOrBase::*memberFunction)(Args...) const, Policies...) const {
             using namespace internal;
 
             auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
