@@ -279,6 +279,11 @@ typedef long clock_t;
 #define __DEFINED_clock_t
 #endif
 
+#if defined(__NEED_max_align_t) && !defined(__DEFINED_max_align_t)
+typedef struct { long long __ll; long double __ld; } max_align_t;
+#define __DEFINED_max_align_t
+#endif
+
 #if defined(__NEED_struct_timeval) && !defined(__DEFINED_struct_timeval)
 struct timeval { time_t tv_sec; suseconds_t tv_usec; };
 #define __DEFINED_struct_timeval
