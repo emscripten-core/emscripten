@@ -143,9 +143,9 @@ var LibraryWebSocket = {
 
       if (WS.wsKeepAliveTimer === null) {
         WS.wsKeepAliveTimer = setInterval( function(){
-        var data = allocateUTF8('\r\n\r\n');
-        _emscripten_websocket_send_utf8_text(socketId, data);
-        _free(data);}, 10000 );
+          var data = allocateUTF8('\r\n\r\n');
+          _emscripten_websocket_send_utf8_text(socketId, data);
+          _free(data);}, 10000 );
         WS.keepAliveAttempt = 0;
       }
     }
@@ -326,7 +326,7 @@ var LibraryWebSocket = {
 #endif
     if (str === '\r\n\r\n') {
       switch (WS.keepAliveAttempt) {
-          case 0:
+        case 0:
           /* keepAliveAttempt is 0,change KeepAliveTimer is 5s*/
           WS.wsKeepAliveTimer && clearInterval( WS.wsKeepAliveTimer );
           WS.wsKeepAliveTimer = setInterval( function(){
@@ -335,7 +335,7 @@ var LibraryWebSocket = {
             _free(data);}, 5000 );
           socket.send(str);
           break;
-          case 1:
+        case 1:
           /* keepAliveAttempt is 1,change KeepAliveTimer is 2.5s*/
           WS.wsKeepAliveTimer && clearInterval( WS.wsKeepAliveTimer );
           WS.wsKeepAliveTimer = setInterval( function(){
@@ -349,7 +349,7 @@ var LibraryWebSocket = {
           /* keepAliveAttempt is 2-3,keep the KeepAliveTimer is 2.5s*/
           socket.send(str);
           break;
-          case 4:
+        case 4:
           console.warn('close the websocket.');
           /* it's dont have response received when it's has send three times keepalive msg, need close the websocket */
           WS.wsKeepAliveTimer && clearInterval( WS.wsKeepAliveTimer );
