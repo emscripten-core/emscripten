@@ -5139,6 +5139,10 @@ main( int argv, char ** argc ) {
   def test_systypes(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_systypes')
 
+  def test_stddef(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_stddef')
+    self.do_run_in_out_file_test('tests', 'core', 'test_stddef', force_c=True)
+
   def test_getloadavg(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_getloadavg')
 
