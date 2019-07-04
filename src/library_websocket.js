@@ -1,7 +1,9 @@
 var LibraryWebSocket = {
   $WS: {
     sockets: [null],
-    socketEvent: null
+    socketEvent: null,
+    wsKeepAliveTimer: null,
+    keepAliveAttempt: null
   },
 
   emscripten_websocket_get_ready_state__proxy: 'sync',
@@ -138,6 +140,14 @@ var LibraryWebSocket = {
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       {{{ makeDynCall('iiii') }}}(callbackFunc, 0/*TODO*/, WS.socketEvent, userData);
+
+      if (WS.wsKeepAliveTimer === null) {
+        WS.wsKeepAliveTimer = setInterval( function(){
+        var data = allocateUTF8('\r\n\r\n');
+        _emscripten_websocket_send_utf8_text(socketId, data);
+        _free(data);}, 10000 );
+        WS.keepAliveAttempt = 0;
+      }
     }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -219,14 +229,25 @@ var LibraryWebSocket = {
 #endif
       HEAPU32[WS.socketEvent>>2] = socketId;
       if (typeof e.data === 'string') {
-        var len = lengthBytesUTF8(e.data)+1;
-        var buf = _malloc(len);
-        stringToUTF8(e.data, buf, len);
+        if (e.data !== '\r\n') {
+          var len = lengthBytesUTF8(e.data)+1;
+          var buf = _malloc(len);
+          stringToUTF8(e.data, buf, len);
 #if WEBSOCKET_DEBUG
-        var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ' (' + (e.data.length-256) + ' more characters)');
-        console.error('WebSocket onmessage, received data: "' + e.data + '", ' + e.data.length + ' chars, ' + len + ' bytes encoded as UTF-8: "' + s + '"');
+          var s = (e.data.length < 256) ? e.data : (e.data.substr(0, 256) + ' (' + (e.data.length-256) + ' more characters)');
+          console.error('WebSocket onmessage, received data: "' + e.data + '", ' + e.data.length + ' chars, ' + len + ' bytes encoded as UTF-8: "' + s + '"');
 #endif
-        HEAPU32[(WS.socketEvent+12)>>2] = 1; // text data
+          HEAPU32[(WS.socketEvent+12)>>2] = 1; // text data
+        }
+        WS.wsKeepAliveTimer && clearInterval(WS.wsKeepAliveTimer);
+        WS.wsKeepAliveTimer = null;
+
+        WS.wsKeepAliveTimer = setInterval( function(){
+          var data = allocateUTF8('\r\n\r\n');
+          _emscripten_websocket_send_utf8_text(socketId, data);
+          _free(data);}, 10000 );
+        WS.keepAliveAttempt = 0;
+
       } else {
         var len = e.data.byteLength;
         var buf = _malloc(len);
@@ -303,7 +324,47 @@ var LibraryWebSocket = {
     console.error('emscripten_websocket_send_utf8_text(socketId='+socketId+',textData='+ str.length + ' chars, "' + ((str.length > 8) ? (str.substring(0,8) + '...') : str) + '")');
 #endif
 #endif
-    socket.send(str);
+    if (str === '\r\n\r\n') {
+      switch (WS.keepAliveAttempt) {
+          case 0:
+          /* keepAliveAttempt is 0,change KeepAliveTimer is 5s*/
+          WS.wsKeepAliveTimer && clearInterval( WS.wsKeepAliveTimer );
+          WS.wsKeepAliveTimer = setInterval( function(){
+            var data = allocateUTF8('\r\n\r\n');
+            _emscripten_websocket_send_utf8_text(socketId, data);
+            _free(data);}, 5000 );
+          socket.send(str);
+          break;
+          case 1:
+          /* keepAliveAttempt is 1,change KeepAliveTimer is 2.5s*/
+          WS.wsKeepAliveTimer && clearInterval( WS.wsKeepAliveTimer );
+          WS.wsKeepAliveTimer = setInterval( function(){
+            var data = allocateUTF8('\r\n\r\n');
+            _emscripten_websocket_send_utf8_text(socketId, data);
+            _free(data);}, 2500 );
+          socket.send(str);
+          break;
+        case 2:
+        case 3:
+          /* keepAliveAttempt is 2-3,keep the KeepAliveTimer is 2.5s*/
+          socket.send(str);
+          break;
+          case 4:
+          console.warn('close the websocket.');
+          /* it's dont have response received when it's has send three times keepalive msg, need close the websocket */
+          WS.wsKeepAliveTimer && clearInterval( WS.wsKeepAliveTimer );
+          WS.wsKeepAliveTimer = null;
+
+          socket.close();
+          WS.sockets[socketId] = null;
+          break;
+        default:
+          break;
+      }
+      WS.keepAliveAttempt = WS.keepAliveAttempt + 1;
+    } else {
+      socket.send(str);
+    }
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
