@@ -534,7 +534,7 @@ def main(args):
         data.append(parse_header(path, cpp_opts))
 
     output_json(data, not args.pretty_print, args.output)
-    sys.exit(0)
+    return 0
 
   # Look for structs in all passed headers.
   header_files = []
@@ -555,7 +555,8 @@ def main(args):
   # Inspect all collected structs.
   struct_info = inspect_code(header_files, cpp_opts, structs, defines)
   output_json(struct_info, not args.pretty_print, args.output)
+  return 0
 
 
 if __name__ == '__main__':
-  main(sys.argv[1:])
+  sys.exit(main(sys.argv[1:]))

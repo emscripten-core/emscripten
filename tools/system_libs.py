@@ -522,7 +522,7 @@ class NoBCLibrary(Library):
 
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcompiler_rt.symbols'))
   depends = ['libc']
 
   cflags = ['-O2']
@@ -620,7 +620,7 @@ class libc(MuslInternalLibrary, MTLibrary):
 
 class libc_wasm(MuslInternalLibrary):
   name = 'libc-wasm'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc-wasm.symbols'))
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'libc', 'musl', 'src', 'math']
@@ -637,7 +637,7 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   name = 'libc-extras'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc-extras.symbols'))
 
   src_dir = ['system', 'lib', 'libc']
   src_files = ['extras.c']
@@ -645,7 +645,7 @@ class libc_extras(MuslInternalLibrary):
 
 class libcxxabi(CXXLibrary, MTLibrary):
   name = 'libc++abi'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi.symbols'))
   depends = ['libc']
 
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
@@ -669,7 +669,7 @@ class libcxxabi(CXXLibrary, MTLibrary):
 
 class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx.symbols'))
   depends = ['libc++abi']
 
   includes = ['system', 'lib', 'libcxxabi', 'include']
@@ -917,11 +917,11 @@ class libpthreads(MuslInternalLibrary, MTLibrary):
     return 'libpthreads' if self.is_mt else 'libpthreads_stub'
 
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
-  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
-  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
+  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads_asmjs.symbols'))
+  pthreads_stub_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads_stub.symbols'))
 
   def get_symbols(self):
-    symbols = self.pthreads_symbols if self.is_mt else self.stub_pthreads_symbols
+    symbols = self.pthreads_symbols if self.is_mt else self.pthreads_stub_symbols
     if self.is_mt and not shared.Settings.WASM_BACKEND:
       symbols += self.asmjs_pthreads_symbols
     return symbols

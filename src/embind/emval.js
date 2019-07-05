@@ -204,11 +204,14 @@ var LibraryEmVal = {
 
 #if DYNAMIC_EXECUTION == 0
   $emval_get_global: function() {
+    if (typeof globalThis === 'object') {
+      return globalThis;
+    }
     function testGlobal(obj) {
       obj['$$$embind_global$$$'] = obj;
       var success = typeof $$$embind_global$$$ === 'object' && obj['$$$embind_global$$$'] === obj;
       if (!success) {
-	delete obj['$$$embind_global$$$'];
+        delete obj['$$$embind_global$$$'];
       }
       return success;
     }
@@ -227,7 +230,14 @@ var LibraryEmVal = {
   },
 #else
   // appease jshint (technically this code uses eval)
-  $emval_get_global: function() { return (function(){return Function;})()('return this')(); },
+  $emval_get_global: function() {
+    if (typeof globalThis === 'object') {
+      return globalThis;
+    }
+    return (function(){
+      return Function;
+    })()('return this')();
+  },
 #endif
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {

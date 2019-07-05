@@ -164,6 +164,14 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def no_asmjs(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm', note, negate=True)
+  return decorated
+
+
 # used for tests that fail now and then on CI, due to timing or other
 # random causes. this tries the test a few times, looking for at least
 # one pass

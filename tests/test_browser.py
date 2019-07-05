@@ -1581,6 +1581,10 @@ keydown(100);keyup(100); // trigger the end
   def test_egl_width_height_with_proxy_to_pthread(self):
     self._test_egl_width_height_base('-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD=1')
 
+  @requires_graphics_hardware
+  def test_egl_createcontext_error(self):
+    self.btest('test_egl_createcontext_error.c', '1', args=['-lEGL', '-lGL'])
+
   def do_test_worker(self, args=[]):
     # Test running in a web worker
     create_test_file('file.dat', 'data for worker')
@@ -3230,6 +3234,15 @@ window.close = function() {
       print(opts)
       self.btest('browser/async_virtual_2.cpp', '1', args=['-O' + str(opts), '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1', '-profiling'] + self.get_async_args())
 
+  # Test async sleeps in the presence of invoke_* calls, which can happen with
+  # longjmp or exceptions.
+  @parameterized({
+    'O0': ([],), # noqa
+    'O3': (['-O3'],), # noqa
+  })
+  def test_async_longjmp(self, args):
+    self.btest('browser/async_longjmp.cpp', '2', args=args + self.get_async_args())
+
   @no_wasm_backend('emterpretify, with emterpreter-specific error logging')
   def test_emterpreter_async_bad(self):
     for opts in [0, 3]:
@@ -3291,6 +3304,10 @@ window.close = function() {
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
+
+  @no_fastcomp('bysyncify specific')
+  def test_async_stack_overflow(self):
+    self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_STACK_SIZE=4'])
 
   @requires_sync_compilation
   def test_modularize(self):
