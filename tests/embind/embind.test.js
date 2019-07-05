@@ -479,7 +479,26 @@ module({
             assert.equal(expected, cm.get_non_ascii_wstring());
         });
 
-        test("passing unicode string into C++", function() {
+        test("non-ascii u16strings", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(65535);
+            assert.equal(expected, cm.get_non_ascii_u16string());
+        });
+
+        test("non-ascii u32strings", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(55357) +
+                String.fromCharCode(56833) +
+                String.fromCharCode(55357) +
+                String.fromCharCode(56960);
+            assert.equal(expected, cm.get_non_ascii_u32string());
+        });
+
+        test("passing unicode (wide) string into C++", function() {
             var expected = String.fromCharCode(10) +
                 String.fromCharCode(1234) +
                 String.fromCharCode(2345) +
@@ -487,10 +506,39 @@ module({
             assert.equal(expected, cm.take_and_return_std_wstring(expected));
         });
 
+        test("passing unicode (utf-16) string into C++", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(65535);
+            assert.equal(expected, cm.take_and_return_std_u16string(expected));
+        });
+
+        test("passing unicode (utf-32) string into C++", function() {
+            var expected = String.fromCharCode(10) +
+                String.fromCharCode(1234) +
+                String.fromCharCode(2345) +
+                String.fromCharCode(55357) +
+                String.fromCharCode(56833) +
+                String.fromCharCode(55357) +
+                String.fromCharCode(56960);
+            assert.equal(expected, cm.take_and_return_std_u32string(expected));
+        });
+
         if (cm.isMemoryGrowthEnabled) {
             test("can access a literal wstring after a memory growth", function() {
                 cm.force_memory_growth();
                 assert.equal("get_literal_wstring", cm.get_literal_wstring());
+            });
+            
+            test("can access a literal u16string after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_u16string", cm.get_literal_u16string());
+            });
+            
+            test("can access a literal u32string after a memory growth", function() {
+                cm.force_memory_growth();
+                assert.equal("get_literal_u32string", cm.get_literal_u32string());
             });
         }
 
