@@ -68,7 +68,9 @@ mergeInto(LibraryManager.library, {
       path = PATH_FS.resolve(FS.cwd(), path);
       opts = opts || {};
 
-      if (!path) return { path: '', node: null };
+      if (!path) {
+        throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
+      }
 
       var defaults = {
         follow_mount: true,
