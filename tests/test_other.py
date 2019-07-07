@@ -9430,3 +9430,14 @@ int main () {
         create_test_file(f, 'Test file')
         emcc_args.extend(['--embed-file', f])
     self.do_other_test('mmap_and_munmap', emcc_args)
+
+  def test_EMSCRIPTEN_and_STRICT(self):
+    # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
+    # code, unless STRICT is enabled.
+    create_test_file('src.c', '''
+      #ifndef EMSCRIPTEN
+      #error "not defined"
+      #endif
+    ''')
+    run_process([PYTHON, EMCC, 'src.c'])
+    self.expect_fail([PYTHON, EMCC, 'src.c', '-s', 'STRICT'])
