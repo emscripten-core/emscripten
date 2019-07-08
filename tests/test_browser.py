@@ -2323,7 +2323,7 @@ void *getBindBuffer() {
         doCcall(100);
         doCwrapCall(200);
         doDirectCall(300);
-        
+
         var xhr = new XMLHttpRequest();
         assert(Module.noted);
         xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
