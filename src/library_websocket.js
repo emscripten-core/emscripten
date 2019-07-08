@@ -238,16 +238,17 @@ var LibraryWebSocket = {
           console.error('WebSocket onmessage, received data: "' + e.data + '", ' + e.data.length + ' chars, ' + len + ' bytes encoded as UTF-8: "' + s + '"');
 #endif
           HEAPU32[(WS.socketEvent+12)>>2] = 1; // text data
+        } else {
+          WS.wsKeepAliveTimer && clearInterval(WS.wsKeepAliveTimer);
+          WS.wsKeepAliveTimer = null;
+
+          WS.wsKeepAliveTimer = setInterval( function(){
+            var data = allocateUTF8('\r\n\r\n');
+            _emscripten_websocket_send_utf8_text(socketId, data);
+            _free(data);}, 10000 );
+          WS.keepAliveAttempt = 0;
+          return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
         }
-        WS.wsKeepAliveTimer && clearInterval(WS.wsKeepAliveTimer);
-        WS.wsKeepAliveTimer = null;
-
-        WS.wsKeepAliveTimer = setInterval( function(){
-          var data = allocateUTF8('\r\n\r\n');
-          _emscripten_websocket_send_utf8_text(socketId, data);
-          _free(data);}, 10000 );
-        WS.keepAliveAttempt = 0;
-
       } else {
         var len = e.data.byteLength;
         var buf = _malloc(len);
