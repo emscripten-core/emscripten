@@ -2323,15 +2323,13 @@ void *getBindBuffer() {
         doCcall(100);
         doCwrapCall(200);
         doDirectCall(300);
-      }
-
-      setTimeout(function() {
+        
         var xhr = new XMLHttpRequest();
         assert(Module.noted);
         xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
         xhr.send();
         setTimeout(function() { window.close() }, 1000);
-      }, 1000);
+      }
     ''' % self.port
 
     create_test_file('pre_runtime.js', r'''
