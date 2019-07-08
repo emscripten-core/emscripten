@@ -2945,7 +2945,7 @@ function(%(EXPORT_NAME)s) {
       # after document.currentScript is gone, so we save it.
       # (when MODULARIZE_INSTANCE, an instance is created
       # immediately anyhow, like in non-modularize mode)
-      if shared.Settings.EXPORT_ES6:
+      if shared.Settings.EXPORT_ES6 and shared.Settings.USE_PTHREADS:
         script_url = "import.meta.url"
       else:
         script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
