@@ -129,6 +129,7 @@ def needs_make(note=''):
 def no_asan(note):
   def decorator(f):
     assert callable(f)
+
     @wraps(f)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=address' in self.emcc_args:
@@ -140,7 +141,6 @@ def no_asan(note):
     note = 'This test cannot be run under ASan'
     return decorator(f)
   return decorator
-
 
 
 class TestCoreBase(RunnerCore):
