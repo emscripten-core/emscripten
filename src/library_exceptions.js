@@ -262,7 +262,8 @@ var LibraryExceptions = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch__deps: ['__exception_last', '__exception_infos', '__resumeException'],
+  __cxa_find_matching_catch_buffer: '{{{ makeStaticAlloc(4) }}}',
+  __cxa_find_matching_catch__deps: ['__cxa_find_matching_catch_buffer', '__exception_last', '__exception_infos', '__resumeException'],
   __cxa_find_matching_catch: function() {
     var thrown = ___exception_last;
     if (!thrown) {
@@ -279,12 +280,11 @@ var LibraryExceptions = {
 
     var pointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(throwntype);
     // can_catch receives a **, add indirection
-    if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-    {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
-    thrown = ___cxa_find_matching_catch.buffer;
+    {{{ makeSetValue('___cxa_find_matching_catch_buffer', '0', 'thrown', '*') }}};
+    thrown = ___cxa_find_matching_catch_buffer;
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
