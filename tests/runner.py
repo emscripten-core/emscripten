@@ -1405,11 +1405,11 @@ class BrowserCore(RunnerCore):
 %(report_main)s
 %(user_code)s
 ''' % {
-  'port': self.port,
-  'report_header': path_from_root('tests', 'report_result.h'),
-  'report_main': open(path_from_root('tests', 'report_result.cpp')).read(),
-  'user_code': user_code
-   }
+      'port': self.port,
+      'report_header': path_from_root('tests', 'report_result.h'),
+      'report_main': open(path_from_root('tests', 'report_result.cpp')).read(),
+      'user_code': user_code
+    }
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
