@@ -1273,12 +1273,12 @@ def harness_server_func(in_queue, out_queue, port):
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
-          self.wfile.write('COMMAND:' + url)
+          self.wfile.write(b'COMMAND:' + url)
           # move us to the right place to serve the files
           os.chdir(dir)
         else:
           # the browser must keep polling
-          self.wfile.write('(wait)')
+          self.wfile.write(b'(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
