@@ -1684,15 +1684,6 @@ RUNTIME_ASSERTIONS = '''
   assert(runtimeInitialized, 'you need to wait for the runtime to be ready (e.g. wait for main() to be called)');
   assert(!runtimeExited, 'the runtime was exited (use NO_EXIT_RUNTIME to keep it alive after main() exits)');'''
 
-# We want to modify `asm` in some cases, for assertion purposes, however in ES6 environments that
-# may be illegal as the wasm exports are an ES6 export object, which is read-only. To work around
-# that, we simply make a copy of `asm` - the overhead doesn't matter in an assertions build.
-COPY_ASM = '''
-var originalAsm = asm;
-Module['asm'] = asm = {};
-for (var x in originalAsm) asm[x] = originalAsm[x];
-'''
-
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''
@@ -1704,8 +1695,6 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     # some support code
     receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
 
-    receiving = COPY_ASM
-
     wrappers = []
     for name in receiving_functions:
       wrappers.append('''\
@@ -1714,7 +1703,7 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
   return real_%(name)s.apply(null, arguments);
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
-    receiving = COPY_ASM + '\n'.join(wrappers)
+    receiving = '\n'.join(wrappers)
 
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
 
@@ -2468,7 +2457,6 @@ def create_receiving_wasm(exports):
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
-    receiving.append(COPY_ASM)
     for e in exports:
       receiving.append('''\
 var real_%(mangled)s = asm["%(e)s"];
