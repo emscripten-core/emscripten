@@ -978,7 +978,7 @@ function createWasm(env) {
     // We want to modify the exports in some cases, however, in ES6 environments that
     // may be illegal as the wasm exports are an ES6 export object, which is read-only.
     // To work around that, we simply make a copy of them.
-#if (EXPORT_ES6 && ASSERTIONS) || BYSYNCIFY
+#if EXPORT_ES6 && (ASSERTIONS || BYSYNCIFY)
     var originalExports = exports;
     for (var x in originalexports) exports[x] = originalExports[x];
 #endif
