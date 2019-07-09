@@ -158,17 +158,21 @@ console.log(TheModule.e_namespace_val);
 
 typeTester = new TheModule.TypeTestClass();
 
-console.log('return char ' + (typeTester.ReturnCharMethod() & 255));
+console.log('return char ' + typeTester.ReturnCharMethod());
 typeTester.AcceptCharMethod((2<<6)-1);
-typeTester.AcceptCharMethod(-1);
+// Prints -1 because the c++ code accepts unsigned char.
+typeTester.AcceptCharMethod((2<<7)-1);
 
-console.log('return unsigned char ' + (typeTester.ReturnUnsignedCharMethod() & 255));
+// Prints -1 because all integers are signed in javascript.
+console.log('return unsigned char ' + typeTester.ReturnUnsignedCharMethod());
 typeTester.AcceptUnsignedCharMethod((2<<7)-1);
 
-console.log('return unsigned short ' + (typeTester.ReturnUnsignedShortMethod() & 65535));
+// Prints -1 because all integers are signed in javascript.
+console.log('return unsigned short ' + typeTester.ReturnUnsignedShortMethod());
 typeTester.AcceptUnsignedShortMethod((2<<15)-1);
 
-console.log('return unsigned long ' + (typeTester.ReturnUnsignedLongMethod() | 0));
+// Prints -1 because all integers are signed in javascript.
+console.log('return unsigned long ' + typeTester.ReturnUnsignedLongMethod());
 typeTester.AcceptUnsignedLongMethod((2<<31)-1);
 var voidPointerUser = new TheModule.VoidPointerUser();
 

@@ -41,8 +41,6 @@
 #elif defined(__arm__) && \
     SANITIZER_LINUX && !SANITIZER_ANDROID
 #define CAN_SANITIZE_LEAKS 1
-#elif SANITIZER_EMSCRIPTEN
-#define CAN_SANITIZE_LEAKS 1
 #else
 #define CAN_SANITIZE_LEAKS 0
 #endif
@@ -213,10 +211,6 @@ bool GetThreadRangesLocked(tid_t os_id, uptr *stack_begin, uptr *stack_end,
                            uptr *cache_end, DTLS **dtls);
 void ForEachExtraStackRange(tid_t os_id, RangeIteratorCallback callback,
                             void *arg);
-// Scans thread data (stacks and TLS) for heap pointers.
-void ProcessThreads(SuspendedThreadsList const &suspended_threads,
-                    Frontier *frontier);
-
 // If called from the main thread, updates the main thread's TID in the thread
 // registry. We need this to handle processes that fork() without a subsequent
 // exec(), which invalidates the recorded TID. To update it, we must call

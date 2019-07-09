@@ -293,13 +293,6 @@ document.getElementById = function(id) {
   throw 'document.getElementById failed on ' + id;
 };
 
-document.querySelector = function(id) {
-  if (id === '#canvas' || id === '#application-canvas' || id === 'canvas' || id === 'application-canvas') {
-    return Module.canvas;
-  }
-  throw 'document.querySelector failed on ' + id;
-};
-
 document.documentElement = {};
 
 document.styleSheets = [{
@@ -507,12 +500,6 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #if USE_PTHREADS
 }
 #endif
-
-// proxyWorker.js has defined 'document' and 'window' objects above, so need to
-// initialize them for library_html5.js explicitly here.
-if (typeof __specialEventTargets !== 'undefined') {
-  __specialEventTargets = [0, document, window];
-}
 
 function postCustomMessage(data) {
   postMessage({ target: 'custom', userData: data });

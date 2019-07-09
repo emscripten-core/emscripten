@@ -22,10 +22,9 @@ def which(program):
   raise Exception('that is very bad')
 
 
-def test(var):
-  val = os.getenv(var, '')
-  print('%s=%s' % (var, val))
-  print(which(val))
+def test(what):
+  print(what)
+  print(which(os.getenv(what, '')))
 
 
 def check_ar():

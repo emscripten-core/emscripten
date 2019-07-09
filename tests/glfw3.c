@@ -29,24 +29,13 @@ static void wmbutcb(GLFWwindow *window, int button, int action, int mods) {
 static void wcurpcb(GLFWwindow *window, double x, double y) { assert(window != NULL); (void)x; (void)y; }
 static void wcurecb(GLFWwindow *window, int entered) { assert(window != NULL); (void)entered; }
 static void wscrocb(GLFWwindow *window, double x, double y) { assert(window != NULL); (void)x; (void)y; }
-static void wdropcb(GLFWwindow *window, int count, const char **paths) {
-    assert(window != NULL); (void)count; (void)paths;
-}
-
-#define TEST_GLFW_SET_I(Function, Value) \
-assert(glfwSet##Function(Value) == NULL);  /* Default value (no callback was set) */ \
-assert(glfwSet##Function(Value) == Value); /* The previously set callback */
-
-#define TEST_GLFW_SET_II(Function, Window, Value) \
-assert(glfwSet##Function(Window, Value) == NULL);  /* Default value (no callback was set) */ \
-assert(glfwSet##Function(Window, Value) == Value); /* The previously set callback */
 
 int main()
 {
     GLFWwindow *window;
     char *userptr = "userptr";
 
-    TEST_GLFW_SET_I(ErrorCallback, errorcb)
+    glfwSetErrorCallback(errorcb);
     assert(glfwInit() == GL_TRUE);
     assert(!strcmp(glfwGetVersionString(), "3.2.1 JS WebGL Emscripten"));
     assert(glfwGetCurrentContext() == NULL);
@@ -71,7 +60,7 @@ int main()
         glfwGetMonitorPos(monitors[0], &x, &y);
         glfwGetMonitorPhysicalSize(monitors[0], &w, &h);
         assert(glfwGetMonitorName(monitors[0]) != NULL);
-        TEST_GLFW_SET_I(MonitorCallback, monitcb)
+        glfwSetMonitorCallback(monitcb);
 
         // XXX: not implemented
         // assert(glfwGetVideoModes(monitors[0], &count) != NULL);
@@ -89,20 +78,13 @@ int main()
         window = glfwCreateWindow(640, 480, "glfw3.c", NULL, NULL);
         assert(window != NULL);
 
-        TEST_GLFW_SET_II(WindowPosCallback, window, wposicb)
-        TEST_GLFW_SET_II(WindowSizeCallback, window, wsizecb)
-        TEST_GLFW_SET_II(WindowCloseCallback, window, wcloscb)
-        TEST_GLFW_SET_II(WindowRefreshCallback, window, wrfrscb)
-        TEST_GLFW_SET_II(WindowFocusCallback, window, wfocucb)
-        TEST_GLFW_SET_II(WindowIconifyCallback, window, wiconcb)
-        TEST_GLFW_SET_II(FramebufferSizeCallback, window, wfsizcb)
-        TEST_GLFW_SET_II(KeyCallback, window, wkeypcb)
-        TEST_GLFW_SET_II(CharCallback, window, wcharcb)
-        TEST_GLFW_SET_II(MouseButtonCallback, window, wmbutcb)
-        TEST_GLFW_SET_II(CursorPosCallback, window, wcurpcb)
-        TEST_GLFW_SET_II(CursorEnterCallback, window, wcurecb)
-        TEST_GLFW_SET_II(ScrollCallback, window, wscrocb)
-        TEST_GLFW_SET_II(DropCallback, window, wdropcb)
+        glfwSetWindowPosCallback(window, wposicb);
+        glfwSetWindowSizeCallback(window, wsizecb);
+        glfwSetWindowCloseCallback(window, wcloscb);
+        glfwSetWindowRefreshCallback(window, wrfrscb);
+        glfwSetWindowFocusCallback(window, wfocucb);
+        glfwSetWindowIconifyCallback(window, wiconcb);
+        glfwSetFramebufferSizeCallback(window, wfsizcb);
 
         assert(glfwWindowShouldClose(window) == 0);
         glfwSetWindowShouldClose(window, 1);

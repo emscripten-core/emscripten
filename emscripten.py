@@ -167,14 +167,6 @@ def parse_fastcomp_output(backend_output, DEBUG):
   # functions marked llvm.used in the code are exports requested by the user
   shared.Building.user_requested_exports += metadata['exports']
 
-  # In MINIMAL_RUNTIME stackSave() and stackRestore are JS library functions. If LLVM backend generated
-  # calls to invoke_*() functions that save and restore the stack, we must include the stack functions
-  # explicitly into the build. (In traditional runtime the stack functions are always present, so this
-  # tracking is not needed)
-  if shared.Settings.MINIMAL_RUNTIME and (len(metadata['invokeFuncs']) > 0 or shared.Settings.LINKABLE):
-    shared.Settings.EXPORTED_FUNCTIONS += ['stackSave', 'stackRestore']
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
-
   return funcs, metadata, mem_init
 
 
@@ -2225,10 +2217,6 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   all_implemented = metadata['exports']
-
-  if shared.Settings.BYSYNCIFY:
-    all_implemented += ['bysyncify_start_unwind', 'bysyncify_stop_unwind', 'bysyncify_start_rewind', 'bysyncify_stop_rewind']
-
   check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
@@ -2305,7 +2293,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   cmd += ['--detect-features']
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     cmd.append('--no-legalize-javascript-ffi')
@@ -2384,7 +2372,7 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
       buf += 8;
     } else if (c == 'i') {
       buf = align_to(buf, 4);
-      args.push(HEAP32[(buf >> 2)]);
+      args.push(HEAPU32[(buf >> 2)]);
       buf += 4;
     }
   }
@@ -2437,9 +2425,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     # symbols.  Emscripten currently expects symbols to start with '_' so we
     # artificially add them to the output of emscripten-wasm-finalize and them
     # strip them again here.
-    # note that we don't do this for EM_JS functions (which, rarely, may have
-    # a '_' prefix)
-    if g.startswith('_') and g not in metadata['emJsFuncs']:
+    if g.startswith('_'):
       return g[1:]
     return g
 
@@ -2608,13 +2594,13 @@ def run(infile, outfile, memfile, libraries):
   if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
     generated_struct_info_name = 'generated_struct_info.json'
 
-    def generate_struct_info():
+    def ensure_struct_info():
       with ToolchainProfiler.profile_block('gen_struct_info'):
         out = shared.Cache.get_path(generated_struct_info_name)
-        gen_struct_info.main(['-q', '-c', '-o', out])
+        gen_struct_info.main(['-qo', out, path_from_root('src', 'struct_info.json')])
         return out
 
-    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
+    shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, ensure_struct_info)
   # do we need an else, to define it for the bootstrap case?
 
   outfile_obj = open(outfile, 'w')

@@ -13,7 +13,7 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 
-#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
+#if SANITIZER_LINUX
 
 #include "lsan_allocator.h"
 

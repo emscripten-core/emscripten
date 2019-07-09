@@ -895,11 +895,7 @@
     {
         "file": "bits/mman.h",
         "defines": [
-            "MAP_ANONYMOUS",
-            "MAP_FAILED",
-            "MAP_FIXED",
-            "MAP_PRIVATE",
-            "PROT_WRITE"
+            "MAP_PRIVATE"
         ],
         "structs": {}
     },
@@ -1570,7 +1566,6 @@
                 "onsuccess",
                 "onerror",
                 "onprogress",
-                "onreadystatechange",
                 "attributes",
                 "timeoutMSecs",
                 "withCredentials",

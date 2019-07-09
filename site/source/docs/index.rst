@@ -32,7 +32,6 @@ This comprehensive documentation set contains everything you need to know to use
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
 - :ref:`CyberDWARF` shows how to use the CyberDWARF debugging system
-- :ref:`Sanitizers` shows how to debug with sanitizers
 
 The full hierarchy of articles, opened to the second level, is shown below.
 
@@ -51,5 +50,4 @@ The full hierarchy of articles, opened to the second level, is shown below.
   api_reference/index
   tools_reference/index
   debugging/CyberDWARF
-  debugging/Sanitizers
   site/index

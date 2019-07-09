@@ -1049,18 +1049,12 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
-// When dynamically linking, some things like dynCalls may not exist in one module and
-// be provided by a linked module, so they must be accessed indirectly using Module
-function exportedAsmFunc(func) {
-  if (!MAIN_MODULE && !SIDE_MODULE) {
-    return func;
-  } else {
-    return "Module['" + func + "']";
-  }
-}
-
 function makeDynCall(sig) {
-  return exportedAsmFunc('dynCall_' + sig);
+  if (!MAIN_MODULE && !SIDE_MODULE) {
+    return 'dynCall_' + sig;
+  } else {
+    return "Module['dynCall_" + sig + "']";
+  }
 }
 
 var TWO_TWENTY = Math.pow(2, 20);
@@ -1594,7 +1588,7 @@ function modifyFunction(text, func) {
   var args = match[2];
   var rest = text.substr(match[0].length);
   var bodyStart = rest.indexOf('{');
-  assert(bodyStart >= 0);
+  assert(bodyStart > 0);
   var bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
