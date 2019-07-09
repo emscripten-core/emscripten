@@ -7878,7 +7878,8 @@ int main() {
           self.assertNotContained('--ignore-implicit-traps ', err)
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
-    assert len(set(sizes)) == 2, 'sizes must be different, as the flag has an impact'
+    # sizes must be different, as the flag has an impact
+    self.assertEqual(len(set(sizes)), 2)
 
   @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
   def test_binaryen_passes(self):
