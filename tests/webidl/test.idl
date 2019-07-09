@@ -165,3 +165,7 @@ interface StoreArray {
   long getArrayValue(long index);
 };
 
+interface LongLongTypes {
+  readonly attribute unsigned long long[] lluArray;
+  attribute long long ll;
+};
