@@ -262,8 +262,7 @@ var LibraryExceptions = {
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
 
-  __cxa_find_matching_catch_buffer: '{{{ makeStaticAlloc(4) }}}',
-  __cxa_find_matching_catch__deps: ['__cxa_find_matching_catch_buffer', '__exception_last', '__exception_infos', '__resumeException'],
+  __cxa_find_matching_catch__deps: ['__exception_last', '__exception_infos', '__resumeException'],
   __cxa_find_matching_catch: function() {
     var thrown = ___exception_last;
     if (!thrown) {
@@ -283,8 +282,9 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-    {{{ makeSetValue('___cxa_find_matching_catch_buffer', '0', 'thrown', '*') }}};
-    thrown = ___cxa_find_matching_catch_buffer;
+    var buffer = {{{ makeStaticAlloc(4) }}};
+    {{{ makeSetValue('buffer', '0', 'thrown', '*') }}};
+    thrown = buffer;
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
