@@ -9,7 +9,7 @@ Debugging with Sanitizers
 Undefined Behaviour Sanitizer
 =============================
 
-Clang's `undefined behavior sanitizer`__ (UBSan) is now available for use with
+Clang's `undefined behavior sanitizer`__ (UBSan) is available for use with
 Emscripten. This makes it much easier to catch bugs in your code.
 
 __ https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
@@ -110,15 +110,15 @@ The minimal runtime is supported by Emscripten. To use it, pass the flag
 Address Sanitizer
 =================
 
-Clang's `address sanitizer`__ (ASan) is now also available for use with
-Emscripten. This makes it much easier to catch buffer overflows, memory leaks,
-and other related bugs in your code.
+Clang's `address sanitizer`__ (ASan) is also available for use with Emscripten.
+This makes it much easier to catch buffer overflows, memory leaks, and other
+related bugs in your code.
 
 __ https://clang.llvm.org/docs/AddressSanitizer.html
 
 To use ASan, simply pass ``-fsanitize=address`` to ``emcc`` or ``em++``.
 
-You probably need to increase ``TOTAL_MEMORY`` or pass
+You probably need to increase ``TOTAL_MEMORY`` to at least 64 MB or pass
 ``-s ALLOW_MEMORY_GROWTH`` so that ASan has enough memory to start.
 
 Examples
@@ -224,12 +224,6 @@ Consider ``leak.cpp``:
     new int[10];
   }
 
-Note that since leak checks take place at program exit, you must use
-``-s EXIT_RUNTIME``, or invoke ``__lsan::DoLeakCheck`` manually.
-
-Also, if you only want to check for memory leaks, you may use
-``-fsanitize=leak`` instead of ``-fsanitize=address``.
-
 .. code-block:: console
 
   $ em++ -g4 -fsanitize=address -s ALLOW_MEMORY_GROWTH -s EXIT_RUNTIME leak.cpp
@@ -249,6 +243,26 @@ Also, if you only want to check for memory leaks, you may use
       #7 0x80001acc in runCaller a.out.js:6860:29
 
   SUMMARY: AddressSanitizer: 40 byte(s) leaked in 1 allocation(s).
+
+Note that since leak checks take place at program exit, you must use
+``-s EXIT_RUNTIME``, or invoke ``__lsan::DoLeakCheck`` manually.
+
+You can detect that AddressSanitizer is enabled and run ``__lsan::DoLeakCheck``
+by doing:
+
+.. code-block:: c
+
+  #if defined(__has_feature)
+  #if __has_feature(address_sanitizer)
+    // code for ASan-enabled builds
+    __lsan::DoLeakCheck();
+  #endif
+  #endif
+
+Also, if you only want to check for memory leaks, you may use
+``-fsanitize=leak`` instead of ``-fsanitize=address``. ``-fsanitize=leak``
+does not instrument all memory accesses, and as a result is much faster than
+``-fsanitize=address``.
 
 Use After Return
 ^^^^^^^^^^^^^^^^
@@ -277,6 +291,10 @@ Note that to do this check, you have to use the ASan option
 a function called ``__asan_default_options`` like the example, or you can
 define ``Module['ASAN_OPTIONS'] = 'detect_stack_use_after_return=1'`` in the
 generated JavaScript. ``--pre-js`` is helpful here.
+
+This option is fairly expensive because it converts stack allocations into
+heap allocations, and these allocations are not reused so that future accesses
+can cause traps. Hence, it is not enabled by default.
 
 .. code-block:: console
 
