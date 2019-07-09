@@ -282,7 +282,11 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
+#if DISABLE_EXCEPTION_THROWING
+    var buffer = 0;
+#else
     var buffer = {{{ makeStaticAlloc(4) }}};
+#endif
     {{{ makeSetValue('buffer', '0', 'thrown', '*') }}};
     thrown = buffer;
     // The different catch blocks are denoted by different types.
