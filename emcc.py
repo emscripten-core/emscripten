@@ -1538,6 +1538,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
             if shared.Settings.BYSYNCIFY_IMPORTS:
               passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
+          if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
+            passes += ['--ignore-implicit-traps']
         if shared.Settings.BINARYEN_EXTRA_PASSES:
           passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
         options.binaryen_passes = passes

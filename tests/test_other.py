@@ -7860,7 +7860,6 @@ int main() {
         assert expect_whitespace_js == ('{\n  ' in js), 'whitespace-minified js must not have excess spacing'
         assert expect_closured == ('var a;' in js or 'var a,' in js or 'var a=' in js or 'var a ' in js), 'closured js must have tiny variable names'
 
-  @no_wasm_backend()
   @uses_canonical_tmp
   def test_binaryen_ignore_implicit_traps(self):
     sizes = []
@@ -7873,12 +7872,14 @@ int main() {
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
         print(' '.join(cmd))
         err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-        asm2wasm_line = [x for x in err.split('\n') if 'asm2wasm' in x][0]
-        asm2wasm_line = asm2wasm_line.strip() + ' ' # ensure it ends with a space, for simpler searches below
-        print('|' + asm2wasm_line + '|')
-        assert expect == (' --ignore-implicit-traps ' in asm2wasm_line)
+        if expect:
+          self.assertContained('--ignore-implicit-traps ', err)
+        else:
+          self.assertNotContained('--ignore-implicit-traps ', err)
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
+    # sizes must be different, as the flag has an impact
+    self.assertEqual(len(set(sizes)), 2)
 
   @no_fastcomp('BINARYEN_PASSES is used to optimize only in the wasm backend (fastcomp uses flags to asm2wasm)')
   def test_binaryen_passes(self):
