@@ -8,13 +8,14 @@ import shutil
 import logging
 
 VERSION = '9c'
+HASH = '2b581c60ae401a79bbbe748ff2deeda5acd50bfd2ea22e5926e36d34b9ebcffb6580b0ff48e972c1441583e30e21e1ea821ca0423f9c67ce08a31dffabdbe6b7'
 
 
 def get(ports, settings, shared):
   if settings.USE_LIBJPEG != 1:
     return []
 
-  ports.fetch_project('libjpeg', 'https://dl.bintray.com/homebrew/mirror/jpeg-9c.tar.gz', 'jpeg-9c')
+  ports.fetch_project('libjpeg', 'https://dl.bintray.com/homebrew/mirror/jpeg-9c.tar.gz', 'jpeg-9c', sha512hash=HASH)
 
   libname = ports.get_lib_name('libjpeg')
 

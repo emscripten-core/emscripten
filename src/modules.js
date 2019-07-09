@@ -68,6 +68,10 @@ var LibraryManager = {
       'library_html5.js'
     ];
 
+    if (!DISABLE_EXCEPTION_THROWING) {
+      libraries.push('library_exceptions.js');
+    }
+
     if (!MINIMAL_RUNTIME) {
       libraries.push('library_browser.js');
     }

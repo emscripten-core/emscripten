@@ -1204,7 +1204,17 @@ mergeInto(LibraryManager.library, {
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
-      // TODO if PROT is PROT_WRITE, make sure we have write access
+      // User requests writing to file (prot & PROT_WRITE != 0).
+      // Checking if we have permissions to write to the file unless
+      // MAP_PRIVATE flag is set. According to POSIX spec it is possible
+      // to write to file opened in read-only mode with MAP_PRIVATE flag,
+      // as all modifications will be visible only in the memory of
+      // the current process.
+      if ((prot & {{{ cDefine('PROT_WRITE') }}}) !== 0
+          && (flags & {{{ cDefine('MAP_PRIVATE')}}}) === 0
+          && (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDWR')}}}) {
+        throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
+      }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
       }

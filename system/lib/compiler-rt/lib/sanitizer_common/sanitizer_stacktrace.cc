@@ -28,9 +28,11 @@ uptr StackTrace::GetNextInstructionPc(uptr pc) {
 #endif
 }
 
+#if !defined(__EMSCRIPTEN__)
 uptr StackTrace::GetCurrentPc() {
   return GET_CALLER_PC();
 }
+#endif
 
 void BufferedStackTrace::Init(const uptr *pcs, uptr cnt, uptr extra_top_pc) {
   size = cnt + !!extra_top_pc;
@@ -41,8 +43,8 @@ void BufferedStackTrace::Init(const uptr *pcs, uptr cnt, uptr extra_top_pc) {
   top_frame_bp = 0;
 }
 
-// Sparc implemention is in its own file.
-#if !defined(__sparc__)
+// Sparc and Emscripten implementions are in their own files.
+#if !defined(__sparc__) && !defined(__EMSCRIPTEN__)
 
 // In GCC on ARM bp points to saved lr, not fp, so we should check the next
 // cell in stack to be a saved frame pointer. GetCanonicFrame returns the
