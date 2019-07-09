@@ -60,11 +60,11 @@ var LibraryWebGL2 = {
     emscriptenWebGLGet(name_, p, 'Integer64');
   },
 
-  glGetInternalformativ__sig: 'viiiii',
-  glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
+  glGetInternalFormativ__sig: 'viiiii',
+  glGetInternalFormativ: function(target, internalformat, pname, bufSize, params) {
     if (bufSize < 0) {
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
+      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
 #endif
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
@@ -73,12 +73,12 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
       // if values == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
+      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
 #endif
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-    var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
+    var ret = GLctx['getInternalFormatParameter'](target, internalformat, pname);
     if (ret === null) return;
     for (var i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
@@ -772,7 +772,7 @@ var LibraryWebGL2 = {
   glGetSynciv__sig: 'viiiii',
   glGetSynciv: function(sync, pname, bufSize, length, values) {
     if (bufSize < 0) {
-      // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalformativ, it does say that GL_INVALID_VALUE should be raised,
+      // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalFormativ, it does say that GL_INVALID_VALUE should be raised,
       // so raise GL_INVALID_VALUE here as well.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values='+values+'): Function called with bufSize < 0!');
@@ -1109,12 +1109,6 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
  [10, 'blitFramebuffer']];
 
 #if USE_WEBGL2
-
-// If user passes -s USE_WEBGL2=1 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
-// be linked in as well.
-if (typeof createGLPassthroughFunctions === 'undefined') {
-  throw 'In order to use WebGL 2 in strict mode with -s USE_WEBGL2=1, you need to link in WebGL support with -lGL!';
-}
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
 

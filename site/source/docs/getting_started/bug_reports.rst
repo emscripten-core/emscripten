@@ -17,13 +17,10 @@ Please supply as much relevant information as possible, including:
 .. Tip:: Compile with ``EMCC_DEBUG=1`` and grab the **/tmp/emscripten_temp/emcc-\*** files (these include the bitcode and JavaScript in several stages). Note that the **emscripten_temp** directory should be emptied manually first, so it only contains new content!
 
 
-LLVM, wasm-ld, clang, Binaryen bugs
-===================================
+Fastcomp LLVM-Backend and Clang bugs
+====================================
 
-If uncertain, bugs can always be posted to the `main repository <https://github.com/emscripten-core/emscripten>`_. But if you are sure a bug is in an upstream project, you can file it there:
-
-- `LLVM bug tracker <https://bugs.llvm.org/>`_ . For most issues use the "libraries" product and the "Backend: WebAssembly" component. For wasm-ld issues, use "lld" and "wasm".
-- `Binaryen bug tracker <https://github.com/WebAssembly/binaryen/issues>`_
+:ref:`LLVM Backend <LLVM-Backend>` bugs may instead be posted to the appropriate `Emscripten LLVM fork <https://github.com/emscripten-core/emscripten-fastcomp>`_ or `Emscripten Clang fork <https://github.com/emscripten-core/emscripten-fastcomp-clang>`_ **if you are certain** that the bug is specific to these repositories. If uncertain, bugs must be posted to the `main repository <https://github.com/emscripten-core/emscripten>`_.
 
 Pull requests must (of course) go to the proper repository.
 

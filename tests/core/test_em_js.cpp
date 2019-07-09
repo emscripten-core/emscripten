@@ -70,10 +70,6 @@ EM_JS(const char*, return_str, (void), {
   return stringOnWasmHeap;
 });
 
-EM_JS(int, _prefixed, (void), {
-  return 1;
-});
-
 int main() {
   printf("BEGIN\n");
   noarg();
@@ -93,8 +89,6 @@ int main() {
 
   printf("    return_str returned: %s\n", return_str());
   printf("    return_utf8_str returned: %s\n", return_utf8_str());
-
-  printf("    _prefixed: %d\n", _prefixed());
 
   printf("END\n");
   return 0;

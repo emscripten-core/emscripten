@@ -15,7 +15,7 @@
 #include "interception.h"
 
 #if SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD || \
-    SANITIZER_OPENBSD || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
+    SANITIZER_OPENBSD || SANITIZER_SOLARIS
 
 #include <dlfcn.h>   // for dlsym() and dlvsym()
 
@@ -42,9 +42,8 @@ bool GetRealFunctionAddress(const char *func_name, uptr *func_addr,
   return real == wrapper;
 }
 
-// Android, Solaris, OpenBSD and emscripten do not have dlvsym
-#if !SANITIZER_ANDROID && !SANITIZER_SOLARIS && !SANITIZER_OPENBSD && \
-    !SANITIZER_EMSCRIPTEN
+// Android and Solaris do not have dlvsym
+#if !SANITIZER_ANDROID && !SANITIZER_SOLARIS && !SANITIZER_OPENBSD
 void *GetFuncAddrVer(const char *func_name, const char *ver) {
   return dlvsym(RTLD_NEXT, func_name, ver);
 }

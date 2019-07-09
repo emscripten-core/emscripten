@@ -1052,8 +1052,10 @@ var LibrarySDL = {
 #if ASSERTIONS
       assert(tempCtx, 'TTF_Init must have been called');
 #endif
+      tempCtx.save();
       tempCtx.font = fontString;
       var ret = tempCtx.measureText(text).width | 0;
+      tempCtx.restore();
       return ret;
     },
 
@@ -1716,9 +1718,9 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if EMTERPRETIFY_ASYNC == 0 && BYSYNCIFY == 0
+#if EMTERPRETIFY_ASYNC == 0
   SDL_Delay: function(delay) {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like BYSYNCIFY)');
+    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting.');
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
@@ -3155,16 +3157,8 @@ var LibrarySDL = {
   TTF_Init__proxy: 'sync',
   TTF_Init__sig: 'i',
   TTF_Init: function() {
-    // OffscreenCanvas 2D is faster than Canvas for text operations, so we use
-    // it if it's available.
-    try {
-      var offscreenCanvas = new OffscreenCanvas(0, 0);
-      SDL.ttfContext = offscreenCanvas.getContext('2d');
-    } catch (ex) {
-      var canvas = document.createElement('canvas');
-      SDL.ttfContext = canvas.getContext('2d');
-    }
-
+    var canvas = document.createElement('canvas');
+    SDL.ttfContext = canvas.getContext('2d');
     return 0;
   },
 

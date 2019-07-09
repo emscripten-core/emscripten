@@ -1,4 +1,5 @@
 DYNAMICTOP_PTR
+_ZSt18uncaught_exceptionv
 __cxa_atexit
 __cxa_uncaught_exception
 __lock
@@ -13,7 +14,6 @@ __syscall91
 __unlock
 _addDays
 _arraySum
-_emscripten_syscall_munmap
 _isLeapYear
 abort
 abortOnCannotGrowMemory

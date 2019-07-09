@@ -79,10 +79,6 @@ var LibraryPThreadStub = {
     {{{ makeSetValue('stacksize', '0', 'TOTAL_STACK', 'i32') }}};
     return 0;
   },
-  pthread_attr_getdetachstate: function(attr, detachstate) {
-    /* int pthread_attr_getdetachstate(const pthread_attr_t *attr, int *detachstate); */
-    return 0;
-  },
 
   pthread_setcancelstate: function() { return 0; },
   pthread_setcanceltype: function() { return 0; },
