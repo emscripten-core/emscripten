@@ -282,7 +282,7 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-#if DISABLE_EXCEPTION_CATCHING
+#if DISABLE_EXCEPTION_CATCHING == 1
     var buffer = 0;
 #else
     var buffer = {{{ makeStaticAlloc(4) }}};
