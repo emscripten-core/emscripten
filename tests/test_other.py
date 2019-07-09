@@ -8027,6 +8027,9 @@ int main() {
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                      0, [], [],          61,  0,   1,  1), # noqa
+    # we don't metadce with linkable code! other modules may want stuff
+    # don't compare the # of functions in a main module, which changes a lot
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10770,  17,   13, None), # noqa
   })
   @no_fastcomp()
   def test_binaryen_metadce_hello(self, *args):
@@ -8043,6 +8046,9 @@ int main() {
     'export_nothing':
            (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
+    # we don't metadce with linkable code! other modules may want stuff
+    # don't compare the # of functions in a main module, which changes a lot
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):

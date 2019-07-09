@@ -2829,7 +2829,24 @@ Var: 42
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self')
+    def post(filename):
+      js = open(filename).read()
+      start = js.find('var NAMED_GLOBALS')
+      first = js.find('{', start)
+      last = js.find('}', start)
+      exports = js[first + 1:last]
+      exports = exports.split(',')
+      # ensure there aren't too many globals; we don't want unnamed_addr
+      exports = [e.split(':')[0].strip('"') for e in exports]
+      exports.sort()
+      self.assertGreater(len(exports), 20)
+      # wasm backend includes alias in NAMED_GLOBALS
+      if self.is_wasm_backend():
+        self.assertLess(len(exports), 44)
+      else:
+        self.assertLess(len(exports), 30)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
   @needs_dlfcn
   def test_dlfcn_unique_sig(self):
