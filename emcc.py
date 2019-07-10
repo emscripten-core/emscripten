@@ -2591,6 +2591,8 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
       settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
+    elif newargs[i] == '-fexceptions':
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
