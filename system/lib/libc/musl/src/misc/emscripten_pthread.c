@@ -9,11 +9,14 @@ pthread_t pthread_self(void) {
 }
 #endif // !__EMSCRIPTEN_PTHREADS__
 
+#if __EMSCRIPTEN_PTHREADS__
 // Needs to be called after PThread.initRuntime, which in turn needs to be
 // called after constructors have run and memory is initialized.
-#if __EMSCRIPTEN_PTHREADS__
 EMSCRIPTEN_KEEPALIVE
+#else
+// Without threads, no reason not to just run this from C.
+__attribute__((constructor))
+#endif // __EMSCRIPTEN_PTHREADS__
 void __emscripten_pthread_data_constructor(void) {
     pthread_self()->locale = &libc.global_locale;
 }
-#endif // __EMSCRIPTEN_PTHREADS__
