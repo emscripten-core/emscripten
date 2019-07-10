@@ -4716,20 +4716,38 @@ window.close = function() {
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
 
-  @parameterized({
-    'O0':       ([],                     False), # noqa
-    'O3':       (['-O3'],                False), # noqa
-    'async':    ([],                     True,), # noqa
-    'pthreads': (['-s', 'USE_PTHREADS'], False), # noqa
-  })
-  def test_ES6(self, args, async):
+  def _test_es6(self, args):
     args = args + ['-s', 'EXPORT_ES6', '-s', 'MODULARIZE', '-s', 'MODULARIZE_INSTANCE', '-o', 'test.mjs']
-    if async:
-      args = args + self.get_async_args()
     print(args)
     create_test_file('src.c', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
     self.compile_btest(['src.c'] + args)
     create_test_file('test.html', '''
+      <script>
+        function log(e) {
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + e));
+          xhr.send();
+        }
+        log('startup');
+        window.onerror = function(e) {
+          log(e);
+        };
+      </script>
       <script type="module" src="test.mjs"></script>
     ''')
     self.run_browser('test.html', None, '/report_result?0')
+
+  def test_es6_O0(self):
+    self._test_es6([])
+
+  def test_es6_O3(self):
+    self._test_es6(['-O3'])
+
+  def test_es6_async(self):
+    self._test_es6(self.get_async_args())
+
+  @requires_threads
+  def test_es6_threads(self):
+    self._test_es6(['-s', 'USE_PTHREADS'])
+
+
