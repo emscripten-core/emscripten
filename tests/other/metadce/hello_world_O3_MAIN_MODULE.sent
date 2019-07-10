@@ -279,6 +279,7 @@ __remdi3
 __resumeException
 __setErrNo
 __set_network_callback
+__stack_pointer
 __syscall1
 __syscall10
 __syscall102

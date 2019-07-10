@@ -1160,6 +1160,7 @@ Module['asm'] = function(global, env, providedBuffer) {
 #if RELOCATABLE || !WASM_BACKEND
   env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
 #if WASM_BACKEND
+  env['__stack_pointer'] = STACK_BASE;
   // We reserve slot 0 in the table for the NULL function pointer.
   // This means the __table_base for the main module (even in dynamic linking)
   // is always 1.
