@@ -2329,7 +2329,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       cmd.append('--global-base=0')
     else:
       cmd.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
-    cmd.append('--initial-stack-pointer=%d' % Memory().stack_base)
   shared.print_compiler_stage(cmd)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:

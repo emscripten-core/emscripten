@@ -6,8 +6,8 @@
 import os
 import logging
 
-TAG = 'version_84'
-HASH = '8ac3dc8dc63e76925c4c0cbe1da2fb3a936fb4ff9563c11b360fc483411ee1960b8b4d32fb61505e559e451724c632830bacd2158ead2efc52b5313354bf35f7'
+TAG = 'version_86'
+HASH = '1f24eb9afc7236ee499df3f59afa9921b5fb2f6068aeb8904107d711a08d863144b5f22e26e5e441d2558ee1eb0fc24a88e87139835e5731b6ae1b7bb4e93484'
 
 
 def needed(settings, shared, ports):
