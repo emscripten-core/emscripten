@@ -38,4 +38,3 @@ void EMSCRIPTEN_KEEPALIVE _MaybeReportResult(int result, int sync)
 #endif
 
 #endif // __EMSCRIPTEN__
-
