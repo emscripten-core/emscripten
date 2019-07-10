@@ -94,6 +94,9 @@ EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
+if EMTEST_VERBOSE:
+  logging.root.setLevel(logging.DEBUG)
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -786,7 +789,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = out + err
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     if EMTEST_VERBOSE:
-      print('-- being program output --')
+      print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
     return ret
@@ -1088,6 +1091,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
       kwargs['force_c'] = True
+    logger.debug('do_run_from_file: %s' % src)
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
