@@ -980,7 +980,8 @@ function createWasm(env) {
     // To work around that, we simply make a copy of them.
 #if EXPORT_ES6 && (ASSERTIONS || BYSYNCIFY)
     var originalExports = exports;
-    for (var x in originalexports) exports[x] = originalExports[x];
+    exports = {};
+    for (var x in originalExports) exports[x] = originalExports[x];
 #endif
 #if BYSYNCIFY
     exports = Bysyncify.instrumentWasmExports(exports);

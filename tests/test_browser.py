@@ -4715,3 +4715,21 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
+
+  @parameterized({
+    'O0':       ([],                     False), # noqa
+    'O3':       (['-O3'],                False), # noqa
+    'async':    ([],                     True,), #noqa
+    'pthreads': (['-s', 'USE_PTHREADS'], False), #noqa
+  })
+  def test_ES6(self, args, async):
+    args = args + ['-s', 'EXPORT_ES6', '-s', 'MODULARIZE', '-s', 'MODULARIZE_INSTANCE', '-o', 'test.mjs']
+    if async:
+      args = args + self.get_async_args()
+    print(args)
+    create_test_file('src.c', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+    self.compile_btest(['src.c'] + args)
+    create_test_file('test.html', '''
+      <script type="module" src="test.mjs"></script>
+    ''')
+    self.run_browser('test.html', None, '/report_result?0')
