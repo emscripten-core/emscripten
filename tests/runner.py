@@ -1398,8 +1398,18 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def with_report_result(self, code):
-    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.port, path_from_root('tests', 'report_result.h')) + code
+  def with_report_result(self, user_code):
+    return '''
+#define EMTEST_PORT_NUMBER %(port)d
+#include "%(report_header)s"
+%(report_main)s
+%(user_code)s
+''' % {
+      'port': self.port,
+      'report_header': path_from_root('tests', 'report_result.h'),
+      'report_main': open(path_from_root('tests', 'report_result.cpp')).read(),
+      'user_code': user_code
+    }
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
@@ -1540,7 +1550,13 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port, '-include', path_from_root('tests', 'report_result.h')]
+    # add in support for reporting results. this adds as an include a header so testcases can
+    # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
+    # contains the implementation of REPORT_RESULT (we can't just include that implementation in
+    # the header as there may be multiple files being compiled here).
+    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+             '-include', path_from_root('tests', 'report_result.h'),
+             path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:
