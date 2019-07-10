@@ -4719,8 +4719,8 @@ window.close = function() {
   @parameterized({
     'O0':       ([],                     False), # noqa
     'O3':       (['-O3'],                False), # noqa
-    'async':    ([],                     True,), #noqa
-    'pthreads': (['-s', 'USE_PTHREADS'], False), #noqa
+    'async':    ([],                     True,), # noqa
+    'pthreads': (['-s', 'USE_PTHREADS'], False), # noqa
   })
   def test_ES6(self, args, async):
     args = args + ['-s', 'EXPORT_ES6', '-s', 'MODULARIZE', '-s', 'MODULARIZE_INSTANCE', '-o', 'test.mjs']
