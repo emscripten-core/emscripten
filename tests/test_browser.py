@@ -4734,6 +4734,9 @@ window.close = function() {
         };
       </script>
       <script type="module" src="test.mjs"></script>
+      <script>
+        log('after');
+      </script>
     ''')
     self.run_browser('test.html', None, '/report_result?0')
 
