@@ -7534,7 +7534,6 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8905')
   def test_stack_placement(self):
     self.set_setting('TOTAL_STACK', '1024')
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
