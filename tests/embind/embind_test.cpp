@@ -169,12 +169,12 @@ std::u16string get_non_ascii_u16string() {
 }
 
 std::u32string get_non_ascii_u32string() {
-    std::u32string u32s(6, 0);
+    std::u32string u32s(5, 0);
     u32s[0] = 10;
     u32s[1] = 1234;
     u32s[2] = 2345;
-    u32s[4] = 128513;
-    u32s[5] = 128640;
+    u32s[3] = 128513;
+    u32s[4] = 128640;
     return u32s;
 }
 
