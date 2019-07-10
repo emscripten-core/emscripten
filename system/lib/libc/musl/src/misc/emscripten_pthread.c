@@ -9,7 +9,9 @@ pthread_t pthread_self(void) {
 }
 #endif
 
-__attribute__((constructor))
+// Needs to be called after PThread.initRuntime, which in turn needs to be
+// called after constructors have run and memory is initialized.
+EMSCRIPTEN_KEEPALIVE
 void __emscripten_pthread_data_constructor(void) {
     pthread_self()->locale = &libc.global_locale;
 }
