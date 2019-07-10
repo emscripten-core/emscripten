@@ -2884,14 +2884,17 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     opt_level=options.opt_level,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
-                                    debug_info=intermediate_debug_info)
+                                    debug_info=intermediate_debug_info,
+                                    symbols_file=target + '.symbols' if options.emit_symbol_map else None)
     save_intermediate('wasm2js')
 
     shared.try_delete(wasm_binary_target)
 
   # emit a symbol map if requested. this will also remove debug info if we only
-  # kept it around in the intermediate invocations for the sake of the symbol map
-  if options.emit_symbol_map:
+  # kept it around in the intermediate invocations for the sake of the symbol map.
+  # note that wasm2js handles the symbol map itself (as it manipulates and then
+  # replaces the wasm with js)
+  if options.emit_symbol_map and not shared.Settings.WASM2JS:
     shared.Building.emit_wasm_symbol_map(wasm_file=wasm_binary_target, symbols_file=target + '.symbols', debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
