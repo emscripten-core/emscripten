@@ -839,9 +839,14 @@ var LibraryPThread = {
 
   // Public pthread_self() function which returns a unique ID for the thread.
   pthread_self__deps: ['_pthread_ptr'],
+#if !ASSERTIONS // Use asm.js when not using assertions, for speed.
   pthread_self__asm: true,
   pthread_self__sig: 'i',
+#endif
   pthread_self: function() {
+#if ASSERTIONS
+    assert(__pthread_ptr != 0, 'pthread_self() is 0 - perhaps a static constructor is using it? see #8955');
+#endif
     return __pthread_ptr|0;
   },
 
