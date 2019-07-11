@@ -688,6 +688,19 @@ base align: 0, 0, 0, 0'''])
 
     test()
 
+  def test_stack_placement(self):
+    self.set_setting('TOTAL_STACK', 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+    self.set_setting('GLOBAL_BASE', 102400)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+
+  def test_stack_placement_pic(self):
+    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('MAIN_MODULE')
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+    self.set_setting('GLOBAL_BASE', 102400)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+
   @no_emterpreter
   def test_stack_restore(self):
     if self.is_wasm():
@@ -7533,10 +7546,6 @@ extern "C" {
 
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
-
-  def test_stack_placement(self):
-    self.set_setting('TOTAL_STACK', '1024')
-    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
   @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):

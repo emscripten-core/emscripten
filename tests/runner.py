@@ -238,10 +238,14 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-def limit_size(string, MAX=800 * 20):
-  if len(string) < MAX:
-    return string
-  return string[0:MAX // 2] + '\n[..]\n' + string[-MAX // 2:]
+def limit_size(string, maxbytes=800 * 20, maxlines=100):
+  lines = string.splitlines()
+  if len(lines) > maxlines:
+    lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
+    string = '\n'.join(lines)
+  if len(string) > maxbytes:
+    string = string[0:maxbytes // 2] + '\n[..]\n' + string[-maxbytes // 2:]
+  return string
 
 
 def create_test_file(name, contents, binary=False):

@@ -3013,7 +3013,6 @@ Module['onRuntimeInitialized'] = function() {
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_threads
-  @no_wasm_backend('need sdl2 build with pthreads')
   def test_sdl2_threads(self):
       self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS=1', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -3217,6 +3216,11 @@ window.close = function() {
     for opts in [0, 1, 2, 3]:
       print(opts)
       self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2'] + self.get_async_args())
+
+  @no_fastcomp('emterpretify is not compatible with threads')
+  @requires_threads
+  def test_async_in_pthread(self):
+    self.btest('browser/async.cpp', '1', args=self.get_async_args() + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-g'])
 
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
@@ -4339,7 +4343,6 @@ window.close = function() {
     self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_locale(self):
     for args in [
         [],
