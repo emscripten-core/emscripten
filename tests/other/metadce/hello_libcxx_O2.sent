@@ -13,6 +13,7 @@ __syscall91
 __unlock
 _addDays
 _arraySum
+_emscripten_syscall_munmap
 _isLeapYear
 abort
 abortOnCannotGrowMemory

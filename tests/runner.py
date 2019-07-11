@@ -94,6 +94,9 @@ EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
+if EMTEST_VERBOSE:
+  logging.root.setLevel(logging.DEBUG)
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -164,6 +167,14 @@ def no_windows(note=''):
   return lambda f: f
 
 
+def no_asmjs(note=''):
+  assert not callable(note)
+
+  def decorated(f):
+    return skip_if(f, 'is_wasm', note, negate=True)
+  return decorated
+
+
 # used for tests that fail now and then on CI, due to timing or other
 # random causes. this tries the test a few times, looking for at least
 # one pass
@@ -227,10 +238,14 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-def limit_size(string, MAX=800 * 20):
-  if len(string) < MAX:
-    return string
-  return string[0:MAX // 2] + '\n[..]\n' + string[-MAX // 2:]
+def limit_size(string, maxbytes=800 * 20, maxlines=100):
+  lines = string.splitlines()
+  if len(lines) > maxlines:
+    lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
+    string = '\n'.join(lines)
+  if len(string) > maxbytes:
+    string = string[0:maxbytes // 2] + '\n[..]\n' + string[-maxbytes // 2:]
+  return string
 
 
 def create_test_file(name, contents, binary=False):
@@ -778,7 +793,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = out + err
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     if EMTEST_VERBOSE:
-      print('-- being program output --')
+      print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
     return ret
@@ -795,8 +810,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/')
-    path2 = path2.replace('\\', '/')
+    path1 = path1.replace('\\', '/').replace('//', '/')
+    path2 = path2.replace('\\', '/').replace('//', '/')
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -1080,6 +1095,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
       kwargs['force_c'] = True
+    logger.debug('do_run_from_file: %s' % src)
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1087,7 +1103,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False, assert_all=False):
+             assert_returncode=None, assert_identical=False, assert_all=False,
+             check_for_error=True):
     if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
       self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
@@ -1128,7 +1145,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
             self.assertIdentical(expected_output, js_output)
           else:
             self.assertContained(expected_output, js_output, check_all=assert_all)
-            self.assertNotContained('ERROR', js_output)
+            if check_for_error:
+              self.assertNotContained('ERROR', js_output)
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
@@ -1263,12 +1281,12 @@ def harness_server_func(in_queue, out_queue, port):
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
-          self.wfile.write('COMMAND:' + url)
+          self.wfile.write(b'COMMAND:' + url)
           # move us to the right place to serve the files
           os.chdir(dir)
         else:
           # the browser must keep polling
-          self.wfile.write('(wait)')
+          self.wfile.write(b'(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
@@ -1388,8 +1406,18 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def with_report_result(self, code):
-    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.port, path_from_root('tests', 'report_result.h')) + code
+  def with_report_result(self, user_code):
+    return '''
+#define EMTEST_PORT_NUMBER %(port)d
+#include "%(report_header)s"
+%(report_main)s
+%(user_code)s
+''' % {
+      'port': self.port,
+      'report_header': path_from_root('tests', 'report_result.h'),
+      'report_main': open(path_from_root('tests', 'report_result.cpp')).read(),
+      'user_code': user_code
+    }
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
@@ -1530,7 +1558,13 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port, '-include', path_from_root('tests', 'report_result.h')]
+    # add in support for reporting results. this adds as an include a header so testcases can
+    # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
+    # contains the implementation of REPORT_RESULT (we can't just include that implementation in
+    # the header as there may be multiple files being compiled here).
+    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+             '-include', path_from_root('tests', 'report_result.h'),
+             path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:

@@ -818,7 +818,7 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
   if (!q)
-    return;
+    return NULL;
   q->functionEnum = sig;
   q->functionPtr = func_ptr;
 
@@ -891,7 +891,7 @@ void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_on_thread_(
   emscripten_async_queue_call_on_thread(targetThread, q);
 }
 
-int llvm_memory_barrier() { emscripten_atomic_fence(); }
+void llvm_memory_barrier() { emscripten_atomic_fence(); }
 
 int llvm_atomic_load_add_i32_p0i32(int* ptr, int delta) {
   return emscripten_atomic_add_u32(ptr, delta);

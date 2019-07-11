@@ -87,13 +87,30 @@ function JSify(data, functionsOnly) {
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
-    if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = modifyFunction(snippet, function(name, args, body) {
-        return 'function ' + name + '(' + args + ') {\n' +
-               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
-                body +
-                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
-      });
+    // Apply special js library debug modes
+    if (!LibraryManager.library[ident + '__asm']) {
+      // apply LIBRARY_DEBUG if relevant
+      if (LIBRARY_DEBUG) {
+        snippet = modifyFunction(snippet, function(name, args, body) {
+          return 'function ' + name + '(' + args + ') {\n' +
+                 'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                  body +
+                  '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+        });
+      }
+      if (BYSYNCIFY && ASSERTIONS && BYSYNCIFY_IMPORTS.indexOf(ident) < 0) {
+        // Only functions in the list of known relevant imports are allowed to change the state.
+        snippet = modifyFunction(snippet, function(name, args, body) {
+          return 'function ' + name + '(' + args + ') {\n' +
+                 '  var originalBysyncifyState = Bysyncify.state;\n' +
+                 '  try {\n' +
+                 body + '\n' +
+                 '  } finally {\n' +
+                 '    if (Bysyncify.state !== originalBysyncifyState) throw "import ' + ident + ' was not in BYSYNCIFY_IMPORTS, but changed the state";\n' +
+                 '  }\n' +
+                 '}\n';
+        });
+      }
     }
     return snippet;
   }

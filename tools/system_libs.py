@@ -522,7 +522,7 @@ class NoBCLibrary(Library):
 
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcompiler_rt.symbols'))
   depends = ['libc']
 
   cflags = ['-O2']
@@ -620,7 +620,7 @@ class libc(MuslInternalLibrary, MTLibrary):
 
 class libc_wasm(MuslInternalLibrary):
   name = 'libc-wasm'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc-wasm.symbols'))
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'libc', 'musl', 'src', 'math']
@@ -637,7 +637,7 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   name = 'libc-extras'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc-extras.symbols'))
 
   src_dir = ['system', 'lib', 'libc']
   src_files = ['extras.c']
@@ -645,7 +645,7 @@ class libc_extras(MuslInternalLibrary):
 
 class libcxxabi(CXXLibrary, MTLibrary):
   name = 'libc++abi'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi.symbols'))
   depends = ['libc']
 
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
@@ -669,7 +669,7 @@ class libcxxabi(CXXLibrary, MTLibrary):
 
 class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
+  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx.symbols'))
   depends = ['libc++abi']
 
   includes = ['system', 'lib', 'libcxxabi', 'include']
@@ -810,7 +810,7 @@ class libgl(MTLibrary):
   src_dir = ['system', 'lib', 'gl']
   src_glob = '*.c'
 
-  cflags = ['-Oz', '-Wno-return-type']
+  cflags = ['-Oz']
 
   def __init__(self, **kwargs):
     self.is_legacy = kwargs.pop('is_legacy')
@@ -864,7 +864,7 @@ class libhtml5(Library):
 class libpthreads(MuslInternalLibrary, MTLibrary):
   name = 'libpthreads'
   depends = ['libc']
-  cflags = ['-O2', '-Wno-return-type', '-Wno-visibility']
+  cflags = ['-O2']
 
   def get_files(self):
     if self.is_mt:
@@ -917,11 +917,11 @@ class libpthreads(MuslInternalLibrary, MTLibrary):
     return 'libpthreads' if self.is_mt else 'libpthreads_stub'
 
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
-  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
-  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
+  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads_asmjs.symbols'))
+  pthreads_stub_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads_stub.symbols'))
 
   def get_symbols(self):
-    symbols = self.pthreads_symbols if self.is_mt else self.stub_pthreads_symbols
+    symbols = self.pthreads_symbols if self.is_mt else self.pthreads_stub_symbols
     if self.is_mt and not shared.Settings.WASM_BACKEND:
       symbols += self.asmjs_pthreads_symbols
     return symbols
@@ -973,7 +973,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
-  js_depends = ['memalign']
+  js_depends = ['memalign', 'emscripten_builtin_memalign']
   never_force = True
 
   cflags = ['-std=c++11']
@@ -982,15 +982,35 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   src_glob_exclude = ['sanitizer_common_nolibc.cc']
 
 
-class libubsan_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
-  name = 'libubsan_rt_wasm'
+class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   depends = ['libsanitizer_common_rt_wasm']
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  cflags = ['-std=c++11', '-DUBSAN_CAN_USE_CXXABI']
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
+  cflags = ['-std=c++11']
   src_glob = '*.cc'
+
+
+class libubsan_rt_wasm(SanitizerLibrary):
+  name = 'libubsan_rt_wasm'
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
+
+  cflags = ['-DUBSAN_CAN_USE_CXXABI']
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
+
+
+# TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
+# and clean up the duplicate code.
+class liblsan_rt_wasm(CompilerRTWasmLibrary):
+  name = 'liblsan_rt_wasm'
+  depends = ['libsanitizer_common_rt_wasm']
+  js_depends = ['__data_end', '__heap_base', 'emscripten_builtin_malloc', 'emscripten_builtin_free']
+  never_force = True
+
+  includes = [['system', 'lib', 'compiler-rt', 'lib']]
+  cflags = ['-std=c++11']
+  src_glob = '*.cc'
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
 
 
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
@@ -1146,6 +1166,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(system_libs_map['libubsan_minimal_rt_wasm'])
   elif shared.Settings.UBSAN_RUNTIME == 2:
     add_library(system_libs_map['libubsan_rt_wasm'])
+
+  if shared.Settings.USE_LSAN:
+    force_include.add('liblsan_rt_wasm')
+    add_library(system_libs_map['liblsan_rt_wasm'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

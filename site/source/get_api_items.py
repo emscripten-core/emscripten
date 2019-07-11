@@ -10,6 +10,7 @@
 # It writes api_items.py which has function that is imported into get-wiki.py
 #
 
+from __future__ import print_function
 import optparse
 import os
 import re
@@ -63,7 +64,7 @@ def parseFiles():
     for file in os.listdir(api_reference_directory):
         if file.endswith(".rst"):
             filepath = api_reference_directory + file
-            print file
+            print(file)
             # open file
             with open(filepath, 'r') as infile:
                 for line in infile:

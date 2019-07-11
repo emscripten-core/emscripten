@@ -275,6 +275,8 @@ int pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
 
 int pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
 
+struct timespec;
+
 int pthread_mutex_timedlock(
   pthread_mutex_t* __restrict mutex, const struct timespec* __restrict t) {
   return 0;
@@ -345,4 +347,5 @@ int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
     init_routine();
     *once_control = PTHREAD_ONCE_MAGIC_ID;
   }
+  return 0;
 }

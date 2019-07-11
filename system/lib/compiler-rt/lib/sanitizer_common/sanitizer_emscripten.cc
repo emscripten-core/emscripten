@@ -15,6 +15,7 @@
 
 #include "sanitizer_platform.h"
 #include "sanitizer_common.h"
+#include "sanitizer_stoptheworld.h"
 
 #include <signal.h>
 
@@ -66,6 +67,22 @@ int internal_sigaction(int signum, const void *act, void *oldact) {
                    (struct sigaction *)oldact);
 }
 
+extern "C" {
+  uptr emscripten_builtin_mmap2(void *addr, uptr length, int prot, int flags,
+                               int fd, unsigned offset);
+  uptr emscripten_builtin_munmap(void *addr, uptr length);
+}
+
+uptr internal_mmap(void *addr, uptr length, int prot, int flags, int fd,
+                   OFF_T offset) {
+  CHECK(IsAligned(offset, 4096));
+  return emscripten_builtin_mmap2(addr, length, prot, flags, fd, offset / 4096);
+}
+
+uptr internal_munmap(void *addr, uptr length) {
+  return emscripten_builtin_munmap(addr, length);
+}
+
 extern "C" uptr emscripten_get_stack_top();
 extern "C" uptr emscripten_get_stack_base();
 
@@ -84,6 +101,23 @@ char **GetArgv() {
 
 char **GetEnviron() {
   return fake_envp;
+}
+
+uptr GetTlsSize() {
+  return 0;
+}
+
+void InitTlsSize() {}
+
+void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
+                          uptr *tls_addr, uptr *tls_size) {
+  *stk_addr = *stk_size = *tls_addr = *tls_size = 0;
+}
+
+void StopTheWorld(StopTheWorldCallback callback, void *argument) {
+  // TODO: have some workable alternative, since we can't just fork and suspend
+  // the parent process. This does not matter when single thread.
+  callback(SuspendedThreadsList(), argument);
 }
 
 } // namespace __sanitizer

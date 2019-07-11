@@ -1594,7 +1594,7 @@ function modifyFunction(text, func) {
   var args = match[2];
   var rest = text.substr(match[0].length);
   var bodyStart = rest.indexOf('{');
-  assert(bodyStart > 0);
+  assert(bodyStart >= 0);
   var bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd));

@@ -189,3 +189,7 @@ struct StoreArray {
   const int* int_array;
 };
 
+typedef struct LongLongTypes {
+  unsigned long long* lluArray;
+  long long ll;
+} LongLongTypes;

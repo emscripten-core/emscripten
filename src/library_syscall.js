@@ -219,6 +219,64 @@ var SyscallsLibrary = {
     }
   },
 
+  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS',
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    '$FS',
+#endif
+  ],
+  _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
+    off <<= 12; // undo pgoffset
+    var ptr;
+    var allocated = false;
+
+    // addr argument must be page aligned if MAP_FIXED flag is set.
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+
+    // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
+    // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
+    // In this case fd argument is ignored.
+    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
+      ptr = _memalign(PAGE_SIZE, len);
+      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
+      _memset(ptr, 0, len);
+      allocated = true;
+    } else {
+      var info = FS.getStream(fd);
+      if (!info) return -{{{ cDefine('EBADF') }}};
+      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+      ptr = res.ptr;
+      allocated = res.allocated;
+    }
+    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+    return ptr;
+  },
+
+  _emscripten_syscall_munmap__deps: ['$SYSCALLS',
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    '$FS',
+#endif
+  ],
+  _emscripten_syscall_munmap: function(addr, len) {
+    if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+    // TODO: support unmmap'ing parts of allocations
+    var info = SYSCALLS.mappings[addr];
+    if (!info) return 0;
+    if (len === info.len) {
+      var stream = FS.getStream(info.fd);
+      SYSCALLS.doMsync(addr, stream, len, info.flags)
+      FS.munmap(stream);
+      SYSCALLS.mappings[addr] = null;
+      if (info.allocated) {
+        _free(info.malloc);
+      }
+    }
+    return 0;
+  },
+
   __syscall1: function(which, varargs) { // exit
     var status = SYSCALLS.get();
     exit(status);
@@ -444,21 +502,10 @@ var SyscallsLibrary = {
     var path = SYSCALLS.getStr(), buf = SYSCALLS.get(), bufsize = SYSCALLS.get();
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
+  __syscall91__deps: ['_emscripten_syscall_munmap'],
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
-    // TODO: support unmmap'ing parts of allocations
-    var info = SYSCALLS.mappings[addr];
-    if (!info) return 0;
-    if (len === info.len) {
-      var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags)
-      FS.munmap(stream);
-      SYSCALLS.mappings[addr] = null;
-      if (info.allocated) {
-        _free(info.malloc);
-      }
-    }
-    return 0;
+    return __emscripten_syscall_munmap(addr, len);
   },
   __syscall94: function(which, varargs) { // fchmod
     var fd = SYSCALLS.get(), mode = SYSCALLS.get();
@@ -710,11 +757,29 @@ var SyscallsLibrary = {
       });
     });
 #else
+#if BYSYNCIFY
+    return Bysyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
     if (stream.stream_ops && stream.stream_ops.fsync) {
       return -stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif
+#endif // BYSYNCIFY
+#endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
@@ -975,26 +1040,10 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
-  __syscall192__deps: ['memalign'],
+  __syscall192__deps: ['_emscripten_syscall_mmap2'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
-    off <<= 12; // undo pgoffset
-    var ptr;
-    var allocated = false;
-    if (fd === -1) {
-      ptr = _memalign(PAGE_SIZE, len);
-      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      _memset(ptr, 0, len);
-      allocated = true;
-    } else {
-      var info = FS.getStream(fd);
-      if (!info) return -{{{ cDefine('EBADF') }}};
-      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
-      ptr = res.ptr;
-      allocated = res.allocated;
-    }
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
-    return ptr;
+    return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
   },
   __syscall193: function(which, varargs) { // truncate64
     var path = SYSCALLS.getStr(), zero = SYSCALLS.getZero(), length = SYSCALLS.get64();

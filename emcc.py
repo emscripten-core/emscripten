@@ -243,6 +243,7 @@ class EmccOptions(object):
     # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
     # Linux & MacOS)
     self.output_eol = os.linesep
+    self.binaryen_passes = []
 
 
 def use_source_map(options):
@@ -677,13 +678,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       cmd += ['-s', 'NO_EXIT_RUNTIME=0']
       # use node.js raw filesystem access, to behave just like a native executable
       cmd += ['-s', 'NODERAWFS=1']
-      # Disable wasm in configuration checks so that (1) we do not depend on
-      # wasm support just for configuration (perhaps the user does not intend
-      # to build to wasm; using asm.js only depends on js which we need anyhow),
-      # and (2) we don't have issues with a separate .wasm file
-      # on the side, async startup, etc..
-      if not shared.Settings.WASM_BACKEND:
-        cmd += ['-s', 'WASM=0']
 
     logger.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure:
@@ -1023,6 +1017,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STRICT:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
+    else:
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
 
     error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
     if error_on_missing_libraries_cmdline:
@@ -1088,10 +1086,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STRICT:
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
-    else:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1
@@ -1211,8 +1205,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
+    if shared.Settings.SIDE_MODULE and shared.Settings.GLOBAL_BASE != -1:
+      exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
+
     if shared.Settings.RELOCATABLE:
-      assert shared.Settings.GLOBAL_BASE < 1
       if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes and not shared.Settings.WASM_BACKEND:
         shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
@@ -1220,7 +1216,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.EMTERPRETIFY:
       shared.Settings.FINALIZE_ASM_JS = 0
-      # shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
       shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
       shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
       if not options.js_opts:
@@ -1259,6 +1254,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
+    if shared.Settings.GLOBAL_BASE < 0:
+      # default if nothing else sets it
+      if shared.Settings.WASM:
+        # a higher global base is useful for optimizing load/store offsets, as it
+        # enables the --post-emscripten pass
+        shared.Settings.GLOBAL_BASE = 1024
+      else:
+        shared.Settings.GLOBAL_BASE = 8
+
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')
@@ -1275,7 +1279,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs += ['-pthread']
         # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
         # manually export them
-        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self']
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self', '___emscripten_pthread_data_constructor']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1306,6 +1310,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
+      # To ensure allocated thread stacks are aligned:
+      shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
+
       if shared.Settings.MODULARIZE:
         # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
         # can access them:
@@ -1415,8 +1422,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      # a higher global base is useful for optimizing load/store offsets, as it enables the --post-emscripten pass
-      shared.Settings.GLOBAL_BASE = 1024
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
         logger.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
         shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
@@ -1485,6 +1490,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           shared.Settings.UBSAN_RUNTIME = 2
 
+      if 'leak' in sanitize:
+        shared.Settings.USE_LSAN = 1
+        shared.Settings.EXIT_RUNTIME = 1
+
+        if shared.Settings.USE_PTHREADS:
+          exit_with_error('LSan currently does not support threads')
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 
@@ -1492,9 +1504,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.js_opts = None
 
         # wasm backend output can benefit from the binaryen optimizer (in asm2wasm,
-        # we run the optimizer during asm2wasm itself). use it, if not overridden
-        if 'BINARYEN_PASSES' not in settings_key_changes:
-          passes = []
+        # we run the optimizer during asm2wasm itself). use it, if not overridden.
+
+        # BINARYEN_PASSES and BINARYEN_EXTRA_PASSES are comma-separated, and we support both '-'-prefixed and unprefixed pass names
+        def parse_passes(string):
+          passes = string.split(',')
+          passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
+          return passes
+
+        passes = []
+        if 'BINARYEN_PASSES' in settings_key_changes:
+          if shared.Settings.BINARYEN_PASSES:
+            passes += parse_passes(shared.Settings.BINARYEN_PASSES)
+        else:
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
@@ -1512,22 +1534,39 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--log-execution']
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
-          if passes:
-            shared.Settings.BINARYEN_PASSES = ','.join(passes)
+          if shared.Settings.BYSYNCIFY:
+            # TODO: allow whitelist as in asyncify
+            passes += ['--bysyncify']
+            if shared.Settings.BYSYNCIFY_IGNORE_INDIRECT:
+              passes += ['--pass-arg=bysyncify-ignore-indirect']
+            else:
+              # if we are not ignoring indirect calls, then we must treat invoke_* as if
+              # they are indirect calls, since that is what they do - we can't see their
+              # targets statically.
+              shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
+            # with pthreads we may call main through the __call_main mechanism, which can
+            # therefore reach anything in the program, so mark it as possibly causing a
+            # sleep (the bysyncify analysis doesn't look through JS, just wasm, so it can't
+            # see what it itself calls)
+            if shared.Settings.USE_PTHREADS:
+              shared.Settings.BYSYNCIFY_IMPORTS += ['__call_main']
+            if shared.Settings.BYSYNCIFY_IMPORTS:
+              passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
+          if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
+            passes += ['--ignore-implicit-traps']
+        if shared.Settings.BINARYEN_EXTRA_PASSES:
+          passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
+        options.binaryen_passes = passes
 
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
       # run safe-heap as a binaryen pass
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
-        if shared.Settings.BINARYEN_PASSES:
-          shared.Settings.BINARYEN_PASSES += ','
-        shared.Settings.BINARYEN_PASSES += 'safe-heap'
+        options.binaryen_passes += ['--safe-heap']
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         # emulated function pointer casts is emulated in wasm using a binaryen pass
-        if shared.Settings.BINARYEN_PASSES:
-          shared.Settings.BINARYEN_PASSES += ','
-        shared.Settings.BINARYEN_PASSES += 'fpcast-emu'
+        options.binaryen_passes += ['--fpcast-emu']
         if not shared.Settings.WASM_BACKEND:
           # we also need emulated function pointers for that, as we need a single flat
           # table, as is standard in wasm, and not asm.js split ones.
@@ -1539,6 +1578,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
       logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
+
+    if shared.Settings.BYSYNCIFY:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('bysyncify is only available in the upstream wasm backend path')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
@@ -1606,9 +1649,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # MINIMAL_RUNTIME always use separate .asm.js file for best performance and memory usage
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.WASM:
       options.separate_asm = True
-
-    if shared.Settings.GLOBAL_BASE < 0:
-      shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
 
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
@@ -2562,6 +2602,8 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
       settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
+    elif newargs[i] == '-fexceptions':
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -2731,7 +2773,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
         cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-    # various options imply that the imported table may not be the exact size as the wasm module's own table segments
+    # various options imply that the imported table may not be the exact size as
+    # the wasm module's own table segments
     if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
@@ -2777,13 +2820,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         os.unlink(memfile)
     log_time('asm2wasm')
-  if shared.Settings.BINARYEN_PASSES or shared.Settings.BINARYEN_EXTRA_PASSES:
+  if options.binaryen_passes:
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
-    # BINARYEN_PASSES is comma-separated, and we support both '-'-prefixed and unprefixed pass names
-    passes = shared.Settings.BINARYEN_PASSES.split(',') + shared.Settings.BINARYEN_EXTRA_PASSES.split(',')
-    passes = [('--' + p) if p[0] != '-' else p for p in passes if p]
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + passes
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
     cmd += shared.Building.get_binaryen_feature_flags()
     if intermediate_debug_info:
       cmd += ['-g'] # preserve the debug info
@@ -2793,7 +2833,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
       if DEBUG:
         shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
-    logger.debug('wasm-opt on BINARYEN_PASSES: %s', cmd)
+    logger.debug('wasm-opt on binaryen passes: %s', cmd)
     shared.print_compiler_stage(cmd)
     shared.check_call(cmd)
   if shared.Settings.BINARYEN_SCRIPTS:
