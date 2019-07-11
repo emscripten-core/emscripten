@@ -19,6 +19,14 @@ var LibraryPThread = {
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
+    initRuntime: function() {
+      // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+      // Global constructors trying to access this value will read the wrong value, but that is UB anyway.
+      __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+      _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
+      // Initialize data on main pthread now that we have initialized the thread id
+      ___emscripten_pthread_data_constructor();
+    },
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
       PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
@@ -491,7 +499,7 @@ var LibraryPThread = {
     {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
   },
 
-  pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self'],
+  pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
   pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -632,7 +640,7 @@ var LibraryPThread = {
     }
     var allocatedOwnStack = stackBase == 0; // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.
     if (allocatedOwnStack) {
-      stackBase = _malloc(stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
+      stackBase = _memalign({{{ STACK_ALIGN }}}, stackSize); // Allocate a stack if the user doesn't want to place the stack in a custom memory area.
     } else {
       // Musl stores the stack base address assuming stack grows downwards, so adjust it to Emscripten convention that the
       // stack grows upwards instead.

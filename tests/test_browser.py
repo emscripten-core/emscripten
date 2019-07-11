@@ -1315,6 +1315,11 @@ keydown(100);keyup(100); // trigger the end
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''])
       self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']'''] + extra)
 
+  def test_fs_idbfs_sync_force_exit(self):
+    secret = str(time.time())
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DFIRST', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT'])
+    self.btest(path_from_root('tests', 'fs', 'test_idbfs_sync.c'), '1', force_c=True, args=['-lidbfs.js', '-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main', '_test', '_success']''', '-s', 'EXIT_RUNTIME=1', '-DFORCE_EXIT'])
+
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
     create_test_file('pre.js', '''
@@ -3008,7 +3013,6 @@ Module['onRuntimeInitialized'] = function() {
     self.run_browser('page.html', '', '/report_result?1')
 
   @requires_threads
-  @no_wasm_backend('need sdl2 build with pthreads')
   def test_sdl2_threads(self):
       self.btest('sdl2_threads.c', expected='4', args=['-s', 'USE_PTHREADS=1', '-s', 'USE_SDL=2', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -3213,6 +3217,11 @@ window.close = function() {
       print(opts)
       self.btest('browser/async.cpp', '1', args=['-O' + str(opts), '-g2'] + self.get_async_args())
 
+  @no_fastcomp('emterpretify is not compatible with threads')
+  @requires_threads
+  def test_async_in_pthread(self):
+    self.btest('browser/async.cpp', '1', args=self.get_async_args() + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-g'])
+
   def test_async_2(self):
     # Error.stackTraceLimit default to 10 in chrome but this test relies on more
     # than 40 stack frames being reported.
@@ -3299,6 +3308,10 @@ window.close = function() {
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
+
+  @no_fastcomp('bysyncify specific')
+  def test_async_stack_overflow(self):
+    self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_STACK_SIZE=4'])
 
   @requires_sync_compilation
   def test_modularize(self):
@@ -3847,7 +3860,6 @@ window.close = function() {
 
   # Test that it is possible to asynchronously call a JavaScript function on the main thread.
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_call_async_on_main_thread(self):
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-DPROXY_TO_PTHREAD=1', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
     self.btest(path_from_root('tests', 'pthread', 'call_async_on_main_thread.c'), expected='7', args=['-O3', '-s', 'USE_PTHREADS=1', '-DPROXY_TO_PTHREAD=0', '--js-library', path_from_root('tests', 'pthread', 'call_async_on_main_thread.js')])
@@ -4331,7 +4343,6 @@ window.close = function() {
     self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
   @requires_threads
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   def test_pthread_locale(self):
     for args in [
         [],
@@ -4380,7 +4391,6 @@ window.close = function() {
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
@@ -4392,7 +4402,6 @@ window.close = function() {
 
   # Tests memory growth in a pthread.
   @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
-  @no_wasm_backend('TODO - fix final pthreads tests (#8718)')
   @requires_threads
   def test_pthread_growth(self):
     def run(emcc_args=[]):

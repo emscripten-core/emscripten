@@ -555,7 +555,7 @@ mergeInto(LibraryManager.library, {
       Rewinding: 2
     },
     state: 0,
-    DataSize: 4096,
+    StackSize: {{{ BYSYNCIFY_STACK_SIZE }}},
     currData: null,
     // A map from data pointers to extra info about the data.
     // That includes the name of the function on the bottom
@@ -577,7 +577,7 @@ mergeInto(LibraryManager.library, {
             ret[x] = function() {
               Bysyncify.exportCallStack.push(x);
 #if BYSYNCIFY_DEBUG >= 2
-              err('BYSYNCIFY: try', x);
+              err('BYSYNCIFY: ' + '  '.repeat(Bysyncify.exportCallStack.length) + ' try', x);
 #endif
               try {
                 return original.apply(null, arguments);
@@ -586,7 +586,7 @@ mergeInto(LibraryManager.library, {
                 var y = Bysyncify.exportCallStack.pop(x);
                 assert(y === x);
 #if BYSYNCIFY_DEBUG >= 2
-                err('BYSYNCIFY: finally', x);
+                err('BYSYNCIFY: ' + '  '.repeat(Bysyncify.exportCallStack.length + 1) + ' finally', x);
 #endif
                 if (Bysyncify.currData &&
                     Bysyncify.state === Bysyncify.State.Unwinding &&
@@ -610,11 +610,15 @@ mergeInto(LibraryManager.library, {
     allocateData: function() {
       // A bysyncify data structure has two fields: the
       // current stack pos, and the max pos.
-      var ptr = _malloc(Bysyncify.DataSize);
+      var ptr = _malloc(Bysyncify.StackSize + 8);
       HEAP32[ptr >> 2] = ptr + 8;
-      HEAP32[ptr + 4 >> 2] = ptr + Bysyncify.DataSize;
+      HEAP32[ptr + 4 >> 2] = ptr + 8 + Bysyncify.StackSize;
+      var bottomOfCallStack = Bysyncify.exportCallStack[0];
+#if BYSYNCIFY_DEBUG >= 2
+      err('BYSYNCIFY: allocateData, bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+#endif
       Bysyncify.dataInfo[ptr] = {
-        bottomOfCallStack: Bysyncify.exportCallStack[0]
+        bottomOfCallStack: bottomOfCallStack
       };
       return ptr;
     },

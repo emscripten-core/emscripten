@@ -286,6 +286,10 @@ def type_to_c(t, non_pointing=False):
       ret = 'int'
     elif t == 'UnsignedLong':
       ret = 'unsigned int'
+    elif t == 'LongLong':
+      ret = 'long long'
+    elif t == 'UnsignedLongLong':
+      ret = 'unsigned long long'
     elif t == 'Short':
       ret = 'short'
     elif t == 'UnsignedShort':

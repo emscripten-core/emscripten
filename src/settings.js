@@ -565,6 +565,12 @@ var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget
 // must assume an indirect call can reach almost everywhere.
 var BYSYNCIFY_IGNORE_INDIRECT = 0;
 
+// The size of the Bysyncify stack - the region used to store unwind/rewind info.
+// This must be large enough to store the call stack and locals. If it is too
+// small, you will see a wasm trap due to executing an "unreachable" instruction.
+// In that case, you should increase this size.
+var BYSYNCIFY_STACK_SIZE = 4096;
+
 // Runtime debug logging from bysyncify internals.
 var BYSYNCIFY_DEBUG = 0;
 
@@ -740,6 +746,11 @@ var LINKABLE = 0;
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
+// Changes enabled by this:
+//   * ERROR_ON_MISSING_LIBRARIES is enabled
+//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
+//   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
+//     is the correct thing to use).
 var STRICT = 0;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
