@@ -168,7 +168,7 @@ class TestCoreBase(RunnerCore):
     with open(filename) as infile:
       js = infile.read()
     filename += '.strict.js'
-    with open(filename , 'w') as outfile:
+    with open(filename, 'w') as outfile:
       outfile.write('"use strict";\n' + js)
     run_js(filename)
 
