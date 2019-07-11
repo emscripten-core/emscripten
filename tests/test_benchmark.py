@@ -351,7 +351,6 @@ class benchmark(RunnerCore):
     assert(os.path.exists(CLOSURE_COMPILER))
 
     Building.COMPILER = CLANG
-    self.emcc_args = [OPTIMIZATIONS]
 
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
