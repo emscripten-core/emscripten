@@ -164,6 +164,14 @@ class TestCoreBase(RunnerCore):
     output = find_files('.out', '.txt')
     self.do_run_from_file(src, output, **kwargs)
 
+  def verify_in_strict_mode(self, filename):
+    with open(filename) as infile:
+      js = infile.read()
+    filename += '.strict.js'
+    with open(filename , 'w') as outfile:
+      outfile.write('"use strict";\n' + js)
+    run_js(filename)
+
   def get_bullet_library(self, use_cmake):
     if use_cmake:
       configure_commands = ['cmake', '.']
@@ -4744,6 +4752,8 @@ main( int argv, char ** argc ) {
   def test_stat(self):
     src = open(path_from_root('tests', 'stat', 'test_stat.c')).read()
     self.do_run(src, 'success', force_c=True)
+
+    self.verify_in_strict_mode('src.c.o.js')
 
   def test_stat_chmod(self):
     src = open(path_from_root('tests', 'stat', 'test_chmod.c')).read()
