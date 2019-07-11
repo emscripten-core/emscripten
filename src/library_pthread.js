@@ -834,31 +834,25 @@ var LibraryPThread = {
   _pthread_is_main_browser_thread: 0,
 
   _register_pthread_ptr__deps: ['_pthread_ptr', '_pthread_is_main_runtime_thread', '_pthread_is_main_browser_thread'],
-#if !ASSERTIONS // When using assertions, we keep this in JS, for easy assertions.
   _register_pthread_ptr__asm: true,
   _register_pthread_ptr__sig: 'viii',
-#endif
   _register_pthread_ptr: function(pthreadPtr, isMainBrowserThread, isMainRuntimeThread) {
     pthreadPtr = pthreadPtr|0;
     isMainBrowserThread = isMainBrowserThread|0;
     isMainRuntimeThread = isMainRuntimeThread|0;
     __pthread_ptr = pthreadPtr;
-#if ASSERTIONS
-    assert(__pthread_ptr != 0, 'pthread_self() should not be assigned to 0');
-#endif
     __pthread_is_main_browser_thread = isMainBrowserThread;
     __pthread_is_main_runtime_thread = isMainRuntimeThread;
   },
 
   // Public pthread_self() function which returns a unique ID for the thread.
   pthread_self__deps: ['_pthread_ptr'],
-#if !ASSERTIONS // When using assertions, we keep this in JS, for easy assertions.
   pthread_self__asm: true,
   pthread_self__sig: 'i',
-#endif
   pthread_self: function() {
 #if ASSERTIONS
-    assert(__pthread_ptr != 0, 'pthread_self() is 0 - perhaps a static constructor is using it? see #8955');
+    // a null pthread_self() may be caused by a static constructor calling it, see #8955
+    if ((__pthread_ptr | 0) == 0) abort(8955);
 #endif
     return __pthread_ptr|0;
   },
