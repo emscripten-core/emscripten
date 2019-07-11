@@ -9443,3 +9443,14 @@ int main () {
     ''')
     run_process([PYTHON, EMCC, 'src.c', '-c'])
     self.expect_fail([PYTHON, EMCC, 'src.c', '-s', 'STRICT', '-c'])
+
+  def test_exceptions_modes_symbols_defined(self):
+    for catching in [0, 1]:
+      for throwing in [0, 1]:
+        for opts in [0, 1]:
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_THROWING=%d' % (1-throwing), '-s', 'DISABLE_EXCEPTION_CATCHING=%d' % (1-catching), '-O%d' % opts]
+          print(cmd)
+          if not throwing and catching:
+            self.assertContained('DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0)', self.expect_fail(cmd))
+          else:
+            run_process(cmd)
