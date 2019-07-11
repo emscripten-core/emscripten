@@ -4723,9 +4723,10 @@ window.close = function() {
     self.compile_btest(['src.c'] + args)
     create_test_file('test.html', '''
       <script>
+        var logs = 0;
         function log(e) {
           var xhr = new XMLHttpRequest();
-          xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + e));
+          xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + e + ' : ' + new Error().stack + ' : ' + logs++));
           xhr.send();
         }
         log('startup');

@@ -152,15 +152,16 @@ test-chrome: &test-chrome
         name: install package dependencies
         command: |
           apt-get update -q
-          # install chromium-browser in order to ensure we have most of the
+          # install chromium-browser temporarily in order to ensure we have most of the
           # dependecies for chrome.
           EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
           apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
+          apt-get remove -q -y chromium-browser
     - run:
         name: download chrome
         command: |
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          dpkg -i google-chrome-stable_current_amd64.deb
+          wget https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
+          dpkg -i google-chrome-unstable_current_amd64.deb
     - run:
         name: run tests
         command: |
