@@ -127,6 +127,8 @@ def needs_make(note=''):
 
 
 def no_asan(note):
+  assert not callable(note)
+
   def decorator(f):
     assert callable(f)
 
@@ -136,10 +138,6 @@ def no_asan(note):
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
-  if callable(note):
-    f = note
-    note = 'This test cannot be run under ASan'
-    return decorator(f)
   return decorator
 
 
@@ -774,7 +772,7 @@ base align: 0, 0, 0, 0'''])
     'debug': ['-DEMMALLOC_DEBUG'],
     'debug_log': ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG', '-DRANDOM_ITERS=130'],
   })
-  @no_asan
+  @no_asan('ASan does not support custom memory allocators')
   def test_emmalloc(self, *args):
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
@@ -1372,7 +1370,7 @@ int main() {
       self.skipTest('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
-  @no_asan
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_segfault(self):
     self.set_setting('SAFE_HEAP', 1)
 
@@ -1590,7 +1588,7 @@ int main() {
   def test_llvm_used(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
-  @no_asan
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_set_align(self):
     self.set_setting('SAFE_HEAP', 1)
 
@@ -1883,7 +1881,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @no_asmjs()
-  @no_asan
+  @no_asan('ASan alters the memory size')
   def test_module_wasm_memory(self):
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_module_wasm_memory.js')]
     src = open(path_from_root('tests', 'core', 'test_module_wasm_memory.c')).read()
@@ -2176,7 +2174,7 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
-  @no_asan
+  @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
     src = open(path_from_root('tests', 'pthread', 'specific.c')).read()
     expected = open(path_from_root('tests', 'pthread', 'specific.c.txt')).read()
@@ -5043,7 +5041,7 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out')).read()
     self.do_run(src, expected)
 
-  @no_asan
+  @no_asan('ASan alters memory layout')
   def test_unistd_sysconf_phys_pages(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')).read()
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
@@ -6157,7 +6155,9 @@ return malloc(size);
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
-    # Autodebug does not work with too much shadow memory
+    # Autodebug does not work with too much shadow memory.
+    # Memory consumed by autodebug depends on the size of the WASM linear memory.
+    # With a large shadow memory, the JS engine runs out of memory.
     if '-fsanitize=address' in self.emcc_args:
       self.set_setting('ASAN_SHADOW_SIZE', 16 * 1024 * 1024)
 
@@ -7717,7 +7717,7 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_return_address.cpp')).read(), 'passed')
 
   @no_fastcomp('ubsan not supported on fastcomp')
-  @no_asan
+  @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if self.get_setting('WASM') == 0:
@@ -7729,7 +7729,7 @@ extern "C" {
                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
 
   @no_fastcomp('ubsan not supported on fastcomp')
-  @no_asan
+  @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if self.get_setting('WASM') == 0:

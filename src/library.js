@@ -619,6 +619,9 @@ LibraryManager.library = {
 #endif // WASM_MEM_MAX
 
 #if USE_ASAN
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
+    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
+    // This causes real memory to be corrupted.
     newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
     if (newSize == oldSize) {
 #if ASSERTIONS

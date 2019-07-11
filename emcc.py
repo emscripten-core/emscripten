@@ -1494,6 +1494,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         assert shared.Settings.TOTAL_MEMORY < 2**32
 
         if shared.Settings.SAFE_HEAP:
+          # SAFE_HEAP instruments ASan's shadow memory accesses.
+          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+          # by SAFE_HEAP as a null pointer dereference.
           exit_with_error('ASan does not work with SAFE_HEAP')
 
         if shared.Settings.USE_PTHREADS:
