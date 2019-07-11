@@ -1,6 +1,0 @@
--------- T _get_daylight
--------- T _get_environ
--------- T _get_timezone
--------- T _get_tzname
--------- D environ
-

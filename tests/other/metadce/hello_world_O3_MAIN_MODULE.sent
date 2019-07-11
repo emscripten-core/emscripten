@@ -279,6 +279,7 @@ __remdi3
 __resumeException
 __setErrNo
 __set_network_callback
+__stack_pointer
 __syscall1
 __syscall10
 __syscall102
@@ -339,7 +340,6 @@ __syscall219
 __syscall220
 __syscall221
 __syscall252
-__syscall265
 __syscall268
 __syscall269
 __syscall272
@@ -406,6 +406,9 @@ _computeUnpackAlignedImageSize
 _emscripten_do_request_fullscreen
 _emscripten_push_main_loop_blocker
 _emscripten_push_uncounted_main_loop_blocker
+_emscripten_save_in_unwind_cache
+_emscripten_syscall_mmap2
+_emscripten_syscall_munmap
 _emscripten_traverse_stack
 _exit
 _fillBatteryEventData
@@ -641,6 +644,8 @@ emscripten_autodebug_i16
 emscripten_autodebug_i32
 emscripten_autodebug_i64
 emscripten_autodebug_i8
+emscripten_builtin_mmap2
+emscripten_builtin_munmap
 emscripten_call_worker
 emscripten_cancel_animation_frame
 emscripten_cancel_main_loop
@@ -981,7 +986,7 @@ emscripten_set_webglcontextrestored_callback_on_thread
 emscripten_set_wheel_callback_on_thread
 emscripten_sleep
 emscripten_stack_snapshot
-emscripten_stack_unwind
+emscripten_stack_unwind_buffer
 emscripten_supports_offscreencanvas
 emscripten_throw_number
 emscripten_throw_string
@@ -1024,6 +1029,7 @@ emscripten_webgl_init_context_attributes
 emscripten_webgl_make_context_current
 emscripten_wget
 emscripten_wget_data
+emscripten_with_builtin_malloc
 emscripten_worker_respond
 emscripten_worker_respond_provisionally
 emscripten_yield
@@ -1475,6 +1481,7 @@ pixelRGBA
 posix_spawn
 posix_spawnp
 pthread_attr_destroy
+pthread_attr_getdetachstate
 pthread_attr_getstack
 pthread_attr_init
 pthread_attr_setdetachstate

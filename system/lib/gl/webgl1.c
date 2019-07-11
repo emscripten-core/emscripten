@@ -53,7 +53,8 @@ EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const char *targ
 EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context)
 {
   GL_FUNCTION_TRACE(__func__);
-  if (emscripten_webgl_get_current_context() == context) return;
+  if (emscripten_webgl_get_current_context() == context)
+    return EMSCRIPTEN_RESULT_SUCCESS;
 
   void *owningThread = *(void**)(context + 4);
   if (owningThread == pthread_self())

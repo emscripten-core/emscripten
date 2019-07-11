@@ -7,6 +7,7 @@ import os
 import shutil
 
 TAG = 'version_18'
+HASH = '3a677c06d693c1568543eeb9179f9211a8c482738dab4400ccbc39aabe0cd1e57085e63ba1c25e9faefda1e06046d3b528298c96bb20c132b7c80e2e0aba972c'
 SUBDIR = 'SDL2-' + TAG
 
 
@@ -15,7 +16,7 @@ def get(ports, settings, shared):
     return []
 
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)
+  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR, sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
@@ -45,7 +46,10 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2', 'src', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w'])
+      command = [shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src), '-O2', '-o', o, '-I' + dest_include_path, '-O2', '-DUSING_GENERATED_CONFIG_H', '-w']
+      if settings.USE_PTHREADS:
+        command += ['-s', 'USE_PTHREADS']
+      commands.append(command)
       o_s.append(o)
     ports.run_commands(commands)
     final = os.path.join(ports.get_build_dir(), 'sdl2', libname)

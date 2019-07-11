@@ -86,6 +86,8 @@ var TOTAL_MEMORY = 16777216;
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
+//  * none     - no malloc() implementation is provided, but you must implement
+//               malloc() and free() yourself.
 // dlmalloc is necessary for multithreading, split memory, and other special
 // modes, and will be used automatically in those cases.
 // In general, if you don't need one of those special modes, and if you don't
@@ -538,6 +540,40 @@ var ASYNCIFY_WHITELIST = ['qsort',
                           '__fwritex',
                           'MUSL_vfprintf'];
 
+// Runs the binaryen "bysyncify" pass to transform sync code into async.
+// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
+// wasm backend.
+//
+// Done:
+//  * Sleep support.
+//  * Emscripten APIs (emscripten_wget* and other sync APIs).
+//  * Synchronous fsync syscall.
+//  * Browser integration.
+//
+// Not done:
+//  * No whitelist/blacklist support (hopefully with the simpler model
+//    and lower overhead they may not be needed?)
+//  * No coroutine support.
+var BYSYNCIFY = 0;
+
+// The imports which can do a sync operation. If you add more you will need to
+// add them to here.
+var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
+
+// Whether indirect calls can be on the stack during an unwind/rewind. If you know
+// they cannot, then setting this can be extremely helpful, as otherwise bysyncify
+// must assume an indirect call can reach almost everywhere.
+var BYSYNCIFY_IGNORE_INDIRECT = 0;
+
+// The size of the Bysyncify stack - the region used to store unwind/rewind info.
+// This must be large enough to store the call stack and locals. If it is too
+// small, you will see a wasm trap due to executing an "unreachable" instruction.
+// In that case, you should increase this size.
+var BYSYNCIFY_STACK_SIZE = 4096;
+
+// Runtime debug logging from bysyncify internals.
+var BYSYNCIFY_DEBUG = 0;
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
@@ -615,20 +651,6 @@ var EXPORT_FUNCTION_TABLES = 0;
 // To see what is retained, look for compilerSettings in the generated code.
 
 var RETAIN_COMPILER_SETTINGS = 0;
-
-// this will contain the emscripten version. you should not modify it. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
-var EMSCRIPTEN_VERSION = '';
-
-// this will contain the optimization level (-Ox). you should not modify it.
-var OPT_LEVEL = 0;
-
-// this will contain the debug level (-gx). you should not modify it.
-var DEBUG_LEVEL = 0;
-
-// Whether we are profiling functions. you should not modify it.
-var PROFILING_FUNCS = 0;
 
 // JS library elements (C functions implemented in JS) that we include by
 // default. If you want to make sure something is included by the JS compiler,
@@ -724,6 +746,11 @@ var LINKABLE = 0;
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
+// Changes enabled by this:
+//   * ERROR_ON_MISSING_LIBRARIES is enabled
+//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
+//   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
+//     is the correct thing to use).
 var STRICT = 0;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
@@ -1008,6 +1035,7 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 //   allow: allow creating operations that can trap. this is the most
 //          compact, as we just emit a single wasm operation, with no
 //          guards to trapping values, and also often the fastest.
+// This setting is only meaningfull with the fastcomp backend.
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for
@@ -1283,8 +1311,26 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-
+//==============================
 // Internal use only, from here
+//==============================
+
+// This will contain the emscripten version. You should not modify this. This
+// and the following few settings are useful in combination with
+// RETAIN_COMPILER_SETTINGS
+var EMSCRIPTEN_VERSION = '';
+
+// This will contain the optimization level (-Ox). You should not modify this.
+var OPT_LEVEL = 0;
+
+// This will contain the debug level (-gx). You should not modify this.
+var DEBUG_LEVEL = 0;
+
+// Whether we are profiling functions. You should not modify this.
+var PROFILING_FUNCS = 0;
+
+// Whether we are emitting a symbol map. You should not modify this.
+var EMIT_SYMBOL_MAP = 0;
 
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
@@ -1425,9 +1471,16 @@ var WASM2JS = 0;
 // -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
 
+// Whether we should link in LSan's runtime library. This is intended to be used invoked`
+// by -fsanitize=leak instead of used directly.
+var USE_LSAN = 0;
+
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;
+
+// Whether embind has been enabled.
+var EMBIND = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

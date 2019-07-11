@@ -425,7 +425,7 @@ def check_llvm_version():
 
 def get_llc_targets():
   if not os.path.exists(LLVM_COMPILER):
-    exit_with_error('llc exectuable not found at `%s`' % LLVM_COMPILER)
+    exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
   except Exception as e:
@@ -542,7 +542,7 @@ def perform_sanify_checks():
       exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in [CLANG, LLVM_LINK, LLVM_AR, LLVM_OPT, LLVM_AS, LLVM_DIS, LLVM_NM, LLVM_INTERPRETER]:
+    for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
 
@@ -1059,7 +1059,7 @@ def emsdk_opts():
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  c_opts = ['-nostdinc', '-Xclang', '-nobuiltininc', '-Xclang', '-nostdsysteminc']
+  c_opts = ['-Xclang', '-nostdsysteminc']
 
   def include_directive(paths):
     result = []
@@ -1638,10 +1638,13 @@ class Building(object):
     if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
       args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
 
-    # On Windows specify MinGW Makefiles if we have MinGW and no other toolchain was specified, to avoid CMake
-    # pulling in a native Visual Studio, or Unix Makefiles.
-    if WINDOWS and '-G' not in args and Building.which('mingw32-make'):
-      args += ['-G', 'MinGW Makefiles']
+    # On Windows specify MinGW Makefiles or ninja if we have them and no other toolchain was specified, to keep CMake
+    # from pulling in a native Visual Studio, or Unix Makefiles.
+    if WINDOWS and '-G' not in args:
+      if Building.which('mingw32-make'):
+        args += ['-G', 'MinGW Makefiles']
+      elif Building.which('ninja'):
+        args += ['-G', 'Ninja']
 
     # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
     # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
@@ -2103,6 +2106,7 @@ class Building(object):
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
+    cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
     try:
       run_process(cmd, stdout=PIPE)
@@ -2138,10 +2142,11 @@ class Building(object):
     undefs = []
     commons = []
     for line in output.split('\n'):
-      if len(line) == 0:
+      if not line or line[0] == '#':
         continue
+      # e.g.  filename.o:  , saying which file it's from
       if ':' in line:
-        continue # e.g.  filename.o:  , saying which file it's from
+        continue
       parts = [seg for seg in line.split(' ') if len(seg)]
       # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
       if len(parts) == 3 and parts[0] == "--------" or re.match(r'^[\da-f]{8}$', parts[0]):
@@ -2516,7 +2521,7 @@ class Building(object):
     if not Settings.LINKABLE:
       # if we are optimizing for size, shrink the combined wasm+JS
       # TODO: support this when a symbol map is used
-      if expensive_optimizations and not emit_symbol_map:
+      if expensive_optimizations:
         js_file = Building.metadce(js_file, wasm_file, minify_whitespace=minify_whitespace, debug_info=debug_info)
         # now that we removed unneeded communication between js and wasm, we can clean up
         # the js some more.
@@ -2705,6 +2710,17 @@ class Building(object):
         with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
           ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
     return ret
+
+  @staticmethod
+  def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):
+    logger.debug('emit_wasm_symbol_map')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--print-function-map', wasm_file]
+    if not debug_info:
+      # to remove debug info, we just write to that same file, and without -g
+      cmd += ['-o', wasm_file]
+    output = run_process(cmd, stdout=PIPE).stdout
+    with open(symbols_file, 'w') as f:
+      f.write(output)
 
   # the exports the user requested
   user_requested_exports = []

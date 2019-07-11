@@ -800,7 +800,7 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME && MALLOC != 'none'
   // tiny, fake malloc/free implementation. If the program actually uses malloc,
   // a compiled version will be used; this will only be used if the runtime
   // needs to allocate something, for which this is good enough if otherwise
@@ -883,6 +883,8 @@ LibraryManager.library = {
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
       ENV['LANG'] = 'C.UTF-8';
+      // Browser language detection #8751
+      ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
       ENV['_'] = Module['thisProgram'];
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
@@ -4112,7 +4114,11 @@ LibraryManager.library = {
   },
 
   emscripten_run_script_string: function(ptr) {
-    {{{ makeEval("var s = eval(UTF8ToString(ptr)) + '';") }}}
+    {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
+    if (s == null) {
+      return 0;
+    }
+    s += '';
     var me = _emscripten_run_script_string;
     var len = lengthBytesUTF8(s);
     if (!me.bufferSize || me.bufferSize < len+1) {
@@ -4398,14 +4404,16 @@ LibraryManager.library = {
   emscripten_generate_pc: function(frame) {
     var match;
 
-    if (match = /\s+at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
+    if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
       // some engines give the binary offset directly, so we use that as return address
       return +match[1];
-    } else if (match = /\s+at.*wasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
+    } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
       // other engines only give function index and offset in the function,
-      // so we pack these into a "return address"
-      return (+match[1] << 16) + +match[2];
-    } else if (match = /at.*:(\d+):\d+/.exec(frame)) {
+      // so we try using the offset converter. If that doesn't work,
+      // we pack index and offset into a "return address"
+      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
+             (+match[1] << 16) + +match[2];
+    } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
       // we tag the high bit to distinguish this from wasm addresses
@@ -4446,7 +4454,9 @@ LibraryManager.library = {
   // continued from calling the helper function. So we can't just walk down the stack and expect
   // to see.the PC value we got. By caching the call stack, we can call emscripten_stack_unwind
   // with the PC value and use that to unwind the cached stack. Naturally, the PC helper function
-  // will have to call emscripten_stack_snapshot to cache the stack.
+  // will have to call emscripten_stack_snapshot to cache the stack. We also return the return
+  // address of the caller so the PC helper function does not need to call
+  // emscripten_return_address, saving a lot of time.
   //
   // One might expect that a sensible solution is to call the stack unwinder and explicitly tell it
   // how many functions to skip from the stack. However, existing libraries do not work this way.
@@ -4459,84 +4469,121 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc', '$UNWIND_CACHE'],
+  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
+                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
+    var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
+    __emscripten_save_in_unwind_cache(callstack);
+
+    // Caches the stack snapshot so that emscripten_stack_unwind_buffer() can unwind from this spot.
+    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
+    UNWIND_CACHE.last_stack = callstack;
+    return UNWIND_CACHE.last_addr;
+  },
+
+  _emscripten_save_in_unwind_cache__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
+  _emscripten_save_in_unwind_cache: function (callstack) {
     callstack.forEach(function (frame) {
       var pc = _emscripten_generate_pc(frame);
       if (pc) {
         UNWIND_CACHE[pc] = frame;
       }
     });
-    // Caches the stack snapshot so that emscripten_stack_unwind() can unwind from this spot.
-    UNWIND_CACHE.last_addr = _emscripten_generate_pc(callstack[2]);
-    UNWIND_CACHE.last_stack = callstack;
   },
 
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for how this is used.
   // addr must be the return address of the last call to emscripten_stack_snapshot, or this
-  // function will fail and return 0.
-  emscripten_stack_unwind__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
-  emscripten_stack_unwind: function (addr, level) {
+  // function will instead use the current call stack.
+  emscripten_stack_unwind_buffer__deps: ['$UNWIND_CACHE', '_emscripten_save_in_unwind_cache', 'emscripten_generate_pc'],
+  emscripten_stack_unwind_buffer: function (addr, buffer, count) {
+    var stack;
     if (UNWIND_CACHE.last_addr == addr) {
-      return _emscripten_generate_pc(UNWIND_CACHE.last_stack[level + 2]);
+      stack = UNWIND_CACHE.last_stack;
     } else {
-      return 0;
+      stack = new Error().stack.split('\n');
+      if (stack[0] == 'Error') {
+        stack.shift();
+      }
+      __emscripten_save_in_unwind_cache(stack);
     }
+
+    var offset = 2;
+    while (stack[offset] && _emscripten_generate_pc(stack[offset]) != addr) {
+      ++offset;
+    }
+
+    for (var i = 0; i < count && stack[i+offset]; ++i) {
+      {{{ makeSetValue('buffer', 'i*4', '_emscripten_generate_pc(stack[i + offset])', 'i32', 0, true) }}};
+    }
+    return i;
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return 0;
 
     var name = null;
     var match;
-    if (match = /at (.*) \(.*\)$/.exec(frame)) {
+    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    } else if (match = /^(.+?)@/.exec(frame)) {
       name = match[1];
     }
     if (!name) return 0;
 
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    _emscripten_with_builtin_malloc(function () {
+      if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+      _emscripten_pc_get_function.ret = allocateUTF8(name);
+    });
     return _emscripten_pc_get_function.ret;
   },
 
-  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
     var frame = UNWIND_CACHE[pc];
     if (!frame) return null;
+    if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
+    var source;
 #if LOAD_SOURCE_MAP
-    // Example: at main (a.out.js line 1617 > WebAssembly.instantiate:wasm-function[35]:0x7a7:0)
-    if (wasmSourceMap && (match = /at.*wasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame))) {
-      var info = wasmSourceMap.lookup(+match[1]);
+    if (wasmSourceMap) {
+      var info = wasmSourceMap.lookup(pc);
       if (info) {
-        return {file: info.source, line: info.line, column: info.column};
+        source = {file: info.source, line: info.line, column: info.column};
       }
     }
 #endif
 
-    // Example: at main (wasm-function[35]:3)
-    // Example: at callMain (a.out.js:6335:22)
-    if (match = /at .* \((.*):(\d+)(?::(\d+))?\)$/.exec(frame)) {
-      return {file: match[1], line: match[2], column: match[3]};
-    // Example: at wasm-function[35]:3
-    } else if (match = /at (.*):(\d+)$/.exec(frame)) {
-      return {file: match[1], line: match[2]};
+    if (!source) {
+      // Example: at callMain (a.out.js:6335:22)
+      if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
+        source = {file: match[1], line: match[2], column: match[3]};
+      // Example: main@a.out.js:1337:42
+      } else if (match = /@(.*):(\d+):(\d+)/.exec(frame)) {
+        source = {file: match[1], line: match[2], column: match[3]};
+      }
     }
+    UNWIND_CACHE.last_get_source_pc = pc;
+    UNWIND_CACHE.last_source = source;
+    return source;
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    _emscripten_with_builtin_malloc(function () {
+      if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+      _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    });
     return _emscripten_pc_get_file.ret;
   },
 
@@ -4556,6 +4603,37 @@ LibraryManager.library = {
 
   emscripten_get_module_name: function(buf, length) {
     return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
+  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  emscripten_with_builtin_malloc: function (func) {
+    var prev_malloc = _malloc;
+    var prev_memalign = _memalign;
+    var prev_free = _free;
+    _malloc = _emscripten_builtin_malloc;
+    _memalign = _emscripten_builtin_memalign;
+    _free = _emscripten_builtin_free;
+    try {
+      return func();
+    } finally {
+      _malloc = prev_malloc;
+      _memalign = prev_memalign;
+      _free = prev_free;
+    }
+  },
+
+  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_mmap2'],
+  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
+    return _emscripten_with_builtin_malloc(function () {
+      return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
+    });
+  },
+
+  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_munmap'],
+  emscripten_builtin_munmap: function (addr, len) {
+    return _emscripten_with_builtin_malloc(function () {
+      return __emscripten_syscall_munmap(addr, len);
+    });
   },
 
   emscripten_get_stack_top: function() {
