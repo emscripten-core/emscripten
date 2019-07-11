@@ -17,7 +17,7 @@
 #include "lsan_common.h"
 
 #if CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN
-#include <link.h>
+#include <emscripten/em_asm.h>
 
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_flags.h"
@@ -77,15 +77,14 @@ void InitializePlatformSpecificModules() {
   }
 }
 
-extern "C" {
-  extern int __data_end;
-  extern int __heap_base;
-}
-
 // Scans global variables for heap pointers.
 void ProcessGlobalRegions(Frontier *frontier) {
   if (!flags()->use_globals) return;
-  ScanGlobalRange(0, (uptr) &__data_end, frontier);
+  ScanGlobalRange(EM_ASM_INT({
+    return GLOBAL_BASE;
+  }), EM_ASM_INT({
+    return STACK_TOP;
+  }), frontier);
 }
 
 LoadedModule *GetLinker() { return linker; }
@@ -108,7 +107,9 @@ void DoStopTheWorld(StopTheWorldCallback callback, void *argument) {
 void ProcessThreads(SuspendedThreadsList const &suspended_threads,
                     Frontier *frontier) {
   uptr sp = (uptr) __builtin_frame_address(0);
-  ScanRangeForPointers(sp, (uptr) &__heap_base, frontier, "STACK", kReachable);
+  ScanRangeForPointers(sp, EM_ASM_INT({
+    return STACK_BASE;
+  }), frontier, "STACK", kReachable);
 }
 
 } // namespace __lsan

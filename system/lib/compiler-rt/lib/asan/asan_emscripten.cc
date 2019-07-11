@@ -6,9 +6,19 @@
 #include <emscripten.h>
 #include <cstddef>
 
+#if __PIC__
+uptr __real_memory_start;
+#endif // __PIC__
+
 namespace __asan {
 
 void InitializeShadowMemory() {
+#if __PIC__
+  __real_memory_start = EM_ASM_INT({
+    return GLOBAL_BASE;
+  });
+#endif // __PIC__
+
   // Poison the shadow memory of the shadow area at the start of the address
   // space. This helps catching null pointer dereference.
   FastPoisonShadow(kLowShadowBeg, kLowShadowEnd - kLowShadowBeg, 0xff);

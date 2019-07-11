@@ -14,13 +14,20 @@
 #ifndef ASAN_MAPPING_EMSCRIPTEN_H
 #define ASAN_MAPPING_EMSCRIPTEN_H
 
+#if __PIC__
+extern uptr __real_memory_start;
+#define REAL_MEMORY_START __real_memory_start
+#else
 extern char __global_base;
+#define REAL_MEMORY_START ((uptr) &__global_base)
+#endif // __PIC__
 
-#define kLowMemBeg     ((uptr) &__global_base)
+
+#define kLowMemBeg     REAL_MEMORY_START
 #define kLowMemEnd     ((kLowShadowBeg << SHADOW_SCALE) - 1)
 
 #define kLowShadowBeg  0
-#define kLowShadowEnd  ((uptr) &__global_base - 1)
+#define kLowShadowEnd  (REAL_MEMORY_START - 1)
 
 #define kHighMemBeg    0
 
