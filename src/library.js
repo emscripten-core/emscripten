@@ -636,7 +636,7 @@ LibraryManager.library = {
 #endif
     updateGlobalBufferViews();
 
-#if ASSERTIONS && !WASM
+#if ASSERTIONS && (!WASM || WASM2JS)
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 

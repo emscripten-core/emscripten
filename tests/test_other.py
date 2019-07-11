@@ -6105,7 +6105,7 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
-  @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey, node cannnot alloc huge arrays')
+  @unittest.skipIf(V8_ENGINE not in JS_ENGINES, 'cannot run without v8, node cannnot alloc huge arrays')
   def test_massive_alloc(self):
     create_test_file('main.cpp', r'''
 #include <stdio.h>
@@ -6118,12 +6118,12 @@ int main() {
     ''')
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
     # just care about message regarding allocating over 1GB of memory
-    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
+    output = run_js('a.out.js', stderr=PIPE, full_output=True, engine=V8_ENGINE)
     self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
     print('wasm')
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1'])
     # no message about growth, just check return code
-    run_js('a.out.js', stderr=PIPE, full_output=True, engine=SPIDERMONKEY_ENGINE)
+    run_js('a.out.js', stderr=PIPE, full_output=True, engine=V8_ENGINE)
 
   def test_failing_alloc(self):
     for pre_fail, post_fail, opts in [
@@ -7701,18 +7701,18 @@ int main() {
     print(sizes)
     self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
 
-  @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
+  @unittest.skipIf(V8_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
   def test_binaryen_warn_mem(self):
     # if user changes TOTAL_MEMORY at runtime, the wasm module may not accept the memory import if it is too big/small
     create_test_file('pre.js', 'var Module = { TOTAL_MEMORY: 50 * 1024 * 1024 };\n')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'WASM_ASYNC_COMPILATION=0'])
-    out = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE, full_output=True, stderr=PIPE, assert_returncode=None)
-    self.assertContained('imported Memory with incompatible size', out)
+    out = run_js('a.out.js', engine=V8_ENGINE, full_output=True, stderr=PIPE, assert_returncode=None)
+    self.assertContained('LinkError', out)
     self.assertContained('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).', out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_ASYNC_COMPILATION=0'])
-    self.assertContained('hello, world!', run_js('a.out.js', engine=SPIDERMONKEY_ENGINE))
+    self.assertContained('hello, world!', run_js('a.out.js', engine=V8_ENGINE))
 
   @no_wasm_backend()
   def test_binaryen_asmjs_outputs(self):
@@ -7799,7 +7799,7 @@ int main() {
     ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('NONEXISTING_DIRECTORY', 'out.js')])
     self.assertContained('specified output file (NONEXISTING_DIRECTORY%sout.js) is in a directory that does not exist' % os.path.sep, ret)
 
-  @unittest.skipIf(SPIDERMONKEY_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
+  @unittest.skipIf(V8_ENGINE not in JS_ENGINES, 'cannot run without spidermonkey')
   def test_binaryen_ctors(self):
     # ctor order must be identical to js builds, deterministically
     create_test_file('src.cpp', r'''
@@ -7815,14 +7815,14 @@ int main() {
       int main() {}
     ''')
     run_process([PYTHON, EMCC, 'src.cpp'])
-    correct = run_js('a.out.js', engine=SPIDERMONKEY_ENGINE)
-    for args in [[], ['-s', 'RELOCATABLE=1'], ['-s', 'MAIN_MODULE=1']]:
+    correct = run_js('a.out.js', engine=V8_ENGINE)
+    for args in [[], ['-s', 'RELOCATABLE=1']]:
       print(args)
       run_process([PYTHON, EMCC, 'src.cpp', '-s', 'WASM=1', '-o', 'b.out.js'] + args)
-      seen = run_js('b.out.js', engine=SPIDERMONKEY_ENGINE)
+      seen = run_js('b.out.js', engine=V8_ENGINE)
       assert correct == seen, correct + '\n vs \n' + seen
 
-# test debug info and debuggability of JS output
+  # test debug info and debuggability of JS output
   @uses_canonical_tmp
   def test_binaryen_debug(self):
     with env_modify({'EMCC_DEBUG': '1'}):

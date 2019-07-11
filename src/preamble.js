@@ -1085,8 +1085,10 @@ function createWasm(env) {
       module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
     } catch (e) {
+      e = e.toString();
       err('failed to compile wasm module: ' + e);
-      if (e.toString().indexOf('imported Memory with incompatible size') >= 0) {
+      if (e.indexOf('imported Memory') >= 0 ||
+          e.indexOf('memory import') >= 0) {
         err('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).');
       }
       return false;
