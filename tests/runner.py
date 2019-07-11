@@ -94,6 +94,9 @@ EMTEST_SKIP_SLOW = os.getenv('EMTEST_SKIP_SLOW')
 
 EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0'))
 
+if EMTEST_VERBOSE:
+  logging.root.setLevel(logging.DEBUG)
+
 
 # checks if browser testing is enabled
 def has_browser():
@@ -235,10 +238,14 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-def limit_size(string, MAX=800 * 20):
-  if len(string) < MAX:
-    return string
-  return string[0:MAX // 2] + '\n[..]\n' + string[-MAX // 2:]
+def limit_size(string, maxbytes=800 * 20, maxlines=100):
+  lines = string.splitlines()
+  if len(lines) > maxlines:
+    lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
+    string = '\n'.join(lines)
+  if len(string) > maxbytes:
+    string = string[0:maxbytes // 2] + '\n[..]\n' + string[-maxbytes // 2:]
+  return string
 
 
 def create_test_file(name, contents, binary=False):
@@ -786,7 +793,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = out + err
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
     if EMTEST_VERBOSE:
-      print('-- being program output --')
+      print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
     return ret
@@ -1088,6 +1095,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
       kwargs['force_c'] = True
+    logger.debug('do_run_from_file: %s' % src)
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
@@ -1398,8 +1406,18 @@ class BrowserCore(RunnerCore):
       time.sleep(5)
       print('(moving on..)')
 
-  def with_report_result(self, code):
-    return '#define EMTEST_PORT_NUMBER %d\n#include "%s"\n' % (self.port, path_from_root('tests', 'report_result.h')) + code
+  def with_report_result(self, user_code):
+    return '''
+#define EMTEST_PORT_NUMBER %(port)d
+#include "%(report_header)s"
+%(report_main)s
+%(user_code)s
+''' % {
+      'port': self.port,
+      'report_header': path_from_root('tests', 'report_result.h'),
+      'report_main': open(path_from_root('tests', 'report_result.cpp')).read(),
+      'user_code': user_code
+    }
 
   # @manually_trigger If set, we do not assume we should run the reftest when main() is done.
   #                   Instead, call doReftest() in JS yourself at the right time.
@@ -1540,7 +1558,13 @@ class BrowserCore(RunnerCore):
     if 'WASM=0' not in args:
       # Filter out separate-asm, which is implied by wasm
       args = [a for a in args if a != '--separate-asm']
-    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port, '-include', path_from_root('tests', 'report_result.h')]
+    # add in support for reporting results. this adds as an include a header so testcases can
+    # use REPORT_RESULT, and also adds a cpp file to be compiled alongside the testcase, which
+    # contains the implementation of REPORT_RESULT (we can't just include that implementation in
+    # the header as there may be multiple files being compiled here).
+    args += ['-DEMTEST_PORT_NUMBER=%d' % self.port,
+             '-include', path_from_root('tests', 'report_result.h'),
+             path_from_root('tests', 'report_result.cpp')]
     if filename_is_src:
       filepath = os.path.join(self.get_dir(), 'main.c' if force_c else 'main.cpp')
       with open(filepath, 'w') as f:

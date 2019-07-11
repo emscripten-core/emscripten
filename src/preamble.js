@@ -1113,7 +1113,11 @@ function createWasm(env) {
   // to any other async startup actions they are performing.
   if (Module['instantiateWasm']) {
     try {
-      return Module['instantiateWasm'](info, receiveInstance);
+      var exports = Module['instantiateWasm'](info, receiveInstance);
+#if BYSYNCIFY
+      exports = Bysyncify.instrumentWasmExports(exports);
+#endif
+      return exports;
     } catch(e) {
       err('Module.instantiateWasm callback failed with error: ' + e);
       return false;
@@ -1165,6 +1169,7 @@ Module['asm'] = function(global, env, providedBuffer) {
 #if RELOCATABLE || !WASM_BACKEND
   env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
 #if WASM_BACKEND
+  env['__stack_pointer'] = STACK_BASE;
   // We reserve slot 0 in the table for the NULL function pointer.
   // This means the __table_base for the main module (even in dynamic linking)
   // is always 1.
