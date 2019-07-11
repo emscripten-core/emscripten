@@ -9448,7 +9448,7 @@ int main () {
     for catching in [0, 1]:
       for throwing in [0, 1]:
         for opts in [0, 1]:
-          cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_THROWING=%d' % (1-throwing), '-s', 'DISABLE_EXCEPTION_CATCHING=%d' % (1-catching), '-O%d' % opts]
+          cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_THROWING=%d' % (1 - throwing), '-s', 'DISABLE_EXCEPTION_CATCHING=%d' % (1 - catching), '-O%d' % opts]
           print(cmd)
           if not throwing and not catching:
             self.assertContained('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but such support is required', self.expect_fail(cmd))
