@@ -4717,7 +4717,7 @@ window.close = function() {
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
 
   def _test_es6(self, args):
-    args = args + ['-s', 'EXPORT_ES6', '-s', 'MODULARIZE', '-s', 'MODULARIZE_INSTANCE', '-o', 'test.mjs']
+    args = args + ['-s', 'EXPORT_ES6', '-s', 'MODULARIZE', '-s', 'MODULARIZE_INSTANCE', '-s', 'ASSERTIONS', '-o', 'test.mjs']
     print(args)
     create_test_file('src.c', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
     self.compile_btest(['src.c'] + args)
@@ -4751,6 +4751,8 @@ window.close = function() {
 
   @requires_threads
   def test_es6_threads(self):
+    # TODO: use PROXY_TO_PTHREAD and/or '-s', 'PTHREAD_POOL_SIZE=1' once https://bugs.chromium.org/p/chromium/issues/detail?id=680046 is fixed
+    #       firefox also errors, "SyntaxError: dynamic module import is not implemented"
     self._test_es6(['-s', 'USE_PTHREADS'])
 
 
