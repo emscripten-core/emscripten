@@ -2208,7 +2208,7 @@ void *getBindBuffer() {
         setTimeout(function() {
           Module.okk = 10;
           removeRunDependency()
-        }, 2000);
+        }, 1000);
       };
     ''')
 
