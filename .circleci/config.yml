@@ -47,7 +47,7 @@ test-firefox: &test-firefox
     - run:
         name: download firefox
         command: |
-          FF_VERSION=68.0
+          FF_VERSION=65.0.2
           wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/$FF_VERSION/linux-x86_64/en-US/firefox-$FF_VERSION.tar.bz2
           tar xf firefox-$FF_VERSION.tar.bz2
           # wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
@@ -152,22 +152,21 @@ test-chrome: &test-chrome
         name: install package dependencies
         command: |
           apt-get update -q
-          # install chromium-browser temporarily in order to ensure we have most of the
+          # install chromium-browser in order to ensure we have most of the
           # dependecies for chrome.
           EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
           apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
-          apt-get remove -q -y chromium-browser
     - run:
         name: download chrome
         command: |
-          wget https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
-          dpkg -i google-chrome-unstable_current_amd64.deb
+          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          dpkg -i google-chrome-stable_current_amd64.deb
     - run:
         name: run tests
         command: |
           # --no-sandbox becasue we are running as root and chrome requires
           # this flag for now: https://crbug.com/638180
-          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --javascript-harmony --enable-experimental-web-platform-features"
+          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
           CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
           export EMTEST_BROWSER="xvfb-run -a -e /dev/stdout /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
           export EMTEST_LACKS_GRAPHICS_HARDWARE=1
@@ -401,14 +400,73 @@ workflows:
 
   build-test:
     jobs:
+      - flake8
+      - build-docs
       - build
+      - test-other:
+          requires:
+            - build
       - test-browser-firefox:
           requires:
             - build
       - test-browser-chrome:
           requires:
             - build
+      - test-ab:
+          requires:
+            - build
+      - test-c:
+          requires:
+            - build
+      - test-d:
+          requires:
+            - build
+      - test-e:
+          requires:
+            - build
+      - test-f:
+          requires:
+            - build
+      - test-ghi:
+          requires:
+            - build
+      - test-jklmno:
+          requires:
+            - build
+      - test-p:
+          requires:
+            - build
+      - test-qrst:
+          requires:
+            - build
+      - test-uvwxyz:
+          requires:
+            - build
+      - test-wasm0:
+          requires:
+            - build
+      - test-wasm1:
+          requires:
+            - build
+      - test-wasm2:
+          requires:
+            - build
+      - test-wasm3:
+          requires:
+            - build
+      - test-sanity:
+          requires:
+            - build
       - build-upstream
+      - test-upstream-wasm0:
+          requires:
+            - build-upstream
+      - test-upstream-wasm2:
+          requires:
+            - build-upstream
+      - test-upstream-other:
+          requires:
+            - build-upstream
       - test-upstream-browser-chrome:
           requires:
             - build-upstream
