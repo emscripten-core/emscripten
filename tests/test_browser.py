@@ -1343,7 +1343,7 @@ keydown(100);keyup(100); // trigger the end
   def test_fs_memfs_fsync(self):
     args = self.get_async_args() + ['-s', 'EXIT_RUNTIME=1']
     secret = str(time.time())
-    self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
+    self.btest(path_from_root('tests', 'fs', 'test_memfs_fsync.c'), '1waka', force_c=True, args=args + ['-DSECRET=\"' + secret + '\"', '-s', '''EXPORTED_FUNCTIONS=['_main']'''])
 
   def test_fs_workerfs_read(self):
     secret = 'a' * 10
