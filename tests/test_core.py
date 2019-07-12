@@ -688,6 +688,21 @@ base align: 0, 0, 0, 0'''])
 
     test()
 
+  def test_stack_placement(self):
+    self.set_setting('TOTAL_STACK', 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+    self.set_setting('GLOBAL_BASE', 102400)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+
+  def test_stack_placement_pic(self):
+    if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('memory growth is not compatible with MAIN_MODULE')
+    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('MAIN_MODULE')
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+    self.set_setting('GLOBAL_BASE', 102400)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+
   @no_emterpreter
   def test_stack_restore(self):
     if self.is_wasm():
@@ -6313,18 +6328,18 @@ return malloc(size);
   def test_response_file(self):
     response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
-    run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
+    run_process([PYTHON, EMCC, "@rsp_file"] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
-    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.emcc_args)
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.get_emcc_args())
     # This should expand into -Wl,--export=foo which will then be ignored
     # by emscripten, except when using the wasm backend (lld) in which case it
     # should pass the original flag to the linker.
     response_data = objfile + ' --export=foo'
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
-    run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.emcc_args)
+    run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_exported_response(self):
@@ -7461,7 +7476,7 @@ extern "C" {
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
-    create_test_file('src.cpp', r'''
+    self.do_run(r'''
       #include <map>
       #include <stdio.h>
 
@@ -7474,9 +7489,7 @@ extern "C" {
           printf("ok.\n");
         }
       }
-      ''')
-    run_process([PYTHON, EMCC, 'src.cpp'] + self.emcc_args)
-    self.assertContained('ok.', run_js('a.out.js', args=['C']))
+    ''', 'ok.')
 
   def test_memprof_requirements(self):
     # This test checks for the global variables required to run the memory
@@ -7533,10 +7546,6 @@ extern "C" {
 
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
-
-  def test_stack_placement(self):
-    self.set_setting('TOTAL_STACK', '1024')
-    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
   @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
