@@ -956,3 +956,16 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
 }
 
 weak_alias(__pthread_testcancel, pthread_testcancel);
+
+extern void __wasm_init_tls(void *memory);
+void *emscripten_builtin_malloc(size_t size);
+void emscripten_builtin_free(void *memory);
+
+void EMSCRIPTEN_KEEPALIVE emscripten_tls_init(void) {
+  size_t tls_size = __builtin_wasm_tls_size();
+  if (tls_size) {
+    void *tls_block = emscripten_builtin_malloc(tls_size);
+    __wasm_init_tls(tls_block);
+    pthread_cleanup_push(emscripten_builtin_free, tls_block);
+  }
+}
