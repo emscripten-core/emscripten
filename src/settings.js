@@ -1020,11 +1020,15 @@ var WASM_OBJECT_FILES = 1;
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
 
-// Whether to ignore implicit traps when optimizing in binaryen.  Implicit traps
-// are the unlikely traps that happen in a load that is out of bounds, or
-// div/rem of 0, etc. We can reorder them, but we can't ignore that they have
-// side effects, so turning on this flag lets us do a little more to reduce code
-// size.
+// Whether to ignore implicit traps when optimizing in binaryen.  Implicit
+// traps are the traps that happen in a load that is out of bounds, or
+// div/rem of 0, etc. With this option set, the optimizer assumes that loads
+// cannot trap, and therefore that they have no side effects at all. This
+// is *not* safe in general, as you may have a load behind a condition which
+// ensures it it is safe; but if the load is assumed to not have side effects it
+// could be executed unconditionally. For that reason this option is generally
+// not useful on large and complex projects, but in a small and simple enough
+// codebase it may help reduce code size a little bit.
 var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 
 // How we handle wasm operations that may trap, which includes integer
