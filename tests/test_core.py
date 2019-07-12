@@ -703,6 +703,8 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
   def test_stack_placement_pic(self):
+    if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('memory growth is not compatible with MAIN_MODULE')
     self.set_setting('TOTAL_STACK', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
