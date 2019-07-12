@@ -1,4 +1,3 @@
-if (typeof log === 'function') log('premalbe');
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in:

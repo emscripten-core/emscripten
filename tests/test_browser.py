@@ -4716,28 +4716,14 @@ window.close = function() {
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
 
+  @no_firefox('need to enable es6 modules there somehow')
   def _test_es6(self, args):
     args = args + ['-s', 'EXPORT_ES6', '-s', 'MODULARIZE', '-s', 'MODULARIZE_INSTANCE', '-s', 'ASSERTIONS', '-o', 'test.mjs']
     print(args)
     create_test_file('src.c', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
     self.compile_btest(['src.c'] + args)
     create_test_file('test.html', '''
-      <script>
-        var logs = 0;
-        function log(e) {
-          var xhr = new XMLHttpRequest();
-          xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + e + ' : ' + new Error().stack + ' : ' + logs++));
-          xhr.send();
-        }
-        log('startup');
-        window.onerror = function(e) {
-          log(e);
-        };
-      </script>
       <script type="module" src="test.mjs"></script>
-      <script>
-        log('after');
-      </script>
     ''')
     self.run_browser('test.html', None, '/report_result?0')
 
@@ -4754,6 +4740,4 @@ window.close = function() {
   def test_es6_threads(self):
     # TODO: use PROXY_TO_PTHREAD and/or '-s', 'PTHREAD_POOL_SIZE=1' once https://bugs.chromium.org/p/chromium/issues/detail?id=680046 is fixed
     #       firefox also errors, "SyntaxError: dynamic module import is not implemented"
-    self._test_es6(['-s', 'USE_PTHREADS'])
-
-
+    self._test_es6(['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
