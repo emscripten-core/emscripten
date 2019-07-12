@@ -1,4 +1,5 @@
 __memory_base
+__stack_pointer
 a
 b
 c
@@ -13,4 +14,3 @@ k
 l
 m
 n
-o
