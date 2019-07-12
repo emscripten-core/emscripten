@@ -1447,7 +1447,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.memory_init_file = True
         # we will include the mem init data in the wasm, when we don't need the
         # mem init file to be loadable by itself
-        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
+        shared.Settings.MEM_INIT_IN_WASM = True
 
       # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
       if not shared.Settings.MINIMAL_RUNTIME:
