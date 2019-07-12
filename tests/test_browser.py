@@ -2208,7 +2208,7 @@ void *getBindBuffer() {
         setTimeout(function() {
           Module.okk = 10;
           removeRunDependency()
-        }, 1000);
+        }, 2000);
       };
     ''')
 
@@ -2336,7 +2336,7 @@ void *getBindBuffer() {
         xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
         xhr.send();
         setTimeout(function() { window.close() }, 1000);
-      }, 2000);
+      }, 1000);
     ''' % self.port
 
     create_test_file('pre_runtime.js', r'''
