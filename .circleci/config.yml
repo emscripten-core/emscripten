@@ -166,9 +166,10 @@ test-chrome: &test-chrome
         command: |
           # --no-sandbox becasue we are running as root and chrome requires
           # this flag for now: https://crbug.com/638180
-          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
+          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+          CHROME_FLAGS_HEADLESS="--headless --remote-debugging-port=1234"
           CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
-          export EMTEST_BROWSER="xvfb-run -a -e /dev/stdout /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+          export EMTEST_BROWSER="/usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM"
           export EMTEST_LACKS_GRAPHICS_HARDWARE=1
           export EMCC_CORES=4
           ./emscripten/tests/runner.py browser
@@ -400,77 +401,12 @@ workflows:
 
   build-test:
     jobs:
-      - flake8
-      - build-docs
       - build
-      - test-other:
-          requires:
-            - build
-      - test-browser-firefox:
-          requires:
-            - build
       - test-browser-chrome:
           requires:
             - build
-      - test-ab:
-          requires:
-            - build
-      - test-c:
-          requires:
-            - build
-      - test-d:
-          requires:
-            - build
-      - test-e:
-          requires:
-            - build
-      - test-f:
-          requires:
-            - build
-      - test-ghi:
-          requires:
-            - build
-      - test-jklmno:
-          requires:
-            - build
-      - test-p:
-          requires:
-            - build
-      - test-qrst:
-          requires:
-            - build
-      - test-uvwxyz:
-          requires:
-            - build
-      - test-wasm0:
-          requires:
-            - build
-      - test-wasm1:
-          requires:
-            - build
-      - test-wasm2:
-          requires:
-            - build
-      - test-wasm3:
-          requires:
-            - build
-      - test-sanity:
-          requires:
-            - build
       - build-upstream
-      - test-upstream-wasm0:
-          requires:
-            - build-upstream
-      - test-upstream-wasm2:
-          requires:
-            - build-upstream
-      - test-upstream-other:
-          requires:
-            - build-upstream
       - test-upstream-browser-chrome:
-          requires:
-            - build-upstream
-      - test-upstream-browser-firefox:
           requires:
             - build-upstream
 
