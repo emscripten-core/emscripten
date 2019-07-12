@@ -1500,6 +1500,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.USE_PTHREADS:
           exit_with_error('LSan currently does not support threads')
 
+      if 'address' in sanitize:
+        shared.Settings.USE_ASAN = 1
+
+        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+        shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+        assert shared.Settings.TOTAL_MEMORY < 2**32
+
+        if shared.Settings.SAFE_HEAP:
+          # SAFE_HEAP instruments ASan's shadow memory accesses.
+          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+          # by SAFE_HEAP as a null pointer dereference.
+          exit_with_error('ASan does not work with SAFE_HEAP')
+
+        if shared.Settings.USE_PTHREADS:
+          exit_with_error('ASan currently does not support threads')
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 
