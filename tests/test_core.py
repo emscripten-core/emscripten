@@ -180,6 +180,14 @@ class TestCoreBase(RunnerCore):
     output = find_files('.out', '.txt')
     self.do_run_from_file(src, output, **kwargs)
 
+  def verify_in_strict_mode(self, filename):
+    with open(filename) as infile:
+      js = infile.read()
+    filename += '.strict.js'
+    with open(filename, 'w') as outfile:
+      outfile.write('"use strict";\n' + js)
+    run_js(filename)
+
   def get_bullet_library(self, use_cmake):
     if use_cmake:
       configure_commands = ['cmake', '.']
@@ -711,6 +719,8 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
   def test_stack_placement_pic(self):
+    if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('memory growth is not compatible with MAIN_MODULE')
     self.set_setting('TOTAL_STACK', 1024)
     self.set_setting('MAIN_MODULE')
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
@@ -4770,6 +4780,8 @@ main( int argv, char ** argc ) {
   def test_stat(self):
     src = open(path_from_root('tests', 'stat', 'test_stat.c')).read()
     self.do_run(src, 'success', force_c=True)
+
+    self.verify_in_strict_mode('src.c.o.js')
 
   def test_stat_chmod(self):
     src = open(path_from_root('tests', 'stat', 'test_chmod.c')).read()

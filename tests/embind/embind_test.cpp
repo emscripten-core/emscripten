@@ -259,6 +259,14 @@ ValHolder emval_test_return_ValHolder() {
     return val::object();
 }
 
+val valholder_get_value_mixin(const ValHolder& target) {
+    return target.getVal();
+}
+
+void valholder_set_value_mixin(ValHolder& target, const val& value) {
+    target.setVal(value);
+}
+
 void emval_test_set_ValHolder_to_empty_object(ValHolder& vh) {
     vh.setVal(val::object());
 }
@@ -1784,6 +1792,8 @@ EMSCRIPTEN_BINDINGS(tests) {
         ;
     function("emval_test_take_and_return_ArrayInStruct", &emval_test_take_and_return_ArrayInStruct);
 
+    using namespace std::placeholders;
+
     class_<ValHolder>("ValHolder")
         .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
         .constructor<val>()
@@ -1792,6 +1802,10 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function("getConstVal", &ValHolder::getConstVal)
         .function("getValConstRef", &ValHolder::getValConstRef)
         .function("setVal", &ValHolder::setVal)
+        .function("getValFunction", std::function<val(const ValHolder&)>(&valholder_get_value_mixin))
+        .function("setValFunction", std::function<void(ValHolder&, const val&)>(&valholder_set_value_mixin))
+        .function<val(const ValHolder&)>("getValFunctor", std::bind(&valholder_get_value_mixin, _1))
+        .function<void(ValHolder&, const val&)>("setValFunctor", std::bind(&valholder_set_value_mixin, _1, _2))
         .property("val", &ValHolder::getVal, &ValHolder::setVal)
         .property("val_readonly", &ValHolder::getVal)
         .class_function("makeConst", &ValHolder::makeConst, allow_raw_pointer<ret_val>())
