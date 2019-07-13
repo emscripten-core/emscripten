@@ -9,6 +9,13 @@
 // HEAPU8.set()
 extern void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n);
 
+// XXX EMSCRIPTEN ASAN: build an uninstrumented version of memcpy
+#if defined(__EMSCRIPTEN__) && defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define memcpy __attribute__((no_sanitize("address"))) emscripten_builtin_memcpy
+#endif
+#endif
+
 void *memcpy(void *restrict dest, const void *restrict src, size_t n)
 {
   unsigned char *d = dest;
