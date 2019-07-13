@@ -25,7 +25,6 @@ var LibraryPThread = {
       __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
       // Initialize data on main pthread now that we have initialized the thread id
-      ___emscripten_pthread_data_constructor();
     },
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;

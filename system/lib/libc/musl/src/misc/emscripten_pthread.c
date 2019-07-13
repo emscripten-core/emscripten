@@ -10,13 +10,16 @@ pthread_t pthread_self(void) {
 #endif // !__EMSCRIPTEN_PTHREADS__
 
 #if __EMSCRIPTEN_PTHREADS__
-// Needs to be called after PThread.initRuntime, which in turn needs to be
-// called after constructors have run and memory is initialized.
+EM_JS(void, initPthreadsJS, (void), {
+  PThread.initRuntime();
+})
+#endif
+
 EMSCRIPTEN_KEEPALIVE
-#else
-// Without threads, no reason not to just run this from C.
-__attribute__((constructor))
-#endif // __EMSCRIPTEN_PTHREADS__
+__attribute__((constructor(100))) // This must run before any userland ctors
 void __emscripten_pthread_data_constructor(void) {
-    pthread_self()->locale = &libc.global_locale;
+#if __EMSCRIPTEN_PTHREADS__
+  initPthreadsJS();
+#endif
+  pthread_self()->locale = &libc.global_locale;
 }
