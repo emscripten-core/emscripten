@@ -19,6 +19,8 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+ - LLVM backend pthread builds no longer use external memory initialization files
+
 v1.38.38: 07/08/2019
 --------------------
 

@@ -1848,8 +1848,7 @@ class Building(object):
 
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
-      if not Settings.WASM2JS:
-        cmd.append('--passive-segments')
+      cmd.append('--passive-segments')
 
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
