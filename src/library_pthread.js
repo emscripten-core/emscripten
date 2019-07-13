@@ -24,7 +24,6 @@ var LibraryPThread = {
       // Global constructors trying to access this value will read the wrong value, but that is UB anyway.
       __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
-      // Initialize data on main pthread now that we have initialized the thread id
     },
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
@@ -849,11 +848,6 @@ var LibraryPThread = {
   pthread_self__asm: true,
   pthread_self__sig: 'i',
   pthread_self: function() {
-#if ASSERTIONS
-// TODO: remove this after CI is green
-    // a null pthread_self() may be caused by a static constructor calling it, see #8955
-    if ((__pthread_ptr | 0) == 0) abort(8955);
-#endif
     return __pthread_ptr|0;
   },
 
