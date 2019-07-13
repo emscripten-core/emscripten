@@ -118,6 +118,7 @@ test-firefox: &test-firefox
           export EMTEST_BROWSER="$HOME/firefox/firefox -profile tmp-firefox-profile/"
           export GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
           export EMTEST_LACKS_SOUND_HARDWARE=1
+          export EMTEST_LACKS_OFFSCREEN_CANVAS=1 # looks broken in ff nightly
           export EMTEST_DETECT_TEMPFILE_LEAKS=0
           export DISPLAY=:0
           # Start an X session. Openbox might be optional for now, but
