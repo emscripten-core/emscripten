@@ -602,43 +602,30 @@ Classes
       .. code-block:: cpp
 
          //prototype
-         template<typename ReturnType, typename... Args, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const
+         template<typename Signature = internal::DeduceArgumentsTag, typename Callable, typename... Policies>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, Callable callable, Policies...) const
 
       This method is for declaring a method belonging to a class.
 
-      On the JavaScript side this is a function that gets bound as a property of the prototype. For example ``.function("myClassMember", &MyClass::myClassMember)`` would bind ``myClassMember`` to ``MyClass.prototype.myClassMember`` in the JavaScript.
+      On the JavaScript side this is a function that gets bound as a property of the prototype. For example ``.function("myClassMember", &MyClass::myClassMember)``
+      would bind ``myClassMember`` to ``MyClass.prototype.myClassMember`` in the JavaScript.  This method will accept either a pointer-to-member-function, function
+      pointer, ``std::function`` object or function object.  When the ``Callable`` is not a pointer-to-member-function it must accept the ``ClassType`` as the first
+      (``this``) parameter.  When the ``Callable`` is a function object the function signature must be explicitly specified in the ``Signature`` template parameter
+      in the format ``ReturnType (Args...)``.  For ``Callable`` types other than function objects the method signature will be deduced.
 
-      :param const char* methodName
-      :param ReturnType (ClassType\:\:\*memberFunction)(Args...) Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
-      :param typename... Policies: |policies-argument|
-      :returns: |class_-function-returns|
-
-
-   .. cpp:function:: const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const
+      The following are all valid calls to ``function``:
 
       .. code-block:: cpp
 
-         //prototype
-         template<typename ReturnType, typename... Args, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const
+         using namespace std::placeholders;
+         myClass.function("myClassMember", &MyClass::myClassMember)
+             .function("myFreeFunction", &my_free_function)
+             .function("myStdFunction", std::function<float(ClassType&, float, float)>(&my_function))
+             .function<val(const MyClass&)>("myFunctor", std::bind(&my_functor_taking_this, _1));
+
 
       :param const char* methodName
-      :param ReturnType (ClassType\:\:\*memberFunction)(Args...) const: Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
-      :param typename... Policies: |policies-argument|
-      :returns: |class_-function-returns|
-
-
-   .. cpp:function:: const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const
-
-      .. code-block:: cpp
-
-         //prototype
-         template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const
-
-      :param const char* methodName
-      :param ReturnType (\*function)(ThisType, Args...)
+      :param Callable callable Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
       :param typename... Policies: |policies-argument|
       :returns: |class_-function-returns|
 

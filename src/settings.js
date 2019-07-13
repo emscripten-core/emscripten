@@ -1020,11 +1020,15 @@ var WASM_OBJECT_FILES = 1;
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
 
-// Whether to ignore implicit traps when optimizing in binaryen.  Implicit traps
-// are the unlikely traps that happen in a load that is out of bounds, or
-// div/rem of 0, etc. We can reorder them, but we can't ignore that they have
-// side effects, so turning on this flag lets us do a little more to reduce code
-// size.
+// Whether to ignore implicit traps when optimizing in binaryen.  Implicit
+// traps are the traps that happen in a load that is out of bounds, or
+// div/rem of 0, etc. With this option set, the optimizer assumes that loads
+// cannot trap, and therefore that they have no side effects at all. This
+// is *not* safe in general, as you may have a load behind a condition which
+// ensures it it is safe; but if the load is assumed to not have side effects it
+// could be executed unconditionally. For that reason this option is generally
+// not useful on large and complex projects, but in a small and simple enough
+// codebase it may help reduce code size a little bit.
 var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 
 // How we handle wasm operations that may trap, which includes integer
@@ -1476,9 +1480,17 @@ var WASM2JS = 0;
 // -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
 
-// Whether we should link in LSan's runtime library. This is intended to be used invoked`
+// Whether we should link in LSan's runtime library. This is intended to be used
 // by -fsanitize=leak instead of used directly.
 var USE_LSAN = 0;
+
+// Whether we should link in ASan's runtime library. This is intended to be used
+// by -fsanitize=leak instead of used directly.
+var USE_ASAN = 0;
+
+// The size of our shadow memory.
+// By default, we have 32 MiB. This supports 256 MiB of real memory.
+var ASAN_SHADOW_SIZE = 33554432;
 
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
