@@ -47,11 +47,10 @@ test-firefox: &test-firefox
     - run:
         name: download firefox
         command: |
-          FF_VERSION=65.0.2
-          wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/$FF_VERSION/linux-x86_64/en-US/firefox-$FF_VERSION.tar.bz2
-          tar xf firefox-$FF_VERSION.tar.bz2
-          # wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
-          # tar xf nightly.tar.bz2
+          # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
+          # which requires very latest nightly as of Jul 13 2019
+          wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+          tar xf nightly.tar.bz2
     - run:
         name: configure firefox
         command: |
