@@ -49,10 +49,10 @@ import webbrowser
 if sys.version_info.major == 2:
   from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
+  from urllib import unquote, unquote_plus
 else:
   from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote
+  from urllib.parse import unquote, unquote_plus
 
 # Setup
 
@@ -63,7 +63,6 @@ import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
-
 
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
@@ -1269,7 +1268,10 @@ def harness_server_func(in_queue, out_queue, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        print('[client logging:', urllib.unquote_plus(self.path), ']')
+        print('[client logging:', unquote_plus(self.path), ']')
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1290,7 +1292,7 @@ def harness_server_func(in_queue, out_queue, port):
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
-          print('[simple HTTP serving:', urllib.unquote_plus(self.path), ']')
+          print('[simple HTTP serving:', unquote_plus(self.path), ']')
         SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
