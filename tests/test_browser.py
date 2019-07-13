@@ -3894,6 +3894,12 @@ window.close = function() {
   def test_pthread_tls(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls.cpp'), expected='1337', args=['-ftls-model=local-exec', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-std=c++11'])
 
+  # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
+  @no_fastcomp('thread_local is only supported on WASM backend')
+  @requires_threads
+  def test_pthread_tls_main(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-ftls-model=local-exec', '-s', 'USE_PTHREADS', '-std=c++11'])
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
