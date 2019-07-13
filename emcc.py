@@ -1226,6 +1226,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          exit_with_error('EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that')
       assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
 
+    if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
+
     if shared.Settings.DEAD_FUNCTIONS:
       if not options.js_opts:
         logger.debug('enabling js opts for DEAD_FUNCTIONS')
@@ -1496,6 +1499,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
         if shared.Settings.USE_PTHREADS:
           exit_with_error('LSan currently does not support threads')
+
+      if 'address' in sanitize:
+        shared.Settings.USE_ASAN = 1
+
+        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+        shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+        assert shared.Settings.TOTAL_MEMORY < 2**32
+
+        if shared.Settings.SAFE_HEAP:
+          # SAFE_HEAP instruments ASan's shadow memory accesses.
+          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+          # by SAFE_HEAP as a null pointer dereference.
+          exit_with_error('ASan does not work with SAFE_HEAP')
+
+        if shared.Settings.USE_PTHREADS:
+          exit_with_error('ASan currently does not support threads')
 
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1

@@ -487,6 +487,37 @@ namespace emscripten {
             }
         };
 
+        template<typename FunctorType, typename ReturnType, typename ThisType, typename... Args>
+        struct FunctorInvoker {
+
+            static typename internal::BindingType<ReturnType>::WireType invoke(
+                FunctorType& function,
+                typename internal::BindingType<ThisType>::WireType wireThis,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                return internal::BindingType<ReturnType>::toWireType(
+                    function(
+                        internal::BindingType<ThisType>::fromWireType(wireThis),
+                        internal::BindingType<Args>::fromWireType(args)...)
+                );
+            }
+        };
+
+        template<typename FunctorType, typename ThisType, typename... Args>
+        struct FunctorInvoker<FunctorType, void, ThisType, Args...> {
+            using FunctionType = std::function<void (ThisType, Args...)>;
+
+            static void invoke(
+                FunctorType& function,
+                typename internal::BindingType<ThisType>::WireType wireThis,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                function(
+                    internal::BindingType<ThisType>::fromWireType(wireThis),
+                    internal::BindingType<Args>::fromWireType(args)...);
+            }
+        };
+
         template<typename MemberPointer,
                  typename ReturnType,
                  typename ThisType,
@@ -1108,6 +1139,118 @@ namespace emscripten {
         struct isPureVirtual<> {
             static constexpr bool value = false;
         };
+
+        struct DeduceArgumentsTag {};
+
+        ////////////////////////////////////////////////////////////////////////////
+        // RegisterClassMethod
+        ////////////////////////////////////////////////////////////////////////////
+
+        template <typename T>
+        struct RegisterClassMethod;
+
+        template<typename ClassType, typename ReturnType, typename... Args>
+        struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
+
+            template <typename CT, typename... Policies>
+            static void invoke(const char* methodName,
+                               ReturnType (ClassType::*memberFunction)(Args...)) {
+                auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
+
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoker),
+                    reinterpret_cast<GenericFunction>(invoker),
+                    getContext(memberFunction),
+                    isPureVirtual<Policies...>::value);
+            }
+        };
+
+        template<typename ClassType, typename ReturnType, typename... Args>
+        struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
+
+            template <typename CT, typename... Policies>
+            static void invoke(const char* methodName,
+                               ReturnType (ClassType::*memberFunction)(Args...) const)  {
+                auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
+
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoker),
+                    reinterpret_cast<GenericFunction>(invoker),
+                    getContext(memberFunction),
+                    isPureVirtual<Policies...>::value);
+            }
+        };
+
+        template<typename ReturnType, typename ThisType, typename... Args>
+        struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
+
+            template <typename ClassType, typename... Policies>
+            static void invoke(const char* methodName,
+                               ReturnType (*function)(ThisType, Args...)) {
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
+                auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoke),
+                    reinterpret_cast<GenericFunction>(invoke),
+                    getContext(function),
+                    false);
+            }
+        };
+
+        template<typename ReturnType, typename ThisType, typename... Args>
+        struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
+
+            template <typename ClassType, typename... Policies>
+            static void invoke(const char* methodName,
+                               std::function<ReturnType (ThisType, Args...)> function) {
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
+                auto invoke = &FunctorInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoke),
+                    reinterpret_cast<GenericFunction>(invoke),
+                    getContext(function),
+                    false);
+            }
+        };
+
+        template<typename ReturnType, typename ThisType, typename... Args>
+        struct RegisterClassMethod<ReturnType (ThisType, Args...)> {
+
+            template <typename ClassType, typename Callable, typename... Policies>
+            static void invoke(const char* methodName,
+                               Callable& callable) {
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
+                auto invoke = &FunctorInvoker<decltype(callable), ReturnType, ThisType, Args...>::invoke;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoke),
+                    reinterpret_cast<GenericFunction>(invoke),
+                    getContext(callable),
+                    false);
+            }
+        };
+
     }
 
     template<typename... ConstructorArgs>
@@ -1270,59 +1413,14 @@ namespace emscripten {
                 ;
         }
 
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...), Policies...) const {
-            using namespace internal;
+        template<typename Signature = internal::DeduceArgumentsTag, typename Callable, typename... Policies>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, Callable callable, Policies...) const {
+            using invoker = internal::RegisterClassMethod<
+                typename std::conditional<std::is_same<Signature, internal::DeduceArgumentsTag>::value,
+                                          Callable,
+                                          Signature>::type>;
 
-            auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoker),
-                reinterpret_cast<GenericFunction>(invoker),
-                getContext(memberFunction),
-                isPureVirtual<Policies...>::value);
-            return *this;
-        }
-
-        template<typename ReturnType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const {
-            using namespace internal;
-
-            auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoker),
-                reinterpret_cast<GenericFunction>(invoker),
-                getContext(memberFunction),
-                isPureVirtual<Policies...>::value);
-            return *this;
-        }
-
-        template<typename ReturnType, typename ThisType, typename... Args, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const {
-            using namespace internal;
-
-            typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-            auto invoke = &FunctionInvoker<decltype(function), ReturnType, ThisType, Args...>::invoke;
-            _embind_register_class_function(
-                TypeID<ClassType>::get(),
-                methodName,
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoke),
-                reinterpret_cast<GenericFunction>(invoke),
-                getContext(function),
-                false);
+            invoker::template invoke<ClassType, Policies...>(methodName, callable);
             return *this;
         }
 
