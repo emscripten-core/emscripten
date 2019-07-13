@@ -850,6 +850,7 @@ var LibraryPThread = {
   pthread_self__sig: 'i',
   pthread_self: function() {
 #if ASSERTIONS
+// TODO: remove this after CI is green
     // a null pthread_self() may be caused by a static constructor calling it, see #8955
     if ((__pthread_ptr | 0) == 0) abort(8955);
 #endif
