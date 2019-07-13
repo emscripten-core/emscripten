@@ -547,7 +547,7 @@ mergeInto(LibraryManager.library, {
 #else // EMTERPRETIFY_ASYNC
 
 #if BYSYNCIFY
-  $Bysyncify__deps: ['$Browser'],
+  $Bysyncify__deps: ['$Browser', '$runAndAbortIfError'],
   $Bysyncify: {
     State: {
       Normal: 0,
@@ -596,7 +596,7 @@ mergeInto(LibraryManager.library, {
                   err('BYSYNCIFY: stop unwind');
 #endif
                   Bysyncify.state = Bysyncify.State.Normal;
-                  Module['_bysyncify_stop_unwind']();
+                  runAndAbortIfError(Module['_bysyncify_stop_unwind']);
                 }
               }
             };
@@ -654,7 +654,7 @@ mergeInto(LibraryManager.library, {
           err('BYSYNCIFY: start rewind ' + Bysyncify.currData);
 #endif
           Bysyncify.state = Bysyncify.State.Rewinding;
-          Module['_bysyncify_start_rewind'](Bysyncify.currData);
+          runAndAbortIfError(function() { Module['_bysyncify_start_rewind'](Bysyncify.currData) });
           if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -672,7 +672,7 @@ mergeInto(LibraryManager.library, {
 #if BYSYNCIFY_DEBUG
           err('BYSYNCIFY: start unwind ' + Bysyncify.currData);
 #endif
-          Module['_bysyncify_start_unwind'](Bysyncify.currData);
+          runAndAbortIfError(function() { Module['_bysyncify_start_unwind'](Bysyncify.currData) });
           if (Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
@@ -683,7 +683,7 @@ mergeInto(LibraryManager.library, {
         err('BYSYNCIFY: stop rewind');
 #endif
         Bysyncify.state = Bysyncify.State.Normal;
-        Module['_bysyncify_stop_rewind']();
+        runAndAbortIfError(Module['_bysyncify_stop_rewind']);
         Bysyncify.freeData(Bysyncify.currData);
         Bysyncify.currData = null;
       } else {
