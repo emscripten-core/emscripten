@@ -2480,7 +2480,7 @@ void *getBindBuffer() {
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
     for args in [
         args_base,
-        args_base + ['--no_private_browsing']
+        args_base + ['--no_private_browsing', '--port', '6941']
     ]:
       args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
       proc = run_process(args, check=False)

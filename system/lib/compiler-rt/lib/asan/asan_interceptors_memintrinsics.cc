@@ -31,7 +31,7 @@ void *__asan_memmove(void *to, const void *from, uptr size) {
   ASAN_MEMMOVE_IMPL(nullptr, to, from, size);
 }
 
-#if SANITIZER_FUCHSIA || SANITIZER_RTEMS
+#if SANITIZER_FUCHSIA || SANITIZER_RTEMS || SANITIZER_EMSCRIPTEN
 
 // Fuchsia and RTEMS don't use sanitizer_common_interceptors.inc, but
 // the only things there it wants are these three.  Just define them

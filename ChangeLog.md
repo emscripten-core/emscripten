@@ -19,6 +19,12 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
+   - Currently, only supports one thread without dynamic linking.
+
+v1.38.38: 07/08/2019
+--------------------
+
  - Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
 
 v1.38.37: 06/26/2019
