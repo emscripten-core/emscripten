@@ -28,6 +28,8 @@ def get(ports, settings, shared):
     shutil.copytree(source_path_include, dest_path_include)
 
     final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
+    # create a dummy empty library
+    # this is needed as emscripted ports expect this, even if it is not used
     f = open(final, 'a').close()
     return final
 
