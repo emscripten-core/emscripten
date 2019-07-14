@@ -44,9 +44,9 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_BOOST_HEADERS == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(),'boost_headers'), '-DBOOST_ALL_NO_LIB']
+    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'boost_headers'), '-DBOOST_ALL_NO_LIB']
   return args
+
 
 def show():
   return 'Boost headers v1.69.0 (USE_BOOST_HEADERS=1; Boost license)'
-
