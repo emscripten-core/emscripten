@@ -10,6 +10,7 @@ import shutil
 TAG = 'version_1'
 HASH = '13828c09ebea9dd416a587fbe5e481f626073cb173a137fbcb85044c7bde1249b28af9980da0d2445b8bd1a8387e66a4629103f89031beb90a6c6226c96bc74d'
 
+
 def get(ports, settings, shared):
   if settings.USE_BOOST_HEADERS != 1:
     return []
@@ -30,7 +31,7 @@ def get(ports, settings, shared):
     final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
     # create a dummy empty library
     # this is needed as emscripted ports expect this, even if it is not used
-    f = open(final, 'a').close()
+    open(final, 'a').close()
     return final
 
   return [shared.Cache.get(libname, create, what='port')]
@@ -38,6 +39,7 @@ def get(ports, settings, shared):
 
 def clear(ports, shared):
   shared.Cache.erase_file(ports.get_lib_name('libboost_headers'))
+
 
 def process_args(ports, args, settings, shared):
   if settings.USE_BOOST_HEADERS == 1:
@@ -47,3 +49,4 @@ def process_args(ports, args, settings, shared):
 
 def show():
   return 'Boost headers v1.69.0 (USE_BOOST_HEADERS=1; Boost license)'
+
