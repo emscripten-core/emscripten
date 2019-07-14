@@ -43,7 +43,6 @@ import sys
 import tempfile
 import time
 import unittest
-import urllib
 import webbrowser
 
 if sys.version_info.major == 2:
@@ -63,6 +62,7 @@ import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
+
 
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
