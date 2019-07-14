@@ -4721,3 +4721,6 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
+
+  def test_boost_graph(self):
+    self.btest('test_boost_graph.cpp', expected='0', args=['-s', 'USE_BOOST_HEADERS=1'])
