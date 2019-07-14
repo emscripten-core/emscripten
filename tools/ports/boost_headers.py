@@ -44,4 +44,4 @@ def process_args(ports, args, settings, shared):
   return args
 
 def show():
-  return 'Boost headers (USE_BOOST_HEADERS=1; Boost license)'
+  return 'Boost headers v1.69.0 (USE_BOOST_HEADERS=1; Boost license)'
