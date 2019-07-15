@@ -3892,7 +3892,7 @@ window.close = function() {
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all waiters
   @requires_threads
   def test_pthread_wake_all(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_HINT_NUM_CORES=2', '-s', 'TOTAL_MEMORY=64MB'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_futex_wake_all.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'TOTAL_MEMORY=64MB', '-s', 'NO_EXIT_RUNTIME=1'], also_asmjs=True)
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
