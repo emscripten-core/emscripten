@@ -406,22 +406,6 @@ var LibraryEGL = {
     return 1 /* EGL_TRUE */;
   },
 
-  // EGLAPI EGLBoolean EGLAPIENTRY eglDestroyContext(EGLDisplay dpy, EGLContext ctx);
-  eglDestroyContext: function(display, context) {
-    if (display != 62000 /* Magic ID for Emscripten 'default display' */) {
-      EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
-      return 0;
-    }
-
-    if (context != 62004 /* Magic ID for Emscripten EGLContext */) {
-      EGL.setErrorCode(0x3006 /* EGL_BAD_CONTEXT */);
-      return 0;
-    }
-
-    EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
-    return 1;
-  },
-
   // EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurface(EGLDisplay dpy, EGLSurface surface, EGLint attribute, EGLint *value);
   eglQuerySurface__proxy: 'sync',
   eglQuerySurface__sig: 'iiiii',
