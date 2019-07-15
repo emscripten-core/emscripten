@@ -92,12 +92,12 @@ The following compiler settings can help (see ``src/settings.js`` for more detai
 LTO
 ===
 
-Link Time Optimization (LTO) lets the compiler do more work, as it can inline across separate compilation units, and even with system libraries. The :ref:`main relevant flag <emcc-llvm-lto>` is ``--llvm-lto 1`` at link time.
+Link Time Optimization (LTO) lets the compiler do more optimizations, as it can inline across separate compilation units, and even with system libraries. The :ref:`main relevant flag <emcc-llvm-lto>` is ``--llvm-lto 1`` at link time.
 
 Separately from that flag, the linker must also receive LLVM bitcode files in order to run LTO on them. With fastcomp that is always the case; with the LLVM wasm backend, object files main contain either wasm or bitcode. The linker can handle a mix of the two, but can only do LTO on the bitcode files. You can control that with the following flags:
 
 - The ``-flto`` flag tells the compiler to emit bitcode in object files, but does *not* affect system libraries.
-- The ``-s WASM_OBJECT_FILES=0`` also flag tells the compiler to emit bitcode to object files, and also to use bitcode system libraries.
+- The ``-s WASM_OBJECT_FILES=0`` flag also tells the compiler to emit bitcode in object files (like ``-flto``), and also to emit bitcode in system libraries.
 
 Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all source files with ``-s WASM_OBJECT_FILES=0`` and link with ``-s WASM_OBJECT_FILES=0 --llvm-lto 1``.
 
