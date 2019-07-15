@@ -571,7 +571,7 @@ def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info
     just_concat = True
   js_engine = shared.listify(js_engine)
   with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return temp_files.run_and_clean(lambda: run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat, extra_closure_externs, extra_closure_annotations))
+    return run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat, extra_closure_externs, extra_closure_annotations)
 
 
 def main():
