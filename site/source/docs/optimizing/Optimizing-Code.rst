@@ -79,7 +79,6 @@ In addition to the above, the following tips can help to reduce code size:
 
 - Use :ref:`the closure compiler <emcc-closure>` on the non-compiled code: ``--closure 1``. This can hugely reduce the size of the support JavaScript code, and is highly recommended. However, if you add your own additional JavaScript code (in a ``--pre-js``, for example) then you need to make sure it uses `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.
 - `Floh's blogpost on this topic <http://floooh.github.io/2016/08/27/asmjs-diet.html>`_ is very helpful.
-- Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
 - Make sure to use gzip compression on your webserver, which all browsers now support.
 - You can move some of your code into the `Emterpreter <https://github.com/emscripten-core/emscripten/wiki/Emterpreter>`_, which will then run much slower (as it is interpreted), but it will transfer all that code into a smaller amount of data.
 
@@ -89,6 +88,20 @@ The following compiler settings can help (see ``src/settings.js`` for more detai
 - You can use the ``-s FILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc. This prevents the compiler from emitting code to support all possible runtime environments, saving ~2KB.
 - You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. (This is already done by default for wasm, in ``-O1`` and above.)
+
+LTO
+===
+
+Link Time Optimization (LTO) lets the compiler do more optimizations, as it can inline across separate compilation units, and even with system libraries. The :ref:`main relevant flag <emcc-llvm-lto>` is ``--llvm-lto 1`` at link time.
+
+Separately from that flag, the linker must also receive LLVM bitcode files in order to run LTO on them. With fastcomp that is always the case; with the LLVM wasm backend, object files main contain either wasm or bitcode. The linker can handle a mix of the two, but can only do LTO on the bitcode files. You can control that with the following flags:
+
+- The ``-flto`` flag tells the compiler to emit bitcode in object files, but does *not* affect system libraries.
+- The ``-s WASM_OBJECT_FILES=0`` flag also tells the compiler to emit bitcode in object files (like ``-flto``), and also to emit bitcode in system libraries.
+
+Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all source files with ``-s WASM_OBJECT_FILES=0`` and link with ``-s WASM_OBJECT_FILES=0 --llvm-lto 1``.
+
+Note that older versions of LLVM had bugs in this area. With the older fastcomp backend LTO should be used carefully.
 
 Very large codebases
 ====================
