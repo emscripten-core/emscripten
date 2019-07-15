@@ -28,10 +28,19 @@ def get(ports, settings, shared):
     dest_path_include = os.path.join(ports.get_build_dir(), 'boost_headers', 'boost')
     shutil.copytree(source_path_include, dest_path_include)
 
-    final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
-    # create a dummy empty library
+    # write out a dummy cpp file, to create an empty library
     # this is needed as emscripted ports expect this, even if it is not used
-    open(final, 'a').close()
+    open(os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp'), 'w').write('static void dummy() {}')
+
+    commands = []
+    o_s = []
+    o = os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp.o')
+    command = [shared.PYTHON, shared.EMCC, os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp'), '-o', o]
+    commands.append(command)
+    ports.run_commands(commands)
+    final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
+    o_s.append(o)
+    ports.create_lib(final, o_s)
     return final
 
   return [shared.Cache.get(libname, create, what='port')]
