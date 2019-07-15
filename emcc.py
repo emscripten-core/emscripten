@@ -1553,24 +1553,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--log-execution']
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
-          if shared.Settings.BYSYNCIFY:
+          if shared.Settings.ASYNCIFY:
             # TODO: allow whitelist as in asyncify
-            passes += ['--bysyncify']
-            if shared.Settings.BYSYNCIFY_IGNORE_INDIRECT:
-              passes += ['--pass-arg=bysyncify-ignore-indirect']
+            passes += ['--asyncify']
+            if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
+              passes += ['--pass-arg=asyncify-ignore-indirect']
             else:
               # if we are not ignoring indirect calls, then we must treat invoke_* as if
               # they are indirect calls, since that is what they do - we can't see their
               # targets statically.
-              shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
+              shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
             # with pthreads we may call main through the __call_main mechanism, which can
             # therefore reach anything in the program, so mark it as possibly causing a
-            # sleep (the bysyncify analysis doesn't look through JS, just wasm, so it can't
+            # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
             # see what it itself calls)
             if shared.Settings.USE_PTHREADS:
-              shared.Settings.BYSYNCIFY_IMPORTS += ['__call_main']
-            if shared.Settings.BYSYNCIFY_IMPORTS:
-              passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
+              shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
+            if shared.Settings.ASYNCIFY_IMPORTS:
+              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             passes += ['--ignore-implicit-traps']
         if shared.Settings.BINARYEN_EXTRA_PASSES:
@@ -1597,10 +1597,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
       logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
-
-    if shared.Settings.BYSYNCIFY:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('bysyncify is only available in the upstream wasm backend path')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):

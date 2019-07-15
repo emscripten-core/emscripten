@@ -1105,8 +1105,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False, assert_all=False,
              check_for_error=True):
-    if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
-      self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
