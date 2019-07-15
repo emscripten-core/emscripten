@@ -8262,6 +8262,17 @@ int main() {
   def test_wasm_backend_lto_libcxx(self, *args):
     run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')] + ['-s', 'WASM_OBJECT_FILES=0'] + list(args))
 
+  @no_fastcomp('wasm backend lto specific')
+  def test_lto_flags(self):
+    for flags, expect_bitcode in [
+      ([], False),
+      (['-s', 'WASM_OBJECT_FILES=0'], True),
+      (['-flto'], True),
+    ]:
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + flags + ['-c', '-o', 'a.o'])
+      seen_bitcode = Building.is_bitcode('a.o')
+      self.assertEqual(expect_bitcode, seen_bitcode, 'must emit LTO-capable bitcode when flags indicate so (%s)' % str(flags))
+
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:
       print(opts)
