@@ -8008,7 +8008,7 @@ int main() {
 
   @parameterized({
     'normal': (['-O2'], 32, ['abort'], ['waka'], 186423,  29,  38, 539), # noqa
-    'enumated_function_pointers':
+    'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
                         32, ['abort'], ['waka'], 186423,  29,  39, 519), # noqa
   })
