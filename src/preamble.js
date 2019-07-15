@@ -970,8 +970,8 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
-#if BYSYNCIFY
-    exports = Bysyncify.instrumentWasmExports(exports);
+#if WASM_BACKEND && ASYNCIFY
+    exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
 #if USE_PTHREADS
@@ -1100,8 +1100,8 @@ function createWasm(env) {
   if (Module['instantiateWasm']) {
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
-#if BYSYNCIFY
-      exports = Bysyncify.instrumentWasmExports(exports);
+#if WASM_BACKEND && ASYNCIFY
+      exports = Asyncify.instrumentWasmExports(exports);
 #endif
       return exports;
     } catch(e) {
