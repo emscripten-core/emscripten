@@ -492,7 +492,9 @@ EMSCRIPTEN_FUNCS();
         if closure:
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
-          cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes, extra_closure_externs=extra_closure_externs, extra_closure_annotations=extra_closure_annotations)
+          cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
+                                                 extra_closure_externs=extra_closure_externs,
+                                                 extra_closure_annotations=extra_closure_annotations)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:

@@ -8530,6 +8530,14 @@ end
     with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
 
+  # Tests --closure-externs command line flag
+  def test_closure_externs(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-externs', path_from_root('tests', 'test_closure_externs.js')])
+
+  # Tests --closure-annotations command line flag
+  def test_closure_annotations(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-annotations', path_from_root('tests', 'test_closure_annotations.js')])
+
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
     environ['EM_PROFILE_TOOLCHAIN'] = '1'

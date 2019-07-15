@@ -2344,7 +2344,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('running closure')
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
-        final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1, extra_closure_externs=options.closure_compiler_externs, extra_closure_annotations=options.closure_compiler_annotations)
+        final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1,
+                                                 extra_closure_externs=options.closure_compiler_externs,
+                                                 extra_closure_annotations=options.closure_compiler_annotations)
         save_intermediate('closure')
 
     log_time('js opts')
@@ -2939,7 +2941,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('postclean', wasm_binary_target)
 
   def run_closure_compiler(final):
-    final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
+    final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
+                                             extra_closure_externs=options.closure_compiler_externs,
+                                             extra_closure_annotations=options.closure_compiler_annotations)
     save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
 
