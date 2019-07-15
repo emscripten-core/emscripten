@@ -1017,6 +1017,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STRICT:
       shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
+    else:
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
 
     error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
     if error_on_missing_libraries_cmdline:
@@ -1082,10 +1086,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STRICT:
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
-    else:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1
@@ -1205,8 +1205,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
+    if shared.Settings.SIDE_MODULE and shared.Settings.GLOBAL_BASE != -1:
+      exit_with_error('Cannot set GLOBAL_BASE when building SIDE_MODULE')
+
     if shared.Settings.RELOCATABLE:
-      assert shared.Settings.GLOBAL_BASE < 1
       if 'EMULATED_FUNCTION_POINTERS' not in settings_key_changes and not shared.Settings.WASM_BACKEND:
         shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
@@ -1214,7 +1216,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.EMTERPRETIFY:
       shared.Settings.FINALIZE_ASM_JS = 0
-      # shared.Settings.GLOBAL_BASE = 8*256 # keep enough space at the bottom for a full stack frame, for z-interpreter
       shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
       shared.Settings.EXPORTED_FUNCTIONS += ['emterpret']
       if not options.js_opts:
@@ -1224,6 +1225,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.use_closure_compiler == 2:
          exit_with_error('EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that')
       assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
+
+    if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
     if shared.Settings.DEAD_FUNCTIONS:
       if not options.js_opts:
@@ -1253,6 +1257,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.EXIT_RUNTIME or shared.Settings.ASSERTIONS:
         shared.Settings.EXPORTED_FUNCTIONS += ['_fflush']
 
+    if shared.Settings.GLOBAL_BASE < 0:
+      # default if nothing else sets it
+      if shared.Settings.WASM:
+        # a higher global base is useful for optimizing load/store offsets, as it
+        # enables the --post-emscripten pass
+        shared.Settings.GLOBAL_BASE = 1024
+      else:
+        shared.Settings.GLOBAL_BASE = 8
+
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')
@@ -1269,7 +1282,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs += ['-pthread']
         # some pthreads code is in asm.js library functions, which are auto-exported; for the wasm backend, we must
         # manually export them
-        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self']
+        shared.Settings.EXPORTED_FUNCTIONS += ['_emscripten_get_global_libc', '___pthread_tsd_run_dtors', '__register_pthread_ptr', '_pthread_self', '___emscripten_pthread_data_constructor']
 
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
@@ -1412,8 +1425,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.WASM_BINARY_FILE = shared.JS.escape_for_js_string(os.path.basename(wasm_binary_target))
         shared.Settings.ASMJS_CODE_FILE = shared.JS.escape_for_js_string(os.path.basename(asm_target))
       shared.Settings.ASM_JS = 2 # when targeting wasm, we use a wasm Memory, but that is not compatible with asm.js opts
-      # a higher global base is useful for optimizing load/store offsets, as it enables the --post-emscripten pass
-      shared.Settings.GLOBAL_BASE = 1024
       if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS:
         logger.warning('for wasm there is no need to set ELIMINATE_DUPLICATE_FUNCTIONS, the binaryen optimizer does it automatically')
         shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS = 0
@@ -1489,6 +1500,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.USE_PTHREADS:
           exit_with_error('LSan currently does not support threads')
 
+      if 'address' in sanitize:
+        shared.Settings.USE_ASAN = 1
+
+        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+        shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+        assert shared.Settings.TOTAL_MEMORY < 2**32
+
+        if shared.Settings.SAFE_HEAP:
+          # SAFE_HEAP instruments ASan's shadow memory accesses.
+          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+          # by SAFE_HEAP as a null pointer dereference.
+          exit_with_error('ASan does not work with SAFE_HEAP')
+
+        if shared.Settings.USE_PTHREADS:
+          exit_with_error('ASan currently does not support threads')
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 
@@ -1536,8 +1563,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               # they are indirect calls, since that is what they do - we can't see their
               # targets statically.
               shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
+            # with pthreads we may call main through the __call_main mechanism, which can
+            # therefore reach anything in the program, so mark it as possibly causing a
+            # sleep (the bysyncify analysis doesn't look through JS, just wasm, so it can't
+            # see what it itself calls)
+            if shared.Settings.USE_PTHREADS:
+              shared.Settings.BYSYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.BYSYNCIFY_IMPORTS:
               passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
+          if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
+            passes += ['--ignore-implicit-traps']
         if shared.Settings.BINARYEN_EXTRA_PASSES:
           passes += parse_passes(shared.Settings.BINARYEN_EXTRA_PASSES)
         options.binaryen_passes = passes
@@ -1633,9 +1668,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # MINIMAL_RUNTIME always use separate .asm.js file for best performance and memory usage
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.WASM:
       options.separate_asm = True
-
-    if shared.Settings.GLOBAL_BASE < 0:
-      shared.Settings.GLOBAL_BASE = 8 # default if nothing else sets it
 
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
@@ -2589,6 +2621,8 @@ def parse_args(newargs):
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
       settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
+    elif newargs[i] == '-fexceptions':
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -2758,7 +2792,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--mem-init=' + memfile]
       if not shared.Settings.RELOCATABLE:
         cmd += ['--mem-base=' + str(shared.Settings.GLOBAL_BASE)]
-    # various options imply that the imported table may not be the exact size as the wasm module's own table segments
+    # various options imply that the imported table may not be the exact size as
+    # the wasm module's own table segments
     if shared.Settings.RELOCATABLE or shared.Settings.RESERVED_FUNCTION_POINTERS > 0 or shared.Settings.EMULATED_FUNCTION_POINTERS:
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:

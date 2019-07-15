@@ -7,9 +7,23 @@ static struct pthread __main_pthread;
 pthread_t pthread_self(void) {
     return &__main_pthread;
 }
-#endif
+#endif // !__EMSCRIPTEN_PTHREADS__
 
-__attribute__((constructor))
+#if __EMSCRIPTEN_PTHREADS__
+// In pthreads, we must initialize the runtime at the proper time, which
+// is after memory is initialized and before any userland global ctors.
+// We must also keep this function alive so it is always called; without
+// pthreads, if pthread_self is used then this file will be included,
+// and if not then it's fine to not have this.
+EM_JS(void, initPthreadsJS, (void), {
+  PThread.initRuntime();
+})
+EMSCRIPTEN_KEEPALIVE
+#endif
+__attribute__((constructor(100))) // This must run before any userland ctors
 void __emscripten_pthread_data_constructor(void) {
-    pthread_self()->locale = &libc.global_locale;
+#if __EMSCRIPTEN_PTHREADS__
+  initPthreadsJS();
+#endif
+  pthread_self()->locale = &libc.global_locale;
 }

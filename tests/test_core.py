@@ -14,6 +14,7 @@ import shutil
 import sys
 import time
 import unittest
+from functools import wraps
 from textwrap import dedent
 
 
@@ -125,6 +126,21 @@ def needs_make(note=''):
   return lambda f: f
 
 
+def no_asan(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if '-fsanitize=address' in self.emcc_args:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 class TestCoreBase(RunnerCore):
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
@@ -163,6 +179,14 @@ class TestCoreBase(RunnerCore):
     src = find_files('.c', '.cpp')
     output = find_files('.out', '.txt')
     self.do_run_from_file(src, output, **kwargs)
+
+  def verify_in_strict_mode(self, filename):
+    with open(filename) as infile:
+      js = infile.read()
+    filename += '.strict.js'
+    with open(filename, 'w') as outfile:
+      outfile.write('"use strict";\n' + js)
+    run_js(filename)
 
   def get_bullet_library(self, use_cmake):
     if use_cmake:
@@ -688,6 +712,21 @@ base align: 0, 0, 0, 0'''])
 
     test()
 
+  def test_stack_placement(self):
+    self.set_setting('TOTAL_STACK', 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+    self.set_setting('GLOBAL_BASE', 102400)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+
+  def test_stack_placement_pic(self):
+    if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('memory growth is not compatible with MAIN_MODULE')
+    self.set_setting('TOTAL_STACK', 1024)
+    self.set_setting('MAIN_MODULE')
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+    self.set_setting('GLOBAL_BASE', 102400)
+    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
+
   @no_emterpreter
   def test_stack_restore(self):
     if self.is_wasm():
@@ -756,6 +795,7 @@ base align: 0, 0, 0, 0'''])
     'debug': ['-DEMMALLOC_DEBUG'],
     'debug_log': ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG', '-DRANDOM_ITERS=130'],
   })
+  @no_asan('ASan does not support custom memory allocators')
   def test_emmalloc(self, *args):
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
@@ -1051,6 +1091,9 @@ int main() {
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     for safe in [0, 1]:
       print(safe)
+      if safe and '-fsanitize=address' in self.emcc_args:
+        # Can't use safe heap with ASan
+        continue
       self.set_setting('SAFE_HEAP', safe)
       self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2')
 
@@ -1350,6 +1393,7 @@ int main() {
       self.skipTest('no __builtin_fmin support in JSBackend')
     self.do_run_in_out_file_test('tests', 'core', 'test_float_builtins')
 
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_segfault(self):
     self.set_setting('SAFE_HEAP', 1)
 
@@ -1567,6 +1611,7 @@ int main() {
   def test_llvm_used(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_used')
 
+  @no_asan('SAFE_HEAP cannot be used with ASan')
   def test_set_align(self):
     self.set_setting('SAFE_HEAP', 1)
 
@@ -1703,6 +1748,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
   # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
+  @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
@@ -1710,6 +1756,7 @@ int main(int argc, char **argv) {
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
   # This test is identical to test_em_asm_2, just search-replaces EM_ASM to MAIN_THREAD_EM_ASM on the test file. That way if new
   # test cases are added to test_em_asm_2.cpp for EM_ASM, they will also get tested in MAIN_THREAD_EM_ASM form.
+  @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_main_thread_em_asm(self):
     src = open(path_from_root('tests', 'core', 'test_em_asm_2.cpp')).read()
     create_test_file('src.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
@@ -1857,6 +1904,7 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @no_asmjs()
+  @no_asan('ASan alters the memory size')
   def test_module_wasm_memory(self):
     self.emcc_args += ['--pre-js', path_from_root('tests', 'core', 'test_module_wasm_memory.js')]
     src = open(path_from_root('tests', 'core', 'test_module_wasm_memory.c')).read()
@@ -2149,6 +2197,7 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_atexit')
 
+  @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
     src = open(path_from_root('tests', 'pthread', 'specific.c')).read()
     expected = open(path_from_root('tests', 'pthread', 'specific.c.txt')).read()
@@ -4732,6 +4781,8 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'stat', 'test_stat.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+    self.verify_in_strict_mode('src.c.o.js')
+
   def test_stat_chmod(self):
     src = open(path_from_root('tests', 'stat', 'test_chmod.c')).read()
     self.do_run(src, 'success', force_c=True)
@@ -5015,6 +5066,7 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out')).read()
     self.do_run(src, expected)
 
+  @no_asan('ASan alters memory layout')
   def test_unistd_sysconf_phys_pages(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')).read()
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
@@ -5325,6 +5377,7 @@ int main(int argc, char** argv) {
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_funcptr_import_type.js'), '-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_funcptr_import_type')
 
+  @no_asan('ASan does not work with EXPORT_ALL')
   def test_constglobalunion(self):
     self.emcc_args += ['-s', 'EXPORT_ALL=1']
 
@@ -6131,6 +6184,12 @@ return malloc(size);
   @no_fastcomp('autodebugging wasm is only supported in the wasm backend')
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
+    # Autodebug does not work with too much shadow memory.
+    # Memory consumed by autodebug depends on the size of the WASM linear memory.
+    # With a large shadow memory, the JS engine runs out of memory.
+    if '-fsanitize=address' in self.emcc_args:
+      self.set_setting('ASAN_SHADOW_SIZE', 16 * 1024 * 1024)
+
     # test that the program both works and also emits some of the logging
     # (but without the specific numbers, which may change over time)
     def check(out, err):
@@ -6313,18 +6372,18 @@ return malloc(size);
   def test_response_file(self):
     response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
-    run_process([PYTHON, EMCC, "@rsp_file"] + self.emcc_args)
+    run_process([PYTHON, EMCC, "@rsp_file"] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
-    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.emcc_args)
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.get_emcc_args())
     # This should expand into -Wl,--export=foo which will then be ignored
     # by emscripten, except when using the wasm backend (lld) in which case it
     # should pass the original flag to the linker.
     response_data = objfile + ' --export=foo'
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
-    run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.emcc_args)
+    run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
 
   def test_exported_response(self):
@@ -7461,7 +7520,7 @@ extern "C" {
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
-    create_test_file('src.cpp', r'''
+    self.do_run(r'''
       #include <map>
       #include <stdio.h>
 
@@ -7474,9 +7533,7 @@ extern "C" {
           printf("ok.\n");
         }
       }
-      ''')
-    run_process([PYTHON, EMCC, 'src.cpp'] + self.emcc_args)
-    self.assertContained('ok.', run_js('a.out.js', args=['C']))
+    ''', 'ok.')
 
   def test_memprof_requirements(self):
     # This test checks for the global variables required to run the memory
@@ -7534,11 +7591,6 @@ extern "C" {
     self.emcc_args = args + ['-s', 'ASSERTIONS=1']
     self.do_run(open(path_from_root('tests', 'stack_overflow.cpp')).read(), 'Stack overflow! Attempted to allocate')
 
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/8905')
-  def test_stack_placement(self):
-    self.set_setting('TOTAL_STACK', '1024')
-    self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
-
   @no_wasm_backend('uses BINARYEN_TRAP_MODE (the wasm backend only supports non-trapping)')
   def test_binaryen_trap_mode(self):
     if not self.is_wasm():
@@ -7576,9 +7628,11 @@ extern "C" {
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information
   # about malloc()ed blocks and compute how much memory is used/freed.
+  @no_asan('mallinfo is not part of ASan malloc')
   def test_mallinfo(self):
     self.do_run(open(path_from_root('tests', 'mallinfo.cpp')).read(), 'OK.')
 
+  @no_asan('cannot replace malloc/free with ASan')
   def test_wrap_malloc(self):
     self.do_run(open(path_from_root('tests', 'wrap_malloc.cpp')).read(), 'OK.')
 
@@ -7690,6 +7744,7 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_return_address.cpp')).read(), 'passed')
 
   @no_fastcomp('ubsan not supported on fastcomp')
+  @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_too_many_errors(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if self.get_setting('WASM') == 0:
@@ -7701,6 +7756,7 @@ extern "C" {
                 expected_output='ubsan: add-overflow\n' * 20 + 'ubsan: too many errors\n')
 
   @no_fastcomp('ubsan not supported on fastcomp')
+  @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   def test_ubsan_minimal_errors_same_place(self):
     self.emcc_args += ['-fsanitize=undefined', '-fsanitize-minimal-runtime']
     if self.get_setting('WASM') == 0:
@@ -7807,6 +7863,88 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
 
+  @parameterized({
+    'c': ['test_asan_no_error.c'],
+    'cpp': ['test_asan_no_error.cpp'],
+  })
+  @no_fastcomp('asan not supported on fastcomp')
+  def test_asan_no_error(self, name):
+    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.do_run(open(path_from_root('tests', 'core', name)).read(),
+                basename=name, expected_output=[''])
+
+  @parameterized({
+    'use_after_free_c': ('test_asan_use_after_free.c', [
+      'AddressSanitizer: heap-use-after-free on address',
+    ]),
+    'use_after_free_cpp': ('test_asan_use_after_free.cpp', [
+      'AddressSanitizer: heap-use-after-free on address',
+    ]),
+    'use_after_return': ('test_asan_use_after_return.c', [
+      'AddressSanitizer: stack-use-after-return on address',
+    ], ['-Wno-return-stack-address']),
+    'static_buffer_overflow': ('test_asan_static_buffer_overflow.c', [
+      'AddressSanitizer: global-buffer-overflow on address',
+    ], ['-fno-builtin-memset']),
+    'heap_buffer_overflow_c': ('test_asan_heap_buffer_overflow.c', [
+      'AddressSanitizer: heap-buffer-overflow on address',
+    ], ['-fno-builtin-memset']),
+    'heap_buffer_overflow_cpp': ('test_asan_heap_buffer_overflow.cpp', [
+      'AddressSanitizer: heap-buffer-overflow on address',
+    ], ['-fno-builtin-memset']),
+    'stack_buffer_overflow': ('test_asan_stack_buffer_overflow.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
+    'bitfield_unround_size': ('test_asan_bitfield_unround_size.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
+    'bitfield_unround_offset': ('test_asan_bitfield_unround_offset.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
+    'bitfield_round': ('test_asan_bitfield_round.c', [
+      'AddressSanitizer: stack-buffer-overflow'
+    ], ['-fno-builtin-memset']),
+    'memset_null': ('test_asan_memset_null.c', [
+      'AddressSanitizer: null-pointer-dereference on address 0x00000001'
+    ], ['-fno-builtin-memset']),
+    'memset_freed': ('test_asan_memset_freed.c', [
+      'AddressSanitizer: heap-use-after-free on address'
+    ], ['-fno-builtin-memset']),
+    'strcpy': ('test_asan_strcpy.c', [
+      'AddressSanitizer: heap-buffer-overflow on address'
+    ], ['-fno-builtin-strcpy']),
+    'memcpy': ('test_asan_memcpy.c', [
+      'AddressSanitizer: heap-buffer-overflow on address'
+    ], ['-fno-builtin-memcpy']),
+    'memchr': ('test_asan_memchr.c', [
+      'AddressSanitizer: global-buffer-overflow on address'
+    ], ['-fno-builtin-memchr']),
+    'vector': ('test_asan_vector.cpp', [
+      'AddressSanitizer: container-overflow on address'
+    ], ['-std=c++11']),
+  })
+  @no_fastcomp('asan not supported on fastcomp')
+  def test_asan(self, name, expected_output, cflags=None):
+    if '-Oz' in self.emcc_args:
+      self.skipTest('-Oz breaks source maps')
+
+    if not self.get_setting('WASM'):
+      self.skipTest('wasm2js has no ASan support')
+
+    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    if cflags:
+      self.emcc_args += cflags
+    self.do_run(open(path_from_root('tests', 'core', name)).read(),
+                basename='src.c' if name.endswith('.c') else 'src.cpp',
+                expected_output=expected_output, assert_all=True,
+                check_for_error=False)
+
+  @no_fastcomp('asan not supported on fastcomp')
+  def test_asan_js_stack_op(self):
+    self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
+                basename='src.c', expected_output='Hello, World!')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
@@ -7902,6 +8040,9 @@ asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 
 asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
 lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
+asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
+asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+                 settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

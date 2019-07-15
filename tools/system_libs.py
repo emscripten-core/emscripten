@@ -117,13 +117,11 @@ def get_wasm_libc_rt_files():
       'scalbn.c', '__fpclassifyl.c',
       '__signbitl.c', '__signbitf.c', '__signbit.c'
     ])
-  string_files = files_in_path(
-    path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
-    filenames=['memset.c', 'memmove.c'])
   other_files = files_in_path(
     path_components=['system', 'lib', 'libc'],
-    filenames=['emscripten_memcpy.c'])
-  return math_files + string_files + other_files
+    filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+               'emscripten_memmove.c'])
+  return math_files + other_files
 
 
 class Library(object):
@@ -506,6 +504,40 @@ class MuslInternalLibrary(Library):
   ]
 
 
+class AsanInstrumentedLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_asan = kwargs.pop('is_asan', False)
+    super(AsanInstrumentedLibrary, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(AsanInstrumentedLibrary, self).get_cflags()
+    if self.is_asan:
+      cflags += ['-fsanitize=address']
+    return cflags
+
+  def get_base_name(self):
+    name = super(AsanInstrumentedLibrary, self).get_base_name()
+    if self.is_asan:
+      name += '-asan'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    vary_on = super(AsanInstrumentedLibrary, cls).vary_on()
+    if shared.Settings.WASM_BACKEND:
+      vary_on += ['is_asan']
+    return vary_on
+
+  @classmethod
+  def variations(cls):
+    return [variation for variation in super(AsanInstrumentedLibrary, cls).variations()
+            if not shared.Settings.WASM_BACKEND or not variation['is_asan'] or not variation.get('is_mt')]
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
+
+
 class CXXLibrary(Library):
   emcc = shared.EMXX
 
@@ -530,7 +562,7 @@ class libcompiler_rt(Library):
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
 
-class libc(MuslInternalLibrary, MTLibrary):
+class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libc'
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
@@ -588,6 +620,21 @@ class libc(MuslInternalLibrary, MTLibrary):
         'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
         'rintf.c'
     ]
+
+    if self.is_asan:
+      # With ASan, we need to use specialized implementations of certain libc
+      # functions that do not rely on undefined behavior, for example, reading
+      # multiple bytes at once as an int and overflowing a buffer.
+      # Otherwise, ASan will catch these errors and terminate the program.
+      blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
+                    'aligned_alloc.c', 'fcntl.c']
+      libc_files += [
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strcpy.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_memchr.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strchrnul.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strlen.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_fcntl.c'),
+      ]
 
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
@@ -861,7 +908,7 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class libpthreads(MuslInternalLibrary, MTLibrary):
+class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libpthreads'
   depends = ['libc']
   cflags = ['-O2']
@@ -913,7 +960,7 @@ class libpthreads(MuslInternalLibrary, MTLibrary):
     else:
       return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
-  def get_base_name(self):
+  def get_base_name_prefix(self):
     return 'libpthreads' if self.is_mt else 'libpthreads_stub'
 
   pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
@@ -955,7 +1002,7 @@ class libcompiler_rt_wasm(CompilerRTWasmLibrary):
     return super(libcompiler_rt_wasm, self).get_files() + [shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c')]
 
 
-class libc_rt_wasm(CompilerRTWasmLibrary, MuslInternalLibrary):
+class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
   name = 'libc_rt_wasm'
 
   def get_files(self):
@@ -973,7 +1020,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
-  js_depends = ['memalign', 'emscripten_builtin_memalign']
+  js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
   cflags = ['-std=c++11']
@@ -999,18 +1046,35 @@ class libubsan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
 
 
+class liblsan_common_rt_wasm(SanitizerLibrary):
+  name = 'liblsan_common_rt_wasm'
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_glob = 'lsan_common*.cc'
+
+
 # TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
 # and clean up the duplicate code.
 class liblsan_rt_wasm(CompilerRTWasmLibrary):
   name = 'liblsan_rt_wasm'
-  depends = ['libsanitizer_common_rt_wasm']
-  js_depends = ['__data_end', '__heap_base', 'emscripten_builtin_malloc', 'emscripten_builtin_free']
+  depends = ['liblsan_common_rt_wasm']
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
   cflags = ['-std=c++11']
-  src_glob = '*.cc'
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_glob = '*.cc'
+  src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
+                      'lsan_common_emscripten.cc']
+
+
+class libasan_rt_wasm(SanitizerLibrary):
+  name = 'libasan_rt_wasm'
+  depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
+  js_depends = ['__global_base']
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
@@ -1170,6 +1234,10 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_LSAN:
     force_include.add('liblsan_rt_wasm')
     add_library(system_libs_map['liblsan_rt_wasm'])
+
+  if shared.Settings.USE_ASAN:
+    force_include.add('libasan_rt_wasm')
+    add_library(system_libs_map['libasan_rt_wasm'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
