@@ -346,8 +346,8 @@ class JSOptimizer(object):
                                          self.extra_info, just_split=just_split,
                                          just_concat=just_concat,
                                          output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'),
-                                         extra_closure_externs = self.closure_compiler_externs,
-                                         extra_closure_annotations = self.closure_compiler_annotations)
+                                         extra_closure_externs=self.closure_compiler_externs,
+                                         extra_closure_annotations=self.closure_compiler_annotations)
     self.js_transform_tempfiles.append(final)
     save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
