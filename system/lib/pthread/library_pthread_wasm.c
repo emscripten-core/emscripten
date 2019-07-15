@@ -173,7 +173,7 @@ extern void __wasm_init_tls(void *memory);
 void *emscripten_builtin_malloc(size_t size);
 void emscripten_builtin_free(void *memory);
 
-__attribute__((constructor))
+__attribute__((constructor(100)))
 void EMSCRIPTEN_KEEPALIVE emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   if (tls_size) {
