@@ -5,10 +5,12 @@
 #if !__EMSCRIPTEN_PTHREADS__
 static struct pthread __main_pthread;
 pthread_t pthread_self(void) {
-  // Ensure the locale is set up here, avoid a global ctor as done below for
-  // the pthreads case.
-  __main_pthread.locale = &libc.global_locale;
   return &__main_pthread;
+}
+
+__attribute__((constructor))
+void __emscripten_pthread_data_constructor(void) {
+  pthread_self()->locale = &libc.global_locale;
 }
 #endif // !__EMSCRIPTEN_PTHREADS__
 
