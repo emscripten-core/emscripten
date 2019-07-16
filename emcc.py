@@ -1226,6 +1226,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          exit_with_error('EMTERPRETIFY requires valid asm.js, and is incompatible with closure 2 which disables that')
       assert not use_source_map(options), 'EMTERPRETIFY is not compatible with source maps (maps are not useful in emterpreted code, and splitting out non-emterpreted source maps is not yet implemented)'
 
+    if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
+      exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
+
     if shared.Settings.DEAD_FUNCTIONS:
       if not options.js_opts:
         logger.debug('enabling js opts for DEAD_FUNCTIONS')
@@ -1497,6 +1500,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.USE_PTHREADS:
           exit_with_error('LSan currently does not support threads')
 
+      if 'address' in sanitize:
+        shared.Settings.USE_ASAN = 1
+
+        shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
+        shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+        assert shared.Settings.TOTAL_MEMORY < 2**32
+
+        if shared.Settings.SAFE_HEAP:
+          # SAFE_HEAP instruments ASan's shadow memory accesses.
+          # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+          # by SAFE_HEAP as a null pointer dereference.
+          exit_with_error('ASan does not work with SAFE_HEAP')
+
+        if shared.Settings.USE_PTHREADS:
+          exit_with_error('ASan currently does not support threads')
+
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
 
@@ -1534,24 +1553,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--log-execution']
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
-          if shared.Settings.BYSYNCIFY:
+          if shared.Settings.ASYNCIFY:
             # TODO: allow whitelist as in asyncify
-            passes += ['--bysyncify']
-            if shared.Settings.BYSYNCIFY_IGNORE_INDIRECT:
-              passes += ['--pass-arg=bysyncify-ignore-indirect']
+            passes += ['--asyncify']
+            if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
+              passes += ['--pass-arg=asyncify-ignore-indirect']
             else:
               # if we are not ignoring indirect calls, then we must treat invoke_* as if
               # they are indirect calls, since that is what they do - we can't see their
               # targets statically.
-              shared.Settings.BYSYNCIFY_IMPORTS += ['invoke_*']
+              shared.Settings.ASYNCIFY_IMPORTS += ['invoke_*']
             # with pthreads we may call main through the __call_main mechanism, which can
             # therefore reach anything in the program, so mark it as possibly causing a
-            # sleep (the bysyncify analysis doesn't look through JS, just wasm, so it can't
+            # sleep (the asyncify analysis doesn't look through JS, just wasm, so it can't
             # see what it itself calls)
             if shared.Settings.USE_PTHREADS:
-              shared.Settings.BYSYNCIFY_IMPORTS += ['__call_main']
-            if shared.Settings.BYSYNCIFY_IMPORTS:
-              passes += ['--pass-arg=bysyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.BYSYNCIFY_IMPORTS])]
+              shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
+            if shared.Settings.ASYNCIFY_IMPORTS:
+              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             passes += ['--ignore-implicit-traps']
         if shared.Settings.BINARYEN_EXTRA_PASSES:
@@ -1578,10 +1597,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
       logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
-
-    if shared.Settings.BYSYNCIFY:
-      if not shared.Settings.WASM_BACKEND:
-        exit_with_error('bysyncify is only available in the upstream wasm backend path')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):

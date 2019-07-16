@@ -269,9 +269,11 @@ int pthread_mutex_init(
   return 0;
 }
 
+#ifndef EMSCRIPTEN_ASAN_OVERRIDE
 int pthread_mutex_lock(pthread_mutex_t* mutex) { return 0; }
 
 int pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
+#endif
 
 int pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
 

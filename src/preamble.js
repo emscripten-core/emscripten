@@ -510,9 +510,6 @@ function initRuntime() {
   runtimeInitialized = true;
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
-#if USE_PTHREADS
-  PThread.initRuntime();
-#endif
 }
 
 function preMain() {
@@ -973,8 +970,8 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
-#if BYSYNCIFY
-    exports = Bysyncify.instrumentWasmExports(exports);
+#if WASM_BACKEND && ASYNCIFY
+    exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
 #if USE_PTHREADS
@@ -1105,8 +1102,8 @@ function createWasm(env) {
   if (Module['instantiateWasm']) {
     try {
       var exports = Module['instantiateWasm'](info, receiveInstance);
-#if BYSYNCIFY
-      exports = Bysyncify.instrumentWasmExports(exports);
+#if WASM_BACKEND && ASYNCIFY
+      exports = Asyncify.instrumentWasmExports(exports);
 #endif
       return exports;
     } catch(e) {
@@ -1178,5 +1175,9 @@ Module['asm'] = function(global, env, providedBuffer) {
   return exports;
 };
 #endif
+
+// Globals used by JS i64 conversions
+var tempDouble;
+var tempI64;
 
 // === Body ===

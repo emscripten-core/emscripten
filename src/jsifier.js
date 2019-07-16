@@ -98,15 +98,15 @@ function JSify(data, functionsOnly) {
                   '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
         });
       }
-      if (BYSYNCIFY && ASSERTIONS && BYSYNCIFY_IMPORTS.indexOf(ident) < 0) {
+      if (WASM_BACKEND && ASYNCIFY && ASSERTIONS && ASYNCIFY_IMPORTS.indexOf(ident) < 0) {
         // Only functions in the list of known relevant imports are allowed to change the state.
         snippet = modifyFunction(snippet, function(name, args, body) {
           return 'function ' + name + '(' + args + ') {\n' +
-                 '  var originalBysyncifyState = Bysyncify.state;\n' +
+                 '  var originalAsyncifyState = Asyncify.state;\n' +
                  '  try {\n' +
                  body + '\n' +
                  '  } finally {\n' +
-                 '    if (Bysyncify.state !== originalBysyncifyState) throw "import ' + ident + ' was not in BYSYNCIFY_IMPORTS, but changed the state";\n' +
+                 '    if (Asyncify.state !== originalAsyncifyState) throw "import ' + ident + ' was not in ASYNCIFY_IMPORTS, but changed the state";\n' +
                  '  }\n' +
                  '}\n';
         });

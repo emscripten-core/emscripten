@@ -340,6 +340,8 @@ INTERCEPTOR(void, thr_exit, tid_t *state) {
 #define LSAN_MAYBE_INTERCEPT_THR_EXIT
 #endif
 
+// TODO: Implement thread support.
+#if !SANITIZER_EMSCRIPTEN
 struct ThreadParam {
   void *(*callback)(void *arg);
   void *param;
@@ -419,8 +421,16 @@ INTERCEPTOR(void, _exit, int status) {
   if (status == 0 && HasReportedLeaks()) status = common_flags()->exitcode;
   REAL(_exit)(status);
 }
+#endif
 
-#if !SANITIZER_EMSCRIPTEN
+#if SANITIZER_EMSCRIPTEN
+namespace __lsan {
+
+void InitializeInterceptors() {}
+
+} // namespace __lsan
+
+#else
 #define COMMON_INTERCEPT_FUNCTION(name) INTERCEPT_FUNCTION(name)
 #include "sanitizer_common/sanitizer_signal_interceptors.inc"
 
@@ -459,4 +469,4 @@ void InitializeInterceptors() {
 }
 
 } // namespace __lsan
-#endif
+#endif // SANITIZER_EMSCRIPTEN
