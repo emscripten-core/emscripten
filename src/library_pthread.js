@@ -1048,6 +1048,9 @@ var LibraryPThread = {
   emscripten_futex_wake: function(addr, count) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0 || count < 0) return -{{{ cDefine('EINVAL') }}};
     if (count == 0) return 0;
+    // Waking (at least) INT_MAX waiters is defined to mean wake all callers.
+    // For Atomics.notify() API Infinity is to be passed in that case.
+    if (count >= {{{ cDefine('INT_MAX') }}}) count = Infinity;
 //    dump('futex_wake addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
 
     // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.

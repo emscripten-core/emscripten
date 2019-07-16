@@ -43,6 +43,7 @@ __emscripten_fetch_queue* _emscripten_get_fetch_queue() {
 
 int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
+void _emscripten_fetch_free(unsigned int);
 }
 
 void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
@@ -300,7 +301,12 @@ void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
   }
 }
 
+void emscripten_fetch_free(unsigned int id) {
+  return _emscripten_fetch_free(id);
+}
+
 static void fetch_free(emscripten_fetch_t* fetch) {
+  emscripten_fetch_free(fetch->id);
   fetch->id = 0;
   free((void*)fetch->data);
   free((void*)fetch->url);

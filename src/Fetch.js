@@ -586,3 +586,12 @@ function _fetch_get_response_headers(id, dst, dstSizeBytes) {
     stringToUTF8(responseHeaders, dst, dstSizeBytes);
     return Math.min(lengthBytes, dstSizeBytes);
 }
+
+//Delete the xhr JS object, allowing it to be garbage collected.
+function _fetch_free(id) {
+  //Note: should just be [id], but indexes off by 1 (see: #8803)
+#if FETCH_DEBUG
+  console.log("fetch: Deleting id:" + (id-1) + " of " + Fetch.xhrs);
+#endif
+  delete Fetch.xhrs[id-1];
+}

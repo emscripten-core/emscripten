@@ -5,7 +5,12 @@
 #if !__EMSCRIPTEN_PTHREADS__
 static struct pthread __main_pthread;
 pthread_t pthread_self(void) {
-    return &__main_pthread;
+  return &__main_pthread;
+}
+
+__attribute__((constructor))
+void __emscripten_pthread_data_constructor(void) {
+  pthread_self()->locale = &libc.global_locale;
 }
 #endif // !__EMSCRIPTEN_PTHREADS__
 
@@ -18,12 +23,11 @@ pthread_t pthread_self(void) {
 EM_JS(void, initPthreadsJS, (void), {
   PThread.initRuntime();
 })
+
 EMSCRIPTEN_KEEPALIVE
-#endif
 __attribute__((constructor(100))) // This must run before any userland ctors
 void __emscripten_pthread_data_constructor(void) {
-#if __EMSCRIPTEN_PTHREADS__
   initPthreadsJS();
-#endif
   pthread_self()->locale = &libc.global_locale;
 }
+#endif

@@ -19,19 +19,22 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
- - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
-   - Currently, only supports one thread without dynamic linking.
  - LLVM backend pthread builds no longer use external memory initialization
    files, replacing them with passive data segments.
 
+v1.38.39: 07/16/2019
+--------------------
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
+   - Currently, only supports one thread without dynamic linking.
+ - Rename Bysyncify (the name used during development) to Asyncify. This keeps the name consistent
+   with the old ASYNCIFY flag, no need for a new one, as they do basically the same thing.
+
 v1.38.38: 07/08/2019
 --------------------
-
  - Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
 
 v1.38.37: 06/26/2019
 --------------------
-
  - Set ENV['LANG'] following the user's preferred language (HTTP Accept-Language / navigator.languages[0])
  - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
    or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
