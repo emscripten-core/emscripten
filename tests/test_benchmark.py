@@ -351,6 +351,9 @@ class benchmark(RunnerCore):
     assert(os.path.exists(CLOSURE_COMPILER))
 
     Building.COMPILER = CLANG
+
+  def setUp(self):
+    super(benchmark, self).setUp()
     self.emcc_args += [OPTIMIZATIONS]
 
   # avoid depending on argument reception from the commandline
