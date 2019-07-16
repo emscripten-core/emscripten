@@ -654,7 +654,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Bysyncify.currData) });
+          runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
           if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -672,7 +672,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
-          runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Bysyncify.currData) });
+          runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
           if (Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
