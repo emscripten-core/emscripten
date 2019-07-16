@@ -297,7 +297,7 @@ def run_on_chunk(command):
     raise Exception()
 
 
-def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_externs=[], extra_closure_annotations=[]):
+def run_on_js(filename, passes, js_engine, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -493,8 +493,7 @@ EMSCRIPTEN_FUNCS();
           if DEBUG:
             print('running closure on shell code', file=sys.stderr)
           cld = shared.Building.closure_compiler(cld, pretty='minifyWhitespace' not in passes,
-                                                 extra_closure_externs=extra_closure_externs,
-                                                 extra_closure_annotations=extra_closure_annotations)
+                                                 extra_closure_args=extra_closure_args)
           temp_files.note(cld)
         elif cleanup:
           if DEBUG:
@@ -564,14 +563,14 @@ EMSCRIPTEN_FUNCS();
   return filename
 
 
-def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_externs=[], extra_closure_annotations=[]):
+def run(filename, passes, js_engine=shared.NODE_JS, source_map=False, extra_info=None, just_split=False, just_concat=False, extra_closure_args=[]):
   if 'receiveJSON' in passes:
     just_split = True
   if 'emitJSON' in passes:
     just_concat = True
   js_engine = shared.listify(js_engine)
   with ToolchainProfiler.profile_block('js_optimizer.run_on_js'):
-    return run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat, extra_closure_externs, extra_closure_annotations)
+    return run_on_js(filename, passes, js_engine, source_map, extra_info, just_split, just_concat, extra_closure_args)
 
 
 def main():

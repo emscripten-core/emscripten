@@ -2309,9 +2309,9 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_externs=[], extra_closure_annotations=[]):
+  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
     from . import js_optimizer
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_externs, extra_closure_annotations)
+    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
@@ -2417,7 +2417,7 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
-  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_externs=[], extra_closure_annotations=[]):
+  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
         logger.error('Cannot run closure compiler')
@@ -2433,17 +2433,9 @@ class Building(object):
         else:
           CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-undefined-fs-annotation.js')]
 
-      # Extra user-supplied Closure annotation files from command line
-      for annotation in extra_closure_annotations:
-        CLOSURE_ANNOTATIONS += [annotation]
-
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
       CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs.js')]
-
-      # Extra user-supplied Closure externs files from command line
-      for externs in extra_closure_externs:
-        CLOSURE_EXTERNS += [externs]
 
       # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
       # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
@@ -2499,6 +2491,7 @@ class Building(object):
         args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+      args += extra_closure_args
       args += ['--js', filename]
       logger.debug('closure compiler: ' + ' '.join(args))
       proc = run_process(args, stderr=PIPE, check=False)

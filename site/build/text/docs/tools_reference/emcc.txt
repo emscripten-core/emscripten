@@ -306,15 +306,14 @@ Options that are modified or new in *emcc* are listed below:
      * Closure is only run if JavaScript opts are being done ("-O2"
        or above, or "--js-opts 1").
 
-"--closure-externs <file>"
-   Specifies a .js file to pass to Closure as an externs file. Pass
-   an externs file if your JS code references external symbols outside
-   the build that should not have their access minified.
+"--closure-args <args>"
+   Specifies extra arguments to pass to Closure compiler. Use quotes
+   to escape multiple arguments to be passed, e.g.
 
-"--closure-annotations <file>"
-   Specifies an extra .js file to use as an annotations file. Specify
-   an annotations file to annotate JS symbols for Closure using JSDoc
-   syntax.
+     --closure-args "--externs myExterns.js"
+
+   Multiple passed --closure-args directives will be concatenated
+   left to right.
 
 "--pre-js <file>"
    Specify a file whose contents are added before the emitted code and
