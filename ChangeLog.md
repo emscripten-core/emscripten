@@ -19,6 +19,9 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+ - LLVM backend pthread builds no longer use external memory initialization
+   files, replacing them with passive data segments.
+
 v1.38.39: 07/16/2019
 --------------------
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
