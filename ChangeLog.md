@@ -21,7 +21,8 @@ Current Trunk
 
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
    - Currently, only supports one thread without dynamic linking.
- - LLVM backend pthread builds no longer use external memory initialization files
+ - LLVM backend pthread builds no longer use external memory initialization
+   files, replacing them with passive data segments.
 
 v1.38.38: 07/08/2019
 --------------------

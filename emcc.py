@@ -1448,7 +1448,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # wasm includes the mem init in the wasm binary. The exception is
         # wasm2js, which behaves more like js.
         options.memory_init_file = True
-        shared.Settings.MEM_INIT_IN_WASM = True
+        shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
 
       # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
       if not shared.Settings.MINIMAL_RUNTIME:
