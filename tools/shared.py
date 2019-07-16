@@ -2630,11 +2630,13 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info):
+  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
     logger.debug('wasm2js')
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
     if opt_level > 0:
       cmd += ['-O']
+    if symbols_file:
+      cmd += ['--symbols-file=%s' % symbols_file]
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
     if DEBUG:

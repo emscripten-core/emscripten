@@ -3882,8 +3882,6 @@ EM_ASM({ _middle() });
 ''')
         cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
         if not wasm:
-          if self.is_wasm_backend():
-            continue
           cmd += ['-s', 'WASM=0']
         run_process(cmd)
         # check that the map is correct
