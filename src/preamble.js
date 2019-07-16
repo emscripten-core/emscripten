@@ -510,9 +510,6 @@ function initRuntime() {
   runtimeInitialized = true;
   {{{ getQuoted('ATINITS') }}}
   callRuntimeCallbacks(__ATINIT__);
-#if USE_PTHREADS
-  PThread.initRuntime();
-#endif
 }
 
 function preMain() {
