@@ -1543,6 +1543,7 @@ rintf
 rotozoomSurface
 round
 roundf
+runAndAbortIfError
 saveSetjmp
 sbrk
 sched_yield

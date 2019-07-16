@@ -547,7 +547,7 @@ mergeInto(LibraryManager.library, {
 #else // EMTERPRETIFY_ASYNC
 
 #if WASM_BACKEND && ASYNCIFY
-  $Asyncify__deps: ['$Browser'],
+  $Asyncify__deps: ['$Browser', '$runAndAbortIfError'],
   $Asyncify: {
     State: {
       Normal: 0,
@@ -596,7 +596,7 @@ mergeInto(LibraryManager.library, {
                   err('ASYNCIFY: stop unwind');
 #endif
                   Asyncify.state = Asyncify.State.Normal;
-                  Module['_asyncify_stop_unwind']();
+                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
                 }
               }
             };
@@ -654,7 +654,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
-          Module['_asyncify_start_rewind'](Asyncify.currData);
+          runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
           if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
@@ -672,7 +672,7 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
-          Module['_asyncify_start_unwind'](Asyncify.currData);
+          runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
           if (Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
@@ -683,7 +683,7 @@ mergeInto(LibraryManager.library, {
         err('ASYNCIFY: stop rewind');
 #endif
         Asyncify.state = Asyncify.State.Normal;
-        Module['_asyncify_stop_rewind']();
+        runAndAbortIfError(Module['_asyncify_stop_rewind']);
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
       } else {
