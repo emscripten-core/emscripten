@@ -831,7 +831,7 @@ window.close = function() {
 
   def get_async_args(self):
     if self.is_wasm_backend():
-      return ['-s', 'BYSYNCIFY']
+      return ['-s', 'ASYNCIFY']
     else:
       return ['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1']
 
@@ -2674,7 +2674,7 @@ Module["preRun"].push(function () {
       print('emterpreter by itself')
       self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
     else:
-      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'BYSYNCIFY=1'])
+      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
 
   def test_wget_data(self):
     create_test_file('test.txt', 'emscripten')
@@ -3299,20 +3299,20 @@ window.close = function() {
     self.btest('browser/async_iostream.cpp', '1', args=self.get_async_args())
 
   # Test an async return value. The value goes through a custom JS library
-  # method that uses bysyncify, and therefore it needs to be declared in
-  # BYSYNCIFY_IMPORTS.
-  # To make the test more precise we also use BYSYNCIFY_IGNORE_INDIRECT here.
+  # method that uses asyncify, and therefore it needs to be declared in
+  # ASYNCIFY_IMPORTS.
+  # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    'normal': (['-s', 'BYSYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
+    'normal': (['-s', 'ASYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
     'bad': (['-DBAD'],) # noqa
   })
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
-    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
+    self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
 
-  @no_fastcomp('bysyncify specific')
+  @no_fastcomp('wasm backend asyncify specific')
   def test_async_stack_overflow(self):
-    self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'BYSYNCIFY', '-s', 'BYSYNCIFY_STACK_SIZE=4'])
+    self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
   @requires_sync_compilation
   def test_modularize(self):

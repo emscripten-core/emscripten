@@ -4766,6 +4766,16 @@ LibraryManager.library = {
     err('TODO: Unwind_DeleteException');
   },
 
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
+  },
+
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {

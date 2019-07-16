@@ -478,4 +478,3 @@ workflows:
       - test-upstream-browser-firefox:
           requires:
             - build-upstream
-
