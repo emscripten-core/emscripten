@@ -398,7 +398,7 @@ var LibraryEGL = {
       return 0;
     }
 
-    GL.destroyContext(EGL.context);
+    GL.deleteContext(EGL.context);
     EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);
     if (EGL.currentContext == context) {
       EGL.currentContext = 0;
