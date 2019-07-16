@@ -765,7 +765,7 @@ mergeInto(LibraryManager.library, {
 if (EMTERPRETIFY_ASYNC && !EMTERPRETIFY) {
   error('You must enable EMTERPRETIFY to use EMTERPRETIFY_ASYNC');
 }
-if (ASYNCIFY) {
+if (WASM_BACKEND && ASYNCIFY) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
 }
 
