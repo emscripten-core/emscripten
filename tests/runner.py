@@ -43,16 +43,15 @@ import sys
 import tempfile
 import time
 import unittest
-import urllib
 import webbrowser
 
 if sys.version_info.major == 2:
   from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
+  from urllib import unquote, unquote_plus
 else:
   from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote
+  from urllib.parse import unquote, unquote_plus
 
 # Setup
 
@@ -1105,8 +1104,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False, assert_all=False,
              check_for_error=True):
-    if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
-      self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
@@ -1269,7 +1266,10 @@ def harness_server_func(in_queue, out_queue, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        print('[client logging:', urllib.unquote_plus(self.path), ']')
+        print('[client logging:', unquote_plus(self.path), ']')
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1290,7 +1290,7 @@ def harness_server_func(in_queue, out_queue, port):
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
-          print('[simple HTTP serving:', urllib.unquote_plus(self.path), ']')
+          print('[simple HTTP serving:', unquote_plus(self.path), ']')
         SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):

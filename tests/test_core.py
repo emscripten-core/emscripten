@@ -5617,8 +5617,8 @@ return malloc(size);
       test()
 
     if self.is_wasm_backend():
-      print('bysyncify') # extra coverage
-      self.emcc_args += ['-s', 'BYSYNCIFY=1']
+      print('asyncify') # extra coverage
+      self.emcc_args += ['-s', 'ASYNCIFY=1']
       test()
 
   @needs_dlfcn
@@ -7171,7 +7171,7 @@ Success!
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
     if self.is_wasm_backend():
-      self.set_setting('BYSYNCIFY', 1)
+      self.set_setting('ASYNCIFY', 1)
     else:
       if not emterpretify:
         if self.is_emterpreter():
@@ -7469,6 +7469,7 @@ extern "C" {
     ]
     self.do_run(src, 'async operation OK')
 
+  @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
   def do_test_coroutine(self, additional_settings):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -7477,6 +7478,7 @@ extern "C" {
       self.set_setting(k, v)
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
+  @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
