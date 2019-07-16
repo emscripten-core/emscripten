@@ -49,8 +49,8 @@ test-firefox: &test-firefox
         command: |
           # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
           # which requires very latest nightly as of Jul 13 2019
-          wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
-          tar xf nightly.tar.bz2
+          wget -O ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
+          tar xf ff.tar.bz2
     - run:
         name: configure firefox
         command: |
@@ -159,7 +159,7 @@ test-chrome: &test-chrome
     - run:
         name: download chrome
         command: |
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+          wget https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
           dpkg -i google-chrome-stable_current_amd64.deb
     - run:
         name: run tests
