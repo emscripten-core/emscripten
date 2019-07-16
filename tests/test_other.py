@@ -6198,7 +6198,7 @@ int main() {
               self.assertContained('''managed another malloc!\n''', output)
           else:
             # we should see an abort
-            self.assertContained('''abort("Cannot enlarge memory arrays''', output)
+            self.assertContained('''abort(Cannot enlarge memory arrays''', output)
             self.assertContained(('''higher than the current value 16777216,''', '''higher than the current value 33554432,'''), output)
             self.assertContained('''compile with  -s ALLOW_MEMORY_GROWTH=1 ''', output)
             self.assertContained('''compile with  -s ABORTING_MALLOC=0 ''', output)
