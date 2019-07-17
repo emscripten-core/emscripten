@@ -406,9 +406,9 @@ function abort(what) {
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   if (what !== undefined) {
+    what += '';
     out(what);
     err(what);
-    what = '"' + what + '"';
   } else {
     what = '';
   }

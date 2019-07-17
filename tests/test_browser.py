@@ -110,8 +110,6 @@ def requires_threads(f):
   def decorated(self):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    if is_chrome():
-      self.skipTest('Chrome leaks pthreads memory, https://bugs.chromium.org/p/v8/issues/detail?id=9075')
     return f(self)
 
   return decorated
@@ -2325,19 +2323,19 @@ void *getBindBuffer() {
 
     post_hook = r'''
       function myJSCallback() {
+        // Run on the next event loop, as code may run in a postRun right after main().
+        setTimeout(function() {
+          var xhr = new XMLHttpRequest();
+          assert(Module.noted);
+          xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
+          xhr.send();
+          setTimeout(function() { window.close() }, 1000);
+        }, 0);
         // called from main, this is an ok time
         doCcall(100);
         doCwrapCall(200);
         doDirectCall(300);
       }
-
-      setTimeout(function() {
-        var xhr = new XMLHttpRequest();
-        assert(Module.noted);
-        xhr.open('GET', 'http://localhost:%s/report_result?' + HEAP32[Module.noted>>2]);
-        xhr.send();
-        setTimeout(function() { window.close() }, 1000);
-      }, 1000);
     ''' % self.port
 
     create_test_file('pre_runtime.js', r'''
