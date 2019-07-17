@@ -1438,16 +1438,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
       if shared.Settings.WASM2JS:
-        # in wasm2js, keep the mem init in the wasm itself if we can (no pthreads), and if the options
-        # wouldn't tell a js build to use a separate mem init file
-        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS and not options.memory_init_file
+        # wasm2js does not support passive segments or atomics
+        if shared.Settings.USE_PTHREADS:
+          exit_with_error('WASM2JS does not yet support pthreads')
+        # in wasm2js, keep the mem init in the wasm itself if we can and if the
+        # options wouldn't tell a js build to use a separate mem init file
+        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file
       else:
-        # wasm normally includes the mem init in the wasm binary. exceptions are pthreads, where we need
-        # to split it out until we have full bulk memory support, and wasm2js, which behaves more like js.
+        # wasm includes the mem init in the wasm binary. The exception is
+        # wasm2js, which behaves more like js.
         options.memory_init_file = True
-        # we will include the mem init data in the wasm, when we don't need the
-        # mem init file to be loadable by itself
-        shared.Settings.MEM_INIT_IN_WASM = not shared.Settings.USE_PTHREADS
+        shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
 
       # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
       if not shared.Settings.MINIMAL_RUNTIME:
@@ -2913,14 +2914,17 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     opt_level=options.opt_level,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
-                                    debug_info=intermediate_debug_info)
+                                    debug_info=intermediate_debug_info,
+                                    symbols_file=target + '.symbols' if options.emit_symbol_map else None)
     save_intermediate('wasm2js')
 
     shared.try_delete(wasm_binary_target)
 
   # emit a symbol map if requested. this will also remove debug info if we only
-  # kept it around in the intermediate invocations for the sake of the symbol map
-  if options.emit_symbol_map:
+  # kept it around in the intermediate invocations for the sake of the symbol map.
+  # note that wasm2js handles the symbol map itself (as it manipulates and then
+  # replaces the wasm with js)
+  if options.emit_symbol_map and not shared.Settings.WASM2JS:
     shared.Building.emit_wasm_symbol_map(wasm_file=wasm_binary_target, symbols_file=target + '.symbols', debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
