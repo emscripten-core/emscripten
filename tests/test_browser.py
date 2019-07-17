@@ -1793,6 +1793,7 @@ keydown(100);keyup(100); // trigger the end
                        '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'])
 
   @requires_graphics_hardware
+  @flaky
   def test_clientside_vertex_arrays_es3(self):
     # NOTE: Should FULL_ES3=1 imply client-side vertex arrays? The emulation needs FULL_ES2=1 for now.
     self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'USE_WEBGL2=1', '-s', 'FULL_ES2=1', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
@@ -2168,10 +2169,12 @@ void *getBindBuffer() {
     self.btest('tex_nonbyte.c', reference='tex_nonbyte.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @flaky
   def test_float_tex(self):
     self.btest('float_tex.cpp', reference='float_tex.png', args=['-lGL', '-lglut'])
 
   @requires_graphics_hardware
+  @flaky
   def test_subdata(self):
     self.btest('gl_subdata.cpp', reference='float_tex.png', args=['-lGL', '-lglut'])
 
