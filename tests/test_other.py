@@ -4490,7 +4490,11 @@ int main() {
     self.assertContained('hello_world.c', stdout)
 
   def test_emit_llvm(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-emit-llvm'])
+    # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
+    # We shouldn't need to copy the file here but if we don't then emcc will
+    # internally clobber the hello_world.ll in tests.
+    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'hello_world.c')
+    run_process([PYTHON, EMCC, 'hello_world.c', '-S', '-emit-llvm'])
     self.assertExists('hello_world.ll')
     bitcode = open('hello_world.ll').read()
     self.assertContained('target triple = "', bitcode)
