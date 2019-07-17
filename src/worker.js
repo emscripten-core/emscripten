@@ -208,7 +208,7 @@ this.onmessage = function(e) {
       Module['establishStackSpaceInJsModule'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
 #endif
 #if WASM_BACKEND
-      Module['asm']['emscripten_tls_init']();
+      Module['_emscripten_tls_init']();
 #endif
 #if STACK_OVERFLOW_CHECK
       {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
