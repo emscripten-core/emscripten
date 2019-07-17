@@ -4491,10 +4491,12 @@ int main() {
 
   def test_emit_llvm(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-emit-llvm'])
-    print(os.listdir('.'))
     self.assertExists('hello_world.ll')
     bitcode = open('hello_world.ll').read()
     self.assertContained('target triple = "', bitcode)
+
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm'])
+    self.assertTrue(Building.is_bitcode('hello_world.bc'))
 
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>

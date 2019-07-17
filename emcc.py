@@ -976,17 +976,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
-    if has_dash_c:
-      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
-      target = target_basename + '.o'
-      final_suffix = '.o'
-    elif has_dash_S:
-      if '-emit-llvm' in newargs:
-        target = target_basename + '.ll'
-        final_suffix = '.ll'
-      else:
-        target = target_basename + '.s'
-        final_suffix = '.s'
+    if has_dash_c or has_dash_S:
+      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c or -S'
+      if has_dash_c:
+        if '-emit-llvm' in newargs:
+          final_suffix = '.bc'
+        else:
+          final_suffix = '.o'
+      elif has_dash_S:
+        if '-emit-llvm' in newargs:
+          final_suffix = '.ll'
+        else:
+          final_suffix = '.s'
+      target = target_basename + final_suffix
 
     if '-E' in newargs:
       final_suffix = '.eout' # not bitcode, not js; but just result from preprocessing stage of the input file
