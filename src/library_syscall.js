@@ -757,8 +757,8 @@ var SyscallsLibrary = {
       });
     });
 #else
-#if BYSYNCIFY
-    return Bysyncify.handleSleep(function(wakeUp) {
+#if WASM_BACKEND && ASYNCIFY
+    return Asyncify.handleSleep(function(wakeUp) {
       var mount = stream.node.mount;
       if (!mount.type.syncfs) {
         // We write directly to the file system, so there's nothing to do here.
@@ -778,7 +778,7 @@ var SyscallsLibrary = {
       return -stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // BYSYNCIFY
+#endif // WASM_BACKEND && ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname

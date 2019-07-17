@@ -526,6 +526,8 @@ var NODEJS_CATCH_EXIT = 1;
 // Whether to enable asyncify transformation
 // This allows to inject some async functions to the C code that appear to be sync
 // e.g. emscripten_sleep
+// On fastcomp this uses the Asyncify IR transform.
+// On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
 // Functions that call any function in the list, directly or indirectly
@@ -540,39 +542,23 @@ var ASYNCIFY_WHITELIST = ['qsort',
                           '__fwritex',
                           'MUSL_vfprintf'];
 
-// Runs the binaryen "bysyncify" pass to transform sync code into async.
-// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
-// wasm backend.
-//
-// Done:
-//  * Sleep support.
-//  * Emscripten APIs (emscripten_wget* and other sync APIs).
-//  * Synchronous fsync syscall.
-//  * Browser integration.
-//
-// Not done:
-//  * No whitelist/blacklist support (hopefully with the simpler model
-//    and lower overhead they may not be needed?)
-//  * No coroutine support.
-var BYSYNCIFY = 0;
-
-// The imports which can do a sync operation. If you add more you will need to
+// Upstream only: The imports which can do a sync operation. If you add more you will need to
 // add them to here.
-var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
+var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
 
-// Whether indirect calls can be on the stack during an unwind/rewind. If you know
-// they cannot, then setting this can be extremely helpful, as otherwise bysyncify
+// Upstream only:  Whether indirect calls can be on the stack during an unwind/rewind.
+// If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 // must assume an indirect call can reach almost everywhere.
-var BYSYNCIFY_IGNORE_INDIRECT = 0;
+var ASYNCIFY_IGNORE_INDIRECT = 0;
 
-// The size of the Bysyncify stack - the region used to store unwind/rewind info.
-// This must be large enough to store the call stack and locals. If it is too
+// Upstream only: The size of the asyncify stack - the region used to store unwind/rewind
+// info. This must be large enough to store the call stack and locals. If it is too
 // small, you will see a wasm trap due to executing an "unreachable" instruction.
 // In that case, you should increase this size.
-var BYSYNCIFY_STACK_SIZE = 4096;
+var ASYNCIFY_STACK_SIZE = 4096;
 
-// Runtime debug logging from bysyncify internals.
-var BYSYNCIFY_DEBUG = 0;
+// Upstream only: Runtime debug logging from asyncify internals.
+var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
@@ -1020,11 +1006,15 @@ var WASM_OBJECT_FILES = 1;
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
 
-// Whether to ignore implicit traps when optimizing in binaryen.  Implicit traps
-// are the unlikely traps that happen in a load that is out of bounds, or
-// div/rem of 0, etc. We can reorder them, but we can't ignore that they have
-// side effects, so turning on this flag lets us do a little more to reduce code
-// size.
+// Whether to ignore implicit traps when optimizing in binaryen.  Implicit
+// traps are the traps that happen in a load that is out of bounds, or
+// div/rem of 0, etc. With this option set, the optimizer assumes that loads
+// cannot trap, and therefore that they have no side effects at all. This
+// is *not* safe in general, as you may have a load behind a condition which
+// ensures it it is safe; but if the load is assumed to not have side effects it
+// could be executed unconditionally. For that reason this option is generally
+// not useful on large and complex projects, but in a small and simple enough
+// codebase it may help reduce code size a little bit.
 var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 
 // How we handle wasm operations that may trap, which includes integer
@@ -1388,6 +1378,11 @@ var SUPPORT_ERRNO = 1;
 // support library. This does not need to be set directly, but pass -fno-exceptions
 // to the build disable exceptions support. (This is basically -fno-exceptions, but
 // checked at final link time instead of individual .cpp file compile time)
+// If the program *does* contain throwing code (some source files were not compiled
+// with `-fno-exceptions`), and this flag is set at link time, then you will get
+// errors on undefined symbols, as the exception throwing code is not linked in. If
+// so you should either unset the option (if you do want exceptions) or fix the
+// compilation of the source files so that indeed no exceptions are used).
 var DISABLE_EXCEPTION_THROWING = 0;
 
 // Internal: An array of all symbols exported from asm.js/wasm module.
@@ -1471,9 +1466,17 @@ var WASM2JS = 0;
 // -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
 
-// Whether we should link in LSan's runtime library. This is intended to be used invoked`
+// Whether we should link in LSan's runtime library. This is intended to be used
 // by -fsanitize=leak instead of used directly.
 var USE_LSAN = 0;
+
+// Whether we should link in ASan's runtime library. This is intended to be used
+// by -fsanitize=leak instead of used directly.
+var USE_ASAN = 0;
+
+// The size of our shadow memory.
+// By default, we have 32 MiB. This supports 256 MiB of real memory.
+var ASAN_SHADOW_SIZE = 33554432;
 
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.

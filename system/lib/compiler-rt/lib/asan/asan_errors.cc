@@ -467,6 +467,17 @@ ErrorGeneric::ErrorGeneric(u32 tid, uptr pc_, uptr bp_, uptr sp_, uptr addr,
       scariness.Scare(bug_type_score + read_after_free_bonus, bug_descr);
       if (far_from_bounds) scariness.Scare(10, "far-from-bounds");
     }
+#if SANITIZER_EMSCRIPTEN
+    // If address is in the first page (64 KB), then it is likely that the
+    // access is a result of a null pointer dereference.
+    else if (addr < 65536) {
+      bug_descr = "null-pointer-dereference";
+      scariness.Scare(25, bug_descr);
+    } else if (AddrIsInShadow(addr)) {
+      bug_descr = "shadow-access";
+      scariness.Scare(25, bug_descr);
+    }
+#endif
   }
 }
 

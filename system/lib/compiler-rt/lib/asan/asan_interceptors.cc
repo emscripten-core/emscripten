@@ -24,10 +24,10 @@
 #include "lsan/lsan_common.h"
 #include "sanitizer_common/sanitizer_libc.h"
 
-// There is no general interception at all on Fuchsia and RTEMS.
+// There is no general interception at all on Fuchsia, RTEMS and Emscripten.
 // Only the functions in asan_interceptors_memintrinsics.cc are
 // really defined to replace libc functions.
-#if !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
+#if !SANITIZER_FUCHSIA && !SANITIZER_RTEMS && !SANITIZER_EMSCRIPTEN
 
 #if SANITIZER_POSIX
 #include "sanitizer_common/sanitizer_posix.h"

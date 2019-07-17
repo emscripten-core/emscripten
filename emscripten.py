@@ -2208,8 +2208,8 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   all_implemented = metadata['exports']
 
-  if shared.Settings.BYSYNCIFY:
-    all_implemented += ['bysyncify_start_unwind', 'bysyncify_stop_unwind', 'bysyncify_start_rewind', 'bysyncify_stop_rewind']
+  if shared.Settings.ASYNCIFY:
+    all_implemented += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
   check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
 
