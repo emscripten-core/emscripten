@@ -4480,6 +4480,28 @@ int main() {
 }''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
 
+  def test_dashS(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-S'])
+    self.assertExists('hello_world.s')
+
+  def test_dashS_stdout(self):
+    stdout = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-S', '-o', '-'], stdout=PIPE).stdout
+    self.assertEqual(os.listdir('.'), [])
+    self.assertContained('hello_world.c', stdout)
+
+  def test_emit_llvm(self):
+    # TODO(https://github.com/emscripten-core/emscripten/issues/9016):
+    # We shouldn't need to copy the file here but if we don't then emcc will
+    # internally clobber the hello_world.ll in tests.
+    shutil.copyfile(path_from_root('tests', 'hello_world.c'), 'hello_world.c')
+    run_process([PYTHON, EMCC, 'hello_world.c', '-S', '-emit-llvm'])
+    self.assertExists('hello_world.ll')
+    bitcode = open('hello_world.ll').read()
+    self.assertContained('target triple = "', bitcode)
+
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-c', '-emit-llvm'])
+    self.assertTrue(Building.is_bitcode('hello_world.bc'))
+
   def test_dashE(self):
     create_test_file('src.cpp', r'''#include <emscripten.h>
 __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
