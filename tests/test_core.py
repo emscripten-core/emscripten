@@ -5160,12 +5160,6 @@ main( int argv, char ** argc ) {
     self.banned_js_engines = [V8_ENGINE] # v8 lacks monotonic time
     self.do_run_from_file(src, output)
 
-    if V8_ENGINE in JS_ENGINES:
-      self.banned_js_engines = [engine for engine in JS_ENGINES if engine != V8_ENGINE]
-      self.do_run_from_file(src, test_path + '_no_monotonic.out')
-    else:
-      print('(no v8, skipping no-monotonic case)')
-
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
