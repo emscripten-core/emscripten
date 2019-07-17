@@ -981,12 +981,12 @@ class benchmark(RunnerCore):
           '5': 55,
         };
         if (benchmarkArgument === 0) {
-          Module.arguments = ['-?'];
-          Module.printErr = function(){};
+          Module['arguments'] = ['-?'];
+          Module['printErr'] = function(){};
         } else {
           // Add 'filename' after 'input.pdf' to write the output so it can be verified.
-          Module.arguments = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
-          Module.postRun = function() {
+          Module['arguments'] = ['-scale-to', '1024', 'input.pdf',  '-f', '1', '-l', '' + benchmarkArgumentToPageCount[benchmarkArgument]];
+          Module['postRun'] = function() {
             var files = [];
             for (var x in FS.root.contents) {
               if (x.startsWith('filename-')) {
