@@ -364,11 +364,12 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
+          var fromHeap = (buffer.buffer == HEAP8.buffer);
           ptr = _malloc(length);
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
-          buffer.set(contents, ptr);
+          (fromHeap ? HEAP8 : buffer).set(contents, ptr);
         }
         return { ptr: ptr, allocated: allocated };
       },
