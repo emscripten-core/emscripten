@@ -974,7 +974,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [a for a in newargs if a is not '']
 
-    # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
     if has_dash_c:
@@ -1865,7 +1864,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
-      # If we were just asked to generate bitcode, stop there
+      # If we were just compiling stop here
       if compile_only:
         if not specified_target:
           assert len(temp_files) == len(input_files)
