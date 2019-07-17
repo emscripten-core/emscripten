@@ -52,12 +52,15 @@ class Benchmarker(object):
   def __init__(self, name):
     self.name = name
 
-  def bench(self, args, output_parser=None, reps=TEST_REPS):
+  def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
     self.times = []
     self.reps = reps
     for i in range(reps):
       start = time.time()
       output = self.run(args)
+      if expected_output is not None and expected_output not in output:
+        raise ValueError('Incorrect benchmark output:\n' + output)
+
       if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
         if IGNORE_COMPILATION:
           curr = float(re.search(r'took +([\d\.]+) milliseconds', output).group(1)) / 1000
@@ -199,7 +202,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True, assert_returncode=None)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE, full_output=True)
 
   def get_output_files(self):
     ret = [self.filename]
@@ -354,7 +357,7 @@ class benchmark(RunnerCore):
 
   # avoid depending on argument reception from the commandline
   def hardcode_arguments(self, code):
-    if not code:
+    if not code or 'int main()' in code:
       return code
     main_pattern = 'int main(int argc, char **argv)'
     assert main_pattern in code
@@ -395,7 +398,7 @@ class benchmark(RunnerCore):
       baseline = b
       print('Running benchmarker: ' + b.name)
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
-      b.bench(args, output_parser, reps)
+      b.bench(args, output_parser, reps, expected_output)
       b.display(baseline)
       b.cleanup()
 
@@ -614,9 +617,9 @@ class benchmark(RunnerCore):
           }
         }
 
-        printf("ok\n");
+        printf("ok %d\n", sum);
 
-        return sum;
+        return 0;
       }
     '''
     self.do_benchmark('ifs', src, 'ok')
@@ -652,7 +655,7 @@ class benchmark(RunnerCore):
 
         printf("ok %d\n", x);
 
-        return x;
+        return 0;
       }
     '''
     self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
@@ -880,7 +883,7 @@ class benchmark(RunnerCore):
   def test_matrix_multiply(self):
     def output_parser(output):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
-    self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), 'Total time:', output_parser=output_parser, shared_args=['-I' + path_from_root('tests')])
+    self.do_benchmark('matrix_multiply', open(path_from_root('tests', 'matrix_multiply.cpp')).read(), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + path_from_root('tests')])
 
   @non_core
   def test_zzz_java_nbody(self): # tests xmlvm compiled java, including bitcasts of doubles, i64 math, etc.
@@ -963,7 +966,7 @@ class benchmark(RunnerCore):
   def test_zzz_sqlite(self):
     src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
+    self.do_benchmark('sqlite', src, 'TOTAL...', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
 
   def test_zzz_poppler(self):
     with open('pre.js', 'w') as f:
