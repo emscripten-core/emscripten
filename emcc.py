@@ -2469,8 +2469,6 @@ def parse_args(newargs):
     elif newargs[i].startswith('--closure-args'):
       check_bad_eq(newargs[i])
       args = newargs[i + 1]
-      if (args[0] == '"' and args[-1] == '"') or (args[0] == "'" and args[-1] == "'"):
-        args = args[1:-1]
       options.closure_args += shlex.split(args)
       newargs[i] = ''
       newargs[i + 1] = ''
