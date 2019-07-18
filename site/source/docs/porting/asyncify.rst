@@ -4,12 +4,18 @@
 Asyncify
 ========================
 
-Asyncify lets synchronous C or C++ code do asynchronous Web API calls. For
-example, you can write ``emscripten_sleep(100)`` and it will return to the main
-browser event loop for 100ms, during which browser events can be handled, etc.
-(without returning to the event loop, no events will be dispatched). Asyncify
-does this by automatically transforming the compiled code into something that
-can be paused and resumed, and handles pausing and resuming for you.
+Asyncify lets **synchronous** C or C++ code interact with **asynchronous**
+JavaScript. This allows things like:
+
+ * A synchronous call in C that yields to the event loop, which
+   allows browser events to be handled.
+ * A synchronous call in C that waits for an asynchronous operation in JS to
+   complete.
+
+Asyncify automatically transforms your compiled code into a form that can be
+paused and resumed, and handles pausing and resuming for you, so that it is
+asynchronous (hence the name "Asyncify") even though you wrote it in a normal
+synchronous way.
 
 See the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
@@ -22,8 +28,8 @@ expands on the Emscripten examples from that post.
           so if you are using fastcomp, these docs may not be accurate - you
           should upgrade to the wasm backend and new Asyncify!
 
-Sleeping
-========
+Sleeping / yielding to the event loop
+#####################################
 
 Let's begin with the example from that blogpost:
 
@@ -48,7 +54,7 @@ Let's begin with the example from that blogpost:
 
     int main() {
       start_timer();
-      // "Infinite loop", synchronously poll for the timer.
+      // Continuously loop while synchronously polling for the timer.
       while (1) {
         if (check_timer()) {
           printf("timer happened!\n");
@@ -85,12 +91,13 @@ You should then see something like this:
     sleeping...
     timer happened!
 
-The code is written with an "infinite loop" that sleeps, which normally would
-not allow async events to be handled by the browser. With Asyncify, those sleeps
-actually exit to the browser's main event loop, and the timer can happen!
+The code is written with a straightforward loop, which does not exit while
+it is running, which normally would not allow async events to be handled by the
+browser. With Asyncify, those sleeps actually yield to the browser's main event
+loop, and the timer can happen!
 
 Making async Web APIs behave as if they were synchronous
-========================================================
+########################################################
 
 Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify
 supports, you can also add your own functions. To do so, you must create a JS
@@ -104,10 +111,12 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
     #include <emscripten.h>
     #include <stdio.h>
 
-    EM_JS(void, wait_for_click, (), {
+    EM_JS(void, do_fetch, (), {
       Asyncify.handleSleep(function(wakeUp) {
-        console.log("waiting for a click");
-        document.body.addEventListener("mousedown", function() {
+        out("waiting for a fetch");
+        fetch('a.html').then(response => {
+          out("got the fetch response");
+          // (normally you would do something with the fetch here)
           wakeUp();
         });
       });
@@ -115,38 +124,45 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
 
     int main() {
       puts("before");
-      wait_for_click();
+      do_fetch();
       puts("after");
     }
 
-Here we print "before", then wait for the user to click on the document, and
-then print "after". Note how the C code in ``main()`` is all synchronous! The
-async operation happens in the ``EM_JS`` function ``wait_for_click()``, which
+The async operation happens in the ``EM_JS`` function ``do_fetch()``, which
 calls ``Asyncify.handleSleep``. It gives that function the code to be run, and
 gets a ``wakeUp`` function that it calls in the asynchronous future at the right
-time. Here we add an event listener for a mouse button being pushed down on the
-document. After that event arrives asynchronously, calling ``wakeUp()`` lets the
-program resume normally, exactly as if it were paused while waiting. To see this,
-compile it with
+time. After we call ``wakeUp()`` the compiled C code resumes normally.
+
+In this example the async operation is a ``fetch``, which means we need to wait
+for a Promise. While that is async, note how the C code in ``main()`` is
+completely synchronous!
+
+To run this example, first compile it with
 
 ::
 
-    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["wait_for_click"]'
+    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
 
-Note that must tell the compiler that ``wait_for_click()`` can do an
+Note that must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
-instrument the code to allow pausing and resuming. (That list must contain all
-such imports, so if you also use ``emscripten_sleep()`` then you must put it in
-that list as well.)
+instrument the code to allow pausing and resuming, see later down.
 
 To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``)
 and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the
-port number in the server). You will see "before" printed. After you click on
-the document (like on the black canvas, or the textbox with "before") you will
-see it print "after" as expected.
+port number in the server). You will see something like this:
+
+::
+
+    before
+    waiting for a fetch
+    got the fetch response
+    after
+
+That shows that the C code only continued to execute after the async JS
+completed.
 
 More on ``ASYNCIFY_IMPORTS``
-============================
+############################
 
 As in the above example, you can add JS functions that do an async operation but
 look synchronous from the perspective of C. The key thing is to add such methods
@@ -156,13 +172,46 @@ module that the Asyncify instrumentation must be aware of. Giving it that list
 tells it that all other JS calls will **not** do an async operation, which lets
 it not add overhead where it isn't needed.
 
+The ``ASYNCIFY_IMPORTS`` list must contain **all** relevant imports, not just
+ones you add yourself, so it must contain things like ``emscripten_sleep()``
+if you call them.
+
 You can also set ``ASYNCIFY_IMPORTS`` to ``[]`` (an empty list). In that case,
 Asyncify will assume that any import may do an async operation. This will result
 in larger and slower code in most cases, but can be useful during debugging or
 development.
 
+Potential problems
+##################
+
+Stack overflows
+***************
+
+If you see an exception thrown from an ``asyncify_*`` API, then it may be
+a stack overflow. You can increase the stack size with the
+``ASYNCIFY_STACK_SIZE`` option.
+
+Reentrancy
+**********
+
+While waiting on an asynchronous operation browser events can happen. That
+is often the point of using Asyncify, but unexpected events can happen too.
+For example, if you just want to pause for 100ms then you can call
+``emscripten_sleep(100)``, but if you have any event listeners, say for a
+keypress, then if a key is pressed the handler will fire. If that handler
+calls into compiled code, then it can be confusing, since it starts to look
+like coroutines or multithreading, with multiple executions interleaved.
+
+It is *not* safe to start an async operation while another is already running.
+The first must complete before the second begins.
+
+Such interleaving may also break assumptions in your codebase. For example,
+if a function uses a global and assumes nothing else can modify it until it
+returns, but if that function sleeps and an event causes other code to
+change that global, then bad things can happen.
+
 Migrating from older APIs
-=========================
+#########################
 
 If you have code using the Emterpreter-Async API, or the old Asyncify, then the
 new API is somewhat different, and you may need some minor changes:
