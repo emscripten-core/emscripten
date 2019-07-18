@@ -150,7 +150,7 @@ var LibraryExceptions = {
     ptr = ___exception_deAdjust(ptr);
     if (!___exception_infos[ptr].rethrown) {
       // Only pop if the corresponding push was through rethrow_primary_exception
-      ___exception_caught.push(ptr)
+      ___exception_caught.push(ptr);
       ___exception_infos[ptr].rethrown = true;
     }
 #if EXCEPTION_DEBUG
