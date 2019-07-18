@@ -33,7 +33,7 @@ Sleeping / yielding to the event loop
 
 Let's begin with the example from that blogpost:
 
-::
+.. code-block:: cpp
 
     // example.cpp
     #include <emscripten.h>
@@ -105,7 +105,7 @@ function that is called from wasm (since Emscripten controls pausing and
 resuming the wasm from the JS runtime). One way to do that is with a JS library
 function; another is to use ``EM_JS``, which we'll use in this next example:
 
-::
+.. code-block:: cpp
 
     // example.c
     #include <emscripten.h>
@@ -114,7 +114,7 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
     EM_JS(void, do_fetch, (), {
       Asyncify.handleSleep(function(wakeUp) {
         out("waiting for a fetch");
-        fetch('a.html').then(response => {
+        fetch("a.html").then(response => {
           out("got the fetch response");
           // (normally you would do something with the fetch here)
           wakeUp();
@@ -127,6 +127,7 @@ function; another is to use ``EM_JS``, which we'll use in this next example:
       do_fetch();
       puts("after");
     }
+
 
 The async operation happens in the ``EM_JS`` function ``do_fetch()``, which
 calls ``Asyncify.handleSleep``. It gives that function the code to be run, and
@@ -143,9 +144,9 @@ To run this example, first compile it with
 
     ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["do_fetch"]'
 
-Note that must tell the compiler that ``do_fetch()`` can do an
+Note that you must tell the compiler that ``do_fetch()`` can do an
 asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
-instrument the code to allow pausing and resuming, see later down.
+instrument the code to allow pausing and resuming; see more details later down.
 
 To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``)
 and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the
@@ -174,7 +175,8 @@ it not add overhead where it isn't needed.
 
 The ``ASYNCIFY_IMPORTS`` list must contain **all** relevant imports, not just
 ones you add yourself, so it must contain things like ``emscripten_sleep()``
-if you call them.
+if you call them (by default the list will contain them, so you must only add
+them if you change the list).
 
 You can also set ``ASYNCIFY_IMPORTS`` to ``[]`` (an empty list). In that case,
 Asyncify will assume that any import may do an async operation. This will result
