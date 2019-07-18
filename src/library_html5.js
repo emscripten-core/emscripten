@@ -145,7 +145,7 @@ var LibraryJSEvents = {
         JSEvents.runDeferredCalls();
         // Out of event handler - restore nesting count.
         --JSEvents.inEventHandler;
-      }
+      };
       
       if (eventHandler.callbackfunc) {
         eventHandler.eventListenerFunc = jsEventHandler;
