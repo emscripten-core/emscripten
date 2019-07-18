@@ -451,7 +451,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super(MTLibrary, self).get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS=1']
+      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
     return cflags
 
   def get_base_name(self):
@@ -1089,18 +1089,12 @@ class liblsan_common_rt_wasm(SanitizerLibrary):
   src_glob = 'lsan_common*.cc'
 
 
-# TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
-# and clean up the duplicate code.
-class liblsan_rt_wasm(CompilerRTWasmLibrary):
+class liblsan_rt_wasm(SanitizerLibrary):
   name = 'liblsan_rt_wasm'
   depends = ['liblsan_common_rt_wasm']
   js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
-  never_force = True
 
-  includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  cflags = ['-std=c++11']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob = '*.cc'
   src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
                       'lsan_common_emscripten.cc']
 
