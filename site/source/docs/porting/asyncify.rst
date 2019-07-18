@@ -4,123 +4,109 @@
 Asyncify
 ========================
 
-In general, you want to make your code as asynchronous-friendly as possible, e.g. by never calling sleep, having a single main loop and so on.
+Asyncify lets synchronous C or C++ code do asynchronous Web API calls. For example, you can write ``emscripten_sleep(100)`` and it will return to the main browser event loop for 100ms, during which browser events can be handled, etc. (without returning to the event loop, no events will be dispatched). Asyncify does this by automatically transforming the compiled code into something that can be paused and resumed, and handles pausing and resuming for you.
 
-Sometimes refactoring a codebase with this in mind isn't feasible, so there are a couple of alternatives (each with downsides). Asyncify is covered here.
+See the `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_ for general background and details of how it works internally. The following expands on the Emscripten examples from that post.
 
-**Asyncify is experimental, and not recommended. See https://kripken.github.io/emscripten-site/docs/porting/emterpreter.html for a more recent option with similar functionality, that is currently supported.**
+.. note:: This post talks about Asyncify using the new LLVM wasm backend. There is also an older Asyncify implementation for the old fastcomp backend. The two algorithms and implementations are entirely separate, so if you are using fastcomp, these docs may not be accurate - you should upgrade to the wasm backend and new Asyncify!
 
-``ASYNCIFY`` allows you to use some asynchronous function in C, through several transformation of LLVM IR.
+Sleeping
+========
 
-Intro
-=====
-
-If you call ``sleep()`` in C/C++, what kind of JavaScript code would you expect emscripten to produce?
+Let's begin with the example from that blogpost:
 
 ::
 
-    // test.c
+    // example.cpp
+    #include <emscripten.h>
     #include <stdio.h>
-    #include <unistd.h>
-    int main() {
-      int i = 100;
-      printf("Hello\n");
-      sleep(1);
-      printf("World %d!\n");
-      return 0;
-    }
 
-Note that we cannot implement ``sleep`` like this::
-
-    function sleep(ms) {
-      var t = Date.now() + ms;
-      while(Date.now() < t) ;
-    }
-
-because this would block the JavaScript engine, such that pending events cannot be processed.
-
-
-A hand written counterpart in JavaScript would be
-
-::
-
-    function main() {
-      var i = 100;
-      console.log('Hello');
+    // start_timer(): call JS to set an async timer for 500ms
+    EM_JS(void, start_timer, (), {
+      Module.timer = false;
       setTimeout(function() {
-        console.log('World ' + i + '!');
-        async_return_value = 0;
-      }, 1000);
+        Module.timer = true;
+      }, 500);
+    });
+
+    // check_timer(): check if that timer occurred
+    EM_JS(bool, check_timer, (), {
+      return Module.timer;
+    });
+
+    int main() {
+      start_timer();
+      // "Infinite loop", synchronously poll for the timer.
+      while (1) {
+        if (check_timer()) {
+          printf("timer happened!\n");
+          return 0;
+        }
+        printf("sleeping...\n");
+        emscripten_sleep(100);
+      }
     }
 
-Specifically, a number of aspects should be taken into consideration:
- - Split the function when an async function is called, and the second function should be registered as the callback for the async function
- - Any function that calls an async function also becomes an async function.
- - Keep all local variables available to the callback
- - Closure cannot be used in order to make asm.js validated code.
- - Take care of loops and branches
- - Make the return value available to the callee
- - Some functions could be both sync or async, depending on the input.
-
-And the ``ASYNCIFY`` option does all above automatically, through a number of transformations on LLVM IR.
-
-
-Usage
-=====
-
-Call ``emscripten_sleep()`` whenever you need to pause the program, and add ``-s ASYNCIFY=1`` to emscripten.
-
-Sometimes it's a good replacement of ``emscripten_set_main_loop``, you may replace all ``sleep``-alike functions with ``emscripten_sleep``, instead of refactoring the whole main loop.
-
-Also ``emscripten_sleep(1)`` can be used to 'interrupt' your code, such that the JavaScript engine can do the rendering and process events.
-
-Extensions
-==========
-
-It is possible to implement more new async functions that appears to be sync in C.
-
-- Implement the function normally in a JavaScript library, suppose the function name is ``func``.
-- Add ``func`` into ``ASYNCIFY_FUNCTIONS``
-- When ``func`` is called and finished, the program will NOT continue, instead it just save the context and exit.
-- Call ``_emscripten_async_resume`` when you want to resume the program, usually in the callback functions of some async calls.
-
-Please read ``src/library_async.js`` for details.
-
-Limitations
-===========
-
-Code size increase should be expected, depending on the specific input.
-``-Os`` (or ``-Oz`` for linking) is recommended when ``ASYNCIFY`` is turned on.
-E.g. usually the following loop is expanded to speed up::
-
-    for(int i = 0; i < 3; ++i) {
-      // do something
-      emscripten_sleep(1000);
-      // do something else
-    }
-
-However by expanding the loop, two more async calls are introduced, such that more callback functions will be produced during the asyncify transformation.
-
-**Asyncify can make performance much slower, if it ends up splitting a function which you need to be fast.**
-
-``setjmp/longjmp`` and C++ exception are not working well when there are async function calls in the scope, but they still work when there's no async calls. E.g.
+You can compile that with
 
 ::
 
-    try {
-      // do something
-      if(error) throw 0; // works
-      emscripten_sleep(1000);
-      // do something else
-      if(error) throw 0; // does not work
+    emcc -O3 example.cpp -s ASYNCIFY
+
+.. note:: It's very important to optimize (``-O3`` here) when using Asyncify, as unoptimized builds are very large.
+
+And you can run it with
+
+::
+
+    nodejs a.out.js
+
+You should then see something like this:
+
+::
+
+    sleeping...
+    sleeping...
+    sleeping...
+    sleeping...
+    sleeping...
+    timer happened!
+
+The code is written with an "infinite loop" that sleeps, which normally would not allow async events to be handled by the browser. With Asyncify, those sleeps actually exit to the browser's main event loop, and the timer can happen!
+
+Waiting for Web APIs
+====================
+
+Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify supports, you can also add your own functions. To do so, you must create a JS function that is called from wasm (since Emscripten controls pausing and resuming the wasm from the JS runtime). One way to do that is with a JS library function; another is to use ``EM_JS``, which we'll use in this next example:
+
+::
+
+    // example.c
+    #include <emscripten.h>
+    #include <stdio.h>
+
+    EM_JS(void, wait_for_click, (), {
+      Asyncify.handleSleep(function(wakeUp) {
+        console.log("waiting for a click");
+        document.body.addEventListener("mousedown", function() {
+          wakeUp();
+        });
+      });
+    });
+
+    int main() {
+      puts("before");
+      wait_for_click();
+      puts("after");
     }
 
-Currently all function pointer calls are considered as aync, and some functions might be recognized as async incorrectly. This can be corrected by manually setting the ``ASYNCIFY_WHITELIST`` option.
+Here we print "before", then wait for the user to click on the document, and then print "after". Note how the C code in ``main()`` is all synchronous! The async operation happens in the ``EM_JS`` function ``wait_for_click()``, which calls ``Asyncify.handleSleep``. It gives that function the code to be run, and gets a ``wakeUp`` function that it calls in the asynchronous future at the right time. Here we add an event listener for a mouse button being pushed down on the document. After that event arrives asynchronously, calling ``wakeUp()`` lets the program resume normally, exactly as if it were paused while waiting. To see this, compile it with
 
+::
 
-Other possible implementations
-==============================
+    ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["wait_for_click"]'
 
- - Closures (breaking asm.js)
- - Generators (too slow currently)
- - Blocking message (in workers)
+Note that must tell the compiler that ``wait_for_click()`` can do an asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't instrument the code to allow pausing and resuming. (That list must contain all such imports, so if you also use ``emscripten_sleep()`` then you must put it in that list as well.)
+
+To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``) and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the port number in the server). You will see "before" printed. After you click on the document (like on the black canvas, or the textbox with "before") you will see it print "after" as expected.
+
