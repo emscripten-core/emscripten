@@ -992,11 +992,21 @@ function createWasm(env) {
 #endif
 
 #if LOAD_SOURCE_MAP
+#if USE_PTHREADS
+  if (!ENVIRONMENT_IS_PTHREAD) {
+    addRunDependency('source-map');
+  }
+#else
   addRunDependency('source-map');
+#endif
 
   function receiveSourceMapJSON(sourceMap) {
     wasmSourceMap = new WasmSourceMap(sourceMap);
+#if USE_PTHREADS
+    if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('source-map');
+#else
     removeRunDependency('source-map');
+#endif
   }
 #endif
 
@@ -1023,14 +1033,24 @@ function createWasm(env) {
   }
 
 #if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_PTHREADS
+  if (!ENVIRONMENT_IS_PTHREAD) {
+    addRunDependency('offset-converter');
+  }
+#else
   addRunDependency('offset-converter');
+#endif
 #endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
 #if 'emscripten_generate_pc' in addedLibraryItems
       wasmOffsetConverter = new WasmOffsetConverter(binary);
+#if USE_PTHREADS
+      if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('offset-converter');
+#else
       removeRunDependency('offset-converter');
+#endif
 #endif
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
@@ -1052,7 +1072,11 @@ function createWasm(env) {
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
         response.clone().arrayBuffer().then(function (buffer) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
+#if USE_PTHREADS
+          if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('offset-converter');
+#else
           removeRunDependency('offset-converter');
+#endif
         });
 #endif
         return WebAssembly.instantiateStreaming(response, info)
