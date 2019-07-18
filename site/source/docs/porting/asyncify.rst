@@ -4,11 +4,23 @@
 Asyncify
 ========================
 
-Asyncify lets synchronous C or C++ code do asynchronous Web API calls. For example, you can write ``emscripten_sleep(100)`` and it will return to the main browser event loop for 100ms, during which browser events can be handled, etc. (without returning to the event loop, no events will be dispatched). Asyncify does this by automatically transforming the compiled code into something that can be paused and resumed, and handles pausing and resuming for you.
+Asyncify lets synchronous C or C++ code do asynchronous Web API calls. For
+example, you can write ``emscripten_sleep(100)`` and it will return to the main
+browser event loop for 100ms, during which browser events can be handled, etc.
+(without returning to the event loop, no events will be dispatched). Asyncify
+does this by automatically transforming the compiled code into something that
+can be paused and resumed, and handles pausing and resuming for you.
 
-See the `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_ for general background and details of how it works internally. The following expands on the Emscripten examples from that post.
+See the
+`Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
+for general background and details of how it works internally. The following
+expands on the Emscripten examples from that post.
 
-.. note:: This post talks about Asyncify using the new LLVM wasm backend. There is also an older Asyncify implementation for the old fastcomp backend. The two algorithms and implementations are entirely separate, so if you are using fastcomp, these docs may not be accurate - you should upgrade to the wasm backend and new Asyncify!
+.. note:: This post talks about Asyncify using the new LLVM wasm backend.
+          There is also an older Asyncify implementation for the old fastcomp
+          backend. The two algorithms and implementations are entirely separate,
+          so if you are using fastcomp, these docs may not be accurate - you
+          should upgrade to the wasm backend and new Asyncify!
 
 Sleeping
 ========
@@ -53,7 +65,8 @@ You can compile that with
 
     emcc -O3 example.cpp -s ASYNCIFY
 
-.. note:: It's very important to optimize (``-O3`` here) when using Asyncify, as unoptimized builds are very large.
+.. note:: It's very important to optimize (``-O3`` here) when using Asyncify, as
+          unoptimized builds are very large.
 
 And you can run it with
 
@@ -72,12 +85,18 @@ You should then see something like this:
     sleeping...
     timer happened!
 
-The code is written with an "infinite loop" that sleeps, which normally would not allow async events to be handled by the browser. With Asyncify, those sleeps actually exit to the browser's main event loop, and the timer can happen!
+The code is written with an "infinite loop" that sleeps, which normally would
+not allow async events to be handled by the browser. With Asyncify, those sleeps
+actually exit to the browser's main event loop, and the timer can happen!
 
-Calling async Web APIs as if they were synchronous
-==================================================
+Making async Web APIs behave as if they were synchronous
+========================================================
 
-Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify supports, you can also add your own functions. To do so, you must create a JS function that is called from wasm (since Emscripten controls pausing and resuming the wasm from the JS runtime). One way to do that is with a JS library function; another is to use ``EM_JS``, which we'll use in this next example:
+Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify
+supports, you can also add your own functions. To do so, you must create a JS
+function that is called from wasm (since Emscripten controls pausing and
+resuming the wasm from the JS runtime). One way to do that is with a JS library
+function; another is to use ``EM_JS``, which we'll use in this next example:
 
 ::
 
@@ -100,13 +119,56 @@ Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify suppor
       puts("after");
     }
 
-Here we print "before", then wait for the user to click on the document, and then print "after". Note how the C code in ``main()`` is all synchronous! The async operation happens in the ``EM_JS`` function ``wait_for_click()``, which calls ``Asyncify.handleSleep``. It gives that function the code to be run, and gets a ``wakeUp`` function that it calls in the asynchronous future at the right time. Here we add an event listener for a mouse button being pushed down on the document. After that event arrives asynchronously, calling ``wakeUp()`` lets the program resume normally, exactly as if it were paused while waiting. To see this, compile it with
+Here we print "before", then wait for the user to click on the document, and
+then print "after". Note how the C code in ``main()`` is all synchronous! The
+async operation happens in the ``EM_JS`` function ``wait_for_click()``, which
+calls ``Asyncify.handleSleep``. It gives that function the code to be run, and
+gets a ``wakeUp`` function that it calls in the asynchronous future at the right
+time. Here we add an event listener for a mouse button being pushed down on the
+document. After that event arrives asynchronously, calling ``wakeUp()`` lets the
+program resume normally, exactly as if it were paused while waiting. To see this,
+compile it with
 
 ::
 
     ./emcc example.c -O3 -o a.html -s ASYNCIFY -s 'ASYNCIFY_IMPORTS=["wait_for_click"]'
 
-Note that must tell the compiler that ``wait_for_click()`` can do an asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't instrument the code to allow pausing and resuming. (That list must contain all such imports, so if you also use ``emscripten_sleep()`` then you must put it in that list as well.)
+Note that must tell the compiler that ``wait_for_click()`` can do an
+asynchronous operation, using ``ASYNCIFY_IMPORTS``, otherwise it won't
+instrument the code to allow pausing and resuming. (That list must contain all
+such imports, so if you also use ``emscripten_sleep()`` then you must put it in
+that list as well.)
 
-To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``) and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the port number in the server). You will see "before" printed. After you click on the document (like on the black canvas, or the textbox with "before") you will see it print "after" as expected.
+To run this, you must run a webserver (like say ``python -m SimpleHTTPServer``)
+and then browse to ``http://localhost:8000/a.html`` (the URL may depend on the
+port number in the server). You will see "before" printed. After you click on
+the document (like on the black canvas, or the textbox with "before") you will
+see it print "after" as expected.
+
+More on ``ASYNCIFY_IMPORTS``
+============================
+
+As in the above example, you can add JS functions that do an async operation but
+look synchronous from the perspective of C. The key thing is to add such methods
+to ``ASYNCIFY_IMPORTS``, regardless of whether the JS function is from a JS
+library or ``EM_JS``. That list of imports is the list of imports to the wasm
+module that the Asyncify instrumentation must be aware of. Giving it that list
+tells it that all other JS calls will **not** do an async operation, which lets
+it not add overhead where it isn't needed.
+
+You can also set ``ASYNCIFY_IMPORTS`` to ``[]`` (an empty list). In that case,
+Asyncify will assume that any import may do an async operation. This will result
+in larger and slower code in most cases, but can be useful during debugging or
+development.
+
+Migrating from older APIs
+=========================
+
+If you have code using the Emterpreter-Async API, or the old Asyncify, then the
+new API is somewhat different, and you may need some minor changes:
+
+ * The Emterpreter has "yielding" as a concept, but it isn't needed in Asyncify.
+   You can replace ``emscripten_sleep_with_yield()`` calls with ``emscripten_sleep()``.
+ * The JS API is different. See notes above on ``Asyncify.handleSleep()``, and
+   see ``src/library_async.js`` for more examples.
 
