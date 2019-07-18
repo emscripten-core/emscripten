@@ -17,14 +17,19 @@
 #include "lsan_common.h"
 
 #if CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN
-#include <link.h>
+#include <emscripten.h>
 
 #include "sanitizer_common/sanitizer_common.h"
 #include "sanitizer_common/sanitizer_flags.h"
 #include "sanitizer_common/sanitizer_getauxval.h"
 #include "sanitizer_common/sanitizer_linux.h"
 #include "sanitizer_common/sanitizer_stackdepot.h"
+#include "sanitizer_common/sanitizer_thread_registry.h"
 
+#define LOG_THREADS(...)                           \
+  do {                                             \
+    if (flags()->log_threads) Report(__VA_ARGS__); \
+  } while (0)
 
 namespace __lsan {
 
@@ -76,14 +81,14 @@ void InitializePlatformSpecificModules() {
 }
 
 extern "C" {
-  extern int __data_end;
-  extern int __heap_base;
+  extern char __global_base;
+  extern char __data_end;
 }
 
 // Scans global variables for heap pointers.
 void ProcessGlobalRegions(Frontier *frontier) {
   if (!flags()->use_globals) return;
-  ScanGlobalRange(0, (uptr) &__data_end, frontier);
+  ScanGlobalRange((uptr) &__global_base, (uptr) &__data_end, frontier);
 }
 
 LoadedModule *GetLinker() { return linker; }
@@ -103,10 +108,60 @@ void DoStopTheWorld(StopTheWorldCallback callback, void *argument) {
   StopTheWorld(callback, argument);
 }
 
+u32 GetCurrentThread();
+
+static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
+  if (tctx->status != ThreadStatusRunning)
+    return;
+
+  Frontier *frontier = reinterpret_cast<Frontier *>(arg);
+  tid_t os_id = tctx->os_id;
+
+  uptr stack_begin, stack_end, tls_begin, tls_end, cache_begin, cache_end;
+  DTLS *dtls;
+  bool thread_found = GetThreadRangesLocked(os_id, &stack_begin, &stack_end,
+                                            &tls_begin, &tls_end,
+                                            &cache_begin, &cache_end, &dtls);
+  if (!thread_found) {
+    LOG_THREADS("Thread %d not found in registry.\n", os_id);
+    return;
+  }
+
+  if (flags()->use_stacks) {
+    LOG_THREADS("Stack at %p-%p.\n", stack_begin, stack_end);
+
+    // We can't get the SP for other threads to narrow down the range, but we
+    // we can for the current thread.
+    if (tctx->tid == GetCurrentThread()) {
+      uptr sp = (uptr) __builtin_frame_address(0);
+      CHECK(stack_begin <= sp && sp < stack_end);
+      stack_begin = sp;
+    }
+
+    ScanRangeForPointers(stack_begin, stack_end, frontier, "STACK", kReachable);
+  }
+
+  if (flags()->use_tls && tls_begin) {
+    LOG_THREADS("TLS at %p-%p.\n", tls_begin, tls_end);
+    // If the tls and cache ranges don't overlap, scan full tls range,
+    // otherwise, only scan the non-overlapping portions
+    if (cache_begin == cache_end || tls_end < cache_begin ||
+        tls_begin > cache_end) {
+      ScanRangeForPointers(tls_begin, tls_end, frontier, "TLS", kReachable);
+    } else {
+      if (tls_begin < cache_begin)
+        ScanRangeForPointers(tls_begin, cache_begin, frontier, "TLS",
+                             kReachable);
+      if (tls_end > cache_end)
+        ScanRangeForPointers(cache_end, tls_end, frontier, "TLS", kReachable);
+    }
+  }
+}
+
 void ProcessThreads(SuspendedThreadsList const &suspended_threads,
                     Frontier *frontier) {
-  uptr sp = (uptr) __builtin_frame_address(0);
-  ScanRangeForPointers(sp, (uptr) &__heap_base, frontier, "STACK", kReachable);
+  GetThreadRegistryLocked()->RunCallbackForEachThreadLocked(
+    ProcessThreadsCallback, frontier);
 }
 
 } // namespace __lsan

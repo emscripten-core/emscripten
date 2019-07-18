@@ -1084,6 +1084,7 @@ class libubsan_rt_wasm(SanitizerLibrary):
 
 class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
+  js_depends = ['__global_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
   src_glob = 'lsan_common*.cc'
@@ -1102,7 +1103,6 @@ class liblsan_rt_wasm(SanitizerLibrary):
 class libasan_rt_wasm(SanitizerLibrary):
   name = 'libasan_rt_wasm'
   depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
-  js_depends = ['__global_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 

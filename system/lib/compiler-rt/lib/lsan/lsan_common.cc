@@ -168,10 +168,10 @@ void ScanRangeForPointers(uptr begin, uptr end,
   if (pp % alignment)
     pp = pp + alignment - pp % alignment;
 
-  // TODO: Emscripten doesn't support thread local storage,
-  // so the cache is in the global range.
-  // Remove this when Emscripten has TLS implemented.
-#if SANITIZER_EMSCRIPTEN
+  // Emscripten in non-threaded mode stores thread_local variables in the
+  // same place as normal globals. This means allocator_cache must be skipped
+  // when scanning globals instead of when scanning thread-locals.
+#if SANITIZER_EMSCRIPTEN && !defined(USE_THREADS)
   uptr cache_begin, cache_end;
   GetAllocatorCacheRange(&cache_begin, &cache_end);
 #endif
@@ -195,7 +195,7 @@ void ScanRangeForPointers(uptr begin, uptr end,
       continue;
     }
 
-#if SANITIZER_EMSCRIPTEN
+#if SANITIZER_EMSCRIPTEN && !defined(USE_THREADS)
     if (cache_begin <= pp && pp < cache_end) {
       LOG_POINTERS("%p: skipping because it overlaps the cache %p-%p.\n",
           pp, cache_begin, cache_end);
