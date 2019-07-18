@@ -1790,7 +1790,12 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
-  def test_em_js(self):
+  @parameterized({
+    'normal': ([],),
+    'linked': (['-s', 'MAIN_MODULE=1'],),
+  })
+  def test_em_js(self, args):
+    self.emcc_args += args
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
 
