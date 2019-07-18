@@ -86,7 +86,10 @@ uint16_t emscripten_atomic_xor_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_xor_u32(void/*uint32_t*/ *addr, uint32_t val);
 uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
+// If the given memory address contains value val, puts the calling thread to sleep waiting for that address to be notified.
 int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
+
+// Wakes the given number of threads waiting on a location. Pass count == INT_MAX to wake all waiters on that location.
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
 
 typedef union em_variant_val

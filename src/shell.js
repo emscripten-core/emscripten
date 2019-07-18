@@ -71,7 +71,9 @@ ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 // A web environment like Electron.js can have Node enabled, so we must
 // distinguish between Node-enabled environments and Node environments per se.
 // This will allow the former to do things like mount NODEFS.
-ENVIRONMENT_HAS_NODE = typeof process === 'object' && typeof require === 'function';
+// Extended check using process.versions fixes issue #8816.
+// (Also makes redundant the original check that 'require' is a function.)
+ENVIRONMENT_HAS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
 ENVIRONMENT_IS_NODE = ENVIRONMENT_HAS_NODE && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
 ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif // ENVIRONMENT

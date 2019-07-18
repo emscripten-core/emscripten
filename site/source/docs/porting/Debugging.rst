@@ -102,8 +102,7 @@ A number of other useful debug settings are defined in `src/settings.js <https:/
 Sanitizers
 ==========
 
-Emscripten also supports Clang's undefined behaviour sanitizer. For details, see :ref:`sanitizer_ubsan`.
-
+Emscripten also supports some of Clang's sanitizers, such as :ref:`sanitizer_ubsan` and :ref:`sanitizer_asan`.
 
 .. _debugging-emcc-v:
 

@@ -325,7 +325,8 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
-  xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
+  assert(!fetchAttrStreamData, 'streaming uses moz-chunked-arraybuffer which is no longer supported; TODO: rewrite using fetch()');
+  xhr.responseType = 'arraybuffer';
 
   if (overriddenMimeType) {
 #if FETCH_DEBUG
@@ -584,4 +585,13 @@ function _fetch_get_response_headers(id, dst, dstSizeBytes) {
     var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
     stringToUTF8(responseHeaders, dst, dstSizeBytes);
     return Math.min(lengthBytes, dstSizeBytes);
+}
+
+//Delete the xhr JS object, allowing it to be garbage collected.
+function _fetch_free(id) {
+  //Note: should just be [id], but indexes off by 1 (see: #8803)
+#if FETCH_DEBUG
+  console.log("fetch: Deleting id:" + (id-1) + " of " + Fetch.xhrs);
+#endif
+  delete Fetch.xhrs[id-1];
 }

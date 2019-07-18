@@ -164,6 +164,13 @@ const interpose_substitution substitution_##func_name[] \
 # define INTERCEPTOR_ATTRIBUTE __attribute__((visibility("default")))
 # define REAL(x) __unsanitized_##x
 # define DECLARE_REAL(ret_type, func, ...)
+#elif SANITIZER_EMSCRIPTEN
+// Sanitizer runtimes on Emscripten just define functions directly to override
+// the libc functions. If the real version is really needed, they can be defined
+// with the emscripten_builtin_ prefix.
+# define REAL(x) emscripten_builtin_##x
+# define DECLARE_REAL(ret_type, func, ...) \
+    extern "C" ret_type REAL(func)(__VA_ARGS__);
 #elif SANITIZER_RTEMS
 # define REAL(x) __real_ ## x
 # define DECLARE_REAL(ret_type, func, ...) \
@@ -198,7 +205,8 @@ const interpose_substitution substitution_##func_name[] \
 // macros does its job. In exceptional cases you may need to call REAL(foo)
 // without defining INTERCEPTOR(..., foo, ...). For example, if you override
 // foo with an interceptor for other function.
-#if !SANITIZER_MAC && !SANITIZER_FUCHSIA && !SANITIZER_RTEMS
+#if !SANITIZER_MAC && !SANITIZER_FUCHSIA && !SANITIZER_RTEMS && \
+    !SANITIZER_EMSCRIPTEN
 # define DEFINE_REAL(ret_type, func, ...) \
     typedef ret_type (*FUNC_TYPE(func))(__VA_ARGS__); \
     namespace __interception { \

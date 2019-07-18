@@ -1,4 +1,4 @@
-//=-- lsan_common_linux.cc ------------------------------------------------===//
+//=-- lsan_common_emscripten.cc--------------------------------------------===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -8,7 +8,8 @@
 //===----------------------------------------------------------------------===//
 //
 // This file is a part of LeakSanitizer.
-// Implementation of common leak checking functionality. Linux-specific code.
+// Implementation of common leak checking functionality.
+// Emscripten-specific code.
 //
 //===----------------------------------------------------------------------===//
 
@@ -38,8 +39,9 @@ static bool IsLinker(const LoadedModule& module) {
   return false;
 }
 
-__attribute__((tls_model("initial-exec")))
-THREADLOCAL int disable_counter;
+// TODO: make thread local storage actually work
+/*__attribute__((tls_model("initial-exec")))
+THREADLOCAL*/ int disable_counter;
 bool DisabledInThisThread() { return disable_counter > 0; }
 void DisableInThisThread() { disable_counter++; }
 void EnableInThisThread() {
@@ -103,8 +105,6 @@ void DoStopTheWorld(StopTheWorldCallback callback, void *argument) {
   StopTheWorld(callback, argument);
 }
 
-void InitializeInterceptors() {}
-
 void ProcessThreads(SuspendedThreadsList const &suspended_threads,
                     Frontier *frontier) {
   uptr sp = (uptr) __builtin_frame_address(0);
@@ -113,4 +113,4 @@ void ProcessThreads(SuspendedThreadsList const &suspended_threads,
 
 } // namespace __lsan
 
-#endif // CAN_SANITIZE_LEAKS && SANITIZER_LINUX
+#endif // CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN

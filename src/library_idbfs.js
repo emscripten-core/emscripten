@@ -251,27 +251,26 @@ mergeInto(LibraryManager.library, {
       }
 
       var errored = false;
-      var completed = 0;
       var db = src.type === 'remote' ? src.db : dst.db;
       var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readwrite');
       var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
 
       function done(err) {
-        if (err) {
-          if (!done.errored) {
-            done.errored = true;
-            return callback(err);
-          }
-          return;
-        }
-        if (++completed >= total) {
-          return callback(null);
+        if (err && !errored) {
+          errored = true;
+          return callback(err);
         }
       };
 
       transaction.onerror = function(e) {
         done(this.error);
         e.preventDefault();
+      };
+
+      transaction.oncomplete = function(e) {
+        if (!errored) {
+          callback(null);
+        }
       };
 
       // sort paths in ascending order so directory entries are created

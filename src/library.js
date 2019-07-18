@@ -618,6 +618,19 @@ LibraryManager.library = {
     }
 #endif // WASM_MEM_MAX
 
+#if USE_ASAN
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
+    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
+    // This causes real memory to be corrupted.
+    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (newSize == oldSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
+#endif
+      return false;
+    }
+#endif
+
 #if ASSERTIONS
     var start = Date.now();
 #endif
@@ -636,7 +649,7 @@ LibraryManager.library = {
 #endif
     updateGlobalBufferViews();
 
-#if ASSERTIONS && !WASM
+#if ASSERTIONS && (!WASM || WASM2JS)
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
@@ -4751,6 +4764,16 @@ LibraryManager.library = {
 
   _Unwind_DeleteException: function(ex) {
     err('TODO: Unwind_DeleteException');
+  },
+
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
   },
 
   // autodebugging
