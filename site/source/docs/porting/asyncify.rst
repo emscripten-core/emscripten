@@ -74,8 +74,8 @@ You should then see something like this:
 
 The code is written with an "infinite loop" that sleeps, which normally would not allow async events to be handled by the browser. With Asyncify, those sleeps actually exit to the browser's main event loop, and the timer can happen!
 
-Waiting for Web APIs
-====================
+Calling async Web APIs as if they were synchronous
+==================================================
 
 Aside from ``emscripten_sleep`` and the other standard sync APIs Asyncify supports, you can also add your own functions. To do so, you must create a JS function that is called from wasm (since Emscripten controls pausing and resuming the wasm from the JS runtime). One way to do that is with a JS library function; another is to use ``EM_JS``, which we'll use in this next example:
 
