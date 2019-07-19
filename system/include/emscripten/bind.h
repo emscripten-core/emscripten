@@ -352,6 +352,31 @@ namespace emscripten {
                 );
             }
         };
+
+        template<typename FunctorType, typename ReturnType, typename... Args>
+        struct FunctorInvoker {
+            static typename internal::BindingType<ReturnType>::WireType invoke(
+                FunctorType& function,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                return internal::BindingType<ReturnType>::toWireType(
+                    function(
+                        internal::BindingType<Args>::fromWireType(args)...)
+                );
+            }
+        };
+
+        template<typename FunctorType, typename... Args>
+        struct FunctorInvoker<FunctorType, void, Args...> {
+            static void invoke(
+                FunctorType& function,
+                typename internal::BindingType<Args>::WireType... args
+            ) {
+                function(
+                    internal::BindingType<Args>::fromWireType(args)...);
+            }
+        };
+
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -482,37 +507,6 @@ namespace emscripten {
                 typename internal::BindingType<Args>::WireType... args
             ) {
                 (*function)(
-                    internal::BindingType<ThisType>::fromWireType(wireThis),
-                    internal::BindingType<Args>::fromWireType(args)...);
-            }
-        };
-
-        template<typename FunctorType, typename ReturnType, typename ThisType, typename... Args>
-        struct FunctorInvoker {
-
-            static typename internal::BindingType<ReturnType>::WireType invoke(
-                FunctorType& function,
-                typename internal::BindingType<ThisType>::WireType wireThis,
-                typename internal::BindingType<Args>::WireType... args
-            ) {
-                return internal::BindingType<ReturnType>::toWireType(
-                    function(
-                        internal::BindingType<ThisType>::fromWireType(wireThis),
-                        internal::BindingType<Args>::fromWireType(args)...)
-                );
-            }
-        };
-
-        template<typename FunctorType, typename ThisType, typename... Args>
-        struct FunctorInvoker<FunctorType, void, ThisType, Args...> {
-            using FunctionType = std::function<void (ThisType, Args...)>;
-
-            static void invoke(
-                FunctorType& function,
-                typename internal::BindingType<ThisType>::WireType wireThis,
-                typename internal::BindingType<Args>::WireType... args
-            ) {
-                function(
                     internal::BindingType<ThisType>::fromWireType(wireThis),
                     internal::BindingType<Args>::fromWireType(args)...);
             }
@@ -1143,6 +1137,64 @@ namespace emscripten {
         struct DeduceArgumentsTag {};
 
         ////////////////////////////////////////////////////////////////////////////
+        // RegisterClassConstructor
+        ////////////////////////////////////////////////////////////////////////////
+
+        template <typename T>
+        struct RegisterClassConstructor;
+
+        template<typename ReturnType, typename... Args>
+        struct RegisterClassConstructor<ReturnType (*)(Args...)> {
+
+            template <typename ClassType, typename... Policies>
+            static void invoke(ReturnType (*factory)(Args...)) {
+                typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
+                auto invoke = &Invoker<ReturnType, Args...>::invoke;
+                _embind_register_class_constructor(
+                    TypeID<ClassType>::get(),
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoke),
+                    reinterpret_cast<GenericFunction>(invoke),
+                    reinterpret_cast<GenericFunction>(factory));
+            }
+        };
+
+        template<typename ReturnType, typename... Args>
+        struct RegisterClassConstructor<std::function<ReturnType (Args...)>> {
+
+            template <typename ClassType, typename... Policies>
+            static void invoke(std::function<ReturnType (Args...)> factory) {
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+                auto invoke = &FunctorInvoker<decltype(factory), ReturnType, Args...>::invoke;
+                _embind_register_class_constructor(
+                    TypeID<ClassType>::get(),
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoke),
+                    reinterpret_cast<GenericFunction>(invoke),
+                    reinterpret_cast<GenericFunction>(getContext(factory)));
+            }
+        };
+
+        template<typename ReturnType, typename... Args>
+        struct RegisterClassConstructor<ReturnType (Args...)> {
+
+            template <typename ClassType, typename Callable, typename... Policies>
+            static void invoke(Callable& factory) {
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
+                auto invoke = &FunctorInvoker<decltype(factory), ReturnType, Args...>::invoke;
+                _embind_register_class_constructor(
+                    TypeID<ClassType>::get(),
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoke),
+                    reinterpret_cast<GenericFunction>(invoke),
+                    reinterpret_cast<GenericFunction>(getContext(factory)));
+            }
+        };
+
+        ////////////////////////////////////////////////////////////////////////////
         // RegisterClassMethod
         ////////////////////////////////////////////////////////////////////////////
 
@@ -1328,20 +1380,15 @@ namespace emscripten {
                 policies...);
         }
 
-        template<typename... Args, typename ReturnType, typename... Policies>
-        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const {
-            using namespace internal;
+        template<typename Signature = internal::DeduceArgumentsTag, typename Callable, typename... Policies>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Callable callable, Policies...) const {
 
-            // TODO: allows all raw pointers... policies need a rethink
-            typename WithPolicies<allow_raw_pointers, Policies...>::template ArgTypeList<ReturnType, Args...> args;
-            auto invoke = &Invoker<ReturnType, Args...>::invoke;
-            _embind_register_class_constructor(
-                TypeID<ClassType>::get(),
-                args.getCount(),
-                args.getTypes(),
-                getSignature(invoke),
-                reinterpret_cast<GenericFunction>(invoke),
-                reinterpret_cast<GenericFunction>(factory));
+            using invoker = internal::RegisterClassConstructor<
+                typename std::conditional<std::is_same<Signature, internal::DeduceArgumentsTag>::value,
+                                          Callable,
+                                          Signature>::type>;
+
+            invoker::template invoke<ClassType, Policies...>(callable);
             return *this;
         }
 
