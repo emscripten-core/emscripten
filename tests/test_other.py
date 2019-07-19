@@ -8,7 +8,6 @@
 
 from __future__ import print_function
 from functools import wraps
-import difflib
 import filecmp
 import glob
 import itertools
@@ -215,7 +214,7 @@ class other(RunnerCore):
     run_process([PYTHON, EMCC, '-ofoo.js', 'foo.o'])
     assert os.path.exists('foo.js')
 
-  def test_emcc_1(self):
+  def test_emcc_basics(self):
     for compiler, suffix in [(EMCC, '.c'), (EMXX, '.cpp')]:
       # --version
       output = run_process([PYTHON, compiler, '--version'], stdout=PIPE, stderr=PIPE)
@@ -253,8 +252,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       self.assertNotContained('Traceback', stderr) # no python stack
       self.assertContained('error: invalid preprocessing directive', stderr)
       self.assertContained(["error: use of undeclared identifier 'cheez", "error: unknown type name 'cheez'"], stderr)
-      self.assertContained('errors generated', stderr)
-      self.assertContained('compiler frontend failed to generate LLVM bitcode, halting', stderr.split('errors generated.')[1])
+      self.assertContained('errors generated.', stderr.splitlines()[-2])
 
   def test_emcc_2(self):
     for compiler in [EMCC, EMXX]:
@@ -533,11 +531,8 @@ f.close()
           else:
             assert 'use asm' in src
 
-  @uses_canonical_tmp
   def test_emcc_cflags(self):
-    # see we print them out
-    # --cflags needs to set EMCC_DEBUG=1, which needs to create canonical temp directory.
-    output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE, stderr=PIPE)
+    output = run_process([PYTHON, EMCC, '--cflags'], stdout=PIPE)
     flags = output.stdout.strip()
     self.assertContained(' '.join(Building.doublequote_spaces(shared.COMPILER_OPTS)), flags)
     # check they work
@@ -2258,32 +2253,30 @@ int f() {
             self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-1-linktime.bc'))
             self.assertExists(os.path.join(self.canonical_temp_dir, 'emcc-2-original.js'))
 
-  @uses_canonical_tmp
   def test_debuginfo(self):
-    with env_modify({'EMCC_DEBUG': '1'}):
-      for args, expect_debug in [
-          (['-O0'], False),
-          (['-O0', '-g'], True),
-          (['-O0', '-g4'], True),
-          (['-O1'], False),
-          (['-O1', '-g'], True),
-          (['-O2'], False),
-          (['-O2', '-g'], True),
-        ]:
-        print(args, expect_debug)
-        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
-        lines = err.splitlines()
-        if self.is_wasm_backend():
-          finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
-          if expect_debug:
-            self.assertIn(' -g ', finalize)
-          else:
-            self.assertNotIn(' -g ', finalize)
+    for args, expect_debug in [
+        (['-O0'], False),
+        (['-O0', '-g'], True),
+        (['-O0', '-g4'], True),
+        (['-O1'], False),
+        (['-O1', '-g'], True),
+        (['-O2'], False),
+        (['-O2', '-g'], True),
+      ]:
+      print(args, expect_debug)
+      err = run_process([PYTHON, EMCC, '-v', path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
+      lines = err.splitlines()
+      if self.is_wasm_backend():
+        finalize = [l for l in lines if 'wasm-emscripten-finalize' in l][0]
+        if expect_debug:
+          self.assertIn(' -g ', finalize)
         else:
-          if expect_debug:
-            self.assertNotIn('strip-debug', err)
-          else:
-            self.assertIn('strip-debug', err)
+          self.assertNotIn(' -g ', finalize)
+      else:
+        if expect_debug:
+          self.assertNotIn('strip-debug', err)
+        else:
+          self.assertIn('strip-debug', err)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
@@ -3515,20 +3508,19 @@ int main() {
       run_process([PYTHON, EMCC, path_from_root('tests', 'fs_after_main.cpp')])
       self.assertContained('Test passed.', run_js('a.out.js', engine=NODE_JS))
 
-  @uses_canonical_tmp
+  @no_wasm_backend('tests fastcomp compiler flags')
   def test_os_oz(self):
-    with env_modify({'EMCC_DEBUG': '1'}):
-      for args, expect in [
-          (['-O1'], '-O1'),
-          (['-O2'], '-O3' if not self.is_wasm_backend() else '-O2'),
-          (['-Os'], '-Os'),
-          (['-Oz'], '-Oz'),
-          (['-O3'], '-O3'),
-        ]:
-        print(args, expect)
-        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + args, stdout=PIPE, stderr=PIPE).stderr
-        self.assertContained(expect, err)
-        self.assertContained('hello, world!', run_js('a.out.js'))
+    for arg, expect in [
+        ('-O1', '-O1'),
+        ('-O2', '-O3'),
+        ('-Os', '-Os'),
+        ('-Oz', '-Oz'),
+        ('-O3', '-O3'),
+      ]:
+      print(arg, expect)
+      proc = run_process([PYTHON, EMCC, '-v', path_from_root('tests', 'hello_world.cpp'), arg], stderr=PIPE)
+      self.assertContained(expect, proc.stderr)
+      self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_oz_size(self):
     sizes = {}
@@ -4531,49 +4523,28 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     test()
     test(['--bind'])
 
-  def test_dashE_consistent(self): # issue #3365
-    normal = run_process([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).stderr
-    dash_e = run_process([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).stderr
-
-    diff = [a.rstrip() + '\n' for a in difflib.unified_diff(normal.split('\n'), dash_e.split('\n'), fromfile='normal', tofile='dash_e')]
-    left_std = [x for x in diff if x.startswith('-') and '-std=' in x]
-    right_std = [x for x in diff if x.startswith('+') and '-std=' in x]
-    assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
-    bad = [x for x in diff if '-Wwarn-absolute-paths' in x]
-    assert len(bad) == 0, '\n\n'.join(diff)
-
-  def test_dashE_respect_dashO(self): # issue #3365
+  def test_dashE_respect_dashO(self):
+    # issue #3365
     null_file = 'NUL' if WINDOWS else '/dev/null'
     with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
     if WINDOWS:
-      assert not os.path.isfile(null_file)
+      self.assertNotExists(null_file)
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).stdout
-    assert len(with_dash_o) == 0
-    assert len(without_dash_o) != 0
+    self.assertEqual(len(with_dash_o), 0)
+    self.assertNotEqual(len(without_dash_o), 0)
 
   def test_dashM(self):
     out = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE).stdout
     self.assertContained('hello_world.o:', out) # Verify output is just a dependency rule instead of bitcode or js
 
-  def test_dashM_consistent(self):
-    normal = run_process([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-c'], stdout=PIPE, stderr=PIPE).stderr
-    dash_m = run_process([PYTHON, EMXX, '-v', '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).stderr
-
-    diff = [a.rstrip() + '\n' for a in difflib.unified_diff(normal.split('\n'), dash_m.split('\n'), fromfile='normal', tofile='dash_m')]
-    left_std = [x for x in diff if x.startswith('-') and '-std=' in x]
-    right_std = [x for x in diff if x.startswith('+') and '-std=' in x]
-    assert len(left_std) == len(right_std) == 1, '\n\n'.join(diff)
-    bad = [x for x in diff if '-Wwarn-absolute-paths' in x]
-    assert len(bad) == 0, '\n\n'.join(diff)
-
   def test_dashM_respect_dashO(self):
     null_file = 'NUL' if WINDOWS else '/dev/null'
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', null_file], stdout=PIPE).stdout
     if WINDOWS:
-      assert not os.path.isfile(null_file)
-    without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE, stderr=PIPE).stdout
-    assert len(with_dash_o) == 0
-    assert len(without_dash_o) != 0
+      self.assertNotExists(null_file)
+    without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE).stdout
+    self.assertEqual(len(with_dash_o), 0)
+    self.assertNotEqual(len(without_dash_o), 0)
 
   def test_malloc_implicit(self):
     self.do_other_test(os.path.join('other', 'malloc_implicit'))
@@ -5935,7 +5906,6 @@ int main(void) {
               self.assertExists('a.out.js')
 
   @no_wasm_backend('tests fastcomp specific passes')
-  @uses_canonical_tmp
   def test_emcc_c_multi(self):
     def test(args, llvm_opts=None):
       print(args)
@@ -5956,8 +5926,7 @@ int main(void) {
       main_name = 'main.c'
       create_test_file(main_name, main)
 
-      with env_modify({'EMCC_DEBUG': '1'}):
-        err = run_process([PYTHON, EMCC, '-c', main_name, lib_name] + args, stderr=PIPE).stderr
+      err = run_process([PYTHON, EMCC, '-v', '-c', main_name, lib_name] + args, stderr=PIPE).stderr
 
       VECTORIZE = '-disable-loop-vectorization'
 
@@ -7730,20 +7699,18 @@ int main() {
           assert opts_str in asm2wasm_line, 'expected opts: ' + asm2wasm_line
 
   @no_wasm_backend('fastcomp specific')
-  @uses_canonical_tmp
   def test_binaryen_and_precise_f32(self):
-    with env_modify({'EMCC_DEBUG': '1'}):
-      for args, expect in [
-          ([], True),
-          (['-s', 'PRECISE_F32=0'], True), # disabled, but no asm.js, so we definitely want f32
-          (['-s', 'PRECISE_F32=1'], True),
-          (['-s', 'PRECISE_F32=2'], True),
-        ]:
-        print(args, expect)
-        try_delete('a.out.js')
-        err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1'] + args, stdout=PIPE, stderr=PIPE).stderr
-        assert expect == (' -emscripten-precise-f32' in err), err
-        self.assertContained('hello, world!', run_js('a.out.js'))
+    for args, expect in [
+        ([], True),
+        (['-s', 'PRECISE_F32=0'], True), # disabled, but no asm.js, so we definitely want f32
+        (['-s', 'PRECISE_F32=1'], True),
+        (['-s', 'PRECISE_F32=2'], True),
+      ]:
+      print(args, expect)
+      try_delete('a.out.js')
+      err = run_process([PYTHON, EMCC, '-v', path_from_root('tests', 'hello_world.cpp'), '-s', 'BINARYEN=1'] + args, stderr=PIPE).stderr
+      assert expect == (' -emscripten-precise-f32' in err), err
+      self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_binaryen_names(self):
     sizes = {}
@@ -9503,7 +9470,7 @@ int main () {
     returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    self.assertIn(b"shared:ERROR: \x1b[31mcompiler frontend failed to generate LLVM bitcode, halting\x1b[0m\r\n", output)
+    self.assertIn(b"shared:ERROR: \x1b[31m", output)
 
   @parameterized({
     'fno_diagnostics_color': ['-fno-diagnostics-color'],
