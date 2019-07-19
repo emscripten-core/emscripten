@@ -729,39 +729,79 @@ var LibraryEmbind = {
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer'],
   _embind_register_std_wstring: function(rawType, charSize, name) {
-    // nb. do not cache HEAPU16 and HEAPU32, they may be destroyed by emscripten_resize_heap().
     name = readLatin1String(name);
-    var getHeap, shift;
+    var decodeString, encodeString, getHeap, lengthBytesUTF, shift;
     if (charSize === 2) {
+        decodeString = UTF16ToString;
+        encodeString = stringToUTF16;
+        lengthBytesUTF = lengthBytesUTF16;
         getHeap = function() { return HEAPU16; };
         shift = 1;
     } else if (charSize === 4) {
+        decodeString = UTF32ToString;
+        encodeString = stringToUTF32;
+        lengthBytesUTF = lengthBytesUTF32
         getHeap = function() { return HEAPU32; };
         shift = 2;
     }
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
-            var HEAP = getHeap();
             var length = HEAPU32[value >> 2];
-            var a = new Array(length);
-            var start = (value + 4) >> shift;
-            for (var i = 0; i < length; ++i) {
-                a[i] = String.fromCharCode(HEAP[start + i]);
+            var HEAP = getHeap();
+            var str;
+            //ensure null termination at one-past-end byte if not present yet
+            var endChar = HEAP[(value + 4 + length * charSize) >> shift];
+            var endCharSwap = 0;
+            if(endChar != 0)
+            {
+                endCharSwap = endChar;
+                HEAP[(value + 4 + length * charSize) >> shift] = 0;
             }
+
+            var decodeStartPtr = value + 4;
+            //looping here to support possible embedded '0' bytes
+            for (var i = 0; i <= length; ++i) {
+                var currentBytePtr = value + 4 + i * charSize;
+                if(HEAP[currentBytePtr >> shift] == 0)
+                {
+                    var stringSegment = decodeString(decodeStartPtr);
+                    if(str === undefined)
+                        str = stringSegment;
+                    else
+                    {
+                        str += String.fromCharCode(0);
+                        str += stringSegment;
+                    }
+                    decodeStartPtr = currentBytePtr + charSize;
+                }
+            }
+
+            if(endCharSwap != 0)
+                HEAP[(value + 4 + length * charSize) >> shift] = endCharSwap;
+
             _free(value);
-            return a.join('');
+
+            return str;
         },
         'toWireType': function(destructors, value) {
-            // assumes 4-byte alignment
-            var length = value.length;
-            var ptr = _malloc(4 + length * charSize);
-            var HEAP = getHeap();
-            HEAPU32[ptr >> 2] = length;
-            var start = (ptr + 4) >> shift;
-            for (var i = 0; i < length; ++i) {
-                HEAP[start + i] = value.charCodeAt(i);
+            if (value instanceof ArrayBuffer) {
+                value = new Uint8Array(value);
             }
+
+            var valueIsOfTypeString = (typeof value === 'string');
+
+            if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+                throwBindingError('Cannot pass non-string to std::basic_string');
+            }
+
+            // assumes 4-byte alignment
+            var length = lengthBytesUTF(value);
+            var ptr = _malloc(4 + length + charSize);
+            HEAPU32[ptr >> 2] = length >> shift;
+
+            encodeString(value, ptr + 4, length + charSize);
+
             if (destructors !== null) {
                 destructors.push(_free, ptr);
             }
