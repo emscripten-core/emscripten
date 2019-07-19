@@ -25,7 +25,7 @@ EM_JS(void, initPthreadsJS, (void), {
 })
 
 EMSCRIPTEN_KEEPALIVE
-__attribute__((constructor(100))) // This must run before any userland ctors
+__attribute__((constructor(99))) // This must run before any userland ctors
 void __emscripten_pthread_data_constructor(void) {
   initPthreadsJS();
   pthread_self()->locale = &libc.global_locale;

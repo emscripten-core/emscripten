@@ -974,12 +974,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [a for a in newargs if a is not '']
 
-    # -c means do not link in gcc, and for us, the parallel is to not go all the way to JS, but stop at bitcode
     has_dash_c = '-c' in newargs
-    if has_dash_c:
-      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c'
-      target = target_basename + '.o'
-      final_suffix = '.o'
+    has_dash_S = '-S' in newargs
+    if has_dash_c or has_dash_S:
+      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c or -S'
+      if has_dash_c:
+        if '-emit-llvm' in newargs:
+          final_suffix = '.bc'
+        else:
+          final_suffix = '.o'
+      elif has_dash_S:
+        if '-emit-llvm' in newargs:
+          final_suffix = '.ll'
+        else:
+          final_suffix = '.s'
+      target = target_basename + final_suffix
+
     if '-E' in newargs:
       final_suffix = '.eout' # not bitcode, not js; but just result from preprocessing stage of the input file
     if '-M' in newargs or '-MM' in newargs:
@@ -1787,7 +1797,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
         if run_process(args, check=False).returncode != 0:
           exit_with_error('compiler frontend failed to generate LLVM bitcode, halting')
-        assert(os.path.exists(output_file))
+        if output_file != '-':
+          assert(os.path.exists(output_file))
 
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
@@ -1839,9 +1850,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Decide what we will link
       executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
-      stop_at_bitcode = final_suffix not in executable_endings
+      compile_only = final_suffix not in executable_endings or has_dash_c or has_dash_S
 
-      if stop_at_bitcode or not shared.Settings.WASM_BACKEND:
+      if compile_only or not shared.Settings.WASM_BACKEND:
         # Filter link flags, keeping only those that shared.Building.link knows
         # how to deal with.  We currently can't handle flags with options (like
         # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
@@ -1855,8 +1866,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
-      # If we were just asked to generate bitcode, stop there
-      if stop_at_bitcode:
+      # If we were just compiling stop here
+      if compile_only:
         if not specified_target:
           assert len(temp_files) == len(input_files)
           for tempf, inputf in zip(temp_files, input_files):
@@ -1885,7 +1896,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
             shared.Building.link_to_object(linker_inputs, specified_target)
-        logger.debug('stopping at object file')
+        logger.debug('stopping after compile phase')
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
         if final_suffix.lower() in ('.so', '.dylib', '.dll'):

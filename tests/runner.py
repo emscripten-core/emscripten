@@ -289,6 +289,8 @@ non_core_test_modes = [
   'sockets',
   'interactive',
   'benchmark',
+  'asan',
+  'lsan',
 ]
 
 test_index = 0
