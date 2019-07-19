@@ -694,8 +694,15 @@ class libcxxabi(CXXLibrary, MTLibrary):
   name = 'libc++abi'
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi.symbols'))
   depends = ['libc']
-
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+
+  def get_cflags(self):
+    cflags = super(libcxxabi, self).get_cflags()
+    cflags.append('-DNDEBUG')
+    if not self.is_mt:
+      cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+    return cflags
+
   includes = ['system', 'lib', 'libcxxabi', 'include']
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
   src_files = [
@@ -705,11 +712,12 @@ class libcxxabi(CXXLibrary, MTLibrary):
     'cxa_demangle.cpp',
     'cxa_exception_storage.cpp',
     'cxa_guard.cpp',
-    'cxa_new_delete.cpp',
     'cxa_handlers.cpp',
-    'exception.cpp',
-    'stdexcept.cpp',
-    'typeinfo.cpp',
+    'fallback_malloc.cpp',
+    'stdlib_new_delete.cpp',
+    'stdlib_exception.cpp',
+    'stdlib_stdexcept.cpp',
+    'stdlib_typeinfo.cpp',
     'private_typeinfo.cpp'
   ]
 
@@ -756,9 +764,9 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
     'variant.cpp',
     'vector.cpp',
     os.path.join('experimental', 'memory_resource.cpp'),
-    os.path.join('experimental', 'filesystem', 'directory_iterator.cpp'),
-    os.path.join('experimental', 'filesystem', 'path.cpp'),
-    os.path.join('experimental', 'filesystem', 'operations.cpp')
+    os.path.join('filesystem', 'directory_iterator.cpp'),
+    os.path.join('filesystem', 'int128_builtins.cpp'),
+    os.path.join('filesystem', 'operations.cpp')
   ]
 
 

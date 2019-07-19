@@ -14,6 +14,8 @@
 /*
     utility synopsis
 
+#include <initializer_list>
+
 namespace std
 {
 
@@ -52,7 +54,7 @@ template <class T>
     >::type
     move_if_noexcept(T& x) noexcept; // constexpr in C++14
 
-template <class T> constexpr add_const<T>_t& as_const(T& t) noexcept;      // C++17
+template <class T> constexpr add_const_t<T>& as_const(T& t) noexcept;      // C++17
 template <class T>                      void as_const(const T&&) = delete; // C++17
 
 template <class T> typename add_rvalue_reference<T>::type declval() noexcept;
@@ -101,7 +103,7 @@ swap(pair<T1, T2>& x, pair<T1, T2>& y) noexcept(noexcept(x.swap(y)));
 struct piecewise_construct_t { };
 inline constexpr piecewise_construct_t piecewise_construct = piecewise_construct_t();
 
-template <class T> class tuple_size;
+template <class T> struct tuple_size;
 template <size_t I, class T> class tuple_element;
 
 template <class T1, class T2> struct tuple_size<pair<T1, T2> >;
@@ -201,6 +203,7 @@ template <size_t I>
 #include <cstddef>
 #include <cstring>
 #include <cstdint>
+#include <version>
 #include <__debug>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
@@ -293,13 +296,14 @@ template <class _Tp>                        void as_const(const _Tp&&) = delete;
 #endif
 
 struct _LIBCPP_TEMPLATE_VIS piecewise_construct_t { };
-#if defined(_LIBCPP_CXX03_LANG) || defined(_LIBCPP_BUILDING_UTILITY)
-extern const piecewise_construct_t piecewise_construct;// = piecewise_construct_t();
+#if defined(_LIBCPP_CXX03_LANG) || defined(_LIBCPP_BUILDING_LIBRARY)
+extern _LIBCPP_EXPORTED_FROM_ABI const piecewise_construct_t piecewise_construct;// = piecewise_construct_t();
 #else
 /* _LIBCPP_INLINE_VAR */ constexpr piecewise_construct_t piecewise_construct = piecewise_construct_t();
 #endif
 
 #if defined(_LIBCPP_DEPRECATED_ABI_DISABLE_PAIR_TRIVIAL_COPY_CTOR)
+template <class, class>
 struct __non_trivially_copyable_base {
   _LIBCPP_CONSTEXPR _LIBCPP_INLINE_VISIBILITY
   __non_trivially_copyable_base() _NOEXCEPT {}
@@ -311,7 +315,7 @@ struct __non_trivially_copyable_base {
 template <class _T1, class _T2>
 struct _LIBCPP_TEMPLATE_VIS pair
 #if defined(_LIBCPP_DEPRECATED_ABI_DISABLE_PAIR_TRIVIAL_COPY_CTOR)
-: private __non_trivially_copyable_base
+: private __non_trivially_copyable_base<_T1, _T2>
 #endif
 {
     typedef _T1 first_type;
@@ -406,13 +410,17 @@ struct _LIBCPP_TEMPLATE_VIS pair
             _CheckArgsDep<_Dummy>::template __enable_default<_T1, _T2>()
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR
-    pair() : first(), second() {}
+    pair() _NOEXCEPT_(is_nothrow_default_constructible<first_type>::value &&
+                      is_nothrow_default_constructible<second_type>::value)
+        : first(), second() {}
 
     template <bool _Dummy = true, _EnableB<
              _CheckArgsDep<_Dummy>::template __enable_explicit<_T1 const&, _T2 const&>()
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     explicit pair(_T1 const& __t1, _T2 const& __t2)
+        _NOEXCEPT_(is_nothrow_copy_constructible<first_type>::value &&
+                   is_nothrow_copy_constructible<second_type>::value)
         : first(__t1), second(__t2) {}
 
     template<bool _Dummy = true, _EnableB<
@@ -420,6 +428,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     pair(_T1 const& __t1, _T2 const& __t2)
+        _NOEXCEPT_(is_nothrow_copy_constructible<first_type>::value &&
+                   is_nothrow_copy_constructible<second_type>::value)
         : first(__t1), second(__t2) {}
 
     template<class _U1, class _U2, _EnableB<
@@ -427,6 +437,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     explicit pair(_U1&& __u1, _U2&& __u2)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _U1>::value &&
+                    is_nothrow_constructible<second_type, _U2>::value))
         : first(_VSTD::forward<_U1>(__u1)), second(_VSTD::forward<_U2>(__u2)) {}
 
     template<class _U1, class _U2, _EnableB<
@@ -434,6 +446,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     pair(_U1&& __u1, _U2&& __u2)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _U1>::value &&
+                    is_nothrow_constructible<second_type, _U2>::value))
         : first(_VSTD::forward<_U1>(__u1)), second(_VSTD::forward<_U2>(__u2)) {}
 
     template<class _U1, class _U2, _EnableB<
@@ -441,6 +455,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     explicit pair(pair<_U1, _U2> const& __p)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _U1 const&>::value &&
+                    is_nothrow_constructible<second_type, _U2 const&>::value))
         : first(__p.first), second(__p.second) {}
 
     template<class _U1, class _U2, _EnableB<
@@ -448,6 +464,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     pair(pair<_U1, _U2> const& __p)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _U1 const&>::value &&
+                    is_nothrow_constructible<second_type, _U2 const&>::value))
         : first(__p.first), second(__p.second) {}
 
     template<class _U1, class _U2, _EnableB<
@@ -455,6 +473,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     explicit pair(pair<_U1, _U2>&&__p)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _U1&&>::value &&
+                    is_nothrow_constructible<second_type, _U2&&>::value))
         : first(_VSTD::forward<_U1>(__p.first)), second(_VSTD::forward<_U2>(__p.second)) {}
 
     template<class _U1, class _U2, _EnableB<
@@ -462,6 +482,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     > = false>
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
     pair(pair<_U1, _U2>&& __p)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _U1&&>::value &&
+                    is_nothrow_constructible<second_type, _U2&&>::value))
         : first(_VSTD::forward<_U1>(__p.first)), second(_VSTD::forward<_U2>(__p.second)) {}
 
     template<class _Tuple, _EnableB<
@@ -484,6 +506,8 @@ struct _LIBCPP_TEMPLATE_VIS pair
     _LIBCPP_INLINE_VISIBILITY
     pair(piecewise_construct_t __pc,
          tuple<_Args1...> __first_args, tuple<_Args2...> __second_args)
+        _NOEXCEPT_((is_nothrow_constructible<first_type, _Args1...>::value &&
+                    is_nothrow_constructible<second_type, _Args2...>::value))
         : pair(__pc, __first_args, __second_args,
                 typename __make_tuple_indices<sizeof...(_Args1)>::type(),
                 typename __make_tuple_indices<sizeof...(_Args2) >::type()) {}
@@ -613,32 +637,37 @@ swap(pair<_T1, _T2>& __x, pair<_T1, _T2>& __y)
     __x.swap(__y);
 }
 
+template <class _Tp>
+struct __unwrap_reference { typedef _Tp type; };
+
+template <class _Tp>
+struct __unwrap_reference<reference_wrapper<_Tp> > { typedef _Tp& type; };
+
+#if _LIBCPP_STD_VER > 17
+template <class _Tp>
+struct unwrap_reference : __unwrap_reference<_Tp> { };
+
+template <class _Tp>
+struct unwrap_ref_decay : unwrap_reference<typename decay<_Tp>::type> { };
+#endif // > C++17
+
+template <class _Tp>
+struct __unwrap_ref_decay
+#if _LIBCPP_STD_VER > 17
+    : unwrap_ref_decay<_Tp>
+#else
+    : __unwrap_reference<typename decay<_Tp>::type>
+#endif
+{ };
+
 #ifndef _LIBCPP_CXX03_LANG
-
-template <class _Tp>
-struct __make_pair_return_impl
-{
-    typedef _Tp type;
-};
-
-template <class _Tp>
-struct __make_pair_return_impl<reference_wrapper<_Tp>>
-{
-    typedef _Tp& type;
-};
-
-template <class _Tp>
-struct __make_pair_return
-{
-    typedef typename __make_pair_return_impl<typename decay<_Tp>::type>::type type;
-};
 
 template <class _T1, class _T2>
 inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX11
-pair<typename __make_pair_return<_T1>::type, typename __make_pair_return<_T2>::type>
+pair<typename __unwrap_ref_decay<_T1>::type, typename __unwrap_ref_decay<_T2>::type>
 make_pair(_T1&& __t1, _T2&& __t2)
 {
-    return pair<typename __make_pair_return<_T1>::type, typename __make_pair_return<_T2>::type>
+    return pair<typename __unwrap_ref_decay<_T1>::type, typename __unwrap_ref_decay<_T2>::type>
                (_VSTD::forward<_T1>(__t1), _VSTD::forward<_T2>(__t2));
 }
 
@@ -655,7 +684,7 @@ make_pair(_T1 __x, _T2 __y)
 #endif  // _LIBCPP_CXX03_LANG
 
 template <class _T1, class _T2>
-  class _LIBCPP_TEMPLATE_VIS tuple_size<pair<_T1, _T2> >
+  struct _LIBCPP_TEMPLATE_VIS tuple_size<pair<_T1, _T2> >
     : public integral_constant<size_t, 2> {};
 
 template <size_t _Ip, class _T1, class _T2>
@@ -890,7 +919,7 @@ template<class... _Tp>
 
 #if _LIBCPP_STD_VER > 11
 template<class _T1, class _T2 = _T1>
-inline _LIBCPP_INLINE_VISIBILITY
+inline _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR_AFTER_CXX17
 _T1 exchange(_T1& __obj, _T2 && __new_value)
 {
     _T1 __old_value = _VSTD::move(__obj);
@@ -986,8 +1015,10 @@ __murmur2_or_cityhash<_Size, 32>::operator()(const void* __key, _Size __len)
     {
     case 3:
         __h ^= __data[2] << 16;
+        _LIBCPP_FALLTHROUGH();
     case 2:
         __h ^= __data[1] << 8;
+        _LIBCPP_FALLTHROUGH();
     case 1:
         __h ^= __data[0];
         __h *= __m;
@@ -1451,7 +1482,7 @@ struct _LIBCPP_TEMPLATE_VIS hash<float>
     size_t operator()(float __v) const _NOEXCEPT
     {
         // -0.0 and 0.0 should return same hash
-       if (__v == 0)
+       if (__v == 0.0)
            return 0;
         return __scalar_hash<float>::operator()(__v);
     }
@@ -1465,7 +1496,7 @@ struct _LIBCPP_TEMPLATE_VIS hash<double>
     size_t operator()(double __v) const _NOEXCEPT
     {
         // -0.0 and 0.0 should return same hash
-       if (__v == 0)
+       if (__v == 0.0)
            return 0;
         return __scalar_hash<double>::operator()(__v);
     }
@@ -1479,7 +1510,7 @@ struct _LIBCPP_TEMPLATE_VIS hash<long double>
     size_t operator()(long double __v) const _NOEXCEPT
     {
         // -0.0 and 0.0 should return same hash
-        if (__v == 0)
+        if (__v == 0.0)
             return 0;
 #if defined(__i386__)
         // Zero out padding bits
