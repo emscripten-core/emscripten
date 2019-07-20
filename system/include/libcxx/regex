@@ -192,6 +192,11 @@ public:
     void swap(basic_regex&);
 };
 
+template<class ForwardIterator>
+basic_regex(ForwardIterator, ForwardIterator,
+            regex_constants::syntax_option_type = regex_constants::ECMAScript)
+    -> basic_regex<typename iterator_traits<ForwardIterator>::value_type>; // C++17
+
 typedef basic_regex<char>    regex;
 typedef basic_regex<wchar_t> wregex;
 
@@ -764,6 +769,7 @@ typedef regex_token_iterator<wstring::const_iterator> wsregex_token_iterator;
 #include <memory>
 #include <vector>
 #include <deque>
+#include <version>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -963,7 +969,7 @@ public:
 };
 
 template <regex_constants::error_type _Ev>
-_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+_LIBCPP_NORETURN inline _LIBCPP_INLINE_VISIBILITY
 void __throw_regex_error()
 {
 #ifndef _LIBCPP_NO_EXCEPTIONS
@@ -984,6 +990,10 @@ public:
 
 #if defined(__mips__) && defined(__GLIBC__)
     static const char_class_type __regex_word = static_cast<char_class_type>(_ISbit(15));
+#elif defined(__NetBSD__)
+    // NetBSD defines classes up to 0x2000
+    // see sys/ctype_bits.h, _CTYPE_Q
+    static const char_class_type __regex_word = 0x8000;
 #else
     static const char_class_type __regex_word = 0x80;
 #endif
@@ -1346,9 +1356,9 @@ public:
     virtual ~__node() {}
 
     _LIBCPP_INLINE_VISIBILITY
-    virtual void __exec(__state&) const {};
+    virtual void __exec(__state&) const {}
     _LIBCPP_INLINE_VISIBILITY
-    virtual void __exec_split(bool, __state&) const {};
+    virtual void __exec_split(bool, __state&) const {}
 };
 
 // __end_state
@@ -2409,20 +2419,17 @@ __bracket_expression<_CharT, _Traits>::__exec(__state& __s) const
                 goto __exit;
             }
         }
-        // set of "__found" chars =
+        // When there's at least one of __neg_chars_ and __neg_mask_, the set
+        // of "__found" chars is
         //   union(complement(union(__neg_chars_, __neg_mask_)),
         //         other cases...)
         //
-        // __neg_chars_ and __neg_mask_'d better be handled together, as there
-        // are no short circuit opportunities.
-        //
-        // In addition, when __neg_mask_/__neg_chars_ is empty, they should be
-        // treated as all ones/all chars.
+        // It doesn't make sense to check this when there are no __neg_chars_
+        // and no __neg_mask_.
+        if (!(__neg_mask_ == 0 && __neg_chars_.empty()))
         {
-          const bool __in_neg_mask = (__neg_mask_ == 0) ||
-              __traits_.isctype(__ch, __neg_mask_);
+            const bool __in_neg_mask = __traits_.isctype(__ch, __neg_mask_);
           const bool __in_neg_chars =
-              __neg_chars_.empty() ||
               std::find(__neg_chars_.begin(), __neg_chars_.end(), __ch) !=
               __neg_chars_.end();
           if (!(__in_neg_mask || __in_neg_chars))
@@ -2921,6 +2928,15 @@ private:
 
     template <class, class> friend class __lookahead;
 };
+
+#ifndef _LIBCPP_HAS_NO_DEDUCTION_GUIDES
+template <class _ForwardIterator,
+          class = typename enable_if<__is_forward_iterator<_ForwardIterator>::value, nullptr_t>::type
+>
+basic_regex(_ForwardIterator, _ForwardIterator,
+            regex_constants::syntax_option_type = regex_constants::ECMAScript)
+    -> basic_regex<typename iterator_traits<_ForwardIterator>::value_type>;
+#endif
 
 template <class _CharT, class _Traits>
     const regex_constants::syntax_option_type basic_regex<_CharT, _Traits>::icase;
@@ -4013,7 +4029,7 @@ basic_regex<_CharT, _Traits>::__parse_character_class(_ForwardIterator __first,
     char_class_type __class_type =
         __traits_.lookup_classname(__first, __temp, __flags_ & icase);
     if (__class_type == 0)
-        __throw_regex_error<regex_constants::error_brack>();
+        __throw_regex_error<regex_constants::error_ctype>();
     __ml->__add_class(__class_type);
     __first = _VSTD::next(__temp, 2);
     return __first;
