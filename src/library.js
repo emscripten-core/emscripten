@@ -898,7 +898,7 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = Module['thisProgram'];
+      ENV['_'] = thisProgram;
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -1981,7 +1981,7 @@ LibraryManager.library = {
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
+    var fname = stringToNewUTF8(thisProgram || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};

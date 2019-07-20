@@ -1599,3 +1599,14 @@ function modifyFunction(text, func) {
   assert(bodyEnd > 0);
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
 }
+
+// Make code to receive a value on the incoming Module object.
+function makeModuleReceive(localName, moduleName) {
+  if (!INCOMING_MODULE_JS_API[moduleName]) {
+    return '';
+  }
+  // Usually the local we use is the same as the Module property name,
+  // but sometimes they must differ.
+  if (!moduleName) moduleName = localName;
+  return "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
+}

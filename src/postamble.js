@@ -173,7 +173,7 @@ Module['callMain'] = function callMain(args) {
 
   var argc = args.length+1;
   var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
-  HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
+  HEAP32[argv >> 2] = allocateUTF8OnStack(thisProgram);
   for (var i = 1; i < argc; i++) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
@@ -230,7 +230,7 @@ Module['callMain'] = function callMain(args) {
         toLog = [e, e.stack];
       }
       err('exception thrown: ' + toLog);
-      Module['quit'](1, e);
+      quit_(1, e);
     }
   } finally {
     calledMain = true;
@@ -242,7 +242,7 @@ Module['callMain'] = function callMain(args) {
 
 /** @type {function(Array=)} */
 function run(args) {
-  args = args || Module['arguments'];
+  args = args || arguments_;
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
@@ -392,7 +392,7 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  Module['quit'](status, new ExitStatus(status));
+  quit_(status, new ExitStatus(status));
 }
 
 var abortDecorators = [];
