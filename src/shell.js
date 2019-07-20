@@ -105,7 +105,7 @@ function locateFile(path) {
 }
 
 // Hooks that are implemented differently in different runtime environments.
-var read,
+var read_,
     readAsync,
     readBinary,
     setWindowTitle;
@@ -124,7 +124,7 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS;
   var nodePath;
 
-  read = function shell_read(filename, binary) {
+  read_ = function shell_read(filename, binary) {
     var ret;
 #if SUPPORT_BASE64_EMBEDDING
     ret = tryParseAsDataURI(filename);
@@ -141,7 +141,7 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   readBinary = function readBinary(filename) {
-    var ret = read(filename, true);
+    var ret = read_(filename, true);
     if (!ret.buffer) {
       ret = new Uint8Array(ret);
     }
@@ -192,7 +192,7 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    read = function shell_read(f) {
+    read_ = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(f);
       if (data) {
@@ -262,7 +262,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif
 #endif
 
-  read = function shell_read(url) {
+  read_ = function shell_read(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
 #endif

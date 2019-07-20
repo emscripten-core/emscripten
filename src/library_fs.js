@@ -1668,12 +1668,12 @@ mergeInto(LibraryManager.library, {
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (read) {
+      } else if (read_) {
         // Command-line.
         try {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(read(obj.url), true);
+          obj.contents = intArrayFromString(read_(obj.url), true);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
           success = false;
