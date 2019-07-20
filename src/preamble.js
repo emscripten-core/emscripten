@@ -490,13 +490,16 @@ function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  // compatibility - merge in anything from Module['preRun'] at this time
+
+#if expectToReceiveOnModule('preRun')
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     while (Module['preRun'].length) {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+#endif
+
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -544,13 +547,16 @@ function postRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  // compatibility - merge in anything from Module['postRun'] at this time
+
+#if expectToReceiveOnModule('postRun')
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
     while (Module['postRun'].length) {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+#endif
+
   callRuntimeCallbacks(__ATPOSTRUN__);
 }
 

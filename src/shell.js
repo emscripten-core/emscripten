@@ -361,11 +361,6 @@ moduleOverrides = null;
 {{{ makeModuleReceive('thisProgram') }}}
 {{{ makeModuleReceive('quit_', 'quit') }}}
 
-var preRun = [];
-{{{ makeModuleReceive('preRun') }}}
-var postRun = [];
-{{{ makeModuleReceive('postRun') }}}
-
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS
 // Assertions on removed incoming Module JS APIs.

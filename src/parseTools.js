@@ -1600,9 +1600,13 @@ function modifyFunction(text, func) {
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
 }
 
+function expectToReceiveOnModule(name) {
+  return INCOMING_MODULE_JS_API[name];
+}
+
 // Make code to receive a value on the incoming Module object.
 function makeModuleReceive(localName, moduleName) {
-  if (!INCOMING_MODULE_JS_API[moduleName]) {
+  if (!expectToReceiveOnModule(moduleName)) {
     return '';
   }
   // Usually the local we use is the same as the Module property name,
