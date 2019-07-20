@@ -72,7 +72,7 @@ this.alert = threadAlert;
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  const instance = new WebAssembly.Instance(wasmModule, info);
+  var instance = new WebAssembly.Instance(wasmModule, info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
   wasmModule = null;
   receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
