@@ -370,14 +370,14 @@ assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle o
 Object.defineProperty(Module, 'read', { get: function() { abort('Module.read has been replaced with plain read') } });
 Object.defineProperty(Module, 'readAsync', { get: function() { abort('Module.readAsync has been replaced with plain readAsync') } });
 Object.defineProperty(Module, 'readBinary', { get: function() { abort('Module.readBinary has been replaced with plain readBinary') } });
-Object.defineProperty(Module, 'setWindowTitle', { get: function() { abort('Module.setWindowTitle has been replaced with plain setWindowTitle') } });
+// TODO enable when SDL2 is fixed Object.defineProperty(Module, 'setWindowTitle', { get: function() { abort('Module.setWindowTitle has been replaced with plain setWindowTitle') } });
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
 
-// TODO remove when SDL2 is fixed
+// TODO remove when SDL2 is fixed; also add the above assertion
 #if USE_SDL == 2
 Module['setWindowTitle'] = setWindowTitle;
 #endif
