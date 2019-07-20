@@ -96,7 +96,7 @@ if (!isDataURI(wasmBinaryFile)) {
 
 function getSourceMap() {
   try {
-    return JSON.parse(Module['read'](wasmSourceMapFile));
+    return JSON.parse(read(wasmSourceMapFile));
   } catch (err) {
     abort(err);
   }

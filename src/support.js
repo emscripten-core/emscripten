@@ -188,14 +188,14 @@ function loadDynamicLibrary(lib, flags) {
       return fetchBinary(lib);
     }
     // load the binary synchronously
-    return Module['readBinary'](lib);
+    return readBinary(lib);
 #else
     // for js we only imitate async for both native & fs modes.
     var libData;
     if (flags.fs) {
       libData = flags.fs.readFile(lib, {encoding: 'utf8'});
     } else {
-      libData = Module['read'](lib);
+      libData = read(lib);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif

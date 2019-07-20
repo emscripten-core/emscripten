@@ -106,6 +106,19 @@ function locateFile(path) {
   }
 }
 
+// Hooks that are implemented differently in different runtime environments.
+var read,
+    readAsync,
+    readBinary,
+    setWindowTitle;
+
+#if ASSERTIONS
+Object.defineProperty(Module, 'read', { get: function() { abort('Module.read has been replaced with plain read') } });
+Object.defineProperty(Module, 'readAsync', { get: function() { abort('Module.readAsync has been replaced with plain readAsync') } });
+Object.defineProperty(Module, 'readBinary', { get: function() { abort('Module.readBinary has been replaced with plain readBinary') } });
+Object.defineProperty(Module, 'setWindowTitle', { get: function() { abort('Module.setWindowTitle has been replaced with plain setWindowTitle') } });
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT
@@ -120,7 +133,7 @@ if (ENVIRONMENT_IS_NODE) {
   var nodeFS;
   var nodePath;
 
-  Module['read'] = function shell_read(filename, binary) {
+  read = function shell_read(filename, binary) {
     var ret;
 #if SUPPORT_BASE64_EMBEDDING
     ret = tryParseAsDataURI(filename);
@@ -136,8 +149,8 @@ if (ENVIRONMENT_IS_NODE) {
     return binary ? ret : ret.toString();
   };
 
-  Module['readBinary'] = function readBinary(filename) {
-    var ret = Module['read'](filename, true);
+  readBinary = function readBinary(filename) {
+    var ret = read(filename, true);
     if (!ret.buffer) {
       ret = new Uint8Array(ret);
     }
@@ -188,7 +201,7 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    Module['read'] = function shell_read(f) {
+    read = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(f);
       if (data) {
@@ -199,7 +212,7 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  Module['readBinary'] = function readBinary(f) {
+  readBinary = function readBinary(f) {
     var data;
 #if SUPPORT_BASE64_EMBEDDING
     data = tryParseAsDataURI(f);
@@ -258,7 +271,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif
 #endif
 
-  Module['read'] = function shell_read(url) {
+  read = function shell_read(url) {
 #if SUPPORT_BASE64_EMBEDDING
     try {
 #endif
@@ -278,7 +291,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   };
 
   if (ENVIRONMENT_IS_WORKER) {
-    Module['readBinary'] = function readBinary(url) {
+    readBinary = function readBinary(url) {
 #if SUPPORT_BASE64_EMBEDDING
       try {
 #endif
@@ -299,7 +312,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     };
   }
 
-  Module['readAsync'] = function readAsync(url, onload, onerror) {
+  readAsync = function readAsync(url, onload, onerror) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
     xhr.responseType = 'arraybuffer';
@@ -321,7 +334,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
     xhr.send(null);
   };
 
-  Module['setWindowTitle'] = function(title) { document.title = title };
+  setWindowTitle = function(title) { document.title = title };
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 {
