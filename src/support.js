@@ -195,7 +195,7 @@ function loadDynamicLibrary(lib, flags) {
     if (flags.fs) {
       libData = flags.fs.readFile(lib, {encoding: 'utf8'});
     } else {
-      libData = read(lib);
+      libData = read_(lib);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
