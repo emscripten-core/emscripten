@@ -9492,7 +9492,7 @@ int main () {
         run_process(cmd)
 
   def test_assertions_on_internal_api_changes(self):
-    src = r'''
+    create_test_file('src.c', r'''
       #include <emscripten.h>
       int main(int argc, char **argv) {
         EM_ASM({
@@ -9504,21 +9504,15 @@ int main () {
           }
         });
       }
-    '''
-    create_test_file('src.c', src)
-
+    ''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'ASSERTIONS'])
-    out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
     self.assertContained('Module.read has been replaced with plain read', run_js('a.out.js'))
 
   def test_assertions_on_incoming_module_api_changes(self):
-    src = r'''
+    create_test_file('pre.js', r'''
       var Module = {
         read: function() {}
       }
-    '''
-    create_test_file('pre.js', src)
-
+    ''')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS', '--pre-js', 'pre.js'])
-    out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
     self.assertContained('Module.read option was removed', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
