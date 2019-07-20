@@ -113,6 +113,7 @@ var read,
     setWindowTitle;
 
 #if ASSERTIONS
+// TODO: assert the user didn't provide them as inputs on Module
 Object.defineProperty(Module, 'read', { get: function() { abort('Module.read has been replaced with plain read') } });
 Object.defineProperty(Module, 'readAsync', { get: function() { abort('Module.readAsync has been replaced with plain readAsync') } });
 Object.defineProperty(Module, 'readBinary', { get: function() { abort('Module.readBinary has been replaced with plain readBinary') } });
