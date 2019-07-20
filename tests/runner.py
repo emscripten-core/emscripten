@@ -885,8 +885,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     emcc_args = self.get_emcc_args()
 
-    digest = hashlib.md5(str(emcc_args).encode('utf-8')).hexdigest()
-    cache_name = name + ','.join(o for o in self.emcc_args if len(o) < 7) + '_' + digest + cache_name_extra
+    hash_input = (str(emcc_args) + ' $ ' + str(env_init)).encode('utf-8')
+    cache_name = name + ','.join([opt for opt in emcc_args if len(opt) < 7]) + '_' + hashlib.md5(hash_input).hexdigest() + cache_name_extra
 
     valid_chars = "_%s%s" % (string.ascii_letters, string.digits)
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
