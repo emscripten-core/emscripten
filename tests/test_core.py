@@ -2250,7 +2250,7 @@ The current type of b is: 9
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
     src = open(path_from_root('tests', 'core', 'test_intentional_fault.c')).read()
-    self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort(segmentation fault')
+    self.do_run(src, 'abort(' if self.run_name != 'asm2g' else 'abort(segmentation fault')
 
   def test_trickystring(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_trickystring')
