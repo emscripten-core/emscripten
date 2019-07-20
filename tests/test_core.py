@@ -5237,7 +5237,6 @@ PORT: 3979
     self.do_run(src, expected)
 
   @needs_dlfcn
-  @no_wasm_backend('only tests tempDoublePtr alignment which does not exist on WASM backend')
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
