@@ -5833,7 +5833,7 @@ return malloc(size);
 
       create_test_file('pre.js', '''
       Module.preRun = function() {
-        FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false, false);
+        FS.createDataFile('/', 'paper.pdf', eval(read('paper.pdf.js')), true, false, false);
       };
       Module.postRun = function() {
         var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
