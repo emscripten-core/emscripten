@@ -377,6 +377,11 @@ assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
 
+// TODO remove when SDL2 is fixed
+#if USE_SDL == 2
+Module['setWindowTitle'] = setWindowTitle;
+#endif
+
 {{BODY}}
 
 // {{MODULE_ADDITIONS}}
