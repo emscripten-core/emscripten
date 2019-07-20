@@ -2524,6 +2524,7 @@ def load_metadata_wasm(metadata_raw, DEBUG):
     'asmConsts': {},
     'invokeFuncs': [],
     'features': [],
+    'mainReadsParams': 1,
   }
 
   assert 'tableSize' in metadata_json.keys()
