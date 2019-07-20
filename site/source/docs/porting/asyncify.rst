@@ -178,10 +178,51 @@ ones you add yourself, so it must contain things like ``emscripten_sleep()``
 if you call them (by default the list will contain them, so you must only add
 them if you change the list).
 
-You can also set ``ASYNCIFY_IMPORTS`` to ``[]`` (an empty list). In that case,
-Asyncify will assume that any import may do an async operation. This will result
-in larger and slower code in most cases, but can be useful during debugging or
-development.
+Returning values
+################
+
+You can also return values from async JS functions. Here is an example:
+
+.. code-block:: cpp
+
+    // example.c
+    #include <emscripten.h>
+    #include <stdio.h>
+
+    EM_JS(int, get_digest_size, (const char* str), {
+      // Note how we return the output of handleSleep() here.
+      return Asyncify.handleSleep(function(wakeUp) {
+        const text = UTF8ToString(str);
+        const encoder = new TextEncoder();
+        const data = encoder.encode(text);
+        out("ask for digest for " + text);
+        window.crypto.subtle.digest("SHA-256", data).then(digestValue => {
+          out("got digest of length " + digestValue.byteLength);
+          // Return the value by sending it to wakeUp(). It will then be returned
+          // from handleSleep() on the outside.
+          wakeUp(digestValue.byteLength);
+        });
+      });
+    });
+
+    int main() {
+      const char* silly = "some silly text";
+      printf("%s's digest size is: %d\n", silly, get_digest_size(silly));
+      return 0;
+    }
+
+You can build this with
+
+::
+
+    ../emcc example.c -s ASYNCIFY=1 -s 'ASYNCIFY_IMPORTS=["get_digest_size"]' -o a.html -O2
+
+This example calls the Promise-returning ``window.crypto.subtle()`` API (the
+example is based off of
+`this MDN example <https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest#Basic_example>`_
+). Note how we pass the value to be returned into ``wakeUp()``. We must also
+return the value returned from ``handleSleep()``. The calling C code then
+gets it normally, after the Promise completes.
 
 Potential problems
 ##################
