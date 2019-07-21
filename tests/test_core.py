@@ -1790,7 +1790,14 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
-  def test_em_js(self):
+  @parameterized({
+    'normal': ([],),
+    'linked': (['-s', 'MAIN_MODULE'],),
+  })
+  def test_em_js(self, args):
+    if 'MAIN_MODULE' in args and self.get_setting('ALLOW_MEMORY_GROWTH') and not self.is_wasm():
+      self.skipTest('main module not compatible with asm.js memory growth')
+    self.emcc_args += args
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
 
