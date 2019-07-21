@@ -1,6 +1,6 @@
 defaults: &defaults
   docker:
-    - image: buildpack-deps:xenial
+    - image: buildpack-deps:bionic
       environment:
         LANG: C.UTF-8
         EMTEST_DETECT_TEMPFILE_LEAKS: 1
@@ -229,11 +229,7 @@ jobs:
           name: install pip
           command: |
             apt-get update -q
-            apt-get install -q -y python-pip
-      - run:
-          name: install sphinx
-          command: |
-            pip install sphinx==1.7.8
+            apt-get install -q -y sphinx-common
       - run: make -C site html
   flake8:
     <<: *defaults
