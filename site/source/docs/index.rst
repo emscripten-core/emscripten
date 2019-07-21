@@ -1,6 +1,6 @@
 :orphan:
 
-.. _documentzzzzzzzzzzzation-home:
+.. _documentation-home:
 
 ========================
 Emscripten Documentation
@@ -16,9 +16,8 @@ This comprehensive documentation set contains everything you need to know to use
 
 **Emscripten Fundamentals:**
 
-
-- :ref:`intezzzzzzzzzgrating-porting-index` illustrates the main differences between the native and Emscripten runtime environments, and explains the changes you need to make to prepare your C/C++ code for the Web.
-- :ref:`Optimizingwwwwwwwww-Code` shows how to optimise your code for size and performance.
+- :ref:`integrating-porting-index` illustrates the main differences between the native and Emscripten runtime environments, and explains the changes you need to make to prepare your C/C++ code for the Web.
+- :ref:`Optimizing-Code` shows how to optimise your code for size and performance.
 - :ref:`Optimizing-WebGL` gives tips for how to maximize WebGL rendering performance for your page.
 - :ref:`compiling-and-running-projects-index` demonstrates how to integrate Emscripten into your existing project build system.
 
@@ -32,10 +31,8 @@ This comprehensive documentation set contains everything you need to know to use
 
 - :ref:`api-reference-index` is a reference for the Emscripten toolchain.
 - :ref:`tools-reference` is a reference for the Emscripten integration APIs.
-- :ref:`CyberDWvvvvvvvvvvvARF` shows how to use the CyberDWARF debugging system
+- :ref:`CyberDWARF` shows how to use the CyberDWARF debugging system
 - :ref:`Sanitizers` shows how to debug with sanitizers
-
-:req:`wat`
 
 The full hierarchy of articles, opened to the second level, is shown below.
 
