@@ -3283,7 +3283,7 @@ int main() {
       output = run_js('a.out.js')
       assert '|5|' in output, output
 
-  @no_wasm_backend('extra fastcomp warnings on unaligned loads/stores, which matter a lot more in asm.js')
+  @no_wasm_backend('tests extra fastcomp warnings on unaligned loads/stores, which matter a lot more in asm.js')
   def test_warn_unaligned(self):
     create_test_file('src.cpp', r'''
 #include <stdio.h>
