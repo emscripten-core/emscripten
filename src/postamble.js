@@ -169,6 +169,7 @@ Module['callMain'] = function callMain(args) {
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
+#if MAIN_READS_PARAMS
   args = args || [];
 
   var argc = args.length+1;
@@ -178,6 +179,7 @@ Module['callMain'] = function callMain(args) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
+#endif // MAIN_READS_PARAMS
 
 #if EMTERPRETIFY_ASYNC
   var initialEmtStackTop = Module['emtStackSave']();
@@ -188,13 +190,19 @@ Module['callMain'] = function callMain(args) {
     var start = Date.now();
 #endif
 
+    var ret = Module[
 #if PROXY_TO_PTHREAD
-    // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
-    // that will call the user's real main() for the application.
-    var ret = Module['_proxy_main'](argc, argv, 0);
+      // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
+      // that will call the user's real main() for the application.
+      '_proxy_main'
 #else
-    var ret = Module['_main'](argc, argv, 0);
+      '_main'
 #endif
+    ](
+#if MAIN_READS_PARAMS
+      argc, argv
+#endif
+    );
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
