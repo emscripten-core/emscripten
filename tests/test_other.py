@@ -8590,7 +8590,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 ''', '''
 var ASM_CONSTS = [function() {var x = !<->5.;}];
                                        ^
-'''), stderr)
+'''), stderr.replace('\r', ''))
 
   def test_EM_ASM_ES6(self):
     # check we show a proper understandable error for JS parse problems
