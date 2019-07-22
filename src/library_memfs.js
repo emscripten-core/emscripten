@@ -228,7 +228,7 @@ mergeInto(LibraryManager.library, {
         delete parent.contents[name];
       },
       readdir: function(node) {
-        var entries = ['.', '..']
+        var entries = ['.', '..'];
         for (var key in node.contents) {
           if (!node.contents.hasOwnProperty(key)) {
             continue;
