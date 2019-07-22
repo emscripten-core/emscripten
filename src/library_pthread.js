@@ -332,9 +332,11 @@ var LibraryPThread = {
           };
         }(worker));
 
+#if !WASM_BACKEND
         // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
         // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
         var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
+#endif
 
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
@@ -352,7 +354,9 @@ var LibraryPThread = {
           buffer: HEAPU8.buffer,
           asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
 #endif
+#if !WASM_BACKEND
           tempDoublePtr: tempDoublePtr,
+#endif
           DYNAMIC_BASE: DYNAMIC_BASE,
           DYNAMICTOP_PTR: DYNAMICTOP_PTR,
           PthreadWorkerInit: PthreadWorkerInit

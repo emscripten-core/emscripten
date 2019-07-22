@@ -406,7 +406,7 @@ function JSify(data, functionsOnly) {
         print('/* no memory initializer */'); // test purposes
       }
 
-      if (!SIDE_MODULE) {
+      if (!SIDE_MODULE && !WASM_BACKEND) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;');
           print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
