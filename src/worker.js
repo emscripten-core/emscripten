@@ -177,7 +177,7 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = e.data.stackBase;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = top;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = top;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = max;
 #if ASSERTIONS
@@ -188,7 +188,6 @@ this.onmessage = function(e) {
 #if WASM_BACKEND
       assert(max === e.data.stackBase);
       assert(top > max);
-      assert(e.data.stackBase == max);
 #else
       assert(max > e.data.stackBase);
       assert(max > top);

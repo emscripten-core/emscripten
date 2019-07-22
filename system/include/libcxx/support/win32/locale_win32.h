@@ -35,14 +35,18 @@ public:
         : __locale(nullptr), __locale_str(nullptr) {}
     locale_t(std::nullptr_t)
         : __locale(nullptr), __locale_str(nullptr) {}
-    locale_t(_locale_t __locale, const char* __locale_str)
-        : __locale(__locale), __locale_str(__locale_str) {}
+    locale_t(_locale_t __xlocale, const char* __xlocale_str)
+        : __locale(__xlocale), __locale_str(__xlocale_str) {}
 
     friend bool operator==(const locale_t& __left, const locale_t& __right) {
         return __left.__locale == __right.__locale;
     }
 
     friend bool operator==(const locale_t& __left, int __right) {
+        return __left.__locale == nullptr && __right == 0;
+    }
+
+    friend bool operator==(const locale_t& __left, long long __right) {
         return __left.__locale == nullptr && __right == 0;
     }
 
@@ -63,6 +67,10 @@ public:
     }
 
     friend bool operator!=(const locale_t& __left, int __right) {
+        return !(__left == __right);
+    }
+
+    friend bool operator!=(const locale_t& __left, long long __right) {
         return !(__left == __right);
     }
 

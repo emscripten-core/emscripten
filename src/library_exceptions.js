@@ -134,9 +134,9 @@ var LibraryExceptions = {
     };
     ___exception_last = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
-      __ZSt18uncaught_exceptionv.uncaught_exception = 1;
+      __ZSt18uncaught_exceptionv.uncaught_exceptions = 1;
     } else {
-      __ZSt18uncaught_exceptionv.uncaught_exception++;
+      __ZSt18uncaught_exceptionv.uncaught_exceptions++;
     }
     {{{ makeThrow('ptr') }}}
   },
@@ -184,7 +184,7 @@ var LibraryExceptions = {
     var info = ___exception_infos[ptr];
     if (info && !info.caught) {
       info.caught = true;
-      __ZSt18uncaught_exceptionv.uncaught_exception--;
+      __ZSt18uncaught_exceptionv.uncaught_exceptions--;
     }
     if (info) info.rethrown = false;
     ___exception_caught.push(ptr);
@@ -222,12 +222,12 @@ var LibraryExceptions = {
   },
 
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
-    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+    return __ZSt18uncaught_exceptionv.uncaught_exceptions > 0;
   },
 
-  __cxa_uncaught_exception__deps: ['_ZSt18uncaught_exceptionv'],
-  __cxa_uncaught_exception: function() {
-    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+  __cxa_uncaught_exceptions__deps: ['_ZSt18uncaught_exceptionv'],
+  __cxa_uncaught_exceptions: function() {
+    return __ZSt18uncaught_exceptionv.uncaught_exceptions;
   },
 
   __cxa_call_unexpected: function(exception) {

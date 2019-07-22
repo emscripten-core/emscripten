@@ -166,7 +166,7 @@ std::wstring get_literal_wstring() {
 void force_memory_growth() {
     val module = val::global("Module");
     std::size_t heap_size = module["HEAPU8"]["byteLength"].as<size_t>();
-    module.call<void>("_free", module.call<val>("_malloc", heap_size + 1));
+    free(malloc(heap_size + 1));
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {

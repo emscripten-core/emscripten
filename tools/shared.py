@@ -398,7 +398,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "9.0"
+    return "10.0"
   else:
     return "6.0"
 
@@ -2100,10 +2100,11 @@ class Building(object):
     #   opts.append('-disable-inlining')
     # opts += ['-debug-pass=Arguments']
     # TODO: move vectorization logic to clang/LLVM?
-    if not Settings.SIMD:
-      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-    else:
-      opts += ['-force-vector-width=4']
+    if not Settings.WASM_BACKEND:
+      if not Settings.SIMD:
+        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
+      else:
+        opts += ['-force-vector-width=4']
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]

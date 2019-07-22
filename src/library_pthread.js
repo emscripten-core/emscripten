@@ -211,7 +211,7 @@ var LibraryPThread = {
       if (pthread.threadInfoStruct) {
         var tlsMemory = {{{ makeGetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 'i32') }}};
         {{{ makeSetValue('pthread.threadInfoStruct', C_STRUCTS.pthread.tsd, 0, 'i32') }}};
-        _free(pthread.tlsMemory);
+        _free(tlsMemory);
         _free(pthread.threadInfoStruct);
       }
       pthread.threadInfoStruct = 0;
