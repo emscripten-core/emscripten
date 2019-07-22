@@ -107,10 +107,10 @@ def no_swiftshader(f):
 
 
 def requires_threads(f):
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    return f(self)
+    return f(self, *args, **kwargs)
 
   return decorated
 
@@ -3903,6 +3903,15 @@ window.close = function() {
   @requires_threads
   def test_pthread_tls_main(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS', '-std=c++11'])
+
+  @parameterized({
+    'leak': ['test_pthread_lsan_leak'],
+    'no_leak': ['test_pthread_lsan_no_leak'],
+  })
+  @no_fastcomp('LSan is only supported on WASM backend')
+  @requires_threads
+  def test_pthread_lsan(self, name):
+    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')])
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
