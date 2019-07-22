@@ -167,9 +167,10 @@ if (ENVIRONMENT_IS_NODE) {
     }
   });
 #endif
-  // Currently node will swallow unhandled rejections, but this behavior is
-  // deprecated, and in the future it will exit with error status.
+
+#if NODEJS_CATCH_REJECTION
   process['on']('unhandledRejection', abort);
+#endif
 
   Module['quit'] = function(status) {
     process['exit'](status);
