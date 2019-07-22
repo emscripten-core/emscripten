@@ -4694,10 +4694,9 @@ main()
       print(name)
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
-        proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
-        self.assertNotEqual(proc.returncode, 0)
+        self.assertContained('abort(-1)', run_js('a.out.js', stdout=PIPE, stderr=STDOUT, assert_returncode=None))
       else:
-        self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
     with env_modify({'EMCC_FORCE_STDLIBS': None}):
       test('normal') # normally is ok
