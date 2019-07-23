@@ -4545,20 +4545,12 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_function__deps: ['emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
-
-    var name = null;
-    var match;
-    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-      name = match[1];
-    } else if (match = /^(.+?)@/.exec(frame)) {
-      name = match[1];
-    }
-    if (!name) return 0;
-
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_generate_pc without -s USE_OFFSET_CONVERTER');
+#endif
+    var name = wasmOffsetConverter.getName(pc);
     _emscripten_with_builtin_malloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
@@ -4568,8 +4560,6 @@ LibraryManager.library = {
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return null;
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -4584,6 +4574,8 @@ LibraryManager.library = {
 #endif
 
     if (!source) {
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return null;
       // Example: at callMain (a.out.js:6335:22)
       if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
         source = {file: match[1], line: match[2], column: match[3]};
