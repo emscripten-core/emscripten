@@ -1779,6 +1779,10 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
+  def test_em_asm_types(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types', force_c=True)
+
   def test_em_asm_unused_arguments(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
