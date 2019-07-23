@@ -2100,10 +2100,11 @@ class Building(object):
     #   opts.append('-disable-inlining')
     # opts += ['-debug-pass=Arguments']
     # TODO: move vectorization logic to clang/LLVM?
-    if not Settings.SIMD:
-      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-    else:
-      opts += ['-force-vector-width=4']
+    if not Settings.WASM_BACKEND:
+      if not Settings.SIMD:
+        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
+      else:
+        opts += ['-force-vector-width=4']
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
@@ -3099,8 +3100,11 @@ class WebAssembly(object):
     global_base = Settings.GLOBAL_BASE
 
     js = open(js_file).read()
-    m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
-    tempdouble_ptr = int(m.group(2))
+    if Settings.WASM_BACKEND:
+      tempdouble_ptr = 0
+    else:
+      m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
+      tempdouble_ptr = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)

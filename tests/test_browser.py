@@ -144,7 +144,6 @@ class browser(BrowserCore):
   # Deliberately named as test_zzz_* to make this test the last one
   # as this test may take the focus away from the main test window
   # by opening a new window and possibly not closing it.
-  @no_wasm_backend('wasm source maps')
   def test_zzz_html_source_map(self):
     if not has_browser():
       self.skipTest('need a browser')
@@ -174,9 +173,9 @@ class browser(BrowserCore):
     # sourceContent when the maps are relative paths
     try_delete(html_file)
     try_delete(html_file + '.map')
-    self.compile_btest(['src.cpp', '-o', 'src.html', '-g4', '-s', 'WASM=0'])
+    self.compile_btest(['src.cpp', '-o', 'src.html', '-g4'])
     self.assertExists(html_file)
-    self.assertExists(html_file + '.map')
+    self.assertExists('src.wasm.map')
     webbrowser.open_new('file://' + html_file)
     print('''
 If manually bisecting:
@@ -187,10 +186,9 @@ If manually bisecting:
 
   @no_wasm_backend('wasm source maps')
   def test_emscripten_log(self):
-    # TODO: wasm support for source maps
+    # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
     src = 'src.cpp'
     create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-
     self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
     self.run_browser('page.html', None, '/report_result?1')
 
@@ -2194,9 +2192,10 @@ void *getBindBuffer() {
   def test_openal_capture_sanity(self):
     self.btest('openal_capture_sanity.c', expected='0')
 
-  @no_wasm_backend('dynamic linking')
   def test_runtimelink(self):
     for wasm in [0, 1]:
+      if not wasm and self.is_wasm_backend():
+        continue
       print(wasm)
       main, supp = self.setup_runtimelink_test()
       create_test_file('supp.cpp', supp)
@@ -2395,7 +2394,6 @@ void *getBindBuffer() {
     self.compile_btest([path_from_root('tests', 'browser_module.cpp'), '-o', 'module.js', '-O2', '-s', 'SIDE_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORTED_FUNCTIONS=["_one", "_two"]'])
     self.btest('browser_main.cpp', args=['-O2', '-s', 'MAIN_MODULE=1', '-s', 'DLOPEN_SUPPORT=1', '-s', 'EXPORT_ALL=1'], expected='8')
 
-  @no_wasm_backend('dynamic linking')
   def test_preload_module(self):
     create_test_file('library.c', r'''
       #include <stdio.h>
@@ -3307,7 +3305,8 @@ window.close = function() {
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
     'normal': (['-s', 'ASYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
-    'bad': (['-DBAD'],) # noqa
+    'nothing': (['-DBAD'],), # noqa
+    'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
   })
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
@@ -3415,7 +3414,6 @@ window.close = function() {
       print(opts)
       self.btest(os.path.join('webidl', 'test.cpp'), '1', args=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + opts)
 
-  @no_wasm_backend('dynamic linking')
   @requires_sync_compilation
   def test_dynamic_link(self):
     create_test_file('pre.js', '''
@@ -3529,7 +3527,6 @@ window.close = function() {
 
     super(browser, self)._test_dylink_dso_needed(do_run)
 
-  @no_wasm_backend('dynamic linking')
   @requires_graphics_hardware
   @requires_sync_compilation
   def test_dynamic_link_glemu(self):

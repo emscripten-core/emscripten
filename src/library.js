@@ -2361,16 +2361,16 @@ LibraryManager.library = {
         str = character[0]+str;
       }
       return str;
-    };
+    }
 
     function leadingNulls(value, digits) {
       return leadingSomething(value, digits, '0');
-    };
+    }
 
     function compareByDay(date1, date2) {
       function sgn(value) {
         return value < 0 ? -1 : (value > 0 ? 1 : 0);
-      };
+      }
 
       var compare;
       if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
@@ -2379,7 +2379,7 @@ LibraryManager.library = {
         }
       }
       return compare;
-    };
+    }
 
     function getFirstWeekStartDate(janFourth) {
         switch (janFourth.getDay()) {
@@ -2398,7 +2398,7 @@ LibraryManager.library = {
           case 6: // Saturday
             return new Date(janFourth.getFullYear()-1, 11, 30);
         }
-    };
+    }
 
     function getWeekBasedYear(date) {
         var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
@@ -2419,7 +2419,7 @@ LibraryManager.library = {
         } else {
           return thisDate.getFullYear()-1;
         }
-    };
+    }
 
     var EXPANSION_RULES_2 = {
       '%a': function(date) {
