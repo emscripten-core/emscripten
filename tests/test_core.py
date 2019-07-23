@@ -1868,6 +1868,9 @@ int main(int argc, char **argv) {
 
       if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
+        code_start = 'var TOTAL_STACK'
+        fail = fail[fail.find(code_start):]
+        win = win[win.find(code_start):]
         assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     test()
