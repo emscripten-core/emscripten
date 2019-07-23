@@ -4424,7 +4424,7 @@ LibraryManager.library = {
   // the engine supports offsets into WASM. See the function body for details.
   emscripten_generate_pc: function(frame) {
 #if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_generate_pc without -s USE_OFFSET_CONVERTER');
+    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
 #endif
     var match;
 
@@ -4435,8 +4435,7 @@ LibraryManager.library = {
       // other engines only give function index and offset in the function,
       // so we try using the offset converter. If that doesn't work,
       // we pack index and offset into a "return address"
-      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
-             (+match[1] << 16) + +match[2];
+      return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
