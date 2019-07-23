@@ -335,10 +335,10 @@ if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the st
 #endif
 
 var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-if (INITIAL_TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
-// Initialize the runtime's memory
 #if ASSERTIONS
+iassert(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
        'JS engine does not provide full typed array support');
@@ -619,9 +619,13 @@ function addRunDependency(id) {
   assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
 #endif
   runDependencies++;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif
+
 #if ASSERTIONS
   if (id) {
     assert(!runDependencyTracking[id]);
@@ -655,9 +659,13 @@ function addRunDependency(id) {
 
 function removeRunDependency(id) {
   runDependencies--;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif
+
 #if ASSERTIONS
   if (id) {
     assert(runDependencyTracking[id]);

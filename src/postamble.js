@@ -130,6 +130,9 @@ Module['then'] = function(func) {
   } else {
     // we are not ready to call then() yet. we must call it
     // at the same time we would call onRuntimeInitialized.
+#if ASSERTIONS && !expectToReceiveOnModule('onRuntimeInitialized')
+    abort('.then() requires adding onRuntimeInitialized to INCOMING_MODULE_JS_API');
+#endif
     var old = Module['onRuntimeInitialized'];
     Module['onRuntimeInitialized'] = function() {
       if (old) old();
@@ -275,7 +278,9 @@ function run(args) {
 
     preMain();
 
+#if expectToReceiveOnModule('onRuntimeInitialized')
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+#endif
 
 #if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
