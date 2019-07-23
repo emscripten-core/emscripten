@@ -101,10 +101,17 @@
 template<typename> struct __em_asm_sig {};
 template<> struct __em_asm_sig<float> { static const char value = 'd'; };
 template<> struct __em_asm_sig<double> { static const char value = 'd'; };
+template<> struct __em_asm_sig<char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<signed char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<short> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned short> { static const char value = 'i'; };
 template<> struct __em_asm_sig<int> { static const char value = 'i'; };
-template<> struct __em_asm_sig<unsigned> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned int> { static const char value = 'i'; };
 template<> struct __em_asm_sig<long> { static const char value = 'i'; };
 template<> struct __em_asm_sig<unsigned long> { static const char value = 'i'; };
+template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
+template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
 template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
 
 // Instead of std::tuple
