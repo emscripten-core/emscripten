@@ -24,8 +24,10 @@ EM_JS(void, initPthreadsJS, (void), {
   PThread.initRuntime();
 })
 
+// This must run before any userland ctors
+// Note that ASan constructor priority is 1, and we must be higher.
 EMSCRIPTEN_KEEPALIVE
-__attribute__((constructor(0))) // This must run before any userland ctors
+__attribute__((constructor(0)))
 void __emscripten_pthread_data_constructor(void) {
   initPthreadsJS();
   pthread_self()->locale = &libc.global_locale;
