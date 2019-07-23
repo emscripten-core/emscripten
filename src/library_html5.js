@@ -2862,7 +2862,7 @@ var LibraryJSEvents = {
         '++__setImmediate_id_counter;\n' +
       '}\n' +
     '}\n' +
-    'if (typeof setImmediate === "undefined") {\n' +
+    'if (typeof setImmediate === "undefined" && typeof addEventListener === "function") {\n' +
       'addEventListener("message", __setImmediate_cb, true);\n' +
       'setImmediate = function(func) {\n' +
         'postMessage(__setImmediate_message_id, "*");\n' +
