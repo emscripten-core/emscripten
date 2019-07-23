@@ -98,7 +98,7 @@
 // As emscripten is require to build successfully with -std=c++03, we cannot
 // use std::tuple or std::integral_constant. Using C++11 features is only a
 // warning in modern Clang, which are ignored in system headers.
-template<typename> struct __em_asm_sig {};
+template<typename, typename = void> struct __em_asm_sig {};
 template<> struct __em_asm_sig<float> { static const char value = 'd'; };
 template<> struct __em_asm_sig<double> { static const char value = 'd'; };
 template<> struct __em_asm_sig<char> { static const char value = 'i'; };
@@ -113,6 +113,13 @@ template<> struct __em_asm_sig<unsigned long> { static const char value = 'i'; }
 template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
 template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
 template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
+
+// Explicit support for enums, they're passed as int via variadic arguments.
+template<bool> struct __em_asm_if { };
+template<> struct __em_asm_if<true> { typedef void type; };
+template<typename T> struct __em_asm_sig<T, typename __em_asm_if<__is_enum(T)>::type> {
+    static const char value = 'i';
+};
 
 // Instead of std::tuple
 template<typename... Args>
