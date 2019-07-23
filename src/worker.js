@@ -71,6 +71,16 @@ function threadAlert() {
 var err = threadPrintErr;
 this.alert = threadAlert;
 
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
+
 #if WASM
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
@@ -78,6 +88,12 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   var instance = new WebAssembly.Instance(wasmModule, info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
   wasmModule = null;
+#if LOAD_SOURCE_MAP
+  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
+#endif
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
+#endif
   receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 };
@@ -85,6 +101,12 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
 
 var wasmModule;
 var wasmMemory;
+#if LOAD_SOURCE_MAP
+var wasmSourceMapData;
+#endif
+#if USE_OFFSET_CONVERTER
+var wasmOffsetData;
+#endif
 
 this.onmessage = function(e) {
   try {
@@ -113,6 +135,12 @@ this.onmessage = function(e) {
       // Module and memory were sent from main thread
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmModule') }}} = e.data.wasmModule;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmMemory') }}} = e.data.wasmMemory;
+#if LOAD_SOURCE_MAP
+      wasmSourceMapData = e.data.wasmSourceMap;
+#endif
+#if USE_OFFSET_CONVERTER
+      wasmOffsetData = e.data.wasmOffsetConverter;
+#endif
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
 #else
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;

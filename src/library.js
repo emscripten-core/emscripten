@@ -4423,6 +4423,9 @@ LibraryManager.library = {
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
   emscripten_generate_pc: function(frame) {
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_generate_pc without -s USE_OFFSET_CONVERTER');
+#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
