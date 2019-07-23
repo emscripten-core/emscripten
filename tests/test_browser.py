@@ -775,7 +775,6 @@ window.close = function() {
     create_test_file('data.txt', 'datum')
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
 
-  @no_chrome('see #7930')
   @requires_graphics_hardware
   def test_glgears_proxy(self):
     # we modify the asm.js, this is a non-wasm test
@@ -2545,7 +2544,6 @@ Module["preRun"].push(function () {
 
     self.btest('doublestart.c', args=['--pre-js', 'pre.js', '-o', 'test.html'], expected='1')
 
-  @no_chrome('see #7930')
   @requires_threads
   def test_html5(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
