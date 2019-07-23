@@ -122,14 +122,17 @@ struct __em_asm_sig_builder {};
 
 template<typename... Args>
 struct __em_asm_sig_builder<__em_asm_type_tuple<Args...> > {
-  char buffer[sizeof...(Args)+1] = { __em_asm_sig<Args>::value..., 0 };
+  static const char buffer[sizeof...(Args) + 1];
 };
+
+template<typename... Args>
+const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __em_asm_sig<Args>::value..., 0 };
 
 // We move to type level with decltype(make_tuple(...)) to avoid double
 // evaluation of arguments. Use __typeof__ instead of decltype, though,
 // because the header should be able to compile with clang's -std=c++03.
 #define _EM_ASM_PREP_ARGS(...) \
-    , __em_asm_sig_builder<__typeof__(__em_asm_make_type_tuple(__VA_ARGS__))>().buffer, ##__VA_ARGS__
+    , __em_asm_sig_builder<__typeof__(__em_asm_make_type_tuple(__VA_ARGS__))>::buffer, ##__VA_ARGS__
 
 extern "C" {
 #endif // __cplusplus
