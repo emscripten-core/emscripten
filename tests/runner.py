@@ -653,7 +653,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         except:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
-               ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+               ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
         run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
@@ -682,7 +682,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
       args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
-          ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+          ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
 

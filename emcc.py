@@ -224,7 +224,6 @@ class EmccOptions(object):
     self.shell_path = shared.path_from_root('src', 'shell.html')
     self.source_map_base = ''
     self.js_libraries = []
-    self.bind = False
     self.emrun = False
     self.cpu_profiler = False
     self.thread_profiler = False
@@ -1077,13 +1076,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Note the exports the user requested
     shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
 
-    if options.bind:
-      shared.Settings.EMBIND = 1
-      # If we are using embind and generating JS, now is the time to link in bind.cpp
-      if final_suffix in JS_CONTAINING_ENDINGS:
-        input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')))
-        next_arg_index += 1
-
     # -s ASSERTIONS=1 implies the heaviest stack overflow check mode. Set the implication here explicitly to avoid having to
     # do preprocessor "#if defined(ASSERTIONS) || defined(STACK_OVERFLOW_CHECK)" in .js files, which is not supported.
     if shared.Settings.ASSERTIONS:
@@ -1183,8 +1175,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
       newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
+    forced_stdlibs = []
+
     if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_ENDINGS:
-      input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')))
+      forced_stdlibs.append('libasmfs')
       newargs.append('-D__EMSCRIPTEN_ASMFS__=1')
       next_arg_index += 1
       shared.Settings.FILESYSTEM = 0
@@ -1193,16 +1187,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.js_libraries.append(shared.path_from_root('src', 'library_asmfs.js'))
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
-      input_files.append((next_arg_index, shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')))
+      forced_stdlibs.append('libfetch')
       next_arg_index += 1
       options.js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
-    forced_stdlibs = []
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
-      forced_stdlibs += ['libc++abi']
+      forced_stdlibs.append('libc++abi')
+
+    if shared.Settings.EMBIND:
+      forced_stdlibs.append('libembind')
 
     if not shared.Settings.ONLY_MY_CODE and not shared.Settings.MINIMAL_RUNTIME:
       # Always need malloc and free to be kept alive and exported, for internal use and other modules
@@ -2503,7 +2499,7 @@ def parse_args(newargs):
       shared.Settings.EMIT_SYMBOL_MAP = 1
       newargs[i] = ''
     elif newargs[i] == '--bind':
-      options.bind = True
+      shared.Settings.EMBIND = 1
       newargs[i] = ''
       options.js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
       options.js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))

@@ -62,7 +62,7 @@ namespace emscripten {
                 TYPEID floatType,
                 const char* name,
                 size_t size);
-            
+
             void _embind_register_std_string(
                 TYPEID stringType,
                 const char* name);
@@ -96,7 +96,7 @@ namespace emscripten {
                 GenericFunction constructor,
                 const char* destructorSignature,
                 GenericFunction destructor);
-            
+
             void _embind_register_value_array_element(
                 TYPEID tupleType,
                 TYPEID getterReturnType,
@@ -117,7 +117,7 @@ namespace emscripten {
                 GenericFunction constructor,
                 const char* destructorSignature,
                 GenericFunction destructor);
-            
+
             void _embind_register_value_object_field(
                 TYPEID structType,
                 const char* fieldName,
@@ -298,7 +298,7 @@ namespace emscripten {
         return method;
     }
 
-    namespace internal {        
+    namespace internal {
         // this should be in <type_traits>, but alas, it's not
         template<typename T> struct remove_class;
         template<typename C, typename R, typename... A>
@@ -556,7 +556,7 @@ namespace emscripten {
             typedef MemberType InstanceType::*MemberPointer;
             typedef internal::BindingType<MemberType> MemberBinding;
             typedef typename MemberBinding::WireType WireType;
-            
+
             template<typename ClassType>
             static WireType getWire(
                 const MemberPointer& field,
@@ -564,7 +564,7 @@ namespace emscripten {
             ) {
                 return MemberBinding::toWireType(ptr.*field);
             }
-            
+
             template<typename ClassType>
             static void setWire(
                 const MemberPointer& field,
@@ -1081,18 +1081,18 @@ namespace emscripten {
         static internal::TYPEID get() {
             return internal::TypeID<BaseClass>::get();
         }
-        
+
         template<typename ClassType>
         using Upcaster = BaseClass* (*)(ClassType*);
 
         template<typename ClassType>
         using Downcaster = ClassType* (*)(BaseClass*);
-        
+
         template<typename ClassType>
         static Upcaster<ClassType> getUpcaster() {
             return &convertPointer<ClassType, BaseClass>;
         }
-        
+
         template<typename ClassType>
         static Downcaster<ClassType> getDowncaster() {
             return &convertPointer<BaseClass, ClassType>;
@@ -1297,7 +1297,7 @@ namespace emscripten {
 
             typedef smart_ptr_trait<PointerType> PointerTrait;
             typedef typename PointerTrait::element_type PointeeType;
-            
+
             static_assert(std::is_same<ClassType, typename std::remove_cv<PointeeType>::type>::value, "smart pointer must point to this class");
 
             auto get = &PointerTrait::get;
@@ -1427,7 +1427,7 @@ namespace emscripten {
         template<typename FieldType, typename = typename std::enable_if<!std::is_function<FieldType>::value>::type>
         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field) const {
             using namespace internal;
-            
+
             auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType>;
             _embind_register_class_property(
                 TypeID<ClassType>::get(),
@@ -1593,11 +1593,12 @@ namespace emscripten {
 
         void (VecType::*push_back)(const T&) = &VecType::push_back;
         void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
+        size_t (VecType::*size)() const = &VecType::size;
         return class_<std::vector<T>>(name)
             .template constructor<>()
             .function("push_back", push_back)
             .function("resize", resize)
-            .function("size", &VecType::size)
+            .function("size", size)
             .function("get", &internal::VectorAccess<VecType>::get)
             .function("set", &internal::VectorAccess<VecType>::set)
             ;

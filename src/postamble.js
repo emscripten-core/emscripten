@@ -60,12 +60,12 @@ if (memoryInitializer) {
       // its .status field can still be accessed later.
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
-    }
+    };
     var doBrowserLoad = function() {
       Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
-    }
+    };
 #if SUPPORT_BASE64_EMBEDDING
     var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
     if (memoryInitializerBytes) {
@@ -95,7 +95,7 @@ if (memoryInitializer) {
 #endif
         }
         applyMemoryInitializer(response);
-      }
+      };
       if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
       } else {
@@ -150,7 +150,7 @@ function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
   this.status = status;
-};
+}
 ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
@@ -160,7 +160,7 @@ dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
   if (!Module['calledRun']) run();
   if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
-}
+};
 
 #if HAS_MAIN
 Module['callMain'] = function callMain(args) {
