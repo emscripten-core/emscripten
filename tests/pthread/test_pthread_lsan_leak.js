@@ -15,7 +15,7 @@
         'Direct leak of 42 byte(s) in 1 object(s) allocated from',
         'test_pthread_lsan_leak.cpp:12:21',
         'test_pthread_lsan_leak.cpp:38:3',
-        'SUMMARY: LeakSanitizer: 8513 byte(s) leaked in 6 allocation(s).',
+        '8513 byte(s) leaked in 6 allocation(s).',
         ''
       ].every(function (snippet) {
         return result.indexOf(snippet) >= 0;
