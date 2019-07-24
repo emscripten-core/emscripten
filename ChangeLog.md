@@ -18,6 +18,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v.1.38.40: 07/24/2019
+---------------------
  - LLVM backend pthread builds no longer use external memory initialization
    files, replacing them with passive data segments.
  - LLVM backend now supports thread local storage via the C extension `__thread`
