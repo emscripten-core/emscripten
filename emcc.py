@@ -1220,6 +1220,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
       shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
 
+    if shared.Settings.ASYNCIFY:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('ASYNCIFY has been removed from fastcomp. There is a new implementation which can be used in the upstream wasm backend.')
+
     if shared.Settings.EMTERPRETIFY:
       shared.Settings.FINALIZE_ASM_JS = 0
       shared.Settings.SIMPLIFY_IFS = 0 # this is just harmful for emterpreting
