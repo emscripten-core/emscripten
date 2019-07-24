@@ -17,7 +17,7 @@ def get(ports, settings, shared):
 
   ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.70.0/boost-headers-' + TAG + '.zip',
                       'boost', sha512hash=HASH)
-  libname = ports.get_lib_name('boost_headers')
+  libname = ports.get_lib_name('libboost_headers')
 
   def create():
     logging.info('building port: boost_headers')
@@ -47,7 +47,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('boost_headers'))
+  shared.Cache.erase_file(ports.get_lib_name('libboost_headers'))
 
 
 def process_args(ports, args, settings, shared):
