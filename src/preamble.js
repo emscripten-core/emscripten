@@ -702,7 +702,7 @@ addOnPreRun(function() {
   }
   // if we can load dynamic libraries synchronously, do so, otherwise, preload
 #if WASM
-  if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
+  if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !readBinary) {
     // we can't read binary data synchronously, so preload
     addRunDependency('preload_dynamicLibraries');
     Promise.all(Module['dynamicLibraries'].map(function(lib) {
@@ -817,8 +817,8 @@ function getBinary() {
       return binary;
     }
 #endif
-    if (Module['readBinary']) {
-      return Module['readBinary'](wasmBinaryFile);
+    if (readBinary) {
+      return readBinary(wasmBinaryFile);
     } else {
 #if WASM_ASYNC_COMPILATION
       throw "both async and sync fetching of the wasm failed";

@@ -18,11 +18,20 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-
  - LLVM backend pthread builds no longer use external memory initialization
    files, replacing them with passive data segments.
  - LLVM backend now supports thread local storage via the C extension `__thread`
    and C11/C++11 keyword `thread_local`. (#8976)
+ - Internal API change: Move read, readAsync, readBinary, setWindowTitle from
+   the Module object to normal JS variables. If you use those internal APIs,
+   you must change Module.readAsync()/Module['readAsync']() to readAsync().
+   Note that read is also renamed to read_ (since "read" is an API call in
+   the SpiderMonkey shell). In builds with ASSERTIONS an error message is
+   shown about the API change. This change allows better JS minification
+   (the names read, readAsync etc. can be minified, and if the variables are
+   not used they can be removed entirely). Defining these APIs on Module
+   (which was never documented or intended, but happened to work) is also
+   no longer allowed (but you can override read_ etc. from JS).
 
 v1.38.39: 07/16/2019
 --------------------

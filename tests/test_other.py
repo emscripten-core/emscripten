@@ -9509,3 +9509,29 @@ int main () {
         self.assertContained('DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0)', self.expect_fail(cmd))
       else:
         run_process(cmd)
+
+  def test_assertions_on_internal_api_changes(self):
+    create_test_file('src.c', r'''
+      #include <emscripten.h>
+      int main(int argc, char **argv) {
+        EM_ASM({
+          try {
+            Module['read'];
+            out('it should not be there');
+          } catch(e) {
+            out('error: ' + e);
+          }
+        });
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'ASSERTIONS'])
+    self.assertContained('Module.read has been replaced with plain read', run_js('a.out.js'))
+
+  def test_assertions_on_incoming_module_api_changes(self):
+    create_test_file('pre.js', r'''
+      var Module = {
+        read: function() {}
+      }
+    ''')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS', '--pre-js', 'pre.js'])
+    self.assertContained('Module.read option was removed', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
