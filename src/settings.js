@@ -1485,6 +1485,9 @@ var LOAD_SOURCE_MAP = 0;
 // Whether embind has been enabled.
 var EMBIND = 0;
 
+// Whether the main() function reads the argc/argv parameters.
+var MAIN_READS_PARAMS = 1;
+
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
