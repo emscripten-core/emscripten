@@ -7168,9 +7168,11 @@ Success!
 
     if self.is_wasm_backend():
       self.set_setting('ASYNCIFY', 1)
-    else:
+    elif emterpretify:
       self.set_setting('EMTERPRETIFY', 1)
       self.set_setting('EMTERPRETIFY_ASYNC', 1)
+    else:
+      self.skipTest('fastcomp Asyncify was removed')
 
     src = r'''
 #include <stdio.h>
