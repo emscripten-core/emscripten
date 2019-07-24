@@ -1,5 +1,5 @@
 /* Boost Graph example, from Boost-Cookbook + minor adaptations for testcase
-   https://github.com/apolukhin/Boost-Cookbook/blob/second_edition/Chapter12/01_graph/main.cpp
+   source: https://github.com/apolukhin/Boost-Cookbook/blob/second_edition/Chapter12/01_graph/main.cpp
 
   Boost Software License - Version 1.0 - August 17th, 2003
 
@@ -31,17 +31,16 @@
 
 typedef std::string vertex_t;
 
-typedef boost::adjacency_list<
-  boost::vecS,
-  boost::vecS,
-  boost::bidirectionalS,
-  vertex_t> graph_type;
+typedef boost::adjacency_list <
+boost::vecS,
+boost::vecS,
+boost::bidirectionalS,
+vertex_t> graph_type;
 
 #include <boost/utility/string_ref.hpp>
 #include <iostream>
 
-inline bool find_and_print(const graph_type& graph, boost::string_ref name)
-{
+inline bool find_and_print( const graph_type& graph, boost::string_ref name ) {
   typedef boost::graph_traits<graph_type>::vertex_iterator vert_it_t;
 
   vert_it_t it, end;
@@ -49,32 +48,29 @@ inline bool find_and_print(const graph_type& graph, boost::string_ref name)
 
   typedef boost::graph_traits<graph_type>::vertex_descriptor desc_t;
 
-  for (; it != end; ++ it) {
+  for ( ; it != end; ++it ) {
     const desc_t desc = *it;
     const vertex_t& vertex = boost::get(boost::vertex_bundle, graph)[desc];
 
-    if (vertex == name.data()) {
+    if ( vertex == name.data()) {
       break;
     }
   }
 
-  if(it != end) {
+  if ( it != end ) {
     std::cout << name << '\n';
     return true;
   }
   else {
     return false;
   }
-} /* find_and_print */
+}
 
 int main() {
   graph_type graph;
 
   static const std::size_t vertex_count = 5;
   graph.m_vertices.reserve(vertex_count);
-  /*
-  C++ -> STL -> Boost -> C++ guru <- C
-  */
 
   typedef boost::graph_traits<graph_type>::vertex_descriptor descriptor_t;
 
@@ -84,21 +80,17 @@ int main() {
   descriptor_t guru = boost::add_vertex(vertex_t("C++ guru"), graph);
   descriptor_t ansic = boost::add_vertex(vertex_t("C"), graph);
 
-  BOOST_STATIC_ASSERT((boost::is_same<descriptor_t, std::size_t>::value));
+  BOOST_STATIC_ASSERT(( boost::is_same<descriptor_t, std::size_t>::value ));
 
   boost::add_edge(cpp, stl, graph);
   boost::add_edge(stl, boost, graph);
   boost::add_edge(boost, guru, graph);
   boost::add_edge(ansic, guru, graph);
 
-  if(find_and_print(graph, "Boost"))
-  {
-    #ifdef REPORT_RESULT
-      REPORT_RESULT(0);
-    #endif
+  if ( find_and_print(graph, "Boost") ) {
     return 0;
   }
   else {
     return 1;
   }
-} // end of main
+}
