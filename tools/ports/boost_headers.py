@@ -7,24 +7,24 @@ import logging
 import os
 import shutil
 
-TAG = 'version_1'
-HASH = '13828c09ebea9dd416a587fbe5e481f626073cb173a137fbcb85044c7bde1249b28af9980da0d2445b8bd1a8387e66a4629103f89031beb90a6c6226c96bc74d'
+TAG = '1.70.0'
+HASH = '3ba0180a4a3c20d64727750a3233c82aadba95f265a45052297b955902741edac1befd963400958d6915e5b8d9ade48195eeaf8524f06fdb4cfe43b98677f196'
 
 
 def get(ports, settings, shared):
   if settings.USE_BOOST_HEADERS != 1:
     return []
 
-  ports.fetch_project('boost_headers', 'https://github.com/gabrielcuvillier/libboost-includes/archive/' + TAG + '.zip',
-                      'libboost-includes-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libboost_headers')
+  ports.fetch_project('boost_headers', 'https://github.com/emscripten-ports/boost/releases/download/boost-1.70.0/boost-headers-' + TAG + '.zip',
+                      'boost', sha512hash=HASH)
+  libname = ports.get_lib_name('boost_headers')
 
   def create():
     logging.info('building port: boost_headers')
     ports.clear_project_build('boost_headers')
 
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'boost_headers', 'libboost-includes-' + TAG, 'boost')
+    source_path_include = os.path.join(ports.get_dir(), 'boost_headers', 'boost')
     dest_path_include = os.path.join(ports.get_build_dir(), 'boost_headers', 'boost')
     shutil.copytree(source_path_include, dest_path_include)
 
@@ -47,7 +47,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libboost_headers'))
+  shared.Cache.erase_file(ports.get_lib_name('boost_headers'))
 
 
 def process_args(ports, args, settings, shared):
@@ -58,4 +58,4 @@ def process_args(ports, args, settings, shared):
 
 
 def show():
-  return 'Boost headers v1.69.0 (USE_BOOST_HEADERS=1; Boost license)'
+  return 'Boost headers v1.70.0 (USE_BOOST_HEADERS=1; Boost license)'
