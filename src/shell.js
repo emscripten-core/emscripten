@@ -368,10 +368,10 @@ assert(typeof Module['memoryInitializerPrefixURL'] === 'undefined', 'Module.memo
 assert(typeof Module['pthreadMainPrefixURL'] === 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] === 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
-assert(typeof Module['read'] === 'undefined', 'Module.read option was removed');
-assert(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed');
-assert(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed');
-assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed');
+assert(typeof Module['read'] === 'undefined', 'Module.read option was removed (modify read_ in JS)');
+assert(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
+assert(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
+assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
 // Assertions on removed outgoing Module JS APIs.
 Object.defineProperty(Module, 'read', { get: function() { abort('Module.read has been replaced with plain read') } });
 Object.defineProperty(Module, 'readAsync', { get: function() { abort('Module.readAsync has been replaced with plain readAsync') } });
