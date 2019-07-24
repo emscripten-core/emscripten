@@ -1700,10 +1700,10 @@ mergeInto(LibraryManager.library, {
         var chunkOffset = idx % this.chunkSize;
         var chunkNum = (idx / this.chunkSize)|0;
         return this.getter(chunkNum)[chunkOffset];
-      }
+      };
       LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
         this.getter = getter;
-      }
+      };
       LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
         // Find length
         var xhr = new XMLHttpRequest();
@@ -1770,7 +1770,7 @@ mergeInto(LibraryManager.library, {
         this._length = datalength;
         this._chunkSize = chunkSize;
         this.lengthKnown = true;
-      }
+      };
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();

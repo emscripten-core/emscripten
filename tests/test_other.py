@@ -8037,9 +8037,9 @@ int main() {
     'O0': ([],      17, [], ['waka'], 22185, 11,  17, 57), # noqa
     'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  14, 31), # noqa
     'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  14, 25), # noqa
-    'O3': (['-O3'],  5, [], [],        2353,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  5, [], [],        2310,  7,   3, 15), # noqa
-    'Oz': (['-Oz'],  5, [], [],        2272,  7,   2, 14), # noqa
+    'O3': (['-O3'],  5, [], [],        2353,  7,   2, 13), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'],  5, [], [],        2310,  7,   2, 14), # noqa
+    'Oz': (['-Oz'],  5, [], [],        2272,  7,   1, 13), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
@@ -8572,6 +8572,7 @@ end
     if not self.is_wasm_backend(): # TODO: wasm backend main module
       self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
+  @no_windows('https://github.com/emscripten-core/emscripten/issues/9057')
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
@@ -8590,7 +8591,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 ''', '''
 var ASM_CONSTS = [function() {var x = !<->5.;}];
                                        ^
-'''), stderr)
+'''), stderr.replace('\r', ''))
 
   def test_EM_ASM_ES6(self):
     # check we show a proper understandable error for JS parse problems
@@ -9454,6 +9455,27 @@ int main () {
     run_process([PYTHON, EMCC, '-fsanitize=null', 'src.c'])
     output = run_js('a.out.js', stderr=PIPE, full_output=True)
     self.assertIn('\x1b[1msrc.c', output)
+
+  @no_fastcomp('main param optimizations are upstream-only')
+  def test_main_reads_params(self):
+    create_test_file('no.c', '''
+      int main() {
+        return 42;
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'no.c', '-O3', '-o', 'no.js'])
+    no = os.path.getsize('no.js')
+    create_test_file('yes.c', '''
+      int main(int argc, char **argv) {
+        return argc;
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'yes.c', '-O3', '-o', 'yes.js'])
+    yes = os.path.getsize('yes.js')
+    # not having to set up argc/argv allows us to avoid including a
+    # significant amount of JS for string support (which is not needed
+    # otherwise in such a trivial program).
+    self.assertLess(no, 0.95 * yes)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
