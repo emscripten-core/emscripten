@@ -188,14 +188,31 @@ void emscripten_async_waitable_close(em_queued_call* call) { em_queued_call_free
 
 extern double emscripten_receive_on_main_thread_js(int, int, double*);
 
+#if defined(__has_feature)
+#if __has_feature(address_sanitizer)
+#define HAS_ASAN
+void __lsan_disable_in_this_thread(void);
+void __lsan_enable_in_this_thread(void);
+int emscripten_builtin_pthread_create(void *thread, void *attr,
+                                      void *(*callback)(void *), void *arg);
+#endif
+#endif
+
 static void _do_call(em_queued_call* q) {
   if (!q->js) {
     // C function pointer
     assert(EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(q->functionEnum) <= EM_QUEUED_CALL_MAX_ARGS);
     switch (q->functionEnum) {
       case EM_PROXIED_PTHREAD_CREATE:
+#ifdef HAS_ASAN
+        __lsan_disable_in_this_thread();
+        q->returnValue.i =
+          emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
+        __lsan_enable_in_this_thread();
+#else
         q->returnValue.i =
           pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
+#endif
         break;
       case EM_PROXIED_SYSCALL:
         q->returnValue.i = emscripten_syscall(q->args[0].i, q->args[1].vp);
