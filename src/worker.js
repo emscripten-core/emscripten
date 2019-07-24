@@ -11,6 +11,7 @@
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
+var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 
 // Thread-local: Each thread has its own allocated stack space.
 var STACK_BASE = 0;
