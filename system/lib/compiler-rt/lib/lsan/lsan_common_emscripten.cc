@@ -39,9 +39,7 @@ static bool IsLinker(const LoadedModule& module) {
   return false;
 }
 
-// TODO: make thread local storage actually work
-/*__attribute__((tls_model("initial-exec")))
-THREADLOCAL*/ int disable_counter;
+thread_local int disable_counter;
 bool DisabledInThisThread() { return disable_counter > 0; }
 void DisableInThisThread() { disable_counter++; }
 void EnableInThisThread() {
