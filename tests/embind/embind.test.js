@@ -1192,6 +1192,19 @@ module({
             b.delete();
         });
 
+        test("function objects as class constructors", function() {
+            let a = new cm.ConstructFromStdFunction("foo", 10);
+            assert.equal("foo", a.getVal());
+            assert.equal(10, a.getA());
+
+            let b = new cm.ConstructFromFunctionObject("bar", 12);
+            assert.equal("bar", b.getVal());
+            assert.equal(12, b.getA());
+
+            a.delete();
+            b.delete();
+        });
+
         test("function objects as class methods", function() {
             let b = cm.ValHolder.makeValHolder("foo");
 
