@@ -55,11 +55,6 @@ extern "C" {
   int pthread_attr_getdetachstate(void *attr, int *detachstate);
 }
 
-struct ThreadStartParam {
-  atomic_uintptr_t t;
-  atomic_uintptr_t is_registered;
-};
-
 static thread_return_t THREAD_CALLING_CONV asan_thread_start(void *arg) {
   atomic_uintptr_t *param = reinterpret_cast<atomic_uintptr_t *>(arg);
   AsanThread *t = nullptr;
