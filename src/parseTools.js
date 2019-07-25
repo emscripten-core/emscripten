@@ -1614,3 +1614,20 @@ function makeModuleReceive(localName, moduleName) {
   // but sometimes they must differ.
   return "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
 }
+
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
+  if (!moduleName) moduleName = localName;
+  var varDef = 'var ' + localName;
+  if (!expectToReceiveOnModule(moduleName)) {
+    if (defaultValue) {
+      varDef += ' = ' + defaultValue;
+    }
+    return varDef + ';';
+  }
+  if (defaultValue) {
+    return varDef + " = Module['" + moduleName + "'] || " + defaultValue + ";";
+  } else {
+    return varDef + ';\n' +
+           makeModuleReceive(localName, moduleName);
+  }
+}

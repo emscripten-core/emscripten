@@ -9497,13 +9497,17 @@ int main () {
   @no_fastcomp('not optimized in fastcomp')
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3'] + args)
-      self.assertContained('hello, world!', run_js('a.out.js'))
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure', '1'] + args)
+      for engine in JS_ENGINES:
+        self.assertContained('hello, world!', run_js('a.out.js', engine=engine))
       return os.path.getsize('a.out.js')
     normal = test([])
     changed = test(['-s', 'INCOMING_MODULE_JS_API=[]'])
-    # TODO: specific sizes once we stabilize
+    print('sizes', normal, changed)
+    # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
+    # Check an absolute code size as well, with some slack.
+    self.assertLess(abs(changed - 6768), 100)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')

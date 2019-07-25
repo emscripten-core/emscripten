@@ -4119,6 +4119,14 @@ window.close = function() {
     self.assertLess(td_without_fallback, just_fallback)
     self.assertLess(just_fallback, td_with_fallback)
 
+  @no_fastcomp('not optimized in fastcomp')
+  def test_small_js_flags(self):
+    self.btest('browser_test_hello_world.c', '0', args=['-O3', '--closure', '1', '-s', 'INCOMING_MODULE_JS_API=[]', '-s', 'ENVIRONMENT=web'])
+    # Check an absolute js code size, with some slack.
+    size = os.path.getsize('test.js')
+    print('size:', size)
+    self.assertLess(abs(size - 6552), 100)
+
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
   @no_chrome('see https://crbug.com/961765')

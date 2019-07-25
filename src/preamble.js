@@ -13,6 +13,8 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+{{{ makeModuleReceiveWithVar('wasmBinary') }}}
+
 #if WASM2JS
 #include "wasm2js.js"
 #endif
@@ -338,7 +340,7 @@ if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the st
 Module['TOTAL_STACK'] = TOTAL_STACK;
 #endif
 
-var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+{{{ makeModuleReceiveWithVar('INITIAL_TOTAL_MEMORY', 'TOTAL_MEMORY', TOTAL_MEMORY) }}}
 
 #if ASSERTIONS
 assert(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
@@ -382,9 +384,13 @@ if (ENVIRONMENT_IS_PTHREAD) {
 } else {
 #endif // USE_PTHREADS
 #if WASM
+
+#if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
     wasmMemory = Module['wasmMemory'];
-  } else {
+  } else
+#endif
+  {
     wasmMemory = new WebAssembly.Memory({
       'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
@@ -826,9 +832,10 @@ if (!isDataURI(wasmBinaryFile)) {
 
 function getBinary() {
   try {
-    if (Module['wasmBinary']) {
-      return new Uint8Array(Module['wasmBinary']);
+    if (wasmBinary) {
+      return new Uint8Array(wasmBinary);
     }
+
 #if SUPPORT_BASE64_EMBEDDING
     var binary = tryParseAsDataURI(wasmBinaryFile);
     if (binary) {
@@ -853,7 +860,7 @@ function getBinary() {
 function getBinaryPromise() {
   // if we don't have the binary yet, and have the Fetch api, use that
   // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
     return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
         throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -1060,7 +1067,7 @@ function createWasm(env) {
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
-    if (!Module['wasmBinary'] &&
+    if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {

@@ -230,6 +230,14 @@ if (ENVIRONMENT_IS_SHELL) {
       quit(status);
     };
   }
+
+  if (typeof console !== 'undefined') {
+    // Support odd shell environments that lack console.* but have other stuff.
+    console = {
+      log: print,
+      warn: typeof printErr !== 'undefined' ? printErr : print
+    }
+  }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
@@ -340,8 +348,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
-var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)') }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)') }}}
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
