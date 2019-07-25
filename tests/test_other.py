@@ -9552,3 +9552,14 @@ int main () {
     ''')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS', '--pre-js', 'pre.js'])
     self.assertContained('Module.read option was removed', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+
+  def test_em_asm_strict_c(self):
+    create_test_file('src.c', '''
+      #include <emscripten/em_asm.h>
+      int main() {
+        EM_ASM({ console.log('Hello, world!'); });
+      }
+    ''')
+    returncode, output = self.run_on_pty([PYTHON, EMCC, '-std=c11', 'src.c'])
+    self.assertNotEqual(returncode, 0)
+    self.assertIn(b'EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', output)
