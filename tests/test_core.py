@@ -7165,14 +7165,11 @@ Success!
 
     if self.is_wasm_backend():
       self.set_setting('ASYNCIFY', 1)
+    elif emterpretify:
+      self.set_setting('EMTERPRETIFY', 1)
+      self.set_setting('EMTERPRETIFY_ASYNC', 1)
     else:
-      if not emterpretify:
-        if self.is_emterpreter():
-          self.skipTest("don't test both emterpretify and asyncify at once")
-        self.set_setting('ASYNCIFY', 1)
-      else:
-        self.set_setting('EMTERPRETIFY', 1)
-        self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      self.skipTest('fastcomp Asyncify was removed')
 
     src = r'''
 #include <stdio.h>
@@ -7471,10 +7468,12 @@ extern "C" {
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.set_setting('ASYNCIFY', 1)
