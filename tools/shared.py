@@ -2724,6 +2724,7 @@ class Building(object):
     if not debug_info:
       # to remove debug info, we just write to that same file, and without -g
       cmd += ['-o', wasm_file]
+    cmd += Building.get_binaryen_feature_flags()
     output = run_process(cmd, stdout=PIPE).stdout
     if symbols_file:
       with open(symbols_file, 'w') as f:
