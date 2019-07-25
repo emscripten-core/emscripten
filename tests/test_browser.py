@@ -2666,14 +2666,7 @@ Module["preRun"].push(function () {
 
   def test_wget(self):
     create_test_file('test.txt', 'emscripten')
-    if not self.is_wasm_backend():
-      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
-      print('asyncify+emterpreter')
-      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1', '-s', 'EMTERPRETIFY=1'])
-      print('emterpreter by itself')
-      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1'])
-    else:
-      self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=['-s', 'ASYNCIFY=1'])
+    self.btest(path_from_root('tests', 'test_wget.c'), expected='1', args=self.get_async_args())
 
   def test_wget_data(self):
     create_test_file('test.txt', 'emscripten')

@@ -1733,8 +1733,8 @@ var LibrarySDL = {
   SDL_WM_SetCaption__proxy: 'sync',
   SDL_WM_SetCaption__sig: 'vii',
   SDL_WM_SetCaption: function(title, icon) {
-    if (title && typeof Module['setWindowTitle'] !== 'undefined') {
-      Module['setWindowTitle'](UTF8ToString(title));
+    if (title && typeof setWindowTitle !== 'undefined') {
+      setWindowTitle(UTF8ToString(title));
     }
     icon = icon && UTF8ToString(icon);
   },

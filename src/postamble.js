@@ -43,7 +43,7 @@ if (memoryInitializer) {
     memoryInitializer = locateFile(memoryInitializer);
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    var data = Module['readBinary'](memoryInitializer);
+    var data = readBinary(memoryInitializer);
     HEAPU8.set(data, GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
@@ -62,7 +62,7 @@ if (memoryInitializer) {
       removeRunDependency('memory initializer');
     };
     var doBrowserLoad = function() {
-      Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
+      readAsync(memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
     };

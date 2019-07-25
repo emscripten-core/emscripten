@@ -243,6 +243,9 @@ class EmccOptions(object):
     # Linux & MacOS)
     self.output_eol = os.linesep
     self.binaryen_passes = []
+    # Whether we will expand the full path of any input files to remove any
+    # symlinks.
+    self.expand_symlinks = True
 
 
 def use_source_map(options):
@@ -894,7 +897,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                     '-current_version', '-I', '-L', '-include-pch'):
           continue # ignore this gcc-style argument
 
-      if os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
+      if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
         arg = os.path.realpath(arg)
 
       if not arg.startswith('-'):
@@ -1219,6 +1222,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EMULATED_FUNCTION_POINTERS = 2 # by default, use optimized function pointer emulation
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
       shared.Settings.WARN_ON_UNDEFINED_SYMBOLS = 0
+
+    if shared.Settings.ASYNCIFY:
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('ASYNCIFY has been removed from fastcomp. There is a new implementation which can be used in the upstream wasm backend.')
 
     if shared.Settings.EMTERPRETIFY:
       shared.Settings.FINALIZE_ASM_JS = 0
@@ -2662,6 +2669,8 @@ def parse_args(newargs):
       settings_changes.append('USE_PTHREADS=1')
     elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
+    elif newargs[i] == '-no-canonical-prefixes':
+      options.expand_symlinks = False
 
   if should_exit:
     sys.exit(0)
