@@ -4125,6 +4125,7 @@ window.close = function() {
     # Check an absolute js code size, with some slack.
     size = os.path.getsize('test.js')
     print('size:', size)
+    # Note that this size includes test harness additions (for reporting the result, etc.).
     self.assertLess(abs(size - 6552), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
