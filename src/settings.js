@@ -554,11 +554,22 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // to know you got this right), so this is not recommended unless you
 // really know what are doing, and need to optimize every bit of speed
 // and size.
+// The names in this list are names from the WebAssembly Names section. The
+// wasm backend will emit those names in *human-readable* form instead of
+// typical C++ mangling. For example, you should write Struct::func()
+// instead of _ZN6Struct4FuncEv. C is also different from C++, as C
+// names don't end with parameters; as a result foo(int) in C++ would appear
+// as just foo in C. You will see warnings in the console if a name in the
+// list is missing; these are not errors because inlining etc. may cause
+// changes (which would mean a single list couldn't work for both -O0 and -O1
+// builds, etc.). You can inspect the wasm binary to look for the actual names,
+// either directly or using wasm-objdump or wasm-dis, etc.
 var ASYNCIFY_BLACKLIST = [];
 
 // If the Asyncify whitelist is provided, then *only* the functions in the list
 // will be instrumented. Like the blacklist, getting this wrong will break
 // your application.
+// See notes on ASYNCIFY_BLACKLIST about the names.
 var ASYNCIFY_WHITELIST = [];
 
 // Upstream only: Runtime debug logging from asyncify internals.
