@@ -589,10 +589,6 @@ def create_backend_cmd(infile, temp_js):
     args += ['-enable-emscripten-cpp-exceptions']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
       args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
-  if shared.Settings.ASYNCIFY:
-    args += ['-emscripten-asyncify']
-    args += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
-    args += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
@@ -917,8 +913,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['emterpret']
       if shared.Settings.EMTERPRETIFY_ASYNC:
         funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
-    if shared.Settings.ASYNCIFY and need_asyncify(funcs):
-      funcs += ['setAsync']
 
   return sorted(set(funcs))
 
@@ -1487,10 +1481,6 @@ def make_simd_types(metadata):
   }
 
 
-def need_asyncify(exported_implemented_functions):
-  return '_emscripten_alloc_async_context' in exported_implemented_functions
-
-
 def asm_safe_heap():
   """optimized safe heap in asm, when we can"""
   return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
@@ -1609,11 +1599,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
     else:
       # wasm side modules have a specific convention for these
       basic_vars += ['__memory_base', '__table_base']
-
-  # See if we need ASYNCIFY functions
-  # We might not need them even if ASYNCIFY is enabled
-  if need_asyncify(exported_implemented_functions):
-    basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
 
   if shared.Settings.EMTERPRETIFY:
     basic_vars += ['EMTSTACKTOP', 'EMT_STACK_MAX', 'eb']
@@ -1882,13 +1867,6 @@ function establishStackSpace(stackBase, stackMax) {
   if shared.Settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME moves stack functions to library.
     funcs = []
-
-  if need_asyncify(exports):
-    funcs.append('''
-function setAsync() {
-  ___async = 1;
-}
-''')
 
   if shared.Settings.EMTERPRETIFY:
     funcs.append('''
