@@ -530,18 +530,6 @@ var NODEJS_CATCH_EXIT = 1;
 // On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
-// Functions that call any function in the list, directly or indirectly
-var ASYNCIFY_FUNCTIONS = ['emscripten_sleep',
-                          'emscripten_wget',  // will be transformed
-                          'emscripten_yield'];
-// Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
-var ASYNCIFY_WHITELIST = ['qsort',
-                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async
-                          '__toread', // This whitelist is useful when a function is known to be sync
-                          '__uflow',  // currently this link contains some functions in libc
-                          '__fwritex',
-                          'MUSL_vfprintf'];
-
 // Upstream only: The imports which can do a sync operation. If you add more you will need to
 // add them to here.
 var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
@@ -556,6 +544,22 @@ var ASYNCIFY_IGNORE_INDIRECT = 0;
 // small, you will see a wasm trap due to executing an "unreachable" instruction.
 // In that case, you should increase this size.
 var ASYNCIFY_STACK_SIZE = 4096;
+
+// If the Asyncify blacklist is provided, then the functions in it will not
+// be instrumented even if it looks like they need to. This can be useful
+// if you know things the whole-program analysis doesn't, like if you
+// know certain indirect calls are safe and won't unwind. But if you
+// get the list wrong things will break (and in a production build user
+// input might reach code paths you missed during testing, so it's hard
+// to know you got this right), so this is not recommended unless you
+// really know what are doing, and need to optimize every bit of speed
+// and size.
+var ASYNCIFY_BLACKLIST = [];
+
+// If the Asyncify whitelist is provided, then *only* the functions in the list
+// will be instrumented. Like the blacklist, getting this wrong will break
+// your application.
+var ASYNCIFY_WHITELIST = [];
 
 // Upstream only: Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;
