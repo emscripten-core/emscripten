@@ -8,7 +8,22 @@
 #pragma once
 
 // EM_ASM does not work strict C mode.
-#if defined(__cplusplus) || !defined(__STRICT_ANSI__)
+#if !defined(__cplusplus) && defined(__STRICT_ANSI__)
+
+#define EM_ASM_ERROR _Pragma("GCC error(\"EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead\")")
+#define EM_ASM(...) EM_ASM_ERROR
+#define EM_ASM_INT(...) EM_ASM_ERROR
+#define EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
+#define EM_ASM_(...) EM_ASM_ERROR
+#define EM_ASM_ARGS(...) EM_ASM_ERROR
+#define EM_ASM_INT_V(...) EM_ASM_ERROR
+#define EM_ASM_DOUBLE_V(...) EM_ASM_ERROR
+
+#else
 
 #ifndef __asmjs__
 // In wasm backend, we need to call the emscripten_asm_const_* functions with
@@ -217,19 +232,4 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 #define EM_ASM_INT_V(code) EM_ASM_INT(#code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)
 
-#else
-
-#define EM_ASM_ERROR _Pragma("GCC error(\"EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead\")")
-#define EM_ASM(...) EM_ASM_ERROR
-#define EM_ASM_INT(...) EM_ASM_ERROR
-#define EM_ASM_DOUBLE(...) EM_ASM_ERROR
-#define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
-#define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
-#define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
-#define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
-#define EM_ASM_(...) EM_ASM_ERROR
-#define EM_ASM_ARGS(...) EM_ASM_ERROR
-#define EM_ASM_INT_V(...) EM_ASM_ERROR
-#define EM_ASM_DOUBLE_V(...) EM_ASM_ERROR
-
-#endif
+#endif // !defined(__cplusplus) && defined(__STRICT_ANSI__)
