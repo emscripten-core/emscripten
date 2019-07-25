@@ -66,8 +66,8 @@
 #define _EM_ASM_ARG_SIGS(...) \
     _EM_ASM_ARG_SIGS_(_EM_ASM_COUNT_ARGS(__VA_ARGS__), ##__VA_ARGS__)
 
-// We lead with commas to avoid adding an extra comma in the 0-argument case.
-#define _EM_ASM_PREP_ARGS(...) , _EM_ASM_ARG_SIGS(__VA_ARGS__), ##__VA_ARGS__
+#define _EM_ASM_NO_ARG(func, code) func(#code, "")
+#define _EM_ASM_ARGS(func, code, ...) func(#code, _EM_ASM_ARG_SIGS(__VA_ARGS__), __VA_ARGS__)
 
 #else // __cplusplus
 
@@ -118,8 +118,8 @@ public:
   }
 };
 
-#define _EM_ASM_PREP_ARGS(...) \
-    , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).buffer, ##__VA_ARGS__
+#define _EM_ASM_NO_ARG(func, code) func(#code, "")
+#define _EM_ASM_ARGS(func, code, ...) func(#code, __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).buffer, __VA_ARGS__)
 
 extern "C" {
 #endif // __cplusplus
@@ -151,7 +151,8 @@ void emscripten_asm_const_async_on_main_thread(
 extern "C" {
 #endif // __cplusplus
 
-#define _EM_ASM_PREP_ARGS(...) , ##__VA_ARGS__
+#define _EM_ASM_NO_ARG(func, code) func(#code)
+#define _EM_ASM_ARGS(func, code, ...) func(#code, __VA_ARGS__)
 
 int emscripten_asm_const_int(const char* code, ...);
 double emscripten_asm_const_double(const char* code, ...);
@@ -167,19 +168,31 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 
 #endif // __asmjs__
 
+#define _EM_ASM_ARG_32(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, \
+    arg10, arg11, arg12, arg13, arg14, arg15, arg16, arg17, arg18, arg19, \
+    arg20, arg21, arg22, arg23, arg24, arg25, arg26, arg27, arg28, arg29, \
+    arg30, arg31, arg32, ...) arg32
+#define _EM_ASM_MACRO_CHOOSER(...) _EM_ASM_ARG_32(__VA_ARGS__, \
+    _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, \
+    _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, \
+    _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, \
+    _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, \
+    _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, \
+    _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, _EM_ASM_ARGS, \
+    _EM_ASM_NO_ARG, EM_ASM_NEEDS_AT_LEAST_ONE_ARGUMENT)
 
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
 // for example code snippets.
 
 // Runs the given JavaScript code on the calling thread (synchronously), and returns no value back.
-#define EM_ASM(code, ...) ((void)emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
+#define EM_ASM(...) ((void)_EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_int, __VA_ARGS__))
 
 // Runs the given JavaScript code on the calling thread (synchronously), and returns an integer back.
-#define EM_ASM_INT(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define EM_ASM_INT(...) _EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_int, __VA_ARGS__)
 
 // Runs the given JavaScript code on the calling thread (synchronously), and returns a double back.
-#define EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define EM_ASM_DOUBLE(...) _EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_double, __VA_ARGS__)
 
 // Runs the given JavaScript code synchronously on the main browser thread, and returns no value back.
 // Call this function for example to access DOM elements in a pthread when building with -s USE_PTHREADS=1.
@@ -190,27 +203,27 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 // a return value back, consider using the function MAIN_THREAD_ASYNC_EM_ASM() instead, which will not block.
 // In single-threaded builds (including Emterpreter builds and proxy-to-worker), MAIN_THREAD_EM_ASM*()
 // functions are direct aliases to the corresponding EM_ASM*() family of functions.
-#define MAIN_THREAD_EM_ASM(code, ...) ((void)emscripten_asm_const_int_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
+#define MAIN_THREAD_EM_ASM(...) ((void)_EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_int_sync_on_main_thread, __VA_ARGS__))
 
 // Runs the given JavaScript code synchronously on the main browser thread, and returns an integer back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
-#define MAIN_THREAD_EM_ASM_INT(code, ...) emscripten_asm_const_int_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define MAIN_THREAD_EM_ASM_INT(...) _EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_int_sync_on_main_thread, __VA_ARGS__)
 
 // Runs the given JavaScript code synchronously on the main browser thread, and returns a double back.
 // The same considerations apply as with MAIN_THREAD_EM_ASM().
-#define MAIN_THREAD_EM_ASM_DOUBLE(code, ...) emscripten_asm_const_double_sync_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define MAIN_THREAD_EM_ASM_DOUBLE(...) _EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_double_sync_on_main_thread, __VA_ARGS__)
 
 // Asynchronously dispatches the given JavaScript code to be run on the main browser thread.
 // If the calling thread is the main browser thread, then the specified JavaScript code is executed
 // synchronously. Otherwise an event will be queued on the main browser thread to execute the call
 // later (think postMessage()), and this call will immediately return without waiting. Be sure to
 // guard any accesses to shared memory on the heap inside the JavaScript code with appropriate locking.
-#define MAIN_THREAD_ASYNC_EM_ASM(code, ...) ((void)emscripten_asm_const_async_on_main_thread(#code _EM_ASM_PREP_ARGS(__VA_ARGS__)))
+#define MAIN_THREAD_ASYNC_EM_ASM(...) ((void)_EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_async_on_main_thread, __VA_ARGS__))
 
 // Old forms for compatibility, no need to use these.
 // Replace EM_ASM_, EM_ASM_ARGS and EM_ASM_INT_V with EM_ASM_INT,
 // and EM_ASM_DOUBLE_V with EM_ASM_DOUBLE.
-#define EM_ASM_(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
-#define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
+#define EM_ASM_(...) _EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_int, __VA_ARGS__)
+#define EM_ASM_ARGS(...) _EM_ASM_MACRO_CHOOSER(__VA_ARGS__)(emscripten_asm_const_int, __VA_ARGS__)
 #define EM_ASM_INT_V(code) EM_ASM_INT(#code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)

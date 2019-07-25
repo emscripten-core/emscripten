@@ -1746,11 +1746,15 @@ int main(int argc, char **argv) {
   def test_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
+    self.emcc_args += ['-std=c11']
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm', force_c=True)
 
   # Tests various different ways to invoke the EM_ASM(), EM_ASM_INT() and EM_ASM_DOUBLE() macros.
   @no_asan('Cannot use ASan: test depends exactly on heap size')
   def test_em_asm_2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
+    self.emcc_args += ['-std=c11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_2', force_c=True)
 
   # Tests various different ways to invoke the MAIN_THREAD_EM_ASM(), MAIN_THREAD_EM_ASM_INT() and MAIN_THREAD_EM_ASM_DOUBLE() macros.
@@ -1766,9 +1770,13 @@ int main(int argc, char **argv) {
 
     self.do_run_from_file('src.cpp', 'result.out')
     self.do_run_from_file('src.cpp', 'result.out', force_c=True)
+    self.emcc_args += ['-std=c11']
+    self.do_run_from_file('src.cpp', 'result.out', force_c=True)
 
   def test_main_thread_async_em_asm(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm')
+    self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
+    self.emcc_args += ['-std=c11']
     self.do_run_in_out_file_test('tests', 'core', 'test_main_thread_async_em_asm', force_c=True)
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call with different signatures.
@@ -1777,6 +1785,8 @@ int main(int argc, char **argv) {
 
   def test_em_asm_unicode(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
+    self.emcc_args += ['-std=c11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
   def test_em_asm_unused_arguments(self):
