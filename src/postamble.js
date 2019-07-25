@@ -130,6 +130,9 @@ Module['then'] = function(func) {
   } else {
     // we are not ready to call then() yet. we must call it
     // at the same time we would call onRuntimeInitialized.
+#if ASSERTIONS && !expectToReceiveOnModule('onRuntimeInitialized')
+    abort('.then() requires adding onRuntimeInitialized to INCOMING_MODULE_JS_API');
+#endif
     var old = Module['onRuntimeInitialized'];
     Module['onRuntimeInitialized'] = function() {
       if (old) old();
@@ -174,7 +177,7 @@ Module['callMain'] = function callMain(args) {
 
   var argc = args.length+1;
   var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
-  HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
+  HEAP32[argv >> 2] = allocateUTF8OnStack(thisProgram);
   for (var i = 1; i < argc; i++) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
@@ -235,7 +238,7 @@ Module['callMain'] = function callMain(args) {
         toLog = [e, e.stack];
       }
       err('exception thrown: ' + toLog);
-      Module['quit'](1, e);
+      quit_(1, e);
     }
   } finally {
     calledMain = true;
@@ -247,7 +250,7 @@ Module['callMain'] = function callMain(args) {
 
 /** @type {function(Array=)} */
 function run(args) {
-  args = args || Module['arguments'];
+  args = args || arguments_;
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
@@ -275,7 +278,9 @@ function run(args) {
 
     preMain();
 
+#if expectToReceiveOnModule('onRuntimeInitialized')
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+#endif
 
 #if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
@@ -397,7 +402,7 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  Module['quit'](status, new ExitStatus(status));
+  quit_(status, new ExitStatus(status));
 }
 
 var abortDecorators = [];

@@ -43,13 +43,11 @@ for (key in Module) {
   }
 }
 
-Module['arguments'] = [];
-Module['thisProgram'] = './this.program';
-Module['quit'] = function(status, toThrow) {
+var arguments_ = [];
+var thisProgram = './this.program';
+var quit_ = function(status, toThrow) {
   throw toThrow;
 };
-Module['preRun'] = [];
-Module['postRun'] = [];
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
@@ -152,10 +150,10 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   if (process['argv'].length > 1) {
-    Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+    thisProgram = process['argv'][1].replace(/\\/g, '/');
   }
 
-  Module['arguments'] = process['argv'].slice(2);
+  arguments_ = process['argv'].slice(2);
 
 #if MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -177,7 +175,7 @@ if (ENVIRONMENT_IS_NODE) {
   // deprecated, and in the future it will exit with error status.
   process['on']('unhandledRejection', abort);
 
-  Module['quit'] = function(status) {
+  quit_ = function(status) {
     process['exit'](status);
   };
 
@@ -222,15 +220,15 @@ if (ENVIRONMENT_IS_SHELL) {
   };
 
   if (typeof scriptArgs != 'undefined') {
-    Module['arguments'] = scriptArgs;
+    arguments_ = scriptArgs;
   } else if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+    arguments_ = arguments;
   }
 
   if (typeof quit === 'function') {
-    Module['quit'] = function(status) {
+    quit_ = function(status) {
       quit(status);
-    }
+    };
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
@@ -353,7 +351,15 @@ for (key in moduleOverrides) {
 }
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
-moduleOverrides = undefined;
+moduleOverrides = null;
+
+// Emit code to handle expected values on the Module object. This applies Module.x
+// to the proper local x. This has two benefits: first, we only emit it if it is
+// expected to arrive, and second, by using a local everywhere else that can be
+// minified.
+{{{ makeModuleReceive('arguments_', 'arguments') }}}
+{{{ makeModuleReceive('thisProgram') }}}
+{{{ makeModuleReceive('quit_', 'quit') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS
