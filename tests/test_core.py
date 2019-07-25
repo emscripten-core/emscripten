@@ -7493,6 +7493,10 @@ extern "C" {
     'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
     'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
     'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["foo()","bar()","baz()","main","__original_main"]', '-g', '-s', 'ASYNCIFY_DEBUG=1'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["foo()"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["baz()"]'], False),
   })
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass):
