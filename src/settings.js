@@ -530,16 +530,16 @@ var NODEJS_CATCH_EXIT = 1;
 // On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
-// Upstream only: The imports which can do a sync operation. If you add more you will need to
+// The imports which can do a sync operation. If you add more you will need to
 // add them to here.
 var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
 
-// Upstream only:  Whether indirect calls can be on the stack during an unwind/rewind.
+// Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 // must assume an indirect call can reach almost everywhere.
 var ASYNCIFY_IGNORE_INDIRECT = 0;
 
-// Upstream only: The size of the asyncify stack - the region used to store unwind/rewind
+// The size of the asyncify stack - the region used to store unwind/rewind
 // info. This must be large enough to store the call stack and locals. If it is too
 // small, you will see a wasm trap due to executing an "unreachable" instruction.
 // In that case, you should increase this size.
@@ -572,7 +572,7 @@ var ASYNCIFY_BLACKLIST = [];
 // See notes on ASYNCIFY_BLACKLIST about the names.
 var ASYNCIFY_WHITELIST = [];
 
-// Upstream only: Runtime debug logging from asyncify internals.
+// Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
