@@ -7493,17 +7493,17 @@ extern "C" {
     'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
     'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
     'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["foo()","bar()","baz()","main","__original_main"]', '-g', '-s', 'ASYNCIFY_DEBUG=1'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["foo()"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["baz()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","bar()"]'], False),
   })
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass):
     self.set_setting('ASYNCIFY', 1)
     self.emcc_args += args
     try:
-      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_lists')
+      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_lists', assert_identical=True)
       if not should_pass:
         should_pass = True
         raise Exception('should not have passed')
