@@ -7,8 +7,8 @@
 
 #pragma once
 
-// EM_ASM does not work on WASM backend in strict C mode.
-#if defined(__asmjs__) || defined(__cplusplus) || !defined(__STRICT_ANSI__)
+// EM_ASM does not work strict C mode.
+#if defined(__cplusplus) || !defined(__STRICT_ANSI__)
 
 #ifndef __asmjs__
 // In wasm backend, we need to call the emscripten_asm_const_* functions with
