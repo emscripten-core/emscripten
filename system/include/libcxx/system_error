@@ -120,88 +120,6 @@ public:
     const char* what() const noexcept;
 };
 
-enum class errc
-{
-    address_family_not_supported,       // EAFNOSUPPORT
-    address_in_use,                     // EADDRINUSE
-    address_not_available,              // EADDRNOTAVAIL
-    already_connected,                  // EISCONN
-    argument_list_too_long,             // E2BIG
-    argument_out_of_domain,             // EDOM
-    bad_address,                        // EFAULT
-    bad_file_descriptor,                // EBADF
-    bad_message,                        // EBADMSG
-    broken_pipe,                        // EPIPE
-    connection_aborted,                 // ECONNABORTED
-    connection_already_in_progress,     // EALREADY
-    connection_refused,                 // ECONNREFUSED
-    connection_reset,                   // ECONNRESET
-    cross_device_link,                  // EXDEV
-    destination_address_required,       // EDESTADDRREQ
-    device_or_resource_busy,            // EBUSY
-    directory_not_empty,                // ENOTEMPTY
-    executable_format_error,            // ENOEXEC
-    file_exists,                        // EEXIST
-    file_too_large,                     // EFBIG
-    filename_too_long,                  // ENAMETOOLONG
-    function_not_supported,             // ENOSYS
-    host_unreachable,                   // EHOSTUNREACH
-    identifier_removed,                 // EIDRM
-    illegal_byte_sequence,              // EILSEQ
-    inappropriate_io_control_operation, // ENOTTY
-    interrupted,                        // EINTR
-    invalid_argument,                   // EINVAL
-    invalid_seek,                       // ESPIPE
-    io_error,                           // EIO
-    is_a_directory,                     // EISDIR
-    message_size,                       // EMSGSIZE
-    network_down,                       // ENETDOWN
-    network_reset,                      // ENETRESET
-    network_unreachable,                // ENETUNREACH
-    no_buffer_space,                    // ENOBUFS
-    no_child_process,                   // ECHILD
-    no_link,                            // ENOLINK
-    no_lock_available,                  // ENOLCK
-    no_message_available,               // ENODATA
-    no_message,                         // ENOMSG
-    no_protocol_option,                 // ENOPROTOOPT
-    no_space_on_device,                 // ENOSPC
-    no_stream_resources,                // ENOSR
-    no_such_device_or_address,          // ENXIO
-    no_such_device,                     // ENODEV
-    no_such_file_or_directory,          // ENOENT
-    no_such_process,                    // ESRCH
-    not_a_directory,                    // ENOTDIR
-    not_a_socket,                       // ENOTSOCK
-    not_a_stream,                       // ENOSTR
-    not_connected,                      // ENOTCONN
-    not_enough_memory,                  // ENOMEM
-    not_supported,                      // ENOTSUP
-    operation_canceled,                 // ECANCELED
-    operation_in_progress,              // EINPROGRESS
-    operation_not_permitted,            // EPERM
-    operation_not_supported,            // EOPNOTSUPP
-    operation_would_block,              // EWOULDBLOCK
-    owner_dead,                         // EOWNERDEAD
-    permission_denied,                  // EACCES
-    protocol_error,                     // EPROTO
-    protocol_not_supported,             // EPROTONOSUPPORT
-    read_only_file_system,              // EROFS
-    resource_deadlock_would_occur,      // EDEADLK
-    resource_unavailable_try_again,     // EAGAIN
-    result_out_of_range,                // ERANGE
-    state_not_recoverable,              // ENOTRECOVERABLE
-    stream_timeout,                     // ETIME
-    text_file_busy,                     // ETXTBSY
-    timed_out,                          // ETIMEDOUT
-    too_many_files_open_in_system,      // ENFILE
-    too_many_files_open,                // EMFILE
-    too_many_links,                     // EMLINK
-    too_many_symbolic_link_levels,      // ELOOP
-    value_too_large,                    // EOVERFLOW
-    wrong_protocol_type                 // EPROTOTYPE
-};
-
 template <> struct is_error_condition_enum<errc>
     : true_type { }
 
@@ -225,8 +143,7 @@ template <> struct hash<std::error_condition>;
 
 */
 
-#include <__config>
-#include <cerrno>
+#include <__errc>
 #include <type_traits>
 #include <stdexcept>
 #include <__functional_base>
@@ -260,109 +177,6 @@ template <class _Tp>
 _LIBCPP_INLINE_VAR constexpr size_t is_error_condition_enum_v = is_error_condition_enum<_Tp>::value;
 #endif
 
-// Some error codes are not present on all platforms, so we provide equivalents
-// for them:
-
-//enum class errc
-_LIBCPP_DECLARE_STRONG_ENUM(errc)
-{
-    address_family_not_supported        = EAFNOSUPPORT,
-    address_in_use                      = EADDRINUSE,
-    address_not_available               = EADDRNOTAVAIL,
-    already_connected                   = EISCONN,
-    argument_list_too_long              = E2BIG,
-    argument_out_of_domain              = EDOM,
-    bad_address                         = EFAULT,
-    bad_file_descriptor                 = EBADF,
-    bad_message                         = EBADMSG,
-    broken_pipe                         = EPIPE,
-    connection_aborted                  = ECONNABORTED,
-    connection_already_in_progress      = EALREADY,
-    connection_refused                  = ECONNREFUSED,
-    connection_reset                    = ECONNRESET,
-    cross_device_link                   = EXDEV,
-    destination_address_required        = EDESTADDRREQ,
-    device_or_resource_busy             = EBUSY,
-    directory_not_empty                 = ENOTEMPTY,
-    executable_format_error             = ENOEXEC,
-    file_exists                         = EEXIST,
-    file_too_large                      = EFBIG,
-    filename_too_long                   = ENAMETOOLONG,
-    function_not_supported              = ENOSYS,
-    host_unreachable                    = EHOSTUNREACH,
-    identifier_removed                  = EIDRM,
-    illegal_byte_sequence               = EILSEQ,
-    inappropriate_io_control_operation  = ENOTTY,
-    interrupted                         = EINTR,
-    invalid_argument                    = EINVAL,
-    invalid_seek                        = ESPIPE,
-    io_error                            = EIO,
-    is_a_directory                      = EISDIR,
-    message_size                        = EMSGSIZE,
-    network_down                        = ENETDOWN,
-    network_reset                       = ENETRESET,
-    network_unreachable                 = ENETUNREACH,
-    no_buffer_space                     = ENOBUFS,
-    no_child_process                    = ECHILD,
-    no_link                             = ENOLINK,
-    no_lock_available                   = ENOLCK,
-#ifdef ENODATA
-    no_message_available                = ENODATA,
-#else
-    no_message_available                = ENOMSG,
-#endif
-    no_message                          = ENOMSG,
-    no_protocol_option                  = ENOPROTOOPT,
-    no_space_on_device                  = ENOSPC,
-#ifdef ENOSR
-    no_stream_resources                 = ENOSR,
-#else
-    no_stream_resources                 = ENOMEM,
-#endif
-    no_such_device_or_address           = ENXIO,
-    no_such_device                      = ENODEV,
-    no_such_file_or_directory           = ENOENT,
-    no_such_process                     = ESRCH,
-    not_a_directory                     = ENOTDIR,
-    not_a_socket                        = ENOTSOCK,
-#ifdef ENOSTR
-    not_a_stream                        = ENOSTR,
-#else
-    not_a_stream                        = EINVAL,
-#endif
-    not_connected                       = ENOTCONN,
-    not_enough_memory                   = ENOMEM,
-    not_supported                       = ENOTSUP,
-    operation_canceled                  = ECANCELED,
-    operation_in_progress               = EINPROGRESS,
-    operation_not_permitted             = EPERM,
-    operation_not_supported             = EOPNOTSUPP,
-    operation_would_block               = EWOULDBLOCK,
-    owner_dead                          = EOWNERDEAD,
-    permission_denied                   = EACCES,
-    protocol_error                      = EPROTO,
-    protocol_not_supported              = EPROTONOSUPPORT,
-    read_only_file_system               = EROFS,
-    resource_deadlock_would_occur       = EDEADLK,
-    resource_unavailable_try_again      = EAGAIN,
-    result_out_of_range                 = ERANGE,
-    state_not_recoverable               = ENOTRECOVERABLE,
-#ifdef ETIME
-    stream_timeout                      = ETIME,
-#else
-    stream_timeout                      = ETIMEDOUT,
-#endif
-    text_file_busy                      = ETXTBSY,
-    timed_out                           = ETIMEDOUT,
-    too_many_files_open_in_system       = ENFILE,
-    too_many_files_open                 = EMFILE,
-    too_many_links                      = EMLINK,
-    too_many_symbolic_link_levels       = ELOOP,
-    value_too_large                     = EOVERFLOW,
-    wrong_protocol_type                 = EPROTOTYPE
-};
-_LIBCPP_DECLARE_STRONG_ENUM_EPILOG(errc)
-
 template <>
 struct _LIBCPP_TEMPLATE_VIS is_error_condition_enum<errc>
     : true_type { };
@@ -385,11 +199,11 @@ class _LIBCPP_TYPE_VIS error_category
 public:
     virtual ~error_category() _NOEXCEPT;
 
-#if defined(_LIBCPP_BUILDING_SYSTEM_ERROR) && \
+#if defined(_LIBCPP_BUILDING_LIBRARY) && \
     defined(_LIBCPP_DEPRECATED_ABI_LEGACY_LIBRARY_DEFINITIONS_FOR_INLINE_FUNCTIONS)
     error_category() _NOEXCEPT;
 #else
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR_AFTER_CXX11 error_category() _NOEXCEPT _LIBCPP_DEFAULT
 #endif
 private:
@@ -403,13 +217,13 @@ public:
     virtual bool equivalent(const error_code& __code, int __condition) const _NOEXCEPT;
     virtual string message(int __ev) const = 0;
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     bool operator==(const error_category& __rhs) const _NOEXCEPT {return this == &__rhs;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     bool operator!=(const error_category& __rhs) const _NOEXCEPT {return !(*this == __rhs);}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     bool operator< (const error_category& __rhs) const _NOEXCEPT {return this < &__rhs;}
 
     friend class _LIBCPP_HIDDEN __do_message;
@@ -430,21 +244,21 @@ class _LIBCPP_TYPE_VIS error_condition
     int __val_;
     const error_category* __cat_;
 public:
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     error_condition() _NOEXCEPT : __val_(0), __cat_(&generic_category()) {}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     error_condition(int __val, const error_category& __cat) _NOEXCEPT
         : __val_(__val), __cat_(&__cat) {}
 
     template <class _Ep>
-        _LIBCPP_ALWAYS_INLINE
+        _LIBCPP_INLINE_VISIBILITY
         error_condition(_Ep __e,
               typename enable_if<is_error_condition_enum<_Ep>::value>::type* = 0
                                                                      ) _NOEXCEPT
             {*this = make_error_condition(__e);}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     void assign(int __val, const error_category& __cat) _NOEXCEPT
     {
         __val_ = __val;
@@ -452,7 +266,7 @@ public:
     }
 
     template <class _Ep>
-        _LIBCPP_ALWAYS_INLINE
+        _LIBCPP_INLINE_VISIBILITY
         typename enable_if
         <
             is_error_condition_enum<_Ep>::value,
@@ -461,21 +275,21 @@ public:
         operator=(_Ep __e) _NOEXCEPT
             {*this = make_error_condition(__e); return *this;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     void clear() _NOEXCEPT
     {
         __val_ = 0;
         __cat_ = &generic_category();
     }
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     int value() const _NOEXCEPT {return __val_;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     const error_category& category() const _NOEXCEPT {return *__cat_;}
     string message() const;
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
         _LIBCPP_EXPLICIT
         operator bool() const _NOEXCEPT {return __val_ != 0;}
 };
@@ -502,21 +316,21 @@ class _LIBCPP_TYPE_VIS error_code
     int __val_;
     const error_category* __cat_;
 public:
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     error_code() _NOEXCEPT : __val_(0), __cat_(&system_category()) {}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     error_code(int __val, const error_category& __cat) _NOEXCEPT
         : __val_(__val), __cat_(&__cat) {}
 
     template <class _Ep>
-        _LIBCPP_ALWAYS_INLINE
+        _LIBCPP_INLINE_VISIBILITY
         error_code(_Ep __e,
                    typename enable_if<is_error_code_enum<_Ep>::value>::type* = 0
                                                                      ) _NOEXCEPT
             {*this = make_error_code(__e);}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     void assign(int __val, const error_category& __cat) _NOEXCEPT
     {
         __val_ = __val;
@@ -524,7 +338,7 @@ public:
     }
 
     template <class _Ep>
-        _LIBCPP_ALWAYS_INLINE
+        _LIBCPP_INLINE_VISIBILITY
         typename enable_if
         <
             is_error_code_enum<_Ep>::value,
@@ -533,26 +347,26 @@ public:
         operator=(_Ep __e) _NOEXCEPT
             {*this = make_error_code(__e); return *this;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     void clear() _NOEXCEPT
     {
         __val_ = 0;
         __cat_ = &system_category();
     }
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     int value() const _NOEXCEPT {return __val_;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     const error_category& category() const _NOEXCEPT {return *__cat_;}
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     error_condition default_error_condition() const _NOEXCEPT
         {return __cat_->default_error_condition(__val_);}
 
     string message() const;
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
         _LIBCPP_EXPLICIT
         operator bool() const _NOEXCEPT {return __val_ != 0;}
 };
@@ -658,7 +472,7 @@ public:
     system_error(int __ev, const error_category& __ecat);
     ~system_error() _NOEXCEPT;
 
-    _LIBCPP_ALWAYS_INLINE
+    _LIBCPP_INLINE_VISIBILITY
     const error_code& code() const _NOEXCEPT {return __ec_;}
 
 private:

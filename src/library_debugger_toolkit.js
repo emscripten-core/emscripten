@@ -452,7 +452,7 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
   function initialize_debugger(cb) {
     cdFileLocation = locateFile(cdFileLocation);
     if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-      var data = Module['read'](cdFileLocation);
+      var data = read_(cdFileLocation);
       install_cyberdwarf(data);
     } else {
       var applyCDFile = function(data) {
@@ -464,7 +464,7 @@ var CyberDWARFHeapPrinter = function(cdFileLocation) {
         }
       }
       var doBrowserLoad = function() {
-        Module['readAsync'](cdFileLocation, applyCDFile, function() {
+        readAsync(cdFileLocation, applyCDFile, function() {
           throw 'could not load debug data ' + cdFileLocation;
         });
       }

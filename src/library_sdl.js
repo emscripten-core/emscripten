@@ -1716,9 +1716,9 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if EMTERPRETIFY_ASYNC == 0 && BYSYNCIFY == 0
+#if EMTERPRETIFY_ASYNC == 0 && !(WASM_BACKEND && ASYNCIFY)
   SDL_Delay: function(delay) {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like BYSYNCIFY)');
+    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
@@ -1733,8 +1733,8 @@ var LibrarySDL = {
   SDL_WM_SetCaption__proxy: 'sync',
   SDL_WM_SetCaption__sig: 'vii',
   SDL_WM_SetCaption: function(title, icon) {
-    if (title && typeof Module['setWindowTitle'] !== 'undefined') {
-      Module['setWindowTitle'](UTF8ToString(title));
+    if (title && typeof setWindowTitle !== 'undefined') {
+      setWindowTitle(UTF8ToString(title));
     }
     icon = icon && UTF8ToString(icon);
   },

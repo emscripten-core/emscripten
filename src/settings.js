@@ -526,6 +526,8 @@ var NODEJS_CATCH_EXIT = 1;
 // Whether to enable asyncify transformation
 // This allows to inject some async functions to the C code that appear to be sync
 // e.g. emscripten_sleep
+// On fastcomp this uses the Asyncify IR transform.
+// On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
 // Functions that call any function in the list, directly or indirectly
@@ -540,39 +542,23 @@ var ASYNCIFY_WHITELIST = ['qsort',
                           '__fwritex',
                           'MUSL_vfprintf'];
 
-// Runs the binaryen "bysyncify" pass to transform sync code into async.
-// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
-// wasm backend.
-//
-// Done:
-//  * Sleep support.
-//  * Emscripten APIs (emscripten_wget* and other sync APIs).
-//  * Synchronous fsync syscall.
-//  * Browser integration.
-//
-// Not done:
-//  * No whitelist/blacklist support (hopefully with the simpler model
-//    and lower overhead they may not be needed?)
-//  * No coroutine support.
-var BYSYNCIFY = 0;
-
-// The imports which can do a sync operation. If you add more you will need to
+// Upstream only: The imports which can do a sync operation. If you add more you will need to
 // add them to here.
-var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
+var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
 
-// Whether indirect calls can be on the stack during an unwind/rewind. If you know
-// they cannot, then setting this can be extremely helpful, as otherwise bysyncify
+// Upstream only:  Whether indirect calls can be on the stack during an unwind/rewind.
+// If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 // must assume an indirect call can reach almost everywhere.
-var BYSYNCIFY_IGNORE_INDIRECT = 0;
+var ASYNCIFY_IGNORE_INDIRECT = 0;
 
-// The size of the Bysyncify stack - the region used to store unwind/rewind info.
-// This must be large enough to store the call stack and locals. If it is too
+// Upstream only: The size of the asyncify stack - the region used to store unwind/rewind
+// info. This must be large enough to store the call stack and locals. If it is too
 // small, you will see a wasm trap due to executing an "unreachable" instruction.
 // In that case, you should increase this size.
-var BYSYNCIFY_STACK_SIZE = 4096;
+var ASYNCIFY_STACK_SIZE = 4096;
 
-// Runtime debug logging from bysyncify internals.
-var BYSYNCIFY_DEBUG = 0;
+// Upstream only: Runtime debug logging from asyncify internals.
+var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
@@ -591,6 +577,43 @@ var EXPORTED_RUNTIME_METHODS = [];
 // lets you remove methods that would be exported by default; setting values in
 // this list lets you add to the default list without modifying it.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
+
+// A list of incoming values on the Module object in JS that we care about. If
+// a value is not in this list, then we don't emit code to check if you provide
+// it on the Module object. For example, if
+// you have this:
+//
+//  var Module = {
+//    print: function(x) { console.log('print: ' + x) },
+//    preRun: [function() { console.log('pre run') }]
+//  };
+//
+// Then MODULE_JS_API must contain 'print' and 'preRun'; if it does not then
+// we may not emit code to read and use that value. In other words, this
+// option lets you set, statically at compile time, the list of which Module
+// JS values you will be providing at runtime, so the compiler can better
+// optimize.
+//
+// Setting this list to [], or at least a short and concise set of names you
+// actually use, can be very useful for reducing code size. By default the
+// list contains all the possible APIs.
+//
+// FIXME: should this just be  0  if we want everything?
+var INCOMING_MODULE_JS_API = [
+  'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
+  'SDL_numSimultaneouslyQueuedBuffers', 'TOTAL_MEMORY', 'wasmMemory', 'arguments',
+  'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
+  'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
+  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
+  'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
+  'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
+  'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
+  'preMainLoop', 'preRun',
+  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
+];
 
 // If set to nonzero, the provided virtual filesystem if treated
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
@@ -1498,6 +1521,9 @@ var LOAD_SOURCE_MAP = 0;
 
 // Whether embind has been enabled.
 var EMBIND = 0;
+
+// Whether the main() function reads the argc/argv parameters.
+var MAIN_READS_PARAMS = 1;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

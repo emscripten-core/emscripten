@@ -43,16 +43,15 @@ import sys
 import tempfile
 import time
 import unittest
-import urllib
 import webbrowser
 
 if sys.version_info.major == 2:
   from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
+  from urllib import unquote, unquote_plus
 else:
   from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote
+  from urllib.parse import unquote, unquote_plus
 
 # Setup
 
@@ -290,6 +289,8 @@ non_core_test_modes = [
   'sockets',
   'interactive',
   'benchmark',
+  'asan',
+  'lsan',
 ]
 
 test_index = 0
@@ -652,7 +653,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         except:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
-               ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+               ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
         run_process(args, stderr=self.stderr_redirect if not DEBUG else None)
@@ -681,7 +682,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
       args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
-          ['-I', dirname, '-I', os.path.join(dirname, 'include')] + \
+          ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]
 
@@ -1105,8 +1106,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              includes=[], force_c=False, build_ll_hook=None,
              assert_returncode=None, assert_identical=False, assert_all=False,
              check_for_error=True):
-    if self.get_setting('ASYNCIFY') == 1 and self.is_wasm_backend():
-      self.skipTest("wasm backend doesn't support ASYNCIFY yet")
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
       Building.COMPILER = to_cc(Building.COMPILER)
@@ -1130,8 +1129,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     js_engines = self.filtered_js_engines(js_engines)
     if len(js_engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
     if len(js_engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
+      if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
         js_engines = [SPIDERMONKEY_ENGINE]
       else:
         js_engines = js_engines[:1]
@@ -1269,7 +1269,10 @@ def harness_server_func(in_queue, out_queue, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        print('[client logging:', urllib.unquote_plus(self.path), ']')
+        print('[client logging:', unquote_plus(self.path), ']')
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
       elif self.path == '/check':
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
@@ -1290,7 +1293,7 @@ def harness_server_func(in_queue, out_queue, port):
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
-          print('[simple HTTP serving:', urllib.unquote_plus(self.path), ']')
+          print('[simple HTTP serving:', unquote_plus(self.path), ']')
         SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):

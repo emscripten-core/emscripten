@@ -259,7 +259,7 @@ var SyscallsLibrary = {
 #endif
   ],
   _emscripten_syscall_munmap: function(addr, len) {
-    if (addr == {{{ cDefine('MAP_FAILED') }}} || len == 0) {
+    if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
     // TODO: support unmmap'ing parts of allocations
@@ -267,7 +267,7 @@ var SyscallsLibrary = {
     if (!info) return 0;
     if (len === info.len) {
       var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags)
+      SYSCALLS.doMsync(addr, stream, len, info.flags);
       FS.munmap(stream);
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
@@ -300,7 +300,7 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall5: function(which, varargs) { // open
-    var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
+    var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get(); // optional TODO
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
@@ -757,8 +757,8 @@ var SyscallsLibrary = {
       });
     });
 #else
-#if BYSYNCIFY
-    return Bysyncify.handleSleep(function(wakeUp) {
+#if WASM_BACKEND && ASYNCIFY
+    return Asyncify.handleSleep(function(wakeUp) {
       var mount = stream.node.mount;
       if (!mount.type.syncfs) {
         // We write directly to the file system, so there's nothing to do here.
@@ -778,7 +778,7 @@ var SyscallsLibrary = {
       return -stream.stream_ops.fsync(stream);
     }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // BYSYNCIFY
+#endif // WASM_BACKEND && ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname

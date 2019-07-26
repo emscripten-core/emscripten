@@ -43,7 +43,7 @@ if (memoryInitializer) {
     memoryInitializer = locateFile(memoryInitializer);
   }
   if (ENVIRONMENT_IS_NODE || ENVIRONMENT_IS_SHELL) {
-    var data = Module['readBinary'](memoryInitializer);
+    var data = readBinary(memoryInitializer);
     HEAPU8.set(data, GLOBAL_BASE);
   } else {
     addRunDependency('memory initializer');
@@ -60,12 +60,12 @@ if (memoryInitializer) {
       // its .status field can still be accessed later.
       if (Module['memoryInitializerRequest']) delete Module['memoryInitializerRequest'].response;
       removeRunDependency('memory initializer');
-    }
+    };
     var doBrowserLoad = function() {
-      Module['readAsync'](memoryInitializer, applyMemoryInitializer, function() {
+      readAsync(memoryInitializer, applyMemoryInitializer, function() {
         throw 'could not load memory initializer ' + memoryInitializer;
       });
-    }
+    };
 #if SUPPORT_BASE64_EMBEDDING
     var memoryInitializerBytes = tryParseAsDataURI(memoryInitializer);
     if (memoryInitializerBytes) {
@@ -95,7 +95,7 @@ if (memoryInitializer) {
 #endif
         }
         applyMemoryInitializer(response);
-      }
+      };
       if (Module['memoryInitializerRequest'].response) {
         setTimeout(useRequest, 0); // it's already here; but, apply it asynchronously
       } else {
@@ -130,6 +130,9 @@ Module['then'] = function(func) {
   } else {
     // we are not ready to call then() yet. we must call it
     // at the same time we would call onRuntimeInitialized.
+#if ASSERTIONS && !expectToReceiveOnModule('onRuntimeInitialized')
+    abort('.then() requires adding onRuntimeInitialized to INCOMING_MODULE_JS_API');
+#endif
     var old = Module['onRuntimeInitialized'];
     Module['onRuntimeInitialized'] = function() {
       if (old) old();
@@ -150,7 +153,7 @@ function ExitStatus(status) {
   this.name = "ExitStatus";
   this.message = "Program terminated with exit(" + status + ")";
   this.status = status;
-};
+}
 ExitStatus.prototype = new Error();
 ExitStatus.prototype.constructor = ExitStatus;
 
@@ -160,7 +163,7 @@ dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
   if (!Module['calledRun']) run();
   if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
-}
+};
 
 #if HAS_MAIN
 Module['callMain'] = function callMain(args) {
@@ -169,15 +172,20 @@ Module['callMain'] = function callMain(args) {
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
+#if MAIN_READS_PARAMS
   args = args || [];
 
   var argc = args.length+1;
   var argv = stackAlloc((argc + 1) * {{{ Runtime.POINTER_SIZE }}});
-  HEAP32[argv >> 2] = allocateUTF8OnStack(Module['thisProgram']);
+  HEAP32[argv >> 2] = allocateUTF8OnStack(thisProgram);
   for (var i = 1; i < argc; i++) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
+#else
+  var argc = 0;
+  var argv = 0;
+#endif // MAIN_READS_PARAMS
 
 #if EMTERPRETIFY_ASYNC
   var initialEmtStackTop = Module['emtStackSave']();
@@ -191,25 +199,25 @@ Module['callMain'] = function callMain(args) {
 #if PROXY_TO_PTHREAD
     // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
     // that will call the user's real main() for the application.
-    var ret = Module['_proxy_main'](argc, argv, 0);
+    var ret = Module['_proxy_main'](argc, argv);
 #else
-    var ret = Module['_main'](argc, argv, 0);
+    var ret = Module['_main'](argc, argv);
 #endif
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
-#if EMTERPRETIFY_ASYNC || BYSYNCIFY
+#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
     if (!Module['noExitRuntime']) {
-#endif // EMTERPRETIFY_ASYNC || BYSYNCIFY
+#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
-#if EMTERPRETIFY_ASYNC || BYSYNCIFY
+#if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     }
-#endif // EMTERPRETIFY_ASYNC || BYSYNCIFY
+#endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
   }
   catch(e) {
     if (e instanceof ExitStatus) {
@@ -230,7 +238,7 @@ Module['callMain'] = function callMain(args) {
         toLog = [e, e.stack];
       }
       err('exception thrown: ' + toLog);
-      Module['quit'](1, e);
+      quit_(1, e);
     }
   } finally {
     calledMain = true;
@@ -242,7 +250,7 @@ Module['callMain'] = function callMain(args) {
 
 /** @type {function(Array=)} */
 function run(args) {
-  args = args || Module['arguments'];
+  args = args || arguments_;
 
   if (runDependencies > 0) {
 #if RUNTIME_LOGGING
@@ -270,7 +278,9 @@ function run(args) {
 
     preMain();
 
+#if expectToReceiveOnModule('onRuntimeInitialized')
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
+#endif
 
 #if HAS_MAIN
     if (Module['_main'] && shouldRunNow) Module['callMain'](args);
@@ -392,7 +402,7 @@ function exit(status, implicit) {
     if (Module['onExit']) Module['onExit'](status);
   }
 
-  Module['quit'](status, new ExitStatus(status));
+  quit_(status, new ExitStatus(status));
 }
 
 var abortDecorators = [];
@@ -405,13 +415,9 @@ function abort(what) {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
 #endif
-  if (what !== undefined) {
-    out(what);
-    err(what);
-    what = '"' + what + '"';
-  } else {
-    what = '';
-  }
+  what += '';
+  out(what);
+  err(what);
 
   ABORT = true;
   EXITSTATUS = 1;

@@ -11,7 +11,9 @@
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
+#if !WASM_BACKEND && !MODULARIZE
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
+#endif
 
 // Thread-local: Each thread has its own allocated stack space.
 var STACK_BASE = 0;
@@ -57,10 +59,6 @@ this.addEventListener('error', function(e) {
   console.error(e.error);
 });
 
-function threadPrint() {
-  var text = Array.prototype.slice.call(arguments).join(' ');
-  console.log(text);
-}
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   console.error(text);
@@ -70,20 +68,19 @@ function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
 }
-out = threadPrint;
-err = threadPrintErr;
+var err = threadPrintErr;
 this.alert = threadAlert;
 
 #if WASM
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  instance = new WebAssembly.Instance(wasmModule, info);
+  var instance = new WebAssembly.Instance(wasmModule, info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
   wasmModule = null;
   receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
-}
+};
 #endif
 
 var wasmModule;
@@ -92,8 +89,10 @@ var wasmMemory;
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+#if !WASM_BACKEND
       // Initialize the thread-local field(s):
       {{{ makeAsmGlobalAccessInPthread('tempDoublePtr') }}} = e.data.tempDoublePtr;
+#endif
 
       // Initialize the global "process"-wide fields:
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
@@ -183,7 +182,7 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = e.data.stackBase;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = top;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = top;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = max;
 #if ASSERTIONS
@@ -194,7 +193,6 @@ this.onmessage = function(e) {
 #if WASM_BACKEND
       assert(max === e.data.stackBase);
       assert(top > max);
-      assert(e.data.stackBase == max);
 #else
       assert(max > e.data.stackBase);
       assert(max > top);
@@ -206,6 +204,9 @@ this.onmessage = function(e) {
 #if MODULARIZE
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpaceInJsModule'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
+#endif
+#if WASM_BACKEND
+      Module['_emscripten_tls_init']();
 #endif
 #if STACK_OVERFLOW_CHECK
       {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
@@ -269,4 +270,4 @@ this.onmessage = function(e) {
     console.error(e.stack);
     throw e;
   }
-}
+};

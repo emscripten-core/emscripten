@@ -12,16 +12,19 @@
 #include <stdexcept>
 #include <new>
 #include <exception>
+#include <cstdlib>
 #include "abort_message.h"
 #include "cxxabi.h"
 #include "cxa_handlers.hpp"
 #include "cxa_exception.hpp"
 #include "private_typeinfo.h"
+#include "include/atomic_support.h"
 
+#if !defined(LIBCXXABI_SILENT_TERMINATE)
 static const char* cause = "uncaught";
 
 __attribute__((noreturn))
-static void default_terminate_handler()
+static void demangling_terminate_handler()
 {
     // If there might be an uncaught exception
     using namespace __cxxabiv1;
@@ -34,18 +37,14 @@ static void default_terminate_handler()
         {
             _Unwind_Exception* unwind_exception =
                 reinterpret_cast<_Unwind_Exception*>(exception_header + 1) - 1;
-            bool native_exception =
-                (unwind_exception->exception_class   & get_vendor_and_language) == 
-                                 (kOurExceptionClass & get_vendor_and_language);
-            if (native_exception)
+            if (__isOurExceptionClass(unwind_exception))
             {
                 void* thrown_object =
-                    unwind_exception->exception_class == kOurDependentExceptionClass ?
+                    __getExceptionClass(unwind_exception) == kOurDependentExceptionClass ?
                         ((__cxa_dependent_exception*)exception_header)->primaryException :
                         exception_header + 1;
                 const __shim_type_info* thrown_type =
                     static_cast<const __shim_type_info*>(exception_header->exceptionType);
-#ifndef __EMSCRIPTEN__
                 // Try to get demangled name of thrown_type
                 int status;
                 char buf[1024];
@@ -53,10 +52,6 @@ static void default_terminate_handler()
                 const char* name = __cxa_demangle(thrown_type->name(), buf, &len, &status);
                 if (status != 0)
                     name = thrown_type->name();
-#else // __EMSCRIPTEN__ - we can demangle stack traces ourselves, best not to pull in all of libcxxabi-demangle() for this file
-                const char* name = thrown_type->name();
-#endif // __EMSCRIPTEN__
-
                 // If the uncaught exception can be caught with std::exception&
                 const __shim_type_info* catch_type =
 				 static_cast<const __shim_type_info*>(&typeid(std::exception));
@@ -82,22 +77,27 @@ static void default_terminate_handler()
 }
 
 __attribute__((noreturn))
-static void default_unexpected_handler() 
+static void demangling_unexpected_handler()
 {
     cause = "unexpected";
     std::terminate();
 }
 
+static std::terminate_handler default_terminate_handler = demangling_terminate_handler;
+static std::terminate_handler default_unexpected_handler = demangling_unexpected_handler;
+#else
+static std::terminate_handler default_terminate_handler = std::abort;
+static std::terminate_handler default_unexpected_handler = std::terminate;
+#endif
 
 //
 // Global variables that hold the pointers to the current handler
 //
-std::terminate_handler  __cxa_terminate_handler = default_terminate_handler;
-std::unexpected_handler __cxa_unexpected_handler = default_unexpected_handler;
+_LIBCXXABI_DATA_VIS
+std::terminate_handler __cxa_terminate_handler = default_terminate_handler;
 
-// In the future these will become:
-// std::atomic<std::terminate_handler>  __cxa_terminate_handler(default_terminate_handler);
-// std::atomic<std::unexpected_handler> __cxa_unexpected_handler(default_unexpected_handler);
+_LIBCXXABI_DATA_VIS
+std::unexpected_handler __cxa_unexpected_handler = default_unexpected_handler;
 
 namespace std
 {
@@ -105,21 +105,19 @@ namespace std
 unexpected_handler
 set_unexpected(unexpected_handler func) _NOEXCEPT
 {
-	if (func == 0)
-		func = default_unexpected_handler;
-	return __sync_swap(&__cxa_unexpected_handler, func);
-//  Using of C++11 atomics this should be rewritten
-//  return __cxa_unexpected_handler.exchange(func, memory_order_acq_rel);
+    if (func == 0)
+        func = default_unexpected_handler;
+    return __libcpp_atomic_exchange(&__cxa_unexpected_handler, func,
+                                    _AO_Acq_Rel);
 }
 
 terminate_handler
 set_terminate(terminate_handler func) _NOEXCEPT
 {
-	if (func == 0)
-		func = default_terminate_handler;
-	return __sync_swap(&__cxa_terminate_handler, func);
-//  Using of C++11 atomics this should be rewritten
-//  return __cxa_terminate_handler.exchange(func, memory_order_acq_rel);
+    if (func == 0)
+        func = default_terminate_handler;
+    return __libcpp_atomic_exchange(&__cxa_terminate_handler, func,
+                                    _AO_Acq_Rel);
 }
 
 }

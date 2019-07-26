@@ -271,7 +271,7 @@ ___cxa_rethrow_primary_exception
 ___cxa_thread_atexit
 ___cxa_thread_atexit_impl
 ___cxa_throw
-___cxa_uncaught_exception
+___cxa_uncaught_exceptions
 ___exception_addRef
 ___exception_clearRef
 ___exception_deAdjust
@@ -1570,6 +1570,7 @@ invoke_iiiiii
 invoke_v
 invoke_vi
 invoke_vii
+runAndAbortIfError
 setTempRet0
 stringToNewUTF8
 tempDoublePtr

@@ -15,7 +15,7 @@ int main() {
 #ifdef BAD
   EM_ASM({
     window.onerror = function(e) {
-      var success = e.toString().indexOf("import sync_tunnel was not in BYSYNCIFY_IMPORTS, but changed the state") > 0;
+      var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success && !Module.reported) {
         Module.reported = true;
         console.log("reporting success");

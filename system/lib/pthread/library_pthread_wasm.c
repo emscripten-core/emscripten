@@ -168,3 +168,18 @@ uint32_t emscripten_atomic_xor_u32(void /*uint32_t*/* addr, uint32_t val) {
 uint64_t emscripten_atomic_xor_u64(void /*uint64_t*/* addr, uint64_t val) {
   return __c11_atomic_fetch_xor((_Atomic uint64_t*)addr, val, __ATOMIC_SEQ_CST);
 }
+
+extern void __wasm_init_tls(void *memory);
+void *emscripten_builtin_memalign(size_t align, size_t size);
+void emscripten_builtin_free(void *memory);
+
+__attribute__((constructor(100)))
+void EMSCRIPTEN_KEEPALIVE emscripten_tls_init(void) {
+  size_t tls_size = __builtin_wasm_tls_size();
+  size_t tls_align = __builtin_wasm_tls_align();
+  if (tls_size) {
+    void *tls_block = emscripten_builtin_memalign(tls_align, tls_size);
+    __wasm_init_tls(tls_block);
+    pthread_cleanup_push(emscripten_builtin_free, tls_block);
+  }
+}

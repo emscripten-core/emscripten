@@ -31,8 +31,8 @@ int main(int argc, char* argv[]) {
     long bufsize;
 
     if (argc != 2) {
-	fputs("Need 1 argument\n", stderr);
-	return (EXIT_FAILURE);
+        fputs("Need 1 argument\n", stderr);
+        return (EXIT_FAILURE);
     }
 
     unsigned char *source = NULL;

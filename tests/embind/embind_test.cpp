@@ -166,7 +166,7 @@ std::wstring get_literal_wstring() {
 void force_memory_growth() {
     val module = val::global("Module");
     std::size_t heap_size = module["HEAPU8"]["byteLength"].as<size_t>();
-    module.call<void>("_free", module.call<val>("_malloc", heap_size + 1));
+    free(malloc(heap_size + 1));
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {
@@ -1690,6 +1690,32 @@ unsigned long load_unsigned_long() {
 	return ulong;
 }
 
+template <int I>
+class ConstructFromFunctor {
+public:
+    ConstructFromFunctor(const val& v, int a)
+        : v_(v), a_(a)
+    {}
+
+    val getVal() const {
+        return v_;
+    }
+
+    int getA() const {
+        return a_;
+    }
+
+private:
+    val v_;
+    int a_;
+};
+
+template <int I>
+ConstructFromFunctor<I> construct_from_functor_mixin(const val& v, int i)
+{
+    return {v, i};
+}
+
 EMSCRIPTEN_BINDINGS(tests) {
     register_vector<int>("IntegerVector");
     register_vector<char>("CharVector");
@@ -1793,6 +1819,18 @@ EMSCRIPTEN_BINDINGS(tests) {
     function("emval_test_take_and_return_ArrayInStruct", &emval_test_take_and_return_ArrayInStruct);
 
     using namespace std::placeholders;
+
+    class_<ConstructFromFunctor<1>>("ConstructFromStdFunction")
+        .constructor(std::function<ConstructFromFunctor<1>(const val&, int)>(&construct_from_functor_mixin<1>))
+        .function("getVal", &ConstructFromFunctor<1>::getVal)
+        .function("getA", &ConstructFromFunctor<1>::getA)
+        ;
+
+    class_<ConstructFromFunctor<2>>("ConstructFromFunctionObject")
+        .constructor<ConstructFromFunctor<2>(const val&, int)>(std::bind(&construct_from_functor_mixin<2>, _1, _2))
+        .function("getVal", &ConstructFromFunctor<2>::getVal)
+        .function("getA", &ConstructFromFunctor<2>::getA)
+        ;
 
     class_<ValHolder>("ValHolder")
         .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")

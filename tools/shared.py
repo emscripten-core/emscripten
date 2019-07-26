@@ -161,7 +161,7 @@ class Py2CompletedProcess:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 
-def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **kw):
+def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('universal_newlines', True)
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
@@ -398,7 +398,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "9.0"
+    return "10.0"
   else:
     return "6.0"
 
@@ -1535,7 +1535,6 @@ class Building(object):
       env['CC'] = quote(CLANG_CC)
       env['CXX'] = quote(CLANG_CPP)
       env['LD'] = quote(CLANG)
-      env['CFLAGS'] = '-O2 -fno-math-errno'
       # get a non-native one, and see if we have some of its effects - remove them if so
       non_native = Building.get_building_env(cflags=cflags)
       # the ones that a non-native would modify
@@ -1561,7 +1560,8 @@ class Building(object):
     env['RANLIB'] = quote(unsuffixed(EMRANLIB)) if not WINDOWS else 'python %s' % quote(EMRANLIB)
     env['EMMAKEN_COMPILER'] = quote(Building.COMPILER)
     env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-    env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
+    if cflags:
+      env['CFLAGS'] = env['EMMAKEN_CFLAGS'] = ' '.join(cflags)
     env['HOST_CC'] = quote(CLANG_CC)
     env['HOST_CXX'] = quote(CLANG_CPP)
     env['HOST_CFLAGS'] = "-W" # if set to nothing, CFLAGS is used, which we don't want
@@ -1848,6 +1848,7 @@ class Building(object):
 
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
+      cmd.append('--passive-segments')
 
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
@@ -2099,10 +2100,11 @@ class Building(object):
     #   opts.append('-disable-inlining')
     # opts += ['-debug-pass=Arguments']
     # TODO: move vectorization logic to clang/LLVM?
-    if not Settings.SIMD:
-      opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
-    else:
-      opts += ['-force-vector-width=4']
+    if not Settings.WASM_BACKEND:
+      if not Settings.SIMD:
+        opts += ['-disable-loop-vectorization', '-disable-slp-vectorization', '-vectorize-loops=false', '-vectorize-slp=false']
+      else:
+        opts += ['-force-vector-width=4']
 
     target = out or (filename + '.opt.bc')
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
@@ -2629,11 +2631,13 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info):
+  def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
     logger.debug('wasm2js')
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
     if opt_level > 0:
       cmd += ['-O']
+    if symbols_file:
+      cmd += ['--symbols-file=%s' % symbols_file]
     cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
     if DEBUG:
@@ -3096,8 +3100,11 @@ class WebAssembly(object):
     global_base = Settings.GLOBAL_BASE
 
     js = open(js_file).read()
-    m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
-    tempdouble_ptr = int(m.group(2))
+    if Settings.WASM_BACKEND:
+      tempdouble_ptr = 0
+    else:
+      m = re.search(r"(^|\s)tempDoublePtr\s+=\s+(\d+)", js)
+      tempdouble_ptr = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMIC_BASE\s+=\s+(\d+)", js)
     dynamic_base = int(m.group(2))
     m = re.search(r"(^|\s)DYNAMICTOP_PTR\s+=\s+(\d+)", js)

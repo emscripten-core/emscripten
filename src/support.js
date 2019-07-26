@@ -188,14 +188,14 @@ function loadDynamicLibrary(lib, flags) {
       return fetchBinary(lib);
     }
     // load the binary synchronously
-    return Module['readBinary'](lib);
+    return readBinary(lib);
 #else
     // for js we only imitate async for both native & fs modes.
     var libData;
     if (flags.fs) {
       libData = flags.fs.readFile(lib, {encoding: 'utf8'});
     } else {
-      libData = Module['read'](lib);
+      libData = read_(lib);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
@@ -922,11 +922,11 @@ var tempRet0 = 0;
 
 var setTempRet0 = function(value) {
   tempRet0 = value;
-}
+};
 
 var getTempRet0 = function() {
   return tempRet0;
-}
+};
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;
