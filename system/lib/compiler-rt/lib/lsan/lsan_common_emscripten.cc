@@ -110,6 +110,12 @@ void DoStopTheWorld(StopTheWorldCallback callback, void *argument) {
 
 u32 GetCurrentThread();
 
+// This is based on ProcessThreads in lsan_common.cc.
+// We changed this to be a callback that gets called per thread by
+// ThreadRegistry::RunCallbackForEachThreadLocked.
+// We do not scan registers or DTLS since we do not have those.
+// Finally, we can only obtain the stack pointer for the current thread,
+// so we scan the full stack for other threads.
 static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
   if (tctx->status != ThreadStatusRunning)
     return;
