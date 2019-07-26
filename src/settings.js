@@ -559,9 +559,10 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // typical C++ mangling. For example, you should write Struct::func()
 // instead of _ZN6Struct4FuncEv. C is also different from C++, as C
 // names don't end with parameters; as a result foo(int) in C++ would appear
-// as just foo in C. You will see warnings in the console if a name in the
-// list is missing; these are not errors because inlining etc. may cause
-// changes (which would mean a single list couldn't work for both -O0 and -O1
+// as just foo in C (C++ has parameters because it needs to differentiate
+// overloaded functions). You will see warnings in the console if a name in the
+// list is missing (these are not errors because inlining etc. may cause
+// changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
 var ASYNCIFY_BLACKLIST = [];
