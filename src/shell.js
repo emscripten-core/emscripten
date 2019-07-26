@@ -383,14 +383,14 @@ assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle o
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
-{{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
+// TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
 
-// TODO remove when SDL2 is fixed
+// TODO remove when SDL2 is fixed (also see above)
 #if USE_SDL == 2
 Module['setWindowTitle'] = setWindowTitle;
 #endif
