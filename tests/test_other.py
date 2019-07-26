@@ -9571,6 +9571,6 @@ int main () {
         EM_ASM({ console.log('Hello, world!'); });
       }
     ''')
-    returncode, output = self.run_on_pty([PYTHON, EMCC, '-std=c11', 'src.c'])
-    self.assertNotEqual(returncode, 0)
-    self.assertIn(b'EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', output)
+    result = run_process([PYTHON, EMCC, '-std=c11', 'src.c'], stderr=PIPE, check=False)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
