@@ -2725,7 +2725,8 @@ class Building(object):
       # to remove debug info, we just write to that same file, and without -g
       cmd += ['-o', wasm_file]
     cmd += Building.get_binaryen_feature_flags()
-    output = run_process(cmd, stdout=PIPE).stdout
+    # ignore stderr because if wasm-opt is run without a -o it will warn
+    output = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
     if symbols_file:
       with open(symbols_file, 'w') as f:
         f.write(output)
