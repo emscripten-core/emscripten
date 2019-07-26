@@ -243,6 +243,9 @@ class EmccOptions(object):
     # Linux & MacOS)
     self.output_eol = os.linesep
     self.binaryen_passes = []
+    # Whether we will expand the full path of any input files to remove any
+    # symlinks.
+    self.expand_symlinks = True
 
 
 def use_source_map(options):
@@ -894,7 +897,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                     '-current_version', '-I', '-L', '-include-pch'):
           continue # ignore this gcc-style argument
 
-      if os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
+      if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
         arg = os.path.realpath(arg)
 
       if not arg.startswith('-'):
@@ -1151,6 +1154,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
+      # it is expected to be used.
+      shared.Settings.INCOMING_MODULE_JS_API += ['onRuntimeInitialized']
 
     if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
@@ -2670,6 +2676,8 @@ def parse_args(newargs):
       settings_changes.append('USE_PTHREADS=1')
     elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
+    elif newargs[i] == '-no-canonical-prefixes':
+      options.expand_symlinks = False
 
   if should_exit:
     sys.exit(0)

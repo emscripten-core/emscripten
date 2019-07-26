@@ -161,7 +161,7 @@ class Py2CompletedProcess:
       raise Py2CalledProcessError(returncode=self.returncode, cmd=self.args, output=self.stdout, stderr=self.stderr)
 
 
-def run_process(cmd, check=True, input=None, universal_newlines=True, *args, **kw):
+def run_process(cmd, check=True, input=None, *args, **kw):
   kw.setdefault('universal_newlines', True)
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))

@@ -593,6 +593,43 @@ var EXPORTED_RUNTIME_METHODS = [];
 // this list lets you add to the default list without modifying it.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
+// A list of incoming values on the Module object in JS that we care about. If
+// a value is not in this list, then we don't emit code to check if you provide
+// it on the Module object. For example, if
+// you have this:
+//
+//  var Module = {
+//    print: function(x) { console.log('print: ' + x) },
+//    preRun: [function() { console.log('pre run') }]
+//  };
+//
+// Then MODULE_JS_API must contain 'print' and 'preRun'; if it does not then
+// we may not emit code to read and use that value. In other words, this
+// option lets you set, statically at compile time, the list of which Module
+// JS values you will be providing at runtime, so the compiler can better
+// optimize.
+//
+// Setting this list to [], or at least a short and concise set of names you
+// actually use, can be very useful for reducing code size. By default the
+// list contains all the possible APIs.
+//
+// FIXME: should this just be  0  if we want everything?
+var INCOMING_MODULE_JS_API = [
+  'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
+  'SDL_numSimultaneouslyQueuedBuffers', 'TOTAL_MEMORY', 'wasmMemory', 'arguments',
+  'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
+  'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
+  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
+  'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
+  'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
+  'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
+  'preMainLoop', 'preRun',
+  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
+];
+
 // If set to nonzero, the provided virtual filesystem if treated
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 // case-sensitive, like on Linux.

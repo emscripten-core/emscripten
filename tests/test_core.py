@@ -1779,6 +1779,10 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
+  def test_em_asm_types(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types', force_c=True)
+
   def test_em_asm_unused_arguments(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
@@ -1868,9 +1872,6 @@ int main(int argc, char **argv) {
 
       if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-        code_start = 'var TOTAL_STACK'
-        fail = fail[fail.find(code_start):]
-        win = win[win.find(code_start):]
         assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     test()

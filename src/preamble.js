@@ -333,12 +333,16 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
+#if MAIN_MODULE && !WASM
+// JS side modules use this value to decide their stack size.
+Module['TOTAL_STACK'] = TOTAL_STACK;
+#endif
 
 var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-if (INITIAL_TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
-// Initialize the runtime's memory
 #if ASSERTIONS
+assert(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
        'JS engine does not provide full typed array support');
@@ -490,13 +494,16 @@ function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  // compatibility - merge in anything from Module['preRun'] at this time
+
+#if expectToReceiveOnModule('preRun')
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     while (Module['preRun'].length) {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+#endif
+
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -544,13 +551,16 @@ function postRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  // compatibility - merge in anything from Module['postRun'] at this time
+
+#if expectToReceiveOnModule('postRun')
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
     while (Module['postRun'].length) {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+#endif
+
   callRuntimeCallbacks(__ATPOSTRUN__);
 }
 
@@ -613,9 +623,13 @@ function addRunDependency(id) {
   assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
 #endif
   runDependencies++;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif
+
 #if ASSERTIONS
   if (id) {
     assert(!runDependencyTracking[id]);
@@ -649,9 +663,13 @@ function addRunDependency(id) {
 
 function removeRunDependency(id) {
   runDependencies--;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif
+
 #if ASSERTIONS
   if (id) {
     assert(runDependencyTracking[id]);
