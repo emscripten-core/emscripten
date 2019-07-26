@@ -97,11 +97,12 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
 function locateFile(path) {
+#if expectToReceiveOnModule('locateFile')
   if (Module['locateFile']) {
     return Module['locateFile'](path, scriptDirectory);
-  } else {
-    return scriptDirectory + path;
   }
+#endif
+  return scriptDirectory + path;
 }
 
 // Hooks that are implemented differently in different runtime environments.

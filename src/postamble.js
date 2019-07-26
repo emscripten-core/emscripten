@@ -293,6 +293,7 @@ function run(args) {
     postRun();
   }
 
+#if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
@@ -301,7 +302,9 @@ function run(args) {
       }, 1);
       doRun();
     }, 1);
-  } else {
+  } else
+#endif
+  {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
