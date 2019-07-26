@@ -1779,6 +1779,10 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
+  def test_em_asm_types(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types', force_c=True)
+
   def test_em_asm_unused_arguments(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
@@ -1790,7 +1794,14 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
-  def test_em_js(self):
+  @parameterized({
+    'normal': ([],),
+    'linked': (['-s', 'MAIN_MODULE'],),
+  })
+  def test_em_js(self, args):
+    if 'MAIN_MODULE' in args and self.get_setting('ALLOW_MEMORY_GROWTH') and not self.is_wasm():
+      self.skipTest('main module not compatible with asm.js memory growth')
+    self.emcc_args += args
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
 
@@ -1861,9 +1872,6 @@ int main(int argc, char **argv) {
 
       if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-        code_start = 'var TOTAL_STACK'
-        fail = fail[fail.find(code_start):]
-        win = win[win.find(code_start):]
         assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     test()
@@ -1974,13 +1982,11 @@ int main(int argc, char **argv) {
 59899: 598995989959899
 Success!''')
 
-  @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr(self):
       self.emcc_args = [x for x in self.emcc_args if x != '-g']
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
-  @no_wasm_backend('no implementation of computed gotos')
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
 
@@ -2250,7 +2256,7 @@ The current type of b is: 9
   def test_intentional_fault(self):
     # Some programs intentionally segfault themselves, we should compile that into a throw
     src = open(path_from_root('tests', 'core', 'test_intentional_fault.c')).read()
-    self.do_run(src, 'abort()' if self.run_name != 'asm2g' else 'abort("segmentation fault')
+    self.do_run(src, 'abort(' if self.run_name != 'asm2g' else 'abort(segmentation fault')
 
   def test_trickystring(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_trickystring')
@@ -2309,7 +2315,7 @@ The current type of b is: 9
   def test_bsearch(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_bsearch')
 
-  @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
+  @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
   def test_stack_overflow(self):
     self.set_setting('ASSERTIONS', 1)
     self.do_run(open(path_from_root('tests', 'core', 'stack_overflow.cpp')).read(), 'Stack overflow!')
@@ -3710,7 +3716,6 @@ ok
       self.assertNotContained("trying to dynamically load symbol '__ZN5ClassC2EPKc' (from 'liblib.so') that already exists", full)
 
   @needs_dlfcn
-  @no_wasm_backend('some kind of issue with dylink and i64')
   def test_dylink_i64(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -3742,7 +3747,6 @@ ok
     ''', 'other says 175a1ddee82b8c31.')
 
   @needs_dlfcn
-  @no_wasm_backend('some kind of issue with dylink and i64')
   def test_dylink_i64_b(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4024,7 +4028,6 @@ ok
     ''', expected=['hello from main and hello from side\n'])
 
   @needs_dlfcn
-  @no_wasm_backend('current fails in __dynamic_cast')
   def test_dylink_dynamic_cast(self): # issue 3465
     self.dylink_test(header=r'''
       class Base {
@@ -4106,7 +4109,7 @@ ok
     ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
 
   @needs_dlfcn
-  @no_wasm_backend('wasm backend resolved symbols greedily on startup')
+  @no_wasm_backend('wasm backend resolves symbols greedily on startup')
   def test_dylink_hyper_dupe(self):
     self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
     if not self.has_changed_setting('ASSERTIONS'):
@@ -4180,7 +4183,7 @@ ok
       self.assertContained("warning: symbol '_sideg' from '%s' already exists" % libname, full)
 
   @needs_dlfcn
-  @no_wasm_backend('not implemented yet')
+  @no_wasm_backend('possible https://github.com/emscripten-core/emscripten/issues/9038')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output):
       self.do_run(src + 'int main() { return _main(); }', expected_output)
@@ -5160,12 +5163,6 @@ main( int argv, char ** argc ) {
     self.banned_js_engines = [V8_ENGINE] # v8 lacks monotonic time
     self.do_run_from_file(src, output)
 
-    if V8_ENGINE in JS_ENGINES:
-      self.banned_js_engines = [engine for engine in JS_ENGINES if engine != V8_ENGINE]
-      self.do_run_from_file(src, test_path + '_no_monotonic.out')
-    else:
-      print('(no v8, skipping no-monotonic case)')
-
   def test_uname(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_uname')
 
@@ -5617,8 +5614,8 @@ return malloc(size);
       test()
 
     if self.is_wasm_backend():
-      print('bysyncify') # extra coverage
-      self.emcc_args += ['-s', 'BYSYNCIFY=1']
+      print('asyncify') # extra coverage
+      self.emcc_args += ['-s', 'ASYNCIFY=1']
       test()
 
   @needs_dlfcn
@@ -5839,7 +5836,7 @@ return malloc(size);
 
       create_test_file('pre.js', '''
       Module.preRun = function() {
-        FS.createDataFile('/', 'paper.pdf', eval(Module.read('paper.pdf.js')), true, false, false);
+        FS.createDataFile('/', 'paper.pdf', eval(read_('paper.pdf.js')), true, false, false);
       };
       Module.postRun = function() {
         var FileData = MEMFS.getFileDataAsRegularArray(FS.root.contents['filename-1.ppm']);
@@ -6537,7 +6534,6 @@ return malloc(size);
       self.do_run_in_out_file_test('tests', 'core', 'test_demangle_stacks_noassert')
 
   @no_emterpreter
-  @no_wasm_backend('lld does not generate symbol maps')
   def test_demangle_stacks_symbol_map(self):
     self.set_setting('DEMANGLE_SUPPORT', 1)
     if '-O' in str(self.emcc_args) and '-O0' not in self.emcc_args and '-O1' not in self.emcc_args and '-g' not in self.emcc_args:
@@ -6551,7 +6547,8 @@ return malloc(size);
     for line in symbols:
       if ':' not in line:
         continue
-      short, full = line.split(':')
+      # split by the first ':' (wasm backend demangling may include more :'s later on)
+      short, full = line.split(':', 1)
       if 'Aborter' in full:
         short_aborter = short
         full_aborter = full
@@ -7171,15 +7168,12 @@ Success!
     self.banned_js_engines = [SPIDERMONKEY_ENGINE, V8_ENGINE] # needs setTimeout which only node has
 
     if self.is_wasm_backend():
-      self.set_setting('BYSYNCIFY', 1)
+      self.set_setting('ASYNCIFY', 1)
+    elif emterpretify:
+      self.set_setting('EMTERPRETIFY', 1)
+      self.set_setting('EMTERPRETIFY_ASYNC', 1)
     else:
-      if not emterpretify:
-        if self.is_emterpreter():
-          self.skipTest("don't test both emterpretify and asyncify at once")
-        self.set_setting('ASYNCIFY', 1)
-      else:
-        self.set_setting('EMTERPRETIFY', 1)
-        self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      self.skipTest('fastcomp Asyncify was removed')
 
     src = r'''
 #include <stdio.h>
@@ -7273,8 +7267,7 @@ Module['onRuntimeInitialized'] = function() {
 ''')
       self.do_run(src, 'first\nsecond\n6.4')
 
-  @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
-                   'unsupported with Wasm backend')
+  @no_wasm_backend('EMTERPRETIFY')
   def test_async_emterpretify(self):
     self.test_async(emterpretify=True)
 
@@ -7469,6 +7462,7 @@ extern "C" {
     ]
     self.do_run(src, 'async operation OK')
 
+  @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
   def do_test_coroutine(self, additional_settings):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
@@ -7477,10 +7471,13 @@ extern "C" {
       self.set_setting(k, v)
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
+  @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.set_setting('ASYNCIFY', 1)
@@ -7581,7 +7578,7 @@ extern "C" {
     self.do_run('int main() { return 0; }', 'object\nobject\nobject')
 
   @sync
-  @no_wasm_backend("wasm backend has no support for fastcomp's -emscripten-assertions flag")
+  @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
   def test_stack_overflow_check(self):
     args = self.emcc_args + ['-s', 'TOTAL_STACK=1048576']
 
@@ -7862,6 +7859,10 @@ extern "C" {
 
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
+
+  def test_template_class_deduction(self):
+    self.emcc_args += ['-std=c++17']
+    self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction')
 
   @parameterized({
     'c': ['test_asan_no_error.c'],

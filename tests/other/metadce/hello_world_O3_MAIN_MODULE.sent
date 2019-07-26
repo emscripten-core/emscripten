@@ -261,7 +261,7 @@ __cxa_rethrow_primary_exception
 __cxa_thread_atexit
 __cxa_thread_atexit_impl
 __cxa_throw
-__cxa_uncaught_exception
+__cxa_uncaught_exceptions
 __exception_addRef
 __exception_clearRef
 __exception_deAdjust
@@ -1543,6 +1543,7 @@ rintf
 rotozoomSurface
 round
 roundf
+runAndAbortIfError
 saveSetjmp
 sbrk
 sched_yield

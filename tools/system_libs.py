@@ -341,13 +341,13 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return 'a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else 'bc'
+    return '.a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else '.bc'
 
   def get_name(self):
     """
     Return the full name of the library file, including the file extension.
     """
-    return self.get_base_name() + '.' + self.get_ext()
+    return self.get_base_name() + self.get_ext()
 
   def get_symbols(self):
     """
@@ -549,7 +549,7 @@ class NoBCLibrary(Library):
   # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
   # will be linked in.
   def get_ext(self):
-    return 'a'
+    return '.a'
 
 
 class libcompiler_rt(Library):
@@ -694,8 +694,15 @@ class libcxxabi(CXXLibrary, MTLibrary):
   name = 'libc++abi'
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi.symbols'))
   depends = ['libc']
-
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+
+  def get_cflags(self):
+    cflags = super(libcxxabi, self).get_cflags()
+    cflags.append('-DNDEBUG')
+    if not self.is_mt:
+      cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+    return cflags
+
   includes = ['system', 'lib', 'libcxxabi', 'include']
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
   src_files = [
@@ -705,11 +712,12 @@ class libcxxabi(CXXLibrary, MTLibrary):
     'cxa_demangle.cpp',
     'cxa_exception_storage.cpp',
     'cxa_guard.cpp',
-    'cxa_new_delete.cpp',
     'cxa_handlers.cpp',
-    'exception.cpp',
-    'stdexcept.cpp',
-    'typeinfo.cpp',
+    'fallback_malloc.cpp',
+    'stdlib_new_delete.cpp',
+    'stdlib_exception.cpp',
+    'stdlib_stdexcept.cpp',
+    'stdlib_typeinfo.cpp',
     'private_typeinfo.cpp'
   ]
 
@@ -756,9 +764,9 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
     'variant.cpp',
     'vector.cpp',
     os.path.join('experimental', 'memory_resource.cpp'),
-    os.path.join('experimental', 'filesystem', 'directory_iterator.cpp'),
-    os.path.join('experimental', 'filesystem', 'path.cpp'),
-    os.path.join('experimental', 'filesystem', 'operations.cpp')
+    os.path.join('filesystem', 'directory_iterator.cpp'),
+    os.path.join('filesystem', 'int128_builtins.cpp'),
+    os.path.join('filesystem', 'operations.cpp')
   ]
 
 
@@ -897,6 +905,34 @@ class libgl(MTLibrary):
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
       **kwargs
     )
+
+
+class libembind(CXXLibrary):
+  name = 'libembind'
+  cflags = ['-std=c++11']
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
+
+
+class libfetch(CXXLibrary, MTLibrary):
+  name = 'libfetch'
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
+
+
+class libasmfs(CXXLibrary, MTLibrary):
+  name = 'libasmfs'
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
 
 
 class libhtml5(Library):
@@ -1154,12 +1190,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   system_libs_map = Library.get_usable_variations()
   system_libs = sorted(system_libs_map.values(), key=lambda lib: lib.name)
 
-  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
-  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
-  # You can provide 1 to include everything, or a comma-separated list with the ones you want
+  # Setting this in the environment will avoid checking dependencies and make
+  # building big projects a little faster 1 means include everything; otherwise
+  # it can be the name of a lib (libc++, etc.).
+  # You can provide 1 to include everything, or a comma-separated list with the
+  # ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force = ','.join(key for key, lib in system_libs_map.items() if not lib.never_force)
+    force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
@@ -1178,7 +1216,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
     logger.debug('including %s (%s)' % (lib.name, lib.get_name()))
 
-    need_whole_archive = lib.name in force_include and lib.get_ext() != 'bc'
+    need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
     libs_to_link.append((lib.get_path(), need_whole_archive))
 
     # Recursively add dependencies

@@ -829,5 +829,6 @@ int main(int argc, char **argv) {
   fprintf(stderr,
           "\nFound %d loops (including artificial root node)"
           "(%d)\n", num_loops, sum);
+  return 0;
 }
 
