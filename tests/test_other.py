@@ -9582,8 +9582,7 @@ int main () {
             }
           }
           check("read");
-          check("setWindowTitle");
-          check("print");
+          // TODO check("setWindowTitle");
           check("wasmBinary");
           check("arguments");
         });
@@ -9592,8 +9591,6 @@ int main () {
     run_process([PYTHON, EMCC, 'src.cpp', '-s', 'ASSERTIONS'])
     self.assertContained('''
 Module.read has been replaced with plain read_
-Module.setWindowTitle has been replaced with plain setWindowTitle
-Module.print has been replaced with plain out
 Module.wasmBinary has been replaced with plain wasmBinary
 Module.arguments has been replaced with plain arguments_
 ''', run_js('a.out.js', assert_returncode=None, stderr=PIPE))

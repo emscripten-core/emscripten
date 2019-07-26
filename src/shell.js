@@ -348,8 +348,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)') }}}
-{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)') }}}
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
