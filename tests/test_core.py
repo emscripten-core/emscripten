@@ -6800,6 +6800,10 @@ someweirdtext
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
+  def test_embind_custom_marshal(self):
+    self.emcc_args += ['--bind', '-std=c++11', '--pre-js', path_from_root('tests', 'embind', 'test_custom_marshal.js')]
+    self.do_run_in_out_file_test('tests', 'embind', 'test_custom_marshal', assert_identical=True)
+
   def test_embind_float_constants(self):
     self.emcc_args += ['--bind']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_float_constants.cpp'),
