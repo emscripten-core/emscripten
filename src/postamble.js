@@ -440,12 +440,14 @@ function abort(what) {
 }
 Module['abort'] = abort;
 
+#if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
     Module['preInit'].pop()();
   }
 }
+#endif
 
 #if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
