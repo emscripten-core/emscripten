@@ -519,9 +519,17 @@ var EXCEPTION_CATCHING_WHITELIST = [];
 // longer do that, and exceptions work normally, which can be useful for libraries
 // or programs that don't need exit() to work.
 
-// For more explanations of this option, please visit
-// https://github.com/emscripten-core/emscripten/wiki/Asyncify
+// Emscripten uses an ExitStatus exception to halt when exit() is called.
+// With this option, we prevent that from showing up as an unhandled
+// exception.
 var NODEJS_CATCH_EXIT = 1;
+
+// Catch unhandled rejections in node. Without this, node may print the error,
+// and that this behavior will change in future node, wait a few seconds, and
+// then exit with 0 (which hides the error if you don't read the log). With
+// this, we catch any unhandled rejection and throw an actual error, which will
+// make the process exit immediately with a non-0 return code.
+var NODEJS_CATCH_REJECTION = 1;
 
 // Whether to enable asyncify transformation
 // This allows to inject some async functions to the C code that appear to be sync
