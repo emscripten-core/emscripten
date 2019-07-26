@@ -1129,8 +1129,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     js_engines = self.filtered_js_engines(js_engines)
     if len(js_engines) == 0:
       self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
+    # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
     if len(js_engines) > 1 and not self.use_all_engines:
-      if SPIDERMONKEY_ENGINE in js_engines: # make sure to get asm.js validation checks, using sm
+      if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
         js_engines = [SPIDERMONKEY_ENGINE]
       else:
         js_engines = js_engines[:1]
