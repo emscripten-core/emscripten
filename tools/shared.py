@@ -2506,7 +2506,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emit_symbol_map):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2716,15 +2716,20 @@ class Building(object):
     return ret
 
   @staticmethod
-  def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):
-    logger.debug('emit_wasm_symbol_map')
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--print-function-map', wasm_file]
+  def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
+    logger.debug('handle_final_wasm_symbols')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_file]
+    if symbols_file:
+      cmd += ['--print-function-map']
     if not debug_info:
       # to remove debug info, we just write to that same file, and without -g
       cmd += ['-o', wasm_file]
-    output = run_process(cmd, stdout=PIPE).stdout
-    with open(symbols_file, 'w') as f:
-      f.write(output)
+    cmd += Building.get_binaryen_feature_flags()
+    # ignore stderr because if wasm-opt is run without a -o it will warn
+    output = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
+    if symbols_file:
+      with open(symbols_file, 'w') as f:
+        f.write(output)
 
   # the exports the user requested
   user_requested_exports = []

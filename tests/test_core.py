@@ -7489,6 +7489,29 @@ extern "C" {
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
 
+  @parameterized({
+    'normal': ([], True),
+    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
+    'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
+    'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","c_baz","Structy::funcy()"]'], False),
+  })
+  @no_fastcomp('new asyncify only')
+  def test_asyncify_lists(self, args, should_pass):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += args
+    try:
+      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_lists', assert_identical=True)
+      if not should_pass:
+        should_pass = True
+        raise Exception('should not have passed')
+    except Exception as e:
+      if should_pass:
+        raise e
+
   # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
