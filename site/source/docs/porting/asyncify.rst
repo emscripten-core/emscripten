@@ -224,6 +224,39 @@ example is based off of
 return the value returned from ``handleSleep()``. The calling C code then
 gets it normally, after the Promise completes.
 
+Optimizing
+##########
+
+As mentioned earlier, unoptimized builds with Asyncify can be large and slow.
+Build with optimizations (say, ``-O3``) to get good results.
+
+Asyncify adds overhead, both code size and slowness, because it instruments
+code to allow unwinding and rewinding. That overhead is usually not extreme,
+something like 50% or so. Asyncify achieves that by doing a whole-program
+analysis to find functions need to be instrumented and which do not -
+basically, which can call something that reaches one of
+``ASYNCIFY_IMPORTS``. That analysis avoids a lot of unnecessary overhead,
+however, it is limited by **indirect calls**, since it can't tell where
+they go - it could be anything in the function table (with the same type).
+
+If you know that indirect calls are never on the stack when unwinding, then
+you can tell Asyncify to ignore indirect calls using
+``ASYNCIFY_IGNORE_INDIRECT``.
+
+If you know that some indirect calls matter and others do not, then you
+can provide a manual list of functions to Asyncify:
+
+* ``ASYNCIFY_BLACKLIST`` is a list of functions that do not unwind the stack.
+  Asyncify will do it's normal whole-program analysis under the assumption
+  that those do not unwind.
+* ``ASYNCIFY_WHITELIST`` is a list of the **only** functions that can unwind
+  the stack. Asyncify will instrument those and no others.
+
+For more details see ``settings.js``. Note that the manual settings
+mentioned here are error-prone - if you don't get things exactly right,
+your application can break. If you don't absolutely need maximal performance,
+it's usually ok to use the defaults.
+
 Potential problems
 ##################
 
