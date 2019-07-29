@@ -127,7 +127,12 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
+#else // EMTERPRETIFY_ASYNC
+#if ASSERTIONS
+  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
 #endif
+#endif // EMTERPRETIFY_ASYNC
+
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
