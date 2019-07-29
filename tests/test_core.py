@@ -1794,6 +1794,10 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
+  def test_em_asm_arguments_side_effects(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects', force_c=True)
+
   @parameterized({
     'normal': ([],),
     'linked': (['-s', 'MAIN_MODULE'],),
