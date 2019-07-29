@@ -568,6 +568,8 @@ mergeInto(LibraryManager.library, {
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
     exportCallStack: [],
+    afterUnwind: null,
+
     instrumentWasmExports: function(exports) {
       var ret = {};
       for (var x in exports) {
@@ -591,12 +593,16 @@ mergeInto(LibraryManager.library, {
                 if (Asyncify.currData &&
                     Asyncify.state === Asyncify.State.Unwinding &&
                     Asyncify.exportCallStack.length === 0) {
-                  // We just finished unwinding for a sleep.
+                  // We just finished unwinding.
 #if ASYNCIFY_DEBUG
                   err('ASYNCIFY: stop unwind');
 #endif
                   Asyncify.state = Asyncify.State.Normal;
                   runAndAbortIfError(Module['_asyncify_stop_unwind']);
+                  if (Asyncify.afterUnwind) {
+                    Asyncify.afterUnwind();
+                    Asyncify.afterUnwind = null;
+                  }
                 }
               }
             };
@@ -607,6 +613,7 @@ mergeInto(LibraryManager.library, {
       }
       return ret;
     },
+
     allocateData: function() {
       // An asyncify data structure has two fields: the
       // current stack pos, and the max pos.
@@ -622,10 +629,12 @@ mergeInto(LibraryManager.library, {
       };
       return ptr;
     },
+
     freeData: function(ptr) {
       _free(ptr);
       Asyncify.dataInfo[ptr] = null;
     },
+
     handleSleep: function(startAsync) {
       if (ABORT) return;
       Module['noExitRuntime'] = true;
@@ -693,6 +702,7 @@ mergeInto(LibraryManager.library, {
       return Asyncify.returnValue;
     }
   },
+
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
       Browser.safeSetTimeout(wakeUp, ms);
@@ -741,11 +751,12 @@ mergeInto(LibraryManager.library, {
 
   emscripten_scan_registers: function(func) {
     Asyncify.handleSleep(function(wakeUp) {
-      // We must first unwind, so things are spilled to the stack.
-      setTimeout(function() {
+      // We must first unwind, so things are spilled to the stack. We
+      // can resume right after unwinding, no need for a timeout.
+      Asyncify.afterUnwind = function() {
         {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
         wakeUp();
-      }, 0);
+      };
     });
   },
 
