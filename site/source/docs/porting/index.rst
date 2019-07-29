@@ -16,7 +16,6 @@ The topics in this section cover the main integration points that you need to co
   multimedia_and_graphics/index
   Audio
   Debugging
-  networking
   pthreads
   simd
   asyncify
