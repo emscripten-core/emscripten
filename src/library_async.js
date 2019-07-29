@@ -668,6 +668,7 @@ mergeInto(LibraryManager.library, {
         if (!reachedCallback) {
           // A true async operation was begun; start a sleep.
           Asyncify.state = Asyncify.State.Unwinding;
+          // TODO: reuse, don't alloc/free every sleep
           Asyncify.currData = Asyncify.allocateData();
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
@@ -738,6 +739,16 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_scan_registers: function(func) {
+    Asyncify.handleSleep(function(wakeUp) {
+      // We must first unwind, so things are spilled to the stack.
+      setTimeout(function() {
+        {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
+        wakeUp();
+      }, 0);
+    });
+  },
+
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
@@ -756,6 +767,9 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_wget_data: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+  },
+  emscripten_scan_registers: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
 #endif // ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC

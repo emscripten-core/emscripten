@@ -251,6 +251,9 @@ int emscripten_get_callstack(int flags, char *out, int maxbytes);
 
 int emscripten_print_double(double x, char *to, signed max);
 
+typedef void (*em_scan_registers)(void*, void*);
+void emscripten_scan_registers(em_scan_registers func);
+
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */

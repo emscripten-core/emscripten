@@ -7523,6 +7523,11 @@ extern "C" {
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
+  @no_fastcomp('wasm-backend specific feature')
+  def test_emscripten_scan_registers(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
+
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
   def test_wasm2js(self):
