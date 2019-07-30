@@ -23,7 +23,7 @@ WebAssembly is emitted by default, without the need for any special flags.
   emcc [..args..] -s WASM=0
 
 .. note:: Emscripten's WebAssembly support depends on `Binaryen <https://github.com/WebAssembly/binaryen>`_, which is provided by the emsdk (if you don't use the emsdk, you need to build it and set it up in your ``.emscripten`` file).
-.. note:: The ``WASM``, ``BINARYEN*``, etc. options only matter when compiling to your final executable. In other words, the same .o files are used for both asm.js and WebAssembly. Only when linking them and compiling to asm.js or WebAssembly do you need to specify WebAssembly if you want that. That means that it is easy to build your project to both asm.js and WebAssembly. (The only exception is the wasm backend's ``WASM_OBJECT_FILES`` flag which determines whether object files contain wasm or LLVM IR.)
+.. note:: Deciding to compile to wasm or JS can be done at the linking stage: it doesn't affect the object files.
 
 Backends
 --------
@@ -36,7 +36,7 @@ To use fastcomp, just use the emsdk normally to get ``latest``. For the upstream
 
 There are some differences you may notice between the two backends, if you upgrade from fastcomp to upstream:
 
-* The wasm backend is strict about linking files with different features sets - for example, if one file was built with atomics but another was not, it will error at link time. This prevents possible bugs, but does may mean you need to make some build system fixes.
+* The wasm backend is strict about linking files with different features sets - for example, if one file was built with atomics but another was not, it will error at link time. This prevents possible bugs, but may mean you need to make some build system fixes.
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_.
 
 Binaryen codegen options
