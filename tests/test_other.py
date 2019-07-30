@@ -8532,7 +8532,7 @@ end
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs ' + path_from_root('tests', 'test_closure_externs.js')])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + path_from_root('tests', 'test_closure_externs.js') + '"'])
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
