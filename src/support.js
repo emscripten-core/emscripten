@@ -56,7 +56,9 @@ var asm2wasmImports = { // special asm2wasm imports
         return x % y;
     },
     "debugger": function() {
+#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
         debugger;
+#endif
     }
 #if NEED_ALL_ASM2WASM_IMPORTS
     ,

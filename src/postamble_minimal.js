@@ -61,7 +61,11 @@ var imports = {
   'global.Math': Math,
   'asm2wasm': {
     'f64-rem': function(x, y) { return x % y; },
-    'debugger': function() { debugger; }
+    'debugger': function() {
+#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
+      debugger;
+#endif
+    }
   }
 #endif
 };
