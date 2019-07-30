@@ -9518,6 +9518,9 @@ int main () {
         emcc_args.extend(['--embed-file', f])
     self.do_other_test('mmap_and_munmap', emcc_args)
 
+  def test_mmap_memorygrowth(self):
+    self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
+
   @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
