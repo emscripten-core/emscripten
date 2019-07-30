@@ -7985,10 +7985,11 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    sent_file = expected_basename + '.sent'
-    sent_data = '\n'.join(sent) + '\n'
-    self.assertFileContents(sent_file, sent_data)
-    self.assertEqual(len(sent), expected_sent)
+    if expected_imports is not None:
+      sent_file = expected_basename + '.sent'
+      sent_data = '\n'.join(sent) + '\n'
+      self.assertFileContents(sent_file, sent_data)
+      self.assertEqual(len(sent), expected_sent)
 
     for exists in expected_exists:
       self.assertIn(exists, sent)
@@ -8003,7 +8004,8 @@ int main() {
     imports = wast.count('(import ')
     exports = wast.count('(export ')
     funcs = wast.count('\n (func ')
-    self.assertEqual(imports, expected_imports)
+    if expected_imports is not None:
+      self.assertEqual(imports, expected_imports)
     self.assertEqual(exports, expected_exports)
     if expected_funcs is not None:
       self.assertEqual(funcs, expected_funcs)
@@ -8065,8 +8067,8 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, 173, 1505, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,  18,   13, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1505, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,   18,   13, None), # noqa
   })
   @no_fastcomp()
   def test_binaryen_metadce_hello(self, *args):
@@ -8085,8 +8087,8 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, 30, 96, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, None, 96, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571,   19,  9,   21), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):
