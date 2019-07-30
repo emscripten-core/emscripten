@@ -868,6 +868,34 @@ var LibraryGL = {
       GL.contexts[contextHandle] = null;
     },
 
+    acquireInstancedArraysExtension: function(ctx) {
+      // Extension available from Firefox 26 and Google Chrome 30
+      var ext = ctx.getExtension('ANGLE_instanced_arrays');
+      if (ext) {
+        ctx['vertexAttribDivisor'] = function(index, divisor) { ext['vertexAttribDivisorANGLE'](index, divisor); };
+        ctx['drawArraysInstanced'] = function(mode, first, count, primcount) { ext['drawArraysInstancedANGLE'](mode, first, count, primcount); };
+        ctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { ext['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
+      }
+    },
+
+    acquireVertexArrayObjectExtension: function(ctx) {
+      // Extension available from Firefox 25 and WebKit
+      var ext = ctx.getExtension('OES_vertex_array_object');
+      if (ext) {
+        ctx['createVertexArray'] = function() { return ext['createVertexArrayOES'](); };
+        ctx['deleteVertexArray'] = function(vao) { ext['deleteVertexArrayOES'](vao); };
+        ctx['bindVertexArray'] = function(vao) { ext['bindVertexArrayOES'](vao); };
+        ctx['isVertexArray'] = function(vao) { return ext['isVertexArrayOES'](vao); };
+      }
+    },
+
+    acquireDrawBuffersExtension: function(ctx) {
+      var ext = ctx.getExtension('WEBGL_draw_buffers');
+      if (ext) {
+        ctx['drawBuffers'] = function(n, bufs) { ext['drawBuffersWEBGL'](n, bufs); };
+      }
+    },
+
     // In WebGL, extensions must be explicitly enabled to be active, see http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
     // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
     // code here, so that GLES2 code can operate without changing behavior.
@@ -887,27 +915,9 @@ var LibraryGL = {
 #endif
 
       if (context.version < 2) {
-        // Extension available from Firefox 26 and Google Chrome 30
-        var instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
-        if (instancedArraysExt) {
-          GLctx['vertexAttribDivisor'] = function(index, divisor) { instancedArraysExt['vertexAttribDivisorANGLE'](index, divisor); };
-          GLctx['drawArraysInstanced'] = function(mode, first, count, primcount) { instancedArraysExt['drawArraysInstancedANGLE'](mode, first, count, primcount); };
-          GLctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { instancedArraysExt['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
-        }
-
-        // Extension available from Firefox 25 and WebKit
-        var vaoExt = GLctx.getExtension('OES_vertex_array_object');
-        if (vaoExt) {
-          GLctx['createVertexArray'] = function() { return vaoExt['createVertexArrayOES'](); };
-          GLctx['deleteVertexArray'] = function(vao) { vaoExt['deleteVertexArrayOES'](vao); };
-          GLctx['bindVertexArray'] = function(vao) { vaoExt['bindVertexArrayOES'](vao); };
-          GLctx['isVertexArray'] = function(vao) { return vaoExt['isVertexArrayOES'](vao); };
-        }
-
-        var drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
-        if (drawBuffersExt) {
-          GLctx['drawBuffers'] = function(n, bufs) { drawBuffersExt['drawBuffersWEBGL'](n, bufs); };
-        }
+        GL.acquireInstancedArraysExtension(GLctx);
+        GL.acquireVertexArrayObjectExtension(GLctx);
+        GL.acquireDrawBuffersExtension(GLctx);
       }
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
