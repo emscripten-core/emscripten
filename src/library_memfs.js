@@ -364,6 +364,8 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
+          // malloc() can lead to growing the heap. If targeting the heap, we need to
+          // re-acquire the heap buffer object in case growth had occurred.
           var fromHeap = (buffer.buffer == HEAP8.buffer);
           ptr = _malloc(length);
           if (!ptr) {
