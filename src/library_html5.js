@@ -2496,6 +2496,12 @@ var LibraryJSEvents = {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
     if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+
+    // Obtain function entry points to extension related functions.
+    if (extString == 'ANGLE_instanced_arrays') GL.acquireInstancedArraysExtension(GLctx);
+    else if (extString == 'OES_vertex_array_object') GL.acquireVertexArrayObjectExtension(GLctx);
+    else if (extString == 'WEBGL_draw_buffers') GL.acquireDrawBuffersExtension(GLctx);
+
     var ext = context.GLctx.getExtension(extString);
     return !!ext;
   },

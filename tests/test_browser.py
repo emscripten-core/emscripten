@@ -4166,6 +4166,11 @@ window.close = function() {
   def test_webgl_offscreen_framebuffer(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
 
+  # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
+  @requires_graphics_hardware
+  def test_webgl_vao_without_automatic_extensions(self):
+    self.btest('test_webgl_no_auto_init_extensions.c', '0', args=['-lGL', '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0'])
+
   # Tests that offscreen framebuffer state restoration works
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer_state_restoration(self):
