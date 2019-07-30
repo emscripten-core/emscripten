@@ -2309,9 +2309,9 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False):
+  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
     from . import js_optimizer
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat)
+    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
@@ -2417,62 +2417,26 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
-  def closure_compiler(filename, pretty=True, advanced=True):
+  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
         logger.error('Cannot run closure compiler')
         raise Exception('closure compiler check failed')
 
       # Closure annotations file contains suppressions and annotations to different symbols
-      CLOSURE_ANNOTATIONS = ['--js', path_from_root('src', 'closure-annotations.js')]
+      CLOSURE_ANNOTATIONS = [path_from_root('src', 'closure-annotations.js')]
 
       if not Settings.ASMFS:
         # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
         if Settings.FILESYSTEM:
-          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-defined-fs-annotation.js')]
+          CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-defined-fs-annotation.js')]
         else:
-          CLOSURE_ANNOTATIONS += ['--js', path_from_root('src', 'closure-undefined-fs-annotation.js')]
+          CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-undefined-fs-annotation.js')]
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
-      CLOSURE_EXTERNS = path_from_root('src', 'closure-externs.js')
-      NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
-      NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
-      NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
-                      if name.endswith('.js')]
-      NODE_EXTERNS = [path_from_root('src', 'node-externs.js')] + NODE_EXTERNS
-      V8_EXTERNS = [path_from_root('src', 'v8-externs.js')]
-      SPIDERMONKEY_EXTERNS = [path_from_root('src', 'spidermonkey-externs.js')]
-      BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
-      BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-      BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                         if name.endswith('.js')]
+      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs.js')]
 
-      # Something like this (adjust memory as needed):
-      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
-      outfile = filename + '.cc.js'
-      args = [JAVA,
-              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
-              '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-              '--language_in', 'ECMASCRIPT5']
-      if advanced:
-        args += CLOSURE_ANNOTATIONS
-        args += ['--externs', CLOSURE_EXTERNS]
-      args += ['--js_output_file', outfile]
-
-      if Settings.target_environment_may_be('node'):
-        for extern in NODE_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
-      if Settings.target_environment_may_be('shell'):
-        for extern in V8_EXTERNS + SPIDERMONKEY_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
-      if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
-        for extern in BROWSER_EXTERNS:
-          args.append('--externs')
-          args.append(extern)
       # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
       # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
       # externs file for the exports, Closure is able to reason about the exports.
@@ -2483,14 +2447,51 @@ class Building(object):
         exports_file.write(module_exports_suppressions.encode())
         exports_file.close()
 
-        args.append('--externs')
-        args.append(exports_file.name)
+        CLOSURE_EXTERNS += [exports_file.name]
+
+      # Node.js specific externs
+      if Settings.target_environment_may_be('node'):
+        NODE_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'node-externs')
+        NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
+        NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
+                        if name.endswith('.js')]
+        CLOSURE_EXTERNS += [path_from_root('src', 'node-externs.js')] + NODE_EXTERNS
+
+      # V8/SpiderMonkey shell specific externs
+      if Settings.target_environment_may_be('shell'):
+        V8_EXTERNS = [path_from_root('src', 'v8-externs.js')]
+        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'spidermonkey-externs.js')]
+        CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
+
+      # Web environment specific externs
+      if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
+        BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+        BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+        BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                           if name.endswith('.js')]
+        CLOSURE_EXTERNS += BROWSER_EXTERNS
+
+      # Something like this (adjust memory as needed):
+      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
+      outfile = filename + '.cc.js'
+      args = [JAVA,
+              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
+              '-jar', CLOSURE_COMPILER,
+              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
+              '--language_in', 'ECMASCRIPT5']
+      for a in CLOSURE_ANNOTATIONS:
+        args += ['--js', a]
+      for e in CLOSURE_EXTERNS:
+        args += ['--externs', e]
+      args += ['--js_output_file', outfile]
+
       if Settings.IGNORE_CLOSURE_COMPILER_ERRORS:
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
       if os.environ.get('EMCC_CLOSURE_ARGS'):
         args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+      args += extra_closure_args
       args += ['--js', filename]
       logger.debug('closure compiler: ' + ' '.join(args))
       proc = run_process(args, stderr=PIPE, check=False)
@@ -2506,7 +2507,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emit_symbol_map):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2716,15 +2717,20 @@ class Building(object):
     return ret
 
   @staticmethod
-  def emit_wasm_symbol_map(wasm_file, symbols_file, debug_info):
-    logger.debug('emit_wasm_symbol_map')
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--print-function-map', wasm_file]
+  def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
+    logger.debug('handle_final_wasm_symbols')
+    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_file]
+    if symbols_file:
+      cmd += ['--print-function-map']
     if not debug_info:
       # to remove debug info, we just write to that same file, and without -g
       cmd += ['-o', wasm_file]
-    output = run_process(cmd, stdout=PIPE).stdout
-    with open(symbols_file, 'w') as f:
-      f.write(output)
+    cmd += Building.get_binaryen_feature_flags()
+    # ignore stderr because if wasm-opt is run without a -o it will warn
+    output = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
+    if symbols_file:
+      with open(symbols_file, 'w') as f:
+        f.write(output)
 
   # the exports the user requested
   user_requested_exports = []

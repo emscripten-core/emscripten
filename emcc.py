@@ -214,6 +214,7 @@ class EmccOptions(object):
     self.llvm_lto = None
     self.default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
     self.use_closure_compiler = None
+    self.closure_args = []
     self.js_transform = None
     self.pre_js = '' # before all js
     self.post_js = '' # after all js
@@ -271,6 +272,7 @@ class JSOptimizer(object):
     self.emit_symbol_map = options.emit_symbol_map
     self.profiling_funcs = options.profiling_funcs
     self.use_closure_compiler = options.use_closure_compiler
+    self.closure_args = options.closure_args
 
     self.js_transform_tempfiles = js_transform_tempfiles
     self.in_temp = in_temp
@@ -341,7 +343,8 @@ class JSOptimizer(object):
     final = shared.Building.js_optimizer(final, passes, use_source_map(self),
                                          self.extra_info, just_split=just_split,
                                          just_concat=just_concat,
-                                         output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'))
+                                         output_filename=self.in_temp(os.path.basename(final) + '.jsopted.js'),
+                                         extra_closure_args=self.closure_args)
     self.js_transform_tempfiles.append(final)
     save_intermediate(title, suffix='js' if 'emitJSON' not in passes else 'json')
 
@@ -1588,6 +1591,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCIFY_IMPORTS:
               passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
+            if shared.Settings.ASYNCIFY_BLACKLIST:
+              passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
+            if shared.Settings.ASYNCIFY_WHITELIST:
+              passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             passes += ['--ignore-implicit-traps']
         if shared.Settings.BINARYEN_EXTRA_PASSES:
@@ -2334,7 +2341,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('running closure')
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
-        final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1)
+        final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1,
+                                                 extra_closure_args=options.closure_args)
         save_intermediate('closure')
 
     log_time('js opts')
@@ -2456,6 +2464,12 @@ def parse_args(newargs):
     elif newargs[i].startswith('--llvm-lto'):
       check_bad_eq(newargs[i])
       options.llvm_lto = int(newargs[i + 1])
+      newargs[i] = ''
+      newargs[i + 1] = ''
+    elif newargs[i].startswith('--closure-args'):
+      check_bad_eq(newargs[i])
+      args = newargs[i + 1]
+      options.closure_args += shlex.split(args)
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('--closure'):
@@ -2785,7 +2799,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   debug_info = options.debug_level >= 2 or options.profiling_funcs
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
-  intermediate_debug_info = debug_info or options.emit_symbol_map
+  intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST)
   emit_symbol_map = options.emit_symbol_map or shared.Settings.CYBERDWARF
   # finish compiling to WebAssembly, using asm2wasm, if we didn't already emit WebAssembly directly using the wasm backend.
   if not shared.Settings.WASM_BACKEND:
@@ -2915,17 +2929,19 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                            wasm_file=wasm_binary_target,
                                            expensive_optimizations=will_metadce(options),
                                            minify_whitespace=optimizer.minify_whitespace,
-                                           debug_info=intermediate_debug_info,
-                                           emit_symbol_map=emit_symbol_map)
+                                           debug_info=intermediate_debug_info)
     save_intermediate_with_wasm('postclean', wasm_binary_target)
 
   def run_closure_compiler(final):
-    final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace)
+    final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
+                                             extra_closure_args=options.closure_args)
     save_intermediate_with_wasm('closure', wasm_binary_target)
     return final
 
   if options.use_closure_compiler:
     final = run_closure_compiler(final)
+
+  symbols_file = target + '.symbols' if options.emit_symbol_map else None
 
   if shared.Settings.WASM2JS:
     final = shared.Building.wasm2js(final,
@@ -2934,17 +2950,17 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     minify_whitespace=optimizer.minify_whitespace,
                                     use_closure_compiler=options.use_closure_compiler,
                                     debug_info=intermediate_debug_info,
-                                    symbols_file=target + '.symbols' if options.emit_symbol_map else None)
+                                    symbols_file=symbols_file)
     save_intermediate('wasm2js')
 
     shared.try_delete(wasm_binary_target)
 
-  # emit a symbol map if requested. this will also remove debug info if we only
-  # kept it around in the intermediate invocations for the sake of the symbol map.
+  # emit the final symbols, either in the binary or in a symbol map.
+  # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that wasm2js handles the symbol map itself (as it manipulates and then
   # replaces the wasm with js)
-  if options.emit_symbol_map and not shared.Settings.WASM2JS:
-    shared.Building.emit_wasm_symbol_map(wasm_file=wasm_binary_target, symbols_file=target + '.symbols', debug_info=debug_info)
+  if intermediate_debug_info and not shared.Settings.WASM2JS:
+    shared.Building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   # replace placeholder strings with correct subresource locations

@@ -2189,6 +2189,9 @@ var LibraryJSEvents = {
 
   // Execute in calling thread without proxying needed.
   emscripten_webgl_init_context_attributes: function(attributes) {
+#if ASSERTIONS
+    assert(attributes);
+#endif
     var a = attributes >> 2;
     for(var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
       HEAP32[a+i] = 0;
@@ -2227,6 +2230,9 @@ var LibraryJSEvents = {
   emscripten_webgl_do_create_context__deps: ['$GL', '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
+#if ASSERTIONS
+    assert(attributes);
+#endif
     var contextAttributes = {};
     var a = attributes >> 2;
     contextAttributes['alpha'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)];

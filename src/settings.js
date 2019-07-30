@@ -519,9 +519,17 @@ var EXCEPTION_CATCHING_WHITELIST = [];
 // longer do that, and exceptions work normally, which can be useful for libraries
 // or programs that don't need exit() to work.
 
-// For more explanations of this option, please visit
-// https://github.com/emscripten-core/emscripten/wiki/Asyncify
+// Emscripten uses an ExitStatus exception to halt when exit() is called.
+// With this option, we prevent that from showing up as an unhandled
+// exception.
 var NODEJS_CATCH_EXIT = 1;
+
+// Catch unhandled rejections in node. Without this, node may print the error,
+// and that this behavior will change in future node, wait a few seconds, and
+// then exit with 0 (which hides the error if you don't read the log). With
+// this, we catch any unhandled rejection and throw an actual error, which will
+// make the process exit immediately with a non-0 return code.
+var NODEJS_CATCH_REJECTION = 1;
 
 // Whether to enable asyncify transformation
 // This allows to inject some async functions to the C code that appear to be sync
@@ -530,34 +538,50 @@ var NODEJS_CATCH_EXIT = 1;
 // On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
-// Functions that call any function in the list, directly or indirectly
-var ASYNCIFY_FUNCTIONS = ['emscripten_sleep',
-                          'emscripten_wget',  // will be transformed
-                          'emscripten_yield'];
-// Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
-var ASYNCIFY_WHITELIST = ['qsort',
-                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async
-                          '__toread', // This whitelist is useful when a function is known to be sync
-                          '__uflow',  // currently this link contains some functions in libc
-                          '__fwritex',
-                          'MUSL_vfprintf'];
-
-// Upstream only: The imports which can do a sync operation. If you add more you will need to
+// The imports which can do a sync operation. If you add more you will need to
 // add them to here.
 var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
 
-// Upstream only:  Whether indirect calls can be on the stack during an unwind/rewind.
+// Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 // must assume an indirect call can reach almost everywhere.
 var ASYNCIFY_IGNORE_INDIRECT = 0;
 
-// Upstream only: The size of the asyncify stack - the region used to store unwind/rewind
+// The size of the asyncify stack - the region used to store unwind/rewind
 // info. This must be large enough to store the call stack and locals. If it is too
 // small, you will see a wasm trap due to executing an "unreachable" instruction.
 // In that case, you should increase this size.
 var ASYNCIFY_STACK_SIZE = 4096;
 
-// Upstream only: Runtime debug logging from asyncify internals.
+// If the Asyncify blacklist is provided, then the functions in it will not
+// be instrumented even if it looks like they need to. This can be useful
+// if you know things the whole-program analysis doesn't, like if you
+// know certain indirect calls are safe and won't unwind. But if you
+// get the list wrong things will break (and in a production build user
+// input might reach code paths you missed during testing, so it's hard
+// to know you got this right), so this is not recommended unless you
+// really know what are doing, and need to optimize every bit of speed
+// and size.
+// The names in this list are names from the WebAssembly Names section. The
+// wasm backend will emit those names in *human-readable* form instead of
+// typical C++ mangling. For example, you should write Struct::func()
+// instead of _ZN6Struct4FuncEv. C is also different from C++, as C
+// names don't end with parameters; as a result foo(int) in C++ would appear
+// as just foo in C (C++ has parameters because it needs to differentiate
+// overloaded functions). You will see warnings in the console if a name in the
+// list is missing (these are not errors because inlining etc. may cause
+// changes which would mean a single list couldn't work for both -O0 and -O1
+// builds, etc.). You can inspect the wasm binary to look for the actual names,
+// either directly or using wasm-objdump or wasm-dis, etc.
+var ASYNCIFY_BLACKLIST = [];
+
+// If the Asyncify whitelist is provided, then *only* the functions in the list
+// will be instrumented. Like the blacklist, getting this wrong will break
+// your application.
+// See notes on ASYNCIFY_BLACKLIST about the names.
+var ASYNCIFY_WHITELIST = [];
+
+// Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export

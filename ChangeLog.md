@@ -23,6 +23,9 @@ Current Trunk
    implementation in the upstream wasm backend. It is recommended to upgrade to
    the upstream backend and use Asyncify there if you need it. (If you do still
    need the older version, you can use 1.38.40.)
+ - Drop ExitStatus from inheriting from Error(), as that could capture the whole
+   global scope, preventing temporary variables at page startup from being garbage
+   collected. (#9108)
 
 v.1.38.40: 07/24/2019
 ---------------------

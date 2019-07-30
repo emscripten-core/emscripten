@@ -8530,6 +8530,10 @@ end
     with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
 
+  # Tests --closure-args command line flag
+  def test_closure_externs(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs ' + path_from_root('tests', 'test_closure_externs.js')])
+
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
     environ['EM_PROFILE_TOOLCHAIN'] = '1'
@@ -8589,7 +8593,6 @@ end
     if not self.is_wasm_backend(): # TODO: wasm backend main module
       self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
-  @no_windows('https://github.com/emscripten-core/emscripten/issues/9057')
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
@@ -8608,7 +8611,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 ''', '''
 var ASM_CONSTS = [function() {var x = !<->5.;}];
                                        ^
-'''), stderr.replace('\r', ''))
+'''), stderr)
 
   def test_EM_ASM_ES6(self):
     # check we show a proper understandable error for JS parse problems
@@ -9519,6 +9522,9 @@ int main () {
         emcc_args.extend(['--embed-file', f])
     self.do_other_test('mmap_and_munmap', emcc_args)
 
+  def test_mmap_memorygrowth(self):
+    self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
+
   @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
@@ -9602,6 +9608,6 @@ Module.arguments has been replaced with plain arguments_
         EM_ASM({ console.log('Hello, world!'); });
       }
     ''')
-    returncode, output = self.run_on_pty([PYTHON, EMCC, '-std=c11', 'src.c'])
-    self.assertNotEqual(returncode, 0)
-    self.assertIn(b'EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', output)
+    result = run_process([PYTHON, EMCC, '-std=c11', 'src.c'], stderr=PIPE, check=False)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
