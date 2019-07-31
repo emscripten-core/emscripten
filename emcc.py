@@ -3494,7 +3494,12 @@ def parse_value(text):
     return parse_string_list_members(inner)
 
   def parse_json_list(text):
-    return json.loads(text)
+    # if json parsing fails, we fall back to our own parser, which can handle a few
+    # simpler syntaxes
+    try:
+      return json.loads(text)
+    except:
+      return parse_string_list(text)
 
   if text[0] == '[':
     # proper json can like ["a", "b"] can be simply handled by the python json parser
