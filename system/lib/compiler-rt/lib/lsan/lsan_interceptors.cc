@@ -401,8 +401,8 @@ INTERCEPTOR(int, pthread_create, void *th, void *attr,
   atomic_store(&p->tid, 0, memory_order_relaxed);
 #else
   ThreadParam p;
-  p->callback = callback;
-  p->param = param;
+  p.callback = callback;
+  p.param = param;
   atomic_store(&p.tid, 0, memory_order_relaxed);
 #endif
   int res;
