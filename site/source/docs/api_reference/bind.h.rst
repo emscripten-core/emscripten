@@ -533,17 +533,32 @@ Classes
       .. _embind-class-function-pointer-constructor:
 
 
-   .. cpp:function:: const class_& constructor(ReturnType (*factory)(Args...), Policies...) const
+   .. cpp:function:: const class_& constructor(Callable callable, Policies...) const
 
       .. code-block:: cpp
 
          //prototype
-         template<typename... Args, typename ReturnType, typename... Policies>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(ReturnType (*factory)(Args...), Policies...) const
+         template<typename Signature = internal::DeduceArgumentsTag, typename Callable, typename... Policies>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& constructor(Callable callable, Policies...) const
 
-      Class constructor for objects that use a factory function to create the object. See :ref:`embind-external-constructors` for more information.
+      Class constructor for objects that use a factory function to create the object.  This method will accept either a function pointer, ``std::function``
+      object or function object which will return a newly constructed object.  When the ``Callable`` is a function object the function signature must be
+      explicitly specified in the ``Signature`` template parameter in the format ``ReturnType (Args...)``.  For ``Callable`` types other than function objects
+      the method signature will be deduced.
 
-      :param ReturnType (\*factory)(Args...): The address of the class factory function.
+      The following are all valid calls to ``constructor``:
+
+      .. code-block:: cpp
+
+         using namespace std::placeholders;
+         myClass1.constructor(&my_factory);
+         myClass2.constructor(std::function<ClassType2(float, float)>(&class2_factory));
+         myClass3.constructor<ClassType3(const val&)>(std::bind(Class3Functor(), _1));
+
+      See :ref:`embind-external-constructors` for more information.
+
+
+      :param Callable callable Note that ``Callable`` may be either a member function pointer, function pointer, ``std::function`` or function object.
       :param Policies... policies: |policies-argument|
       :returns: |class_-function-returns|
 

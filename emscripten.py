@@ -589,10 +589,6 @@ def create_backend_cmd(infile, temp_js):
     args += ['-enable-emscripten-cpp-exceptions']
     if shared.Settings.DISABLE_EXCEPTION_CATCHING == 2:
       args += ['-emscripten-cpp-exceptions-whitelist=' + ','.join(shared.Settings.EXCEPTION_CATCHING_WHITELIST or ['fake'])]
-  if shared.Settings.ASYNCIFY:
-    args += ['-emscripten-asyncify']
-    args += ['-emscripten-asyncify-functions=' + ','.join(shared.Settings.ASYNCIFY_FUNCTIONS)]
-    args += ['-emscripten-asyncify-whitelist=' + ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
   if not shared.Settings.EXIT_RUNTIME:
     args += ['-emscripten-no-exit-runtime']
   if shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG:
@@ -917,8 +913,6 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
       funcs += ['emterpret']
       if shared.Settings.EMTERPRETIFY_ASYNC:
         funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
-    if shared.Settings.ASYNCIFY and need_asyncify(funcs):
-      funcs += ['setAsync']
 
   return sorted(set(funcs))
 
@@ -1487,10 +1481,6 @@ def make_simd_types(metadata):
   }
 
 
-def need_asyncify(exported_implemented_functions):
-  return '_emscripten_alloc_async_context' in exported_implemented_functions
-
-
 def asm_safe_heap():
   """optimized safe heap in asm, when we can"""
   return shared.Settings.SAFE_HEAP and not shared.Settings.SAFE_HEAP_LOG and not shared.Settings.RELOCATABLE
@@ -1610,11 +1600,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
       # wasm side modules have a specific convention for these
       basic_vars += ['__memory_base', '__table_base']
 
-  # See if we need ASYNCIFY functions
-  # We might not need them even if ASYNCIFY is enabled
-  if need_asyncify(exported_implemented_functions):
-    basic_vars += ['___async', '___async_unwind', '___async_retval', '___async_cur_frame']
-
   if shared.Settings.EMTERPRETIFY:
     basic_vars += ['EMTSTACKTOP', 'EMT_STACK_MAX', 'eb']
 
@@ -1692,26 +1677,22 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     runtime_assertions = ''
   else:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are some support code.
+    # WASM=1 already inserts runtime assertions, so no need to do it again here (see create_receiving_wasm)
+    if not shared.Settings.WASM:
+      receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
 
-    wrappers = []
-    for name in receiving_functions:
-      wrappers.append('''\
+      wrappers = []
+      for name in receiving_functions:
+        wrappers.append('''\
 var real_%(name)s = asm["%(name)s"];
 asm["%(name)s"] = function() {%(runtime_assertions)s
   return real_%(name)s.apply(null, arguments);
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
-    receiving = '\n'.join(wrappers)
+      receiving = '\n'.join(wrappers)
 
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
-
-  # Currently USE PTHREADS + EXPORT ES6 doesn't work with the previously generated assertions.
-  # ES6 modules disallow re-assigning read-only properties.
-  if shared.Settings.USE_PTHREADS and shared.Settings.EXPORT_ES6 and shared.Settings.ASSERTIONS and receiving:
-    receiving = "assert(!ENVIRONMENT_IS_PTHREAD, 'Error: USE_PTHREADS and EXPORT_ES6 requires ASSERTIONS=0');\n" + receiving
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -1882,13 +1863,6 @@ function establishStackSpace(stackBase, stackMax) {
   if shared.Settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME moves stack functions to library.
     funcs = []
-
-  if need_asyncify(exports):
-    funcs.append('''
-function setAsync() {
-  ___async = 1;
-}
-''')
 
   if shared.Settings.EMTERPRETIFY:
     funcs.append('''
@@ -2306,7 +2280,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
   cmd += ['--detect-features']
-  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP:
+  if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
     cmd.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     cmd.append('--no-legalize-javascript-ffi')

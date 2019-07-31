@@ -1607,3 +1607,49 @@ function runOnMainThread(text) {
     return text;
   }
 }
+
+function expectToReceiveOnModule(name) {
+  return name in INCOMING_MODULE_JS_API;
+}
+
+function makeRemovedModuleAPIAssert(moduleName, localName) {
+  if (!ASSERTIONS) return '';
+  if (!localName) localName = moduleName;
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+}
+
+// Make code to receive a value on the incoming Module object.
+function makeModuleReceive(localName, moduleName) {
+  if (!moduleName) moduleName = localName;
+  var ret = '';
+  if (expectToReceiveOnModule(moduleName)) {
+    // Usually the local we use is the same as the Module property name,
+    // but sometimes they must differ.
+    ret = "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
+  }
+  ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  return ret;
+}
+
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+  if (!moduleName) moduleName = localName;
+  var ret = 'var ' + localName;
+  if (!expectToReceiveOnModule(moduleName)) {
+    if (defaultValue) {
+      ret += ' = ' + defaultValue;
+    }
+    ret += ';';
+  } else {
+    if (defaultValue) {
+      ret += " = Module['" + moduleName + "'] || " + defaultValue + ";";
+    } else {
+      ret += ';' +
+             makeModuleReceive(localName, moduleName);
+      return ret;
+    }
+  }
+  if (!noAssert) {
+    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  }
+  return ret;
+}

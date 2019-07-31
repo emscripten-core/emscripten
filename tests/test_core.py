@@ -1779,6 +1779,10 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unicode', force_c=True)
 
+  def test_em_asm_types(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_types', force_c=True)
+
   def test_em_asm_unused_arguments(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_unused_arguments')
 
@@ -1789,6 +1793,10 @@ int main(int argc, char **argv) {
   def test_em_asm_parameter_pack(self):
     self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
+
+  def test_em_asm_arguments_side_effects(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects')
+    self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_arguments_side_effects', force_c=True)
 
   @parameterized({
     'normal': ([],),
@@ -1868,9 +1876,6 @@ int main(int argc, char **argv) {
 
       if '-O2' in self.emcc_args and not self.is_wasm():
         # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-        code_start = 'var TOTAL_STACK'
-        fail = fail[fail.find(code_start):]
-        win = win[win.find(code_start):]
         assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
     test()
@@ -7168,14 +7173,11 @@ Success!
 
     if self.is_wasm_backend():
       self.set_setting('ASYNCIFY', 1)
+    elif emterpretify:
+      self.set_setting('EMTERPRETIFY', 1)
+      self.set_setting('EMTERPRETIFY_ASYNC', 1)
     else:
-      if not emterpretify:
-        if self.is_emterpreter():
-          self.skipTest("don't test both emterpretify and asyncify at once")
-        self.set_setting('ASYNCIFY', 1)
-      else:
-        self.set_setting('EMTERPRETIFY', 1)
-        self.set_setting('EMTERPRETIFY_ASYNC', 1)
+      self.skipTest('fastcomp Asyncify was removed')
 
     src = r'''
 #include <stdio.h>
@@ -7474,10 +7476,12 @@ extern "C" {
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm_backend('ASYNCIFY coroutines are not yet supported in the LLVM wasm backend')
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
     # test a program not using asyncify, but the pref is set
     self.set_setting('ASYNCIFY', 1)
@@ -7488,6 +7492,29 @@ extern "C" {
   def test_coroutine_emterpretify_async(self):
     # The same EMTERPRETIFY_WHITELIST should be in other.test_emterpreter_advise
     self.do_test_coroutine({'EMTERPRETIFY': 1, 'EMTERPRETIFY_ASYNC': 1, 'EMTERPRETIFY_WHITELIST': ['_fib', '_f', '_g'], 'ASSERTIONS': 1})
+
+  @parameterized({
+    'normal': ([], True),
+    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
+    'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
+    'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","c_baz","Structy::funcy()"]'], False),
+  })
+  @no_fastcomp('new asyncify only')
+  def test_asyncify_lists(self, args, should_pass):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += args
+    try:
+      self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_lists', assert_identical=True)
+      if not should_pass:
+        should_pass = True
+        raise Exception('should not have passed')
+    except Exception as e:
+      if should_pass:
+        raise e
 
   # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter

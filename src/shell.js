@@ -43,13 +43,11 @@ for (key in Module) {
   }
 }
 
-Module['arguments'] = [];
-Module['thisProgram'] = './this.program';
-Module['quit'] = function(status, toThrow) {
+var arguments_ = [];
+var thisProgram = './this.program';
+var quit_ = function(status, toThrow) {
   throw toThrow;
 };
-Module['preRun'] = [];
-Module['postRun'] = [];
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
@@ -152,10 +150,10 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   if (process['argv'].length > 1) {
-    Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+    thisProgram = process['argv'][1].replace(/\\/g, '/');
   }
 
-  Module['arguments'] = process['argv'].slice(2);
+  arguments_ = process['argv'].slice(2);
 
 #if MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -173,11 +171,12 @@ if (ENVIRONMENT_IS_NODE) {
     }
   });
 #endif
-  // Currently node will swallow unhandled rejections, but this behavior is
-  // deprecated, and in the future it will exit with error status.
-  process['on']('unhandledRejection', abort);
 
-  Module['quit'] = function(status) {
+#if NODEJS_CATCH_REJECTION
+  process['on']('unhandledRejection', abort);
+#endif
+
+  quit_ = function(status) {
     process['exit'](status);
   };
 
@@ -222,14 +221,22 @@ if (ENVIRONMENT_IS_SHELL) {
   };
 
   if (typeof scriptArgs != 'undefined') {
-    Module['arguments'] = scriptArgs;
+    arguments_ = scriptArgs;
   } else if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+    arguments_ = arguments;
   }
 
   if (typeof quit === 'function') {
-    Module['quit'] = function(status) {
+    quit_ = function(status) {
       quit(status);
+    };
+  }
+
+  if (typeof console !== 'undefined') {
+    // Support odd shell environments that lack console.* but have other stuff.
+    console = {
+      log: print,
+      warn: typeof printErr !== 'undefined' ? printErr : print
     }
   }
 } else
@@ -342,8 +349,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
-var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
@@ -353,7 +360,15 @@ for (key in moduleOverrides) {
 }
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
-moduleOverrides = undefined;
+moduleOverrides = null;
+
+// Emit code to handle expected values on the Module object. This applies Module.x
+// to the proper local x. This has two benefits: first, we only emit it if it is
+// expected to arrive, and second, by using a local everywhere else that can be
+// minified.
+{{{ makeModuleReceive('arguments_', 'arguments') }}}
+{{{ makeModuleReceive('thisProgram') }}}
+{{{ makeModuleReceive('quit_', 'quit') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS
@@ -366,18 +381,17 @@ assert(typeof Module['read'] === 'undefined', 'Module.read option was removed (m
 assert(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
-// Assertions on removed outgoing Module JS APIs.
-Object.defineProperty(Module, 'read', { get: function() { abort('Module.read has been replaced with plain read') } });
-Object.defineProperty(Module, 'readAsync', { get: function() { abort('Module.readAsync has been replaced with plain readAsync') } });
-Object.defineProperty(Module, 'readBinary', { get: function() { abort('Module.readBinary has been replaced with plain readBinary') } });
-// TODO enable when SDL2 is fixed Object.defineProperty(Module, 'setWindowTitle', { get: function() { abort('Module.setWindowTitle has been replaced with plain setWindowTitle') } });
+{{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
+{{{ makeRemovedModuleAPIAssert('readAsync') }}}
+{{{ makeRemovedModuleAPIAssert('readBinary') }}}
+// TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
 
-// TODO remove when SDL2 is fixed; also add the above assertion
+// TODO remove when SDL2 is fixed (also see above)
 #if USE_SDL == 2
 Module['setWindowTitle'] = setWindowTitle;
 #endif

@@ -68,5 +68,5 @@ var WebAssembly = {
 };
 
 // We don't need to actually download a wasm binary, mark it as present but empty.
-Module['wasmBinary'] = [];
+wasmBinary = [];
 

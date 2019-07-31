@@ -1343,7 +1343,6 @@ var LibraryGL = {
     0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 4,
     0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 4,
     0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 4,
-    0x84FA /* GL_UNSIGNED_INT_24_8 */: 4,
 #endif
   },
 
@@ -1390,7 +1389,6 @@ var LibraryGL = {
       case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
       case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
       case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
 #endif
 #if GL_ASSERTIONS
         assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');

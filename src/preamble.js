@@ -13,6 +13,8 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+{{{ makeModuleReceiveWithVar('wasmBinary') }}}
+
 #if WASM2JS
 #include "wasm2js.js"
 #endif
@@ -333,12 +335,16 @@ var TOTAL_STACK = {{{ TOTAL_STACK }}};
 #if ASSERTIONS
 if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the stack size can no longer be determined at runtime')
 #endif
+#if MAIN_MODULE && !WASM
+// JS side modules use this value to decide their stack size.
+Module['TOTAL_STACK'] = TOTAL_STACK;
+#endif
 
-var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-if (INITIAL_TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+{{{ makeModuleReceiveWithVar('INITIAL_TOTAL_MEMORY', 'TOTAL_MEMORY', TOTAL_MEMORY) }}}
 
-// Initialize the runtime's memory
 #if ASSERTIONS
+assert(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
        'JS engine does not provide full typed array support');
@@ -378,9 +384,13 @@ if (ENVIRONMENT_IS_PTHREAD) {
 } else {
 #endif // USE_PTHREADS
 #if WASM
+
+#if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
     wasmMemory = Module['wasmMemory'];
-  } else {
+  } else
+#endif
+  {
     wasmMemory = new WebAssembly.Memory({
       'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
@@ -490,13 +500,16 @@ function preRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  // compatibility - merge in anything from Module['preRun'] at this time
+
+#if expectToReceiveOnModule('preRun')
   if (Module['preRun']) {
     if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
     while (Module['preRun'].length) {
       addOnPreRun(Module['preRun'].shift());
     }
   }
+#endif
+
   callRuntimeCallbacks(__ATPRERUN__);
 }
 
@@ -544,13 +557,16 @@ function postRun() {
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
-  // compatibility - merge in anything from Module['postRun'] at this time
+
+#if expectToReceiveOnModule('postRun')
   if (Module['postRun']) {
     if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
     while (Module['postRun'].length) {
       addOnPostRun(Module['postRun'].shift());
     }
   }
+#endif
+
   callRuntimeCallbacks(__ATPOSTRUN__);
 }
 
@@ -613,9 +629,13 @@ function addRunDependency(id) {
   assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
 #endif
   runDependencies++;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif
+
 #if ASSERTIONS
   if (id) {
     assert(!runDependencyTracking[id]);
@@ -649,9 +669,13 @@ function addRunDependency(id) {
 
 function removeRunDependency(id) {
   runDependencies--;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
   }
+#endif
+
 #if ASSERTIONS
   if (id) {
     assert(runDependencyTracking[id]);
@@ -808,9 +832,10 @@ if (!isDataURI(wasmBinaryFile)) {
 
 function getBinary() {
   try {
-    if (Module['wasmBinary']) {
-      return new Uint8Array(Module['wasmBinary']);
+    if (wasmBinary) {
+      return new Uint8Array(wasmBinary);
     }
+
 #if SUPPORT_BASE64_EMBEDDING
     var binary = tryParseAsDataURI(wasmBinaryFile);
     if (binary) {
@@ -835,7 +860,7 @@ function getBinary() {
 function getBinaryPromise() {
   // if we don't have the binary yet, and have the Fetch api, use that
   // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
     return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
         throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -1037,7 +1062,7 @@ function createWasm(env) {
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
-    if (!Module['wasmBinary'] &&
+    if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {

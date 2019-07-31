@@ -7,6 +7,24 @@
 
 #pragma once
 
+// EM_ASM does not work strict C mode.
+#if !defined(__cplusplus) && defined(__STRICT_ANSI__)
+
+#define EM_ASM_ERROR _Pragma("GCC error(\"EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead\")")
+#define EM_ASM(...) EM_ASM_ERROR
+#define EM_ASM_INT(...) EM_ASM_ERROR
+#define EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_INT(...) EM_ASM_ERROR
+#define MAIN_THREAD_EM_ASM_DOUBLE(...) EM_ASM_ERROR
+#define MAIN_THREAD_ASYNC_EM_ASM(...) EM_ASM_ERROR
+#define EM_ASM_(...) EM_ASM_ERROR
+#define EM_ASM_ARGS(...) EM_ASM_ERROR
+#define EM_ASM_INT_V(...) EM_ASM_ERROR
+#define EM_ASM_DOUBLE_V(...) EM_ASM_ERROR
+
+#else
+
 #ifndef __asmjs__
 // In wasm backend, we need to call the emscripten_asm_const_* functions with
 // the C vararg calling convention, because we will call it with a variety of
@@ -74,52 +92,61 @@
 // C++ needs to support vararg template parameter packs, e.g. like in
 // tests/core/test_em_asm_parameter_pack.cpp. Because of that, a macro-only
 // approach doesn't work (a macro applied to a parameter pack would expand
-// incorrectly). So we can use a template function instead to build a
-// std::string, and convert that to a C string.
-// String builder class is so the _sig functions can be mutually recursive.
-class __em_asm_sig_builder {
-private:
-  static char sig_char(float) {
-    return 'd';
-  }
-  static char sig_char(double) {
-    return 'd';
-  }
-  static char sig_char(int) {
-    return 'i';
-  }
-  static char sig_char(unsigned) {
-    return 'i';
-  }
-  static char sig_char(long) {
-    return 'i';
-  }
-  static char sig_char(unsigned long) {
-    return 'i';
-  }
-  template <typename T>
-  static char sig_char(T *arg) {
-    return 'i';
-  }
+// incorrectly). So we can use a template class instead to build a temporary
+// buffer of characters.
 
-  template <typename ...Args>
-  struct inner {
-    char buffer[sizeof...(Args)+1];
-  };
-public:
-  template <typename ...Args>
-  static const inner<Args...> __em_asm_sig(Args ...args) {
-    inner<Args...> temp;
-    char buf[sizeof...(Args)+1] = { sig_char(args)..., 0 };
-    for (int i = 0; i < sizeof...(Args)+1; ++i) {
-        temp.buffer[i] = buf[i];
-    }
-    return temp;
-  }
+// As emscripten is require to build successfully with -std=c++03, we cannot
+// use std::tuple or std::integral_constant. Using C++11 features is only a
+// warning in modern Clang, which are ignored in system headers.
+template<typename, typename = void> struct __em_asm_sig {};
+template<> struct __em_asm_sig<float> { static const char value = 'd'; };
+template<> struct __em_asm_sig<double> { static const char value = 'd'; };
+template<> struct __em_asm_sig<char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<signed char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned char> { static const char value = 'i'; };
+template<> struct __em_asm_sig<short> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned short> { static const char value = 'i'; };
+template<> struct __em_asm_sig<int> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned int> { static const char value = 'i'; };
+template<> struct __em_asm_sig<long> { static const char value = 'i'; };
+template<> struct __em_asm_sig<unsigned long> { static const char value = 'i'; };
+template<> struct __em_asm_sig<bool> { static const char value = 'i'; };
+template<> struct __em_asm_sig<wchar_t> { static const char value = 'i'; };
+template<typename T> struct __em_asm_sig<T*> { static const char value = 'i'; };
+
+// Explicit support for enums, they're passed as int via variadic arguments.
+template<bool> struct __em_asm_if { };
+template<> struct __em_asm_if<true> { typedef void type; };
+template<typename T> struct __em_asm_sig<T, typename __em_asm_if<__is_enum(T)>::type> {
+    static const char value = 'i';
 };
 
+// Instead of std::tuple
+template<typename... Args>
+struct __em_asm_type_tuple {};
+
+// Instead of std::make_tuple
+template<typename... Args>
+__em_asm_type_tuple<Args...> __em_asm_make_type_tuple(Args... args) {
+    return {};
+}
+
+template<typename>
+struct __em_asm_sig_builder {};
+
+template<typename... Args>
+struct __em_asm_sig_builder<__em_asm_type_tuple<Args...> > {
+  static const char buffer[sizeof...(Args) + 1];
+};
+
+template<typename... Args>
+const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __em_asm_sig<Args>::value..., 0 };
+
+// We move to type level with decltype(make_tuple(...)) to avoid double
+// evaluation of arguments. Use __typeof__ instead of decltype, though,
+// because the header should be able to compile with clang's -std=c++03.
 #define _EM_ASM_PREP_ARGS(...) \
-    , __em_asm_sig_builder::__em_asm_sig(__VA_ARGS__).buffer, ##__VA_ARGS__
+    , __em_asm_sig_builder<__typeof__(__em_asm_make_type_tuple(__VA_ARGS__))>::buffer, ##__VA_ARGS__
 
 extern "C" {
 #endif // __cplusplus
@@ -167,7 +194,6 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 
 #endif // __asmjs__
 
-
 // Note: If the code block in the EM_ASM() family of functions below contains a comma,
 // then wrap the whole code block inside parentheses (). See tests/core/test_em_asm_2.cpp
 // for example code snippets.
@@ -214,3 +240,5 @@ void emscripten_asm_const_async_on_main_thread(const char* code, ...);
 #define EM_ASM_ARGS(code, ...) emscripten_asm_const_int(#code _EM_ASM_PREP_ARGS(__VA_ARGS__))
 #define EM_ASM_INT_V(code) EM_ASM_INT(#code)
 #define EM_ASM_DOUBLE_V(code) EM_ASM_DOUBLE(#code)
+
+#endif // !defined(__cplusplus) && defined(__STRICT_ANSI__)
