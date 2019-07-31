@@ -196,6 +196,10 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_FUNC_SIG_PARAM_D   0x3U
 #define EM_FUNC_SIG_SET_PARAM(i, type) ((EM_FUNC_SIGNATURE)(type) << (2*i))
 
+// Extra types used in WebGL glGet*() calls (not used in proxying)
+#define EM_FUNC_SIG_PARAM_B   0x4U
+#define EM_FUNC_SIG_PARAM_F2I 0x5U
+
 // In total, the above encoding scheme gives the following 32-bit structure for the proxied function signatures (highest -> lowest bit order):
 // RRRiiiiSbbaa99887766554433221100
 // where RRR is return type
