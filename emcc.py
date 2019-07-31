@@ -3497,8 +3497,8 @@ def parse_value(text):
     return json.loads(text)
 
   if text[0] == '[':
-    # ['a', 'b'] can be simply handled by the python json parser
-    if text[1] in '\'"':
+    # proper json can like ["a", "b"] can be simply handled by the python json parser
+    if text[1] == '"':
       return parse_json_list(text)
     # otherwise, we allow [a, b] as a shorthand (which does not properly handle
     # various escaping issues)
