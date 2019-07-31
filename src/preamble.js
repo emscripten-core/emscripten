@@ -983,30 +983,15 @@ function createWasm(env) {
     removeRunDependency('wasm-instantiate');
 #endif
   }
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-    addRunDependency('wasm-instantiate'); // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  }
-#else
-  addRunDependency('wasm-instantiate');
-#endif
+   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+  {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
 
 #if LOAD_SOURCE_MAP
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-    addRunDependency('source-map');
-  }
-#else
-  addRunDependency('source-map');
-#endif
+  {{{ runOnMainThread("addRunDependency('source-map');") }}}
 
   function receiveSourceMapJSON(sourceMap) {
     wasmSourceMap = new WasmSourceMap(sourceMap);
-#if USE_PTHREADS
-    if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('source-map');
-#else
-    removeRunDependency('source-map');
-#endif
+    {{{ runOnMainThread("removeRunDependency('source-map');") }}}
   }
 #endif
 
@@ -1033,24 +1018,14 @@ function createWasm(env) {
   }
 
 #if 'emscripten_generate_pc' in addedLibraryItems
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-    addRunDependency('offset-converter');
-  }
-#else
-  addRunDependency('offset-converter');
-#endif
+  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
 #endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
 #if 'emscripten_generate_pc' in addedLibraryItems
       wasmOffsetConverter = new WasmOffsetConverter(binary);
-#if USE_PTHREADS
-      if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('offset-converter');
-#else
-      removeRunDependency('offset-converter');
-#endif
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
@@ -1101,7 +1076,7 @@ function createWasm(env) {
       binary = getBinary();
 #if 'emscripten_generate_pc' in addedLibraryItems
       wasmOffsetConverter = new WasmOffsetConverter(binary);
-      removeRunDependency('offset-converter');
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
       module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
