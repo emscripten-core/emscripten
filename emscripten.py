@@ -234,7 +234,7 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
   # FIXME: do these one by one as normal js lib funcs
   metadata['declares'] = [i64_func for i64_func in metadata['declares'] if i64_func not in ['getHigh32', 'setHigh32']]
 
-  update_settings_glue(metadata)
+  update_settings_glue(metadata, DEBUG)
 
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
@@ -644,7 +644,7 @@ def align_static_bump(metadata):
   return metadata['staticBump']
 
 
-def update_settings_glue(metadata):
+def update_settings_glue(metadata, DEBUG):
   optimize_syscalls(metadata['declares'], DEBUG)
 
   if shared.Settings.CYBERDWARF:
@@ -2151,7 +2151,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG)
 
-  update_settings_glue(metadata)
+  update_settings_glue(metadata, DEBUG)
 
   if shared.Settings.SIDE_MODULE:
     return
