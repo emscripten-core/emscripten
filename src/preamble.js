@@ -1072,11 +1072,7 @@ function createWasm(env) {
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
         response.clone().arrayBuffer().then(function (buffer) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
-#if USE_PTHREADS
-          if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('offset-converter');
-#else
-          removeRunDependency('offset-converter');
-#endif
+          {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
         });
 #endif
         return WebAssembly.instantiateStreaming(response, info)
