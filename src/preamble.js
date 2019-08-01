@@ -878,8 +878,6 @@ function getBinaryPromise() {
 
 #if LOAD_SOURCE_MAP
 var wasmSourceMap;
-#if USE_PTHREADS
-#endif
 #include "source_map_support.js"
 #endif
 

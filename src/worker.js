@@ -71,6 +71,9 @@ function threadAlert() {
 var err = threadPrintErr;
 this.alert = threadAlert;
 
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
 function resetPrototype(constructor, attrs) {
   var object = Object.create(constructor.prototype);
   for (var key in attrs) {
