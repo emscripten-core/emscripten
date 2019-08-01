@@ -5823,6 +5823,9 @@ return malloc(size);
     # newer clang has a warning for implicit conversions that lose information,
     # which happens in sqlite (see #9138)
     self.emcc_args += ['-Wno-implicit-int-float-conversion']
+    # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
+    # yet have the new clang with that flag
+    self.emcc_args += ['-Wno-unknown-warning-option']
 
     src = '''
        #define SQLITE_DISABLE_LFS
