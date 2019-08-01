@@ -6698,7 +6698,10 @@ void scan(void* x, void* y) {
   printf("scan\n");
   int* p = (int*)x;
   int* q = (int*)y;
+  // The callback sends us the [low, high) range.
   assert(p < q);
+  // The range is of a reasonable size - not all of memory.
+  assert(q - p < 100);
   while (p < q) {
     seenInts.insert(*p);
     p++;
