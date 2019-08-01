@@ -8836,6 +8836,15 @@ T6:(else) !ASSERTIONS""", output)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try to quote the entire argument', proc.stderr)
 
+  def test_asyncify_response_file(self):
+    create_test_file('a.txt', r'''[
+  "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
+]
+''')
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=@a.txt"], stdout=PIPE, stderr=PIPE)
+    # we should parse the response file properly, and then issue a proper warning for the missing function
+    self.assertContained('Asyncify whitelist contained a non-existing function name: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)', proc.stderr)
+
   # Sockets and networking
 
   def test_inet(self):

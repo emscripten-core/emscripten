@@ -3506,21 +3506,13 @@ def parse_value(text):
       return []
     return parse_string_list_members(inner)
 
-  def parse_json_list(text):
+  if text[0] == '[':
     # if json parsing fails, we fall back to our own parser, which can handle a few
     # simpler syntaxes
     try:
       return json.loads(text)
     except:
       return parse_string_list(text)
-
-  if text[0] == '[':
-    # proper json can like ["a", "b"] can be simply handled by the python json parser
-    if text[1] == '"':
-      return parse_json_list(text)
-    # otherwise, we allow [a, b] as a shorthand (which does not properly handle
-    # various escaping issues)
-    return parse_string_list(text)
 
   try:
     return int(text)
