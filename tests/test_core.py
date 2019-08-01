@@ -3399,7 +3399,6 @@ ok
       '''
     dirname = self.get_dir()
     filename = os.path.join(dirname, 'liblib.cpp')
-    self.set_setting('EXPORTED_FUNCTIONS', ['_splat_inc_and_get'])
     self.build_dlfcn_lib(lib_src, dirname, filename)
 
     self.prep_dlfcn_main()
