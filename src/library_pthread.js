@@ -350,6 +350,12 @@ var LibraryPThread = {
 #if WASM
           wasmMemory: wasmMemory,
           wasmModule: wasmModule,
+#if LOAD_SOURCE_MAP
+          wasmSourceMap: wasmSourceMap,
+#endif
+#if USE_OFFSET_CONVERTER
+          wasmOffsetConverter: wasmOffsetConverter,
+#endif
 #else
           buffer: HEAPU8.buffer,
           asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],

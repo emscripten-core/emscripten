@@ -7818,6 +7818,7 @@ extern "C" {
   @no_fastcomp('return address not supported on fastcomp')
   @no_optimize('return address test cannot work with optimizations')
   def test_return_address(self):
+    self.emcc_args += ['-s', 'USE_OFFSET_CONVERTER']
     self.do_run(open(path_from_root('tests', 'core', 'test_return_address.cpp')).read(), 'passed')
 
   @no_fastcomp('ubsan not supported on fastcomp')
