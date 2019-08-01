@@ -14,6 +14,7 @@ out = err = function(){};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
+{{{ makeModuleReceiveWithVar('noExitRuntime') }}}
 
 #if WASM2JS
 #include "wasm2js.js"

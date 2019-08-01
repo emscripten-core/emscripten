@@ -313,7 +313,7 @@ var LibraryPThread = {
               }
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
-              Module['noExitRuntime'] = false;
+              noExitRuntime = false;
               exit(d.returnCode);
             } else if (d.cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
@@ -1089,7 +1089,7 @@ var LibraryPThread = {
 
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
-    if (!Module['noExitRuntime']) postMessage({ cmd: 'exitProcess', returnCode: returnCode });
+    if (!noExitRuntime) postMessage({ cmd: 'exitProcess', returnCode: returnCode });
     return returnCode;
   },
 

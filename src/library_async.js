@@ -202,7 +202,7 @@ mergeInto(LibraryManager.library, {
     var _file = UTF8ToString(file);
     _file = PATH_FS.resolve(FS.cwd(), _file);
     Module['setAsync']();
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
     var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
       destinationDirectory,
@@ -277,7 +277,7 @@ mergeInto(LibraryManager.library, {
       Module['setAsyncState'](s);
     },
     handle: function(doAsyncOp, yieldDuring) {
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
@@ -628,7 +628,7 @@ mergeInto(LibraryManager.library, {
     },
     handleSleep: function(startAsync) {
       if (ABORT) return;
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: handleSleep ' + Asyncify.state);
 #endif
