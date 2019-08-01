@@ -1360,5 +1360,6 @@ Functions
     the stack - the wasm VM has spilled them, but none of that is observable to
     user code).
 
-    This function requires Asyncify. (It relies on that option to spill the
-    local state all the way up the stack.)
+    This function requires Asyncify - it relies on that option to spill the
+    local state all the way up the stack. As a result, it will add overhead
+    to your program.
