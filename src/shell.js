@@ -231,6 +231,14 @@ if (ENVIRONMENT_IS_SHELL) {
       quit(status);
     };
   }
+
+  if (typeof console !== 'undefined') {
+    // Support odd shell environments that lack console.* but have other stuff.
+    console = {
+      log: print,
+      warn: typeof printErr !== 'undefined' ? printErr : print
+    }
+  }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
@@ -341,8 +349,8 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 // console.log is checked first, as 'print' on the web will open a print dialogue
 // printErr is preferable to console.warn (works better in shells)
 // bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
-var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
@@ -373,18 +381,17 @@ assert(typeof Module['read'] === 'undefined', 'Module.read option was removed (m
 assert(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
-// Assertions on removed outgoing Module JS APIs.
-Object.defineProperty(Module, 'read', { get: function() { abort('Module.read has been replaced with plain read') } });
-Object.defineProperty(Module, 'readAsync', { get: function() { abort('Module.readAsync has been replaced with plain readAsync') } });
-Object.defineProperty(Module, 'readBinary', { get: function() { abort('Module.readBinary has been replaced with plain readBinary') } });
-// TODO enable when SDL2 is fixed Object.defineProperty(Module, 'setWindowTitle', { get: function() { abort('Module.setWindowTitle has been replaced with plain setWindowTitle') } });
+{{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
+{{{ makeRemovedModuleAPIAssert('readAsync') }}}
+{{{ makeRemovedModuleAPIAssert('readBinary') }}}
+// TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
 
-// TODO remove when SDL2 is fixed; also add the above assertion
+// TODO remove when SDL2 is fixed (also see above)
 #if USE_SDL == 2
 Module['setWindowTitle'] = setWindowTitle;
 #endif

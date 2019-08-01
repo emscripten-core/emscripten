@@ -73,7 +73,7 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *git*:
 
-  - `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
+  - `Make sure the OS allows installing git <https://support.apple.com/en-gb/HT202491>`_.
   - Install Xcode and the Xcode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
   - Download and install git directly from http://git-scm.com/.
 

@@ -889,15 +889,18 @@ f.close()
     test(['-O1'], 'ASSERTIONS')
     # Case 2: Some useful text
     test(['-O1', '-s', 'ASSERTIONS=1'], [
-        "Invalid function pointer called with signature 'v'. Perhaps this is an invalid value",
+        'Invalid function pointer',
+        "called with signature 'v'. Perhaps this is an invalid value",
         'Build with ASSERTIONS=2 for more info'
     ])
     # Case 3: actually useful identity of the bad pointer, with comparisons to
     # what it would be in other types/tables
     test(['-O1', '-s', 'ASSERTIONS=2'], [
-        "Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value",
+        'Invalid function pointer',
+        "called with signature 'v'. Perhaps this is an invalid value",
         'This pointer might make sense in another type signature:',
-        "Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value",
+        'Invalid function pointer',
+        "called with signature 'v'. Perhaps this is an invalid value",
         "i: asm['_my_func']"
     ])
     # Case 4: emulate so it works
@@ -3986,7 +3989,7 @@ int main() {
                     self.assertContained('Function table mask error', output)
                   elif opts == 0:
                     # informative error message (assertions are enabled in -O0)
-                    self.assertContained('Invalid function pointer called', output)
+                    self.assertContained('Invalid function pointer', output)
                   else:
                     # non-informative error
                     self.assertContained(('abort(', 'exception'), output)
@@ -7985,10 +7988,11 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    sent_file = expected_basename + '.sent'
-    sent_data = '\n'.join(sent) + '\n'
-    self.assertFileContents(sent_file, sent_data)
-    self.assertEqual(len(sent), expected_sent)
+    if expected_imports is not None:
+      sent_file = expected_basename + '.sent'
+      sent_data = '\n'.join(sent) + '\n'
+      self.assertFileContents(sent_file, sent_data)
+      self.assertEqual(len(sent), expected_sent)
 
     for exists in expected_exists:
       self.assertIn(exists, sent)
@@ -8003,7 +8007,8 @@ int main() {
     imports = wast.count('(import ')
     exports = wast.count('(export ')
     funcs = wast.count('\n (func ')
-    self.assertEqual(imports, expected_imports)
+    if expected_imports is not None:
+      self.assertEqual(imports, expected_imports)
     self.assertEqual(exports, expected_exports)
     if expected_funcs is not None:
       self.assertEqual(funcs, expected_funcs)
@@ -8065,8 +8070,8 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, 173, 1505, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,  18,   13, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1505, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,   18,   13, None), # noqa
   })
   @no_fastcomp()
   def test_binaryen_metadce_hello(self, *args):
@@ -8085,8 +8090,8 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, 30, 96, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571, 19,  9,   21), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, None, 96, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571,   19,  9,   21), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):
@@ -8529,6 +8534,10 @@ end
     # lets us catch all other errors.
     with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+
+  # Tests --closure-args command line flag
+  def test_closure_externs(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--closure', '1', '--pre-js', path_from_root('tests', 'test_closure_externs_pre_js.js'), '--closure-args', '--externs "' + path_from_root('tests', 'test_closure_externs.js') + '"'])
 
   def test_toolchain_profiler(self):
     environ = os.environ.copy()
@@ -9200,8 +9209,8 @@ int main () {
       (asmjs + opts, hello_world_sources, {'a.html': 985, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 972, 'a.js': 624, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 885, 'a.js': 4980, 'a.asm.js': 10965, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 861, 'a.js': 5046, 'a.wasm': 8842}),
-      (opts, hello_webgl2_sources, {'a.html': 861, 'a.js': 6182, 'a.wasm': 8842}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 5027, 'a.wasm': 8830}),
+      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6157, 'a.wasm': 8830}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
@@ -9496,13 +9505,17 @@ int main () {
   @no_fastcomp('not optimized in fastcomp')
   def test_INCOMING_MODULE_JS_API(self):
     def test(args):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3'] + args)
-      self.assertContained('hello, world!', run_js('a.out.js'))
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure', '1'] + args)
+      for engine in JS_ENGINES:
+        self.assertContained('hello, world!', run_js('a.out.js', engine=engine))
       return os.path.getsize('a.out.js')
     normal = test([])
     changed = test(['-s', 'INCOMING_MODULE_JS_API=[]'])
-    # TODO: specific sizes once we stabilize
+    print('sizes', normal, changed)
+    # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
+    # Check an absolute code size as well, with some slack.
+    self.assertLess(abs(changed - 6768), 100)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
@@ -9513,6 +9526,9 @@ int main () {
         create_test_file(f, 'Test file')
         emcc_args.extend(['--embed-file', f])
     self.do_other_test('mmap_and_munmap', emcc_args)
+
+  def test_mmap_memorygrowth(self):
+    self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
 
   @no_fastcomp('fastcomp defines this in the backend itself, so it is always on there')
   def test_EMSCRIPTEN_and_STRICT(self):
@@ -9562,6 +9578,33 @@ int main () {
     ''')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASSERTIONS', '--pre-js', 'pre.js'])
     self.assertContained('Module.read option was removed', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
+
+  def test_assertions_on_outgoing_module_api_changes(self):
+    create_test_file('src.cpp', r'''
+      #include <emscripten.h>
+      int main() {
+        EM_ASM({
+          console.log();
+          function check(name) {
+            try {
+              Module[name];
+              console.log("success: " + name);
+            } catch(e) {
+            }
+          }
+          check("read");
+          // TODO check("setWindowTitle");
+          check("wasmBinary");
+          check("arguments");
+        });
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'src.cpp', '-s', 'ASSERTIONS'])
+    self.assertContained('''
+Module.read has been replaced with plain read_
+Module.wasmBinary has been replaced with plain wasmBinary
+Module.arguments has been replaced with plain arguments_
+''', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
 
   def test_em_asm_strict_c(self):
     create_test_file('src.c', '''

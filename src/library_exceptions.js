@@ -232,7 +232,9 @@ var LibraryExceptions = {
 
   __cxa_call_unexpected: function(exception) {
     err('Unexpected exception thrown, this is not properly supported - aborting');
+#if !MINIMAL_RUNTIME
     ABORT = true;
+#endif
     throw exception;
   },
 
