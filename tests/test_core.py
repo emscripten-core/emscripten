@@ -59,6 +59,18 @@ def wasm_simd(f):
   return decorated
 
 
+def bleeding_edge_wasm_backend(f):
+  def decorated(self):
+    if not self.is_wasm_backend():
+      self.skipTest('only works in wasm backend')
+    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+      self.skipTest('only works in d8 for now')
+    if self.is_wasm_backend() and not self.get_setting('WASM'):
+      self.skipTest('wasm2js only supports MVP for now')
+    f(self, js_engines=[V8_ENGINE])
+  return decorated
+
+
 def no_emterpreter(f):
   assert callable(f)
   return skip_if(f, 'is_emterpreter')
@@ -3374,6 +3386,46 @@ ok
       '''
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
+  @needs_dlfcn
+  @bleeding_edge_wasm_backend
+  def test_dlfcn_feature_in_lib(self, js_engines):
+    self.emcc_args.append('-mnontrapping-fptoint')
+
+    self.prep_dlfcn_lib()
+    lib_src = r'''
+        extern "C" int magic(float x) {
+          return __builtin_wasm_trunc_saturate_s_i32_f32(x);
+        }
+      '''
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.cpp')
+    self.build_dlfcn_lib(lib_src, dirname, filename)
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      typedef int (*fi)(float);
+
+      int main() {
+        void *lib_handle = dlopen("liblib.so", 0);
+        if (!lib_handle) {
+          puts(dlerror());
+          abort();
+        }
+        fi x = (fi)dlsym(lib_handle, "magic");
+        if (!x) {
+          puts(dlerror());
+          abort();
+        }
+        printf("float: %d.\n", x(42.99));
+        return 0;
+      }
+      '''
+    self.do_run(src, 'float: 42.\n', js_engines=js_engines)
+
   def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
     # shared settings
     self.set_setting('EXPORT_ALL', 1)
@@ -5431,7 +5483,7 @@ int main(void) {
     output = open(path_from_root('tests', 'raytrace.ppm')).read()
     self.do_run(src, output, ['3', '16'])
 
-  def test_fasta(self):
+  def test_fasta(self, js_engines=None):
     results = [(1, '''GG*ctt**tgagc*'''),
                (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
                (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
@@ -5448,14 +5500,15 @@ int main(void) {
           src = orig_src.replace('double', t)
           self.build(src, self.get_dir(), 'fasta.cpp')
           for arg, output in results:
-            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
+            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True, js_engines=js_engines)
           shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % (precision, t))
 
     test([])
 
-    # TODO: enable when we have bleeding edge node on the bots
-    # if self.is_wasm_backend():
-    #   test(['-mnontrapping-fptoint'])
+  @bleeding_edge_wasm_backend
+  def test_fasta_nontrapping(self, js_engines):
+    self.emcc_args += ['-mnontrapping-fptoint']
+    self.test_fasta(js_engines)
 
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
