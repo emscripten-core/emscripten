@@ -13,6 +13,8 @@ Module.realPrint = out;
 out = err = function(){};
 #endif
 
+{{{ makeModuleReceiveWithVar('wasmBinary') }}}
+
 #if WASM2JS
 #include "wasm2js.js"
 #endif
@@ -338,7 +340,7 @@ if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the st
 Module['TOTAL_STACK'] = TOTAL_STACK;
 #endif
 
-var INITIAL_TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
+{{{ makeModuleReceiveWithVar('INITIAL_TOTAL_MEMORY', 'TOTAL_MEMORY', TOTAL_MEMORY) }}}
 
 #if ASSERTIONS
 assert(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
@@ -382,9 +384,13 @@ if (ENVIRONMENT_IS_PTHREAD) {
 } else {
 #endif // USE_PTHREADS
 #if WASM
+
+#if expectToReceiveOnModule('wasmMemory')
   if (Module['wasmMemory']) {
     wasmMemory = Module['wasmMemory'];
-  } else {
+  } else
+#endif
+  {
     wasmMemory = new WebAssembly.Memory({
       'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
@@ -450,12 +456,7 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 #endif
 
 #include "runtime_stack_check.js"
-
-// Endianness check (note: assumes compiler arch was little-endian)
-#if ASSERTIONS
-HEAP16[1] = 0x6373;
-if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
-#endif // ASSERTIONS
+#include "runtime_assertions.js"
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
@@ -826,9 +827,10 @@ if (!isDataURI(wasmBinaryFile)) {
 
 function getBinary() {
   try {
-    if (Module['wasmBinary']) {
-      return new Uint8Array(Module['wasmBinary']);
+    if (wasmBinary) {
+      return new Uint8Array(wasmBinary);
     }
+
 #if SUPPORT_BASE64_EMBEDDING
     var binary = tryParseAsDataURI(wasmBinaryFile);
     if (binary) {
@@ -853,7 +855,7 @@ function getBinary() {
 function getBinaryPromise() {
   // if we don't have the binary yet, and have the Fetch api, use that
   // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
     return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
         throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -1001,20 +1003,15 @@ function createWasm(env) {
     removeRunDependency('wasm-instantiate');
 #endif
   }
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-    addRunDependency('wasm-instantiate'); // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  }
-#else
-  addRunDependency('wasm-instantiate');
-#endif
+   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+  {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
 
 #if LOAD_SOURCE_MAP
-  addRunDependency('source-map');
+  {{{ runOnMainThread("addRunDependency('source-map');") }}}
 
   function receiveSourceMapJSON(sourceMap) {
     wasmSourceMap = new WasmSourceMap(sourceMap);
-    removeRunDependency('source-map');
+    {{{ runOnMainThread("removeRunDependency('source-map');") }}}
   }
 #endif
 
@@ -1041,14 +1038,14 @@ function createWasm(env) {
   }
 
 #if 'emscripten_generate_pc' in addedLibraryItems
-  addRunDependency('offset-converter');
+  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
 #endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
 #if 'emscripten_generate_pc' in addedLibraryItems
       wasmOffsetConverter = new WasmOffsetConverter(binary);
-      removeRunDependency('offset-converter');
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
@@ -1060,7 +1057,7 @@ function createWasm(env) {
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
-    if (!Module['wasmBinary'] &&
+    if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
@@ -1070,7 +1067,7 @@ function createWasm(env) {
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
         response.clone().arrayBuffer().then(function (buffer) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
-          removeRunDependency('offset-converter');
+          {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
         });
 #endif
         return WebAssembly.instantiateStreaming(response, info)
@@ -1095,7 +1092,7 @@ function createWasm(env) {
       binary = getBinary();
 #if 'emscripten_generate_pc' in addedLibraryItems
       wasmOffsetConverter = new WasmOffsetConverter(binary);
-      removeRunDependency('offset-converter');
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
       module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);

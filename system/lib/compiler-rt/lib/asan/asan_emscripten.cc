@@ -1,6 +1,7 @@
 #include "asan_internal.h"
 #include "asan_mapping.h"
 #include "asan_poisoning.h"
+#include "asan_thread.h"
 
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten.h>
@@ -32,13 +33,17 @@ void InitializeAsanInterceptors() {}
 
 namespace __lsan {
 
-// XXX HACK: Emscripten doesn't support thread local storage, so a hack was
-// introduced where we skip the allocator cache in the common module.
-// Now we have to define this symbol to keep that hack working when using
-// LSan as part of ASan.
+#ifndef USE_THREADS
+// XXX HACK: Emscripten treats thread_local variables the same as globals in
+// non-threaded builds, so a hack was introduced where we skip the allocator
+// cache in the common module. Now we have to define this symbol to keep that
+// hack working when using LSan as part of ASan without threads.
 void GetAllocatorCacheRange(uptr *begin, uptr *end) {
   *begin = *end = 0;
 }
+#endif
+
+u32 GetCurrentThread() { return __asan::GetCurrentThread()->tid(); }
 
 } // namespace __lsan
 

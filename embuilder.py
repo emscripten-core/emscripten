@@ -30,6 +30,7 @@ SYSTEM_TASKS += ['struct_info']
 
 USER_TASKS = [
     'binaryen',
+    'boost_headers',
     'bullet',
     'bzip2',
     'cocos2d',
@@ -237,6 +238,8 @@ def main():
       build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
+    elif what == 'boost_headers':
+      build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

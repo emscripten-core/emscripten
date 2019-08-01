@@ -1181,6 +1181,9 @@ var USE_LIBPNG = 0;
 // 1 = use Regal from emscripten-ports
 var USE_REGAL = 0;
 
+// 1 = use Boost headers from emscripten-ports
+var USE_BOOST_HEADERS = 0;
+
 // 1 = use bullet from emscripten-ports
 var USE_BULLET = 0;
 

@@ -234,8 +234,7 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
   # FIXME: do these one by one as normal js lib funcs
   metadata['declares'] = [i64_func for i64_func in metadata['declares'] if i64_func not in ['getHigh32', 'setHigh32']]
 
-  optimize_syscalls(metadata['declares'], DEBUG)
-  update_settings_glue(metadata)
+  update_settings_glue(metadata, DEBUG)
 
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
@@ -645,7 +644,9 @@ def align_static_bump(metadata):
   return metadata['staticBump']
 
 
-def update_settings_glue(metadata):
+def update_settings_glue(metadata, DEBUG):
+  optimize_syscalls(metadata['declares'], DEBUG)
+
   if shared.Settings.CYBERDWARF:
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append("cyberdwarf_Debugger")
     shared.Settings.EXPORTED_FUNCTIONS.append("cyberdwarf_Debugger")
@@ -1279,24 +1280,12 @@ def create_mftCall_funcs(function_table_data):
 
 
 def get_function_pointer_error(sig, function_table_sigs):
-  if shared.Settings.ASSERTIONS <= 1:
-    extra = ' err("Build with ASSERTIONS=2 for more info.");'
-    pointer = ' '
+  if shared.Settings.ASSERTIONS == 0:
+    # Release build: do the most minimal sized abort possible
+    return "abort();"
   else:
-    pointer = ' \'" + x + "\' '
-    extra = ' err("This pointer might make sense in another type signature: '
-    # sort signatures, attempting to show most likely related ones first
-    sigs = list(function_table_sigs)
-    sigs.sort(key=signature_sort_key(sig))
-    for other in sigs:
-      if other != sig:
-        extra += other + ': " + debug_table_' + other + '[x] + "  '
-    extra += '"); '
-  return 'err("Invalid function pointer' + pointer + 'called with signature \'' + sig + '\'. ' + \
-         'Perhaps this is an invalid value (e.g. caused by calling a virtual method on a NULL pointer)? ' + \
-         'Or calling a function with an incorrect type, which will fail? ' + \
-         '(it is worth building your source files with -Werror (warnings are errors), as warnings can indicate undefined behavior which can cause this)' + \
-         '"); ' + extra
+    # ASSERTIONS-enabled build, identify the pointer and the failing signature.
+    return "abortFnPtrError(x, '" + sig + "');"
 
 
 def signature_sort_key(sig):
@@ -1495,14 +1484,17 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
   asm_setup = ''
   if shared.Settings.ASSERTIONS >= 2:
+    debug_tables_map = 'var debug_tables = {\n'
     for sig in function_table_data:
       # if the table is empty, debug_tables will not contain it
       body = debug_tables.get(sig, [])
-      asm_setup += '\nvar debug_table_' + sig + ' = ' + json.dumps(body) + ';'
+      asm_setup += 'var debug_table_' + sig + ' = [' + ','.join(['0' if x == '0' else "'" + x.replace("'", '"') + "'" for x in body]) + '];\n'
+      debug_tables_map += "  '" + sig + "': debug_table_" + sig + ',\n'
+    asm_setup += debug_tables_map + '};\n'
 
   if shared.Settings.ASSERTIONS:
     for sig in function_table_sigs:
-      asm_setup += '\nfunction nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs) + 'abort(x) }\n'
+      asm_setup += 'function nullFunc_' + sig + '(x) { ' + get_function_pointer_error(sig, function_table_sigs) + ' }\n'
 
   if shared.Settings.RELOCATABLE:
     if not shared.Settings.SIDE_MODULE:
@@ -1677,26 +1669,22 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
     runtime_assertions = ''
   else:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are some support code.
+    # WASM=1 already inserts runtime assertions, so no need to do it again here (see create_receiving_wasm)
+    if not shared.Settings.WASM:
+      receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
 
-    wrappers = []
-    for name in receiving_functions:
-      wrappers.append('''\
+      wrappers = []
+      for name in receiving_functions:
+        wrappers.append('''\
 var real_%(name)s = asm["%(name)s"];
 asm["%(name)s"] = function() {%(runtime_assertions)s
   return real_%(name)s.apply(null, arguments);
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
-    receiving = '\n'.join(wrappers)
+      receiving = '\n'.join(wrappers)
 
   shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
-
-  # Currently USE PTHREADS + EXPORT ES6 doesn't work with the previously generated assertions.
-  # ES6 modules disallow re-assigning read-only properties.
-  if shared.Settings.USE_PTHREADS and shared.Settings.EXPORT_ES6 and shared.Settings.ASSERTIONS and receiving:
-    receiving = "assert(!ENVIRONMENT_IS_PTHREAD, 'Error: USE_PTHREADS and EXPORT_ES6 requires ASSERTIONS=0');\n" + receiving
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -2153,19 +2141,14 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   #   * Use the metadata to generate the JS glue that goes with the wasm
 
   metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG)
+
+  update_settings_glue(metadata, DEBUG)
+
   if shared.Settings.SIDE_MODULE:
     return
 
-  # optimize syscalls
-
-  optimize_syscalls(metadata['declares'], DEBUG)
-
-  # js compiler
-
   if DEBUG:
     logger.debug('emscript: js compiler glue')
-
-  update_settings_glue(metadata)
 
   if DEBUG:
     t = time.time()
