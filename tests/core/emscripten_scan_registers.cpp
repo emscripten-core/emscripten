@@ -29,13 +29,17 @@ void inner(int x, int y) {
   seenInts.clear();
   int z;
   if (x < y) {
+    printf("left..\n");
     z = x + 100;
     emscripten_scan_registers(scan);
+    printf("..left\n");
   } else {
+    printf("right..\n");
     z = y + 200;
     emscripten_scan_registers(scan);
+    printf("..right\n");
   }
-  printf("a %d, %d, %d\n", x, y, z);
+  printf("b %d, %d, %d\n", x, y, z);
   assert(seenInts.count(314159));
   assert(seenInts.count(21828));
   assert(seenInts.count(22028));
@@ -50,7 +54,7 @@ int main() {
   x = EM_ASM_INT({ return $0 + 1 }, x);
   y = EM_ASM_INT({ return $0 - 1 }, y);
   emscripten_scan_registers(scan);
-  printf("b %d, %d\n", x, y);
+  printf("c %d, %d\n", x, y);
   assert(seenInts.count(314160));
   assert(seenInts.count(21827));
   assert(seenInts.size() < 1000);
