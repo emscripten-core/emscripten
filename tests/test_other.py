@@ -8830,12 +8830,14 @@ T6:(else) !ASSERTIONS""", output)
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
 
+  @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_escaping(self):
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
     self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try to quote the entire argument', proc.stderr)
 
+  @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_response_file(self):
     create_test_file('a.txt', r'''[
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
