@@ -9616,3 +9616,8 @@ Module.arguments has been replaced with plain arguments_
     result = run_process([PYTHON, EMCC, '-std=c11', 'src.c'], stderr=PIPE, check=False)
     self.assertNotEqual(result.returncode, 0)
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
+
+  def test_boost_graph(self):
+    self.do_smart_test(path_from_root('tests', 'test_boost_graph.cpp'),
+                       emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
+                       assert_returncode=0)
