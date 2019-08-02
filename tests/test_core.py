@@ -8048,6 +8048,31 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack_alloca.c')).read(),
                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
 
+  @needs_dlfcn
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack_dylink(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.dylink_test(r'''
+      #include <stdio.h>
+      extern void sidey();
+      int main() {
+        sidey();
+      }
+    ''', '''
+      #include <string.h>
+
+      int f(int *b) {
+        int a[64];
+        memset(b, 0, 2048 * sizeof(int));
+        return f(a);
+      }
+
+      void sidey() {
+        int a[2048];
+        f(a);
+      }
+    ''', ['abort(stack overflow)', '__handle_stack_overflow'])
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
