@@ -8074,6 +8074,7 @@ extern "C" {
       }
     ''', ['abort(stack overflow)', '__handle_stack_overflow'])
 
+
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
   if env is None:
