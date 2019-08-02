@@ -3191,7 +3191,7 @@ class WebAssembly(object):
     # https://github.com/WebAssembly/tool-conventions/pull/77
     contents += WebAssembly.lebify(len(needed_dynlibs))
     for dyn_needed in needed_dynlibs:
-      dyn_needed = asbytes(dyn_needed)
+      dyn_needed = bytes(asbytes(dyn_needed))
       contents += WebAssembly.lebify(len(dyn_needed))
       contents += dyn_needed
 
