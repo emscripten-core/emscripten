@@ -3912,6 +3912,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
 
   @parameterized({
+    # Reusing the LSan test files for ASan.
     'leak': ['test_pthread_lsan_leak', ['-g4']],
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
