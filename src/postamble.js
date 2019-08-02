@@ -290,6 +290,7 @@ function run(args) {
     postRun();
   }
 
+#if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
@@ -298,7 +299,9 @@ function run(args) {
       }, 1);
       doRun();
     }, 1);
-  } else {
+  } else
+#endif
+  {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
@@ -434,12 +437,14 @@ function abort(what) {
 }
 Module['abort'] = abort;
 
+#if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
     Module['preInit'].pop()();
   }
 }
+#endif
 
 #if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
