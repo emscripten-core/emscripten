@@ -4254,11 +4254,7 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'
-#if MINIMAL_RUNTIME
-  , '$jsStackTrace', '$warnOnce', '$demangle'
-#endif
-  ],
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$warnOnce', '$demangle'],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
