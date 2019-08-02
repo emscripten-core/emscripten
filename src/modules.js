@@ -65,7 +65,8 @@ var LibraryManager = {
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',
-      'library_html5.js'
+      'library_html5.js',
+      'library_stack_trace.js'
     ];
 
     if (!DISABLE_EXCEPTION_THROWING) {
@@ -74,9 +75,7 @@ var LibraryManager = {
       libraries.push('library_exceptions_stub.js');
     }
 
-    if (MINIMAL_RUNTIME) {
-      libraries.push('library_stack_trace.js');
-    } else {
+    if (!MINIMAL_RUNTIME) {
       libraries.push('library_browser.js');
     }
 

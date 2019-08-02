@@ -264,8 +264,6 @@ function getMemory(size) {
 
 #include "runtime_strings.js"
 
-#include "runtime_stack_trace.js"
-
 // Memory management
 
 var PAGE_SIZE = 16384;

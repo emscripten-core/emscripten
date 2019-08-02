@@ -1266,6 +1266,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.proxy_to_worker or options.use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
+    if not shared.Settings.MINIMAL_RUNTIME:
+      # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
+      # no longer always bundled in)
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
+
     if shared.Settings.FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
       if shared.Settings.SUPPORT_ERRNO:
         shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
