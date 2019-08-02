@@ -26,6 +26,7 @@ Current Trunk
  - Drop ExitStatus from inheriting from Error(), as that could capture the whole
    global scope, preventing temporary variables at page startup from being garbage
    collected. (#9108)
+ - `__builtin_return_address` now requires `-s USE_OFFSET_CONVERTER=1` to work. (#9073)
 
 v.1.38.40: 07/24/2019
 ---------------------

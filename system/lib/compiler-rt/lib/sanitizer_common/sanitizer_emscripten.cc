@@ -21,6 +21,8 @@
 
 #if SANITIZER_EMSCRIPTEN
 
+#include <emscripten.h>
+
 namespace __sanitizer {
 
 extern "C" {
@@ -85,21 +87,10 @@ uptr internal_munmap(void *addr, uptr length) {
   return emscripten_builtin_munmap(addr, length);
 }
 
-extern "C" {
-  extern char __data_end;
-  extern char __heap_base;
-}
-
-inline uptr get_stack_bottom() {
-  // Align to 8 byte
-  return ((uptr) &__data_end + 7) & ~7;
-}
-
-
 void GetThreadStackTopAndBottom(bool at_initialization, uptr *stack_top,
                                 uptr *stack_bottom) {
-  *stack_top = (uptr) &__heap_base;
-  *stack_bottom = get_stack_bottom();
+  *stack_top = EM_ASM_INT({ return STACK_BASE; });
+  *stack_bottom = EM_ASM_INT({ return STACK_MAX; });
 }
 
 char *fake_argv[] = {0};
@@ -121,11 +112,15 @@ void InitTlsSize() {}
 
 void GetThreadStackAndTls(bool main, uptr *stk_addr, uptr *stk_size,
                           uptr *tls_addr, uptr *tls_size) {
-  *stk_addr = *stk_size = *tls_addr = *tls_size = 0;
-  if (main) {
-    *stk_addr = get_stack_bottom();
-    *stk_size = (uptr) &__heap_base - get_stack_bottom();
-  }
+  uptr stk_top;
+  GetThreadStackTopAndBottom(true, &stk_top, stk_addr);
+  *stk_size = stk_top - *stk_addr;
+#ifdef USE_THREADS
+  *tls_addr = (uptr) __builtin_wasm_tls_base();
+  *tls_size = __builtin_wasm_tls_size();
+#else
+  *tls_addr = *tls_size = 0;
+#endif
 }
 
 void StopTheWorld(StopTheWorldCallback callback, void *argument) {

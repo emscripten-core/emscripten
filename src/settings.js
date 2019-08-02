@@ -1176,6 +1176,9 @@ var USE_LIBPNG = 0;
 // 1 = use Regal from emscripten-ports
 var USE_REGAL = 0;
 
+// 1 = use Boost headers from emscripten-ports
+var USE_BOOST_HEADERS = 0;
+
 // 1 = use bullet from emscripten-ports
 var USE_BULLET = 0;
 
@@ -1542,6 +1545,12 @@ var ASAN_SHADOW_SIZE = 33554432;
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;
+
+// Whether we should use the offset converter.
+// This is needed for older versions of v8 (<7.7) that does not give the hex module offset
+// into wasm binary in stack traces, as well as for avoiding using source map
+// entries across function boundaries.
+var USE_OFFSET_CONVERTER = 0;
 
 // Whether embind has been enabled.
 var EMBIND = 0;

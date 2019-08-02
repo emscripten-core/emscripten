@@ -350,6 +350,12 @@ var LibraryPThread = {
 #if WASM
           wasmMemory: wasmMemory,
           wasmModule: wasmModule,
+#if LOAD_SOURCE_MAP
+          wasmSourceMap: wasmSourceMap,
+#endif
+#if USE_OFFSET_CONVERTER
+          wasmOffsetConverter: wasmOffsetConverter,
+#endif
 #else
           buffer: HEAPU8.buffer,
           asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
@@ -501,8 +507,8 @@ var LibraryPThread = {
     {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
   },
 
-  pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
-  pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
@@ -713,8 +719,8 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls'],
-  pthread_join: function(thread, status) {
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls'],
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;

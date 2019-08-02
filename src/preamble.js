@@ -129,7 +129,12 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
+#else // EMTERPRETIFY_ASYNC
+#if ASSERTIONS
+  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
 #endif
+#endif // EMTERPRETIFY_ASYNC
+
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
@@ -456,12 +461,7 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 #endif
 
 #include "runtime_stack_check.js"
-
-// Endianness check (note: assumes compiler arch was little-endian)
-#if ASSERTIONS
-HEAP16[1] = 0x6373;
-if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
-#endif // ASSERTIONS
+#include "runtime_assertions.js"
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
@@ -881,7 +881,7 @@ var wasmSourceMap;
 #include "source_map_support.js"
 #endif
 
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
 var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
 #endif
@@ -1008,20 +1008,15 @@ function createWasm(env) {
     removeRunDependency('wasm-instantiate');
 #endif
   }
-#if USE_PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD) {
-    addRunDependency('wasm-instantiate'); // we can't run yet (except in a pthread, where we have a custom sync instantiator)
-  }
-#else
-  addRunDependency('wasm-instantiate');
-#endif
+   // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+  {{{ runOnMainThread("addRunDependency('wasm-instantiate');") }}}
 
 #if LOAD_SOURCE_MAP
-  addRunDependency('source-map');
+  {{{ runOnMainThread("addRunDependency('source-map');") }}}
 
   function receiveSourceMapJSON(sourceMap) {
     wasmSourceMap = new WasmSourceMap(sourceMap);
-    removeRunDependency('source-map');
+    {{{ runOnMainThread("removeRunDependency('source-map');") }}}
   }
 #endif
 
@@ -1047,15 +1042,15 @@ function createWasm(env) {
 #endif
   }
 
-#if 'emscripten_generate_pc' in addedLibraryItems
-  addRunDependency('offset-converter');
+#if USE_OFFSET_CONVERTER
+  {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
 #endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary);
-      removeRunDependency('offset-converter');
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
       return WebAssembly.instantiate(binary, info);
     }).then(receiver, function(reason) {
@@ -1072,12 +1067,12 @@ function createWasm(env) {
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
         response.clone().arrayBuffer().then(function (buffer) {
           wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
-          removeRunDependency('offset-converter');
+          {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
         });
 #endif
         return WebAssembly.instantiateStreaming(response, info)
@@ -1100,9 +1095,9 @@ function createWasm(env) {
     var binary;
     try {
       binary = getBinary();
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary);
-      removeRunDependency('offset-converter');
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
       module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
