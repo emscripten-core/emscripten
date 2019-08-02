@@ -3,7 +3,7 @@
 #include <string.h>
 #include <assert.h>
 
-GL_APICALL void GL_APIENTRY glGenVertexArrays(GLsizei n, GLuint *arrays);
+GL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays);
 
 int main()
 {
@@ -18,7 +18,7 @@ int main()
   if (hasVaos)
   {
     GLuint vao = 0;
-    glGenVertexArrays(1, &vao);
+    glGenVertexArraysOES(1, &vao);
     assert(vao != 0);
   }
 #ifdef REPORT_RESULT
