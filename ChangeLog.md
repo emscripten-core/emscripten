@@ -26,6 +26,7 @@ Current Trunk
  - Drop ExitStatus from inheriting from Error(), as that could capture the whole
    global scope, preventing temporary variables at page startup from being garbage
    collected. (#9108)
+ - emrun now uses HTTP/1.1 instead of HTTP/1.0.
 
 v.1.38.40: 07/24/2019
 ---------------------
