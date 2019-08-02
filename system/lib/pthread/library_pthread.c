@@ -205,6 +205,12 @@ static void _do_call(em_queued_call* q) {
     switch (q->functionEnum) {
       case EM_PROXIED_PTHREAD_CREATE:
 #ifdef HAS_ASAN
+        // ASan wraps the emscripten_builtin_pthread_create call in __lsan::ScopedInterceptorDisabler.
+        // Unfortunately, that only disables it on the thread that made the call.
+        // This is sufficient on the main thread.
+        // On non-main threads, pthread_create gets proxied to the main thread, where LSan is not
+        // disabled. This makes it necessary for us to disable LSan here, so that it does not detect
+        // pthread's internal allocations as leaks.
         __lsan_disable_in_this_thread();
         q->returnValue.i =
           emscripten_builtin_pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
