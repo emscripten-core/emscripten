@@ -441,6 +441,7 @@ function exportRuntime() {
     'printErr',
     'getTempRet0',
     'setTempRet0',
+    'callMain',
   ];
 
   if (!MINIMAL_RUNTIME) {
