@@ -703,7 +703,7 @@ class libcxxabi(CXXLibrary, MTLibrary):
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     return cflags
 
-  includes = ['system', 'lib', 'libcxxabi', 'include']
+  includes = [['system', 'lib', 'libcxxabi', 'include']]
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
   src_files = [
     'abort_message.cpp',
@@ -727,7 +727,7 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx.symbols'))
   depends = ['libc++abi']
 
-  includes = ['system', 'lib', 'libcxxabi', 'include']
+  includes = [['system', 'lib', 'libcxxabi', 'include']]
   cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
