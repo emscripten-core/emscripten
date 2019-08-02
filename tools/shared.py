@@ -3222,9 +3222,8 @@ def asstr(s):
 
 
 def asbytes(s):
-  if str is bytes:
-    # Python 2 compatibility:
-    # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
+  if isinstance(s, bytes):
+    # Do not attempt to encode bytes
     return s
   return s.encode('utf-8')
 
