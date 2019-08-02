@@ -11,7 +11,6 @@ void scan(void* x, void* y) {
   int* p = (int*)x;
   int* q = (int*)y;
   while (p < q) {
-    //printf("  %d\n", *p);
     seenInts.insert(*p);
     p++;
   }

@@ -4808,9 +4808,9 @@ LibraryManager.library = {
   // special runtime support
 
   emscripten_scan_stack: function(func) {
-    var one = STACK_BASE; // TODO verify this is right on pthreads
-    var two = stackSave();
-    {{{ makeDynCall('vii') }}}(func, Math.min(one, two), Math.max(one, two));
+    var base = STACK_BASE; // TODO verify this is right on pthreads
+    var end = stackSave();
+    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
