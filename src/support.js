@@ -651,7 +651,7 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
   return func;
-#endif
+#else // WASM2JS
 
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
@@ -711,6 +711,7 @@ function convertJsFunctionToWasm(func, sig) {
   });
   var wrappedFunc = instance.exports.f;
   return wrappedFunc;
+#endif // WASM2JS
 }
 
 // Add a wasm function to the table.

@@ -889,15 +889,18 @@ f.close()
     test(['-O1'], 'ASSERTIONS')
     # Case 2: Some useful text
     test(['-O1', '-s', 'ASSERTIONS=1'], [
-        "Invalid function pointer called with signature 'v'. Perhaps this is an invalid value",
+        'Invalid function pointer',
+        "called with signature 'v'. Perhaps this is an invalid value",
         'Build with ASSERTIONS=2 for more info'
     ])
     # Case 3: actually useful identity of the bad pointer, with comparisons to
     # what it would be in other types/tables
     test(['-O1', '-s', 'ASSERTIONS=2'], [
-        "Invalid function pointer '0' called with signature 'v'. Perhaps this is an invalid value",
+        'Invalid function pointer',
+        "called with signature 'v'. Perhaps this is an invalid value",
         'This pointer might make sense in another type signature:',
-        "Invalid function pointer '1' called with signature 'v'. Perhaps this is an invalid value",
+        'Invalid function pointer',
+        "called with signature 'v'. Perhaps this is an invalid value",
         "i: asm['_my_func']"
     ])
     # Case 4: emulate so it works
@@ -3986,7 +3989,7 @@ int main() {
                     self.assertContained('Function table mask error', output)
                   elif opts == 0:
                     # informative error message (assertions are enabled in -O0)
-                    self.assertContained('Invalid function pointer called', output)
+                    self.assertContained('Invalid function pointer', output)
                   else:
                     # non-informative error
                     self.assertContained(('abort(', 'exception'), output)
@@ -9206,8 +9209,8 @@ int main () {
       (asmjs + opts, hello_world_sources, {'a.html': 985, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 972, 'a.js': 624, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 885, 'a.js': 4980, 'a.asm.js': 10965, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 861, 'a.js': 5046, 'a.wasm': 8842}),
-      (opts, hello_webgl2_sources, {'a.html': 861, 'a.js': 6182, 'a.wasm': 8842}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 5027, 'a.wasm': 8830}),
+      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6157, 'a.wasm': 8830}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
@@ -9613,3 +9616,8 @@ Module.arguments has been replaced with plain arguments_
     result = run_process([PYTHON, EMCC, '-std=c11', 'src.c'], stderr=PIPE, check=False)
     self.assertNotEqual(result.returncode, 0)
     self.assertIn('EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead', result.stderr)
+
+  def test_boost_graph(self):
+    self.do_smart_test(path_from_root('tests', 'test_boost_graph.cpp'),
+                       emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
+                       assert_returncode=0)

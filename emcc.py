@@ -1507,6 +1507,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         elif arg.startswith('-fno-sanitize='):
           sanitize.difference_update(arg.split('=', 1)[1].split(','))
 
+      if sanitize:
+        shared.Settings.USE_OFFSET_CONVERTER = 1
+
       if sanitize & UBSAN_SANITIZERS:
         if '-fsanitize-minimal-runtime' in newargs:
           shared.Settings.UBSAN_RUNTIME = 1
@@ -1516,9 +1519,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if 'leak' in sanitize:
         shared.Settings.USE_LSAN = 1
         shared.Settings.EXIT_RUNTIME = 1
-
-        if shared.Settings.USE_PTHREADS:
-          exit_with_error('LSan currently does not support threads')
 
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
