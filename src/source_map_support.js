@@ -56,7 +56,7 @@ function WasmSourceMap(sourceMap) {
 
 WasmSourceMap.prototype.lookup = function (offset) {
   var normalized = this.normalizeOffset(offset);
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
   if (!wasmOffsetConverter.isSameFunc(offset, normalized)) {
     return null;
   }

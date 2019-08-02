@@ -3903,13 +3903,13 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS', '-std=c++11'])
 
   @parameterized({
-    'leak': ['test_pthread_lsan_leak'],
+    'leak': ['test_pthread_lsan_leak', ['-g4']],
     'no_leak': ['test_pthread_lsan_no_leak'],
   })
   @no_fastcomp('LSan is only supported on WASM backend')
   @requires_threads
-  def test_pthread_lsan(self, name):
-    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')])
+  def test_pthread_lsan(self, name, args=[]):
+    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
@@ -4140,7 +4140,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 6552), 100)
+    self.assertLess(abs(size - 6267), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4174,6 +4174,11 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
+
+  # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
+  @requires_graphics_hardware
+  def test_webgl_vao_without_automatic_extensions(self):
+    self.btest('test_webgl_no_auto_init_extensions.c', '0', args=['-lGL', '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0'])
 
   # Tests that offscreen framebuffer state restoration works
   @requires_graphics_hardware

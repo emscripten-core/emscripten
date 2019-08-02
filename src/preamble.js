@@ -129,7 +129,12 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
+#else // EMTERPRETIFY_ASYNC
+#if ASSERTIONS
+  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
 #endif
+#endif // EMTERPRETIFY_ASYNC
+
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
 #if EMTERPRETIFY_ASYNC
@@ -876,7 +881,7 @@ var wasmSourceMap;
 #include "source_map_support.js"
 #endif
 
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
 var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
 #endif
@@ -1037,13 +1042,13 @@ function createWasm(env) {
 #endif
   }
 
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
   {{{ runOnMainThread("addRunDependency('offset-converter');") }}}
 #endif
 
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary);
       {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
@@ -1062,7 +1067,7 @@ function createWasm(env) {
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
         response.clone().arrayBuffer().then(function (buffer) {
@@ -1090,7 +1095,7 @@ function createWasm(env) {
     var binary;
     try {
       binary = getBinary();
-#if 'emscripten_generate_pc' in addedLibraryItems
+#if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary);
       {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
 #endif
