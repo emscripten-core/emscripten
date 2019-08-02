@@ -1,9 +1,10 @@
 #include <emscripten/html5.h>
-#include <GLES2/gl2.h>
 #include <string.h>
 #include <assert.h>
+#include <GLES2/gl2.h>
 
-GL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays);
+#define GL_GLEXT_PROTOTYPES
+#include <GLES2/gl2ext.h>
 
 int main()
 {
