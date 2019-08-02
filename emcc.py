@@ -1588,9 +1588,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCIFY_IMPORTS:
               passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
+
+            # shell escaping can be confusing; try to emit useful warnings
+            def check_human_readable_list(items):
+              for item in items:
+                if item.count('(') != item.count(')'):
+                  logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
+                  logger.warning('''   ''' + item)
+                  logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
+                  logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_WHITELIST=["foo(int, char)", "bar"]' ''')
+                  break
+
             if shared.Settings.ASYNCIFY_BLACKLIST:
+              check_human_readable_list(shared.Settings.ASYNCIFY_BLACKLIST)
               passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
             if shared.Settings.ASYNCIFY_WHITELIST:
+              check_human_readable_list(shared.Settings.ASYNCIFY_WHITELIST)
               passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             passes += ['--ignore-implicit-traps']
@@ -3491,7 +3504,12 @@ def parse_value(text):
     return parse_string_list_members(inner)
 
   if text[0] == '[':
-    return parse_string_list(text)
+    # if json parsing fails, we fall back to our own parser, which can handle a few
+    # simpler syntaxes
+    try:
+      return json.loads(text)
+    except:
+      return parse_string_list(text)
 
   try:
     return int(text)

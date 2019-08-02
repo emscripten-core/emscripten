@@ -5820,6 +5820,13 @@ return malloc(size);
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
 
+    # newer clang has a warning for implicit conversions that lose information,
+    # which happens in sqlite (see #9138)
+    self.emcc_args += ['-Wno-implicit-int-float-conversion']
+    # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
+    # yet have the new clang with that flag
+    self.emcc_args += ['-Wno-unknown-warning-option']
+
     src = '''
        #define SQLITE_DISABLE_LFS
        #define LONGDOUBLE_TYPE double
@@ -7548,13 +7555,13 @@ extern "C" {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
+    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
     'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
     'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","c_baz","Structy::funcy()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
   })
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass):

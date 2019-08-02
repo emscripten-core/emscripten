@@ -27,6 +27,7 @@ Current Trunk
    global scope, preventing temporary variables at page startup from being garbage
    collected. (#9108)
  - `__builtin_return_address` now requires `-s USE_OFFSET_CONVERTER=1` to work. (#9073)
+ - emrun now uses HTTP/1.1 instead of HTTP/1.0.
 
 v.1.38.40: 07/24/2019
 ---------------------
