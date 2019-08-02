@@ -8137,6 +8137,7 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'SAFE_STACK': 1})
 
 # emterpreter
 asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})
