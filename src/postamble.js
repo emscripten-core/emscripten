@@ -271,8 +271,8 @@ function run(args) {
     // or while the async setStatus time below was happening
     if (calledRun) return;
     calledRun = true;
-#if FILESYSTEM // the filesystem needs to know if we have already run
-    Module['calledRun'] = true
+#if 'calledRun' in EXPORTED_RUNTIME_METHODS_SET
+    Module['calledRun'] = true;
 #endif
 
     if (ABORT) return;
