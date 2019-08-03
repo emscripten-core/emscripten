@@ -8093,9 +8093,9 @@ int main() {
     'O0': ([],      21, [], ['waka'], 22185, 11,  17, 57), # noqa
     'O1': (['-O1'], 19, [], ['waka'], 10415,  9,  14, 31), # noqa
     'O2': (['-O2'], 19, [], ['waka'], 10183,  9,  14, 25), # noqa
-    'O3': (['-O3'],  5, [], [],        2353,  7,   3, 14), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  5, [], [],        2310,  7,   3, 15), # noqa
-    'Oz': (['-Oz'],  5, [], [],        2272,  7,   2, 14), # noqa
+    'O3': (['-O3'],  5, [], [],        2353,  7,   2, 14), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'],  5, [], [],        2310,  7,   2, 15), # noqa
+    'Oz': (['-Oz'],  5, [], [],        2272,  7,   1, 14), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
