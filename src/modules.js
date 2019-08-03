@@ -64,9 +64,14 @@ var LibraryManager = {
       'library_formatString.js',
       'library_path.js',
       'library_signals.js',
-      'library_syscall.js',
       'library_html5.js'
     ];
+
+    if (!ASYNCFS) {
+      libraries.push('library_syscall.js');
+    } else {
+      libraries.push('library_asyncfs.js');
+    }
 
     if (!DISABLE_EXCEPTION_THROWING) {
       libraries.push('library_exceptions.js');

@@ -589,6 +589,18 @@ var ASYNCIFY_WHITELIST = [];
 // Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;
 
+// Replaces the normal filesystem implementation with an async JS API. This
+// this interface works with Asyncify, so that all syscalls are written as
+// async in JS and look synchronous from C. Using this you can implement
+// an arbitrary filesystem backend for async JS APIs without your C code
+// being rewritten to be async.
+//
+// The syscall API looks for AsyncFSImpl in the JS library, which you
+// should provide (using --js-library normally). That object should have
+// hooks for the syscalls to call. Each hook gets a callback that should
+// be called after async operations in order to resume execution.
+var ASYNCFS = 0;
+
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
 // given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
