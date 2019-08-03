@@ -1,0 +1,10 @@
+log: opening
+log: reading
+log: checking
+read: 0 0
+read: 1 1
+read: 2 4
+read: 3 9
+read: 4 16
+log: closing
+log: ok.

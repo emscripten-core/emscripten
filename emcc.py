@@ -1589,6 +1589,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # see what it itself calls)
             if shared.Settings.USE_PTHREADS:
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
+            if shared.Settings.ASYNCFS:
+              shared.Settings.ASYNCIFY_IMPORTS += ['__syscall*']
             if shared.Settings.ASYNCIFY_IMPORTS:
               passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
 

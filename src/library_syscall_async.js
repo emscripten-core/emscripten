@@ -6,14 +6,27 @@
 // See settings.js for more details.
 
 var SyscallsLibraryAsync = {
-  $AsyncFS__deps: ['$SYSCALLS', '$Asyncify'],
+  // This should be implemented with the proper callbacks.
+  $AsyncFSImpl: {},
+
+  $AsyncFS__deps: ['$SYSCALLS', '$Asyncify', '$AsyncFSImpl'],
   $AsyncFS: {
     handle: function(varargs, handle) {
       return Asyncify.handleSleep(function(wakeUp) {
         SYSCALLS.varargs = varargs;
         handle(wakeUp);
       });
-    }
+    },
+
+    getIovs: function(iov, iovcnt) {
+      var iovs = [];
+      for (var i = 0; i < iovcnt; i++) {
+        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+        iovs.push({ ptr: ptr, len: len });
+      }
+      return iovs;
+    },
   },
 
   __syscall3: function(which, varargs) { // read
@@ -40,7 +53,7 @@ var SyscallsLibraryAsync = {
   __syscall6: function(which, varargs) { // close
     return AsyncFS.handle(varargs, function(wakeUp) {
       var fd = SYSCALLS.get();
-      AsyncFSImpl.close(path, wakeUp);
+      AsyncFSImpl.close(fd, wakeUp);
     });
   },
 
@@ -86,16 +99,17 @@ var SyscallsLibraryAsync = {
     });
   },
 
+  __syscall145: function(which, varargs) { // readv
+    return AsyncFS.handle(varargs, function(wakeUp) {
+      var fd = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
+      AsyncFSImpl.readv(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
+    });
+  },
+
   __syscall146: function(which, varargs) { // writev
     return AsyncFS.handle(varargs, function(wakeUp) {
       var fd = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-      var iovs = [];
-      for (var i = 0; i < iovcnt; i++) {
-        var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-        var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-        iovs.push({ ptr: ptr, len: len });
-      }
-      AsyncFSImpl.writev(fd, iovs, wakeUp);
+      AsyncFSImpl.writev(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
     });
   },
 

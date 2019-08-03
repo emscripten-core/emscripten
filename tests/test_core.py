@@ -7576,6 +7576,12 @@ extern "C" {
       if should_pass:
         raise e
 
+  @no_fastcomp('new asyncify only')
+  def test_asyncify_fs(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCFS', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_asyncify_fs')
+
   # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter
   @no_wasm_backend('EMTERPRETIFY causes JSOptimizer to run, which is '
