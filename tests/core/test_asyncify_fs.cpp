@@ -20,6 +20,9 @@ void error(const char* str) {
 
 int main() {
   EM_ASM({
+    // A silly example of implementing AsyncFSImpl hooks. There are no
+    // actual async operations here, we just call the callback immediately,
+    // but in real-world code you could wait on a Promise, etc.
     AsyncFSImpl.open = function(pathname, flags, mode, wakeUp) {
       wakeUp(1);
     };
