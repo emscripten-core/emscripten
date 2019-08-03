@@ -5,6 +5,10 @@ _emscripten_memcpy_big
 _emscripten_resize_heap
 abort
 abortOnCannotGrowMemory
+demangle
+demangleAll
 getTempRet0
+jsStackTrace
 setTempRet0
+stackTrace
 tempDoublePtr
