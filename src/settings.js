@@ -540,6 +540,8 @@ var ASYNCIFY = 0;
 
 // The imports which can do a sync operation. If you add more you will need to
 // add them to here.
+// You can use a wildcard as the suffix, "foo*", and then anything starting with
+// "foo" will match.
 var ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',

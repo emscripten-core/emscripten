@@ -721,6 +721,20 @@ function indentify(text, indent) {
   return text.replace(/\n/g, '\n' + indent);
 }
 
+// Asyncify imports must either match exactly, or the listed import
+// may end in a wildcard.
+function isAsyncifyImport(ident) {
+  var matched = false;
+  ASYNCIFY_IMPORTS.forEach(function(listed) {
+    if (listed === ident ||
+        (listed.endsWith('*') &&
+         ident.substr(0, listed.length - 1) == listed.substr(0, listed.length - 1))) {
+      matched = true;
+    }
+  });
+  return matched;
+}
+
 // Correction tools
 
 function checkSafeHeap() {

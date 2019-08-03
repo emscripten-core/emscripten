@@ -24,27 +24,37 @@ int main() {
     // actual async operations here, we just call the callback immediately,
     // but in real-world code you could wait on a Promise, etc.
     AsyncFSImpl.open = function(pathname, flags, mode, wakeUp) {
-      wakeUp(1);
+      setTimeout(function() {
+        wakeUp(1);
+      }, 0);
     };
     AsyncFSImpl.ioctl = function(fd, op, wakeUp) {
-      wakeUp(0);
+      setTimeout(function() {
+        wakeUp(0);
+      }, 0);
     };
     AsyncFSImpl.readv = function(fd, iovs, wakeUp) {
-      var total = 0;
-      var index = 0;
-      iovs.forEach(function(iov) {
-        for (var i = 0; i < iov.len; i++) {
-          HEAPU8[iov.ptr + i] = index * index;
-          index++;
-        }
-        total += iov.len;
-      });
-      wakeUp(total);
+      setTimeout(function() {
+        var total = 0;
+        var index = 0;
+        iovs.forEach(function(iov) {
+          for (var i = 0; i < iov.len; i++) {
+            HEAPU8[iov.ptr + i] = index * index;
+            index++;
+          }
+          total += iov.len;
+        });
+        wakeUp(total);
+      }, 0);
     };
     AsyncFSImpl.llseek = function(fd, offset_high, offset_low, result, whence, wakeUp) {
-      wakeUp(0);
+      setTimeout(function() {
+        wakeUp(0);
+      }, 0);
     };
     AsyncFSImpl.close = function(fd, wakeUp) {
+      // Test the case of an immediate synchronous call of the callback, to make
+      // sure that works too.
       wakeUp(0);
     };
   });
