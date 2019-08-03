@@ -8048,9 +8048,9 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   @parameterized({
-    'O0': ([],      11, [], ['waka'],  9211,  5, 12, 16), # noqa
-    'O1': (['-O1'],  9, [], ['waka'],  7886,  2, 11, 10), # noqa
-    'O2': (['-O2'],  9, [], ['waka'],  7871,  2, 11, 10), # noqa
+    'O0': ([],      15, [], ['waka'],  9211,  5, 12, 16), # noqa
+    'O1': (['-O1'], 13, [], ['waka'],  7886,  2, 11, 10), # noqa
+    'O2': (['-O2'], 13, [], ['waka'],  7871,  2, 11, 10), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -8061,9 +8061,9 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      21, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
-    'O1': (['-O1'], 10, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
-    'O2': (['-O2'], 10, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
+    'O0': ([],      25, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
+    'O1': (['-O1'], 14, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
+    'O2': (['-O2'], 14, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
     'Os': (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
@@ -8079,10 +8079,10 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 34, [], ['waka'], 226582, 22, 33, 750) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 32, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
+    'normal': (['-O2'], 36, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        32, ['abort'], ['waka'], 188310, 29, 39, 520), # noqa
+                        36, ['abort'], ['waka'], 188310, 29, 39, 520), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8090,9 +8090,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      17, [], ['waka'], 22185, 11,  17, 57), # noqa
-    'O1': (['-O1'], 15, [], ['waka'], 10415,  9,  14, 31), # noqa
-    'O2': (['-O2'], 15, [], ['waka'], 10183,  9,  14, 25), # noqa
+    'O0': ([],      21, [], ['waka'], 22185, 11,  17, 57), # noqa
+    'O1': (['-O1'], 19, [], ['waka'], 10415,  9,  14, 31), # noqa
+    'O2': (['-O2'], 19, [], ['waka'], 10183,  9,  14, 25), # noqa
     'O3': (['-O3'],  5, [], [],        2353,  7,   2, 13), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  5, [], [],        2310,  7,   2, 14), # noqa
     'Oz': (['-Oz'],  5, [], [],        2272,  7,   1, 13), # noqa
@@ -8112,9 +8112,9 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      23, ['abort'], ['waka'], 42701,  24,   17, 57), # noqa
-    'O1': (['-O1'], 15, ['abort'], ['waka'], 13199,  15,   14, 33), # noqa
-    'O2': (['-O2'], 15, ['abort'], ['waka'], 12425,  15,   14, 28), # noqa
+    'O0': ([],      27, ['abort'], ['waka'], 42701,  24,   17, 57), # noqa
+    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,  15,   14, 33), # noqa
+    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,  15,   14, 28), # noqa
     'O3': (['-O3'],  6, [],        [],        2443,   9,    2, 15), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  6, [],        [],        2412,   9,    2, 17), # noqa
     'Oz': (['-Oz'],  6, [],        [],        2389,   9,    2, 16), # noqa
