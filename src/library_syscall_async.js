@@ -1,44 +1,16 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Copyright 2019 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
 // See settings.js for more details.
 
-var AsyncFSLibrary = {
-  $AsyncFS__deps: ['$Asyncify'],
+var SyscallsLibraryAsync = {
+  $AsyncFS__deps: ['$SYSCALLS', '$Asyncify'],
   $AsyncFS: {
-    // arguments handling
-
-    varargs: 0,
-
-    get: function(varargs) {
-      SYSCALLS.varargs += 4;
-      return {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
-    },
-    getStr: function() {
-      return UTF8ToString(SYSCALLS.get());
-    },
-    get64: function() {
-      var low = SYSCALLS.get(), high = SYSCALLS.get();
-#if ASSERTIONS
-      if (low >= 0) assert(high === 0);
-      else assert(high === -1);
-#endif
-      return low;
-    },
-    getZero: function() {
-#if ASSERTIONS
-      assert(SYSCALLS.get() === 0);
-#else
-      SYSCALLS.get();
-#endif
-     return 0;
-    }
-
     handle: function(varargs, handle) {
       return Asyncify.handleSleep(function(wakeUp) {
-        AsyncifyFS.varargs = varargs;
+        SYSCALLS.varargs = varargs;
         handle(wakeUp);
       });
     }
@@ -170,9 +142,9 @@ var AsyncFSLibrary = {
   },
 };
 
-autoAddDeps(AsyncFSLibrary, '$AsyncFS');
+autoAddDeps(SyscallsLibraryAsync, '$AsyncFS');
 
-mergeInto(LibraryManager.library, AsyncFSLibrary);
+mergeInto(LibraryManager.library, SyscallsLibraryAsync);
 
 assert(ASYNCIFY && WASM_BACKEND, "ASYNCFS requires ASYNCIFY with the wasm backend");
 
