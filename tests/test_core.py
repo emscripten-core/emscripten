@@ -7555,13 +7555,13 @@ extern "C" {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
+    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
     'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
     'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","c_baz","Structy::funcy()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
   })
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass):
@@ -7586,6 +7586,11 @@ extern "C" {
     print('async')
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_emscripten_scan_registers(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
