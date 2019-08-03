@@ -4813,6 +4813,14 @@ LibraryManager.library = {
     out('AD:' + [line, value]);
   },
 
+  // special runtime support
+
+  emscripten_scan_stack: function(func) {
+    var base = STACK_BASE; // TODO verify this is right on pthreads
+    var end = stackSave();
+    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
+  },
+
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
 #if SUPPORT_LONGJMP
   emscripten_prep_setjmp: true,

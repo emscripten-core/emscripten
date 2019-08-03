@@ -6686,6 +6686,40 @@ int main() {
 |-inf : 9 : -Infinity : -inf : 4|
 ''', out)
 
+  def test_emscripten_scan_stack(self):
+    create_test_file('src.cpp', r'''
+#include <set>
+#include <emscripten.h>
+#include <stdio.h>
+
+std::set<int> seenInts;
+
+void scan(void* x, void* y) {
+  printf("scan\n");
+  int* p = (int*)x;
+  int* q = (int*)y;
+  // The callback sends us the [low, high) range.
+  assert(p < q);
+  // The range is of a reasonable size - not all of memory.
+  assert(q - p < 100);
+  while (p < q) {
+    seenInts.insert(*p);
+    p++;
+  }
+}
+
+int main() {
+  int x;
+  int* y = &x;
+  *y = 12345678;
+  emscripten_scan_stack(scan);
+  assert(seenInts.count(12345678));
+  puts("ok");
+}
+''')
+    run_process([PYTHON, EMCC, 'src.cpp'])
+    self.assertContained('ok', run_js('a.out.js'))
+
   def test_no_warn_exported_jslibfunc(self):
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=["alGetError"]', '-s', 'EXPORTED_FUNCTIONS=["_main", "_alGetError"]'], stdout=PIPE, stderr=PIPE).stderr
     self.assertNotContained('''function requested to be exported, but not implemented: "_alGetError"''', err)
@@ -8833,6 +8867,23 @@ T6:(else) !ASSERTIONS""", output)
         self.assertNotEqual(proc.returncode, 0)
         self.assertContained(expected, proc.stderr)
 
+  @no_fastcomp('uses new ASYNCIFY')
+  def test_asyncify_escaping(self):
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=[DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)]"], stdout=PIPE, stderr=PIPE)
+    self.assertContained('emcc: ASYNCIFY list contains an item without balanced parentheses', proc.stderr)
+    self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
+    self.assertContained('Try to quote the entire argument', proc.stderr)
+
+  @no_fastcomp('uses new ASYNCIFY')
+  def test_asyncify_response_file(self):
+    create_test_file('a.txt', r'''[
+  "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
+]
+''')
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=@a.txt"], stdout=PIPE, stderr=PIPE)
+    # we should parse the response file properly, and then issue a proper warning for the missing function
+    self.assertContained('Asyncify whitelist contained a non-existing function name: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)', proc.stderr)
+
   # Sockets and networking
 
   def test_inet(self):
@@ -9524,7 +9575,7 @@ int main () {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 6768), 100)
+    self.assertLess(abs(changed - 6483), 100)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')

@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -7,8 +8,9 @@ int bar();
 
 // Foo is a function that needs asyncify support.
 __attribute__((noinline))
-int foo() {
+int foo(int a = 0, double b = 0) {
   if (x == 1337) return bar(); // don't inline me
+  assert(a == b);
   emscripten_sleep(1);
   return 1;
 }
