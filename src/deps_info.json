@@ -32,6 +32,8 @@
   "gethostbyname": ["malloc", "free", "htons"],
   "gethostbyname_r": ["malloc", "free", "htons"],
   "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
+  "getnameinfo": ["htons"],
+  "getpeername": ["htons"],
   "_inet_ntop6_raw": ["ntohs"],
   "_read_sockaddr": ["ntohs"],
   "freeaddrinfo": ["free"],
