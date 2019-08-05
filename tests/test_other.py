@@ -9463,6 +9463,15 @@ int main () {
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
+  @parameterized({
+    'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
+    'sync': ['-s', 'WASM_ASYNC_COMPILATION=0'],
+  })
+  @no_fastcomp('offset converter is not supported on fastcomp')
+  def test_offset_converter(self, *args):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_offset_converter.c'),
+                       emcc_args=['-s', 'USE_OFFSET_CONVERTER', '-g4'] + list(args), literals=['ok'])
+
   @no_windows('ptys and select are not available on windows')
   @no_fastcomp('fastcomp clang detects colors differently')
   def test_build_error_color(self):
