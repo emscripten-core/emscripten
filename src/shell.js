@@ -235,7 +235,7 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof console === 'undefined') {
     // Support odd shell environments that lack console.* but have other stuff.
-    var console = {
+    console = {
       log: print,
       warn: typeof printErr !== 'undefined' ? printErr : print,
       error: typeof printErr !== 'undefined' ? printErr : print
