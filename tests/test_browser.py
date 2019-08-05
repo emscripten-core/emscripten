@@ -4758,6 +4758,7 @@ window.close = function() {
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
 
+  @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')
   def test_offset_converter(self, *args):
-    self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4'])
+    self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
