@@ -678,8 +678,14 @@ Classes
       .. code-block:: cpp
 
          //prototype
-         template<typename Getter>
-         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const
+         template<typename PropertyType = internal::DeduceArgumentsTag, typename Getter>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter) const;
+
+      Declare a read-only property with the specified ``fieldName`` on the class using the specified ``getter`` to retrieve the property
+      value.  ``Getter`` may be either a class method, a function, a ``std::function`` or a function object.  When ``Getter``
+      is not pointer-to-member-function, it must accept an instance of the ``ClassType`` as the ``this`` argument.  When
+      ``Getter`` is a function object, the property type must be specified as a template parameter as it cannot be deduced,
+      e.g.: ``myClass.addProperty<int>("myIntProperty", MyIntGetterFunctor());``
 
       :param const char* fieldName
       :param Getter getter Note that ``Getter`` is a function template typename.
@@ -691,10 +697,15 @@ Classes
       .. code-block:: cpp
 
          //prototype
-         template<typename Getter, typename Setter>
+         template<typename PropertyType = internal::DeduceArgumentsTag, typename Getter, typename Setter>
          EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Setter setter) const
 
       This is a function template taking typenames ``Setter`` and ``Getter``: ``template<typename Getter, typename Setter>``
+      which declares a read-write property with the specified ``fieldName`` on the class. ``Getter`` and ``Setter`` may be either a
+      class method, a function, a ``std::function`` or a function object.  When ``Getter`` or ``Setter`` is not pointer-to-member-function,
+      it must accept an instance of the ``ClassType`` as the ``this`` argument. When ``Getter`` or ``Setter`` is a function object, the
+      property type must be specified as a template parameter as it cannot be deduced, e.g.:
+      ``myClass.addProperty<int>("myIntProperty", MyIntGetterFunctor(), MyIntSetterFunctor());``
 
       :param const char* fieldName
       :param Getter getter: Note that ``Getter`` is a function template typename.
