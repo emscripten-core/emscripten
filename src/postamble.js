@@ -453,9 +453,11 @@ var shouldRunNow = true;
 #else
 var shouldRunNow = false;
 #endif
-if (Module['noInitialRun']) {
-  shouldRunNow = false;
-}
+
+#if expectToReceiveOnModule('noInitialRun')
+if (Module['noInitialRun']) shouldRunNow = false;
+#endif
+
 #endif // HAS_MAIN
 
 #if EXIT_RUNTIME == 0
