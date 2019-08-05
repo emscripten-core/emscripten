@@ -30,25 +30,30 @@ private:
 template<typename T> struct IsIntWrapper : std::false_type {};
 template<> struct IsIntWrapper<IntWrapper> : std::true_type {};
 
+// We will pass IntWrapper between C++ and JavaScript via IntWrapperIntermediate
+// which should be already registered by embind on both C++ and JavaScript sides.
+// That way we can write C++ conversions only and use standard JS conversions.
+using IntWrapperIntermediate = int;
+
 // Specify custom (un)marshalling for all types satisfying IsIntWrapper.
 namespace emscripten {
 namespace internal {
 template<typename T>
 struct TypeID<T, typename std::enable_if<IsIntWrapper<typename std::remove_cv<typename std::remove_reference<T>::type>::type>::value, void>::type> {
   static constexpr TYPEID get() {
-    return TypeID<int>::get();
+    return TypeID<IntWrapperIntermediate>::get();
   }
 };
 
 template<typename T>
 struct BindingType<T, typename std::enable_if<IsIntWrapper<T>::value, void>::type> {
-  typedef typename BindingType<int>::WireType WireType;
+  typedef typename BindingType<IntWrapperIntermediate>::WireType WireType;
 
   constexpr static WireType toWireType(const T& v) {
-    return v.get();
+    return BindingType<IntWrapperIntermediate>::toWireType(v.get());
   }
   constexpr static T fromWireType(WireType v) {
-    return T::create(v);
+    return T::create(BindingType<IntWrapperIntermediate>::fromWireType(v));
   }
 };
 } // namespace internal
