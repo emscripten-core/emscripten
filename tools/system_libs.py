@@ -1110,7 +1110,7 @@ class libasan_rt_wasm(SanitizerLibrary):
 def warn_on_unexported_main(symbolses):
   if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
     for symbols in symbolses:
-      if 'main' in symbolses[0].defs:
+      if 'main' in symbols.defs:
         logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
         return
 
