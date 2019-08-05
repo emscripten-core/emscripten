@@ -97,7 +97,6 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
   PYTHON='C:/Program Files/Emscripten/python/2.7.5.3_64bit/python.exe'
   JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
   V8_ENGINE = ''
-  TEMP_DIR = 'c:/users/hamis_~1/appdata/local/temp'
   COMPILER_ENGINE = NODE_JS
   JS_ENGINES = [NODE_JS]
 
@@ -110,7 +109,6 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
   NODE_JS = 'nodejs'
   LLVM_ROOT='/home/ubuntu/emsdk_portable/clang/fastcomp/build_incoming_64/bin'
   V8_ENGINE = ''
-  TEMP_DIR = '/tmp'
   COMPILER_ENGINE = NODE_JS
   JS_ENGINES = [NODE_JS]
 
