@@ -1388,6 +1388,7 @@ def print_compiler_stage(cmd):
   before executing it."""
   if '-v' in COMPILER_OPTS:
     print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
+    sys.stderr.flush()
 
 
 def static_library_name(name):
