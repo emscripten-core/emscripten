@@ -163,7 +163,7 @@ dependenciesFulfilled = function runCaller() {
 };
 
 #if HAS_MAIN
-Module['callMain'] = function callMain(args) {
+function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
@@ -191,6 +191,10 @@ Module['callMain'] = function callMain(args) {
   try {
 #if BENCHMARK
     var start = Date.now();
+#endif
+
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
 #endif
 
 #if PROXY_TO_PTHREAD
@@ -280,7 +284,7 @@ function run(args) {
 #endif
 
 #if HAS_MAIN
-    if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+    if (shouldRunNow) callMain(args);
 #else
 #if ASSERTIONS
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
@@ -290,6 +294,7 @@ function run(args) {
     postRun();
   }
 
+#if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
@@ -298,7 +303,9 @@ function run(args) {
       }, 1);
       doRun();
     }, 1);
-  } else {
+  } else
+#endif
+  {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
@@ -434,12 +441,14 @@ function abort(what) {
 }
 Module['abort'] = abort;
 
+#if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
     Module['preInit'].pop()();
   }
 }
+#endif
 
 #if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
@@ -448,9 +457,11 @@ var shouldRunNow = true;
 #else
 var shouldRunNow = false;
 #endif
-if (Module['noInitialRun']) {
-  shouldRunNow = false;
-}
+
+#if expectToReceiveOnModule('noInitialRun')
+if (Module['noInitialRun']) shouldRunNow = false;
+#endif
+
 #endif // HAS_MAIN
 
 #if EXIT_RUNTIME == 0

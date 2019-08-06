@@ -451,7 +451,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super(MTLibrary, self).get_cflags()
     if self.is_mt:
-      cflags += ['-s', 'USE_PTHREADS=1']
+      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
     return cflags
 
   def get_base_name(self):
@@ -703,7 +703,6 @@ class libcxxabi(CXXLibrary, MTLibrary):
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     return cflags
 
-  includes = ['system', 'lib', 'libcxxabi', 'include']
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
   src_files = [
     'abort_message.cpp',
@@ -727,7 +726,6 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx.symbols'))
   depends = ['libc++abi']
 
-  includes = ['system', 'lib', 'libcxxabi', 'include']
   cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
@@ -1084,23 +1082,18 @@ class libubsan_rt_wasm(SanitizerLibrary):
 
 class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
+  js_depends = ['__global_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
   src_glob = 'lsan_common*.cc'
 
 
-# TODO: once thread local storage is implemented, make this inherit from SanitizerLibrary
-# and clean up the duplicate code.
-class liblsan_rt_wasm(CompilerRTWasmLibrary):
+class liblsan_rt_wasm(SanitizerLibrary):
   name = 'liblsan_rt_wasm'
   depends = ['liblsan_common_rt_wasm']
   js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
-  never_force = True
 
-  includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  cflags = ['-std=c++11']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
-  src_glob = '*.cc'
   src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
                       'lsan_common_emscripten.cc']
 
@@ -1108,7 +1101,6 @@ class liblsan_rt_wasm(CompilerRTWasmLibrary):
 class libasan_rt_wasm(SanitizerLibrary):
   name = 'libasan_rt_wasm'
   depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
-  js_depends = ['__global_base']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 

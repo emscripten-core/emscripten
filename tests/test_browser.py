@@ -107,10 +107,10 @@ def no_swiftshader(f):
 
 
 def requires_threads(f):
-  def decorated(self):
+  def decorated(self, *args, **kwargs):
     if os.environ.get('EMTEST_LACKS_THREAD_SUPPORT'):
       self.skipTest('EMTEST_LACKS_THREAD_SUPPORT is set')
-    return f(self)
+    return f(self, *args, **kwargs)
 
   return decorated
 
@@ -3902,6 +3902,20 @@ window.close = function() {
   def test_pthread_tls_main(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS', '-std=c++11'])
 
+  @no_fastcomp('-s SAFE_STACK is only supported on WASM backend')
+  @requires_threads
+  def test_pthread_safe_stack(self):
+    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'SAFE_STACK', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
+
+  @parameterized({
+    'leak': ['test_pthread_lsan_leak', ['-g4']],
+    'no_leak': ['test_pthread_lsan_no_leak'],
+  })
+  @no_fastcomp('LSan is only supported on WASM backend')
+  @requires_threads
+  def test_pthread_lsan(self, name, args=[]):
+    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
+
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
@@ -4131,7 +4145,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 6552), 100)
+    self.assertLess(abs(size - 6166), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4165,6 +4179,11 @@ window.close = function() {
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
     self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
+
+  # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
+  @requires_graphics_hardware
+  def test_webgl_vao_without_automatic_extensions(self):
+    self.btest('test_webgl_no_auto_init_extensions.c', '0', args=['-lGL', '-s', 'GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0'])
 
   # Tests that offscreen framebuffer state restoration works
   @requires_graphics_hardware
@@ -4743,3 +4762,8 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
+
+  @requires_threads
+  @no_fastcomp('offset converter is not supported on fastcomp')
+  def test_offset_converter(self, *args):
+    self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])

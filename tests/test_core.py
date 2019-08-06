@@ -59,6 +59,18 @@ def wasm_simd(f):
   return decorated
 
 
+def bleeding_edge_wasm_backend(f):
+  def decorated(self):
+    if not self.is_wasm_backend():
+      self.skipTest('only works in wasm backend')
+    if not V8_ENGINE or V8_ENGINE not in JS_ENGINES:
+      self.skipTest('only works in d8 for now')
+    if self.is_wasm_backend() and not self.get_setting('WASM'):
+      self.skipTest('wasm2js only supports MVP for now')
+    f(self, js_engines=[V8_ENGINE])
+  return decorated
+
+
 def no_emterpreter(f):
   assert callable(f)
   return skip_if(f, 'is_emterpreter')
@@ -3374,6 +3386,46 @@ ok
       '''
     self.do_run(src, 'a: loaded\nb: loaded\na: loaded\n')
 
+  @needs_dlfcn
+  @bleeding_edge_wasm_backend
+  def test_dlfcn_feature_in_lib(self, js_engines):
+    self.emcc_args.append('-mnontrapping-fptoint')
+
+    self.prep_dlfcn_lib()
+    lib_src = r'''
+        extern "C" int magic(float x) {
+          return __builtin_wasm_trunc_saturate_s_i32_f32(x);
+        }
+      '''
+    dirname = self.get_dir()
+    filename = os.path.join(dirname, 'liblib.cpp')
+    self.build_dlfcn_lib(lib_src, dirname, filename)
+
+    self.prep_dlfcn_main()
+    src = r'''
+      #include <dlfcn.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+
+      typedef int (*fi)(float);
+
+      int main() {
+        void *lib_handle = dlopen("liblib.so", 0);
+        if (!lib_handle) {
+          puts(dlerror());
+          abort();
+        }
+        fi x = (fi)dlsym(lib_handle, "magic");
+        if (!x) {
+          puts(dlerror());
+          abort();
+        }
+        printf("float: %d.\n", x(42.99));
+        return 0;
+      }
+      '''
+    self.do_run(src, 'float: 42.\n', js_engines=js_engines)
+
   def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
     # shared settings
     self.set_setting('EXPORT_ALL', 1)
@@ -5431,7 +5483,7 @@ int main(void) {
     output = open(path_from_root('tests', 'raytrace.ppm')).read()
     self.do_run(src, output, ['3', '16'])
 
-  def test_fasta(self):
+  def test_fasta(self, js_engines=None):
     results = [(1, '''GG*ctt**tgagc*'''),
                (20, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tacgtgtagcctagtgtttgtgttgcgttatagtctatttgtggacacagtatggtcaaa**tgacgtcttttgatctgacggcgttaacaaagatactctg*'''),
                (50, '''GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGA*TCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACAT*cttBtatcatatgctaKggNcataaaSatgtaaaDcDRtBggDtctttataattcBgtcg**tactDtDagcctatttSVHtHttKtgtHMaSattgWaHKHttttagacatWatgtRgaaa**NtactMcSMtYtcMgRtacttctWBacgaa**agatactctgggcaacacacatacttctctcatgttgtttcttcggacctttcataacct**ttcctggcacatggttagctgcacatcacaggattgtaagggtctagtggttcagtgagc**ggaatatcattcgtcggtggtgttaatctatctcggtgtagcttataaatgcatccgtaa**gaatattatgtttatttgtcggtacgttcatggtagtggtgtcgccgatttagacgtaaa**ggcatgtatg*''')]
@@ -5448,14 +5500,15 @@ int main(void) {
           src = orig_src.replace('double', t)
           self.build(src, self.get_dir(), 'fasta.cpp')
           for arg, output in results:
-            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True)
+            self.do_run('fasta.cpp.o.js', output, [str(arg)], lambda x, err: x.replace('\n', '*'), no_build=True, js_engines=js_engines)
           shutil.copyfile('fasta.cpp.o.js', '%d_%s.js' % (precision, t))
 
     test([])
 
-    # TODO: enable when we have bleeding edge node on the bots
-    # if self.is_wasm_backend():
-    #   test(['-mnontrapping-fptoint'])
+  @bleeding_edge_wasm_backend
+  def test_fasta_nontrapping(self, js_engines):
+    self.emcc_args += ['-mnontrapping-fptoint']
+    self.test_fasta(js_engines)
 
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
@@ -5766,6 +5819,13 @@ return malloc(size);
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
+
+    # newer clang has a warning for implicit conversions that lose information,
+    # which happens in sqlite (see #9138)
+    self.emcc_args += ['-Wno-implicit-int-float-conversion']
+    # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
+    # yet have the new clang with that flag
+    self.emcc_args += ['-Wno-unknown-warning-option']
 
     src = '''
        #define SQLITE_DISABLE_LFS
@@ -6450,6 +6510,7 @@ return malloc(size);
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS', 1)
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
     src = path_from_root('tests', 'interop', 'test_add_function.cpp')
     post_js = path_from_root('tests', 'interop', 'test_add_function_post.js')
     self.emcc_args += ['--post-js', post_js]
@@ -6807,6 +6868,10 @@ someweirdtext
   def test_embind_5(self):
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
+
+  def test_embind_custom_marshal(self):
+    self.emcc_args += ['--bind', '-std=c++11', '--pre-js', path_from_root('tests', 'embind', 'test_custom_marshal.js')]
+    self.do_run_in_out_file_test('tests', 'embind', 'test_custom_marshal', assert_identical=True)
 
   def test_embind_float_constants(self):
     self.emcc_args += ['--bind']
@@ -7495,13 +7560,13 @@ extern "C" {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
+    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
     'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
     'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","c_baz","Structy::funcy()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
   })
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass):
@@ -7526,6 +7591,11 @@ extern "C" {
     print('async')
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_emscripten_scan_registers(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
@@ -7765,6 +7835,7 @@ extern "C" {
   @no_fastcomp('return address not supported on fastcomp')
   @no_optimize('return address test cannot work with optimizations')
   def test_return_address(self):
+    self.emcc_args += ['-s', 'USE_OFFSET_CONVERTER']
     self.do_run(open(path_from_root('tests', 'core', 'test_return_address.cpp')).read(), 'passed')
 
   @no_fastcomp('ubsan not supported on fastcomp')
@@ -7973,6 +8044,46 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
                 basename='src.c', expected_output='Hello, World!')
 
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack.c')).read(),
+                expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
+
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack_alloca(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack_alloca.c')).read(),
+                expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
+
+  @needs_dlfcn
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack_dylink(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.dylink_test(r'''
+      #include <stdio.h>
+      extern void sidey();
+      int main() {
+        sidey();
+      }
+    ''', '''
+      #include <string.h>
+
+      int f(int *b) {
+        int a[64];
+        memset(b, 0, 2048 * sizeof(int));
+        return f(a);
+      }
+
+      void sidey() {
+        int a[2048];
+        f(a);
+      }
+    ''', ['abort(stack overflow)', '__handle_stack_overflow'])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
@@ -8062,6 +8173,7 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'SAFE_STACK': 1})
 
 # emterpreter
 asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})

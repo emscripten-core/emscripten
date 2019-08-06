@@ -26,6 +26,12 @@ Current Trunk
  - Drop ExitStatus from inheriting from Error(), as that could capture the whole
    global scope, preventing temporary variables at page startup from being garbage
    collected. (#9108)
+ - `__builtin_return_address` now requires `-s USE_OFFSET_CONVERTER=1` to work. (#9073)
+ - emrun now uses HTTP/1.1 instead of HTTP/1.0.
+ - `callMain` is no longer exported by default on Module, to allow better JS
+   minification. You must add it to `EXTRA_EXPORTED_RUNTIME_METHODS` if you want
+   to call it on Module. (In assertions builds, an error with an explanation is
+   shown.)
 
 v.1.38.40: 07/24/2019
 ---------------------

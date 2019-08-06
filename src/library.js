@@ -4214,6 +4214,16 @@ LibraryManager.library = {
       );
   },
 
+#if MINIMAL_RUNTIME
+  $warnOnce: function(text) {
+    if (!warnOnce.shown) warnOnce.shown = {};
+    if (!warnOnce.shown[text]) {
+      warnOnce.shown[text] = 1;
+      err(text);
+    }
+  },
+#endif
+
   // Returns [parentFuncArguments, functionName, paramListName]
   _emscripten_traverse_stack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
@@ -4244,7 +4254,11 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+#if MINIMAL_RUNTIME
+    , '$warnOnce'
+#endif
+  ],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4423,6 +4437,9 @@ LibraryManager.library = {
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
   emscripten_generate_pc: function(frame) {
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -4432,8 +4449,7 @@ LibraryManager.library = {
       // other engines only give function index and offset in the function,
       // so we try using the offset converter. If that doesn't work,
       // we pack index and offset into a "return address"
-      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
-             (+match[1] << 16) + +match[2];
+      return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
@@ -4545,18 +4561,24 @@ LibraryManager.library = {
   // Look up the function name from our stack frame cache with our PC representation.
   emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
-
-    var name = null;
-    var match;
-    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-      name = match[1];
-    } else if (match = /^(.+?)@/.exec(frame)) {
-      name = match[1];
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
+#endif
+    var name;
+    if (pc & 0x80000000) {
+      // If this is a JavaScript function, try looking it up in the unwind cache.
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return 0;
+      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+        name = match[1];
+      } else if (match = /^(.+?)@/.exec(frame)) {
+        name = match[1];
+      } else {
+        return 0;
+      }
+    } else {
+      name = wasmOffsetConverter.getName(pc);
     }
-    if (!name) return 0;
-
     _emscripten_with_builtin_malloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
@@ -4566,8 +4588,6 @@ LibraryManager.library = {
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return null;
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -4582,6 +4602,8 @@ LibraryManager.library = {
 #endif
 
     if (!source) {
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return null;
       // Example: at callMain (a.out.js:6335:22)
       if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
         source = {file: match[1], line: match[2], column: match[3]};
@@ -4803,6 +4825,14 @@ LibraryManager.library = {
   },
   emscripten_autodebug_double: function(line, value) {
     out('AD:' + [line, value]);
+  },
+
+  // special runtime support
+
+  emscripten_scan_stack: function(func) {
+    var base = STACK_BASE; // TODO verify this is right on pthreads
+    var end = stackSave();
+    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
@@ -5160,6 +5190,9 @@ LibraryManager.library = {
   },
   // =======================================================================
 
+  __handle_stack_overflow: function() {
+    abort('stack overflow')
+  },
 };
 
 function autoAddDeps(object, name) {
