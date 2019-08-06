@@ -1433,11 +1433,16 @@ mergeInto(LibraryManager.library, {
 #else
         this.message = 'FS error';
 #endif
-        // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
+
+#if ASSERTIONS && !MINIMAL_RUNTIME
+        // Try to get a maximally helpful stack trace.
+#if LEGACY_VM_SUPPORT
+        // Older Node.js compatibility: assigning on this.stack fails on Node 4 (but is fixed on Node 8)
         if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#if ASSERTIONS && !MINIMAL_RUNTIME // TODO: Migrate demangling support to a JS library, and add deps to it here to enable demangle in MINIMAL_RUNTIME
+#endif // LEGACY_VM_SUPPORT
         if (this.stack) this.stack = demangleAll(this.stack);
-#endif
+#endif // ASSERTIONS
+
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
