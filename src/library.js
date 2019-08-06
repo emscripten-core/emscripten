@@ -5190,6 +5190,9 @@ LibraryManager.library = {
   },
   // =======================================================================
 
+  __handle_stack_overflow: function() {
+    abort('stack overflow')
+  },
 };
 
 function autoAddDeps(object, name) {
