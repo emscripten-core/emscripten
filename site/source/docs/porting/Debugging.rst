@@ -53,7 +53,7 @@ With ``EMCC_DEBUG=1`` set, :ref:`emcc <emccdoc>` emits debug output and generate
 
 The debug logs and intermediate files are output to
 **TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is the OS default temporary
-direcotyr (e.g. **/tmp** on UNIX).
+directory (e.g. **/tmp** on UNIX).
 
 The debug logs can be analysed to profile and review the changes that were made in each step.
 
