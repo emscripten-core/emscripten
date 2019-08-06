@@ -291,6 +291,7 @@ non_core_test_modes = [
   'benchmark',
   'asan',
   'lsan',
+  'wasm2ss',
 ]
 
 test_index = 0

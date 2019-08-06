@@ -45,6 +45,9 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
+#if MEMORYPROFILER
+    , DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}}
+#endif
 #if USES_DYNAMIC_ALLOC
     , DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}}
 #endif
@@ -132,5 +135,9 @@ var runtimeExited = false;
 #include "runtime_math.js"
 
 var memoryInitializer = null;
+
+#if MEMORYPROFILER
+#include "memoryprofiler.js"
+#endif
 
 // === Body ===
