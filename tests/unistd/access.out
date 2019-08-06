@@ -43,3 +43,12 @@ errno: 2
 W_OK(nonexistent): -1
 errno: 2
 
+F_OK(): -1
+errno: 2
+R_OK(): -1
+errno: 2
+X_OK(): -1
+errno: 2
+W_OK(): -1
+errno: 2
+

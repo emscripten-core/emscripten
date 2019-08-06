@@ -1388,6 +1388,7 @@ def print_compiler_stage(cmd):
   before executing it."""
   if '-v' in COMPILER_OPTS:
     print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
+    sys.stderr.flush()
 
 
 def static_library_name(name):
@@ -3222,9 +3223,8 @@ def asstr(s):
 
 
 def asbytes(s):
-  if str is bytes:
-    # Python 2 compatibility:
-    # s.encode implicitly will first call s.decode('ascii') which may fail when with Unicode characters
+  if isinstance(s, bytes):
+    # Do not attempt to encode bytes
     return s
   return s.encode('utf-8')
 

@@ -27,6 +27,10 @@ _strftime
 _strftime_l
 abort
 abortOnCannotGrowMemory
+demangle
+demangleAll
 getTempRet0
+jsStackTrace
 setTempRet0
+stackTrace
 tempDoublePtr
