@@ -1849,7 +1849,6 @@ class Building(object):
 
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
-      cmd.append('--passive-segments')
 
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
