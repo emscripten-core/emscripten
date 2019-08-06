@@ -235,11 +235,9 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof print !== 'undefined') {
     // Prefer to use print/printErr where they exist, as they usually work better.
-    console = {
-      log: print,
-      warn: typeof printErr !== 'undefined' ? printErr : print,
-      error: typeof printErr !== 'undefined' ? printErr : print
-    };
+    if (typeof console === 'undefined') console = {};
+    console.log = print;
+    console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
