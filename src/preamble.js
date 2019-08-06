@@ -297,7 +297,8 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
-function updateGlobalBufferViews() {
+function updateGlobalBufferAndViews(buf) {
+  Module['buffer'] = buffer = buf;
   Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
   Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
   Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
@@ -415,6 +416,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
+updateGlobalBufferAndViews(buffer);
 #else // WASM
 
   if (Module['buffer']) {
@@ -448,7 +450,7 @@ assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif
-updateGlobalBufferViews();
+updateGlobalBufferAndViews(buffer);
 
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
