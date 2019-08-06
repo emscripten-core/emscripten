@@ -12,10 +12,14 @@ _emscripten_resize_heap
 abort
 abortOnCannotGrowMemory
 abortStackOverflow
+demangle
+demangleAll
 flush_NO_FILESYSTEM
 getTempRet0
+jsStackTrace
 nullFunc_ii
 nullFunc_iiii
 nullFunc_jiji
 setTempRet0
+stackTrace
 tempDoublePtr
