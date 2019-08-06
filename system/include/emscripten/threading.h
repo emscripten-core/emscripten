@@ -102,16 +102,17 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
+// Proxied C/C++ functions support at most this many arguments. Dispatch is static/strongly typed by signature.
 #define EM_QUEUED_CALL_MAX_ARGS 11
+// Proxied JS function can support a few more arguments than proxied C/C++ functions, because the dispatch
+// is variadic and signature independent.
+#define EM_QUEUED_JS_CALL_MAX_ARGS 20
 typedef struct em_queued_call
 {
   int functionEnum;
   void *functionPtr;
   int operationDone;
-  // If set, this is a JS call: number of arguments are in functionEnum, the index in functionPtr,
-  // and args in args.
-  int js;
-  em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
+  em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
   em_variant_val returnValue;
 
   // An optional pointer to a secondary data block that should be free()d when this queued call is freed.
@@ -254,6 +255,7 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_PROXIED_SYSCALL (EM_PROXIED_FUNC_SPECIAL(1) | EM_FUNC_SIG_III)
 #define EM_PROXIED_CREATE_CONTEXT (EM_PROXIED_FUNC_SPECIAL(2) | EM_FUNC_SIG_III)
 #define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(3) | EM_FUNC_SIG_IIII)
+#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(4) | EM_FUNC_SIG_D)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed, and the result is returned.

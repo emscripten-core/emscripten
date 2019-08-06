@@ -1152,40 +1152,38 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     var numCallArgs = arguments.length - 2;
+#if ASSERTIONS
+    if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
+#endif
     // Allocate a buffer, which will be copied by the C code.
     var stack = stackSave();
-    var buffer = stackAlloc(numCallArgs * 8);
+    // First passed parameter specifies the number of arguments to the function.
+    var args = stackAlloc(numCallArgs * 8);
+    var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
-      HEAPF64[(buffer >> 3) + i] = arguments[2 + i];
+      HEAPF64[b + i] = arguments[2 + i];
     }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
+    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, args, sync);
     stackRestore(stack);
     return ret;
   },
 
-  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js'],
-  emscripten_receive_on_main_thread_js: function(index, numCallArgs, buffer) {
-    // Avoid garbage by reusing a single JS array for call arguments.
-    if (!_emscripten_receive_on_main_thread_js.callArgs) {
-      _emscripten_receive_on_main_thread_js.callArgs = [];
-    }
-    var callArgs = _emscripten_receive_on_main_thread_js.callArgs;
-    callArgs.length = numCallArgs;
+  emscripten_receive_on_main_thread_js_callArgs: '=[]',
+
+  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js', 'emscripten_receive_on_main_thread_js_callArgs'],
+  emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+    _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
+    var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
-      callArgs[i] = HEAPF64[(buffer >> 3) + i];
+      _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
     }
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
-    var func;
-    if (index > 0) {
-      func = proxiedFunctionTable[index];
-    } else {
-      func = ASM_CONSTS[-index - 1];
-    }
+    var func = index > 0 ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
 #if ASSERTIONS
     assert(func.length == numCallArgs);
 #endif
-    return func.apply(null, callArgs);
+    return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
 #if MODULARIZE
