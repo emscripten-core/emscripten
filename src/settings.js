@@ -463,7 +463,6 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
-//  * Workarounds for old Node.js versions.
 // You can also configure the above options individually.
 var LEGACY_VM_SUPPORT = 0;
 

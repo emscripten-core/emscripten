@@ -1436,10 +1436,7 @@ mergeInto(LibraryManager.library, {
 
 #if ASSERTIONS && !MINIMAL_RUNTIME
         // Try to get a maximally helpful stack trace.
-#if LEGACY_VM_SUPPORT
-        // Older Node.js compatibility: assigning on this.stack fails on Node 4 (but is fixed on Node 8)
         if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#endif // LEGACY_VM_SUPPORT
         if (this.stack) this.stack = demangleAll(this.stack);
 #endif // ASSERTIONS
 
