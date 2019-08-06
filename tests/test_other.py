@@ -541,6 +541,10 @@ f.close()
     run_process([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_emcc_print_search_dirs(self):
+    result = run_process([PYTHON, EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
+    self.assertContained(['programs: =', 'libraries: ='], result.stdout, check_all=True)
+
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
