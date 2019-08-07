@@ -513,6 +513,37 @@ var LibraryGL = {
 #if TRACE_WEBGL_CALLS
       if (ctx) GL.hookWebGL(ctx);
 #endif
+
+#if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
+      function disableHalfFloatExtensionIfBroken(ctx) {
+        var t = ctx.createTexture();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, t);
+        for(var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
+        var ext = ctx.getExtension('OES_texture_half_float');
+        if (!ext) return; // no half-float extension - nothing needed to fix.
+        // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
+        // rendering them useless.
+        // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+        // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+        ctx.texImage2D(0x0de1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
+        var broken = ctx.getError();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, null);
+        ctx.deleteTexture(t);
+        if (broken) {
+          ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
+          ctx.getSupportedExtensions = function() {
+#if GL_ASSERTIONS
+            warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
+#endif
+            return this.realGetSupportedExtensions().filter(function(ext) {
+              return ext.indexOf('texture_half_float') == -1;
+            });
+          }
+        }
+      }
+      disableHalfFloatExtensionIfBroken(ctx);
+#endif
+
       return ctx ? GL.registerContext(ctx, webGLContextAttributes) : 0;
     },
 
