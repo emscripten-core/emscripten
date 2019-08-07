@@ -281,6 +281,8 @@ else:
     generate_config(EM_CONFIG, first_time=True)
     sys.exit(0)
 
+PYTHON = os.getenv('EM_PYTHON', sys.executable)
+
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
 NODE_JS = None
@@ -295,7 +297,6 @@ CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
-PYTHON = None
 JS_ENGINE = None
 JS_ENGINES = []
 COMPILER_OPTS = []
@@ -324,7 +325,6 @@ def parse_config_file():
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
-    'PYTHON',
     'JS_ENGINE',
     'JS_ENGINES',
     'COMPILER_OPTS',
@@ -530,12 +530,6 @@ def perform_sanify_checks():
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-  if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
-    try:
-      run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
-    except (OSError, subprocess.CalledProcessError):
-      exit_with_error('Cannot find %s, check the paths in config file (%s)', PYTHON, CONFIG_FILE)
 
   # Sanity check passed!
   with ToolchainProfiler.profile_block('sanity closure compiler'):
@@ -915,10 +909,6 @@ if JS_ENGINES is None:
 
 if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
-
-if PYTHON is None:
-  logger.debug('PYTHON not defined in ' + hint_config_file_location() + ', using "%s"' % (sys.executable,))
-  PYTHON = sys.executable
 
 if JAVA is None:
   logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
