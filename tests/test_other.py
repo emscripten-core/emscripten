@@ -9462,7 +9462,7 @@ int main () {
   @no_fastcomp('lsan not supported on fastcomp')
   def test_lsan_no_leak(self, ext):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_no_leak.' + ext),
-                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1'],
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
   @no_fastcomp('asan is not supported on fastcomp')
