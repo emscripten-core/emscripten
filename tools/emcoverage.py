@@ -38,6 +38,7 @@ from glob import glob
 
 import coverage.cmdline
 
+
 def main():
   # We hack sys.executable to point to this file, which is executable via #! line.
   # Emscripten uses sys.executable to populate shared.PYTHON, which is used to
@@ -47,7 +48,6 @@ def main():
   sys.executable = os.path.abspath(__file__)
 
   store = os.path.join(os.path.dirname(sys.executable), 'coverage')
-  normal_run = True
 
   if len(sys.argv) < 2 or sys.argv[1] == 'help':
     print(__doc__.replace('emcoverage.py', sys.argv[0]).strip())
@@ -79,6 +79,7 @@ def main():
   sys.argv[0:1] = ['coverage', 'run', '--timid', '--']
 
   return coverage.cmdline.main()
+
 
 if __name__ == '__main__':
   sys.exit(main())
