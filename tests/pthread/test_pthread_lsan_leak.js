@@ -5,11 +5,13 @@
       var result = output.join('\n');
       var passed = [
         'Direct leak of 3432 byte(s) in 1 object(s) allocated from',
+        'test_pthread_lsan_leak.cpp:17:17',
         'Direct leak of 2048 byte(s) in 1 object(s) allocated from',
         'test_pthread_lsan_leak.cpp:39:10',
         'Direct leak of 1337 byte(s) in 1 object(s) allocated from',
         'test_pthread_lsan_leak.cpp:33:16',
         'Direct leak of 1234 byte(s) in 1 object(s) allocated from',
+        'test_pthread_lsan_leak.cpp:19:13',
         'Direct leak of 420 byte(s) in 1 object(s) allocated from',
         'test_pthread_lsan_leak.cpp:34:13',
         'Direct leak of 42 byte(s) in 1 object(s) allocated from',

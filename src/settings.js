@@ -242,6 +242,10 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
+// Check each stack pointer decrement on WASM backend to ensure that the stack
+// does not overflow.
+var SAFE_STACK = 0;
+
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
@@ -540,7 +544,12 @@ var ASYNCIFY = 0;
 
 // The imports which can do a sync operation. If you add more you will need to
 // add them to here.
-var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
+var ASYNCIFY_IMPORTS = [
+  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
+  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
+  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118',
+  'emscripten_scan_registers'
+];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
@@ -1241,6 +1250,9 @@ var PTHREADS_PROFILING = 0;
 
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
+
+// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+var MEMORYPROFILER = 0;
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend

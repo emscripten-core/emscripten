@@ -6510,6 +6510,7 @@ return malloc(size);
   def test_add_function(self):
     self.set_setting('INVOKE_RUN', 0)
     self.set_setting('RESERVED_FUNCTION_POINTERS', 1)
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['callMain'])
     src = path_from_root('tests', 'interop', 'test_add_function.cpp')
     post_js = path_from_root('tests', 'interop', 'test_add_function_post.js')
     self.emcc_args += ['--post-js', post_js]
@@ -6867,6 +6868,10 @@ someweirdtext
   def test_embind_5(self):
     self.emcc_args += ['--bind']
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
+
+  def test_embind_custom_marshal(self):
+    self.emcc_args += ['--bind', '-std=c++11', '--pre-js', path_from_root('tests', 'embind', 'test_custom_marshal.js')]
+    self.do_run_in_out_file_test('tests', 'embind', 'test_custom_marshal', assert_identical=True)
 
   def test_embind_float_constants(self):
     self.emcc_args += ['--bind']
@@ -7555,13 +7560,13 @@ extern "C" {
 
   @parameterized({
     'normal': ([], True),
-    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo()"]'], False),
+    'blacklist_a': (['-s', 'ASYNCIFY_BLACKLIST=["foo(int, double)"]'], False),
     'blacklist_b': (['-s', 'ASYNCIFY_BLACKLIST=["bar()"]'], True),
     'blacklist_c': (['-s', 'ASYNCIFY_BLACKLIST=["baz()"]'], False),
-    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()","bar()"]'], True),
-    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz","Structy::funcy()"]'], True),
-    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo()","baz()","c_baz"]'], False),
-    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo()","baz()","c_baz","Structy::funcy()"]'], False),
+    'whitelist_a': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()","bar()"]'], True),
+    'whitelist_b': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz","Structy::funcy()"]'], True),
+    'whitelist_c': (['-s', 'ASYNCIFY_WHITELIST=["main","__original_main","foo(int, double)","baz()","c_baz"]'], False),
+    'whitelist_d': (['-s', 'ASYNCIFY_WHITELIST=["foo(int, double)","baz()","c_baz","Structy::funcy()"]'], False),
   })
   @no_fastcomp('new asyncify only')
   def test_asyncify_lists(self, args, should_pass):
@@ -7586,6 +7591,11 @@ extern "C" {
     print('async')
     self.set_setting('EMTERPRETIFY_ASYNC', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_emscripten_scan_registers(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
@@ -8034,6 +8044,46 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
                 basename='src.c', expected_output='Hello, World!')
 
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack.c')).read(),
+                expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
+
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack_alloca(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack_alloca.c')).read(),
+                expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
+
+  @needs_dlfcn
+  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  def test_safe_stack_dylink(self):
+    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('TOTAL_STACK', 65536)
+    self.dylink_test(r'''
+      #include <stdio.h>
+      extern void sidey();
+      int main() {
+        sidey();
+      }
+    ''', '''
+      #include <string.h>
+
+      int f(int *b) {
+        int a[64];
+        memset(b, 0, 2048 * sizeof(int));
+        return f(a);
+      }
+
+      void sidey() {
+        int a[2048];
+        f(a);
+      }
+    ''', ['abort(stack overflow)', '__handle_stack_overflow'])
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
@@ -8123,6 +8173,7 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
+wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'SAFE_STACK': 1})
 
 # emterpreter
 asmi = make_run('asmi', emcc_args=[], settings={'ASM_JS': 2, 'EMTERPRETIFY': 1, 'WASM': 0})

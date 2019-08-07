@@ -116,6 +116,9 @@ var SyscallsLibrary = {
       var node;
       var lookup = FS.lookupPath(path, { follow: true });
       node = lookup.node;
+      if (!node) {
+        return -{{{ cDefine('ENOENT') }}};
+      }
       var perms = '';
       if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
       if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';

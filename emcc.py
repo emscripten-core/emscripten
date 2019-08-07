@@ -537,15 +537,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '--cflags' in args:
     # fake running the command, to see the full args we pass to clang
     debug_env = os.environ.copy()
-    debug_env['EMCC_DEBUG'] = '1'
     args = [x for x in args if x != '--cflags']
     with misc_temp_files.get_file(suffix='.o') as temp_target:
       input_file = 'hello_world.c'
-      err = run_process([shared.PYTHON, sys.argv[0]] + args + [shared.path_from_root('tests', input_file), '-c', '-o', temp_target], stderr=PIPE, env=debug_env).stderr
-      lines = [x for x in err.splitlines() if shared.CLANG_CC in x and input_file in x]
-      line = re.search('running: (.*)', lines[0]).group(1)
-      parts = shlex.split(line.replace('\\', '\\\\'))
-      parts = [x for x in parts if x != '-c' and x != '-o' and input_file not in x and temp_target not in x and '-emit-llvm' not in x]
+      cmd = [shared.PYTHON, sys.argv[0], shared.path_from_root('tests', input_file), '-v', '-c', '-o', temp_target] + args
+      proc = run_process(cmd, stderr=PIPE, env=debug_env, check=False)
+      if proc.returncode != 0:
+        print(proc.stderr)
+        exit_with_error('error getting cflags')
+      lines = [x for x in proc.stderr.splitlines() if shared.CLANG_CC in x and input_file in x]
+      parts = shlex.split(lines[0].replace('\\', '\\\\'))
+      parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
 
@@ -812,6 +814,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Compiling C code with .c files, don't enforce a default C++ std.
       clang_compiler = CC
 
+    if '-print-search-dirs' in newargs:
+      return run_process([clang_compiler, '-print-search-dirs'], check=False).returncode
+
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
       options.post_js += open(shared.path_from_root('src', 'emrun_postjs.js')).read() + '\n'
@@ -822,7 +827,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.post_js += open(shared.path_from_root('src', 'cpuprofiler.js')).read() + '\n'
 
     if options.memory_profiler:
-      options.post_js += open(shared.path_from_root('src', 'memoryprofiler.js')).read() + '\n'
+      shared.Settings.MEMORYPROFILER = 1
 
     if options.thread_profiler:
       options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
@@ -1266,6 +1271,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.proxy_to_worker or options.use_preload_plugins:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
+    if not shared.Settings.MINIMAL_RUNTIME:
+      # In non-MINIMAL_RUNTIME, the core runtime depends on these functions to be present. (In MINIMAL_RUNTIME, they are
+      # no longer always bundled in)
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$demangle', '$demangleAll', '$jsStackTrace', '$stackTrace']
+
     if shared.Settings.FILESYSTEM and not shared.Settings.ONLY_MY_CODE:
       if shared.Settings.SUPPORT_ERRNO:
         shared.Settings.EXPORTED_FUNCTIONS += ['___errno_location'] # so FS can report errno back to C
@@ -1592,9 +1602,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCIFY_IMPORTS:
               passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
+
+            # shell escaping can be confusing; try to emit useful warnings
+            def check_human_readable_list(items):
+              for item in items:
+                if item.count('(') != item.count(')'):
+                  logger.warning('''emcc: ASYNCIFY list contains an item without balanced parentheses ("(", ")"):''')
+                  logger.warning('''   ''' + item)
+                  logger.warning('''This may indicate improper escaping that led to splitting inside your names.''')
+                  logger.warning('''Try to quote the entire argument, like this: -s 'ASYNCIFY_WHITELIST=["foo(int, char)", "bar"]' ''')
+                  break
+
             if shared.Settings.ASYNCIFY_BLACKLIST:
+              check_human_readable_list(shared.Settings.ASYNCIFY_BLACKLIST)
               passes += ['--pass-arg=asyncify-blacklist@%s' % ','.join(shared.Settings.ASYNCIFY_BLACKLIST)]
             if shared.Settings.ASYNCIFY_WHITELIST:
+              check_human_readable_list(shared.Settings.ASYNCIFY_WHITELIST)
               passes += ['--pass-arg=asyncify-whitelist@%s' % ','.join(shared.Settings.ASYNCIFY_WHITELIST)]
           if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
             passes += ['--ignore-implicit-traps']
@@ -1770,7 +1793,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         newargs.append('-fno-discard-value-names')
 
       # Bitcode args generation code
-      def get_clang_args(input_files):
+      def get_clang_command(input_files):
         args = [clang_compiler] + newargs + input_files
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
@@ -1786,7 +1809,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # -E preprocessor-only support
       if '-E' in newargs or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
         input_files = [x[1] for x in input_files]
-        cmd = get_clang_args(input_files)
+        cmd = get_clang_command(input_files)
         if specified_target:
           cmd += ['-o', specified_target]
         # Do not compile, but just output the result from preprocessing stage or
@@ -1799,18 +1822,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('compiling source file: ' + input_file)
         output_file = get_bitcode_file(input_file)
         temp_files.append((i, output_file))
-        args = get_clang_args([input_file]) + ['-c', '-o', output_file]
+        cmd = get_clang_command([input_file]) + ['-c', '-o', output_file]
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
-          args.append('-fPIC')
-          args.append('-fvisibility=default')
+          cmd.append('-fPIC')
+          cmd.append('-fvisibility=default')
         if shared.Settings.WASM_OBJECT_FILES:
           for a in shared.Building.llvm_backend_args():
-            args += ['-mllvm', a]
+            cmd += ['-mllvm', a]
         else:
-          args.append('-emit-llvm')
-        logger.debug("running: " + ' '.join(shared.Building.doublequote_spaces(args))) # NOTE: Printing this line here in this specific format is important, it is parsed to implement the "emcc --cflags" command
-        if run_process(args, check=False).returncode != 0:
-          exit_with_error('compiler frontend failed to generate LLVM bitcode, halting')
+          cmd.append('-emit-llvm')
+        shared.print_compiler_stage(cmd)
+        shared.check_call(cmd)
         if output_file != '-':
           assert(os.path.exists(output_file))
 
@@ -3495,7 +3517,12 @@ def parse_value(text):
     return parse_string_list_members(inner)
 
   if text[0] == '[':
-    return parse_string_list(text)
+    # if json parsing fails, we fall back to our own parser, which can handle a few
+    # simpler syntaxes
+    try:
+      return json.loads(text)
+    except:
+      return parse_string_list(text)
 
   try:
     return int(text)
