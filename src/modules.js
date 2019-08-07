@@ -325,7 +325,8 @@ function isExportedByForceFilesystem(name) {
          name === 'FS_unlink' ||
          name === 'getMemory' ||
          name === 'addRunDependency' ||
-         name === 'removeRunDependency';
+         name === 'removeRunDependency' ||
+         name === 'calledRun';
 }
 
 // export parts of the JS runtime that the user asked for
@@ -480,6 +481,7 @@ function exportRuntime() {
     'ALLOC_STACK',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
+    'calledRun',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos

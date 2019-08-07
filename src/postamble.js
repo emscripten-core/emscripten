@@ -114,6 +114,8 @@ if (memoryInitializer) {
   Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
 #endif
 
+var calledRun;
+
 #if MODULARIZE
 #if MODULARIZE_INSTANCE == 0
 // Modularize mode returns a function, which can be called to
@@ -125,7 +127,7 @@ if (memoryInitializer) {
 Module['then'] = function(func) {
   // We may already be ready to run code at this time. if
   // so, just queue a call to the callback.
-  if (Module['calledRun']) {
+  if (calledRun) {
     func(Module);
   } else {
     // we are not ready to call then() yet. we must call it
@@ -158,8 +160,8 @@ var calledMain = false;
 
 dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-  if (!Module['calledRun']) run();
-  if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
+  if (!calledRun) run();
+  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 };
 
 #if HAS_MAIN
@@ -267,11 +269,15 @@ function run(args) {
   preRun();
 
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
-  if (Module['calledRun']) return; // run may have just been called through dependencies being fulfilled just in this very frame
 
   function doRun() {
-    if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
+    // run may have just been called through dependencies being fulfilled just in this very frame,
+    // or while the async setStatus time below was happening
+    if (calledRun) return;
+    calledRun = true;
+#if 'calledRun' in EXPORTED_RUNTIME_METHODS_SET
     Module['calledRun'] = true;
+#endif
 
     if (ABORT) return;
 
