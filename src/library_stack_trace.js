@@ -40,9 +40,9 @@ var LibraryStackTrace = {
   $demangleAll: function(text) {
     var regex =
 #if WASM_BACKEND
-      /_Z[\w\d_]+/g;
+      /\b_Z[\w\d_]+/g;
 #else
-      /__Z[\w\d_]+/g;
+      /\b__Z[\w\d_]+/g;
 #endif
     return text.replace(regex,
       function(x) {
