@@ -541,6 +541,10 @@ f.close()
     run_process([PYTHON, EMCC, 'a.bc'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_emcc_print_search_dirs(self):
+    result = run_process([PYTHON, EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
+    self.assertContained(['programs: =', 'libraries: ='], result.stdout, check_all=True)
+
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
@@ -7429,6 +7433,12 @@ int main() {
 
     # when exported, all good
     test("Module['print']('print'); Module['printErr']('err'); ", 'print\nerr', ['-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print", "printErr"]'])
+
+  def test_warn_unexported_main(self):
+    WARNING = 'main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.'
+
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=[]'], stderr=PIPE)
+    self.assertContained(WARNING, proc.stderr)
 
   def test_arc4random(self):
     create_test_file('src.c', r'''

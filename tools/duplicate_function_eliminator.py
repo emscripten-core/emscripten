@@ -10,6 +10,7 @@ import subprocess
 import re
 import json
 import shutil
+import tempfile
 import logging
 import traceback
 
@@ -332,7 +333,7 @@ def save_temp_file(file_to_process):
   if os.environ.get('EMSCRIPTEN_SAVE_TEMP_FILES') and os.environ.get('EMSCRIPTEN_TEMP_FILES_DIR'):
     destinationFile = file_to_process
 
-    temp_dir_name = os.environ.get('TEMP_DIR')
+    temp_dir_name = tempfile.gettempdir()
     destinationFile = destinationFile.replace(temp_dir_name, os.environ.get('EMSCRIPTEN_TEMP_FILES_DIR'))
 
     if not os.path.exists(os.path.dirname(destinationFile)):

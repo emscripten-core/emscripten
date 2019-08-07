@@ -194,7 +194,6 @@ key values in that file include:
  * `LLVM_ROOT`: The path to the LLVM binaries.
  * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` there).
  * `NODE_JS`: The path to Node.js, which is needed internally.
- * `TEMP_DIR`: The default temp directory.
  * `COMPILER_ENGINE`: The VM used internally for the JS compiler. Normally this should be `NODE_JS`.
  * `JS_ENGINES`: The full list of JS engines (or just `[NODE_JS]`). Used in the test suite.
 
