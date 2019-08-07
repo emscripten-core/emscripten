@@ -416,7 +416,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   }
 
-updateGlobalBufferAndViews(buffer);
 #else // WASM
 
   if (Module['buffer']) {
