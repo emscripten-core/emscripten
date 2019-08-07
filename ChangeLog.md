@@ -18,6 +18,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v.1.38.41: 08/07/2019
+---------------------
  - Remove fastcomp's implementation of Asyncify. This has been deprecated for
    a long time, since we added Emterpreter-Async, and now we have a new Asyncify
    implementation in the upstream wasm backend. It is recommended to upgrade to
