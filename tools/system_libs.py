@@ -1105,6 +1105,16 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+# If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
+# confusing, so issue a warning.
+def warn_on_unexported_main(symbolses):
+  if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+    for symbols in symbolses:
+      if 'main' in symbols.defs:
+        logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
+        return
+
+
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
@@ -1147,6 +1157,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Scan symbols
   symbolses = shared.Building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+
+  warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
     class Dummy(object):
