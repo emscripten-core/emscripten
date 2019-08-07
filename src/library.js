@@ -4467,7 +4467,9 @@ LibraryManager.library = {
   emscripten_return_address__deps: ['emscripten_generate_pc'],
   emscripten_return_address: function(level) {
     var callstack = new Error().stack.split('\n');
-
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     // skip this function and the caller to get caller's return address
     return _emscripten_generate_pc(callstack[level + 2]);
   },
