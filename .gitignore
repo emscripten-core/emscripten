@@ -25,3 +25,4 @@ tools/optimizer_build/
 
 .coverage*
 tools/coverage/
+coverage.xml
