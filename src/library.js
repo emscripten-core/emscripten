@@ -495,22 +495,21 @@ LibraryManager.library = {
 #else
 
   // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
-  // Returns the new buffer on success, or undefined if growing failed.
+  // Returns 1 on success, or undefined if growing failed.
   $emscripten_realloc_buffer: function(size) {
     try {
 #if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow((size - buffer.byteLength + 65535) >> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
-      return wasmMemory.buffer;
 #else // asm.js:
       var newBuffer = new ArrayBuffer(size);
       if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
       new Int8Array(newBuffer).set(HEAP8);
       _emscripten_replace_memory(newBuffer);
       updateGlobalBufferAndViews(newBuffer);
-      return newBuffer;
 #endif
+      return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
       console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
