@@ -434,7 +434,6 @@ uptr internal_rename(const char *oldpath, const char *newpath) {
 
 uptr internal_sched_yield() {
 #if SANITIZER_EMSCRIPTEN
-  Report("WARNING: sched_yield doesn't do anything on emscripten");
   return 0;
 #else
   return internal_syscall(SYSCALL(sched_yield));
