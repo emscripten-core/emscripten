@@ -6608,8 +6608,9 @@ return malloc(size);
     self.emcc_args += ['--emit-symbol-map']
     self.do_run(open(path_from_root('tests', 'core', 'test_demangle_stacks.cpp')).read(), 'abort')
     # make sure the shortened name is the right one
-    symbols = open('src.cpp.o.js.symbols').read().split('\n')
-    for line in symbols:
+    full_aborter = None
+    short_aborter = None
+    for line in open('src.cpp.o.js.symbols').readlines():
       if ':' not in line:
         continue
       # split by the first ':' (wasm backend demangling may include more :'s later on)
@@ -6617,6 +6618,8 @@ return malloc(size);
       if 'Aborter' in full:
         short_aborter = short
         full_aborter = full
+    self.assertIsNotNone(full_aborter)
+    self.assertIsNotNone(short_aborter)
     print('full:', full_aborter, 'short:', short_aborter)
     if SPIDERMONKEY_ENGINE and os.path.exists(SPIDERMONKEY_ENGINE[0]):
       output = run_js('src.cpp.o.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
@@ -7577,9 +7580,9 @@ extern "C" {
       if not should_pass:
         should_pass = True
         raise Exception('should not have passed')
-    except Exception as e:
+    except:
       if should_pass:
-        raise e
+        raise
 
   # Test basic emterpreter functionality in all core compilation modes.
   @no_emterpreter

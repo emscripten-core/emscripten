@@ -1819,12 +1819,10 @@ class Building(object):
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
 
-    # emscripten-wasm-finalize currently depends on the presence of debug
-    # symbols for renaming of the __invoke symbols
-    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
-    # no longer need to rename these symbols.
-    # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
-    #   cmd.append('--strip-debug')
+    if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
+                                     not Settings.PROFILING_FUNCS and
+                                     not Settings.ASYNCIFY):
+      cmd.append('--strip-debug')
 
     export_all = False
     if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
