@@ -518,7 +518,7 @@ var LibraryGL = {
       function disableHalfFloatExtensionIfBroken(ctx) {
         var t = ctx.createTexture();
         ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, t);
-        for(var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
+        for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
         var ext = ctx.getExtension('OES_texture_half_float');
         if (!ext) return; // no half-float extension - nothing needed to fix.
         // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
