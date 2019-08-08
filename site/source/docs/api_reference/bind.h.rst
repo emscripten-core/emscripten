@@ -685,7 +685,7 @@ Classes
       value.  ``Getter`` may be either a class method, a function, a ``std::function`` or a function object.  When ``Getter``
       is not pointer-to-member-function, it must accept an instance of the ``ClassType`` as the ``this`` argument.  When
       ``Getter`` is a function object, the property type must be specified as a template parameter as it cannot be deduced,
-      e.g.: ``myClass.addProperty<int>("myIntProperty", MyIntGetterFunctor());``
+      e.g.: ``myClass.property<int>("myIntProperty", MyIntGetterFunctor());``
 
       :param const char* fieldName
       :param Getter getter Note that ``Getter`` is a function template typename.
@@ -705,7 +705,7 @@ Classes
       class method, a function, a ``std::function`` or a function object.  When ``Getter`` or ``Setter`` is not pointer-to-member-function,
       it must accept an instance of the ``ClassType`` as the ``this`` argument. When ``Getter`` or ``Setter`` is a function object, the
       property type must be specified as a template parameter as it cannot be deduced, e.g.:
-      ``myClass.addProperty<int>("myIntProperty", MyIntGetterFunctor(), MyIntSetterFunctor());``
+      ``myClass.property<int>("myIntProperty", MyIntGetterFunctor(), MyIntSetterFunctor());``
 
       :param const char* fieldName
       :param Getter getter: Note that ``Getter`` is a function template typename.
