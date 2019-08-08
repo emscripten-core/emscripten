@@ -76,7 +76,7 @@ def main():
     if e.errno != errno.EEXIST:
       raise
   os.environ['COVERAGE_FILE'] = os.path.join(store, str(uuid.uuid4()))
-  sys.argv[0:1] = ['coverage', 'run', '--timid', '--']
+  sys.argv[0:1] = ['coverage', 'run', '--parallel-mode', '--concurrency=multiprocessing', '--']
 
   return coverage.cmdline.main()
 
