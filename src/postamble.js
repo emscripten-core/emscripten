@@ -171,6 +171,12 @@ function callMain(args) {
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
+#if MAIN_MODULE
+  // Main modules can't tell if they have main() at compile time, since it may
+  // arrive from a dynamic library.
+  if (!Module['_main']) return;
+#endif
+
 #if MAIN_READS_PARAMS
   args = args || [];
 
