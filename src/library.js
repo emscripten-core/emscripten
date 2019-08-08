@@ -4464,10 +4464,12 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address__deps: ['emscripten_generate_pc'],
   emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
+    var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     // skip this function and the caller to get caller's return address
     return _emscripten_generate_pc(callstack[level + 2]);
   },
@@ -4506,8 +4508,7 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
-                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
