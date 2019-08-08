@@ -25,4 +25,5 @@ tools/optimizer_build/
 
 .coverage*
 tools/coverage/
+htmlcov/
 coverage.xml
