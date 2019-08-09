@@ -535,7 +535,8 @@ var LibraryGL = {
 #if GL_ASSERTIONS
             warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
 #endif
-            return this.realGetSupportedExtensions().filter(function(ext) {
+            // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+            return (this.realGetSupportedExtensions() || []).filter(function(ext) {
               return ext.indexOf('texture_half_float') == -1;
             });
           }
@@ -981,14 +982,12 @@ var LibraryGL = {
         return ret;
       }
 
-      var exts = GLctx.getSupportedExtensions();
-      if (exts && exts.length > 0) {
-        GLctx.getSupportedExtensions().forEach(function(ext) {
-          if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-            GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
-          }
-        });
-      }
+      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      exts.forEach(function(ext) {
+        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
@@ -1062,15 +1061,11 @@ var LibraryGL = {
     var ret;
     switch(name_) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(exts[i]);
+        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          gl_exts.push("GL_" + exts[i]);
+        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-        }
-        ret = stringToNewUTF8(gl_exts.join(' '));
+        ret = stringToNewUTF8(exts.join(' '));
         break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
@@ -1173,16 +1168,13 @@ var LibraryGL = {
           return;
         }
 #endif
-        var exts = GLctx.getSupportedExtensions();
-        if (exts === null) {
-          ret = 0;
-        } else {
+        // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+        var exts = GLctx.getSupportedExtensions() || [];
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
 #else
-          ret = exts.length;
+        ret = exts.length;
 #endif
-        }
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
