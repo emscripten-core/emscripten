@@ -8608,6 +8608,23 @@ end
     if not self.is_wasm_backend(): # TODO: wasm backend main module
       self.do_other_test(os.path.join('other', 'extern_weak'), emcc_args=['-s', 'MAIN_MODULE=1', '-DLINKABLE'])
 
+  def test_main_module_without_main(self):
+    create_test_file('pre.js', r'''
+var Module = {
+  onRuntimeInitialized: function() {
+    Module._foo();
+  }
+};
+''')
+    create_test_file('src.c', r'''
+#include <emscripten.h>
+EMSCRIPTEN_KEEPALIVE void foo() {
+  EM_ASM({ console.log("bar") });
+}
+''')
+    run_process([PYTHON, EMCC, 'src.c', '--pre-js', 'pre.js', '-s', 'MAIN_MODULE=2'])
+    self.assertContained('bar', run_js('a.out.js'))
+
   def test_js_optimizer_parse_error(self):
     # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
