@@ -391,7 +391,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             assert ('assert(STACKTOP < STACK_MAX' in generated) == (opt_level == 0), 'assertions should be in opt == 0'
           if 'WASM=0' in params:
             if opt_level >= 2 and '-g' in params:
-              assert re.search('HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search('HEAP8\[HEAP32\[', generated) or re.search('[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
+              assert re.search(r'HEAP8\[\$?\w+ ?\+ ?\(+\$?\w+ ?', generated) or re.search(r'HEAP8\[HEAP32\[', generated) or re.search(r'[i$]\d+ & ~\(1 << [i$]\d+\)', generated), 'eliminator should create compound expressions, and fewer one-time vars' # also in -O1, but easier to test in -O2
             looks_unminified = ' = {}' in generated and ' = []' in generated
             looks_minified = '={}' in generated and '=[]' and ';var' in generated
             assert not (looks_minified and looks_unminified)
@@ -952,7 +952,7 @@ f.close()
 
     try:
       os.makedirs('libdir')
-    except:
+    except OSError:
       pass
 
     libfile = self.in_dir('libdir', 'libfile.so')
@@ -2498,7 +2498,7 @@ seeked= file.
     if not os.path.exists(unicode_name):
       try:
         os.mkdir(unicode_name)
-      except:
+      except OSError:
         print("we failed to even create a unicode dir, so on this OS, we can't test this")
         return
     full = os.path.join(unicode_name, 'data.txt')
@@ -3192,7 +3192,7 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
 
   def test_float_h(self):
     process = run_process([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
-    assert process.returncode is 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
+    assert process.returncode == 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
 
   def test_default_obj_ext(self):
     outdir = 'out_dir' + '/'
@@ -3717,7 +3717,7 @@ int main()
     create_test_file('minimal.cpp', 'int main() { return 0; }')
     try:
       vs_env = shared.get_clang_native_env()
-    except:
+    except Exception:
       self.skipTest('Native clang env not found')
     run_process([CLANG, 'minimal.cpp', '-c', '-emit-llvm', '-o', 'a.bc'] + shared.get_clang_native_args(), env=vs_env)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
@@ -4151,13 +4151,13 @@ int main(int argc, char **argv) {
     for code in [0, 123]:
       for no_exit in [0, 1]:
         for call_exit in [0, 1]:
-          for async in [0, 1]:
-            run_process([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async])
+          for async_ in [0, 1]:
+            run_process([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_])
             for engine in JS_ENGINES:
               # async compilation can't return a code in d8
-              if async and engine == V8_ENGINE:
+              if async_ and engine == V8_ENGINE:
                 continue
-              print(code, no_exit, call_exit, async, engine)
+              print(code, no_exit, call_exit, async_, engine)
               process = run_process(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
               # we always emit the right exit code, whether we exit the runtime or not
               assert process.returncode == code, [process.returncode, process.stdout, process.stderr]
@@ -6715,7 +6715,7 @@ int main() {
   def test_static_syscalls(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
     src = open('a.out.js').read()
-    matches = re.findall('''function ___syscall(\d+)\(''', src)
+    matches = re.findall(r'''function ___syscall(\d+)\(''', src)
     print('seen syscalls:', matches)
     assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
 
@@ -6955,7 +6955,7 @@ Resolved: "/" => "/"
     out = '?'
     try:
       out = run_js('a.out.js')
-    except:
+    except Exception:
       seen_error = True
     assert seen_error, out
 
@@ -8140,14 +8140,14 @@ int main() {
       text = re.sub(r'param \$\d+', 'param ', text)
       text = re.sub(r' +', ' ', text)
       # print("text: %s" % text)
-      e_add_f32 = re.search('func \$_?add_f \(type \$\d+\) \(param f32\) \(param f32\) \(result f32\)', text)
-      i_i64_i32 = re.search('import .*"_?import_ll" .*\(param i32 i32\) \(result i32\)', text)
-      i_f32_f64 = re.search('import .*"_?import_f" .*\(param f64\) \(result f64\)', text)
-      i_i64_i64 = re.search('import .*"_?import_ll" .*\(param i64\) \(result i64\)', text)
-      i_f32_f32 = re.search('import .*"_?import_f" .*\(param f32\) \(result f32\)', text)
-      e_i64_i32 = re.search('func \$_?add_ll \(type \$\d+\) \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
-      e_f32_f64 = re.search('func \$legalstub\$_?add_f \(type \$\d+\) \(param f64\) \(param f64\) \(result f64\)', text)
-      e_i64_i64 = re.search('func \$_?add_ll \(type \$\d+\) \(param i64\) \(param i64\) \(result i64\)', text)
+      e_add_f32 = re.search(r'func \$_?add_f \(type \$\d+\) \(param f32\) \(param f32\) \(result f32\)', text)
+      i_i64_i32 = re.search(r'import .*"_?import_ll" .*\(param i32 i32\) \(result i32\)', text)
+      i_f32_f64 = re.search(r'import .*"_?import_f" .*\(param f64\) \(result f64\)', text)
+      i_i64_i64 = re.search(r'import .*"_?import_ll" .*\(param i64\) \(result i64\)', text)
+      i_f32_f32 = re.search(r'import .*"_?import_f" .*\(param f32\) \(result f32\)', text)
+      e_i64_i32 = re.search(r'func \$_?add_ll \(type \$\d+\) \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
+      e_f32_f64 = re.search(r'func \$legalstub\$_?add_f \(type \$\d+\) \(param f64\) \(param f64\) \(result f64\)', text)
+      e_i64_i64 = re.search(r'func \$_?add_ll \(type \$\d+\) \(param i64\) \(param i64\) \(result i64\)', text)
       assert e_add_f32, 'add_f export missing'
       if js_ffi:
         assert i_i64_i32,     'i64 not converted to i32 in imports'
@@ -8189,8 +8189,8 @@ int main() {
       text = re.sub(r'param \$\d+', 'param ', text)
       text = re.sub(r' +', ' ', text)
       # print("text: %s" % text)
-      i_legalimport_i64 = re.search('\(import.*\$legalimport\$invoke_j.*', text)
-      e_legalstub_i32 = re.search('\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
+      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
@@ -8843,11 +8843,11 @@ T6:(else) !ASSERTIONS""", output)
       # stray slash
       ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''undefined exported function: "\\\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\ '_c', '_d']", '''undefined exported function: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''undefined exported function: "\\\\ '_c'"'''),
       # stray slash
       ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'undefined exported function: "\\\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\ "_c", "_d"]', 'undefined exported function: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'undefined exported function: "\\\\ "_c"'),
       # missing comma
       ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'undefined exported function: "_b" "_c"'),
     ]:
