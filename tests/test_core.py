@@ -4914,12 +4914,20 @@ main( int argv, char ** argc ) {
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
-    opts = Building.COMPILER_TEST_OPTS[:]
-    for runtime in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
-      for decoder_mode in [[], ['-s', 'TEXTDECODER=1']]:
-        Building.COMPILER_TEST_OPTS = opts + runtime + decoder_mode
-        print(str(runtime + decoder_mode))
-        self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
+    for decoder_mode in [[], ['-s', 'TEXTDECODER=1']]:
+      self.emcc_args += decoder_mode
+      print(str(decoder_mode))
+      self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
+
+  # Test that invalid character in UTF8 does not cause decoding to crash.
+  @no_wasm_backend("TODO: MINIMAL_RUNTIME not yet available with wasm backend")
+  @no_emterpreter
+  def test_minimal_runtime_utf8_invalid(self):
+    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
+    for decoder_mode in [[], ['-s', 'TEXTDECODER=1']]:
+      self.emcc_args += ['-s', 'MINIMAL_RUNTIME=1'] + decoder_mode
+      print(str(decoder_mode))
+      self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
 
   def test_utf16_textdecoder(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF16ToString', 'stringToUTF16', 'lengthBytesUTF16'])
