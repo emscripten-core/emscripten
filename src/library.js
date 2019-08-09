@@ -618,6 +618,19 @@ LibraryManager.library = {
     }
 #endif // WASM_MEM_MAX
 
+#if USE_ASAN
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
+    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
+    // This causes real memory to be corrupted.
+    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (newSize == oldSize) {
+#if ASSERTIONS
+      err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
+#endif
+      return false;
+    }
+#endif
+
 #if ASSERTIONS
     var start = Date.now();
 #endif
@@ -636,7 +649,7 @@ LibraryManager.library = {
 #endif
     updateGlobalBufferViews();
 
-#if ASSERTIONS && !WASM
+#if ASSERTIONS && (!WASM || WASM2JS)
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
@@ -885,7 +898,7 @@ LibraryManager.library = {
       ENV['LANG'] = 'C.UTF-8';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = Module['thisProgram'];
+      ENV['_'] = thisProgram;
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -1474,10 +1487,18 @@ LibraryManager.library = {
 #endif
 #endif
 
+#if MINIMAL_RUNTIME && !ASSERTIONS
+  __cxa_pure_virtual__sig: 'v',
+  __cxa_pure_virtual: 'abort',
+#else
   __cxa_pure_virtual: function() {
+#if !MINIMAL_RUNTIME
     ABORT = true;
+#endif
+
     throw 'Pure virtual function called!';
   },
+#endif
 
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
@@ -1968,7 +1989,7 @@ LibraryManager.library = {
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
+    var fname = stringToNewUTF8(thisProgram || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -2348,16 +2369,16 @@ LibraryManager.library = {
         str = character[0]+str;
       }
       return str;
-    };
+    }
 
     function leadingNulls(value, digits) {
       return leadingSomething(value, digits, '0');
-    };
+    }
 
     function compareByDay(date1, date2) {
       function sgn(value) {
         return value < 0 ? -1 : (value > 0 ? 1 : 0);
-      };
+      }
 
       var compare;
       if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
@@ -2366,7 +2387,7 @@ LibraryManager.library = {
         }
       }
       return compare;
-    };
+    }
 
     function getFirstWeekStartDate(janFourth) {
         switch (janFourth.getDay()) {
@@ -2385,7 +2406,7 @@ LibraryManager.library = {
           case 6: // Saturday
             return new Date(janFourth.getFullYear()-1, 11, 30);
         }
-    };
+    }
 
     function getWeekBasedYear(date) {
         var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
@@ -2406,7 +2427,7 @@ LibraryManager.library = {
         } else {
           return thisDate.getFullYear()-1;
         }
-    };
+    }
 
     var EXPANSION_RULES_2 = {
       '%a': function(date) {
@@ -3392,7 +3413,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons'],
+  _inet_pton6_raw__deps: ['htons', 'ntohs'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -3557,7 +3578,7 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw'],
+  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
   _read_sockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -4193,6 +4214,16 @@ LibraryManager.library = {
       );
   },
 
+#if MINIMAL_RUNTIME
+  $warnOnce: function(text) {
+    if (!warnOnce.shown) warnOnce.shown = {};
+    if (!warnOnce.shown[text]) {
+      warnOnce.shown[text] = 1;
+      err(text);
+    }
+  },
+#endif
+
   // Returns [parentFuncArguments, functionName, paramListName]
   _emscripten_traverse_stack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
@@ -4223,7 +4254,11 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+#if MINIMAL_RUNTIME
+    , '$warnOnce'
+#endif
+  ],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4402,6 +4437,9 @@ LibraryManager.library = {
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
   emscripten_generate_pc: function(frame) {
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -4411,8 +4449,7 @@ LibraryManager.library = {
       // other engines only give function index and offset in the function,
       // so we try using the offset converter. If that doesn't work,
       // we pack index and offset into a "return address"
-      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
-             (+match[1] << 16) + +match[2];
+      return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
@@ -4427,10 +4464,12 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address__deps: ['emscripten_generate_pc'],
   emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
+    var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     // skip this function and the caller to get caller's return address
     return _emscripten_generate_pc(callstack[level + 2]);
   },
@@ -4469,8 +4508,7 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
-                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
@@ -4522,29 +4560,35 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
-
-    var name = null;
-    var match;
-    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-      name = match[1];
-    } else if (match = /^(.+?)@/.exec(frame)) {
-      name = match[1];
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
+#endif
+    var name;
+    if (pc & 0x80000000) {
+      // If this is a JavaScript function, try looking it up in the unwind cache.
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return 0;
+      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+        name = match[1];
+      } else if (match = /^(.+?)@/.exec(frame)) {
+        name = match[1];
+      } else {
+        return 0;
+      }
+    } else {
+      name = wasmOffsetConverter.getName(pc);
     }
-    if (!name) return 0;
-
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
-    _emscripten_pc_get_function.ret = allocateUTF8(name);
+    _emscripten_with_builtin_malloc(function () {
+      if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+      _emscripten_pc_get_function.ret = allocateUTF8(name);
+    });
     return _emscripten_pc_get_function.ret;
   },
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return null;
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -4559,6 +4603,8 @@ LibraryManager.library = {
 #endif
 
     if (!source) {
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return null;
       // Example: at callMain (a.out.js:6335:22)
       if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
         source = {file: match[1], line: match[2], column: match[3]};
@@ -4573,13 +4619,15 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
-    _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    _emscripten_with_builtin_malloc(function () {
+      if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+      _emscripten_pc_get_file.ret = allocateUTF8(result.file);
+    });
     return _emscripten_pc_get_file.ret;
   },
 
@@ -4599,6 +4647,37 @@ LibraryManager.library = {
 
   emscripten_get_module_name: function(buf, length) {
     return stringToUTF8(wasmBinaryFile, buf, length);
+  },
+
+  emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  emscripten_with_builtin_malloc: function (func) {
+    var prev_malloc = _malloc;
+    var prev_memalign = _memalign;
+    var prev_free = _free;
+    _malloc = _emscripten_builtin_malloc;
+    _memalign = _emscripten_builtin_memalign;
+    _free = _emscripten_builtin_free;
+    try {
+      return func();
+    } finally {
+      _malloc = prev_malloc;
+      _memalign = prev_memalign;
+      _free = prev_free;
+    }
+  },
+
+  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_mmap2'],
+  emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
+    return _emscripten_with_builtin_malloc(function () {
+      return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
+    });
+  },
+
+  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_munmap'],
+  emscripten_builtin_munmap: function (addr, len) {
+    return _emscripten_with_builtin_malloc(function () {
+      return __emscripten_syscall_munmap(addr, len);
+    });
   },
 
   emscripten_get_stack_top: function() {
@@ -4718,6 +4797,16 @@ LibraryManager.library = {
     err('TODO: Unwind_DeleteException');
   },
 
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
+  },
+
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
@@ -4737,6 +4826,14 @@ LibraryManager.library = {
   },
   emscripten_autodebug_double: function(line, value) {
     out('AD:' + [line, value]);
+  },
+
+  // special runtime support
+
+  emscripten_scan_stack: function(func) {
+    var base = STACK_BASE; // TODO verify this is right on pthreads
+    var end = stackSave();
+    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
@@ -5094,6 +5191,9 @@ LibraryManager.library = {
   },
   // =======================================================================
 
+  __handle_stack_overflow: function() {
+    abort('stack overflow')
+  },
 };
 
 function autoAddDeps(object, name) {

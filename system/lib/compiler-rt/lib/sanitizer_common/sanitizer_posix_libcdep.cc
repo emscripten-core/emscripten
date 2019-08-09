@@ -219,7 +219,9 @@ void InstallDeadlySignalHandlers(SignalHandlerType handler) {
   // Set the alternate signal stack for the main thread.
   // This will cause SetAlternateSignalStack to be called twice, but the stack
   // will be actually set only once.
+#if !SANITIZER_EMSCRIPTEN
   if (common_flags()->use_sigaltstack) SetAlternateSignalStack();
+#endif
   MaybeInstallSigaction(SIGSEGV, handler);
   MaybeInstallSigaction(SIGBUS, handler);
   MaybeInstallSigaction(SIGABRT, handler);

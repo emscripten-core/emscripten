@@ -56,7 +56,9 @@ var asm2wasmImports = { // special asm2wasm imports
         return x % y;
     },
     "debugger": function() {
+#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
         debugger;
+#endif
     }
 #if NEED_ALL_ASM2WASM_IMPORTS
     ,
@@ -188,14 +190,14 @@ function loadDynamicLibrary(lib, flags) {
       return fetchBinary(lib);
     }
     // load the binary synchronously
-    return Module['readBinary'](lib);
+    return readBinary(lib);
 #else
     // for js we only imitate async for both native & fs modes.
     var libData;
     if (flags.fs) {
       libData = flags.fs.readFile(lib, {encoding: 'utf8'});
     } else {
-      libData = Module['read'](lib);
+      libData = read_(lib);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
@@ -649,7 +651,7 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
   return func;
-#endif
+#else // WASM2JS
 
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
@@ -709,6 +711,7 @@ function convertJsFunctionToWasm(func, sig) {
   });
   var wrappedFunc = instance.exports.f;
   return wrappedFunc;
+#endif // WASM2JS
 }
 
 // Add a wasm function to the table.
@@ -922,11 +925,11 @@ var tempRet0 = 0;
 
 var setTempRet0 = function(value) {
   tempRet0 = value;
-}
+};
 
 var getTempRet0 = function() {
   return tempRet0;
-}
+};
 
 #if RETAIN_COMPILER_SETTINGS
 var compilerSettings = {{{ JSON.stringify(makeRetainedCompilerSettings()) }}} ;

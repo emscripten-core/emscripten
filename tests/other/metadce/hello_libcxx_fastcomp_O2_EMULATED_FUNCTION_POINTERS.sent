@@ -1,5 +1,5 @@
 DYNAMICTOP_PTR
-___cxa_uncaught_exception
+___cxa_uncaught_exceptions
 ___gxx_personality_v0
 ___lock
 ___map_file
@@ -13,6 +13,7 @@ ___syscall91
 ___unlock
 __addDays
 __arraySum
+__emscripten_syscall_munmap
 __isLeapYear
 _abort
 _emscripten_get_heap_size
@@ -26,6 +27,10 @@ _strftime
 _strftime_l
 abort
 abortOnCannotGrowMemory
+demangle
+demangleAll
 getTempRet0
+jsStackTrace
 setTempRet0
+stackTrace
 tempDoublePtr

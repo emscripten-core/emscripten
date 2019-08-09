@@ -242,6 +242,10 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
+// Check each stack pointer decrement on WASM backend to ensure that the stack
+// does not overflow.
+var SAFE_STACK = 0;
+
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
@@ -453,6 +457,12 @@ var STB_IMAGE = 0;
 // If you do not care about old iOS 9 support, keep this disabled.
 var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
 
+// From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
+// are broken and do not function correctly, when used as source textures.
+// See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+// https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
+
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
 var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 
@@ -519,54 +529,75 @@ var EXCEPTION_CATCHING_WHITELIST = [];
 // longer do that, and exceptions work normally, which can be useful for libraries
 // or programs that don't need exit() to work.
 
-// For more explanations of this option, please visit
-// https://github.com/emscripten-core/emscripten/wiki/Asyncify
+// Emscripten uses an ExitStatus exception to halt when exit() is called.
+// With this option, we prevent that from showing up as an unhandled
+// exception.
 var NODEJS_CATCH_EXIT = 1;
+
+// Catch unhandled rejections in node. Without this, node may print the error,
+// and that this behavior will change in future node, wait a few seconds, and
+// then exit with 0 (which hides the error if you don't read the log). With
+// this, we catch any unhandled rejection and throw an actual error, which will
+// make the process exit immediately with a non-0 return code.
+var NODEJS_CATCH_REJECTION = 1;
 
 // Whether to enable asyncify transformation
 // This allows to inject some async functions to the C code that appear to be sync
 // e.g. emscripten_sleep
+// On fastcomp this uses the Asyncify IR transform.
+// On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
-
-// Functions that call any function in the list, directly or indirectly
-var ASYNCIFY_FUNCTIONS = ['emscripten_sleep',
-                          'emscripten_wget',  // will be transformed
-                          'emscripten_yield'];
-// Functions in this list are never considered async, even if they appear in ASYNCIFY_FUNCTIONS
-var ASYNCIFY_WHITELIST = ['qsort',
-                          'trinkle', // In the asyncify transformation, any function that calls a function pointer is considered async
-                          '__toread', // This whitelist is useful when a function is known to be sync
-                          '__uflow',  // currently this link contains some functions in libc
-                          '__fwritex',
-                          'MUSL_vfprintf'];
-
-// Runs the binaryen "bysyncify" pass to transform sync code into async.
-// This is similar to asyncify and EMTERPRETIFY_ASYNC but works with the
-// wasm backend.
-//
-// Done:
-//  * Sleep support.
-//  * Emscripten APIs (emscripten_wget* and other sync APIs).
-//  * Synchronous fsync syscall.
-//  * Browser integration.
-//
-// Not done:
-//  * No whitelist/blacklist support (hopefully with the simpler model
-//    and lower overhead they may not be needed?)
-//  * No coroutine support.
-var BYSYNCIFY = 0;
 
 // The imports which can do a sync operation. If you add more you will need to
 // add them to here.
-var BYSYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
+var ASYNCIFY_IMPORTS = [
+  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
+  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
+  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118',
+  'emscripten_scan_registers'
+];
 
-// Whether indirect calls can be on the stack during an unwind/rewind. If you know
-// they cannot, then setting this can be extremely helpful, as otherwise bysyncify
+// Whether indirect calls can be on the stack during an unwind/rewind.
+// If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
 // must assume an indirect call can reach almost everywhere.
-var BYSYNCIFY_IGNORE_INDIRECT = 0;
+var ASYNCIFY_IGNORE_INDIRECT = 0;
 
-// Runtime debug logging from bysyncify internals.
-var BYSYNCIFY_DEBUG = 0;
+// The size of the asyncify stack - the region used to store unwind/rewind
+// info. This must be large enough to store the call stack and locals. If it is too
+// small, you will see a wasm trap due to executing an "unreachable" instruction.
+// In that case, you should increase this size.
+var ASYNCIFY_STACK_SIZE = 4096;
+
+// If the Asyncify blacklist is provided, then the functions in it will not
+// be instrumented even if it looks like they need to. This can be useful
+// if you know things the whole-program analysis doesn't, like if you
+// know certain indirect calls are safe and won't unwind. But if you
+// get the list wrong things will break (and in a production build user
+// input might reach code paths you missed during testing, so it's hard
+// to know you got this right), so this is not recommended unless you
+// really know what are doing, and need to optimize every bit of speed
+// and size.
+// The names in this list are names from the WebAssembly Names section. The
+// wasm backend will emit those names in *human-readable* form instead of
+// typical C++ mangling. For example, you should write Struct::func()
+// instead of _ZN6Struct4FuncEv. C is also different from C++, as C
+// names don't end with parameters; as a result foo(int) in C++ would appear
+// as just foo in C (C++ has parameters because it needs to differentiate
+// overloaded functions). You will see warnings in the console if a name in the
+// list is missing (these are not errors because inlining etc. may cause
+// changes which would mean a single list couldn't work for both -O0 and -O1
+// builds, etc.). You can inspect the wasm binary to look for the actual names,
+// either directly or using wasm-objdump or wasm-dis, etc.
+var ASYNCIFY_BLACKLIST = [];
+
+// If the Asyncify whitelist is provided, then *only* the functions in the list
+// will be instrumented. Like the blacklist, getting this wrong will break
+// your application.
+// See notes on ASYNCIFY_BLACKLIST about the names.
+var ASYNCIFY_WHITELIST = [];
+
+// Runtime debug logging from asyncify internals.
+var ASYNCIFY_DEBUG = 0;
 
 // Runtime elements that are exported on Module by default. We used to export
 // quite a lot here, but have removed them all, so this option is redundant
@@ -585,6 +616,43 @@ var EXPORTED_RUNTIME_METHODS = [];
 // lets you remove methods that would be exported by default; setting values in
 // this list lets you add to the default list without modifying it.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
+
+// A list of incoming values on the Module object in JS that we care about. If
+// a value is not in this list, then we don't emit code to check if you provide
+// it on the Module object. For example, if
+// you have this:
+//
+//  var Module = {
+//    print: function(x) { console.log('print: ' + x) },
+//    preRun: [function() { console.log('pre run') }]
+//  };
+//
+// Then MODULE_JS_API must contain 'print' and 'preRun'; if it does not then
+// we may not emit code to read and use that value. In other words, this
+// option lets you set, statically at compile time, the list of which Module
+// JS values you will be providing at runtime, so the compiler can better
+// optimize.
+//
+// Setting this list to [], or at least a short and concise set of names you
+// actually use, can be very useful for reducing code size. By default the
+// list contains all the possible APIs.
+//
+// FIXME: should this just be  0  if we want everything?
+var INCOMING_MODULE_JS_API = [
+  'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
+  'SDL_numSimultaneouslyQueuedBuffers', 'TOTAL_MEMORY', 'wasmMemory', 'arguments',
+  'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
+  'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
+  'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
+  'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
+  'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
+  'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
+  'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
+  'preMainLoop', 'preRun',
+  'preinitializedWebGLContextmemoryInitializerRequest', 'preloadPlugins',
+  'print', 'printErr', 'quit', 'setStatus', 'statusMessage', 'stderr',
+  'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
+];
 
 // If set to nonzero, the provided virtual filesystem if treated
 // case-insensitive, like Windows and macOS do. If set to 0, the VFS is
@@ -740,6 +808,11 @@ var LINKABLE = 0;
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
+// Changes enabled by this:
+//   * ERROR_ON_MISSING_LIBRARIES is enabled
+//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
+//   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
+//     is the correct thing to use).
 var STRICT = 0;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
@@ -1009,11 +1082,15 @@ var WASM_OBJECT_FILES = 1;
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
 
-// Whether to ignore implicit traps when optimizing in binaryen.  Implicit traps
-// are the unlikely traps that happen in a load that is out of bounds, or
-// div/rem of 0, etc. We can reorder them, but we can't ignore that they have
-// side effects, so turning on this flag lets us do a little more to reduce code
-// size.
+// Whether to ignore implicit traps when optimizing in binaryen.  Implicit
+// traps are the traps that happen in a load that is out of bounds, or
+// div/rem of 0, etc. With this option set, the optimizer assumes that loads
+// cannot trap, and therefore that they have no side effects at all. This
+// is *not* safe in general, as you may have a load behind a condition which
+// ensures it it is safe; but if the load is assumed to not have side effects it
+// could be executed unconditionally. For that reason this option is generally
+// not useful on large and complex projects, but in a small and simple enough
+// codebase it may help reduce code size a little bit.
 var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 
 // How we handle wasm operations that may trap, which includes integer
@@ -1114,6 +1191,9 @@ var USE_LIBPNG = 0;
 // 1 = use Regal from emscripten-ports
 var USE_REGAL = 0;
 
+// 1 = use Boost headers from emscripten-ports
+var USE_BOOST_HEADERS = 0;
+
 // 1 = use bullet from emscripten-ports
 var USE_BULLET = 0;
 
@@ -1176,6 +1256,9 @@ var PTHREADS_PROFILING = 0;
 
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
+
+// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+var MEMORYPROFILER = 0;
 
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend
@@ -1377,6 +1460,11 @@ var SUPPORT_ERRNO = 1;
 // support library. This does not need to be set directly, but pass -fno-exceptions
 // to the build disable exceptions support. (This is basically -fno-exceptions, but
 // checked at final link time instead of individual .cpp file compile time)
+// If the program *does* contain throwing code (some source files were not compiled
+// with `-fno-exceptions`), and this flag is set at link time, then you will get
+// errors on undefined symbols, as the exception throwing code is not linked in. If
+// so you should either unset the option (if you do want exceptions) or fix the
+// compilation of the source files so that indeed no exceptions are used).
 var DISABLE_EXCEPTION_THROWING = 0;
 
 // Internal: An array of all symbols exported from asm.js/wasm module.
@@ -1460,12 +1548,33 @@ var WASM2JS = 0;
 // -fsanitize=undefined. To use minimal runtime, also pass `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
 
+// Whether we should link in LSan's runtime library. This is intended to be used
+// by -fsanitize=leak instead of used directly.
+var USE_LSAN = 0;
+
+// Whether we should link in ASan's runtime library. This is intended to be used
+// by -fsanitize=leak instead of used directly.
+var USE_ASAN = 0;
+
+// The size of our shadow memory.
+// By default, we have 32 MiB. This supports 256 MiB of real memory.
+var ASAN_SHADOW_SIZE = 33554432;
+
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -g4 with sanitizers.
 var LOAD_SOURCE_MAP = 0;
 
+// Whether we should use the offset converter.
+// This is needed for older versions of v8 (<7.7) that does not give the hex module offset
+// into wasm binary in stack traces, as well as for avoiding using source map
+// entries across function boundaries.
+var USE_OFFSET_CONVERTER = 0;
+
 // Whether embind has been enabled.
 var EMBIND = 0;
+
+// Whether the main() function reads the argc/argv parameters.
+var MAIN_READS_PARAMS = 1;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

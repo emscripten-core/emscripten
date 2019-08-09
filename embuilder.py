@@ -30,6 +30,7 @@ SYSTEM_TASKS += ['struct_info']
 
 USER_TASKS = [
     'binaryen',
+    'boost_headers',
     'bullet',
     'bzip2',
     'cocos2d',
@@ -45,6 +46,7 @@ USER_TASKS = [
     'sdl2-gfx',
     'sdl2-image',
     'sdl2-image-png',
+    'sdl2-image-jpg',
     'sdl2-mixer',
     'sdl2-net',
     'sdl2-ttf',
@@ -221,6 +223,8 @@ def main():
       build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-image-png':
       build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+    elif what == 'sdl2-image-jpg':
+      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
@@ -237,6 +241,8 @@ def main():
       build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
+    elif what == 'boost_headers':
+      build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

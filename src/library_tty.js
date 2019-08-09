@@ -107,7 +107,7 @@ mergeInto(LibraryManager.library, {
           if (ENVIRONMENT_IS_NODE) {
             // we will read data by chunks of BUFSIZE
             var BUFSIZE = 256;
-            var buf = new Buffer(BUFSIZE);
+            var buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
             var bytesRead = 0;
 
             var isPosixPlatform = (process.platform != 'win32'); // Node doesn't offer a direct check, so test by exclusion

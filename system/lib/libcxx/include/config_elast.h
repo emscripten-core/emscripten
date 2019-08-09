@@ -12,7 +12,7 @@
 
 #include <__config>
 
-#if defined(_LIBCPP_MSVCRT)
+#if defined(_LIBCPP_MSVCRT_LIKE)
 #include <stdlib.h>
 #else
 #include <errno.h>
@@ -28,11 +28,11 @@
 #define _LIBCPP_ELAST 4095
 #elif defined(__APPLE__)
 // No _LIBCPP_ELAST needed on Apple
-#elif defined(__EMSCRIPTEN__) // XX EMSCRIPTEN added ELAST value
+#elif defined(__EMSCRIPTEN__) // XXX EMSCRIPTEN added ELAST value
 #define _LIBCPP_ELAST 256
 #elif defined(__sun__)
 #define _LIBCPP_ELAST ESTALE
-#elif defined(_LIBCPP_MSVCRT)
+#elif defined(_LIBCPP_MSVCRT_LIKE)
 #define _LIBCPP_ELAST (_sys_nerr - 1)
 #else
 // Warn here so that the person doing the libcxx port has an easier time:

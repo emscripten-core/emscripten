@@ -1,6 +1,6 @@
 defaults: &defaults
   docker:
-    - image: buildpack-deps:xenial
+    - image: buildpack-deps:bionic
       environment:
         LANG: C.UTF-8
         EMTEST_DETECT_TEMPFILE_LEAKS: 1
@@ -47,11 +47,10 @@ test-firefox: &test-firefox
     - run:
         name: download firefox
         command: |
-          FF_VERSION=65.0.2
-          wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/$FF_VERSION/linux-x86_64/en-US/firefox-$FF_VERSION.tar.bz2
-          tar xf firefox-$FF_VERSION.tar.bz2
-          # wget -O nightly.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
-          # tar xf nightly.tar.bz2
+          # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
+          # which requires very latest nightly as of Jul 13 2019
+          wget -O ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
+          tar xf ff.tar.bz2
     - run:
         name: configure firefox
         command: |
@@ -119,6 +118,7 @@ test-firefox: &test-firefox
           export EMTEST_BROWSER="$HOME/firefox/firefox -profile tmp-firefox-profile/"
           export GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
           export EMTEST_LACKS_SOUND_HARDWARE=1
+          export EMTEST_LACKS_OFFSCREEN_CANVAS=1 # looks broken in ff nightly
           export EMTEST_DETECT_TEMPFILE_LEAKS=0
           export DISPLAY=:0
           # Start an X session. Openbox might be optional for now, but
@@ -159,17 +159,18 @@ test-chrome: &test-chrome
     - run:
         name: download chrome
         command: |
-          wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-          dpkg -i google-chrome-stable_current_amd64.deb
+          wget -O chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+          dpkg -i chrome.deb
     - run:
         name: run tests
         command: |
           # --no-sandbox becasue we are running as root and chrome requires
           # this flag for now: https://crbug.com/638180
-          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
+          CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+          CHROME_FLAGS_HEADLESS="--headless --remote-debugging-port=1234"
           CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
-          export EMTEST_BROWSER="xvfb-run -a -e /dev/stdout /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
-          export EMTEST_LACKS_GRAPHICS_HARDWARE=1
+          CHROME_FLAGS_NOCACHE="--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
           export EMCC_CORES=4
           ./emscripten/tests/runner.py browser
 
@@ -202,6 +203,9 @@ jobs:
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
+            # Remove any system libs the emsdk installed: we want to rebuild
+            # them all from source here, to check whether new changes work.
+            rm -Rf ~/.emscripten_cache
       - run:
           name: embuilder build ALL
           command: |
@@ -225,14 +229,10 @@ jobs:
     steps:
       - checkout
       - run:
-          name: install pip
-          command: |
-            apt-get update -q
-            apt-get install -q -y python-pip
-      - run:
           name: install sphinx
           command: |
-            pip install sphinx==1.7.8
+            apt-get update -q
+            DEBIAN_FRONTEND=noninteractive apt-get install -q -y sphinx-common
       - run: make -C site html
   flake8:
     <<: *defaults
@@ -303,10 +303,6 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=wasm0
-  test-wasm1:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm1
   test-wasm2:
     <<: *test-defaults
     environment:
@@ -343,9 +339,14 @@ jobs:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf `find -name "emscripten"`
+            echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
+            echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
+            # Remove any system libs the emsdk installed: we want to rebuild
+            # them all from source here, to check whether new changes work.
+            rm -Rf ~/.emscripten_cache
       - run:
           name: embuilder build ALL
           command: |
@@ -386,8 +387,12 @@ jobs:
   test-upstream-wasm2:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=wasm2 wasm3.test_llvm_used
-      # TODO: test all of wasm3/wasms on LLVM wasm backend
+      - TEST_TARGET=wasm2
+  test-upstream-wasm3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasm3
+      # TODO: test wasms
   test-upstream-other:
     <<: *test-defaults
     environment:
@@ -448,9 +453,6 @@ workflows:
       - test-wasm0:
           requires:
             - build
-      - test-wasm1:
-          requires:
-            - build
       - test-wasm2:
           requires:
             - build
@@ -467,6 +469,9 @@ workflows:
       - test-upstream-wasm2:
           requires:
             - build-upstream
+      - test-upstream-wasm3:
+          requires:
+            - build-upstream
       - test-upstream-other:
           requires:
             - build-upstream
@@ -476,4 +481,3 @@ workflows:
       - test-upstream-browser-firefox:
           requires:
             - build-upstream
-

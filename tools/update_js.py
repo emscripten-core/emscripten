@@ -7,6 +7,7 @@
 Performs a search-replace in all of js/
 '''
 
+from __future__ import print_function
 import os
 
 
@@ -19,7 +20,7 @@ for x in all_children('src') + all_children('tests') + all_children('tools') + a
     continue
   if not (x.endswith('.py') or x.endswith('.c') or x.endswith('.cpp') or x.endswith('.h') or x.endswith('.js') or x.endswith('.ll')):
     continue
-  print x
+  print(x)
   orig = open(x).read()
   fixed = orig[:]
   fixed = fixed.replace('Module["print"](', 'out(')

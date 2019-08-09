@@ -55,9 +55,16 @@ function WasmSourceMap(sourceMap) {
 }
 
 WasmSourceMap.prototype.lookup = function (offset) {
-  var info = this.mapping[this.normalizeOffset(offset)];
-  if (!info)
+  var normalized = this.normalizeOffset(offset);
+#if USE_OFFSET_CONVERTER
+  if (!wasmOffsetConverter.isSameFunc(offset, normalized)) {
     return null;
+  }
+#endif
+  var info = this.mapping[normalized];
+  if (!info) {
+    return null;
+  }
   return {
     source: this.sources[info.source],
     line: info.line,
@@ -89,7 +96,7 @@ if (!isDataURI(wasmBinaryFile)) {
 
 function getSourceMap() {
   try {
-    return JSON.parse(Module['read'](wasmSourceMapFile));
+    return JSON.parse(read_(wasmSourceMapFile));
   } catch (err) {
     abort(err);
   }

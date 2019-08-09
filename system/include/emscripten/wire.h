@@ -99,7 +99,9 @@ namespace emscripten {
             return LightTypeID<T>::get();
         }
 
-        template<typename T>
+        // The second typename is an unused stub so it's possible to
+        // specialize groups of classes via SFINAE.
+        template<typename T, typename = void>
         struct TypeID {
             static constexpr TYPEID get() {
                 return LightTypeID<T>::get();
@@ -241,7 +243,9 @@ namespace emscripten {
 
         // BindingType<T>
 
-        template<typename T>
+        // The second typename is an unused stub so it's possible to
+        // specialize groups of classes via SFINAE.
+        template<typename T, typename = void>
         struct BindingType;
 
 #define EMSCRIPTEN_DEFINE_NATIVE_BINDING_TYPE(type)                 \
@@ -381,7 +385,7 @@ namespace emscripten {
         };
 
         // catch-all generic binding
-        template<typename T>
+        template<typename T, typename>
         struct BindingType : std::conditional<
             std::is_enum<T>::value,
             EnumBindingType<T>,

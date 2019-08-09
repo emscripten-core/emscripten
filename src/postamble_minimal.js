@@ -4,6 +4,10 @@
 {{{ exportRuntime() }}}
 
 function run() {
+#if MEMORYPROFILER
+  emscriptenMemoryProfiler.onPreloadComplete();
+#endif
+
 #if PROXY_TO_PTHREAD
     // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
     // that will call the user's real main() for the application.
@@ -61,7 +65,11 @@ var imports = {
   'global.Math': Math,
   'asm2wasm': {
     'f64-rem': function(x, y) { return x % y; },
-    'debugger': function() { debugger; }
+    'debugger': function() {
+#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
+      debugger;
+#endif
+    }
   }
 #endif
 };
