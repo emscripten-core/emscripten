@@ -78,7 +78,7 @@ def run():
           newargs[j] = full_newname
           to_delete.append(full_newname)
           contents.add(newname)
-        except:
+        except IOError:
           # it is ok to fail here, we just don't get hashing
           contents.add(basename)
           pass
