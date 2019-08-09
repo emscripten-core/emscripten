@@ -300,10 +300,6 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=wasm0
-  test-wasm1:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm1
   test-wasm2:
     <<: *test-defaults
     environment:
@@ -388,8 +384,12 @@ jobs:
   test-upstream-wasm2:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=wasm2 wasm3.test_llvm_used
-      # TODO: test all of wasm3/wasms on LLVM wasm backend
+      - TEST_TARGET=wasm2
+  test-upstream-wasm3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasm3
+      # TODO: test wasms
   test-upstream-other:
     <<: *test-defaults
     environment:
@@ -450,9 +450,6 @@ workflows:
       - test-wasm0:
           requires:
             - build
-      - test-wasm1:
-          requires:
-            - build
       - test-wasm2:
           requires:
             - build
@@ -467,6 +464,9 @@ workflows:
           requires:
             - build-upstream
       - test-upstream-wasm2:
+          requires:
+            - build-upstream
+      - test-upstream-wasm3:
           requires:
             - build-upstream
       - test-upstream-other:
