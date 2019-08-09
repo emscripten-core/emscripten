@@ -2589,6 +2589,7 @@ class Building(object):
     for line in out.split('\n'):
       if SEP in line:
         old, new = line.strip().split(SEP)
+        assert old not in mapping, 'imports must be unique'
         mapping[old] = new
     # apply them
     passes = ['applyImportAndExportNameChanges']
