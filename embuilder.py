@@ -46,6 +46,7 @@ USER_TASKS = [
     'sdl2-gfx',
     'sdl2-image',
     'sdl2-image-png',
+    'sdl2-image-jpg',
     'sdl2-mixer',
     'sdl2-net',
     'sdl2-ttf',
@@ -222,6 +223,8 @@ def main():
       build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-image-png':
       build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+    elif what == 'sdl2-image-jpg':
+      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
