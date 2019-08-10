@@ -247,7 +247,7 @@ jobs:
       - run: flake8
       - run: pip3 install --upgrade pip
       - run: pip3 install flake8==3.7.7
-      - run: python3 -m flake8 --exit-zero 
+      - run: python3 -m flake8 --exit-zero
   test-other:
     <<: *test-defaults
     environment:
