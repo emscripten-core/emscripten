@@ -190,7 +190,7 @@ class sanity(RunnerCore):
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
-      if platform.system() is not 'Windows':
+      if platform.system() != 'Windows':
         # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         possible_nodes = [os.path.join(temp_bin, 'node')]
@@ -469,7 +469,7 @@ fi
       print(i)
       self.clear()
       output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-      print ('\n\n\n', output)
+      print('\n\n\n', output)
       assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
       self.assertContained('hello, world!', run_js('a.out.js'))
       self.assertExists(Cache.dirname)
