@@ -1387,7 +1387,8 @@ class BrowserCore(RunnerCore):
             self.assertIdentical(expectedResult, output)
           except Exception as e:
             if tries_left > 0:
-              print('[test error, automatically retrying]')
+              print('[test error (see below), automatically retrying]')
+              print(e)
               return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
             else:
               raise e
