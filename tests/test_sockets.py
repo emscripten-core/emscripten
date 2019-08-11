@@ -15,7 +15,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
 
 import websockify
-from runner import BrowserCore, no_windows, chdir, flaky
+from runner import BrowserCore, no_windows, chdir
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
 
@@ -211,7 +211,6 @@ class sockets(BrowserCore):
       with harness:
         self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
-  @flaky
   @no_windows('This test is Unix-specific.')
   def test_sockets_partial(self):
     for harness in [
@@ -221,7 +220,6 @@ class sockets(BrowserCore):
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
-  @flaky
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_down(self):
     for harness in [
@@ -231,7 +229,6 @@ class sockets(BrowserCore):
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=%d' % harness.listen_port])
 
-  @flaky
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_closes_connection_rw(self):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
