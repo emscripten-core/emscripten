@@ -1622,6 +1622,7 @@ keydown(100);keyup(100); // trigger the end
     self.do_test_worker()
     self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
 
+  @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
     worker_filename = "download_and_checksum_worker.js"
@@ -4361,7 +4362,7 @@ window.close = function() {
 
   @requires_threads
   def test_fetch_idb_store(self):
-    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
   def test_fetch_idb_delete(self):
