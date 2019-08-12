@@ -32,7 +32,7 @@ try:
   shared.run_process([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
   print('3) Run natively')
   correct = jsrun.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
-except Exception, e:
+except Exception as e:
   print('Failed or infinite looping in native, skipping', e)
   sys.exit(1) # boring
 
@@ -52,7 +52,7 @@ for args in [[]]:
   try:
     try_js(args)
     break
-  except Exception, e:
+  except Exception as e:
     pass
 else:
   sys.exit(0)
