@@ -7834,12 +7834,12 @@ int main() {
       self.assertContained('TOTAL_MEMORY must be at least 16MB', ret)
 
     # Must be a multiple of 64KB
-    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB+1'])
+    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33554433']) # 32MB + 1 byte
     self.assertContained('TOTAL_MEMORY must be a multiple of 64KB', ret)
 
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB'])
 
-    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB+1'])
+    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=34603009']) # 33MB + 1 byte
     self.assertContained('WASM_MEM_MAX must be a multiple of 64KB', ret)
 
   def test_invalid_output_dir(self):
