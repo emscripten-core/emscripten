@@ -1634,22 +1634,15 @@ class Building(object):
       # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
       # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    try:
-      if EM_BUILD_VERBOSE >= 3:
-        print('configure: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE >= 2:
-        stdout = None
-      if EM_BUILD_VERBOSE >= 1:
-        stderr = None
-      res = run_process(args, check=False, stdout=stdout, stderr=stderr, env=env)
-    except Exception:
-      logger.error('Error running configure: "%s"' % ' '.join(args))
-      raise
+    if EM_BUILD_VERBOSE >= 3:
+      print('configure: ' + str(args), file=sys.stderr)
+    if EM_BUILD_VERBOSE >= 2:
+      stdout = None
+    if EM_BUILD_VERBOSE >= 1:
+      stderr = None
+    res = run_process(args, stdout=stdout, stderr=stderr, env=env)
     if 'EMMAKEN_JUST_CONFIGURE' in env:
       del env['EMMAKEN_JUST_CONFIGURE']
-    if res.returncode != 0:
-      logger.error('Configure step failed with non-zero return code: %s.  Command line: %s at %s' % (res.returncode, ' '.join(args), os.getcwd()))
-      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None, cflags=[]):
@@ -1669,20 +1662,16 @@ class Building(object):
       if 'mingw32-make' in args[0]:
         env = Building.remove_sh_exe_from_path(env)
 
-    try:
-      # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      if EM_BUILD_VERBOSE >= 3:
-        print('make: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE >= 2:
-        stdout = None
-      if EM_BUILD_VERBOSE >= 1:
-        stderr = None
-      res = run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, check=False)
-    except Exception:
-      logger.error('Error running make: "%s"' % ' '.join(args))
-      raise
-    if res.returncode != 0:
-      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
+    # On Windows, run the execution through shell to get PATH expansion and
+    # executable extension lookup, e.g. 'sdl2-config' will match with
+    # 'sdl2-config.bat' in PATH.
+    if EM_BUILD_VERBOSE >= 3:
+      print('make: ' + str(args), file=sys.stderr)
+    if EM_BUILD_VERBOSE >= 2:
+      stdout = None
+    if EM_BUILD_VERBOSE >= 1:
+      stderr = None
+    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
 
   @staticmethod
   def make_paths_absolute(f):
