@@ -174,27 +174,6 @@ def no_asmjs(note=''):
   return decorated
 
 
-# used for tests that fail now and then on CI, due to timing or other
-# random causes. this tries the test a few times, looking for at least
-# one pass
-def flaky(f):
-  assert callable(f)
-  max_tries = 3
-
-  @wraps(f)
-  def decorated(self):
-    for i in range(max_tries - 1):
-      try:
-        f(self)
-        return
-      except Exception:
-        print('flaky...')
-        continue
-    # run the last time normally, to get a simpler stack trace
-    f(self)
-  return decorated
-
-
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -1337,7 +1316,7 @@ class BrowserCore(RunnerCore):
 
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
-    cls.browser_timeout = 30
+    cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
@@ -1363,7 +1342,12 @@ class BrowserCore(RunnerCore):
         self.harness_out_queue.get()
       raise Exception('excessive responses from %s' % who)
 
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None):
+  # @param tries_left: how many more times to try this test, if it fails. browser tests have
+  #                    many more causes of flakiness (in particular, they do not run
+  #                    synchronously, so we have a timeout, which can be hit if the VM
+  #                    we run on stalls temporarily), so we let each test try more than
+  #                    once by default
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1398,7 +1382,16 @@ class BrowserCore(RunnerCore):
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
-          self.assertIdentical(expectedResult, output)
+          # verify the result, and try again if we should do so
+          try:
+            self.assertIdentical(expectedResult, output)
+          except Exception as e:
+            if tries_left > 0:
+              print('[test error (see below), automatically retrying]')
+              print(e)
+              return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
+            else:
+              raise e
       finally:
         time.sleep(0.1) # see comment about Windows above
       self.assert_out_queue_empty('this test')
