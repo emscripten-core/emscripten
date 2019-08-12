@@ -1081,9 +1081,8 @@ SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 
 
 
 def expand_byte_size_suffixes(value):
-  """
-  Given a string with KB/MB size suffixes, such as "32MB", computes how many
-  bytes that is and returns it as an integer.
+  """Given a string with KB/MB size suffixes, such as "32MB", computes how
+  many bytes that is and returns it as an integer.
   """
   match = re.match(r'\s*(\d+)\s*([kmgt]?b)', value, re.I)
   if not match:
