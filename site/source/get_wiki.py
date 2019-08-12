@@ -57,7 +57,7 @@ def CleanWiki():
     try:
         shutil.rmtree(output_dir, ignore_errors=False, onerror=errorhandler)
         print('Old wiki clone removed')
-    except:
+    except IOError:
         print('No directory to clean found')
 
 
@@ -72,7 +72,7 @@ def CloneWiki():
     try:
         os.makedirs(output_dir)
         print('Created directory')
-    except:
+    except OSError:
         pass
 
     # Clone

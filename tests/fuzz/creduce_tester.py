@@ -52,7 +52,7 @@ for args in [[]]:
   try:
     try_js(args)
     break
-  except Exception as e:
+  except Exception:
     pass
 else:
   sys.exit(0)

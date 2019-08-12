@@ -503,7 +503,7 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
   if '--version' in args:
     try:
       revision = run_process(['git', 'show'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.splitlines()[0]
-    except:
+    except Exception:
       revision = '(unknown revision)'
     print('''emcc (Emscripten gcc/clang-like replacement) %s (%s)
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
@@ -631,7 +631,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           src = open(arg).read()
           if debug_configure:
             open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
-        except:
+        except IOError:
           pass
       elif arg.endswith('.s'):
         if debug_configure:
@@ -721,7 +721,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
       try:
         os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
-      except:
+      except OSError:
         pass # can fail if e.g. writing the executable to /dev/null
     return ret
 
@@ -862,7 +862,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = newargs[i + 1] = ''
           if key == 'WASM_BACKEND=1':
             exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
-    newargs = [arg for arg in newargs if arg is not '']
+    newargs = [arg for arg in newargs if arg != '']
 
     settings_key_changes = set()
     for s in settings_changes:
@@ -929,14 +929,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             input_files.append((i, arg))
           elif file_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
-            l = unsuffixed_basename(arg)
+            libname = unsuffixed_basename(arg)
             for prefix in LIB_PREFIXES:
               if not prefix:
                 continue
-              if l.startswith(prefix):
-                l = l[len(prefix):]
+              if libname.startswith(prefix):
+                libname = libname[len(prefix):]
                 break
-            libs.append((i, l))
+            libs.append((i, libname))
             newargs[i] = ''
           else:
             logger.warning(arg + ' is not a valid input file')
@@ -982,7 +982,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     original_input_files = input_files[:]
 
-    newargs = [a for a in newargs if a is not '']
+    newargs = [a for a in newargs if a != '']
 
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
@@ -3122,7 +3122,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
                                   memfile, optimizer):
   logger.debug('generating HTML for minimal runtime')
   shell = read_and_preprocess(options.shell_path)
-  if re.search('{{{\s*SCRIPT\s*}}}', shell):
+  if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
     exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
@@ -3528,7 +3528,7 @@ def parse_value(text):
     # simpler syntaxes
     try:
       return json.loads(text)
-    except:
+    except ValueError:
       return parse_string_list(text)
 
   try:
@@ -3540,12 +3540,13 @@ def parse_value(text):
 def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   try:
     level = int(level_string)
-    if clamp:
-      if level > max_level:
-        logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
-        level = max_level
-    assert 0 <= level <= max_level
-  except:
+  except ValueError:
+    raise Exception(err_msg)
+  if clamp:
+    if level > max_level:
+      logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
+      level = max_level
+  if not 0 <= level <= max_level:
     raise Exception(err_msg)
   return level
 

@@ -353,7 +353,7 @@ If manually bisecting:
     make_main('somefile.txt') # absolute becomes relative
     try:
       os.mkdir('dirrey')
-    except:
+    except OSError:
       pass
     self.compile_btest(['main.cpp', '--preload-file', absolute_src_path, '-o', 'dirrey/page.html'])
     self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
@@ -387,7 +387,7 @@ If manually bisecting:
     abs_d = os.path.join(self.get_dir(), d)
     try:
       os.mkdir(abs_d)
-    except:
+    except OSError:
       pass
     txt = 'file with ' + tricky_part + '.txt'
     abs_txt = os.path.join(abs_d, txt)
@@ -844,11 +844,11 @@ window.close = function() {
         [],
         ['-DTEST_EMSCRIPTEN_SDL_SETEVENTHANDLER']
       ]:
-        for async in [
+        for async_ in [
           [],
           ['-DTEST_SLEEP', '-s', 'ASSERTIONS=1', '-s', 'SAFE_HEAP=1'] + self.get_async_args()
         ]:
-          print(delay, defines, async)
+          print(delay, defines, async_)
 
           create_test_file('pre.js', '''
             function keydown(c) {
@@ -867,7 +867,7 @@ window.close = function() {
           ''' % ('setTimeout(function() {' if delay else '', '}, 1);' if delay else '', 'setTimeout(function() {' if delay else '', '}, 1);' if delay else ''))
           create_test_file('sdl_key.c', self.with_report_result(open(path_from_root('tests', 'sdl_key.c')).read()))
 
-          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + async + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
+          self.compile_btest(['sdl_key.c', '-o', 'page.html'] + defines + async_ + ['--pre-js', 'pre.js', '-s', '''EXPORTED_FUNCTIONS=['_main']''', '-lSDL', '-lGL'])
           self.run_browser('page.html', '', '/report_result?223092870')
 
   def test_sdl_key_proxy(self):
@@ -1412,7 +1412,7 @@ keydown(100);keyup(100); // trigger the end
     '''# non-lz4 for comparison
     try:
       os.mkdir('files')
-    except:
+    except OSError:
       pass
     shutil.copyfile('file1.txt', os.path.join('files', 'file1.txt'))
     shutil.copyfile('file2.txt', os.path.join('files', 'file2.txt'))
