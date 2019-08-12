@@ -243,11 +243,12 @@ jobs:
           command: |
             apt-get update -q
             apt-get install -q -y python-pip python3-pip
-      - run: pip install flake8==3.4.1
-      - run: flake8
-      - run: pip3 install --upgrade pip
-      - run: pip3 install flake8==3.7.8
-      - run: python3 -m flake8 --statistics
+      - run: python2 -m pip install --upgrade pip
+      - run: python3 -m pip install --upgrade pip
+      - run: python2 -m pip install flake8==3.7.8
+      - run: python3 -m pip install flake8==3.7.8
+      - run: python2 -m flake8 --show-source --statistics
+      - run: python3 -m flake8 --show-source --statistics
   test-other:
     <<: *test-defaults
     environment:
