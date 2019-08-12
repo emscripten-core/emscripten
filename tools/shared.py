@@ -1084,9 +1084,12 @@ def expand_byte_size_suffixes(value):
   """Given a string with KB/MB size suffixes, such as "32MB", computes how
   many bytes that is and returns it as an integer.
   """
-  match = re.match(r'\s*(\d+)\s*([kmgt]?b)', value, re.I)
+  match = re.match(r'\s*(\d+)\s*([kmgt]?b)$', value, re.I)
   if not match:
-    raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
+    try:
+      return int(value)
+    except ValueError:
+      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
   value, suffix = match.groups()
   return int(value) * SIZE_SUFFIXES[suffix.lower()]
 
