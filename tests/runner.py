@@ -630,7 +630,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           # Make sure we notice if compilation steps failed
           os.remove(f + '.o')
-        except:
+        except OSError:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
@@ -1653,7 +1653,7 @@ def build_library(name,
         stderr = None
       try:
         Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError as e:
+      except subprocess.CalledProcessError:
         pass # Ignore exit code != 0
 
     def open_make_out(mode='r'):
@@ -1758,7 +1758,7 @@ def skip_requested_tests(args, modules):
             suite = getattr(m, suite_name)
             setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             break
-          except:
+          except AttributeError:
             pass
       args[i] = None
   return [a for a in args if a is not None]

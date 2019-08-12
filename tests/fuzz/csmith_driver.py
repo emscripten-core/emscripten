@@ -82,7 +82,7 @@ while 1:
   shared.try_delete(filename)
   try:
     shared.run_process([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) # + shared.EMSDK_OPTS
-  except CalledProcessError as e:
+  except CalledProcessError:
     print('Failed to compile natively using clang')
     notes['invalid'] += 1
     continue

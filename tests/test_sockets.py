@@ -30,13 +30,13 @@ def clean_processes(processes):
       # ask nicely (to try and catch the children)
       try:
         p.terminate() # SIGTERM
-      except:
+      except OSError:
         pass
       time.sleep(1)
       # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
       try:
         p.kill() # SIGKILL
-      except:
+      except OSError:
         pass
 
 
@@ -74,7 +74,7 @@ class WebsockifyServerHarness(object):
         proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
         proxy_sock.close()
         break
-      except:
+      except IOError:
         time.sleep(1)
     else:
       clean_processes(self.processes)
@@ -192,7 +192,7 @@ class sockets(BrowserCore):
     # generate a large string literal to use as our message
     message = ''
     for i in range(256 * 256 * 2):
-        message += str(unichr(ord('a') + (i % 26)))
+        message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')
