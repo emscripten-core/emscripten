@@ -18,7 +18,7 @@ from tools.asm_module import AsmModule
 def run():
   try:
     me, main, side, out = sys.argv[:4]
-  except:
+  except ValueError:
     print('usage: emlink.py [main module] [side module] [output name]', file=sys.stderr)
     sys.exit(1)
 

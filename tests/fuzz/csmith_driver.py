@@ -82,7 +82,7 @@ while 1:
   shared.try_delete(filename)
   try:
     shared.run_process([COMP, '-m32', opts, fullname, '-o', filename + '1'] + CSMITH_CFLAGS + ['-w']) # + shared.EMSDK_OPTS
-  except CalledProcessError as e:
+  except CalledProcessError:
     print('Failed to compile natively using clang')
     notes['invalid'] += 1
     continue
@@ -104,7 +104,7 @@ while 1:
       raise Exception('segfault')
     if correct1 != correct3:
       raise Exception('clang opts change result')
-  except Exception, e:
+  except Exception as e:
     print('Failed or infinite looping in native, skipping', e)
     notes['invalid'] += 1
     continue
@@ -179,7 +179,7 @@ while 1:
       shared.run_process(js_args)
       assert os.path.exists(filename + '.js')
       return js_args
-    except:
+    except Exception:
       return False
 
   def execute_js(engine):

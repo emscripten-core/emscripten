@@ -341,12 +341,12 @@ class benchmark(RunnerCore):
     fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + run_process(['git', 'show'], stdout=PIPE).stdout.splitlines()[0])
-    except:
+    except Exception:
       pass
     try:
       with chdir(os.path.expanduser('~/Dev/mozilla-central')):
         fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
-    except:
+    except Exception:
       pass
     fingerprint.append('llvm: ' + LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))

@@ -332,6 +332,7 @@ var WEBSOCKET_URL = 'ws://';
 
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
+// You can set 'null', if you don't want to specify it.
 var WEBSOCKET_SUBPROTOCOL = 'binary';
 
 // Print out debugging information from our OpenAL implementation.
