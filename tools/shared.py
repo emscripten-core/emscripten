@@ -258,7 +258,7 @@ try:
   # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
   # those child processes get the same configuration file by setting it to the currently active environment.
   os.environ['EM_CONFIG'] = EM_CONFIG
-except:
+except Exception:
   EM_CONFIG = os.environ.get('EM_CONFIG')
 
 if EM_CONFIG and not os.path.isfile(EM_CONFIG):
@@ -484,7 +484,7 @@ def check_node_version():
 def check_closure_compiler():
   try:
     run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-  except:
+  except Exception:
     logger.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
   if not os.path.exists(CLOSURE_COMPILER):
@@ -635,7 +635,7 @@ def macos_find_native_sdk_path():
     sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
     logger.debug('Targeting macOS SDK found at ' + sdk_path)
     return sdk_path
-  except:
+  except OSError:
     logger.warning('Could not find native macOS SDK path to target!')
     return None
 
@@ -1652,7 +1652,7 @@ class Building(object):
       raise
     if 'EMMAKEN_JUST_CONFIGURE' in env:
       del env['EMMAKEN_JUST_CONFIGURE']
-    if res.returncode is not 0:
+    if res.returncode != 0:
       logger.error('Configure step failed with non-zero return code: %s.  Command line: %s at %s' % (res.returncode, ' '.join(args), os.getcwd()))
       raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
@@ -3187,7 +3187,7 @@ class WebAssembly(object):
 # Converts a string to the native str type.
 def asstr(s):
   if str is bytes:
-    if isinstance(s, unicode):
+    if isinstance(s, type(u'')):
       return s.encode('utf-8')
   elif isinstance(s, bytes):
     return s.decode('utf-8')

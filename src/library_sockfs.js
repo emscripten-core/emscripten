@@ -194,12 +194,17 @@ mergeInto(LibraryManager.library, {
               }
             }
 
-            // The regex trims the string (removes spaces at the beginning and end, then splits the string by
-            // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
-            subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
+            // The default WebSocket options
+            var opts = undefined;
 
-            // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
-            var opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
+            if (subProtocols !== 'null') {
+              // The regex trims the string (removes spaces at the beginning and end, then splits the string by
+              // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
+              subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
+
+              // The node ws library API for specifying optional subprotocol is slightly different than the browser's.
+              opts = ENVIRONMENT_IS_NODE ? {'protocol': subProtocols.toString()} : subProtocols;
+            }
 
             // some webservers (azure) does not support subprotocol header
             if (runtimeConfig && null === Module['websocket']['subprotocol']) {

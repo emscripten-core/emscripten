@@ -5033,6 +5033,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['--pre-js', 'pre.js']
 
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('ASSERTIONS', 1)
     self.do_run(r'''
       #include <emscripten.h>
       #include <iostream>
@@ -7043,7 +7044,7 @@ err = err = function(){};
         for i in range(len(data)):
           data[i] = encode_utf8(data[i])
         return data
-      elif isinstance(data, unicode):
+      elif isinstance(data, type(u'')):
         return data.encode('utf8')
       else:
         return data
@@ -7598,7 +7599,7 @@ extern "C" {
       if not should_pass:
         should_pass = True
         raise Exception('should not have passed')
-    except:
+    except Exception:
       if should_pass:
         raise
 
