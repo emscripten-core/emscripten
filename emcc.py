@@ -929,14 +929,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             input_files.append((i, arg))
           elif file_suffix.endswith(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
-            lib = unsuffixed_basename(arg)
+            libname = unsuffixed_basename(arg)
             for prefix in LIB_PREFIXES:
               if not prefix:
                 continue
-              if lib.startswith(prefix):
-                lib = lib[len(prefix):]
+              if libname.startswith(prefix):
+                libname = libname[len(prefix):]
                 break
-            libs.append((i, lib))
+            libs.append((i, libname))
             newargs[i] = ''
           else:
             logger.warning(arg + ' is not a valid input file')
