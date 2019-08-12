@@ -5033,6 +5033,7 @@ main( int argv, char ** argc ) {
     self.emcc_args += ['--pre-js', 'pre.js']
 
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('ASSERTIONS', 1)
     self.do_run(r'''
       #include <emscripten.h>
       #include <iostream>
