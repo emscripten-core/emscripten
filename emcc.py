@@ -36,7 +36,7 @@ import shutil
 import stat
 import sys
 import time
-from subprocess import PIPE, CalledProcessError
+from subprocess import PIPE
 
 from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
@@ -503,7 +503,7 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
   if '--version' in args:
     try:
       revision = run_process(['git', 'show'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.splitlines()[0]
-    except CalledProcessError:
+    except Exception:
       revision = '(unknown revision)'
     print('''emcc (Emscripten gcc/clang-like replacement) %s (%s)
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
