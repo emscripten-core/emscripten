@@ -4151,13 +4151,13 @@ int main(int argc, char **argv) {
     for code in [0, 123]:
       for no_exit in [0, 1]:
         for call_exit in [0, 1]:
-          for async_ in [0, 1]:
-            run_process([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_])
+          for async_compile in [0, 1]:
+            run_process([PYTHON, EMCC, 'src.cpp', '-DCODE=%d' % code, '-s', 'EXIT_RUNTIME=%d' % (1 - no_exit), '-DCALL_EXIT=%d' % call_exit, '-s', 'WASM_ASYNC_COMPILATION=%d' % async_compile])
             for engine in JS_ENGINES:
               # async compilation can't return a code in d8
-              if async_ and engine == V8_ENGINE:
+              if async_compile and engine == V8_ENGINE:
                 continue
-              print(code, no_exit, call_exit, async_, engine)
+              print(code, no_exit, call_exit, async_compile, engine)
               process = run_process(engine + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
               # we always emit the right exit code, whether we exit the runtime or not
               assert process.returncode == code, [process.returncode, process.stdout, process.stderr]
