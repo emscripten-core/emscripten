@@ -236,7 +236,6 @@ def create_test_file(name, contents, binary=False):
 # The core test modes
 core_test_modes = [
   'asm0',
-  'asm1',
   'asm2',
   'asm3',
   'asm2g',
@@ -253,7 +252,6 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
-  'asmi',
   'asm2i',
 ]
 

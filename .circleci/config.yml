@@ -394,6 +394,10 @@ jobs:
     environment:
       - TEST_TARGET=wasm3
       # TODO: test wasms
+  test-upstream-wasm2js1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasm2js1
   test-upstream-other:
     <<: *test-defaults
     environment:
@@ -471,6 +475,9 @@ workflows:
           requires:
             - build-upstream
       - test-upstream-wasm3:
+          requires:
+            - build-upstream
+      - test-upstream-wasm2js1:
           requires:
             - build-upstream
       - test-upstream-other:
