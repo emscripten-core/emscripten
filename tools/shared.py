@@ -629,15 +629,17 @@ def build_clang_tool_path(tool):
 # Whenever building a native executable for macOS, we must provide the macOS SDK
 # version we want to target.
 def macos_find_native_sdk_path():
+  sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
   try:
-    sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
-    sdks = next(os.walk(sdk_root))[1]
-    sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
-    logger.debug('Targeting macOS SDK found at ' + sdk_path)
-    return sdk_path
-  except (OSError, StopIteration):
+    sdks = [name for name in os.listdir(sdk_root) if os.path.isdir(os.path.join(sdk_root, name))]
+  except OSError:
+    sdks = []
+  if not sdks:
     logger.warning('Could not find native macOS SDK path to target!')
     return None
+  sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
+  logger.debug('Targeting macOS SDK found at ' + sdk_path)
+  return sdk_path
 
 
 # These extra args need to be passed to Clang when targeting a native host system executable
