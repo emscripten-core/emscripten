@@ -2760,10 +2760,7 @@ class Building(object):
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
-      if Settings.ERROR_ON_MISSING_LIBRARIES:
-        exit_with_error('emcc: cannot find library "%s" (`-s ERROR_ON_MISSING_LIBRARIES=0` to disable this error)', library_name)
-      else:
-        logger.warning('emcc: cannot find library "%s"', library_name)
+      exit_with_error('emcc: cannot find library "%s"', library_name)
 
     return library_files
 
