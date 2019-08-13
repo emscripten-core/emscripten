@@ -154,6 +154,31 @@ class Library(object):
   Other class methods act upon a group of libraries. For example,
   `Library.get_all_variations()` returns a mapping of all variations of
   existing libraries.
+
+  To add a new type of variation, you must add an parameter to `__init__` that
+  selects the variant. Then, override one of `vary_on` or `variations`, as well
+  as `get_default_variation`.
+
+  If the parameter is boolean, overriding `vary_on` to add the parameter name
+  to the returned list is sufficient:
+
+    @classmethod
+    def vary_on(cls):
+      return super().vary_on() + ['my_parameter']
+
+  Otherwise, you must override `variations`:
+
+    @classmethod
+    def variations(cls):
+      return [{'my_parameter': value, **other} for value, other in
+              itertools.product([1, 2, 3], super().variations())]
+
+  You then need to modify `get_default_variation` to detect the correct value
+  for your new parameter based on the settings:
+
+    @classmethod
+    def get_default_variation(cls, **kwargs):
+      return super().get_default_variation(my_parameter=shared.Settings.MY_PARAMETER, **kwargs)
   """
 
   # The simple name of the library. When linking, this is the name to use to
