@@ -121,7 +121,7 @@ class NativeBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder:
-      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
+      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing", 'CFLAGS': ' '.join(shared.get_clang_native_args())}
       env.update(shared.get_clang_native_env())
       print(env)
       native_args += lib_builder(self.name, native=True, env_init=env)
