@@ -131,9 +131,9 @@ requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CA
 
 class browser(BrowserCore):
   @classmethod
-  def setUpClass(self):
-    super(browser, self).setUpClass()
-    self.browser_timeout = 60
+  def setUpClass(cls):
+    super(browser, cls).setUpClass()
+    cls.browser_timeout = 60
     print()
     print('Running the browser tests. Make sure the browser allows popups from localhost.')
     print()

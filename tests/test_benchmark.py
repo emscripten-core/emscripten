@@ -335,8 +335,8 @@ class benchmark(RunnerCore):
   save_dir = True
 
   @classmethod
-  def setUpClass(self):
-    super(benchmark, self).setUpClass()
+  def setUpClass(cls):
+    super(benchmark, cls).setUpClass()
 
     fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
     try:

@@ -127,8 +127,8 @@ class sockets(BrowserCore):
   emcc_args = []
 
   @classmethod
-  def setUpClass(self):
-    super(sockets, self).setUpClass()
+  def setUpClass(cls):
+    super(sockets, cls).setUpClass()
     print()
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()
