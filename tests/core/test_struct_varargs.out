@@ -1,7 +1,2 @@
-42
-42.314000
-sizeof tiny: 2 (3 of them: 6)
-0 : 10
-1 : 11
-2 : 12
-ok.
+value passed struct: 42 and 21
+va_arg struct: 42 and 21

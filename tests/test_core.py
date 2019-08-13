@@ -309,6 +309,9 @@ class TestCoreBase(RunnerCore):
   def test_double_varargs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_double_varargs')
 
+  def test_trivial_struct_varargs(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_trivial_struct_varargs')
+
   def test_struct_varargs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs')
 
