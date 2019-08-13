@@ -529,11 +529,6 @@ class AsanInstrumentedLibrary(Library):
     return vary_on
 
   @classmethod
-  def variations(cls):
-    return [variation for variation in super(AsanInstrumentedLibrary, cls).variations()
-            if not shared.Settings.WASM_BACKEND or not variation['is_asan'] or not variation.get('is_mt')]
-
-  @classmethod
   def get_default_variation(cls, **kwargs):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
@@ -1105,6 +1100,16 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+# If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
+# confusing, so issue a warning.
+def warn_on_unexported_main(symbolses):
+  if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+    for symbols in symbolses:
+      if 'main' in symbols.defs:
+        logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
+        return
+
+
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
@@ -1147,6 +1152,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   # Scan symbols
   symbolses = shared.Building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+
+  warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
     class Dummy(object):
@@ -1538,7 +1545,7 @@ def get_ports(settings):
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-  except:
+  except Exception:
     logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
     raise
 

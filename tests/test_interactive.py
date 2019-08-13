@@ -16,9 +16,9 @@ from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
 
 class interactive(BrowserCore):
   @classmethod
-  def setUpClass(self):
-    super(interactive, self).setUpClass()
-    self.browser_timeout = 60
+  def setUpClass(cls):
+    super(interactive, cls).setUpClass()
+    cls.browser_timeout = 60
     print()
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()

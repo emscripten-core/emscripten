@@ -18,6 +18,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
+
+v.1.38.41: 08/07/2019
+---------------------
  - Remove fastcomp's implementation of Asyncify. This has been deprecated for
    a long time, since we added Emterpreter-Async, and now we have a new Asyncify
    implementation in the upstream wasm backend. It is recommended to upgrade to
@@ -32,6 +36,12 @@ Current Trunk
    minification. You must add it to `EXTRA_EXPORTED_RUNTIME_METHODS` if you want
    to call it on Module. (In assertions builds, an error with an explanation is
    shown.)
+ - Allow expressions with side effects as `EM_ASM`'s arguments and prohibit
+   non-arithmetic arguments (e.g. pointers, functions, arrays, objects). (#9054)
+ - `emcc` on Windows now uses native newline byte sequence to get a line to
+   print for parse error reporting. (#9088)
+ - Internal API update: one can now specialize embind's (un)marshalling for a
+   group of types via SFINAE, instead of a single type. (#9089)
 
 v.1.38.40: 07/24/2019
 ---------------------

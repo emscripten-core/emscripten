@@ -45,23 +45,23 @@ OUTPUT_FILE = None
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
-    l, r = arg.split('=', 1)
-    if l == 'ZERO':
-      ZERO = int(r)
-    elif l == 'ASYNC':
-      ASYNC = int(r)
-    elif l == 'ASSERTIONS':
-      ASSERTIONS = int(r)
-    elif l == 'PROFILING':
-      PROFILING = int(r)
-    elif l == 'FROUND':
-      FROUND = int(r)
-    elif l == 'ADVISE':
-      ADVISE = int(r)
-    elif l == 'MEMORY_SAFE':
-      MEMORY_SAFE = int(r)
-    elif l == 'FILE':
-      OUTPUT_FILE = r[1:-1]
+    left, right = arg.split('=', 1)
+    if left == 'ZERO':
+      ZERO = int(right)
+    elif left == 'ASYNC':
+      ASYNC = int(right)
+    elif left == 'ASSERTIONS':
+      ASSERTIONS = int(right)
+    elif left == 'PROFILING':
+      PROFILING = int(right)
+    elif left == 'FROUND':
+      FROUND = int(right)
+    elif left == 'ADVISE':
+      ADVISE = int(right)
+    elif left == 'MEMORY_SAFE':
+      MEMORY_SAFE = int(right)
+    elif left == 'FILE':
+      OUTPUT_FILE = right[1:-1]
     return False
   return True
 

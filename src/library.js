@@ -3413,7 +3413,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons'],
+  _inet_pton6_raw__deps: ['htons', 'ntohs'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -3578,7 +3578,7 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw'],
+  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
   _read_sockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -4464,10 +4464,12 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address__deps: ['emscripten_generate_pc'],
   emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
+    var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     // skip this function and the caller to get caller's return address
     return _emscripten_generate_pc(callstack[level + 2]);
   },
@@ -4506,8 +4508,7 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
-                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {

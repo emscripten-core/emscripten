@@ -332,6 +332,7 @@ var WEBSOCKET_URL = 'ws://';
 
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
+// You can set 'null', if you don't want to specify it.
 var WEBSOCKET_SUBPROTOCOL = 'binary';
 
 // Print out debugging information from our OpenAL implementation.
@@ -456,6 +457,12 @@ var STB_IMAGE = 0;
 // and iPad 4, iPhone 5 and iPhone 5c all had end-of-life at iOS 10.3.3 (confirmed not affected).
 // If you do not care about old iOS 9 support, keep this disabled.
 var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
+
+// From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
+// are broken and do not function correctly, when used as source textures.
+// See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+// https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
 
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
 var POLYFILL_OLD_MATH_FUNCTIONS = 0;
@@ -803,7 +810,6 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * ERROR_ON_MISSING_LIBRARIES is enabled
 //   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
@@ -825,10 +831,6 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
 // be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
-
-// My default any -lfoo directives pointing to nonexistent library files will
-// issue a linker error.  Set to 0 to downgrade this to a warning.
-var ERROR_ON_MISSING_LIBRARIES = 1;
 
 // Specifies a list of Emscripten-provided JS libraries to link against.
 // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
@@ -1593,4 +1595,5 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to asm.js (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
+  ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
 ];

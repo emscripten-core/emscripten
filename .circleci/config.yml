@@ -242,9 +242,13 @@ jobs:
           name: install pip
           command: |
             apt-get update -q
-            apt-get install -q -y python-pip
-      - run: pip install flake8==3.4.1
-      - run: flake8
+            apt-get install -q -y python-pip python3-pip
+      - run: python2 -m pip install --upgrade pip
+      - run: python3 -m pip install --upgrade pip
+      - run: python2 -m pip install flake8==3.7.8
+      - run: python3 -m pip install flake8==3.7.8
+      - run: python2 -m flake8 --show-source --statistics
+      - run: python3 -m flake8 --show-source --statistics
   test-other:
     <<: *test-defaults
     environment:
@@ -300,10 +304,6 @@ jobs:
     <<: *test-defaults
     environment:
       - TEST_TARGET=wasm0
-  test-wasm1:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm1
   test-wasm2:
     <<: *test-defaults
     environment:
@@ -388,8 +388,16 @@ jobs:
   test-upstream-wasm2:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=wasm2 wasm3.test_llvm_used
-      # TODO: test all of wasm3/wasms on LLVM wasm backend
+      - TEST_TARGET=wasm2
+  test-upstream-wasm3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasm3
+      # TODO: test wasms
+  test-upstream-wasm2js1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasm2js1
   test-upstream-other:
     <<: *test-defaults
     environment:
@@ -450,9 +458,6 @@ workflows:
       - test-wasm0:
           requires:
             - build
-      - test-wasm1:
-          requires:
-            - build
       - test-wasm2:
           requires:
             - build
@@ -467,6 +472,12 @@ workflows:
           requires:
             - build-upstream
       - test-upstream-wasm2:
+          requires:
+            - build-upstream
+      - test-upstream-wasm3:
+          requires:
+            - build-upstream
+      - test-upstream-wasm2js1:
           requires:
             - build-upstream
       - test-upstream-other:

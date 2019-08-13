@@ -174,27 +174,6 @@ def no_asmjs(note=''):
   return decorated
 
 
-# used for tests that fail now and then on CI, due to timing or other
-# random causes. this tries the test a few times, looking for at least
-# one pass
-def flaky(f):
-  assert callable(f)
-  max_tries = 3
-
-  @wraps(f)
-  def decorated(self):
-    for i in range(max_tries - 1):
-      try:
-        f(self)
-        return
-      except Exception:
-        print('flaky...')
-        continue
-    # run the last time normally, to get a simpler stack trace
-    f(self)
-  return decorated
-
-
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -257,7 +236,6 @@ def create_test_file(name, contents, binary=False):
 # The core test modes
 core_test_modes = [
   'asm0',
-  'asm1',
   'asm2',
   'asm3',
   'asm2g',
@@ -274,7 +252,6 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
-  'asmi',
   'asm2i',
 ]
 
@@ -651,7 +628,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           # Make sure we notice if compilation steps failed
           os.remove(f + '.o')
-        except:
+        except OSError:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
@@ -1337,7 +1314,7 @@ class BrowserCore(RunnerCore):
 
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
-    cls.browser_timeout = 30
+    cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
@@ -1363,7 +1340,12 @@ class BrowserCore(RunnerCore):
         self.harness_out_queue.get()
       raise Exception('excessive responses from %s' % who)
 
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None):
+  # @param tries_left: how many more times to try this test, if it fails. browser tests have
+  #                    many more causes of flakiness (in particular, they do not run
+  #                    synchronously, so we have a timeout, which can be hit if the VM
+  #                    we run on stalls temporarily), so we let each test try more than
+  #                    once by default
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1398,7 +1380,16 @@ class BrowserCore(RunnerCore):
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
-          self.assertIdentical(expectedResult, output)
+          # verify the result, and try again if we should do so
+          try:
+            self.assertIdentical(expectedResult, output)
+          except Exception as e:
+            if tries_left > 0:
+              print('[test error (see below), automatically retrying]')
+              print(e)
+              return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
+            else:
+              raise e
       finally:
         time.sleep(0.1) # see comment about Windows above
       self.assert_out_queue_empty('this test')
@@ -1658,10 +1649,7 @@ def build_library(name,
         stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
       else:
         stderr = None
-      try:
-        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError as e:
-        pass # Ignore exit code != 0
+      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
 
     def open_make_out(mode='r'):
       return open(os.path.join(project_dir, 'make.out'), mode)
@@ -1672,25 +1660,17 @@ def build_library(name,
     if EM_BUILD_VERBOSE >= 3:
       make_args += ['VERBOSE=1']
 
-    try:
-      with open_make_out('w') as make_out:
-        with open_make_err('w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    with open_make_out('w') as make_out:
+      with open_make_err('w') as make_err:
+        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
 
-      if cache is not None:
-        cache[cache_name] = []
-        for f in generated_libs:
-          basename = os.path.basename(f)
-          cache[cache_name].append((basename, open(f, 'rb').read()))
-    except Exception as e:
-      if EM_BUILD_VERBOSE == 0:
-         with open_make_err() as ferr:
-           for line in ferr:
-             sys.stderr.write(line)
-
-      raise Exception('could not build library ' + name + ' due to exception ' + str(e))
+    if cache is not None:
+      cache[cache_name] = []
+      for f in generated_libs:
+        basename = os.path.basename(f)
+        cache[cache_name].append((basename, open(f, 'rb').read()))
 
   return generated_libs
 
@@ -1765,7 +1745,7 @@ def skip_requested_tests(args, modules):
             suite = getattr(m, suite_name)
             setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             break
-          except:
+          except AttributeError:
             pass
       args[i] = None
   return [a for a in args if a is not None]

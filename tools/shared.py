@@ -258,7 +258,7 @@ try:
   # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
   # those child processes get the same configuration file by setting it to the currently active environment.
   os.environ['EM_CONFIG'] = EM_CONFIG
-except:
+except Exception:
   EM_CONFIG = os.environ.get('EM_CONFIG')
 
 if EM_CONFIG and not os.path.isfile(EM_CONFIG):
@@ -281,6 +281,8 @@ else:
     generate_config(EM_CONFIG, first_time=True)
     sys.exit(0)
 
+PYTHON = os.getenv('EM_PYTHON', sys.executable)
+
 # The following globals can be overridden by the config file.
 # See parse_config_file below.
 NODE_JS = None
@@ -295,7 +297,6 @@ CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
-PYTHON = None
 JS_ENGINE = None
 JS_ENGINES = []
 COMPILER_OPTS = []
@@ -324,7 +325,6 @@ def parse_config_file():
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
-    'PYTHON',
     'JS_ENGINE',
     'JS_ENGINES',
     'COMPILER_OPTS',
@@ -484,7 +484,7 @@ def check_node_version():
 def check_closure_compiler():
   try:
     run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-  except:
+  except Exception:
     logger.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
   if not os.path.exists(CLOSURE_COMPILER):
@@ -503,7 +503,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # For the Emscripten-specific WASM metadata section, follows semver, changes
 # whenever metadata section changes structure
 # NB: major version 0 implies no compatibility
-(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 1)
+(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 2)
 # For the JS/WASM ABI, specifies the minimum ABI version required of
 # the WASM runtime implementation by the generated WASM binary. It follows
 # semver and changes whenever C types change size/signedness or
@@ -512,7 +512,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 3)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 4)
 
 
 def generate_sanity():
@@ -530,12 +530,6 @@ def perform_sanify_checks():
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-  if not os.path.exists(PYTHON) and not os.path.exists(cmd + '.exe'):
-    try:
-      run_process([PYTHON, '--xversion'], stdout=PIPE, stderr=PIPE)
-    except (OSError, subprocess.CalledProcessError):
-      exit_with_error('Cannot find %s, check the paths in config file (%s)', PYTHON, CONFIG_FILE)
 
   # Sanity check passed!
   with ToolchainProfiler.profile_block('sanity closure compiler'):
@@ -637,11 +631,11 @@ def build_clang_tool_path(tool):
 def macos_find_native_sdk_path():
   try:
     sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
-    sdks = os.walk(sdk_root).next()[1]
+    sdks = next(os.walk(sdk_root))[1]
     sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
     logger.debug('Targeting macOS SDK found at ' + sdk_path)
     return sdk_path
-  except:
+  except (OSError, StopIteration):
     logger.warning('Could not find native macOS SDK path to target!')
     return None
 
@@ -916,10 +910,6 @@ if JS_ENGINES is None:
 if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
-if PYTHON is None:
-  logger.debug('PYTHON not defined in ' + hint_config_file_location() + ', using "%s"' % (sys.executable,))
-  PYTHON = sys.executable
-
 if JAVA is None:
   logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
   JAVA = 'java'
@@ -1095,7 +1085,7 @@ def expand_byte_size_suffixes(value):
   value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
   try:
     return eval(value)
-  except:
+  except Exception:
     raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
 
 
@@ -1109,66 +1099,66 @@ class SettingsManager(object):
       self.reset()
 
     @classmethod
-    def reset(self):
-      self.attrs = {}
+    def reset(cls):
+      cls.attrs = {}
 
       # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      exec(settings, {'attrs': self.attrs})
+      exec(settings, {'attrs': cls.attrs})
 
       if 'EMCC_STRICT' in os.environ:
-        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+        cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
       # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
       # details
-      self.legacy_settings = {}
-      self.alt_names = {}
-      for legacy in self.attrs['LEGACY_SETTINGS']:
+      cls.legacy_settings = {}
+      cls.alt_names = {}
+      for legacy in cls.attrs['LEGACY_SETTINGS']:
         if len(legacy) == 2:
           name, new_name = legacy
-          self.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
-          self.alt_names[name] = new_name
-          self.alt_names[new_name] = name
-          default_value = self.attrs[new_name]
+          cls.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
+          cls.alt_names[name] = new_name
+          cls.alt_names[new_name] = name
+          default_value = cls.attrs[new_name]
         else:
           name, fixed_values, err = legacy
-          self.legacy_settings[name] = (fixed_values, err)
+          cls.legacy_settings[name] = (fixed_values, err)
           default_value = fixed_values[0]
-        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-        if not self.attrs['STRICT']:
-          self.attrs[name] = default_value
+        assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not cls.attrs['STRICT']:
+          cls.attrs[name] = default_value
 
       if get_llvm_target() == WASM_TARGET:
-        self.attrs['WASM_BACKEND'] = 1
+        cls.attrs['WASM_BACKEND'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
     @classmethod
-    def serialize(self):
+    def serialize(cls):
       ret = []
-      for key, value in self.attrs.items():
+      for key, value in cls.attrs.items():
         if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
       return ret
 
     @classmethod
-    def to_dict(self):
-      return self.attrs.copy()
+    def to_dict(cls):
+      return cls.attrs.copy()
 
     @classmethod
-    def copy(self, values):
-      self.attrs = values
+    def copy(cls, values):
+      cls.attrs = values
 
     @classmethod
-    def apply_opt_level(self, opt_level, shrink_level=0, noisy=False):
+    def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
-        self.attrs['ASM_JS'] = 1
-        self.attrs['ASSERTIONS'] = 0
-        self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
+        cls.attrs['ASM_JS'] = 1
+        cls.attrs['ASSERTIONS'] = 0
+        cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
-        self.attrs['EVAL_CTORS'] = 1
+        cls.attrs['EVAL_CTORS'] = 1
 
     def keys(self):
       return self.attrs.keys()
@@ -1209,12 +1199,12 @@ class SettingsManager(object):
       self.attrs[attr] = value
 
     @classmethod
-    def get(self, key):
-      return self.attrs.get(key)
+    def get(cls, key):
+      return cls.attrs.get(key)
 
     @classmethod
-    def __getitem__(self, key):
-      return self.attrs[key]
+    def __getitem__(cls, key):
+      return cls.attrs[key]
 
     @classmethod
     def target_environment_may_be(self, environment):
@@ -1644,22 +1634,15 @@ class Building(object):
       # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
       # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    try:
-      if EM_BUILD_VERBOSE >= 3:
-        print('configure: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE >= 2:
-        stdout = None
-      if EM_BUILD_VERBOSE >= 1:
-        stderr = None
-      res = run_process(args, check=False, stdout=stdout, stderr=stderr, env=env)
-    except Exception:
-      logger.error('Error running configure: "%s"' % ' '.join(args))
-      raise
+    if EM_BUILD_VERBOSE >= 3:
+      print('configure: ' + str(args), file=sys.stderr)
+    if EM_BUILD_VERBOSE >= 2:
+      stdout = None
+    if EM_BUILD_VERBOSE >= 1:
+      stderr = None
+    run_process(args, stdout=stdout, stderr=stderr, env=env)
     if 'EMMAKEN_JUST_CONFIGURE' in env:
       del env['EMMAKEN_JUST_CONFIGURE']
-    if res.returncode is not 0:
-      logger.error('Configure step failed with non-zero return code: %s.  Command line: %s at %s' % (res.returncode, ' '.join(args), os.getcwd()))
-      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None, cflags=[]):
@@ -1679,20 +1662,16 @@ class Building(object):
       if 'mingw32-make' in args[0]:
         env = Building.remove_sh_exe_from_path(env)
 
-    try:
-      # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      if EM_BUILD_VERBOSE >= 3:
-        print('make: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE >= 2:
-        stdout = None
-      if EM_BUILD_VERBOSE >= 1:
-        stderr = None
-      res = run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, check=False)
-    except Exception:
-      logger.error('Error running make: "%s"' % ' '.join(args))
-      raise
-    if res.returncode != 0:
-      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
+    # On Windows, run the execution through shell to get PATH expansion and
+    # executable extension lookup, e.g. 'sdl2-config' will match with
+    # 'sdl2-config.bat' in PATH.
+    if EM_BUILD_VERBOSE >= 3:
+      print('make: ' + str(args), file=sys.stderr)
+    if EM_BUILD_VERBOSE >= 2:
+      stdout = None
+    if EM_BUILD_VERBOSE >= 1:
+      stderr = None
+    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
 
   @staticmethod
   def make_paths_absolute(f):
@@ -2599,6 +2578,7 @@ class Building(object):
     for line in out.split('\n'):
       if SEP in line:
         old, new = line.strip().split(SEP)
+        assert old not in mapping, 'imports must be unique'
         mapping[old] = new
     # apply them
     passes = ['applyImportAndExportNameChanges']
@@ -2780,10 +2760,7 @@ class Building(object):
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
-      if Settings.ERROR_ON_MISSING_LIBRARIES:
-        exit_with_error('emcc: cannot find library "%s" (`-s ERROR_ON_MISSING_LIBRARIES=0` to disable this error)', library_name)
-      else:
-        logger.warning('emcc: cannot find library "%s"', library_name)
+      exit_with_error('emcc: cannot find library "%s"', library_name)
 
     return library_files
 
@@ -3105,6 +3082,7 @@ class WebAssembly(object):
       WebAssembly.lebify(EMSCRIPTEN_ABI_MAJOR) +
       WebAssembly.lebify(EMSCRIPTEN_ABI_MINOR) +
 
+      WebAssembly.lebify(int(Settings.WASM_BACKEND)) +
       WebAssembly.lebify(mem_size) +
       WebAssembly.lebify(table_size) +
       WebAssembly.lebify(global_base) +
@@ -3190,7 +3168,7 @@ class WebAssembly(object):
 # Converts a string to the native str type.
 def asstr(s):
   if str is bytes:
-    if isinstance(s, unicode):
+    if isinstance(s, type(u'')):
       return s.encode('utf-8')
   elif isinstance(s, bytes):
     return s.decode('utf-8')

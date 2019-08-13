@@ -325,7 +325,8 @@ function isExportedByForceFilesystem(name) {
          name === 'FS_unlink' ||
          name === 'getMemory' ||
          name === 'addRunDependency' ||
-         name === 'removeRunDependency';
+         name === 'removeRunDependency' ||
+         name === 'calledRun';
 }
 
 // export parts of the JS runtime that the user asked for
@@ -420,7 +421,6 @@ function exportRuntime() {
     'FS_unlink',
     'GL',
     'dynamicAlloc',
-    'warnOnce',
     'loadDynamicLibrary',
     'loadWebAssemblyModule',
     'getLEB',
@@ -447,6 +447,7 @@ function exportRuntime() {
 
   if (!MINIMAL_RUNTIME) {
     runtimeElements.push('Pointer_stringify');
+    runtimeElements.push('warnOnce');
   }
 
   if (MODULARIZE) {
@@ -480,6 +481,7 @@ function exportRuntime() {
     'ALLOC_STACK',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
+    'calledRun',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
