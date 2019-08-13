@@ -650,9 +650,10 @@ def get_clang_native_args():
     return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
   if MACOS:
-    sdk_path = macos_find_native_sdk_path()
-    if sdk_path:
-      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', macos_find_native_sdk_path()]
+    pass
+    #sdk_path = macos_find_native_sdk_path()
+    #if sdk_path:
+    #  CACHED_CLANG_NATIVE_ARGS = ['-isysroot', macos_find_native_sdk_path()]
   elif os.name == 'nt':
     CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
@@ -669,7 +670,11 @@ def get_clang_native_env():
     return CACHED_CLANG_NATIVE_ENV
   env = os.environ.copy()
 
-  if WINDOWS:
+  if MACOS:
+    path = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()
+    logging.debug('Using MacOS SDKROOT: ' + path)
+    env['SDKROOT'] = path
+  elif WINDOWS:
     # If already running in Visual Studio Command Prompt manually, no need to
     # add anything here, so just return.
     if 'VSINSTALLDIR' in env and 'INCLUDE' in env and 'LIB' in env:

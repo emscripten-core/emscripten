@@ -121,7 +121,10 @@ class NativeBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder:
-      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"})
+      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
+      env.update(shared.get_clang_native_env())
+      print(env)
+      native_args += lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -313,7 +316,7 @@ benchmarkers = []
 
 if CLANG_CC and CLANG:
   benchmarkers += [
-    # NativeBenchmarker('clang', CLANG_CC, CLANG),
+    NativeBenchmarker('clang', CLANG_CC, CLANG),
     # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
 if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
