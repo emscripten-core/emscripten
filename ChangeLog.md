@@ -18,6 +18,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
 
 v.1.38.41: 08/07/2019
 ---------------------

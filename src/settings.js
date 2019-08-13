@@ -810,7 +810,6 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * ERROR_ON_MISSING_LIBRARIES is enabled
 //   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
@@ -832,10 +831,6 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
 // be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
-
-// My default any -lfoo directives pointing to nonexistent library files will
-// issue a linker error.  Set to 0 to downgrade this to a warning.
-var ERROR_ON_MISSING_LIBRARIES = 1;
 
 // Specifies a list of Emscripten-provided JS libraries to link against.
 // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
@@ -1600,4 +1595,5 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to asm.js (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
+  ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
 ];
