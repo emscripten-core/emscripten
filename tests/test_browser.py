@@ -14,6 +14,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import sys
 import time
 import unittest
 import webbrowser
@@ -29,6 +30,11 @@ try:
 except ImportError:
   # Python 2 compatibility
   from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
+
+if sys.version_info.major == 2:
+  from urllib import urlopen
+else:
+  from urllib.request import urlopen
 
 
 def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, checksum, port):
@@ -52,7 +58,9 @@ def test_chunked_synchronous_xhr_server(support_byte_ranges, chunkSize, data, ch
       s.sendheaders([("Access-Control-Allow-Headers", "Range")], 0)
 
     def do_GET(s):
-      if not support_byte_ranges:
+      if s.path == '/':
+        s.sendheaders()
+      elif not support_byte_ranges:
         s.sendheaders()
         s.wfile.write(data)
       else:
@@ -1614,6 +1622,7 @@ keydown(100);keyup(100); // trigger the end
     self.do_test_worker()
     self.assertContained('you should not see this text when in a worker!', run_js('worker.js')) # code should run standalone too
 
+  @no_firefox('keeps sending OPTIONS requests, and eventually errors')
   def test_chunked_synchronous_xhr(self):
     main = 'chunked_sync_xhr.html'
     worker_filename = "download_and_checksum_worker.js"
@@ -1681,6 +1690,18 @@ keydown(100);keyup(100); // trigger the end
 
     server = multiprocessing.Process(target=test_chunked_synchronous_xhr_server, args=(True, chunkSize, data, checksum, self.port))
     server.start()
+
+    # block until the server is actually ready
+    for i in range(60):
+      try:
+        urlopen('http://localhost:11111')
+        break
+      except Exception as e:
+        print('(sleep for server)')
+        time.sleep(1)
+        if i == 60:
+          raise e
+
     try:
       self.run_browser(main, 'Chunked binary synchronous XHR in Web Workers!', '/report_result?' + str(checksum))
     finally:
@@ -4341,7 +4362,7 @@ window.close = function() {
 
   @requires_threads
   def test_fetch_idb_store(self):
-    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
   def test_fetch_idb_delete(self):
