@@ -631,11 +631,11 @@ def build_clang_tool_path(tool):
 def macos_find_native_sdk_path():
   try:
     sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
-    sdks = os.walk(sdk_root).next()[1]
+    sdks = next(os.walk(sdk_root))[1]
     sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
     logger.debug('Targeting macOS SDK found at ' + sdk_path)
     return sdk_path
-  except OSError:
+  except (OSError, StopIteration):
     logger.warning('Could not find native macOS SDK path to target!')
     return None
 
