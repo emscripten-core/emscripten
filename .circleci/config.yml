@@ -242,9 +242,13 @@ jobs:
           name: install pip
           command: |
             apt-get update -q
-            apt-get install -q -y python-pip
-      - run: pip install flake8==3.4.1
-      - run: flake8
+            apt-get install -q -y python-pip python3-pip
+      - run: python2 -m pip install --upgrade pip
+      - run: python3 -m pip install --upgrade pip
+      - run: python2 -m pip install flake8==3.7.8
+      - run: python3 -m pip install flake8==3.7.8
+      - run: python2 -m flake8 --show-source --statistics
+      - run: python3 -m flake8 --show-source --statistics
   test-other:
     <<: *test-defaults
     environment:
@@ -390,6 +394,10 @@ jobs:
     environment:
       - TEST_TARGET=wasm3
       # TODO: test wasms
+  test-upstream-wasm2js1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=wasm2js1
   test-upstream-other:
     <<: *test-defaults
     environment:
@@ -467,6 +475,9 @@ workflows:
           requires:
             - build-upstream
       - test-upstream-wasm3:
+          requires:
+            - build-upstream
+      - test-upstream-wasm2js1:
           requires:
             - build-upstream
       - test-upstream-other:

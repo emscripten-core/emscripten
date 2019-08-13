@@ -18,6 +18,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
  - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
    suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
    will no longer work. This is done because the mechanism may result in

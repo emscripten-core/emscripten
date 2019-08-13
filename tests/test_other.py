@@ -8366,10 +8366,6 @@ int main() {
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile'])
     self.assertContained('emcc: cannot find library "somenonexistingfile"', err)
 
-    # -llsomenonexistingfile is not an error if -s ERROR_ON_MISSING_LIBRARIES=0 is passed
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lsomenonexistingfile', '-s', 'ERROR_ON_MISSING_LIBRARIES=0'], stderr=PIPE).stderr
-    self.assertContained('emcc: cannot find library "somenonexistingfile"', err)
-
   # Tests that if user accidentally attempts to link native object code, we show an error
   def test_native_link_error_message(self):
     run_process([CLANG_CC, '-c', path_from_root('tests', 'hello_123.c'), '-o', 'hello_123.o'])

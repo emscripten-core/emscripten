@@ -1025,8 +1025,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.SEPARATE_ASM = shared.JS.get_subresource_location(asm_target)
 
     # Libraries are searched before settings_changes are applied, so apply the
-    # value for STRICT and ERROR_ON_MISSING_LIBRARIES from command line already
-    # now.
+    # value for STRICT from command line already now.
 
     def get_last_setting_change(setting):
       return ([None] + [x for x in settings_changes if x.startswith(setting + '=')])[-1]
@@ -1035,16 +1034,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if strict_cmdline:
       shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
-    if shared.Settings.STRICT:
-      shared.Settings.ERROR_ON_MISSING_LIBRARIES = 1
-    else:
+    if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
-
-    error_on_missing_libraries_cmdline = get_last_setting_change('ERROR_ON_MISSING_LIBRARIES')
-    if error_on_missing_libraries_cmdline:
-      shared.Settings.ERROR_ON_MISSING_LIBRARIES = int(error_on_missing_libraries_cmdline[len('ERROR_ON_MISSING_LIBRARIES='):])
 
     settings_changes.append(process_libraries(libs, lib_dirs, input_files))
 
@@ -1651,7 +1644,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-      logger.warning('emcc: JS support in the upstream LLVM+wasm2js path is very experimental currently (best to use fastcomp for asm.js for now)')
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):

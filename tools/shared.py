@@ -631,11 +631,11 @@ def build_clang_tool_path(tool):
 def macos_find_native_sdk_path():
   try:
     sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
-    sdks = os.walk(sdk_root).next()[1]
+    sdks = next(os.walk(sdk_root))[1]
     sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
     logger.debug('Targeting macOS SDK found at ' + sdk_path)
     return sdk_path
-  except OSError:
+  except (OSError, StopIteration):
     logger.warning('Could not find native macOS SDK path to target!')
     return None
 
@@ -1104,66 +1104,66 @@ class SettingsManager(object):
       self.reset()
 
     @classmethod
-    def reset(self):
-      self.attrs = {}
+    def reset(cls):
+      cls.attrs = {}
 
       # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      exec(settings, {'attrs': self.attrs})
+      exec(settings, {'attrs': cls.attrs})
 
       if 'EMCC_STRICT' in os.environ:
-        self.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
+        cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
 
       # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
       # details
-      self.legacy_settings = {}
-      self.alt_names = {}
-      for legacy in self.attrs['LEGACY_SETTINGS']:
+      cls.legacy_settings = {}
+      cls.alt_names = {}
+      for legacy in cls.attrs['LEGACY_SETTINGS']:
         if len(legacy) == 2:
           name, new_name = legacy
-          self.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
-          self.alt_names[name] = new_name
-          self.alt_names[new_name] = name
-          default_value = self.attrs[new_name]
+          cls.legacy_settings[name] = (None, 'setting renamed to ' + new_name)
+          cls.alt_names[name] = new_name
+          cls.alt_names[new_name] = name
+          default_value = cls.attrs[new_name]
         else:
           name, fixed_values, err = legacy
-          self.legacy_settings[name] = (fixed_values, err)
+          cls.legacy_settings[name] = (fixed_values, err)
           default_value = fixed_values[0]
-        assert name not in self.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
-        if not self.attrs['STRICT']:
-          self.attrs[name] = default_value
+        assert name not in cls.attrs, 'legacy setting (%s) cannot also be a regular setting' % name
+        if not cls.attrs['STRICT']:
+          cls.attrs[name] = default_value
 
       if get_llvm_target() == WASM_TARGET:
-        self.attrs['WASM_BACKEND'] = 1
+        cls.attrs['WASM_BACKEND'] = 1
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
     @classmethod
-    def serialize(self):
+    def serialize(cls):
       ret = []
-      for key, value in self.attrs.items():
+      for key, value in cls.attrs.items():
         if key == key.upper():  # this is a hack. all of our settings are ALL_CAPS, python internals are not
           jsoned = json.dumps(value, sort_keys=True)
           ret += ['-s', key + '=' + jsoned]
       return ret
 
     @classmethod
-    def to_dict(self):
-      return self.attrs.copy()
+    def to_dict(cls):
+      return cls.attrs.copy()
 
     @classmethod
-    def copy(self, values):
-      self.attrs = values
+    def copy(cls, values):
+      cls.attrs = values
 
     @classmethod
-    def apply_opt_level(self, opt_level, shrink_level=0, noisy=False):
+    def apply_opt_level(cls, opt_level, shrink_level=0, noisy=False):
       if opt_level >= 1:
-        self.attrs['ASM_JS'] = 1
-        self.attrs['ASSERTIONS'] = 0
-        self.attrs['ALIASING_FUNCTION_POINTERS'] = 1
+        cls.attrs['ASM_JS'] = 1
+        cls.attrs['ASSERTIONS'] = 0
+        cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
-        self.attrs['EVAL_CTORS'] = 1
+        cls.attrs['EVAL_CTORS'] = 1
 
     def keys(self):
       return self.attrs.keys()
@@ -1204,12 +1204,12 @@ class SettingsManager(object):
       self.attrs[attr] = value
 
     @classmethod
-    def get(self, key):
-      return self.attrs.get(key)
+    def get(cls, key):
+      return cls.attrs.get(key)
 
     @classmethod
-    def __getitem__(self, key):
-      return self.attrs[key]
+    def __getitem__(cls, key):
+      return cls.attrs[key]
 
     @classmethod
     def target_environment_may_be(self, environment):
@@ -1639,22 +1639,15 @@ class Building(object):
       # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
       # do builds natively with Clang. This is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    try:
-      if EM_BUILD_VERBOSE >= 3:
-        print('configure: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE >= 2:
-        stdout = None
-      if EM_BUILD_VERBOSE >= 1:
-        stderr = None
-      res = run_process(args, check=False, stdout=stdout, stderr=stderr, env=env)
-    except Exception:
-      logger.error('Error running configure: "%s"' % ' '.join(args))
-      raise
+    if EM_BUILD_VERBOSE >= 3:
+      print('configure: ' + str(args), file=sys.stderr)
+    if EM_BUILD_VERBOSE >= 2:
+      stdout = None
+    if EM_BUILD_VERBOSE >= 1:
+      stderr = None
+    run_process(args, stdout=stdout, stderr=stderr, env=env)
     if 'EMMAKEN_JUST_CONFIGURE' in env:
       del env['EMMAKEN_JUST_CONFIGURE']
-    if res.returncode != 0:
-      logger.error('Configure step failed with non-zero return code: %s.  Command line: %s at %s' % (res.returncode, ' '.join(args), os.getcwd()))
-      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None, cflags=[]):
@@ -1674,20 +1667,16 @@ class Building(object):
       if 'mingw32-make' in args[0]:
         env = Building.remove_sh_exe_from_path(env)
 
-    try:
-      # On Windows, run the execution through shell to get PATH expansion and executable extension lookup, e.g. 'sdl2-config' will match with 'sdl2-config.bat' in PATH.
-      if EM_BUILD_VERBOSE >= 3:
-        print('make: ' + str(args), file=sys.stderr)
-      if EM_BUILD_VERBOSE >= 2:
-        stdout = None
-      if EM_BUILD_VERBOSE >= 1:
-        stderr = None
-      res = run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, check=False)
-    except Exception:
-      logger.error('Error running make: "%s"' % ' '.join(args))
-      raise
-    if res.returncode != 0:
-      raise subprocess.CalledProcessError(cmd=args, returncode=res.returncode)
+    # On Windows, run the execution through shell to get PATH expansion and
+    # executable extension lookup, e.g. 'sdl2-config' will match with
+    # 'sdl2-config.bat' in PATH.
+    if EM_BUILD_VERBOSE >= 3:
+      print('make: ' + str(args), file=sys.stderr)
+    if EM_BUILD_VERBOSE >= 2:
+      stdout = None
+    if EM_BUILD_VERBOSE >= 1:
+      stderr = None
+    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
 
   @staticmethod
   def make_paths_absolute(f):
@@ -2776,10 +2765,7 @@ class Building(object):
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
     else:
-      if Settings.ERROR_ON_MISSING_LIBRARIES:
-        exit_with_error('emcc: cannot find library "%s" (`-s ERROR_ON_MISSING_LIBRARIES=0` to disable this error)', library_name)
-      else:
-        logger.warning('emcc: cannot find library "%s"', library_name)
+      exit_with_error('emcc: cannot find library "%s"', library_name)
 
     return library_files
 
