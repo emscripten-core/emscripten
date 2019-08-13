@@ -1651,10 +1651,7 @@ def build_library(name,
         stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
       else:
         stderr = None
-      try:
-        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError:
-        pass # Ignore exit code != 0
+      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
 
     def open_make_out(mode='r'):
       return open(os.path.join(project_dir, 'make.out'), mode)
@@ -1665,25 +1662,17 @@ def build_library(name,
     if EM_BUILD_VERBOSE >= 3:
       make_args += ['VERBOSE=1']
 
-    try:
-      with open_make_out('w') as make_out:
-        with open_make_err('w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    with open_make_out('w') as make_out:
+      with open_make_err('w') as make_err:
+        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
 
-      if cache is not None:
-        cache[cache_name] = []
-        for f in generated_libs:
-          basename = os.path.basename(f)
-          cache[cache_name].append((basename, open(f, 'rb').read()))
-    except Exception as e:
-      if EM_BUILD_VERBOSE == 0:
-         with open_make_err() as ferr:
-           for line in ferr:
-             sys.stderr.write(line)
-
-      raise Exception('could not build library ' + name + ' due to exception ' + str(e))
+    if cache is not None:
+      cache[cache_name] = []
+      for f in generated_libs:
+        basename = os.path.basename(f)
+        cache[cache_name].append((basename, open(f, 'rb').read()))
 
   return generated_libs
 
