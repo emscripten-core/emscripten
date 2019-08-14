@@ -205,11 +205,6 @@ def generate_config(path, first_time=False):
 
   node = find_executable('nodejs') or find_executable('node') or 'node'
   config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
-  if WINDOWS:
-    tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
-  else:
-    tempdir = '/tmp'
-  config_file = config_file.replace('\'{{{ TEMP }}}\'', repr(tempdir))
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
@@ -626,20 +621,6 @@ def build_clang_tool_path(tool):
     return os.path.join(LLVM_ROOT, tool)
 
 
-# Whenever building a native executable for macOS, we must provide the macOS SDK
-# version we want to target.
-def macos_find_native_sdk_path():
-  try:
-    sdk_root = '/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs'
-    sdks = next(os.walk(sdk_root))[1]
-    sdk_path = os.path.join(sdk_root, sdks[0]) # Just pick first one found, we don't care which one we found.
-    logger.debug('Targeting macOS SDK found at ' + sdk_path)
-    return sdk_path
-  except (OSError, StopIteration):
-    logger.warning('Could not find native macOS SDK path to target!')
-    return None
-
-
 # These extra args need to be passed to Clang when targeting a native host system executable
 CACHED_CLANG_NATIVE_ARGS = None
 
@@ -650,9 +631,7 @@ def get_clang_native_args():
     return CACHED_CLANG_NATIVE_ARGS
   CACHED_CLANG_NATIVE_ARGS = []
   if MACOS:
-    sdk_path = macos_find_native_sdk_path()
-    if sdk_path:
-      CACHED_CLANG_NATIVE_ARGS = ['-isysroot', macos_find_native_sdk_path()]
+    CACHED_CLANG_NATIVE_ARGS = ['-isystem', path_from_root('system', 'include', 'libcxx')]
   elif os.name == 'nt':
     CACHED_CLANG_NATIVE_ARGS = ['-DWIN32']
     # TODO: If Windows.h et al. are needed, will need to add something like '-isystemC:/Program Files (x86)/Microsoft SDKs/Windows/v7.1A/Include'.
@@ -669,7 +648,11 @@ def get_clang_native_env():
     return CACHED_CLANG_NATIVE_ENV
   env = os.environ.copy()
 
-  if WINDOWS:
+  if MACOS:
+    path = run_process(['xcrun', '--show-sdk-path'], stdout=PIPE).stdout.strip()
+    logging.debug('Using MacOS SDKROOT: ' + path)
+    env['SDKROOT'] = path
+  elif WINDOWS:
     # If already running in Visual Studio Command Prompt manually, no need to
     # add anything here, so just return.
     if 'VSINSTALLDIR' in env and 'INCLUDE' in env and 'LIB' in env:
@@ -1077,16 +1060,21 @@ def unique_ordered(values):
   return list(filter(check, values))
 
 
+SIZE_SUFFIXES = {suffix: 1024 ** i for i, suffix in enumerate(['b', 'kb', 'mb', 'gb', 'tb'])}
+
+
 def expand_byte_size_suffixes(value):
-  """Given a string with arithmetic and/or KB/MB size suffixes, such as
-  "1024*1024" or "32MB", computes how many bytes that is and returns it as an
-  integer.
+  """Given a string with KB/MB size suffixes, such as "32MB", computes how
+  many bytes that is and returns it as an integer.
   """
-  value = value.lower().replace('tb', '*1024*1024*1024*1024').replace('gb', '*1024*1024*1024').replace('mb', '*1024*1024').replace('kb', '*1024').replace('b', '')
-  try:
-    return eval(value)
-  except Exception:
-    raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
+  match = re.match(r'\s*(\d+)\s*([kmgt]?b)$', value, re.I)
+  if not match:
+    try:
+      return int(value)
+    except ValueError:
+      raise Exception("Invalid byte size, valid suffixes: KB, MB, GB, TB")
+  value, suffix = match.groups()
+  return int(value) * SIZE_SUFFIXES[suffix.lower()]
 
 
 # Settings. A global singleton. Not pretty, but nicer than passing |, settings| everywhere

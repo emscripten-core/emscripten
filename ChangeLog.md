@@ -22,6 +22,10 @@ Current Trunk
    and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
    with multiple threads. (#9060, #9076)
  - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
+ - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
+   suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
+   will no longer work. This is done because the mechanism may result in
+   execution of arbitrary code via command line flags.
 
 v.1.38.41: 08/07/2019
 ---------------------
