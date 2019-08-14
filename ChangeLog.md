@@ -18,6 +18,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Add support [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+   and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
+   with multiple threads. (#9060, #9076)
  - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
 
 v.1.38.41: 08/07/2019
