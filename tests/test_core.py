@@ -315,6 +315,9 @@ class TestCoreBase(RunnerCore):
   def test_struct_varargs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_struct_varargs')
 
+  def test_zero_struct_varargs(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_zero_struct_varargs')
+
   def zzztest_nested_struct_varargs(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_nested_struct_varargs')
 
