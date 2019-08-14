@@ -3039,7 +3039,7 @@ function(%(EXPORT_NAME)s) {
       # immediately anyhow, like in non-modularize mode)
       # In EXPORT_ES6 + USE_PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
       # so doesn't have access to 'document'. In this case use 'import.meta' instead.
-      if shared.Settings.EXPORT_ES6 and shared.Settings.USE_PTHREADS:
+      if shared.Settings.EXPORT_ES6 and shared.Settings.USE_ES6_IMPORT_META:
         script_url = "import.meta.url"
       else:
         script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
