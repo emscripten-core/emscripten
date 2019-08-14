@@ -13,20 +13,28 @@ typedef struct {
   int y;
 } coords;
 
+typedef struct {
+  int r;
+  int g;
+  int b;
+} color;
+
 void fun(int a, ...) {
   (void)a;
   va_list ap;
   va_start(ap, a);
 
-  coords var = va_arg(ap, coords);
-  printf("va_arg struct: %d and %d\n", var.x, var.y);
+  coords var1 = va_arg(ap, coords);
+  color var2 = va_arg(ap, color);
+  printf("va_arg coords: %d and %d\n", var1.x, var1.y);
+  printf("va_arg color: %d, %d, %d\n", var2.r, var2.g, var2.b);
 
   va_end(ap);
 }
 
 int main(void) {
-  coords val = { .x=42, .y=21 };
-  printf("value passed struct: %d and %d\n", val.x, val.y);
-  fun(0, val);
+  coords val1 = { .x = 42, .y = 21 };
+  color val2 = { .r = 37, .g = 19, .b = 253 };
+  fun(0, val1, val2);
   return 0;
 }
