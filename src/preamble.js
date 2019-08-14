@@ -15,8 +15,14 @@ out = err = function(){};
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 
-#if WASM2JS
+#if MAYBE_WASM2JS && !WASM2JS
+if (Module['doWasm2JS']) {
+#endif
+#if MAYBE_WASM2JS
 #include "wasm2js.js"
+#endif
+#if MAYBE_WASM2JS && !WASM2JS
+}
 #endif
 
 #if WASM
@@ -891,7 +897,7 @@ var wasmOffsetConverter;
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-#if WASM2JS || AUTODEBUG
+#if MAYBE_WASM2JS || AUTODEBUG
   // wasm2js legalization of i64 support code may require these
   // autodebug may also need them
   env['setTempRet0'] = setTempRet0;

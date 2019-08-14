@@ -1468,6 +1468,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if any(s.startswith('MEM_INIT_METHOD=') for s in settings_changes):
         exit_with_error('MEM_INIT_METHOD is not supported in wasm. Memory will be embedded in the wasm binary if threads are not used, and included in a separate file if threads are used.')
       if shared.Settings.WASM2JS:
+        shared.Settings.MAYBE_WASM2JS = 1
         # wasm2js does not support passive segments or atomics
         if shared.Settings.USE_PTHREADS:
           exit_with_error('WASM2JS does not yet support pthreads')

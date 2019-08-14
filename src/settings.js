@@ -1538,6 +1538,13 @@ var AUTODEBUG = 0;
 // wasm normally, then compile that to JS).
 var WASM2JS = 0;
 
+// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets you
+// run wasm2js *later* on the wasm, and you can pick between running the normal
+// wasm or that wasm2js code. For details of how to do that, see the test_maybe_wasm2js
+// test.
+// This option can be useful for debugging and bisecting.
+var MAYBE_WASM2JS = 0;
+
 // Whether we should link in the runtime for ubsan.
 // 0 means do not link ubsan, 1 means link minimal ubsan runtime.
 // This is not meant to be used with `-s`. Instead, to use ubsan, use clang flag
