@@ -205,11 +205,6 @@ def generate_config(path, first_time=False):
 
   node = find_executable('nodejs') or find_executable('node') or 'node'
   config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
-  if WINDOWS:
-    tempdir = os.environ.get('TEMP') or os.environ.get('TMP') or 'c:\\temp'
-  else:
-    tempdir = '/tmp'
-  config_file = config_file.replace('\'{{{ TEMP }}}\'', repr(tempdir))
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write

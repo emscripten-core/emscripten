@@ -30,8 +30,6 @@ V8_ENGINE = os.path.expanduser(os.getenv('V8', 'd8')) # executable
 
 JAVA = 'java' # executable
 
-TEMP_DIR = '{{{ TEMP }}}'
-
 # CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
 ################################################################################

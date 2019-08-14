@@ -208,7 +208,7 @@ class sanity(RunnerCore):
       self.assertNotContained('}}}', config_file)
       self.assertContained('{{{', template_file)
       self.assertContained('}}}', template_file)
-      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
+      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'COMPILER_ENGINE', 'JS_ENGINES']:
         self.assertContained(content, config_file)
 
       # The guessed config should be ok
