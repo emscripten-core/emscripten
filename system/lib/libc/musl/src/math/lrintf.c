@@ -4,5 +4,9 @@
 
 long lrintf(float x)
 {
+#ifdef __wasm__
+	return __builtin_rintf(x);
+#else
 	return rintf(x);
+#endif
 }

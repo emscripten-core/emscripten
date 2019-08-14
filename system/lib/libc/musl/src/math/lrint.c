@@ -32,7 +32,11 @@ long lrint(double x)
 	int e;
 
 	e = fetestexcept(FE_INEXACT);
+#ifdef __wasm__
+	x = __builtin_rint(x);
+#else
 	x = rint(x);
+#endif
 	if (!e && (x > LONG_MAX || x < LONG_MIN))
 		feclearexcept(FE_INEXACT);
 	/* conversion */
@@ -41,6 +45,10 @@ long lrint(double x)
 #else
 long lrint(double x)
 {
+#ifdef __wasm__
+	return __builtin_rint(x);
+#else
 	return rint(x);
+#endif
 }
 #endif
