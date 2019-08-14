@@ -22,13 +22,6 @@ def create_response_file(args, directory):
   """
   response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
 
-  # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
-  # backslashes in response files, so Windows paths
-  # "c:\path\to\file.txt" with single slashes no longer work. LLVM
-  # upstream dev 3.9.0 from January 2016 still treated backslashes
-  # without escaping. To preserve compatibility with both versions of
-  # llvm-link, don't pass backslash path delimiters at all to response
-  # files, but always use forward slashes.
   args = [p.replace('\\', '\\\\').replace('"', '\\"') for p in args]
   contents = ""
   for arg in args:
