@@ -134,7 +134,7 @@ test-firefox: &test-firefox
           export EMCC_CORES=4
           ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
           openbox --exit
-          wait # wait for startx to shutdown cleanly
+          wait || true # wait for startx to shutdown cleanly, or not
 
 test-chrome: &test-chrome
   <<: *defaults
