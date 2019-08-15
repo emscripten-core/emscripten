@@ -14,6 +14,7 @@ static const float_t toint = 1/EPS;
 float rintf(float x)
 {
 // XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// See https://github.com/emscripten-core/emscripten/issues/9236
 #if __wasm__
 	return __builtin_rintf(x);
 #else
