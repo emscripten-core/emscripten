@@ -5701,6 +5701,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
+  @unittest.skip('Need to update d8 in CI')
   def test_wasm_builtin_simd(self, js_engines):
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
@@ -5709,6 +5710,7 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
+  @unittest.skip('Need to update d8 in CI')
   def test_wasm_intrinsics_simd(self, js_engines):
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall'])
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
