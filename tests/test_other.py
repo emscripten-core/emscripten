@@ -1350,6 +1350,7 @@ int f() {
     Building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
     self.assertContained('zyx', run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
+  @no_windows('random flakes on "Access in denied" in atexit')
   def test_abspaths(self):
     # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 
@@ -8508,6 +8509,7 @@ end
 
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
 
+  @no_windows('random flakes on "Access in denied" in atexit')
   def test_IGNORE_CLOSURE_COMPILER_ERRORS(self):
     create_test_file('pre.js', r'''
       // make closure compiler very very angry
