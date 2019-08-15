@@ -2004,27 +2004,8 @@ class Building(object):
       return cmd
 
     logger.debug('using response file for %s' % cmd[0])
-    temp_files = configuration.get_temp_files()
-    response_file = temp_files.get(suffix='.response').name
-
-    new_cmd = [cmd[0], "@" + response_file]
-
-    with open(response_file, 'w') as f:
-      for arg in cmd[1:]:
-        # Starting from LLVM 3.9.0 trunk around July 2016, LLVM escapes
-        # backslashes in response files, so Windows paths
-        # "c:\path\to\file.txt" with single slashes no longer work. LLVM
-        # upstream dev 3.9.0 from January 2016 still treated backslashes
-        # without escaping. To preserve compatibility with both versions of
-        # llvm-link, don't pass backslash path delimiters at all to response
-        # files, but always use forward slashes.
-        if WINDOWS:
-          arg = arg.replace('\\', '/')
-
-        # escaped double quotes allows 'space' characters in pathname the
-        # response file can use
-        f.write("\"" + arg + "\"\n")
-
+    filename = response_file.create_response_file(cmd[1:], TEMP_DIR)
+    new_cmd = [cmd[0], "@" + filename]
     return new_cmd
 
   # LLVM optimizations
