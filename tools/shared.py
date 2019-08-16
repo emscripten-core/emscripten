@@ -1808,7 +1808,7 @@ class Building(object):
       export_all = True
 
     if Settings.RELOCATABLE:
-      if Settings.MAIN_MODULE == 2:
+      if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
         cmd.append('--no-export-dynamic')
       else:
         cmd.append('--no-gc-sections')
