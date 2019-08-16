@@ -9671,6 +9671,7 @@ Module.arguments has been replaced with plain arguments_
                        emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
                        assert_returncode=0)
 
+  @no_fastcomp('EM_ASM and setjmp works fine on fastcomp')
   def test_setjmp_em_asm(self):
     create_test_file('src.c', '''
       #include <emscripten.h>
