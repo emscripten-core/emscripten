@@ -644,7 +644,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c',
         'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c',
         'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
-        'rintf.c'
     ]
 
     if self.is_asan:
@@ -665,6 +664,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
       blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
+    else:
+      blacklist += ['rintf.c']
 
     blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
