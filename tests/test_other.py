@@ -7076,10 +7076,10 @@ int main() {
   return 0;
 }
 ''')
-    run_process([PYTHON, EMCC, 'src.c', '-O2', '-g'])
+    run_process([PYTHON, EMCC, 'src.c', '-O2'])
     size = os.path.getsize('a.out.wasm')
     # size should be much smaller than the size of that zero-initialized buffer
-    self.assertLess(size, 123456 / 2)
+    self.assertLess(size, 1048576 / 2)
 
   @no_wasm_backend('asm.js')
   def test_separate_asm_warning(self):
@@ -7741,7 +7741,7 @@ int main() {
       code = open('a.out.wasm', 'rb').read()
       if expect_names:
         # name section adds the name of malloc (there is also another one for the export)
-        self.assertEqual(code.count(b'malloc'), 2)
+        self.assertGreater(code.count(b'malloc'), 1)
       else:
         # should be just malloc for the export
         self.assertEqual(code.count(b'malloc'), 1)
@@ -9443,14 +9443,14 @@ int main () {
 
   @parameterized({
     'c': ['c', [
-      r'in malloc.*a\.out\.wasm\+0x',
+      r'in malloc .*lsan/lsan_interceptors\.cc:\d*:\d*',
       r'(?im)in f (/|[a-z]:).*/test_lsan_leaks\.c:6:21$',
       r'(?im)in main (/|[a-z]:).*/test_lsan_leaks\.c:10:16$',
       r'(?im)in main (/|[a-z]:).*/test_lsan_leaks\.c:12:3$',
       r'(?im)in main (/|[a-z]:).*/test_lsan_leaks\.c:13:3$',
     ]],
     'cpp': ['cpp', [
-      r'in operator new\[\]\(unsigned long\).*a\.out\.wasm\+0x',
+      r'in operator new\[\]\(unsigned long\) .*lsan/lsan_interceptors\.cc:\d*:\d*',
       r'(?im)in f\(\) (/|[a-z]:).*/test_lsan_leaks\.cpp:4:21$',
       r'(?im)in main (/|[a-z]:).*/test_lsan_leaks\.cpp:8:16$',
       r'(?im)in main (/|[a-z]:).*/test_lsan_leaks\.cpp:10:3$',

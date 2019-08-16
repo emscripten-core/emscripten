@@ -7057,12 +7057,19 @@ err = err = function(){};
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
       self.assertPathsIdentical(map_referent, data['file'])
-    assert len(data['sources']) == 1, data['sources']
+    self.assertGreater(len(data['sources']), 1)
     self.assertPathsIdentical(os.path.abspath('src.cpp'), data['sources'][0])
+
+    # verify that we have libc symbols
+    basenames = [os.path.basename(s) for s in data['sources']]
+    self.assertIn('fwrite.c', basenames)
+    self.assertIn('printf.c', basenames)
+
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
       # needs to containt valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][0])
+
     mappings = json.loads(jsrun.run_js(
       path_from_root('tools', 'source-maps', 'sourcemap2json.js'),
       shared.NODE_JS, [map_filename]))
@@ -7071,8 +7078,8 @@ err = err = function(){};
       mappings = encode_utf8(mappings)
     seen_lines = set()
     for m in mappings:
-      self.assertPathsIdentical(os.path.abspath('src.cpp'), m['source'])
-      seen_lines.add(m['originalLine'])
+      if m['source'] == os.path.abspath('src.cpp'):
+        seen_lines.add(m['originalLine'])
     # ensure that all the 'meaningful' lines in the original code get mapped
     # when optimizing, the binaryen optimizer may remove some of them (by inlining, etc.)
     if is_optimizing(self.emcc_args):

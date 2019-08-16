@@ -37,7 +37,7 @@ def glob_in_path(path_components, glob_pattern, excludes=()):
 
 
 def get_cflags(force_object_files=False):
-  flags = []
+  flags = ['-g4']
   if force_object_files:
     flags += ['-s', 'WASM_OBJECT_FILES=1']
   elif not shared.Settings.WASM_OBJECT_FILES:
