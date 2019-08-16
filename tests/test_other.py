@@ -9066,7 +9066,7 @@ ok.
         }
         puts("unexpected success.");
       }
-    ''', 'getpeername error: Socket not connected')
+    ''', 'getpeername error: Socket not connected', assert_returncode=None)
 
   def test_getaddrinfo(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
