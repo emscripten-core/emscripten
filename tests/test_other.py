@@ -9670,3 +9670,21 @@ Module.arguments has been replaced with plain arguments_
     self.do_smart_test(path_from_root('tests', 'test_boost_graph.cpp'),
                        emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
                        assert_returncode=0)
+
+  def test_setjmp_em_asm(self):
+    create_test_file('src.c', '''
+      #include <emscripten.h>
+      #include <setjmp.h>
+
+      int main() {
+        jmp_buf buf;
+        setjmp(buf);
+        EM_ASM({
+          console.log("hello world");
+        });
+      }
+    ''')
+    result = run_process([PYTHON, EMCC, 'src.c'], stderr=PIPE, check=False)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
+    self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
