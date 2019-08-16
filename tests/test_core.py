@@ -7645,23 +7645,13 @@ extern "C" {
     # see that running as wasm works
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
     # run wasm2js, bundle the code, and use the wasm2js path
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', 'src.c.o.wasm']
+    cmd = [PYTHON, path_from_root('tools', 'maybe_wasm2js.py'), 'src.c.o.js', 'src.c.o.wasm']
     if is_optimizing(self.emcc_args):
       cmd += ['-O2']
-    js = run_process(cmd, stdout=PIPE).stdout
-    # assign the instantiate function to where it will be used
-    js = js.replace('function instantiate(asmLibraryArg, wasmMemory, wasmTable) {',
-                    "Module['__wasm2jsInstantiate__'] = function(asmLibraryArg, wasmMemory, wasmTable) {")
+    run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
     # remove the wasm to make sure we never use it again
     os.unlink('src.c.o.wasm')
-    # create the combined js to run in wasm2js mode
-    with open('do_wasm2js.js', 'w') as f:
-      f.write('var Module = { doWasm2JS: true };\n')
-      f.write('\n')
-      f.write(js)
-      f.write('\n')
-      with open('src.c.o.js') as original:
-        f.write(original.read())
+    # verify that it runs
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
   def test_cxx_self_assign(self):
