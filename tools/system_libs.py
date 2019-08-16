@@ -37,7 +37,9 @@ def glob_in_path(path_components, glob_pattern, excludes=()):
 
 
 def get_cflags(force_object_files=False):
-  flags = ['-g4']
+  # We want debug information availabe in system libraries so that user can
+  # get source maps of that library code.
+  flags = ['-g']
   if force_object_files:
     flags += ['-s', 'WASM_OBJECT_FILES=1']
   elif not shared.Settings.WASM_OBJECT_FILES:
