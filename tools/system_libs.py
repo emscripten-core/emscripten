@@ -932,16 +932,6 @@ class libgl(MTLibrary):
     )
 
 
-class libembind(CXXLibrary):
-  name = 'libembind'
-  cflags = ['-std=c++11']
-  depends = ['libc++abi']
-  never_force = True
-
-  def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
-
-
 class libfetch(CXXLibrary, MTLibrary):
   name = 'libfetch'
   depends = ['libc++abi']
