@@ -24,7 +24,7 @@ if __name__ == '__main__':
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
 from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
 from tools import jsrun, shared
-from runner import RunnerCore, path_from_root, core_test_modes, EMTEST_SKIP_SLOW
+from runner import RunnerCore, path_from_root, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
 
 # decorators for limiting which modes a test can run in
@@ -385,7 +385,7 @@ class TestCoreBase(RunnerCore):
     # A good test of i64 math
     self.do_run('', 'Usage: hashstring <seed>',
                 libraries=self.get_library('cube2hash', ['cube2hash.bc'], configure=None),
-                includes=[path_from_root('tests', 'cube2hash')])
+                includes=[path_from_root('tests', 'cube2hash')], assert_returncode=None)
 
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
@@ -1049,7 +1049,7 @@ int main() {
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
@@ -7996,7 +7996,7 @@ extern "C" {
   def test_asan_no_error(self, name):
     self.emcc_args += ['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1']
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
-                basename=name, expected_output=[''])
+                basename=name, expected_output=[''], assert_returncode=None)
 
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
@@ -8062,7 +8062,7 @@ extern "C" {
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
                 basename='src.c' if name.endswith('.c') else 'src.cpp',
                 expected_output=expected_output, assert_all=True,
-                check_for_error=False)
+                check_for_error=False, assert_returncode=None)
 
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_fastcomp('asan not supported on fastcomp')
@@ -8076,14 +8076,14 @@ extern "C" {
     self.set_setting('SAFE_STACK', 1)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack.c')).read(),
-                expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
+                expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
   @no_fastcomp('SAFE_STACK not supported on fastcomp')
   def test_safe_stack_alloca(self):
     self.set_setting('SAFE_STACK', 1)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack_alloca.c')).read(),
-                expected_output=['abort(stack overflow)', '__handle_stack_overflow'])
+                expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
   @needs_dlfcn
   @no_fastcomp('SAFE_STACK not supported on fastcomp')
@@ -8109,7 +8109,7 @@ extern "C" {
         int a[2048];
         f(a);
       }
-    ''', ['abort(stack overflow)', '__handle_stack_overflow'])
+    ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
 
 # Generate tests for everything
