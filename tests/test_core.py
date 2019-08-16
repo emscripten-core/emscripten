@@ -3482,7 +3482,7 @@ ok
     if need_reverse:
       # test the reverse as well
       print('flip')
-      self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False)
+      self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self):
     self.dylink_test(r'''
@@ -5537,7 +5537,7 @@ int main(void) {
     self.test_fasta(js_engines)
 
   def test_whets(self):
-    self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark')
+    self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark', assert_returncode=None)
 
   def test_dlmalloc(self):
     self.set_setting('MALLOC', "dlmalloc")
