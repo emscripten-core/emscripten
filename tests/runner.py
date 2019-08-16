@@ -80,8 +80,6 @@ EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
-EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '1'))
-
 # Also suppot the old name: EM_SAVE_DIR
 EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
 
@@ -1540,14 +1538,7 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args:
-      if not self.is_wasm_backend():
-        if 'ALLOW_MEMORY_GROWTH=1' not in args:
-          if EMTEST_WASM_PTHREADS:
-            also_asmjs = True
-          elif 'WASM=0' not in args:
-            args += ['-s', 'WASM=0']
-      else:
+    if 'USE_PTHREADS=1' in args and self.is_wasm_backend():
         # wasm2js does not support threads yet
         also_asmjs = False
     if 'WASM=0' not in args:
