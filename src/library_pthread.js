@@ -314,7 +314,12 @@ var LibraryPThread = {
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
               Module['noExitRuntime'] = false;
-              exit(d.returnCode);
+              try {
+                exit(d.returnCode);
+              } catch (e) {
+                if (e instanceof ExitStatus) return;
+                throw e;
+              }
             } else if (d.cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
             } else if (d.cmd === 'objectTransfer') {
