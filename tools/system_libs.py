@@ -18,7 +18,7 @@ from glob import iglob
 
 from . import ports
 from . import shared
-from tools.shared import check_call
+from tools.shared import check_call, mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
 stderr = None
@@ -1178,7 +1178,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
             logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+          shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
       add_back_deps(need) # recurse to get deps of deps
 
@@ -1197,7 +1197,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for export in shared.Settings.EXPORTED_FUNCTIONS:
     if shared.Settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
-    symbolses[0].undefs.add(export[1:])
+    symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
     add_back_deps(symbols)
@@ -1208,7 +1208,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if only_forced:
     for key, value in deps_info.items():
       for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
   always_include.add('libpthreads')
   if shared.Settings.MALLOC != 'none':

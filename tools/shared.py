@@ -1352,6 +1352,14 @@ def static_library_name(name):
     return name + '.bc'
 
 
+def mangle_c_symbol_name(name):
+  return '_' + name if not name.startswith('$') else name[1:]
+
+
+def demangle_c_symbol_name(name):
+  return name[1:] if name.startswith('_') else '$' + name
+
+
 #  Building
 class Building(object):
   COMPILER = CLANG
@@ -2202,7 +2210,7 @@ class Building(object):
 
     exps = Settings.EXPORTED_FUNCTIONS
     internalize_public_api = '-internalize-public-api-'
-    internalize_list = ','.join([exp[1:] for exp in exps])
+    internalize_list = ','.join([demangle_c_symbol_name(exp) for exp in exps])
 
     # EXPORTED_FUNCTIONS can potentially be very large.
     # 8k is a bit of an arbitrary limit, but a reasonable one
