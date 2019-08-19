@@ -132,7 +132,7 @@ test-firefox: &test-firefox
           cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
           rm -r $TMPDIR
           export EMCC_CORES=4
-          ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+          python3 emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
           openbox --exit
           wait || true # wait for startx to shutdown cleanly, or not
 
@@ -172,7 +172,7 @@ test-chrome: &test-chrome
           CHROME_FLAGS_NOCACHE="--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
           export EMCC_CORES=4
-          ./emscripten/tests/runner.py browser
+          python3 emscripten/tests/runner.py browser
 
 version: 2
 jobs:
