@@ -18,7 +18,7 @@ from glob import iglob
 
 from . import ports
 from . import shared
-from tools.shared import check_call
+from tools.shared import check_call, mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
 stderr = None
@@ -641,10 +641,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
         'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
         'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c',
-        'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c',
-        'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c',
-        'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
-        'rintf.c'
+        'logl.c', 'sqrtl.c', 'round.c', 'roundf.c',
+        'fabsl.c', 'ceill.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c',
     ]
 
     if self.is_asan:
@@ -665,6 +663,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
       blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
+    else:
+      blacklist += ['rintf.c', 'ceil.c', 'ceilf.c', 'floor.c', 'floorf.c',
+                    'fabs.c', 'fabsf.c', 'sqrt.c', 'sqrtf.c']
 
     blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -1177,7 +1178,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
             logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+          shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
       add_back_deps(need) # recurse to get deps of deps
 
@@ -1196,7 +1197,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for export in shared.Settings.EXPORTED_FUNCTIONS:
     if shared.Settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
-    symbolses[0].undefs.add(export[1:])
+    symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
     add_back_deps(symbols)
@@ -1207,7 +1208,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if only_forced:
     for key, value in deps_info.items():
       for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
   always_include.add('libpthreads')
   if shared.Settings.MALLOC != 'none':

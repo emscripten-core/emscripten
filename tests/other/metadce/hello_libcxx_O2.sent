@@ -24,7 +24,6 @@ demangleAll
 emscripten_get_heap_size
 emscripten_memcpy_big
 emscripten_resize_heap
-fabs
 getenv
 jsStackTrace
 memcpy

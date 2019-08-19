@@ -80,8 +80,6 @@ EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
-EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '1'))
-
 # Also suppot the old name: EM_SAVE_DIR
 EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
 
@@ -235,11 +233,6 @@ def create_test_file(name, contents, binary=False):
 
 # The core test modes
 core_test_modes = [
-  'asm0',
-  'asm2',
-  'asm3',
-  'asm2g',
-  'asm2f',
   'wasm0',
   'wasm1',
   'wasm2',
@@ -252,8 +245,17 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
-  'asm2i',
 ]
+
+if not shared.Settings.WASM_BACKEND:
+  core_test_modes += [
+    'asm0',
+    'asm2',
+    'asm3',
+    'asm2g',
+    'asm2f',
+    'asm2i',
+  ]
 
 # The default core test mode, used when none is specified
 default_core_test_mode = 'wasm0'
@@ -1082,7 +1084,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False, assert_all=False,
+             assert_returncode=0, assert_identical=False, assert_all=False,
              check_for_error=True):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
@@ -1114,7 +1116,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       else:
         js_engines = js_engines[:1]
     for engine in js_engines:
-      # print 'test in', engine
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
@@ -1540,14 +1541,7 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args:
-      if not self.is_wasm_backend():
-        if 'ALLOW_MEMORY_GROWTH=1' not in args:
-          if EMTEST_WASM_PTHREADS:
-            also_asmjs = True
-          elif 'WASM=0' not in args:
-            args += ['-s', 'WASM=0']
-      else:
+    if 'USE_PTHREADS=1' in args and self.is_wasm_backend():
         # wasm2js does not support threads yet
         also_asmjs = False
     if 'WASM=0' not in args:

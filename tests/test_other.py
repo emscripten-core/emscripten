@@ -8053,7 +8053,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 38, [], ['waka'], 226582, 22, 33, 750) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 21, 33, 750) # noqa
 
   @parameterized({
     'normal': (['-O2'], 36, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
@@ -8081,7 +8081,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1505, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1514, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,   18,   13, None), # noqa
   })
   @no_fastcomp()
@@ -9068,7 +9068,7 @@ ok.
         }
         puts("unexpected success.");
       }
-    ''', 'getpeername error: Socket not connected')
+    ''', 'getpeername error: Socket not connected', assert_returncode=None)
 
   def test_getaddrinfo(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
@@ -9672,3 +9672,22 @@ Module.arguments has been replaced with plain arguments_
     self.do_smart_test(path_from_root('tests', 'test_boost_graph.cpp'),
                        emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
                        assert_returncode=0)
+
+  @no_fastcomp('EM_ASM and setjmp works fine on fastcomp')
+  def test_setjmp_em_asm(self):
+    create_test_file('src.c', '''
+      #include <emscripten.h>
+      #include <setjmp.h>
+
+      int main() {
+        jmp_buf buf;
+        setjmp(buf);
+        EM_ASM({
+          console.log("hello world");
+        });
+      }
+    ''')
+    result = run_process([PYTHON, EMCC, 'src.c'], stderr=PIPE, check=False)
+    self.assertNotEqual(result.returncode, 0)
+    self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
+    self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
