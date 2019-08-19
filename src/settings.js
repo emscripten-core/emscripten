@@ -1391,6 +1391,8 @@ var EMSCRIPTEN_VERSION = '';
 // This will contain the optimization level (-Ox). You should not modify this.
 var OPT_LEVEL = 0;
 
+var USE_RTTI = 1;
+
 // This will contain the debug level (-gx). You should not modify this.
 var DEBUG_LEVEL = 0;
 

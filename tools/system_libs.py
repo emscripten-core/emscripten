@@ -938,8 +938,29 @@ class libembind(CXXLibrary):
   depends = ['libc++abi']
   never_force = True
 
+  def __init__(self, **kwargs):
+    self.with_rtti = kwargs.pop('with_rtti', False)
+    super(libembind, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(libembind, self).get_cflags()
+    if not self.with_rtti:
+      cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libembind, cls).vary_on() + ['with_rtti']
+
+  def get_base_name_prefix(self):
+    return 'libembind-rtti' if self.with_rtti else 'libembind'
+
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
 
 
 class libfetch(CXXLibrary, MTLibrary):

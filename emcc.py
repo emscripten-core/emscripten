@@ -984,6 +984,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     newargs = [a for a in newargs if a != '']
 
+    if '-fno-rtti' in newargs:
+      shared.Settings.USE_RTTI = 0
+
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
     if has_dash_c or has_dash_S:
