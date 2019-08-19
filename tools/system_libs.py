@@ -952,8 +952,11 @@ class libembind(CXXLibrary):
   def vary_on(cls):
     return super(libembind, cls).vary_on() + ['with_rtti']
 
-  def get_base_name_prefix(self):
-    return 'libembind-rtti' if self.with_rtti else 'libembind'
+  def get_base_name(self):
+    name = super(libembind, self).get_base_name()
+    if self.with_rtti:
+      name += '-rtti'
+    return name
 
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
