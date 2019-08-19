@@ -1350,7 +1350,6 @@ int f() {
     Building.emcc('main.cpp', ['--embed-file', 'my_test.input'], output_filename='a.out.js')
     self.assertContained('zyx', run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
-  @no_windows('random flakes on "Access in denied" in atexit')
   def test_abspaths(self):
     # Includes with absolute paths are generally dangerous, things like -I/usr/.. will get to system local headers, not our portable ones.
 
@@ -1367,9 +1366,8 @@ int f() {
                            ([], False)]:
       print(args, expected)
       proc = run_process([PYTHON, EMCC, 'main.c'] + args, stderr=PIPE)
-      assert ('encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)' in proc.stderr) == expected, proc.stderr
-      if not expected:
-        assert proc.stderr == '', proc.stderr
+      WARNING = 'encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript)'
+      self.assertContainedIf(WARNING, proc.stderr, expected)
 
   def test_local_link(self):
     # Linking a local library directly, like /usr/lib/libsomething.so, cannot work of course since it
@@ -1953,10 +1951,7 @@ int f() {
 
       run_process([PYTHON, EMCC, 'main.cpp'] + args)
       output = run_js('a.out.js')
-      if no_initial_run:
-        self.assertNotContained('hello from main', output)
-      else:
-        self.assertContained('hello from main', output)
+      self.assertContainedIf('hello from main', output, not no_initial_run)
 
       if no_initial_run:
         # Calling main later should still work, filesystem etc. must be set up.
@@ -3456,10 +3451,7 @@ int main(int argc, char **argv) {
           exit = 1 - no_exit
           print('  exit:', exit, 'opts:', opts)
           self.assertContained('coming around', output)
-          if exit:
-            self.assertContained('going away', output)
-          else:
-            self.assertNotContained('going away', output)
+          self.assertContainedIf('going away', output, exit)
           if not self.is_wasm_backend():
             # The wasm backend uses atexit to register destructors when
             # constructors are called  There is currently no way to exclude
@@ -3619,10 +3611,7 @@ Waste<3> *getMore() {
       run_js('a.out.js', stderr=PIPE, full_output=True, engine=NODE_JS)
       src = open('a.out.js').read()
       self.assertContained('argc: 1\n16\n17\n10\n', run_js('a.out.js'))
-      if has_global:
-        self.assertContained('globalCtors', src)
-      else:
-        self.assertNotContained('globalCtors', src)
+      self.assertContainedIf('globalCtors', src, has_global)
 
   # Tests that when there are only 0 or 1 global initializers, that a grouped global initializer function will not be generated
   # (that would just consume excess code size)
@@ -3762,10 +3751,7 @@ int main()
       print(suffix)
       err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'out' + suffix], stderr=PIPE).stderr
       warning = 'When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js).'
-      if suffix in shared_suffixes:
-        self.assertContained(warning, err)
-      else:
-        self.assertNotContained(warning, err)
+      self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
   def test_side_module_without_proper_target(self):
     # SIDE_MODULE is only meaningful when compiling to wasm (or js+wasm)
@@ -7919,10 +7905,7 @@ int main() {
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WASM=1', '-O3'] + args
         print(' '.join(cmd))
         err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
-        if expect:
-          self.assertContained('--ignore-implicit-traps ', err)
-        else:
-          self.assertNotContained('--ignore-implicit-traps ', err)
+        self.assertContainedIf('--ignore-implicit-traps ', err, expect)
         sizes.append(os.path.getsize('a.out.wasm'))
     print('sizes:', sizes)
     # sizes must be different, as the flag has an impact
@@ -8391,10 +8374,7 @@ int main() {
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
       err = run_process([PYTHON, EMCC, '-O' + str(level), path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
-      if level > 3:
-        self.assertContained("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err)
-      else:
-        self.assertEqual(err, '')
+      self.assertContainedIf("optimization level '-O" + str(level) + "' is not supported; using '-O3' instead", err, level > 3)
 
   # Tests that if user specifies multiple -o output directives, then the last one will take precedence
   def test_multiple_o_files(self):
@@ -8509,7 +8489,6 @@ end
 
     assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
 
-  @no_windows('random flakes on "Access in denied" in atexit')
   def test_IGNORE_CLOSURE_COMPILER_ERRORS(self):
     create_test_file('pre.js', r'''
       // make closure compiler very very angry
@@ -8530,10 +8509,12 @@ end
         self.assertNotEqual(proc.returncode, 0)
       return proc
 
+    WARNING = 'Variable dupe declared more than once'
+
     proc = test(check=False)
-    self.assertContained('ERROR - Variable dupe declared more than once', proc.stderr)
+    self.assertContained(WARNING, proc.stderr)
     proc = test(check=True, extra=['-s', 'IGNORE_CLOSURE_COMPILER_ERRORS=1'])
-    self.assertEqual(proc.stderr, '')
+    self.assertNotContained(WARNING, proc.stderr)
 
   def test_closure_full_js_library(self):
     # test for closure errors in the entire JS library
