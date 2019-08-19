@@ -1391,6 +1391,7 @@ var EMSCRIPTEN_VERSION = '';
 // This will contain the optimization level (-Ox). You should not modify this.
 var OPT_LEVEL = 0;
 
+// Will be set to 0 if -fno-rtti is used on the command line.
 var USE_RTTI = 1;
 
 // This will contain the debug level (-gx). You should not modify this.
