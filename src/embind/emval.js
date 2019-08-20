@@ -455,6 +455,18 @@ var LibraryEmVal = {
     return object instanceof constructor;
   },
   
+  _emval_is_number__deps: ['$requireHandle'],
+  _emval_is_number: function(handle ) {
+    handle = requireHandle(handle );
+    return typeof handle === 'number';
+  },
+
+  _emval_is_string__deps: ['$requireHandle'],
+  _emval_is_string: function(handle) {
+    handle = requireHandle(handle);
+    return typeof handle === 'string';
+  },
+
   _emval_in__deps: ['$requireHandle'],
   _emval_in: function(item, object) {
     item = requireHandle(item);
