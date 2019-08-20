@@ -456,8 +456,8 @@ var LibraryEmVal = {
   },
   
   _emval_is_number__deps: ['$requireHandle'],
-  _emval_is_number: function(handle ) {
-    handle = requireHandle(handle );
+  _emval_is_number: function(handle) {
+    handle = requireHandle(handle);
     return typeof handle === 'number';
   },
 
