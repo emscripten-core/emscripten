@@ -9460,6 +9460,7 @@ int main () {
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
+  @no_fastcomp('lsan not supported on fastcomp')
   def test_lsan_no_stack_trace(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT'],
@@ -9476,6 +9477,7 @@ int main () {
       'AddressSanitizer: null-pointer-dereference on address',
     ])
 
+  @no_fastcomp('asan is not supported on fastcomp')
   def test_asan_no_stack_trace(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
                        emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
