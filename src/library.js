@@ -4569,6 +4569,8 @@ LibraryManager.library = {
       // If this is a JavaScript function, try looking it up in the unwind cache.
       var frame = UNWIND_CACHE[pc];
       if (!frame) return 0;
+
+      var match;
       if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
         name = match[1];
       } else if (match = /^(.+?)@/.exec(frame)) {
