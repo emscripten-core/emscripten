@@ -9460,12 +9460,28 @@ int main () {
                        emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'ASSERTIONS=0'],
                        regexes=[r'^\s*$'])
 
+  def test_lsan_no_stack_trace(self):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
+                       emcc_args=['-fsanitize=leak', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT'],
+                       assert_returncode=None, literals=[
+      'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
+      'SUMMARY: LeakSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
+    ])
+
   @no_fastcomp('asan is not supported on fastcomp')
   def test_asan_null_deref(self):
     self.do_smart_test(path_from_root('tests', 'other', 'test_asan_null_deref.c'),
                        emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'],
                        assert_returncode=None, literals=[
       'AddressSanitizer: null-pointer-dereference on address',
+    ])
+
+  def test_asan_no_stack_trace(self):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_lsan_leaks.c'),
+                       emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1', '-DDISABLE_CONTEXT', '-s', 'EXIT_RUNTIME'],
+                       assert_returncode=None, literals=[
+      'Direct leak of 3427 byte(s) in 3 object(s) allocated from:',
+      'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
   @parameterized({
