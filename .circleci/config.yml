@@ -26,6 +26,7 @@ test-firefox: &test-firefox
   <<: *defaults
   environment:
   steps:
+    - checkout
     - attach_workspace:
         # Must be absolute path or relative path from working_directory
         at: ~/
