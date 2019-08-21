@@ -172,6 +172,7 @@ jobs:
   build:
     <<: *defaults
     steps:
+      - checkout
       - run:
           name: install package dependencies
           command: |
@@ -309,6 +310,7 @@ jobs:
   build-upstream:
     <<: *defaults
     steps:
+      - checkout
       - run:
           name: install package dependencies
           command: |
