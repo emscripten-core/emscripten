@@ -1,0 +1,64 @@
+FFmpeg currently uses a custom build system, this text attempts to document
+some of its obscure features and options.
+
+Makefile variables:
+
+V
+    Disable the default terse mode, the full command issued by make and its
+    output will be shown on the screen.
+
+DBG
+    Preprocess x86 external assembler files to a .dbg.asm file in the object
+    directory, which then gets compiled. Helps in developing those assembler
+    files.
+
+DESTDIR
+    Destination directory for the install targets, useful to prepare packages
+    or install FFmpeg in cross-environments.
+
+GEN
+    Set to ‘1’ to generate the missing or mismatched references.
+
+Makefile targets:
+
+all
+    Default target, builds all the libraries and the executables.
+
+fate
+    Run the fate test suite, note that you must have installed it.
+
+fate-list
+    List all fate/regression test targets.
+
+install
+    Install headers, libraries and programs.
+
+examples
+    Build all examples located in doc/examples.
+
+checkheaders
+    Check headers dependencies.
+
+alltools
+    Build all tools in tools directory.
+
+config
+    Reconfigure the project with the current configuration.
+
+tools/target_dec_<decoder>_fuzzer
+    Build fuzzer to fuzz the specified decoder.
+
+
+Useful standard make commands:
+make -t <target>
+    Touch all files that otherwise would be built, this is useful to reduce
+    unneeded rebuilding when changing headers, but note that you must force rebuilds
+    of files that actually need it by hand then.
+
+make -j<num>
+    Rebuild with multiple jobs at the same time. Faster on multi processor systems.
+
+make -k
+    Continue build in case of errors, this is useful for the regression tests
+    sometimes but note that it will still not run all reg tests.
+

@@ -1,0 +1,390 @@
+All the numerical options, if not specified otherwise, accept a string
+representing a number as input, which may be followed by one of the SI
+unit prefixes, for example: 'K', 'M', or 'G'.
+
+If 'i' is appended to the SI unit prefix, the complete prefix will be
+interpreted as a unit prefix for binary multiples, which are based on
+powers of 1024 instead of powers of 1000. Appending 'B' to the SI unit
+prefix multiplies the value by 8. This allows using, for example:
+'KB', 'MiB', 'G' and 'B' as number suffixes.
+
+Options which do not take arguments are boolean options, and set the
+corresponding value to true. They can be set to false by prefixing
+the option name with "no". For example using "-nofoo"
+will set the boolean option with name "foo" to false.
+
+@anchor{Stream specifiers}
+@section Stream specifiers
+Some options are applied per-stream, e.g. bitrate or codec. Stream specifiers
+are used to precisely specify which stream(s) a given option belongs to.
+
+A stream specifier is a string generally appended to the option name and
+separated from it by a colon. E.g. @code{-codec:a:1 ac3} contains the
+@code{a:1} stream specifier, which matches the second audio stream. Therefore, it
+would select the ac3 codec for the second audio stream.
+
+A stream specifier can match several streams, so that the option is applied to all
+of them. E.g. the stream specifier in @code{-b:a 128k} matches all audio
+streams.
+
+An empty stream specifier matches all streams. For example, @code{-codec copy}
+or @code{-codec: copy} would copy all the streams without reencoding.
+
+Possible forms of stream specifiers are:
+@table @option
+@item @var{stream_index}
+Matches the stream with this index. E.g. @code{-threads:1 4} would set the
+thread count for the second stream to 4. If @var{stream_index} is used as an
+additional stream specifier (see below), then it selects stream number
+@var{stream_index} from the matching streams. Stream numbering is based on the
+order of the streams as detected by libavformat except when a program ID is
+also specified. In this case it is based on the ordering of the streams in the
+program.
+@item @var{stream_type}[:@var{additional_stream_specifier}]
+@var{stream_type} is one of following: 'v' or 'V' for video, 'a' for audio, 's'
+for subtitle, 'd' for data, and 't' for attachments. 'v' matches all video
+streams, 'V' only matches video streams which are not attached pictures, video
+thumbnails or cover arts. If @var{additional_stream_specifier} is used, then
+it matches streams which both have this type and match the
+@var{additional_stream_specifier}. Otherwise, it matches all streams of the
+specified type.
+@item p:@var{program_id}[:@var{additional_stream_specifier}]
+Matches streams which are in the program with the id @var{program_id}. If
+@var{additional_stream_specifier} is used, then it matches streams which both
+are part of the program and match the @var{additional_stream_specifier}.
+
+@item #@var{stream_id} or i:@var{stream_id}
+Match the stream by stream id (e.g. PID in MPEG-TS container).
+@item m:@var{key}[:@var{value}]
+Matches streams with the metadata tag @var{key} having the specified value. If
+@var{value} is not given, matches streams that contain the given tag with any
+value.
+@item u
+Matches streams with usable configuration, the codec must be defined and the
+essential information such as video dimension or audio sample rate must be present.
+
+Note that in @command{ffmpeg}, matching by metadata will only work properly for
+input files.
+@end table
+
+@section Generic options
+
+These options are shared amongst the ff* tools.
+
+@table @option
+
+@item -L
+Show license.
+
+@item -h, -?, -help, --help [@var{arg}]
+Show help. An optional parameter may be specified to print help about a specific
+item. If no argument is specified, only basic (non advanced) tool
+options are shown.
+
+Possible values of @var{arg} are:
+@table @option
+@item long
+Print advanced tool options in addition to the basic tool options.
+
+@item full
+Print complete list of options, including shared and private options
+for encoders, decoders, demuxers, muxers, filters, etc.
+
+@item decoder=@var{decoder_name}
+Print detailed information about the decoder named @var{decoder_name}. Use the
+@option{-decoders} option to get a list of all decoders.
+
+@item encoder=@var{encoder_name}
+Print detailed information about the encoder named @var{encoder_name}. Use the
+@option{-encoders} option to get a list of all encoders.
+
+@item demuxer=@var{demuxer_name}
+Print detailed information about the demuxer named @var{demuxer_name}. Use the
+@option{-formats} option to get a list of all demuxers and muxers.
+
+@item muxer=@var{muxer_name}
+Print detailed information about the muxer named @var{muxer_name}. Use the
+@option{-formats} option to get a list of all muxers and demuxers.
+
+@item filter=@var{filter_name}
+Print detailed information about the filter name @var{filter_name}. Use the
+@option{-filters} option to get a list of all filters.
+
+@item bsf=@var{bitstream_filter_name}
+Print detailed information about the bitstream filter name @var{bitstream_filter_name}.
+Use the @option{-bsfs} option to get a list of all bitstream filters.
+@end table
+
+@item -version
+Show version.
+
+@item -formats
+Show available formats (including devices).
+
+@item -demuxers
+Show available demuxers.
+
+@item -muxers
+Show available muxers.
+
+@item -devices
+Show available devices.
+
+@item -codecs
+Show all codecs known to libavcodec.
+
+Note that the term 'codec' is used throughout this documentation as a shortcut
+for what is more correctly called a media bitstream format.
+
+@item -decoders
+Show available decoders.
+
+@item -encoders
+Show all available encoders.
+
+@item -bsfs
+Show available bitstream filters.
+
+@item -protocols
+Show available protocols.
+
+@item -filters
+Show available libavfilter filters.
+
+@item -pix_fmts
+Show available pixel formats.
+
+@item -sample_fmts
+Show available sample formats.
+
+@item -layouts
+Show channel names and standard channel layouts.
+
+@item -colors
+Show recognized color names.
+
+@item -sources @var{device}[,@var{opt1}=@var{val1}[,@var{opt2}=@var{val2}]...]
+Show autodetected sources of the input device.
+Some devices may provide system-dependent source names that cannot be autodetected.
+The returned list cannot be assumed to be always complete.
+@example
+ffmpeg -sources pulse,server=192.168.0.4
+@end example
+
+@item -sinks @var{device}[,@var{opt1}=@var{val1}[,@var{opt2}=@var{val2}]...]
+Show autodetected sinks of the output device.
+Some devices may provide system-dependent sink names that cannot be autodetected.
+The returned list cannot be assumed to be always complete.
+@example
+ffmpeg -sinks pulse,server=192.168.0.4
+@end example
+
+@item -loglevel [@var{flags}+]@var{loglevel} | -v [@var{flags}+]@var{loglevel}
+Set logging level and flags used by the library.
+
+The optional @var{flags} prefix can consist of the following values:
+@table @samp
+@item repeat
+Indicates that repeated log output should not be compressed to the first line
+and the "Last message repeated n times" line will be omitted.
+@item level
+Indicates that log output should add a @code{[level]} prefix to each message
+line. This can be used as an alternative to log coloring, e.g. when dumping the
+log to file.
+@end table
+Flags can also be used alone by adding a '+'/'-' prefix to set/reset a single
+flag without affecting other @var{flags} or changing @var{loglevel}. When
+setting both @var{flags} and @var{loglevel}, a '+' separator is expected
+between the last @var{flags} value and before @var{loglevel}.
+
+@var{loglevel} is a string or a number containing one of the following values:
+@table @samp
+@item quiet, -8
+Show nothing at all; be silent.
+@item panic, 0
+Only show fatal errors which could lead the process to crash, such as
+an assertion failure. This is not currently used for anything.
+@item fatal, 8
+Only show fatal errors. These are errors after which the process absolutely
+cannot continue.
+@item error, 16
+Show all errors, including ones which can be recovered from.
+@item warning, 24
+Show all warnings and errors. Any message related to possibly
+incorrect or unexpected events will be shown.
+@item info, 32
+Show informative messages during processing. This is in addition to
+warnings and errors. This is the default value.
+@item verbose, 40
+Same as @code{info}, except more verbose.
+@item debug, 48
+Show everything, including debugging information.
+@item trace, 56
+@end table
+
+For example to enable repeated log output, add the @code{level} prefix, and set
+@var{loglevel} to @code{verbose}:
+@example
+ffmpeg -loglevel repeat+level+verbose -i input output
+@end example
+Another example that enables repeated log output without affecting current
+state of @code{level} prefix flag or @var{loglevel}:
+@example
+ffmpeg [...] -loglevel +repeat
+@end example
+
+By default the program logs to stderr. If coloring is supported by the
+terminal, colors are used to mark errors and warnings. Log coloring
+can be disabled setting the environment variable
+@env{AV_LOG_FORCE_NOCOLOR} or @env{NO_COLOR}, or can be forced setting
+the environment variable @env{AV_LOG_FORCE_COLOR}.
+The use of the environment variable @env{NO_COLOR} is deprecated and
+will be dropped in a future FFmpeg version.
+
+@item -report
+Dump full command line and console output to a file named
+@code{@var{program}-@var{YYYYMMDD}-@var{HHMMSS}.log} in the current
+directory.
+This file can be useful for bug reports.
+It also implies @code{-loglevel debug}.
+
+Setting the environment variable @env{FFREPORT} to any value has the
+same effect. If the value is a ':'-separated key=value sequence, these
+options will affect the report; option values must be escaped if they
+contain special characters or the options delimiter ':' (see the
+``Quoting and escaping'' section in the ffmpeg-utils manual).
+
+The following options are recognized:
+@table @option
+@item file
+set the file name to use for the report; @code{%p} is expanded to the name
+of the program, @code{%t} is expanded to a timestamp, @code{%%} is expanded
+to a plain @code{%}
+@item level
+set the log verbosity level using a numerical value (see @code{-loglevel}).
+@end table
+
+For example, to output a report to a file named @file{ffreport.log}
+using a log level of @code{32} (alias for log level @code{info}):
+
+@example
+FFREPORT=file=ffreport.log:level=32 ffmpeg -i input output
+@end example
+
+Errors in parsing the environment variable are not fatal, and will not
+appear in the report.
+
+@item -hide_banner
+Suppress printing banner.
+
+All FFmpeg tools will normally show a copyright notice, build options
+and library versions. This option can be used to suppress printing
+this information.
+
+@item -cpuflags flags (@emph{global})
+Allows setting and clearing cpu flags. This option is intended
+for testing. Do not use it unless you know what you're doing.
+@example
+ffmpeg -cpuflags -sse+mmx ...
+ffmpeg -cpuflags mmx ...
+ffmpeg -cpuflags 0 ...
+@end example
+Possible flags for this option are:
+@table @samp
+@item x86
+@table @samp
+@item mmx
+@item mmxext
+@item sse
+@item sse2
+@item sse2slow
+@item sse3
+@item sse3slow
+@item ssse3
+@item atom
+@item sse4.1
+@item sse4.2
+@item avx
+@item avx2
+@item xop
+@item fma3
+@item fma4
+@item 3dnow
+@item 3dnowext
+@item bmi1
+@item bmi2
+@item cmov
+@end table
+@item ARM
+@table @samp
+@item armv5te
+@item armv6
+@item armv6t2
+@item vfp
+@item vfpv3
+@item neon
+@item setend
+@end table
+@item AArch64
+@table @samp
+@item armv8
+@item vfp
+@item neon
+@end table
+@item PowerPC
+@table @samp
+@item altivec
+@end table
+@item Specific Processors
+@table @samp
+@item pentium2
+@item pentium3
+@item pentium4
+@item k6
+@item k62
+@item athlon
+@item athlonxp
+@item k8
+@end table
+@end table
+@end table
+
+@section AVOptions
+
+These options are provided directly by the libavformat, libavdevice and
+libavcodec libraries. To see the list of available AVOptions, use the
+@option{-help} option. They are separated into two categories:
+@table @option
+@item generic
+These options can be set for any container, codec or device. Generic options
+are listed under AVFormatContext options for containers/devices and under
+AVCodecContext options for codecs.
+@item private
+These options are specific to the given container, device or codec. Private
+options are listed under their corresponding containers/devices/codecs.
+@end table
+
+For example to write an ID3v2.3 header instead of a default ID3v2.4 to
+an MP3 file, use the @option{id3v2_version} private option of the MP3
+muxer:
+@example
+ffmpeg -i input.flac -id3v2_version 3 out.mp3
+@end example
+
+All codec AVOptions are per-stream, and thus a stream specifier
+should be attached to them:
+@example
+ffmpeg -i multichannel.mxf -map 0:v:0 -map 0:a:0 -map 0:a:0 -c:a:0 ac3 -b:a:0 640k -ac:a:1 2 -c:a:1 aac -b:2 128k out.mp4
+@end example
+
+In the above example, a multichannel audio stream is mapped twice for output.
+The first instance is encoded with codec ac3 and bitrate 640k.
+The second instance is downmixed to 2 channels and encoded with codec aac. A bitrate of 128k is specified for it using
+absolute index of the output stream.
+
+Note: the @option{-nooption} syntax cannot be used for boolean
+AVOptions, use @option{-option 0}/@option{-option 1}.
+
+Note: the old undocumented way of specifying per-stream AVOptions by
+prepending v/a/s to the options name is now obsolete and will be
+removed soon.

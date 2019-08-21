@@ -1,0 +1,1537 @@
+@chapter Input Devices
+@c man begin INPUT DEVICES
+
+Input devices are configured elements in FFmpeg which enable accessing
+the data coming from a multimedia device attached to your system.
+
+When you configure your FFmpeg build, all the supported input devices
+are enabled by default. You can list all available ones using the
+configure option "--list-indevs".
+
+You can disable all the input devices using the configure option
+"--disable-indevs", and selectively enable an input device using the
+option "--enable-indev=@var{INDEV}", or you can disable a particular
+input device using the option "--disable-indev=@var{INDEV}".
+
+The option "-devices" of the ff* tools will display the list of
+supported input devices.
+
+A description of the currently available input devices follows.
+
+@section alsa
+
+ALSA (Advanced Linux Sound Architecture) input device.
+
+To enable this input device during configuration you need libasound
+installed on your system.
+
+This device allows capturing from an ALSA device. The name of the
+device to capture has to be an ALSA card identifier.
+
+An ALSA identifier has the syntax:
+@example
+hw:@var{CARD}[,@var{DEV}[,@var{SUBDEV}]]
+@end example
+
+where the @var{DEV} and @var{SUBDEV} components are optional.
+
+The three arguments (in order: @var{CARD},@var{DEV},@var{SUBDEV})
+specify card number or identifier, device number and subdevice number
+(-1 means any).
+
+To see the list of cards currently recognized by your system check the
+files @file{/proc/asound/cards} and @file{/proc/asound/devices}.
+
+For example to capture with @command{ffmpeg} from an ALSA device with
+card id 0, you may run the command:
+@example
+ffmpeg -f alsa -i hw:0 alsaout.wav
+@end example
+
+For more information see:
+@url{http://www.alsa-project.org/alsa-doc/alsa-lib/pcm.html}
+
+@subsection Options
+
+@table @option
+
+@item sample_rate
+Set the sample rate in Hz. Default is 48000.
+
+@item channels
+Set the number of channels. Default is 2.
+
+@end table
+
+@section android_camera
+
+Android camera input device.
+
+This input devices uses the Android Camera2 NDK API which is
+available on devices with API level 24+. The availability of
+android_camera is autodetected during configuration.
+
+This device allows capturing from all cameras on an Android device,
+which are integrated into the Camera2 NDK API.
+
+The available cameras are enumerated internally and can be selected
+with the @var{camera_index} parameter. The input file string is
+discarded.
+
+Generally the back facing camera has index 0 while the front facing
+camera has index 1.
+
+@subsection Options
+
+@table @option
+
+@item video_size
+Set the video size given as a string such as 640x480 or hd720.
+Falls back to the first available configuration reported by
+Android if requested video size is not available or by default.
+
+@item framerate
+Set the video framerate.
+Falls back to the first available configuration reported by
+Android if requested framerate is not available or by default (-1).
+
+@item camera_index
+Set the index of the camera to use. Default is 0.
+
+@item input_queue_size
+Set the maximum number of frames to buffer. Default is 5.
+
+@end table
+
+@section avfoundation
+
+AVFoundation input device.
+
+AVFoundation is the currently recommended framework by Apple for streamgrabbing on OSX >= 10.7 as well as on iOS.
+
+The input filename has to be given in the following syntax:
+@example
+-i "[[VIDEO]:[AUDIO]]"
+@end example
+The first entry selects the video input while the latter selects the audio input.
+The stream has to be specified by the device name or the device index as shown by the device list.
+Alternatively, the video and/or audio input device can be chosen by index using the
+@option{
+    -video_device_index <INDEX>
+}
+and/or
+@option{
+    -audio_device_index <INDEX>
+}
+, overriding any
+device name or index given in the input filename.
+
+All available devices can be enumerated by using @option{-list_devices true}, listing
+all device names and corresponding indices.
+
+There are two device name aliases:
+@table @code
+
+@item default
+Select the AVFoundation default device of the corresponding type.
+
+@item none
+Do not record the corresponding media type.
+This is equivalent to specifying an empty device name or index.
+
+@end table
+
+@subsection Options
+
+AVFoundation supports the following options:
+
+@table @option
+
+@item -list_devices <TRUE|FALSE>
+If set to true, a list of all available input devices is given showing all
+device names and indices.
+
+@item -video_device_index <INDEX>
+Specify the video device by its index. Overrides anything given in the input filename.
+
+@item -audio_device_index <INDEX>
+Specify the audio device by its index. Overrides anything given in the input filename.
+
+@item -pixel_format <FORMAT>
+Request the video device to use a specific pixel format.
+If the specified format is not supported, a list of available formats is given
+and the first one in this list is used instead. Available pixel formats are:
+@code{monob, rgb555be, rgb555le, rgb565be, rgb565le, rgb24, bgr24, 0rgb, bgr0, 0bgr, rgb0,
+ bgr48be, uyvy422, yuva444p, yuva444p16le, yuv444p, yuv422p16, yuv422p10, yuv444p10,
+ yuv420p, nv12, yuyv422, gray}
+
+@item -framerate
+Set the grabbing frame rate. Default is @code{ntsc}, corresponding to a
+frame rate of @code{30000/1001}.
+
+@item -video_size
+Set the video frame size.
+
+@item -capture_cursor
+Capture the mouse pointer. Default is 0.
+
+@item -capture_mouse_clicks
+Capture the screen mouse clicks. Default is 0.
+
+@item -capture_raw_data
+Capture the raw device data. Default is 0.
+Using this option may result in receiving the underlying data delivered to the AVFoundation framework. E.g. for muxed devices that sends raw DV data to the framework (like tape-based camcorders), setting this option to false results in extracted video frames captured in the designated pixel format only. Setting this option to true results in receiving the raw DV stream untouched.
+@end table
+
+@subsection Examples
+
+@itemize
+
+@item
+Print the list of AVFoundation supported devices and exit:
+@example
+$ ffmpeg -f avfoundation -list_devices true -i ""
+@end example
+
+@item
+Record video from video device 0 and audio from audio device 0 into out.avi:
+@example
+$ ffmpeg -f avfoundation -i "0:0" out.avi
+@end example
+
+@item
+Record video from video device 2 and audio from audio device 1 into out.avi:
+@example
+$ ffmpeg -f avfoundation -video_device_index 2 -i ":1" out.avi
+@end example
+
+@item
+Record video from the system default video device using the pixel format bgr0 and do not record any audio into out.avi:
+@example
+$ ffmpeg -f avfoundation -pixel_format bgr0 -i "default:none" out.avi
+@end example
+
+@item
+Record raw DV data from a suitable input device and write the output into out.dv:
+@example
+$ ffmpeg -f avfoundation -capture_raw_data true -i "zr100:none" out.dv
+@end example
+
+
+@end itemize
+
+@section bktr
+
+BSD video input device.
+
+@subsection Options
+
+@table @option
+
+@item framerate
+Set the frame rate.
+
+@item video_size
+Set the video frame size. Default is @code{vga}.
+
+@item standard
+
+Available values are:
+@table @samp
+@item pal
+
+@item ntsc
+
+@item secam
+
+@item paln
+
+@item palm
+
+@item ntscj
+
+@end table
+
+@end table
+
+@section decklink
+
+The decklink input device provides capture capabilities for Blackmagic
+DeckLink devices.
+
+To enable this input device, you need the Blackmagic DeckLink SDK and you
+need to configure with the appropriate @code{--extra-cflags}
+and @code{--extra-ldflags}.
+On Windows, you need to run the IDL files through @command{widl}.
+
+DeckLink is very picky about the formats it supports. Pixel format of the
+input can be set with @option{raw_format}.
+Framerate and video size must be determined for your device with
+@command{-list_formats 1}. Audio sample rate is always 48 kHz and the number
+of channels can be 2, 8 or 16. Note that all audio channels are bundled in one single
+audio track.
+
+@subsection Options
+
+@table @option
+
+@item list_devices
+If set to @option{true}, print a list of devices and exit.
+Defaults to @option{false}. Alternatively you can use the @code{-sources}
+option of ffmpeg to list the available input devices.
+
+@item list_formats
+If set to @option{true}, print a list of supported formats and exit.
+Defaults to @option{false}.
+
+@item format_code <FourCC>
+This sets the input video format to the format given by the FourCC. To see
+the supported values of your device(s) use @option{list_formats}.
+Note that there is a FourCC @option{'pal '} that can also be used
+as @option{pal} (3 letters).
+Default behavior is autodetection of the input video format, if the hardware
+supports it.
+
+@item bm_v210
+This is a deprecated option, you can use @option{raw_format} instead.
+If set to @samp{1}, video is captured in 10 bit v210 instead
+of uyvy422. Not all Blackmagic devices support this option.
+
+@item raw_format
+Set the pixel format of the captured video.
+Available values are:
+@table @samp
+@item uyvy422
+
+@item yuv422p10
+
+@item argb
+
+@item bgra
+
+@item rgb10
+
+@end table
+
+@item teletext_lines
+If set to nonzero, an additional teletext stream will be captured from the
+vertical ancillary data. Both SD PAL (576i) and HD (1080i or 1080p)
+sources are supported. In case of HD sources, OP47 packets are decoded.
+
+This option is a bitmask of the SD PAL VBI lines captured, specifically lines 6
+to 22, and lines 318 to 335. Line 6 is the LSB in the mask. Selected lines
+which do not contain teletext information will be ignored. You can use the
+special @option{all} constant to select all possible lines, or
+@option{standard} to skip lines 6, 318 and 319, which are not compatible with
+all receivers.
+
+For SD sources, ffmpeg needs to be compiled with @code{--enable-libzvbi}. For
+HD sources, on older (pre-4K) DeckLink card models you have to capture in 10
+bit mode.
+
+@item channels
+Defines number of audio channels to capture. Must be @samp{2}, @samp{8} or @samp{16}.
+Defaults to @samp{2}.
+
+@item duplex_mode
+Sets the decklink device duplex mode. Must be @samp{unset}, @samp{half} or @samp{full}.
+Defaults to @samp{unset}.
+
+@item timecode_format
+Timecode type to include in the frame and video stream metadata. Must be
+@samp{none}, @samp{rp188vitc}, @samp{rp188vitc2}, @samp{rp188ltc},
+@samp{rp188any}, @samp{vitc}, @samp{vitc2}, or @samp{serial}. Defaults to
+@samp{none} (not included).
+
+@item video_input
+Sets the video input source. Must be @samp{unset}, @samp{sdi}, @samp{hdmi},
+@samp{optical_sdi}, @samp{component}, @samp{composite} or @samp{s_video}.
+Defaults to @samp{unset}.
+
+@item audio_input
+Sets the audio input source. Must be @samp{unset}, @samp{embedded},
+@samp{aes_ebu}, @samp{analog}, @samp{analog_xlr}, @samp{analog_rca} or
+@samp{microphone}. Defaults to @samp{unset}.
+
+@item video_pts
+Sets the video packet timestamp source. Must be @samp{video}, @samp{audio},
+@samp{reference}, @samp{wallclock} or @samp{abs_wallclock}.
+Defaults to @samp{video}.
+
+@item audio_pts
+Sets the audio packet timestamp source. Must be @samp{video}, @samp{audio},
+@samp{reference}, @samp{wallclock} or @samp{abs_wallclock}.
+Defaults to @samp{audio}.
+
+@item draw_bars
+If set to @samp{true}, color bars are drawn in the event of a signal loss.
+Defaults to @samp{true}.
+
+@item queue_size
+Sets maximum input buffer size in bytes. If the buffering reaches this value,
+incoming frames will be dropped.
+Defaults to @samp{1073741824}.
+
+@item audio_depth
+Sets the audio sample bit depth. Must be @samp{16} or @samp{32}.
+Defaults to @samp{16}.
+
+@item decklink_copyts
+If set to @option{true}, timestamps are forwarded as they are without removing
+the initial offset.
+Defaults to @option{false}.
+
+@item timestamp_align
+Capture start time alignment in seconds. If set to nonzero, input frames are
+dropped till the system timestamp aligns with configured value.
+Alignment difference of up to one frame duration is tolerated.
+This is useful for maintaining input synchronization across N different
+hardware devices deployed for 'N-way' redundancy. The system time of different
+hardware devices should be synchronized with protocols such as NTP or PTP,
+before using this option.
+Note that this method is not foolproof. In some border cases input
+synchronization may not happen due to thread scheduling jitters in the OS.
+Either sync could go wrong by 1 frame or in a rarer case
+@option{timestamp_align} seconds.
+Defaults to @samp{0}.
+
+@end table
+
+@subsection Examples
+
+@itemize
+
+@item
+List input devices:
+@example
+ffmpeg -f decklink -list_devices 1 -i dummy
+@end example
+
+@item
+List supported formats:
+@example
+ffmpeg -f decklink -list_formats 1 -i 'Intensity Pro'
+@end example
+
+@item
+Capture video clip at 1080i50:
+@example
+ffmpeg -format_code Hi50 -f decklink -i 'Intensity Pro' -c:a copy -c:v copy output.avi
+@end example
+
+@item
+Capture video clip at 1080i50 10 bit:
+@example
+ffmpeg -bm_v210 1 -format_code Hi50 -f decklink -i 'UltraStudio Mini Recorder' -c:a copy -c:v copy output.avi
+@end example
+
+@item
+Capture video clip at 1080i50 with 16 audio channels:
+@example
+ffmpeg -channels 16 -format_code Hi50 -f decklink -i 'UltraStudio Mini Recorder' -c:a copy -c:v copy output.avi
+@end example
+
+@end itemize
+
+@section dshow
+
+Windows DirectShow input device.
+
+DirectShow support is enabled when FFmpeg is built with the mingw-w64 project.
+Currently only audio and video devices are supported.
+
+Multiple devices may be opened as separate inputs, but they may also be
+opened on the same input, which should improve synchronism between them.
+
+The input name should be in the format:
+
+@example
+@var{TYPE}=@var{NAME}[:@var{TYPE}=@var{NAME}]
+@end example
+
+where @var{TYPE} can be either @var{audio} or @var{video},
+and @var{NAME} is the device's name or alternative name..
+
+@subsection Options
+
+If no options are specified, the device's defaults are used.
+If the device does not support the requested options, it will
+fail to open.
+
+@table @option
+
+@item video_size
+Set the video size in the captured video.
+
+@item framerate
+Set the frame rate in the captured video.
+
+@item sample_rate
+Set the sample rate (in Hz) of the captured audio.
+
+@item sample_size
+Set the sample size (in bits) of the captured audio.
+
+@item channels
+Set the number of channels in the captured audio.
+
+@item list_devices
+If set to @option{true}, print a list of devices and exit.
+
+@item list_options
+If set to @option{true}, print a list of selected device's options
+and exit.
+
+@item video_device_number
+Set video device number for devices with the same name (starts at 0,
+defaults to 0).
+
+@item audio_device_number
+Set audio device number for devices with the same name (starts at 0,
+defaults to 0).
+
+@item pixel_format
+Select pixel format to be used by DirectShow. This may only be set when
+the video codec is not set or set to rawvideo.
+
+@item audio_buffer_size
+Set audio device buffer size in milliseconds (which can directly
+impact latency, depending on the device).
+Defaults to using the audio device's
+default buffer size (typically some multiple of 500ms).
+Setting this value too low can degrade performance.
+See also
+@url{http://msdn.microsoft.com/en-us/library/windows/desktop/dd377582(v=vs.85).aspx}
+
+@item video_pin_name
+Select video capture pin to use by name or alternative name.
+
+@item audio_pin_name
+Select audio capture pin to use by name or alternative name.
+
+@item crossbar_video_input_pin_number
+Select video input pin number for crossbar device. This will be
+routed to the crossbar device's Video Decoder output pin.
+Note that changing this value can affect future invocations
+(sets a new default) until system reboot occurs.
+
+@item crossbar_audio_input_pin_number
+Select audio input pin number for crossbar device. This will be
+routed to the crossbar device's Audio Decoder output pin.
+Note that changing this value can affect future invocations
+(sets a new default) until system reboot occurs.
+
+@item show_video_device_dialog
+If set to @option{true}, before capture starts, popup a display dialog
+to the end user, allowing them to change video filter properties
+and configurations manually.
+Note that for crossbar devices, adjusting values in this dialog
+may be needed at times to toggle between PAL (25 fps) and NTSC (29.97)
+input frame rates, sizes, interlacing, etc.  Changing these values can
+enable different scan rates/frame rates and avoiding green bars at
+the bottom, flickering scan lines, etc.
+Note that with some devices, changing these properties can also affect future
+invocations (sets new defaults) until system reboot occurs.
+
+@item show_audio_device_dialog
+If set to @option{true}, before capture starts, popup a display dialog
+to the end user, allowing them to change audio filter properties
+and configurations manually.
+
+@item show_video_crossbar_connection_dialog
+If set to @option{true}, before capture starts, popup a display
+dialog to the end user, allowing them to manually
+modify crossbar pin routings, when it opens a video device.
+
+@item show_audio_crossbar_connection_dialog
+If set to @option{true}, before capture starts, popup a display
+dialog to the end user, allowing them to manually
+modify crossbar pin routings, when it opens an audio device.
+
+@item show_analog_tv_tuner_dialog
+If set to @option{true}, before capture starts, popup a display
+dialog to the end user, allowing them to manually
+modify TV channels and frequencies.
+
+@item show_analog_tv_tuner_audio_dialog
+If set to @option{true}, before capture starts, popup a display
+dialog to the end user, allowing them to manually
+modify TV audio (like mono vs. stereo, Language A,B or C).
+
+@item audio_device_load
+Load an audio capture filter device from file instead of searching
+it by name. It may load additional parameters too, if the filter
+supports the serialization of its properties to.
+To use this an audio capture source has to be specified, but it can
+be anything even fake one.
+
+@item audio_device_save
+Save the currently used audio capture filter device and its
+parameters (if the filter supports it) to a file.
+If a file with the same name exists it will be overwritten.
+
+@item video_device_load
+Load a video capture filter device from file instead of searching
+it by name. It may load additional parameters too, if the filter
+supports the serialization of its properties to.
+To use this a video capture source has to be specified, but it can
+be anything even fake one.
+
+@item video_device_save
+Save the currently used video capture filter device and its
+parameters (if the filter supports it) to a file.
+If a file with the same name exists it will be overwritten.
+
+@end table
+
+@subsection Examples
+
+@itemize
+
+@item
+Print the list of DirectShow supported devices and exit:
+@example
+$ ffmpeg -list_devices true -f dshow -i dummy
+@end example
+
+@item
+Open video device @var{Camera}:
+@example
+$ ffmpeg -f dshow -i video="Camera"
+@end example
+
+@item
+Open second video device with name @var{Camera}:
+@example
+$ ffmpeg -f dshow -video_device_number 1 -i video="Camera"
+@end example
+
+@item
+Open video device @var{Camera} and audio device @var{Microphone}:
+@example
+$ ffmpeg -f dshow -i video="Camera":audio="Microphone"
+@end example
+
+@item
+Print the list of supported options in selected device and exit:
+@example
+$ ffmpeg -list_options true -f dshow -i video="Camera"
+@end example
+
+@item
+Specify pin names to capture by name or alternative name, specify alternative device name:
+@example
+$ ffmpeg -f dshow -audio_pin_name "Audio Out" -video_pin_name 2 -i video=video="@@device_pnp_\\?\pci#ven_1a0a&dev_6200&subsys_62021461&rev_01#4&e2c7dd6&0&00e1#@{65e8773d-8f56-11d0-a3b9-00a0c9223196@}\@{ca465100-deb0-4d59-818f-8c477184adf6@}":audio="Microphone"
+@end example
+
+@item
+Configure a crossbar device, specifying crossbar pins, allow user to adjust video capture properties at startup:
+@example
+$ ffmpeg -f dshow -show_video_device_dialog true -crossbar_video_input_pin_number 0
+     -crossbar_audio_input_pin_number 3 -i video="AVerMedia BDA Analog Capture":audio="AVerMedia BDA Analog Capture"
+@end example
+
+@end itemize
+
+@section fbdev
+
+Linux framebuffer input device.
+
+The Linux framebuffer is a graphic hardware-independent abstraction
+layer to show graphics on a computer monitor, typically on the
+console. It is accessed through a file device node, usually
+@file{/dev/fb0}.
+
+For more detailed information read the file
+Documentation/fb/framebuffer.txt included in the Linux source tree.
+
+See also @url{http://linux-fbdev.sourceforge.net/}, and fbset(1).
+
+To record from the framebuffer device @file{/dev/fb0} with
+@command{ffmpeg}:
+@example
+ffmpeg -f fbdev -framerate 10 -i /dev/fb0 out.avi
+@end example
+
+You can take a single screenshot image with the command:
+@example
+ffmpeg -f fbdev -framerate 1 -i /dev/fb0 -frames:v 1 screenshot.jpeg
+@end example
+
+@subsection Options
+
+@table @option
+
+@item framerate
+Set the frame rate. Default is 25.
+
+@end table
+
+@section gdigrab
+
+Win32 GDI-based screen capture device.
+
+This device allows you to capture a region of the display on Windows.
+
+There are two options for the input filename:
+@example
+desktop
+@end example
+or
+@example
+title=@var{window_title}
+@end example
+
+The first option will capture the entire desktop, or a fixed region of the
+desktop. The second option will instead capture the contents of a single
+window, regardless of its position on the screen.
+
+For example, to grab the entire desktop using @command{ffmpeg}:
+@example
+ffmpeg -f gdigrab -framerate 6 -i desktop out.mpg
+@end example
+
+Grab a 640x480 region at position @code{10,20}:
+@example
+ffmpeg -f gdigrab -framerate 6 -offset_x 10 -offset_y 20 -video_size vga -i desktop out.mpg
+@end example
+
+Grab the contents of the window named "Calculator"
+@example
+ffmpeg -f gdigrab -framerate 6 -i title=Calculator out.mpg
+@end example
+
+@subsection Options
+
+@table @option
+@item draw_mouse
+Specify whether to draw the mouse pointer. Use the value @code{0} to
+not draw the pointer. Default value is @code{1}.
+
+@item framerate
+Set the grabbing frame rate. Default value is @code{ntsc},
+corresponding to a frame rate of @code{30000/1001}.
+
+@item show_region
+Show grabbed region on screen.
+
+If @var{show_region} is specified with @code{1}, then the grabbing
+region will be indicated on screen. With this option, it is easy to
+know what is being grabbed if only a portion of the screen is grabbed.
+
+Note that @var{show_region} is incompatible with grabbing the contents
+of a single window.
+
+For example:
+@example
+ffmpeg -f gdigrab -show_region 1 -framerate 6 -video_size cif -offset_x 10 -offset_y 20 -i desktop out.mpg
+@end example
+
+@item video_size
+Set the video frame size. The default is to capture the full screen if @file{desktop} is selected, or the full window size if @file{title=@var{window_title}} is selected.
+
+@item offset_x
+When capturing a region with @var{video_size}, set the distance from the left edge of the screen or desktop.
+
+Note that the offset calculation is from the top left corner of the primary monitor on Windows. If you have a monitor positioned to the left of your primary monitor, you will need to use a negative @var{offset_x} value to move the region to that monitor.
+
+@item offset_y
+When capturing a region with @var{video_size}, set the distance from the top edge of the screen or desktop.
+
+Note that the offset calculation is from the top left corner of the primary monitor on Windows. If you have a monitor positioned above your primary monitor, you will need to use a negative @var{offset_y} value to move the region to that monitor.
+
+@end table
+
+@section iec61883
+
+FireWire DV/HDV input device using libiec61883.
+
+To enable this input device, you need libiec61883, libraw1394 and
+libavc1394 installed on your system. Use the configure option
+@code{--enable-libiec61883} to compile with the device enabled.
+
+The iec61883 capture device supports capturing from a video device
+connected via IEEE1394 (FireWire), using libiec61883 and the new Linux
+FireWire stack (juju). This is the default DV/HDV input method in Linux
+Kernel 2.6.37 and later, since the old FireWire stack was removed.
+
+Specify the FireWire port to be used as input file, or "auto"
+to choose the first port connected.
+
+@subsection Options
+
+@table @option
+
+@item dvtype
+Override autodetection of DV/HDV. This should only be used if auto
+detection does not work, or if usage of a different device type
+should be prohibited. Treating a DV device as HDV (or vice versa) will
+not work and result in undefined behavior.
+The values @option{auto}, @option{dv} and @option{hdv} are supported.
+
+@item dvbuffer
+Set maximum size of buffer for incoming data, in frames. For DV, this
+is an exact value. For HDV, it is not frame exact, since HDV does
+not have a fixed frame size.
+
+@item dvguid
+Select the capture device by specifying its GUID. Capturing will only
+be performed from the specified device and fails if no device with the
+given GUID is found. This is useful to select the input if multiple
+devices are connected at the same time.
+Look at /sys/bus/firewire/devices to find out the GUIDs.
+
+@end table
+
+@subsection Examples
+
+@itemize
+
+@item
+Grab and show the input of a FireWire DV/HDV device.
+@example
+ffplay -f iec61883 -i auto
+@end example
+
+@item
+Grab and record the input of a FireWire DV/HDV device,
+using a packet buffer of 100000 packets if the source is HDV.
+@example
+ffmpeg -f iec61883 -i auto -dvbuffer 100000 out.mpg
+@end example
+
+@end itemize
+
+@section jack
+
+JACK input device.
+
+To enable this input device during configuration you need libjack
+installed on your system.
+
+A JACK input device creates one or more JACK writable clients, one for
+each audio channel, with name @var{client_name}:input_@var{N}, where
+@var{client_name} is the name provided by the application, and @var{N}
+is a number which identifies the channel.
+Each writable client will send the acquired data to the FFmpeg input
+device.
+
+Once you have created one or more JACK readable clients, you need to
+connect them to one or more JACK writable clients.
+
+To connect or disconnect JACK clients you can use the @command{jack_connect}
+and @command{jack_disconnect} programs, or do it through a graphical interface,
+for example with @command{qjackctl}.
+
+To list the JACK clients and their properties you can invoke the command
+@command{jack_lsp}.
+
+Follows an example which shows how to capture a JACK readable client
+with @command{ffmpeg}.
+@example
+# Create a JACK writable client with name "ffmpeg".
+$ ffmpeg -f jack -i ffmpeg -y out.wav
+
+# Start the sample jack_metro readable client.
+$ jack_metro -b 120 -d 0.2 -f 4000
+
+# List the current JACK clients.
+$ jack_lsp -c
+system:capture_1
+system:capture_2
+system:playback_1
+system:playback_2
+ffmpeg:input_1
+metro:120_bpm
+
+# Connect metro to the ffmpeg writable client.
+$ jack_connect metro:120_bpm ffmpeg:input_1
+@end example
+
+For more information read:
+@url{http://jackaudio.org/}
+
+@subsection Options
+
+@table @option
+
+@item channels
+Set the number of channels. Default is 2.
+
+@end table
+
+@section kmsgrab
+
+KMS video input device.
+
+Captures the KMS scanout framebuffer associated with a specified CRTC or plane as a
+DRM object that can be passed to other hardware functions.
+
+Requires either DRM master or CAP_SYS_ADMIN to run.
+
+If you don't understand what all of that means, you probably don't want this.  Look at
+@option{x11grab} instead.
+
+@subsection Options
+
+@table @option
+
+@item device
+DRM device to capture on.  Defaults to @option{/dev/dri/card0}.
+
+@item format
+Pixel format of the framebuffer.  Defaults to @option{bgr0}.
+
+@item format_modifier
+Format modifier to signal on output frames.  This is necessary to import correctly into
+some APIs, but can't be autodetected.  See the libdrm documentation for possible values.
+
+@item crtc_id
+KMS CRTC ID to define the capture source.  The first active plane on the given CRTC
+will be used.
+
+@item plane_id
+KMS plane ID to define the capture source.  Defaults to the first active plane found if
+neither @option{crtc_id} nor @option{plane_id} are specified.
+
+@item framerate
+Framerate to capture at.  This is not synchronised to any page flipping or framebuffer
+changes - it just defines the interval at which the framebuffer is sampled.  Sampling
+faster than the framebuffer update rate will generate independent frames with the same
+content.  Defaults to @code{30}.
+
+@end table
+
+@subsection Examples
+
+@itemize
+
+@item
+Capture from the first active plane, download the result to normal frames and encode.
+This will only work if the framebuffer is both linear and mappable - if not, the result
+may be scrambled or fail to download.
+@example
+ffmpeg -f kmsgrab -i - -vf 'hwdownload,format=bgr0' output.mp4
+@end example
+
+@item
+Capture from CRTC ID 42 at 60fps, map the result to VAAPI, convert to NV12 and encode as H.264.
+@example
+ffmpeg -crtc_id 42 -framerate 60 -f kmsgrab -i - -vf 'hwmap=derive_device=vaapi,scale_vaapi=w=1920:h=1080:format=nv12' -c:v h264_vaapi output.mp4
+@end example
+
+@item
+To capture only part of a plane the output can be cropped - this can be used to capture
+a single window, as long as it has a known absolute position and size.  For example, to
+capture and encode the middle quarter of a 1920x1080 plane:
+@example
+ffmpeg -f kmsgrab -i - -vf 'hwmap=derive_device=vaapi,crop=960:540:480:270,scale_vaapi=960:540:nv12' -c:v h264_vaapi output.mp4
+@end example
+
+@end itemize
+
+@section lavfi
+
+Libavfilter input virtual device.
+
+This input device reads data from the open output pads of a libavfilter
+filtergraph.
+
+For each filtergraph open output, the input device will create a
+corresponding stream which is mapped to the generated output. Currently
+only video data is supported. The filtergraph is specified through the
+option @option{graph}.
+
+@subsection Options
+
+@table @option
+
+@item graph
+Specify the filtergraph to use as input. Each video open output must be
+labelled by a unique string of the form "out@var{N}", where @var{N} is a
+number starting from 0 corresponding to the mapped input stream
+generated by the device.
+The first unlabelled output is automatically assigned to the "out0"
+label, but all the others need to be specified explicitly.
+
+The suffix "+subcc" can be appended to the output label to create an extra
+stream with the closed captions packets attached to that output
+(experimental; only for EIA-608 / CEA-708 for now).
+The subcc streams are created after all the normal streams, in the order of
+the corresponding stream.
+For example, if there is "out19+subcc", "out7+subcc" and up to "out42", the
+stream #43 is subcc for stream #7 and stream #44 is subcc for stream #19.
+
+If not specified defaults to the filename specified for the input
+device.
+
+@item graph_file
+Set the filename of the filtergraph to be read and sent to the other
+filters. Syntax of the filtergraph is the same as the one specified by
+the option @var{graph}.
+
+@item dumpgraph
+Dump graph to stderr.
+
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+Create a color video stream and play it back with @command{ffplay}:
+@example
+ffplay -f lavfi -graph "color=c=pink [out0]" dummy
+@end example
+
+@item
+As the previous example, but use filename for specifying the graph
+description, and omit the "out0" label:
+@example
+ffplay -f lavfi color=c=pink
+@end example
+
+@item
+Create three different video test filtered sources and play them:
+@example
+ffplay -f lavfi -graph "testsrc [out0]; testsrc,hflip [out1]; testsrc,negate [out2]" test3
+@end example
+
+@item
+Read an audio stream from a file using the amovie source and play it
+back with @command{ffplay}:
+@example
+ffplay -f lavfi "amovie=test.wav"
+@end example
+
+@item
+Read an audio stream and a video stream and play it back with
+@command{ffplay}:
+@example
+ffplay -f lavfi "movie=test.avi[out0];amovie=test.wav[out1]"
+@end example
+
+@item
+Dump decoded frames to images and closed captions to a file (experimental):
+@example
+ffmpeg -f lavfi -i "movie=test.ts[out0+subcc]" -map v frame%08d.png -map s -c copy -f rawvideo subcc.bin
+@end example
+
+@end itemize
+
+@section libcdio
+
+Audio-CD input device based on libcdio.
+
+To enable this input device during configuration you need libcdio
+installed on your system. It requires the configure option
+@code{--enable-libcdio}.
+
+This device allows playing and grabbing from an Audio-CD.
+
+For example to copy with @command{ffmpeg} the entire Audio-CD in @file{/dev/sr0},
+you may run the command:
+@example
+ffmpeg -f libcdio -i /dev/sr0 cd.wav
+@end example
+
+@subsection Options
+@table @option
+@item speed
+Set drive reading speed. Default value is 0.
+
+The speed is specified CD-ROM speed units. The speed is set through
+the libcdio @code{cdio_cddap_speed_set} function. On many CD-ROM
+drives, specifying a value too large will result in using the fastest
+speed.
+
+@item paranoia_mode
+Set paranoia recovery mode flags. It accepts one of the following values:
+
+@table @samp
+@item disable
+@item verify
+@item overlap
+@item neverskip
+@item full
+@end table
+
+Default value is @samp{disable}.
+
+For more information about the available recovery modes, consult the
+paranoia project documentation.
+@end table
+
+@section libdc1394
+
+IIDC1394 input device, based on libdc1394 and libraw1394.
+
+Requires the configure option @code{--enable-libdc1394}.
+
+@subsection Options
+@table @option
+
+@item framerate
+Set the frame rate. Default is @code{ntsc}, corresponding to a frame
+rate of @code{30000/1001}.
+
+@item pixel_format
+Select the pixel format. Default is @code{uyvy422}.
+
+@item video_size
+Set the video size given as a string such as @code{640x480} or @code{hd720}.
+Default is @code{qvga}.
+@end table
+
+@section openal
+
+The OpenAL input device provides audio capture on all systems with a
+working OpenAL 1.1 implementation.
+
+To enable this input device during configuration, you need OpenAL
+headers and libraries installed on your system, and need to configure
+FFmpeg with @code{--enable-openal}.
+
+OpenAL headers and libraries should be provided as part of your OpenAL
+implementation, or as an additional download (an SDK). Depending on your
+installation you may need to specify additional flags via the
+@code{--extra-cflags} and @code{--extra-ldflags} for allowing the build
+system to locate the OpenAL headers and libraries.
+
+An incomplete list of OpenAL implementations follows:
+
+@table @strong
+@item Creative
+The official Windows implementation, providing hardware acceleration
+with supported devices and software fallback.
+See @url{http://openal.org/}.
+@item OpenAL Soft
+Portable, open source (LGPL) software implementation. Includes
+backends for the most common sound APIs on the Windows, Linux,
+Solaris, and BSD operating systems.
+See @url{http://kcat.strangesoft.net/openal.html}.
+@item Apple
+OpenAL is part of Core Audio, the official Mac OS X Audio interface.
+See @url{http://developer.apple.com/technologies/mac/audio-and-video.html}
+@end table
+
+This device allows one to capture from an audio input device handled
+through OpenAL.
+
+You need to specify the name of the device to capture in the provided
+filename. If the empty string is provided, the device will
+automatically select the default device. You can get the list of the
+supported devices by using the option @var{list_devices}.
+
+@subsection Options
+
+@table @option
+
+@item channels
+Set the number of channels in the captured audio. Only the values
+@option{1} (monaural) and @option{2} (stereo) are currently supported.
+Defaults to @option{2}.
+
+@item sample_size
+Set the sample size (in bits) of the captured audio. Only the values
+@option{8} and @option{16} are currently supported. Defaults to
+@option{16}.
+
+@item sample_rate
+Set the sample rate (in Hz) of the captured audio.
+Defaults to @option{44.1k}.
+
+@item list_devices
+If set to @option{true}, print a list of devices and exit.
+Defaults to @option{false}.
+
+@end table
+
+@subsection Examples
+
+Print the list of OpenAL supported devices and exit:
+@example
+$ ffmpeg -list_devices true -f openal -i dummy out.ogg
+@end example
+
+Capture from the OpenAL device @file{DR-BT101 via PulseAudio}:
+@example
+$ ffmpeg -f openal -i 'DR-BT101 via PulseAudio' out.ogg
+@end example
+
+Capture from the default device (note the empty string '' as filename):
+@example
+$ ffmpeg -f openal -i '' out.ogg
+@end example
+
+Capture from two devices simultaneously, writing to two different files,
+within the same @command{ffmpeg} command:
+@example
+$ ffmpeg -f openal -i 'DR-BT101 via PulseAudio' out1.ogg -f openal -i 'ALSA Default' out2.ogg
+@end example
+Note: not all OpenAL implementations support multiple simultaneous capture -
+try the latest OpenAL Soft if the above does not work.
+
+@section oss
+
+Open Sound System input device.
+
+The filename to provide to the input device is the device node
+representing the OSS input device, and is usually set to
+@file{/dev/dsp}.
+
+For example to grab from @file{/dev/dsp} using @command{ffmpeg} use the
+command:
+@example
+ffmpeg -f oss -i /dev/dsp /tmp/oss.wav
+@end example
+
+For more information about OSS see:
+@url{http://manuals.opensound.com/usersguide/dsp.html}
+
+@subsection Options
+
+@table @option
+
+@item sample_rate
+Set the sample rate in Hz. Default is 48000.
+
+@item channels
+Set the number of channels. Default is 2.
+
+@end table
+
+@section pulse
+
+PulseAudio input device.
+
+To enable this output device you need to configure FFmpeg with @code{--enable-libpulse}.
+
+The filename to provide to the input device is a source device or the
+string "default"
+
+To list the PulseAudio source devices and their properties you can invoke
+the command @command{pactl list sources}.
+
+More information about PulseAudio can be found on @url{http://www.pulseaudio.org}.
+
+@subsection Options
+@table @option
+@item server
+Connect to a specific PulseAudio server, specified by an IP address.
+Default server is used when not provided.
+
+@item name
+Specify the application name PulseAudio will use when showing active clients,
+by default it is the @code{LIBAVFORMAT_IDENT} string.
+
+@item stream_name
+Specify the stream name PulseAudio will use when showing active streams,
+by default it is "record".
+
+@item sample_rate
+Specify the samplerate in Hz, by default 48kHz is used.
+
+@item channels
+Specify the channels in use, by default 2 (stereo) is set.
+
+@item frame_size
+Specify the number of bytes per frame, by default it is set to 1024.
+
+@item fragment_size
+Specify the minimal buffering fragment in PulseAudio, it will affect the
+audio latency. By default it is unset.
+
+@item wallclock
+Set the initial PTS using the current time. Default is 1.
+
+@end table
+
+@subsection Examples
+Record a stream from default device:
+@example
+ffmpeg -f pulse -i default /tmp/pulse.wav
+@end example
+
+@section sndio
+
+sndio input device.
+
+To enable this input device during configuration you need libsndio
+installed on your system.
+
+The filename to provide to the input device is the device node
+representing the sndio input device, and is usually set to
+@file{/dev/audio0}.
+
+For example to grab from @file{/dev/audio0} using @command{ffmpeg} use the
+command:
+@example
+ffmpeg -f sndio -i /dev/audio0 /tmp/oss.wav
+@end example
+
+@subsection Options
+
+@table @option
+
+@item sample_rate
+Set the sample rate in Hz. Default is 48000.
+
+@item channels
+Set the number of channels. Default is 2.
+
+@end table
+
+@section video4linux2, v4l2
+
+Video4Linux2 input video device.
+
+"v4l2" can be used as alias for "video4linux2".
+
+If FFmpeg is built with v4l-utils support (by using the
+@code{--enable-libv4l2} configure option), it is possible to use it with the
+@code{-use_libv4l2} input device option.
+
+The name of the device to grab is a file device node, usually Linux
+systems tend to automatically create such nodes when the device
+(e.g. an USB webcam) is plugged into the system, and has a name of the
+kind @file{/dev/video@var{N}}, where @var{N} is a number associated to
+the device.
+
+Video4Linux2 devices usually support a limited set of
+@var{width}x@var{height} sizes and frame rates. You can check which are
+supported using @command{-list_formats all} for Video4Linux2 devices.
+Some devices, like TV cards, support one or more standards. It is possible
+to list all the supported standards using @command{-list_standards all}.
+
+The time base for the timestamps is 1 microsecond. Depending on the kernel
+version and configuration, the timestamps may be derived from the real time
+clock (origin at the Unix Epoch) or the monotonic clock (origin usually at
+boot time, unaffected by NTP or manual changes to the clock). The
+@option{-timestamps abs} or @option{-ts abs} option can be used to force
+conversion into the real time clock.
+
+Some usage examples of the video4linux2 device with @command{ffmpeg}
+and @command{ffplay}:
+@itemize
+@item
+List supported formats for a video4linux2 device:
+@example
+ffplay -f video4linux2 -list_formats all /dev/video0
+@end example
+
+@item
+Grab and show the input of a video4linux2 device:
+@example
+ffplay -f video4linux2 -framerate 30 -video_size hd720 /dev/video0
+@end example
+
+@item
+Grab and record the input of a video4linux2 device, leave the
+frame rate and size as previously set:
+@example
+ffmpeg -f video4linux2 -input_format mjpeg -i /dev/video0 out.mpeg
+@end example
+@end itemize
+
+For more information about Video4Linux, check @url{http://linuxtv.org/}.
+
+@subsection Options
+
+@table @option
+@item standard
+Set the standard. Must be the name of a supported standard. To get a
+list of the supported standards, use the @option{list_standards}
+option.
+
+@item channel
+Set the input channel number. Default to -1, which means using the
+previously selected channel.
+
+@item video_size
+Set the video frame size. The argument must be a string in the form
+@var{WIDTH}x@var{HEIGHT} or a valid size abbreviation.
+
+@item pixel_format
+Select the pixel format (only valid for raw video input).
+
+@item input_format
+Set the preferred pixel format (for raw video) or a codec name.
+This option allows one to select the input format, when several are
+available.
+
+@item framerate
+Set the preferred video frame rate.
+
+@item list_formats
+List available formats (supported pixel formats, codecs, and frame
+sizes) and exit.
+
+Available values are:
+@table @samp
+@item all
+Show all available (compressed and non-compressed) formats.
+
+@item raw
+Show only raw video (non-compressed) formats.
+
+@item compressed
+Show only compressed formats.
+@end table
+
+@item list_standards
+List supported standards and exit.
+
+Available values are:
+@table @samp
+@item all
+Show all supported standards.
+@end table
+
+@item timestamps, ts
+Set type of timestamps for grabbed frames.
+
+Available values are:
+@table @samp
+@item default
+Use timestamps from the kernel.
+
+@item abs
+Use absolute timestamps (wall clock).
+
+@item mono2abs
+Force conversion from monotonic to absolute timestamps.
+@end table
+
+Default value is @code{default}.
+
+@item use_libv4l2
+Use libv4l2 (v4l-utils) conversion functions. Default is 0.
+
+@end table
+
+@section vfwcap
+
+VfW (Video for Windows) capture input device.
+
+The filename passed as input is the capture driver number, ranging from
+0 to 9. You may use "list" as filename to print a list of drivers. Any
+other filename will be interpreted as device number 0.
+
+@subsection Options
+
+@table @option
+
+@item video_size
+Set the video frame size.
+
+@item framerate
+Set the grabbing frame rate. Default value is @code{ntsc},
+corresponding to a frame rate of @code{30000/1001}.
+
+@end table
+
+@section x11grab
+
+X11 video input device.
+
+To enable this input device during configuration you need libxcb
+installed on your system. It will be automatically detected during
+configuration.
+
+This device allows one to capture a region of an X11 display.
+
+The filename passed as input has the syntax:
+@example
+[@var{hostname}]:@var{display_number}.@var{screen_number}[+@var{x_offset},@var{y_offset}]
+@end example
+
+@var{hostname}:@var{display_number}.@var{screen_number} specifies the
+X11 display name of the screen to grab from. @var{hostname} can be
+omitted, and defaults to "localhost". The environment variable
+@env{DISPLAY} contains the default display name.
+
+@var{x_offset} and @var{y_offset} specify the offsets of the grabbed
+area with respect to the top-left border of the X11 screen. They
+default to 0.
+
+Check the X11 documentation (e.g. @command{man X}) for more detailed
+information.
+
+Use the @command{xdpyinfo} program for getting basic information about
+the properties of your X11 display (e.g. grep for "name" or
+"dimensions").
+
+For example to grab from @file{:0.0} using @command{ffmpeg}:
+@example
+ffmpeg -f x11grab -framerate 25 -video_size cif -i :0.0 out.mpg
+@end example
+
+Grab at position @code{10,20}:
+@example
+ffmpeg -f x11grab -framerate 25 -video_size cif -i :0.0+10,20 out.mpg
+@end example
+
+@subsection Options
+
+@table @option
+@item draw_mouse
+Specify whether to draw the mouse pointer. A value of @code{0} specifies
+not to draw the pointer. Default value is @code{1}.
+
+@item follow_mouse
+Make the grabbed area follow the mouse. The argument can be
+@code{centered} or a number of pixels @var{PIXELS}.
+
+When it is specified with "centered", the grabbing region follows the mouse
+pointer and keeps the pointer at the center of region; otherwise, the region
+follows only when the mouse pointer reaches within @var{PIXELS} (greater than
+zero) to the edge of region.
+
+For example:
+@example
+ffmpeg -f x11grab -follow_mouse centered -framerate 25 -video_size cif -i :0.0 out.mpg
+@end example
+
+To follow only when the mouse pointer reaches within 100 pixels to edge:
+@example
+ffmpeg -f x11grab -follow_mouse 100 -framerate 25 -video_size cif -i :0.0 out.mpg
+@end example
+
+@item framerate
+Set the grabbing frame rate. Default value is @code{ntsc},
+corresponding to a frame rate of @code{30000/1001}.
+
+@item show_region
+Show grabbed region on screen.
+
+If @var{show_region} is specified with @code{1}, then the grabbing
+region will be indicated on screen. With this option, it is easy to
+know what is being grabbed if only a portion of the screen is grabbed.
+
+@item region_border
+Set the region border thickness if @option{-show_region 1} is used.
+Range is 1 to 128 and default is 3 (XCB-based x11grab only).
+
+For example:
+@example
+ffmpeg -f x11grab -show_region 1 -framerate 25 -video_size cif -i :0.0+10,20 out.mpg
+@end example
+
+With @var{follow_mouse}:
+@example
+ffmpeg -f x11grab -follow_mouse centered -show_region 1 -framerate 25 -video_size cif -i :0.0 out.mpg
+@end example
+
+@item video_size
+Set the video frame size. Default value is @code{vga}.
+
+@item grab_x
+@item grab_y
+Set the grabbing region coordinates. They are expressed as offset from
+the top left corner of the X11 window and correspond to the
+@var{x_offset} and @var{y_offset} parameters in the device name. The
+default value for both options is 0.
+@end table
+
+@c man end INPUT DEVICES

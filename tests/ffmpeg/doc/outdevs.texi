@@ -1,0 +1,472 @@
+@chapter Output Devices
+@c man begin OUTPUT DEVICES
+
+Output devices are configured elements in FFmpeg that can write
+multimedia data to an output device attached to your system.
+
+When you configure your FFmpeg build, all the supported output devices
+are enabled by default. You can list all available ones using the
+configure option "--list-outdevs".
+
+You can disable all the output devices using the configure option
+"--disable-outdevs", and selectively enable an output device using the
+option "--enable-outdev=@var{OUTDEV}", or you can disable a particular
+input device using the option "--disable-outdev=@var{OUTDEV}".
+
+The option "-devices" of the ff* tools will display the list of
+enabled output devices.
+
+A description of the currently available output devices follows.
+
+@section alsa
+
+ALSA (Advanced Linux Sound Architecture) output device.
+
+@subsection Examples
+
+@itemize
+@item
+Play a file on default ALSA device:
+@example
+ffmpeg -i INPUT -f alsa default
+@end example
+
+@item
+Play a file on soundcard 1, audio device 7:
+@example
+ffmpeg -i INPUT -f alsa hw:1,7
+@end example
+@end itemize
+
+@section caca
+
+CACA output device.
+
+This output device allows one to show a video stream in CACA window.
+Only one CACA window is allowed per application, so you can
+have only one instance of this output device in an application.
+
+To enable this output device you need to configure FFmpeg with
+@code{--enable-libcaca}.
+libcaca is a graphics library that outputs text instead of pixels.
+
+For more information about libcaca, check:
+@url{http://caca.zoy.org/wiki/libcaca}
+
+@subsection Options
+
+@table @option
+
+@item window_title
+Set the CACA window title, if not specified default to the filename
+specified for the output device.
+
+@item window_size
+Set the CACA window size, can be a string of the form
+@var{width}x@var{height} or a video size abbreviation.
+If not specified it defaults to the size of the input video.
+
+@item driver
+Set display driver.
+
+@item algorithm
+Set dithering algorithm. Dithering is necessary
+because the picture being rendered has usually far more colours than
+the available palette.
+The accepted values are listed with @code{-list_dither algorithms}.
+
+@item antialias
+Set antialias method. Antialiasing smoothens the rendered
+image and avoids the commonly seen staircase effect.
+The accepted values are listed with @code{-list_dither antialiases}.
+
+@item charset
+Set which characters are going to be used when rendering text.
+The accepted values are listed with @code{-list_dither charsets}.
+
+@item color
+Set color to be used when rendering text.
+The accepted values are listed with @code{-list_dither colors}.
+
+@item list_drivers
+If set to @option{true}, print a list of available drivers and exit.
+
+@item list_dither
+List available dither options related to the argument.
+The argument must be one of @code{algorithms}, @code{antialiases},
+@code{charsets}, @code{colors}.
+@end table
+
+@subsection Examples
+
+@itemize
+@item
+The following command shows the @command{ffmpeg} output is an
+CACA window, forcing its size to 80x25:
+@example
+ffmpeg -i INPUT -c:v rawvideo -pix_fmt rgb24 -window_size 80x25 -f caca -
+@end example
+
+@item
+Show the list of available drivers and exit:
+@example
+ffmpeg -i INPUT -pix_fmt rgb24 -f caca -list_drivers true -
+@end example
+
+@item
+Show the list of available dither colors and exit:
+@example
+ffmpeg -i INPUT -pix_fmt rgb24 -f caca -list_dither colors -
+@end example
+@end itemize
+
+@section decklink
+
+The decklink output device provides playback capabilities for Blackmagic
+DeckLink devices.
+
+To enable this output device, you need the Blackmagic DeckLink SDK and you
+need to configure with the appropriate @code{--extra-cflags}
+and @code{--extra-ldflags}.
+On Windows, you need to run the IDL files through @command{widl}.
+
+DeckLink is very picky about the formats it supports. Pixel format is always
+uyvy422, framerate, field order and video size must be determined for your
+device with @command{-list_formats 1}. Audio sample rate is always 48 kHz.
+
+@subsection Options
+
+@table @option
+
+@item list_devices
+If set to @option{true}, print a list of devices and exit.
+Defaults to @option{false}. Alternatively you can use the @code{-sinks}
+option of ffmpeg to list the available output devices.
+
+@item list_formats
+If set to @option{true}, print a list of supported formats and exit.
+Defaults to @option{false}.
+
+@item preroll
+Amount of time to preroll video in seconds.
+Defaults to @option{0.5}.
+
+@item duplex_mode
+Sets the decklink device duplex mode. Must be @samp{unset}, @samp{half} or @samp{full}.
+Defaults to @samp{unset}.
+
+@item timing_offset
+Sets the genlock timing pixel offset on the used output.
+Defaults to @samp{unset}.
+
+@end table
+
+@subsection Examples
+
+@itemize
+
+@item
+List output devices:
+@example
+ffmpeg -i test.avi -f decklink -list_devices 1 dummy
+@end example
+
+@item
+List supported formats:
+@example
+ffmpeg -i test.avi -f decklink -list_formats 1 'DeckLink Mini Monitor'
+@end example
+
+@item
+Play video clip:
+@example
+ffmpeg -i test.avi -f decklink -pix_fmt uyvy422 'DeckLink Mini Monitor'
+@end example
+
+@item
+Play video clip with non-standard framerate or video size:
+@example
+ffmpeg -i test.avi -f decklink -pix_fmt uyvy422 -s 720x486 -r 24000/1001 'DeckLink Mini Monitor'
+@end example
+
+@end itemize
+
+@section fbdev
+
+Linux framebuffer output device.
+
+The Linux framebuffer is a graphic hardware-independent abstraction
+layer to show graphics on a computer monitor, typically on the
+console. It is accessed through a file device node, usually
+@file{/dev/fb0}.
+
+For more detailed information read the file
+@file{Documentation/fb/framebuffer.txt} included in the Linux source tree.
+
+@subsection Options
+@table @option
+
+@item xoffset
+@item yoffset
+Set x/y coordinate of top left corner. Default is 0.
+@end table
+
+@subsection Examples
+Play a file on framebuffer device @file{/dev/fb0}.
+Required pixel format depends on current framebuffer settings.
+@example
+ffmpeg -re -i INPUT -c:v rawvideo -pix_fmt bgra -f fbdev /dev/fb0
+@end example
+
+See also @url{http://linux-fbdev.sourceforge.net/}, and fbset(1).
+
+@section opengl
+OpenGL output device.
+
+To enable this output device you need to configure FFmpeg with @code{--enable-opengl}.
+
+This output device allows one to render to OpenGL context.
+Context may be provided by application or default SDL window is created.
+
+When device renders to external context, application must implement handlers for following messages:
+@code{AV_DEV_TO_APP_CREATE_WINDOW_BUFFER} - create OpenGL context on current thread.
+@code{AV_DEV_TO_APP_PREPARE_WINDOW_BUFFER} - make OpenGL context current.
+@code{AV_DEV_TO_APP_DISPLAY_WINDOW_BUFFER} - swap buffers.
+@code{AV_DEV_TO_APP_DESTROY_WINDOW_BUFFER} - destroy OpenGL context.
+Application is also required to inform a device about current resolution by sending @code{AV_APP_TO_DEV_WINDOW_SIZE} message.
+
+@subsection Options
+@table @option
+
+@item background
+Set background color. Black is a default.
+@item no_window
+Disables default SDL window when set to non-zero value.
+Application must provide OpenGL context and both @code{window_size_cb} and @code{window_swap_buffers_cb} callbacks when set.
+@item window_title
+Set the SDL window title, if not specified default to the filename specified for the output device.
+Ignored when @option{no_window} is set.
+@item window_size
+Set preferred window size, can be a string of the form widthxheight or a video size abbreviation.
+If not specified it defaults to the size of the input video, downscaled according to the aspect ratio.
+Mostly usable when @option{no_window} is not set.
+
+@end table
+
+@subsection Examples
+Play a file on SDL window using OpenGL rendering:
+@example
+ffmpeg  -i INPUT -f opengl "window title"
+@end example
+
+@section oss
+
+OSS (Open Sound System) output device.
+
+@section pulse
+
+PulseAudio output device.
+
+To enable this output device you need to configure FFmpeg with @code{--enable-libpulse}.
+
+More information about PulseAudio can be found on @url{http://www.pulseaudio.org}
+
+@subsection Options
+@table @option
+
+@item server
+Connect to a specific PulseAudio server, specified by an IP address.
+Default server is used when not provided.
+
+@item name
+Specify the application name PulseAudio will use when showing active clients,
+by default it is the @code{LIBAVFORMAT_IDENT} string.
+
+@item stream_name
+Specify the stream name PulseAudio will use when showing active streams,
+by default it is set to the specified output name.
+
+@item device
+Specify the device to use. Default device is used when not provided.
+List of output devices can be obtained with command @command{pactl list sinks}.
+
+@item buffer_size
+@item buffer_duration
+Control the size and duration of the PulseAudio buffer. A small buffer
+gives more control, but requires more frequent updates.
+
+@option{buffer_size} specifies size in bytes while
+@option{buffer_duration} specifies duration in milliseconds.
+
+When both options are provided then the highest value is used
+(duration is recalculated to bytes using stream parameters). If they
+are set to 0 (which is default), the device will use the default
+PulseAudio duration value. By default PulseAudio set buffer duration
+to around 2 seconds.
+
+@item prebuf
+Specify pre-buffering size in bytes. The server does not start with
+playback before at least @option{prebuf} bytes are available in the
+buffer. By default this option is initialized to the same value as
+@option{buffer_size} or @option{buffer_duration} (whichever is bigger).
+
+@item minreq
+Specify minimum request size in bytes. The server does not request less
+than @option{minreq} bytes from the client, instead waits until the buffer
+is free enough to request more bytes at once. It is recommended to not set
+this option, which will initialize this to a value that is deemed sensible
+by the server.
+
+@end table
+
+@subsection Examples
+Play a file on default device on default server:
+@example
+ffmpeg  -i INPUT -f pulse "stream name"
+@end example
+
+@section sdl
+
+SDL (Simple DirectMedia Layer) output device.
+
+This output device allows one to show a video stream in an SDL
+window. Only one SDL window is allowed per application, so you can
+have only one instance of this output device in an application.
+
+To enable this output device you need libsdl installed on your system
+when configuring your build.
+
+For more information about SDL, check:
+@url{http://www.libsdl.org/}
+
+@subsection Options
+
+@table @option
+
+@item window_title
+Set the SDL window title, if not specified default to the filename
+specified for the output device.
+
+@item icon_title
+Set the name of the iconified SDL window, if not specified it is set
+to the same value of @var{window_title}.
+
+@item window_size
+Set the SDL window size, can be a string of the form
+@var{width}x@var{height} or a video size abbreviation.
+If not specified it defaults to the size of the input video,
+downscaled according to the aspect ratio.
+
+@item window_x
+@item window_y
+Set the position of the window on the screen.
+
+@item window_fullscreen
+Set fullscreen mode when non-zero value is provided.
+Default value is zero.
+
+@item window_enable_quit
+Enable quit action (using window button or keyboard key)
+when non-zero value is provided.
+Default value is 1 (enable quit action)
+@end table
+
+@subsection Interactive commands
+
+The window created by the device can be controlled through the
+following interactive commands.
+
+@table @key
+@item q, ESC
+Quit the device immediately.
+@end table
+
+@subsection Examples
+
+The following command shows the @command{ffmpeg} output is an
+SDL window, forcing its size to the qcif format:
+@example
+ffmpeg -i INPUT -c:v rawvideo -pix_fmt yuv420p -window_size qcif -f sdl "SDL output"
+@end example
+
+@section sndio
+
+sndio audio output device.
+
+@section v4l2
+
+Video4Linux2 output device.
+
+@section xv
+
+XV (XVideo) output device.
+
+This output device allows one to show a video stream in a X Window System
+window.
+
+@subsection Options
+
+@table @option
+@item display_name
+Specify the hardware display name, which determines the display and
+communications domain to be used.
+
+The display name or DISPLAY environment variable can be a string in
+the format @var{hostname}[:@var{number}[.@var{screen_number}]].
+
+@var{hostname} specifies the name of the host machine on which the
+display is physically attached. @var{number} specifies the number of
+the display server on that host machine. @var{screen_number} specifies
+the screen to be used on that server.
+
+If unspecified, it defaults to the value of the DISPLAY environment
+variable.
+
+For example, @code{dual-headed:0.1} would specify screen 1 of display
+0 on the machine named ``dual-headed''.
+
+Check the X11 specification for more detailed information about the
+display name format.
+
+@item window_id
+When set to non-zero value then device doesn't create new window,
+but uses existing one with provided @var{window_id}. By default
+this options is set to zero and device creates its own window.
+
+@item window_size
+Set the created window size, can be a string of the form
+@var{width}x@var{height} or a video size abbreviation. If not
+specified it defaults to the size of the input video.
+Ignored when @var{window_id} is set.
+
+@item window_x
+@item window_y
+Set the X and Y window offsets for the created window. They are both
+set to 0 by default. The values may be ignored by the window manager.
+Ignored when @var{window_id} is set.
+
+@item window_title
+Set the window title, if not specified default to the filename
+specified for the output device. Ignored when @var{window_id} is set.
+@end table
+
+For more information about XVideo see @url{http://www.x.org/}.
+
+@subsection Examples
+
+@itemize
+@item
+Decode, display and encode video input with @command{ffmpeg} at the
+same time:
+@example
+ffmpeg -i INPUT OUTPUT -f xv display
+@end example
+
+@item
+Decode and display the input video to multiple X11 windows:
+@example
+ffmpeg -i INPUT -f xv normal -vf negate -f xv negated
+@end example
+@end itemize
+
+@c man end OUTPUT DEVICES

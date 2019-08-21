@@ -1,0 +1,46 @@
+    The official guide to swresample for confused developers.
+   =========================================================
+
+Current (simplified) Architecture:
+---------------------------------
+                        Input
+                          v
+       __________________/|\___________
+      /                   |            \
+     /    input sample format convert   v
+    /                     | ___________/
+    |                     |/
+    |                     v
+    |         ___________/|\___________              _____________
+    |        /            |            \            |             |
+    |   Rematrix          |          resample <---->|   Buffers   |
+    |        \___________ | ___________/            |_____________|
+    v                    \|/
+Special Converter         v
+    v         ___________/|\___________              _____________
+    |        /            |            \            |             |
+    |   Rematrix          |          resample <---->|   Buffers   |
+    |        \___________ | ___________/            |_____________|
+    |                    \|/
+    |                     v
+    |                     |\___________
+    \                     |            \
+     \   output sample format convert   v
+      \_________________  | ___________/
+                         \|/
+                          v
+                        Output
+
+Planar/Packed conversion is done when needed during sample format conversion.
+Every step can be skipped without memcpy when it is not needed.
+Either Resampling and Rematrixing can be performed first depending on which
+way it is faster.
+The Buffers are needed for resampling due to resamplng being a process that
+requires future and past data, it thus also introduces inevitably a delay when
+used.
+Internally 32bit float and 16bit int is supported currently, other formats can
+easily be added.
+Externally all sample formats in packed and planar configuration are supported
+It's also trivial to add special converters for common cases.
+If only sample format and/or packed/planar conversion is needed, it
+is performed from input to output directly in a single pass with no intermediates.

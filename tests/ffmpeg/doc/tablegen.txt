@@ -1,0 +1,70 @@
+Writing a table generator
+
+This documentation is preliminary.
+Parts of the API are not good and should be changed.
+
+Basic concepts
+
+A table generator consists of two files, *_tablegen.c and *_tablegen.h.
+The .h file will provide the variable declarations and initialization
+code for the tables, the .c calls the initialization code and then prints
+the tables as a header file using the tableprint.h helpers.
+Both of these files will be compiled for the host system, so to avoid
+breakage with cross-compilation neither of them may include, directly
+or indirectly, config.h or avconfig.h.
+This means that e.g. libavutil/mathematics.h is ok but libavutil/libm.h is not.
+Due to this, the .c file or Makefile may have to provide additional defines
+or stubs, though if possible this should be avoided.
+In particular, CONFIG_HARDCODED_TABLES should always be defined to 0.
+
+The .c file
+
+This file should include the *_tablegen.h and tableprint.h files and
+anything else it needs as long as it does not depend on config.h or
+avconfig.h.
+In addition to that it must contain a main() function which initializes
+all tables by calling the init functions from the .h file and then prints
+them.
+The printing code typically looks like this:
+    write_fileheader();
+    printf("static const uint8_t my_array[100] = {\n");
+    write_uint8_t_array(my_array, 100);
+    printf("};\n");
+
+This is the more generic form, in case you need to do something special.
+Usually you should instead use the short form:
+    write_fileheader();
+    WRITE_ARRAY("static const", uint8_t, my_array);
+
+write_fileheader() adds some minor things like a "this is a generated file"
+comment and some standard includes.
+tablegen.h defines some write functions for one- and two-dimensional arrays
+for standard types - they print only the "core" parts so they are easier
+to reuse for multi-dimensional arrays so the outermost {} must be printed
+separately.
+If there's no standard function for printing the type you need, the
+WRITE_1D_FUNC_ARGV macro is a very quick way to create one.
+See libavcodec/dv_tablegen.c for an example.
+
+
+The .h file
+
+This file should contain:
+ - one or more initialization functions
+ - the table variable declarations
+If CONFIG_HARDCODED_TABLES is set, the initialization functions should
+not do anything, and instead of the variable declarations the
+generated *_tables.h file should be included.
+Since that will be generated in the build directory, the path must be
+included, i.e.
+#include "libavcodec/example_tables.h"
+not
+#include "example_tables.h"
+
+Makefile changes
+
+To make the automatic table creation work, you must manually declare the
+new dependency.
+For this add a line similar to this:
+$(SUBDIR)example.o: $(SUBDIR)example_tables.h
+under the "ifdef CONFIG_HARDCODED_TABLES" section in the Makefile.

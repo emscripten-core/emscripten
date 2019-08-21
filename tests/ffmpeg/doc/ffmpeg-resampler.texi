@@ -1,0 +1,45 @@
+\input texinfo @c -*- texinfo -*-
+@documentencoding UTF-8
+
+@settitle FFmpeg Resampler Documentation
+@titlepage
+@center @titlefont{FFmpeg Resampler Documentation}
+@end titlepage
+
+@top
+
+@contents
+
+@chapter Description
+@c man begin DESCRIPTION
+
+The FFmpeg resampler provides a high-level interface to the
+libswresample library audio resampling utilities. In particular it
+allows one to perform audio resampling, audio channel layout rematrixing,
+and convert audio format and packing layout.
+
+@c man end DESCRIPTION
+
+@include resampler.texi
+
+@chapter See Also
+
+@ifhtml
+@url{ffmpeg.html,ffmpeg}, @url{ffplay.html,ffplay}, @url{ffprobe.html,ffprobe},
+@url{libswresample.html,libswresample}
+@end ifhtml
+
+@ifnothtml
+ffmpeg(1), ffplay(1), ffprobe(1), libswresample(3)
+@end ifnothtml
+
+@include authors.texi
+
+@ignore
+
+@setfilename ffmpeg-resampler
+@settitle FFmpeg Resampler
+
+@end ignore
+
+@bye

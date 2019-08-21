@@ -1,0 +1,342 @@
+\input texinfo @c -*- texinfo -*-
+@documentencoding UTF-8
+
+@settitle ffplay Documentation
+@titlepage
+@center @titlefont{ffplay Documentation}
+@end titlepage
+
+@top
+
+@contents
+
+@chapter Synopsis
+
+ffplay [@var{options}] [@file{input_url}]
+
+@chapter Description
+@c man begin DESCRIPTION
+
+FFplay is a very simple and portable media player using the FFmpeg
+libraries and the SDL library. It is mostly used as a testbed for the
+various FFmpeg APIs.
+@c man end
+
+@chapter Options
+@c man begin OPTIONS
+
+@include fftools-common-opts.texi
+
+@section Main options
+
+@table @option
+@item -x @var{width}
+Force displayed width.
+@item -y @var{height}
+Force displayed height.
+@item -s @var{size}
+Set frame size (WxH or abbreviation), needed for videos which do
+not contain a header with the frame size like raw YUV.  This option
+has been deprecated in favor of private options, try -video_size.
+@item -fs
+Start in fullscreen mode.
+@item -an
+Disable audio.
+@item -vn
+Disable video.
+@item -sn
+Disable subtitles.
+@item -ss @var{pos}
+Seek to @var{pos}. Note that in most formats it is not possible to seek
+exactly, so @command{ffplay} will seek to the nearest seek point to
+@var{pos}.
+
+@var{pos} must be a time duration specification,
+see @ref{time duration syntax,,the Time duration section in the ffmpeg-utils(1) manual,ffmpeg-utils}.
+@item -t @var{duration}
+Play @var{duration} seconds of audio/video.
+
+@var{duration} must be a time duration specification,
+see @ref{time duration syntax,,the Time duration section in the ffmpeg-utils(1) manual,ffmpeg-utils}.
+@item -bytes
+Seek by bytes.
+@item -seek_interval
+Set custom interval, in seconds, for seeking using left/right keys. Default is 10 seconds.
+@item -nodisp
+Disable graphical display.
+@item -noborder
+Borderless window.
+@item -alwaysontop
+Window always on top. Available on: X11 with SDL >= 2.0.5, Windows SDL >= 2.0.6.
+@item -volume
+Set the startup volume. 0 means silence, 100 means no volume reduction or
+amplification. Negative values are treated as 0, values above 100 are treated
+as 100.
+@item -f @var{fmt}
+Force format.
+@item -window_title @var{title}
+Set window title (default is the input filename).
+@item -left @var{title}
+Set the x position for the left of the window (default is a centered window).
+@item -top @var{title}
+Set the y position for the top of the window (default is a centered window).
+@item -loop @var{number}
+Loops movie playback <number> times. 0 means forever.
+@item -showmode @var{mode}
+Set the show mode to use.
+Available values for @var{mode} are:
+@table @samp
+@item 0, video
+show video
+@item 1, waves
+show audio waves
+@item 2, rdft
+show audio frequency band using RDFT ((Inverse) Real Discrete Fourier Transform)
+@end table
+
+Default value is "video", if video is not present or cannot be played
+"rdft" is automatically selected.
+
+You can interactively cycle through the available show modes by
+pressing the key @key{w}.
+
+@item -vf @var{filtergraph}
+Create the filtergraph specified by @var{filtergraph} and use it to
+filter the video stream.
+
+@var{filtergraph} is a description of the filtergraph to apply to
+the stream, and must have a single video input and a single video
+output. In the filtergraph, the input is associated to the label
+@code{in}, and the output to the label @code{out}. See the
+ffmpeg-filters manual for more information about the filtergraph
+syntax.
+
+You can specify this parameter multiple times and cycle through the specified
+filtergraphs along with the show modes by pressing the key @key{w}.
+
+@item -af @var{filtergraph}
+@var{filtergraph} is a description of the filtergraph to apply to
+the input audio.
+Use the option "-filters" to show all the available filters (including
+sources and sinks).
+
+@item -i @var{input_url}
+Read @var{input_url}.
+@end table
+
+@section Advanced options
+@table @option
+@item -pix_fmt @var{format}
+Set pixel format.
+This option has been deprecated in favor of private options, try -pixel_format.
+
+@item -stats
+Print several playback statistics, in particular show the stream
+duration, the codec parameters, the current position in the stream and
+the audio/video synchronisation drift. It is on by default, to
+explicitly disable it you need to specify @code{-nostats}.
+
+@item -fast
+Non-spec-compliant optimizations.
+@item -genpts
+Generate pts.
+@item -sync @var{type}
+Set the master clock to audio (@code{type=audio}), video
+(@code{type=video}) or external (@code{type=ext}). Default is audio. The
+master clock is used to control audio-video synchronization. Most media
+players use audio as master clock, but in some cases (streaming or high
+quality broadcast) it is necessary to change that. This option is mainly
+used for debugging purposes.
+@item -ast @var{audio_stream_specifier}
+Select the desired audio stream using the given stream specifier. The stream
+specifiers are described in the @ref{Stream specifiers} chapter. If this option
+is not specified, the "best" audio stream is selected in the program of the
+already selected video stream.
+@item -vst @var{video_stream_specifier}
+Select the desired video stream using the given stream specifier. The stream
+specifiers are described in the @ref{Stream specifiers} chapter. If this option
+is not specified, the "best" video stream is selected.
+@item -sst @var{subtitle_stream_specifier}
+Select the desired subtitle stream using the given stream specifier. The stream
+specifiers are described in the @ref{Stream specifiers} chapter. If this option
+is not specified, the "best" subtitle stream is selected in the program of the
+already selected video or audio stream.
+@item -autoexit
+Exit when video is done playing.
+@item -exitonkeydown
+Exit if any key is pressed.
+@item -exitonmousedown
+Exit if any mouse button is pressed.
+
+@item -codec:@var{media_specifier} @var{codec_name}
+Force a specific decoder implementation for the stream identified by
+@var{media_specifier}, which can assume the values @code{a} (audio),
+@code{v} (video), and @code{s} subtitle.
+
+@item -acodec @var{codec_name}
+Force a specific audio decoder.
+
+@item -vcodec @var{codec_name}
+Force a specific video decoder.
+
+@item -scodec @var{codec_name}
+Force a specific subtitle decoder.
+
+@item -autorotate
+Automatically rotate the video according to file metadata. Enabled by
+default, use @option{-noautorotate} to disable it.
+
+@item -framedrop
+Drop video frames if video is out of sync. Enabled by default if the master
+clock is not set to video. Use this option to enable frame dropping for all
+master clock sources, use @option{-noframedrop} to disable it.
+
+@item -infbuf
+Do not limit the input buffer size, read as much data as possible from the
+input as soon as possible. Enabled by default for realtime streams, where data
+may be dropped if not read in time. Use this option to enable infinite buffers
+for all inputs, use @option{-noinfbuf} to disable it.
+
+@item -filter_threads @var{nb_threads}
+Defines how many threads are used to process a filter pipeline. Each pipeline
+will produce a thread pool with this many threads available for parallel
+processing. The default is 0 which means that the thread count will be
+determined by the number of available CPUs.
+
+@end table
+
+@section While playing
+
+@table @key
+@item q, ESC
+Quit.
+
+@item f
+Toggle full screen.
+
+@item p, SPC
+Pause.
+
+@item m
+Toggle mute.
+
+@item 9, 0
+Decrease and increase volume respectively.
+
+@item /, *
+Decrease and increase volume respectively.
+
+@item a
+Cycle audio channel in the current program.
+
+@item v
+Cycle video channel.
+
+@item t
+Cycle subtitle channel in the current program.
+
+@item c
+Cycle program.
+
+@item w
+Cycle video filters or show modes.
+
+@item s
+Step to the next frame.
+
+Pause if the stream is not already paused, step to the next video
+frame, and pause.
+
+@item left/right
+Seek backward/forward 10 seconds.
+
+@item down/up
+Seek backward/forward 1 minute.
+
+@item page down/page up
+Seek to the previous/next chapter.
+or if there are no chapters
+Seek backward/forward 10 minutes.
+
+@item right mouse click
+Seek to percentage in file corresponding to fraction of width.
+
+@item left mouse double-click
+Toggle full screen.
+
+@end table
+
+@c man end
+
+@include config.texi
+@ifset config-all
+@set config-readonly
+@ifset config-avutil
+@include utils.texi
+@end ifset
+@ifset config-avcodec
+@include codecs.texi
+@include bitstream_filters.texi
+@end ifset
+@ifset config-avformat
+@include formats.texi
+@include protocols.texi
+@end ifset
+@ifset config-avdevice
+@include devices.texi
+@end ifset
+@ifset config-swresample
+@include resampler.texi
+@end ifset
+@ifset config-swscale
+@include scaler.texi
+@end ifset
+@ifset config-avfilter
+@include filters.texi
+@end ifset
+@end ifset
+
+@chapter See Also
+
+@ifhtml
+@ifset config-all
+@url{ffplay.html,ffplay},
+@end ifset
+@ifset config-not-all
+@url{ffplay-all.html,ffmpeg-all},
+@end ifset
+@url{ffmpeg.html,ffmpeg}, @url{ffprobe.html,ffprobe},
+@url{ffmpeg-utils.html,ffmpeg-utils},
+@url{ffmpeg-scaler.html,ffmpeg-scaler},
+@url{ffmpeg-resampler.html,ffmpeg-resampler},
+@url{ffmpeg-codecs.html,ffmpeg-codecs},
+@url{ffmpeg-bitstream-filters.html,ffmpeg-bitstream-filters},
+@url{ffmpeg-formats.html,ffmpeg-formats},
+@url{ffmpeg-devices.html,ffmpeg-devices},
+@url{ffmpeg-protocols.html,ffmpeg-protocols},
+@url{ffmpeg-filters.html,ffmpeg-filters}
+@end ifhtml
+
+@ifnothtml
+@ifset config-all
+ffplay(1),
+@end ifset
+@ifset config-not-all
+ffplay-all(1),
+@end ifset
+ffmpeg(1), ffprobe(1),
+ffmpeg-utils(1), ffmpeg-scaler(1), ffmpeg-resampler(1),
+ffmpeg-codecs(1), ffmpeg-bitstream-filters(1), ffmpeg-formats(1),
+ffmpeg-devices(1), ffmpeg-protocols(1), ffmpeg-filters(1)
+@end ifnothtml
+
+@include authors.texi
+
+@ignore
+
+@setfilename ffplay
+@settitle FFplay media player
+
+@end ignore
+
+@bye

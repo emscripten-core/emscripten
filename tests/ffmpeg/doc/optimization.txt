@@ -1,0 +1,276 @@
+optimization Tips (for libavcodec):
+===================================
+
+What to optimize:
+-----------------
+If you plan to do non-x86 architecture specific optimizations (SIMD normally),
+then take a look in the x86/ directory, as most important functions are
+already optimized for MMX.
+
+If you want to do x86 optimizations then you can either try to fine-tune the
+stuff in the x86 directory or find some other functions in the C source to
+optimize, but there aren't many left.
+
+
+Understanding these overoptimized functions:
+--------------------------------------------
+As many functions tend to be a bit difficult to understand because
+of optimizations, it can be hard to optimize them further, or write
+architecture-specific versions. It is recommended to look at older
+revisions of the interesting files (web frontends for the various FFmpeg
+branches are listed at http://ffmpeg.org/download.html).
+Alternatively, look into the other architecture-specific versions in
+the x86/, ppc/, alpha/ subdirectories. Even if you don't exactly
+comprehend the instructions, it could help understanding the functions
+and how they can be optimized.
+
+NOTE: If you still don't understand some function, ask at our mailing list!!!
+(http://lists.ffmpeg.org/mailman/listinfo/ffmpeg-devel)
+
+
+When is an optimization justified?
+----------------------------------
+Normally, clean and simple optimizations for widely used codecs are
+justified even if they only achieve an overall speedup of 0.1%. These
+speedups accumulate and can make a big difference after awhile. Also, if
+none of the following factors get worse due to an optimization -- speed,
+binary code size, source size, source readability -- and at least one
+factor improves, then an optimization is always a good idea even if the
+overall gain is less than 0.1%. For obscure codecs that are not often
+used, the goal is more toward keeping the code clean, small, and
+readable instead of making it 1% faster.
+
+
+WTF is that function good for ....:
+-----------------------------------
+The primary purpose of this list is to avoid wasting time optimizing functions
+which are rarely used.
+
+put(_no_rnd)_pixels{,_x2,_y2,_xy2}
+    Used in motion compensation (en/decoding).
+
+avg_pixels{,_x2,_y2,_xy2}
+    Used in motion compensation of B-frames.
+    These are less important than the put*pixels functions.
+
+avg_no_rnd_pixels*
+    unused
+
+pix_abs16x16{,_x2,_y2,_xy2}
+    Used in motion estimation (encoding) with SAD.
+
+pix_abs8x8{,_x2,_y2,_xy2}
+    Used in motion estimation (encoding) with SAD of MPEG-4 4MV only.
+    These are less important than the pix_abs16x16* functions.
+
+put_mspel8_mc* / wmv2_mspel8*
+    Used only in WMV2.
+    it is not recommended that you waste your time with these, as WMV2
+    is an ugly and relatively useless codec.
+
+mpeg4_qpel* / *qpel_mc*
+    Used in MPEG-4 qpel motion compensation (encoding & decoding).
+    The qpel8 functions are used only for 4mv,
+    the avg_* functions are used only for B-frames.
+    Optimizing them should have a significant impact on qpel
+    encoding & decoding.
+
+qpel{8,16}_mc??_old_c / *pixels{8,16}_l4
+    Just used to work around a bug in an old libavcodec encoder version.
+    Don't optimize them.
+
+add_bytes/diff_bytes
+    For huffyuv only, optimize if you want a faster ffhuffyuv codec.
+
+get_pixels / diff_pixels
+    Used for encoding, easy.
+
+clear_blocks
+    easiest to optimize
+
+gmc
+    Used for MPEG-4 gmc.
+    Optimizing this should have a significant effect on the gmc decoding
+    speed.
+
+gmc1
+    Used for chroma blocks in MPEG-4 gmc with 1 warp point
+    (there are 4 luma & 2 chroma blocks per macroblock, so
+    only 1/3 of the gmc blocks use this, the other 2/3
+    use the normal put_pixel* code, but only if there is
+    just 1 warp point).
+    Note: DivX5 gmc always uses just 1 warp point.
+
+pix_sum
+    Used for encoding.
+
+hadamard8_diff / sse / sad == pix_norm1 / dct_sad / quant_psnr / rd / bit
+    Specific compare functions used in encoding, it depends upon the
+    command line switches which of these are used.
+    Don't waste your time with dct_sad & quant_psnr, they aren't
+    really useful.
+
+put_pixels_clamped / add_pixels_clamped
+    Used for en/decoding in the IDCT, easy.
+    Note, some optimized IDCTs have the add/put clamped code included and
+    then put_pixels_clamped / add_pixels_clamped will be unused.
+
+idct/fdct
+    idct (encoding & decoding)
+    fdct (encoding)
+    difficult to optimize
+
+dct_quantize_trellis
+    Used for encoding with trellis quantization.
+    difficult to optimize
+
+dct_quantize
+    Used for encoding.
+
+dct_unquantize_mpeg1
+    Used in MPEG-1 en/decoding.
+
+dct_unquantize_mpeg2
+    Used in MPEG-2 en/decoding.
+
+dct_unquantize_h263
+    Used in MPEG-4/H.263 en/decoding.
+
+
+
+Alignment:
+Some instructions on some architectures have strict alignment restrictions,
+for example most SSE/SSE2 instructions on x86.
+The minimum guaranteed alignment is written in the .h files, for example:
+    void (*put_pixels_clamped)(const int16_t *block/*align 16*/, uint8_t *pixels/*align 8*/, ptrdiff_t stride);
+
+
+General Tips:
+-------------
+Use asm loops like:
+__asm__(
+    "1: ....
+    ...
+    "jump_instruction ....
+Do not use C loops:
+do{
+    __asm__(
+        ...
+}while()
+
+For x86, mark registers that are clobbered in your asm. This means both
+general x86 registers (e.g. eax) as well as XMM registers. This last one is
+particularly important on Win64, where xmm6-15 are callee-save, and not
+restoring their contents leads to undefined results. In external asm,
+you do this by using:
+cglobal function_name, num_args, num_regs, num_xmm_regs
+In inline asm, you specify clobbered registers at the end of your asm:
+__asm__(".." ::: "%eax").
+If gcc is not set to support sse (-msse) it will not accept xmm registers
+in the clobber list. For that we use two macros to declare the clobbers.
+XMM_CLOBBERS should be used when there are other clobbers, for example:
+__asm__(".." ::: XMM_CLOBBERS("xmm0",) "eax");
+and XMM_CLOBBERS_ONLY should be used when the only clobbers are xmm registers:
+__asm__(".." :: XMM_CLOBBERS_ONLY("xmm0"));
+
+Do not expect a compiler to maintain values in your registers between separate
+(inline) asm code blocks. It is not required to. For example, this is bad:
+__asm__("movdqa %0, %%xmm7" : src);
+/* do something */
+__asm__("movdqa %%xmm7, %1" : dst);
+- first of all, you're assuming that the compiler will not use xmm7 in
+   between the two asm blocks.  It probably won't when you test it, but it's
+   a poor assumption that will break at some point for some --cpu compiler flag
+- secondly, you didn't mark xmm7 as clobbered. If you did, the compiler would
+   have restored the original value of xmm7 after the first asm block, thus
+   rendering the combination of the two blocks of code invalid
+Code that depends on data in registries being untouched, should be written as
+a single __asm__() statement. Ideally, a single function contains only one
+__asm__() block.
+
+Use external asm (nasm/yasm) or inline asm (__asm__()), do not use intrinsics.
+The latter requires a good optimizing compiler which gcc is not.
+
+When debugging a x86 external asm compilation issue, if lost in the macro
+expansions, add DBG=1 to your make command-line: the input file will be
+preprocessed, stripped of the debug/empty lines, then compiled, showing the
+actual lines causing issues.
+
+Inline asm vs. external asm
+---------------------------
+Both inline asm (__asm__("..") in a .c file, handled by a compiler such as gcc)
+and external asm (.s or .asm files, handled by an assembler such as nasm/yasm)
+are accepted in FFmpeg. Which one to use differs per specific case.
+
+- if your code is intended to be inlined in a C function, inline asm is always
+   better, because external asm cannot be inlined
+- if your code calls external functions, external asm is always better
+- if your code takes huge and complex structs as function arguments (e.g.
+   MpegEncContext; note that this is not ideal and is discouraged if there
+   are alternatives), then inline asm is always better, because predicting
+   member offsets in complex structs is almost impossible. It's safest to let
+   the compiler take care of that
+- in many cases, both can be used and it just depends on the preference of the
+   person writing the asm. For new asm, the choice is up to you. For existing
+   asm, you'll likely want to maintain whatever form it is currently in unless
+   there is a good reason to change it.
+- if, for some reason, you believe that a particular chunk of existing external
+   asm could be improved upon further if written in inline asm (or the other
+   way around), then please make the move from external asm <-> inline asm a
+   separate patch before your patches that actually improve the asm.
+
+
+Links:
+======
+http://www.aggregate.org/MAGIC/
+
+x86-specific:
+-------------
+http://developer.intel.com/design/pentium4/manuals/248966.htm
+
+The IA-32 Intel Architecture Software Developer's Manual, Volume 2:
+Instruction Set Reference
+http://developer.intel.com/design/pentium4/manuals/245471.htm
+
+http://www.agner.org/assem/
+
+AMD Athlon Processor x86 Code Optimization Guide:
+http://www.amd.com/us-en/assets/content_type/white_papers_and_tech_docs/22007.pdf
+
+
+ARM-specific:
+-------------
+ARM Architecture Reference Manual (up to ARMv5TE):
+http://www.arm.com/community/university/eulaarmarm.html
+
+Procedure Call Standard for the ARM Architecture:
+http://www.arm.com/pdfs/aapcs.pdf
+
+Optimization guide for ARM9E (used in Nokia 770 Internet Tablet):
+http://infocenter.arm.com/help/topic/com.arm.doc.ddi0240b/DDI0240A.pdf
+Optimization guide for ARM11 (used in Nokia N800 Internet Tablet):
+http://infocenter.arm.com/help/topic/com.arm.doc.ddi0211j/DDI0211J_arm1136_r1p5_trm.pdf
+Optimization guide for Intel XScale (used in Sharp Zaurus PDA):
+http://download.intel.com/design/intelxscale/27347302.pdf
+Intel Wireless MMX 2 Coprocessor: Programmers Reference Manual
+http://download.intel.com/design/intelxscale/31451001.pdf
+
+PowerPC-specific:
+-----------------
+PowerPC32/AltiVec PIM:
+www.freescale.com/files/32bit/doc/ref_manual/ALTIVECPEM.pdf
+
+PowerPC32/AltiVec PEM:
+www.freescale.com/files/32bit/doc/ref_manual/ALTIVECPIM.pdf
+
+CELL/SPU:
+http://www-01.ibm.com/chips/techlib/techlib.nsf/techdocs/30B3520C93F437AB87257060006FFE5E/$file/Language_Extensions_for_CBEA_2.4.pdf
+http://www-01.ibm.com/chips/techlib/techlib.nsf/techdocs/9F820A5FFA3ECE8C8725716A0062585F/$file/CBE_Handbook_v1.1_24APR2007_pub.pdf
+
+GCC asm links:
+--------------
+official doc but quite ugly
+http://gcc.gnu.org/onlinedocs/gcc/Extended-Asm.html
+
+a bit old (note "+" is valid for input-output, even though the next disagrees)
+http://www.cs.virginia.edu/~clc5q/gcc-inline-asm.pdf

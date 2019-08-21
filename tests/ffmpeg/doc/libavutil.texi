@@ -1,0 +1,63 @@
+\input texinfo @c -*- texinfo -*-
+@documentencoding UTF-8
+
+@settitle Libavutil Documentation
+@titlepage
+@center @titlefont{Libavutil Documentation}
+@end titlepage
+
+@top
+
+@contents
+
+@chapter Description
+@c man begin DESCRIPTION
+
+The libavutil library is a utility library to aid portable
+multimedia programming. It contains safe portable string functions,
+random number generators, data structures, additional mathematics
+functions, cryptography and multimedia related functionality (like
+enumerations for pixel and sample formats). It is not a library for
+code needed by both libavcodec and libavformat.
+
+The goals for this library is to be:
+
+@table @strong
+@item Modular
+It should have few interdependencies and the possibility of disabling individual
+parts during @command{./configure}.
+
+@item Small
+Both sources and objects should be small.
+
+@item Efficient
+It should have low CPU and memory usage.
+
+@item Useful
+It should avoid useless features that almost no one needs.
+@end table
+
+@c man end DESCRIPTION
+
+@chapter See Also
+
+@ifhtml
+@url{ffmpeg.html,ffmpeg}, @url{ffplay.html,ffplay}, @url{ffprobe.html,ffprobe},
+@url{ffmpeg-utils.html,ffmpeg-utils}
+@end ifhtml
+
+@ifnothtml
+ffmpeg(1), ffplay(1), ffprobe(1),
+ffmpeg-utils(1)
+@end ifnothtml
+
+@include authors.texi
+
+@ignore
+
+@setfilename libavutil
+@settitle multimedia-biased utility library
+
+@end ignore
+
+@bye
