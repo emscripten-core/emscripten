@@ -22,7 +22,6 @@ int main()
   }
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   printf("Created context with handle %u\n", (unsigned int)ctx);
   emscripten_webgl_make_context_current(ctx);
@@ -34,8 +33,6 @@ int main()
     color += 0.01;
     glClearColor(color, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    EMSCRIPTEN_RESULT r = emscripten_webgl_commit_frame();
-    assert(r == EMSCRIPTEN_RESULT_SUCCESS);
 
 #if ASYNCIFY
     emscripten_sleep(16);
