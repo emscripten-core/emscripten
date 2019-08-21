@@ -136,6 +136,8 @@ you will receive an error message that looks something like:
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
   compile with  -s ABORTING_MALLOC=0
 
+ASan fully supports multi-thread environments.
+
 Examples
 --------
 
