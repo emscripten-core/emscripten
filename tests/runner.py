@@ -1142,6 +1142,39 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
       test_index += 1
 
+  def get_ffmpeg_library(self, disable_pthreads=True):
+    configure_args=['--disable-asm',
+                    '--disable-programs',
+                    '--disable-debug',
+                    '--enable-cross-compile',
+                    '--cc=emcc',
+                    '--disable-runtime-cpudetect',
+                    '--disable-fast-unaligned',
+                    '--disable-hwaccels',
+                    '--disable-network',
+                    '--disable-stripping']
+
+    generated_libs = [os.path.join('libavdevice', 'libavdevice.a'),
+                      os.path.join('libavfilter', 'libavfilter.a'),
+                      os.path.join('libswscale', 'libswscale.a'),
+                      os.path.join('libavformat', 'libavformat.a'),
+                      os.path.join('libavcodec', 'libavcodec.a'),
+                      os.path.join('libswresample', 'libswresample.a'),
+                      os.path.join('libavutil', 'libavutil.a')]
+
+    self.emcc_args += [
+      '-Wno-error',
+    ]
+
+    if disable_pthreads:
+        configure_args.append('--disable-pthreads')
+    else:
+        self.set_setting('USE_PTHREADS', 1)
+
+    self.set_setting('USE_SDL', 2)
+
+    return self.get_library('ffmpeg', generated_libs, configure_args=configure_args)
+
   def get_freetype_library(self):
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
