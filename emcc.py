@@ -1538,6 +1538,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.USE_LSAN = 1
         shared.Settings.EXIT_RUNTIME = 1
 
+        if shared.Settings.LINKABLE:
+          exit_with_error('LSan does not support dynamic linking')
+
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
 
@@ -1550,6 +1553,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
           # by SAFE_HEAP as a null pointer dereference.
           exit_with_error('ASan does not work with SAFE_HEAP')
+
+        if shared.Settings.LINKABLE:
+          exit_with_error('ASan does not support dynamic linking')
 
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
