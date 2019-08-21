@@ -130,14 +130,24 @@ function ccall(ident, returnType, argTypes, args, opts) {
     });
   }
 #else // EMTERPRETIFY_ASYNC
+  if (typeof Asyncify === 'object' && Asyncify.currData !== null) {
 #if ASSERTIONS
-  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
+    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    assert(!Asyncify.restartFunc, 'Cannot have multiple async ccalls in flight at once');
 #endif
+    return new Promise(function(resolve) {
+      Asyncify.restartFunc = func;
+      Asyncify.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
+      });
+    });
+  }
 #endif // EMTERPRETIFY_ASYNC
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC
+#if EMTERPRETIFY_ASYNC || ASYNCIFY
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
