@@ -346,6 +346,8 @@ and compile with ``--pre-js asan_options.js``.
 For standalone LSan, use ``Module.LSAN_OPTIONS`` instead.
 
 For a detailed understanding of the flags, see the `ASan documentation`__.
+Please be warned that most flag combinations are not tested and may or may not
+work.
 
 __ https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags
 
