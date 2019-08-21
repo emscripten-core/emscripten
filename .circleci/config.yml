@@ -29,7 +29,9 @@ commands:
             apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
       - run:
           name: run tests
-          command: python3 tests/runner.py << parameters.test_targets >>
+          command: |
+            python3 tests/runner.py << parameters.test_targets >>
+            tools/check_clean.py
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
