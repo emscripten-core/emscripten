@@ -130,9 +130,14 @@ function ccall(ident, returnType, argTypes, args, opts) {
     });
   }
 #else // EMTERPRETIFY_ASYNC
-  if (typeof Asyncify === 'object' && Asyncify.currData !== null) {
+  if (typeof Asyncify === 'object' && Asyncify.currData) {
+    // The WASM function ran asynchronous and unwound its stack.
+    // We need to return a Promise that resolves the return value
+    // once the stack is rewound and execution finishes.
 #if ASSERTIONS
     assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    // Once the asyncFinalizers are called, asyncFinalizers gets reset to [].
+    // If they are not empty, then another async ccall is in-flight and not finished.
     assert(Asyncify.asyncFinalizers.length === 0, 'Cannot have multiple async ccalls in flight at once');
 #endif
     return new Promise(function(resolve) {

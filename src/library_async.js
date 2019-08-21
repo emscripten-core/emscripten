@@ -561,8 +561,10 @@ mergeInto(LibraryManager.library, {
     // That includes the name of the function on the bottom
     // of the call stack, that we need to call to rewind.
     dataInfo: {},
-    // The return value from a synchronous call is stored here,
-    // so we can return it later after rewinding finishes.
+    // The return value passed to wakeUp() in
+    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
+    // so we can return it later from the C function that called
+    // Asyncify.handleSleep() after rewinding finishes.
     returnValue: 0,
     // We must track which wasm exports are called into and
     // exited, so that we know where the call stack began,
@@ -673,7 +675,18 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start: ' + start);
 #endif
           var asyncReturnValue = Module['asm'][start]();
-          if (Asyncify.currData === null) {
+          if (!Asyncify.currData) {
+            // All asynchronous execution has finished.
+            // `asyncReturnValue` now contains the final return value
+            // of the exported async WASM function.
+            //
+            // Note: `asyncReturnValue` is distinct from
+            // `Asyncify.returnValue`. `Asyncify.returnValue`
+            // contains the return value of the last C function
+            // to have executed `Asyncify.handleSleep()`, where as
+            // `asyncReturnValue` contains the return value of
+            // the exported WASM function that may have
+            // called C functions that called `Asyncify.handleSleep()`.
             var asyncFinalizers = Asyncify.asyncFinalizers;
             Asyncify.asyncFinalizers = [];
             asyncFinalizers.forEach(function(func) {
