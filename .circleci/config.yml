@@ -320,7 +320,7 @@ jobs:
           name: install emsdk
           command: |
             wget -O ~/emsdk-master.tar.gz https://github.com/juj/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/master-master.tar.gz
+            tar -C ~ -xf ~/emsdk-master.tar.gz
             cd ~/emsdk-master
             ./emsdk --notty update-tags
             ./emsdk --notty install tot-upstream
