@@ -569,7 +569,6 @@ mergeInto(LibraryManager.library, {
     // which is where we must call to rewind it.
     exportCallStack: [],
     afterUnwind: null,
-    restartFunc: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
 
     instrumentWasmExports: function(exports) {
@@ -673,10 +672,8 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start: ' + start);
 #endif
-          Module['asm'][start]();
+          var asyncReturnValue = Module['asm'][start]();
           if (Asyncify.currData === null) {
-            var asyncReturnValue = Asyncify.restartFunc();
-            Asyncify.restartFunc = null;
             var asyncFinalizers = Asyncify.asyncFinalizers;
             Asyncify.asyncFinalizers = [];
             asyncFinalizers.forEach(function(func) {

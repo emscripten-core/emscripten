@@ -133,10 +133,9 @@ function ccall(ident, returnType, argTypes, args, opts) {
   if (typeof Asyncify === 'object' && Asyncify.currData !== null) {
 #if ASSERTIONS
     assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-    assert(!Asyncify.restartFunc, 'Cannot have multiple async ccalls in flight at once');
+    assert(Asyncify.asyncFinalizers.length === 0, 'Cannot have multiple async ccalls in flight at once');
 #endif
     return new Promise(function(resolve) {
-      Asyncify.restartFunc = func;
       Asyncify.asyncFinalizers.push(function(ret) {
         if (stack !== 0) stackRestore(stack);
         resolve(convertReturnValue(ret));
