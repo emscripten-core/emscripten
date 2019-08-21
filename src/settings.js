@@ -941,6 +941,11 @@ var SEPARATE_ASM_MODULE_NAME = '';
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;
 
+// Use the ES6 Module relative import feature 'import.meta.url'
+// to auto-detect WASM Module path.
+// It might not be supported on old browsers / toolchains
+var USE_ES6_IMPORT_META = 1;
+
 // If 1, will just time how long main() takes to execute, and not print out
 // anything at all whatsoever. This is useful for benchmarking.
 var BENCHMARK = 0;
