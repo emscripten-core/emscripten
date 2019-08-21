@@ -10,16 +10,6 @@
 #include <bits/errno.h>
 #include <stdlib.h>
 
-#if !defined(TEST_OFFSCREEN_CANVAS)
-// Defining EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES to empty string will cause no canvases to be transferred.
-#define EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES ""
-#elif TEST_OFFSCREEN_CANVAS == 1
-// Specifying #canvas should take Module.canvas to be transferred
-#define EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES "#canvas"
-#elif TEST_OFFSCREEN_CANVAS == 2
-// Leaving EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES undefined will also transfer the default Module.canvas object
-#endif
-
 int main()
 {
   if (!emscripten_supports_offscreencanvas())
