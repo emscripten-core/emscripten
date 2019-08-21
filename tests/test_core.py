@@ -5885,6 +5885,34 @@ return malloc(size);
 
   @needs_make('make')
   @is_slow_test
+  def test_ffmpeg(self):
+    self.set_setting('USE_SDL', 2)
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.set_setting('TOTAL_MEMORY', 512*1024*1024)
+
+    self.do_run(
+      open(path_from_root('tests', 'ffmpeg', 'fftools', 'ffmpeg.c')).read(),
+      expected_output='ffmpeg version 4.2',
+      additional_files=[
+        path_from_root('tests', 'ffmpeg', 'fftools', 'cmdutils.c'),
+        path_from_root('tests', 'ffmpeg', 'fftools', 'ffmpeg_filter.c'),
+        path_from_root('tests', 'ffmpeg', 'fftools', 'ffmpeg_hw.c'),
+        path_from_root('tests', 'ffmpeg', 'fftools', 'ffmpeg_opt.c'),
+        path_from_root('tests', 'ffmpeg', 'compat', 'atomics', 'pthread', 'stdatomic.c')
+      ],
+      args=['-version'],
+      libraries=self.get_ffmpeg_library(),
+      includes=[
+        path_from_root('tests', 'ffmpeg'),
+        path_from_root('tests', 'ffmpeg', 'fftools'),
+        path_from_root('tests', 'ffmpeg', 'compat', 'atomics', 'pthread')
+      ],
+      force_c=True,
+      assert_returncode=0,
+    )
+
+  @needs_make('make')
+  @is_slow_test
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
 
