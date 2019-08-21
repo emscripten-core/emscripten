@@ -813,7 +813,11 @@ var LINKABLE = 0;
 //   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
+//   * STRICT_JS is enabled
 var STRICT = 0;
+
+// Add "use strict;" to generated JS
+var STRICT_JS = 0;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
 // the library_*.js files. Note that it is common in large projects to not

@@ -1095,6 +1095,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STRICT:
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
+      shared.Settings.STRICT_JS = 1
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1
