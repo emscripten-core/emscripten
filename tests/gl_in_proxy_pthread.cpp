@@ -47,8 +47,12 @@ int main()
     EMSCRIPTEN_RESULT r = emscripten_webgl_commit_frame();
     assert(r == EMSCRIPTEN_RESULT_SUCCESS);
 
+#if ASYNCIFY
+    emscripten_sleep(16);
+#else
     double now = emscripten_get_now();
     while(emscripten_get_now() - now < 16) /*no-op*/;
+#endif
   }
 
   emscripten_webgl_make_context_current(0);

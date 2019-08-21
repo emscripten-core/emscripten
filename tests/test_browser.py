@@ -4250,9 +4250,15 @@ window.close = function() {
   @requires_offscreen_canvas
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
     for args in [[], ['-DTEST_OFFSCREEN_CANVAS=1'], ['-DTEST_OFFSCREEN_CANVAS=2']]:
-      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']
-      print(str(cmd))
-      self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
+      for async in [0, 1]:
+        cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']
+        if async:
+          if not self.is_wasm_backend():
+            continue
+          # given the synchronous render loop here, asyncify is needed to see intermediate frames and the gradual color change
+          cmd += ['-s', 'ASYNCIFY', '-DASYNCIFY']
+        print(str(cmd))
+        self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
 
   @requires_threads
   @requires_graphics_hardware
