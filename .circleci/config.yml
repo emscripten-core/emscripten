@@ -7,7 +7,6 @@ executors:
     environment:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
-      EMCC_CORES: "2"
 
 defaults: &defaults
   executor: bionic
@@ -28,8 +27,6 @@ test-defaults: &test-defaults
     - run:
         name: run tests
         command: |
-          env
-          cat /proc/cpuinfo
           python3 tests/runner.py $TEST_TARGET
 
 test-firefox: &test-firefox
