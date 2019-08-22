@@ -3179,6 +3179,7 @@ def safe_move(src, dst):
     return
   if dst == '/dev/null':
     return
+  logging.debug('move: %s -> %s', src, dst)
   shutil.move(src, dst)
 
 

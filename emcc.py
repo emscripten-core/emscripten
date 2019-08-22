@@ -1751,6 +1751,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     temp_files = []
 
+  executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
+  compile_only = final_suffix not in executable_endings or has_dash_c or has_dash_S
+
   # exit block 'parse arguments and setup'
   log_time('parse arguments and setup')
 
@@ -1762,7 +1765,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     shared.Cache.acquire_cache_lock()
 
   try:
-    with ToolchainProfiler.profile_block('bitcodeize inputs'):
+    with ToolchainProfiler.profile_block('compile inputs'):
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]
@@ -1774,21 +1777,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         args = system_libs.process_args(args, shared.Settings)
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
-
-      def get_object_filename(input_file):
-        if final_suffix not in JS_CONTAINING_ENDINGS:
-          # no need for a temp file, just emit to the right place
-          if len(input_files) == 1:
-            # can just emit directly to the target
-            if specified_target:
-              if specified_target.endswith('/') or specified_target.endswith('\\') or os.path.isdir(specified_target):
-                return os.path.join(specified_target, os.path.basename(unsuffixed(input_file))) + options.default_object_extension
-              return specified_target
-            return unsuffixed(input_file) + final_suffix
-          else:
-            if has_dash_c:
-              return unsuffixed(input_file) + options.default_object_extension
-        return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
       # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
       if use_source_map(options) or ((final_suffix not in JS_CONTAINING_ENDINGS or (has_source_inputs and final_suffix in JS_CONTAINING_ENDINGS)) and options.requested_debug == '-g'):
@@ -1827,6 +1815,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # with -MF! (clang seems to not recognize it)
         logger.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
         return run_process(cmd, check=False).returncode
+
+      def get_object_filename(input_file):
+        if compile_only and len(input_files) == 1:
+          # no need for a temp file, just emit to the right place
+          if specified_target:
+            return specified_target
+          else:
+            return unsuffixed_basename(input_files[0][1]) + final_suffix
+        else:
+          return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
       def compile_source_file(i, input_file):
         logger.debug('compiling source file: ' + input_file)
@@ -1870,8 +1868,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             else:
               exit_with_error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
 
-    # exit block 'bitcodeize inputs'
-    log_time('bitcodeize inputs')
+    # exit block 'compile inputs'
+    log_time('compile inputs')
 
     with ToolchainProfiler.profile_block('process inputs'):
       if not LEAVE_INPUTS_RAW and not shared.Settings.WASM_BACKEND:
@@ -1895,9 +1893,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               temp_files[pos] = (temp_files[pos][0], new_temp_file)
 
       # Decide what we will link
-      executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
-      compile_only = final_suffix not in executable_endings or has_dash_c or has_dash_S
-
       if compile_only or not shared.Settings.WASM_BACKEND:
         # Filter link flags, keeping only those that shared.Building.link knows
         # how to deal with.  We currently can't handle flags with options (like
@@ -1941,15 +1936,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
             shared.Building.link_to_object(linker_inputs, specified_target)
-        logger.debug('stopping after compile phase')
-        if shared.Settings.SIDE_MODULE:
-          exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
-        if final_suffix.lower() in ('.so', '.dylib', '.dll'):
-          logger.warning('When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
-        return 0
 
     # exit block 'process inputs'
     log_time('process inputs')
+
+    if compile_only:
+      logger.debug('stopping after compile phase')
+      if shared.Settings.SIDE_MODULE:
+        exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
+      if final_suffix.lower() in ('.so', '.dylib', '.dll'):
+        logger.warning('When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
+      return 0
 
     ## Continue on to create JavaScript
 
