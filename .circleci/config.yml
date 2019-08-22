@@ -45,13 +45,13 @@ test-firefox: &test-firefox
         command: |
           # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
           # which requires very latest nightly as of Jul 13 2019
-          wget -O ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
-          tar xf ff.tar.bz2
+          wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
+          tar xf ~/ff.tar.bz2
     - run:
         name: configure firefox
         command: |
-          mkdir tmp-firefox-profile/
-          cat > tmp-firefox-profile/user.js <<EOF
+          mkdir ~/tmp-firefox-profile/
+          cat > ~/tmp-firefox-profile/user.js <<EOF
           user_pref("gfx.offscreencanvas.enabled", true);
           user_pref("javascript.options.shared_memory", true);
           EOF
@@ -59,8 +59,8 @@ test-firefox: &test-firefox
         name: configure openbox
         command: |
           # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
-          mkdir -p .config/X11
-          cat > .config/X11/xorg.conf <<EOF
+          mkdir -p ~/.config/X11
+          cat > ~/.config/X11/xorg.conf <<EOF
           Section "ServerLayout"
             Identifier "X.org Configured"
             Screen 0 "Screen0" 0 0
@@ -89,10 +89,10 @@ test-firefox: &test-firefox
             EndSubSection
           EndSection
           EOF
-          mkdir -p .config/openbox
+          mkdir -p ~/.config/openbox
           echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
-          mkdir -p .config/autostart
-          cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
+          mkdir -p ~/.config/autostart
+          cat > ~/.config/autostart/at-spi-dbus-bus.desktop <<EOF
           [Desktop Entry]
           Type=Application
           Name=AT-SPI D-Bus Bus
@@ -111,7 +111,7 @@ test-firefox: &test-firefox
         # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
         name: run tests
         command: |
-          export EMTEST_BROWSER="$HOME/firefox/firefox -profile tmp-firefox-profile/"
+          export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
           export GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
           export EMTEST_LACKS_SOUND_HARDWARE=1
           export EMTEST_LACKS_OFFSCREEN_CANVAS=1 # looks broken in ff nightly
@@ -138,6 +138,7 @@ test-chrome: &test-chrome
     - EMTEST_LACKS_SOUND_HARDWARE=1
     - EMTEST_DETECT_TEMPFILE_LEAKS=0
   steps:
+    - checkout
     - attach_workspace:
         # Must be absolute path or relative path from working_directory
         at: ~/
@@ -152,8 +153,8 @@ test-chrome: &test-chrome
     - run:
         name: download chrome
         command: |
-          wget -O chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
-          dpkg -i chrome.deb
+          wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+          dpkg -i ~/chrome.deb
     - run:
         name: run tests
         command: |
