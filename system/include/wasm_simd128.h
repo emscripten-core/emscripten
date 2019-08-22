@@ -1,8 +1,8 @@
 /*
 WebAssembly SIMD128 Intrinsics
 */
-#ifndef _WASM_SIMD128_
-#define _WASM_SIMD128_
+#ifndef _WASM_SIMD128_H_
+#define _WASM_SIMD128_H_
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -846,4 +846,4 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_convert_f64x2_u64x2(v128_t v) {
   ((v128_t)(__builtin_shufflevector((__u8x16)(a), (__u8x16)(b), c0, c1, c2, c3, c4, c5, c6, c7,    \
     c8, c9, c10, c11, c12, c13, c14, c15)))
 
-#endif  // _WASM_SIMD128_
+#endif  // _WASM_SIMD128_H_
