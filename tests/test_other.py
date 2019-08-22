@@ -487,36 +487,28 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertExists('combined.o.js')
     self.assertContained('side got: hello from main, over', run_js('combined.o.js'))
 
-  def test_emcc_7(self):
-    for compiler in [EMCC, EMXX]:
-      suffix = '.c' if compiler == EMCC else '.cpp'
-
-      # --js-transform <transform>
-      self.clear()
-      trans = 't.py'
-      with open(trans, 'w') as f:
-        f.write('''
+  def test_js_transform(self):
+    with open('t.py', 'w') as f:
+      f.write('''
 import sys
 f = open(sys.argv[1], 'a')
 f.write('transformed!')
 f.close()
 ''')
 
-      run_process([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix), '--js-transform', '%s t.py' % (PYTHON)])
-      self.assertIn('transformed!', open('a.out.js').read())
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-transform', '%s t.py' % (PYTHON)])
+    self.assertIn('transformed!', open('a.out.js').read())
 
-      if self.is_wasm_backend():
-        # The remainder of this test requires asmjs support
-        return
-
+  @no_wasm_backend("wasm backend alwasy embedds memory")
+  def test_js_mem_file(self):
     for opts in [0, 1, 2, 3]:
       print('mem init in', opts)
       self.clear()
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=0', '-O' + str(opts)])
       if opts >= 2:
-        self.assertTrue(os.path.exists('a.out.js.mem'))
+        self.assertExists('a.out.js.mem')
       else:
-        self.assertFalse(os.path.exists('a.out.js.mem'))
+        self.assertNotExists('a.out.js.mem')
 
   def test_emcc_asm_v_wasm(self):
     for opts in ([], ['-O1'], ['-O2'], ['-O3']):
