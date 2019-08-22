@@ -59,7 +59,7 @@ test-firefox: &test-firefox
         name: configure firefox
         command: |
           mkdir ~/tmp-firefox-profile/
-          cat > ~/tmp-firefox-profile/user.js \<\<EOF
+          cat > ~/tmp-firefox-profile/user.js \<<EOF
           user_pref("gfx.offscreencanvas.enabled", true);
           user_pref("javascript.options.shared_memory", true);
           EOF
@@ -68,7 +68,7 @@ test-firefox: &test-firefox
         command: |
           # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
           mkdir -p ~/.config/X11
-          cat > ~/.config/X11/xorg.conf \<\<EOF
+          cat > ~/.config/X11/xorg.conf \<<EOF
           Section "ServerLayout"
             Identifier "X.org Configured"
             Screen 0 "Screen0" 0 0
@@ -100,7 +100,7 @@ test-firefox: &test-firefox
           mkdir -p ~/.config/openbox
           echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > ~/.config/openbox/autostart
           mkdir -p ~/.config/autostart
-          cat > ~/.config/autostart/at-spi-dbus-bus.desktop \<\<EOF
+          cat > ~/.config/autostart/at-spi-dbus-bus.desktop \<<EOF
           [Desktop Entry]
           Type=Application
           Name=AT-SPI D-Bus Bus
