@@ -90,7 +90,7 @@ test-firefox: &test-firefox
           EndSection
           EOF
           mkdir -p ~/.config/openbox
-          echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
+          echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > ~/.config/openbox/autostart
           mkdir -p ~/.config/autostart
           cat > ~/.config/autostart/at-spi-dbus-bus.desktop <<EOF
           [Desktop Entry]
