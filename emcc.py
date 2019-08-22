@@ -993,7 +993,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if '-emit-llvm' in newargs:
           final_suffix = '.bc'
         else:
-          final_suffix = '.o'
+          final_suffix = options.default_object_extension
       elif has_dash_S:
         if '-emit-llvm' in newargs:
           final_suffix = '.ll'
@@ -1822,7 +1822,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if specified_target:
             return specified_target
           else:
-            return unsuffixed_basename(input_files[0][1]) + final_suffix
+            return unsuffixed_basename(input_files[0][1]) + options.default_object_extension
         else:
           return in_temp(unsuffixed(uniquename(input_file)) + options.default_object_extension)
 
