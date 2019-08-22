@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
  * Emscripten is available under two separate licenses, the MIT license and the
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
@@ -9,8 +9,7 @@
  * WebAssembly SIMD128 Intrinsics
  */
 
-#ifndef __WASM_SIMD128_H
-#define __WASM_SIMD128_H
+#pragma once
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -854,4 +853,3 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_convert_f64x2_u64x2(v128_t v) {
   ((v128_t)(__builtin_shufflevector((__u8x16)(a), (__u8x16)(b), c0, c1, c2, c3, c4, c5, c6, c7,    \
     c8, c9, c10, c11, c12, c13, c14, c15)))
 
-#endif /* __WASM_SIMD128_H */
