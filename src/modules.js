@@ -43,6 +43,8 @@ var Functions = {
   implementedFunctions: {},
   // functions added from the library. value 2 means asmLibraryFunction
   libraryFunctions: {},
+  // Functions that will be provided by side modules
+  sideFunctions: {},
 };
 
 var LibraryManager = {

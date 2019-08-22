@@ -97,7 +97,7 @@ def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
-          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG))
+          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG)) 
     with ToolchainProfiler.profile_block('write_output_file'):
       finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG)
     success = True
@@ -352,6 +352,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
     global_vars = [] # linkable code accesses globals through function calls
   global_funcs = set(key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2)
   global_funcs = sorted(global_funcs.difference(set(global_vars)).difference(implemented_functions))
+  side_funcs = set(key for key, value in forwarded_json['Functions']['sideFunctions'].items())
+  side_funcs = sorted(side_funcs.difference(set(global_vars)).difference(implemented_functions))
   if shared.Settings.RELOCATABLE:
     global_funcs += ['g$' + extern for extern in metadata['externs']]
 
@@ -369,12 +371,14 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   basic_funcs = define_asmjs_import_names(basic_funcs)
   global_funcs = define_asmjs_import_names(global_funcs)
+  side_funcs = define_asmjs_import_names(side_funcs)
   basic_vars = define_asmjs_import_names(basic_vars)
   global_vars = define_asmjs_import_names(global_vars)
 
   bg_funcs = basic_funcs + global_funcs
+  bgs_funcs = basic_funcs + global_funcs + list(side_funcs)
   bg_vars = basic_vars + global_vars
-  asm_global_funcs = create_asm_global_funcs(bg_funcs, metadata)
+  asm_global_funcs = create_asm_global_funcs(bgs_funcs, metadata) # We need to keep the imports in for side functions
   asm_global_vars = create_asm_global_vars(bg_vars)
 
   the_global = create_the_global(metadata)

@@ -978,12 +978,38 @@ function createWasm(env) {
     return value;
   };
 #endif
+var proxyHandler = {
+  'get': function(obj, prop) {
+    if (prop in obj) {
+      return obj[prop]; // already present
+    }
+    
+    if (prop.startsWith('invoke_')) {
+      // A missing invoke, i.e., an invoke for a function type
+      // present in the dynamic library but not in the main JS,
+      // and the dynamic library cannot provide JS for it. Use
+      // the generic "X" invoke for it.
+      return obj[prop] = invoke_X;
+    }
+
+    if (Module[prop]) {
+      return Module[prop];
+    }
+
+    // if not a global, then a function - call it indirectly
+    return env[prop] = function() {
+#if ASSERTIONS
+      assert(Module[prop], 'missing linked function ' + prop + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
+      return Module[prop].apply(null, arguments);
+    };
+  }
+};
 
   // prepare imports
   var info = {
-    'env': env
+    env: new Proxy(env, proxyHandler),
 #if WASM_BACKEND == 0
-    ,
     'global': {
       'NaN': NaN,
       'Infinity': Infinity

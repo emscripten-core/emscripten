@@ -185,18 +185,28 @@ function JSify(data, functionsOnly) {
             assertion += 'if (!' + target + ') abort("external ' + what + ' \'' + realIdent + '\' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n';
 
           }
-          var functionBody;
-          if (isGlobalAccessor) {
-            functionBody = assertion + "return " + target + ";"
-          } else {
-            functionBody = assertion + "return " + target + ".apply(null, arguments);";
-          }
-          LibraryManager.library[ident] = new Function(functionBody);
-          if (SIDE_MODULE) {
-            // no dependencies, just emit the thunk
-            Functions.libraryFunctions[finalName] = 1;
-            return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
-          }
+          
+          //if (!WASM) {
+            
+            var functionBody;
+            if (isGlobalAccessor) {
+              functionBody = assertion + "return " + target + ";"
+            } else {
+               functionBody = assertion + "return " + target + ".apply(null, arguments);";
+            }
+
+            if (SIDE_MODULE) {
+              LibraryManager.library[ident] = new Function(functionBody);
+              // no dependencies, just emit the thunk
+              Functions.sideFunctions[finalName] = 1;
+              return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
+            } else {
+              if (!WASM)
+                LibraryManager.library[ident] = new Function(functionBody);
+            
+              Functions.sideFunctions[finalName] = 1;
+            }
+          //}
           noExport = true;
         }
       }
@@ -284,6 +294,8 @@ function JSify(data, functionsOnly) {
       } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
         contentText = 'var ' + finalName + snippet;
         if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
+      } else if (typeof snippet === 'undefined') {
+        contentText = '';
       } else {
         contentText = 'var ' + finalName + '=' + snippet + ';';
       }
