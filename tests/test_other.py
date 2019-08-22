@@ -1302,7 +1302,7 @@ int f() {
         engine = tools.shared.JS_ENGINES[0]
       return jsrun.make_command(filename, engine)
 
-    def _test():
+    def run_test():
       for engine in JS_ENGINES:
         if engine == V8_ENGINE:
           continue # no stdin support in v8 shell
@@ -1321,11 +1321,11 @@ int f() {
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'), output_filename='a.out.js')
     create_test_file('in.txt', 'abcdef\nghijkl')
     exe = 'a.out.js'
-    _test()
+    run_test()
     Building.emcc(path_from_root('tests', 'module', 'test_stdin.c'),
                   ['-O2', '--closure', '1'],
                   output_filename='a.out.js')
-    _test()
+    run_test()
 
   def test_ungetc_fscanf(self):
     create_test_file('main.cpp', r'''
@@ -2643,7 +2643,12 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     self.clear()
 
     # compile with -O2 --closure 0
-    run_process([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', 'test.js', '-O2', '--closure', '0', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]', '-s', 'WASM_ASYNC_COMPILATION=0'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
+                 '-o', 'test.js', '-O2', '--closure', '0',
+                 '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
+                 '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]',
+                 '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                 '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
     self.assertExists('test.js')
@@ -2659,15 +2664,20 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
       self.assertContained('bufferTest finished', run_js('main.js', engine=NODE_JS))
 
     # Delete test.js again and check it's gone.
-    try_delete(path_from_root('tests', 'Module-exports', 'test.js'))
-    assert not os.path.exists(path_from_root('tests', 'Module-exports', 'test.js'))
+    try_delete('test.js')
+    self.assertNotExists('test.js')
 
     # compile with -O2 --closure 1
-    run_process([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'), '-o', path_from_root('tests', 'Module-exports', 'test.js'), '-O2', '--closure', '1', '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'), '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]', '-s', 'WASM_ASYNC_COMPILATION=0'], stdout=PIPE, stderr=PIPE)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'Module-exports', 'test.c'),
+                 '-o', 'test.js', '-O2', '--closure', '1',
+                 '--pre-js', path_from_root('tests', 'Module-exports', 'setup.js'),
+                 '-s', 'EXPORTED_FUNCTIONS=["_bufferTest"]',
+                 '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                 '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     # Check that compilation was successful
-    self.assertExists(path_from_root('tests', 'Module-exports', 'test.js'))
-    test_js_closure_1 = open(path_from_root('tests', 'Module-exports', 'test.js')).read()
+    self.assertExists('test.js')
+    test_js_closure_1 = open('test.js').read()
 
     # Check that test.js compiled with --closure 1 contains "module.exports", we want to verify that
     # "module['exports']" got minified to "module.exports" when compiling with --closure 1
@@ -8708,7 +8718,7 @@ int main() {
 
   def test_html_preprocess(self):
     test_file = path_from_root('tests', 'module', 'test_stdin.c')
-    output_file = path_from_root('tests', 'module', 'test_stdin.html')
+    output_file = 'test_stdin.html'
     shell_file = path_from_root('tests', 'module', 'test_html_preprocess.html')
 
     run_process([PYTHON, EMCC, '-o', output_file, test_file, '--shell-file', shell_file, '-s', 'ASSERTIONS=0'], stdout=PIPE, stderr=PIPE)

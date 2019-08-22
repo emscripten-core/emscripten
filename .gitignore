@@ -12,6 +12,8 @@
 # Ignore generated files
 
 tests/fake/
+tests/fake1/
+tests/fake2/
 tests/freetype/objs/*.o
 tests/freetype/objs/*.lo
 
