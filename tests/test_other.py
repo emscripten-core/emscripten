@@ -437,7 +437,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         self.assertContained('hello, world!', run_js('a.out.js'))
         assert test(open('a.out.js').read()), text
 
-  def test_emcc_multi_source_compile(self):
+  def test_multiple_sources(self):
     # Compiling two sources at a time should work.
     cmd = [PYTHON, EMCC, '-c', path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')]
     run_process(cmd)
@@ -459,7 +459,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertNotExists(path_from_root('tests', 'twopart_main.o'))
     self.assertNotExists(path_from_root('tests', 'twopart_side.o'))
 
-  def test_emcc_multiple_sources(self):
+  def test_combining_object_files(self):
     # Compiling two source files into a final JS.
     run_process([PYTHON, EMCC, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')])
     self.assertContained('side got: hello from main, over', run_js('a.out.js'))
@@ -467,6 +467,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Compiling two files with -c will generate separate object files
     self.clear()
     run_process([PYTHON, EMCC, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'])
+    self.assertExists('twopart_main.o')
+    self.assertExists('twopart_side.o')
 
     # Compiling one of them alone is expected to fail
     err = self.expect_fail([PYTHON, EMCC, 'twopart_main.o'])
