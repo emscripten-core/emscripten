@@ -1,9 +1,16 @@
+version: 2.1
+
+executors:
+  bionic:
+    docker:
+      - image: buildpack-deps:bionic
+    environment:
+      LANG: "C.UTF-8"
+      EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+      EMCC_CORES: "4"
+
 defaults: &defaults
-  docker:
-    - image: buildpack-deps:bionic
-      environment:
-        LANG: C.UTF-8
-        EMTEST_DETECT_TEMPFILE_LEAKS: 1
+  executor: bionic
 
 test-defaults: &test-defaults
   <<: *defaults
@@ -21,11 +28,12 @@ test-defaults: &test-defaults
     - run:
         name: run tests
         command: |
-          EMCC_CORES=4 python3 tests/runner.py $TEST_TARGET
+          python3 tests/runner.py $TEST_TARGET
 
 test-firefox: &test-firefox
   <<: *defaults
   environment:
+    EMTEST_DETECT_TEMPFILE_LEAKS: "0"
   steps:
     - checkout
     - attach_workspace:
@@ -51,7 +59,7 @@ test-firefox: &test-firefox
         name: configure firefox
         command: |
           mkdir ~/tmp-firefox-profile/
-          cat > ~/tmp-firefox-profile/user.js <<EOF
+          cat > ~/tmp-firefox-profile/user.js \<<EOF
           user_pref("gfx.offscreencanvas.enabled", true);
           user_pref("javascript.options.shared_memory", true);
           EOF
@@ -60,7 +68,7 @@ test-firefox: &test-firefox
         command: |
           # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
           mkdir -p ~/.config/X11
-          cat > ~/.config/X11/xorg.conf <<EOF
+          cat > ~/.config/X11/xorg.conf \<<EOF
           Section "ServerLayout"
             Identifier "X.org Configured"
             Screen 0 "Screen0" 0 0
@@ -92,7 +100,7 @@ test-firefox: &test-firefox
           mkdir -p ~/.config/openbox
           echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > ~/.config/openbox/autostart
           mkdir -p ~/.config/autostart
-          cat > ~/.config/autostart/at-spi-dbus-bus.desktop <<EOF
+          cat > ~/.config/autostart/at-spi-dbus-bus.desktop \<<EOF
           [Desktop Entry]
           Type=Application
           Name=AT-SPI D-Bus Bus
@@ -127,7 +135,6 @@ test-firefox: &test-firefox
           EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
           cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
           rm -r $TMPDIR
-          export EMCC_CORES=4
           python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
           openbox --exit
           wait || true # wait for startx to shutdown cleanly, or not
@@ -135,8 +142,8 @@ test-firefox: &test-firefox
 test-chrome: &test-chrome
   <<: *defaults
   environment:
-    - EMTEST_LACKS_SOUND_HARDWARE=1
-    - EMTEST_DETECT_TEMPFILE_LEAKS=0
+    EMTEST_LACKS_SOUND_HARDWARE: "1"
+    EMTEST_DETECT_TEMPFILE_LEAKS: "0"
   steps:
     - checkout
     - attach_workspace:
@@ -165,10 +172,9 @@ test-chrome: &test-chrome
           CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
           CHROME_FLAGS_NOCACHE="--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-          export EMCC_CORES=4
           python3 tests/runner.py browser
 
-version: 2
+
 jobs:
   build:
     <<: *defaults
@@ -201,7 +207,7 @@ jobs:
       - run:
           name: embuilder build ALL
           command: |
-            EMCC_CORES=4 python3 ./embuilder.py build ALL
+            python3 ./embuilder.py build ALL
             python3 tests/runner.py test_hello_world
       - run:
           name: freeze cache
@@ -244,7 +250,7 @@ jobs:
   test-other:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v
+      TEST_TARGET: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
       # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
       # CircleCI actively kills memory-over-consuming process
       # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
@@ -255,11 +261,11 @@ jobs:
   test-ab:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=asm*.test_a* asm*.test_b*
+      TEST_TARGET: "asm*.test_a* asm*.test_b*"
   test-c:
     <<: *test-defaults
     environment:
-      - TEST_TARGET=asm*.test_c*
+      TEST_TARGET: "asm*.test_c*"
   test-d:
     <<: *test-defaults
     environment:
@@ -341,22 +347,22 @@ jobs:
       - run:
           name: embuilder build ALL
           command: |
-            EMCC_CORES=4 python3 ./embuilder.py build ALL
+            python3 ./embuilder.py build ALL
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
-            EMCC_CORES=4 python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            EMCC_CORES=4 python3 ./embuilder.py build SYSTEM --pic
+            python3 ./embuilder.py build SYSTEM --pic
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            EMCC_CORES=4 python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: freeze cache
