@@ -980,9 +980,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # link_flags.append((i, arg))
         newargs[i] = ''
 
-    original_input_files = input_files[:]
-
     newargs = [a for a in newargs if a != '']
+
+    if '-fno-rtti' in newargs:
+      shared.Settings.USE_RTTI = 0
 
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
@@ -999,6 +1000,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           final_suffix = '.s'
       target = target_basename + final_suffix
+
+      if len(input_files) > 1 and specified_target:
+        exit_with_error('cannot specify -o with -c/-S and multiple source files')
 
     if '-E' in newargs:
       final_suffix = '.eout' # not bitcode, not js; but just result from preprocessing stage of the input file
@@ -1092,6 +1096,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.STRICT:
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
+      shared.Settings.STRICT_JS = 1
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1
@@ -1534,6 +1539,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.USE_LSAN = 1
         shared.Settings.EXIT_RUNTIME = 1
 
+        if shared.Settings.LINKABLE:
+          exit_with_error('LSan does not support dynamic linking')
+
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
 
@@ -1546,6 +1554,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
           # by SAFE_HEAP as a null pointer dereference.
           exit_with_error('ASan does not work with SAFE_HEAP')
+
+        if shared.Settings.LINKABLE:
+          exit_with_error('ASan does not support dynamic linking')
 
       if sanitize and '-g4' in args:
         shared.Settings.LOAD_SOURCE_MAP = 1
@@ -1764,7 +1775,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      def get_bitcode_file(input_file):
+      def get_object_filename(input_file):
         if final_suffix not in JS_CONTAINING_ENDINGS:
           # no need for a temp file, just emit to the right place
           if len(input_files) == 1:
@@ -1819,7 +1830,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       def compile_source_file(i, input_file):
         logger.debug('compiling source file: ' + input_file)
-        output_file = get_bitcode_file(input_file)
+        output_file = get_object_filename(input_file)
         temp_files.append((i, output_file))
         cmd = get_clang_command([input_file]) + ['-c', '-o', output_file]
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
@@ -1926,7 +1937,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
                 out_dep.write(deps)
           else:
-            assert len(original_input_files) == 1 or not has_dash_c, 'fatal error: cannot specify -o with -c with multiple files' + str(args) + ':' + str(original_input_files)
             # We have a specified target (-o <target>), which is not JavaScript or HTML, and
             # we have multiple files: Link them
             logger.debug('link: ' + str(linker_inputs) + specified_target)
@@ -3039,7 +3049,7 @@ function(%(EXPORT_NAME)s) {
       # immediately anyhow, like in non-modularize mode)
       # In EXPORT_ES6 + USE_PTHREADS the 'thread' is actually an ES6 module webworker running in strict mode,
       # so doesn't have access to 'document'. In this case use 'import.meta' instead.
-      if shared.Settings.EXPORT_ES6 and shared.Settings.USE_PTHREADS:
+      if shared.Settings.EXPORT_ES6 and shared.Settings.USE_ES6_IMPORT_META:
         script_url = "import.meta.url"
       else:
         script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"

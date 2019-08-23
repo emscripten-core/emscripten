@@ -48,7 +48,7 @@ Compiler configuration file-format
 
 The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user installed python to the **C:/Python27/** directory, then the file might have the line: ::
 
-	PTYHON = 'C:\\Python27\\python2.exe'
+	PYTHON = 'C:\\Python27\\python2.exe'
 	
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::

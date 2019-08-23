@@ -8,6 +8,8 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+typedef struct {} zero;
+
 typedef struct {
   int x;
   int y;
@@ -24,6 +26,7 @@ void fun(int a, ...) {
   va_list ap;
   va_start(ap, a);
 
+  zero var0 = va_arg(ap, zero);
   coords var1 = va_arg(ap, coords);
   color var2 = va_arg(ap, color);
   printf("va_arg coords: %d and %d\n", var1.x, var1.y);
@@ -33,8 +36,9 @@ void fun(int a, ...) {
 }
 
 int main(void) {
+  zero val0;
   coords val1 = { .x = 42, .y = 21 };
   color val2 = { .r = 37, .g = 19, .b = 253 };
-  fun(0, val1, val2);
+  fun(0, val0, val1, val2);
   return 0;
 }

@@ -895,7 +895,6 @@ LibraryManager.library = {
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
-      ENV['LANG'] = 'C.UTF-8';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
       ENV['_'] = thisProgram;
@@ -4570,6 +4569,8 @@ LibraryManager.library = {
       // If this is a JavaScript function, try looking it up in the unwind cache.
       var frame = UNWIND_CACHE[pc];
       if (!frame) return 0;
+
+      var match;
       if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
         name = match[1];
       } else if (match = /^(.+?)@/.exec(frame)) {

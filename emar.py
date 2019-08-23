@@ -43,7 +43,7 @@ def run():
   # 'ar x libfoo.a'.
   if len(newargs) > 3:
     cmd = newargs[1]
-    if 'r' in cmd:
+    if 'r' in cmd or 'q' in cmd:
       # We are adding files to the archive.
       # Normally the output file is then arg 2, except in the case were the
       # a or b modifiers are used in which case its arg 3.
