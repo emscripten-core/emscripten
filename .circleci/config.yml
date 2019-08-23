@@ -415,6 +415,7 @@ jobs:
       - run_tests:
           test_targets: "wasm2js1"
   test-upstream-other:
+    executor: bionic
     steps:
       - run_tests:
           # see explanations in the fastcomp skips for these, earlier
