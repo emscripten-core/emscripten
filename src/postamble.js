@@ -128,6 +128,7 @@ Module['then'] = function(func) {
   // We may already be ready to run code at this time. if
   // so, just queue a call to the callback.
   if (calledRun) {
+    delete Module.then;
     func(Module);
   } else {
     // we are not ready to call then() yet. we must call it
@@ -138,6 +139,7 @@ Module['then'] = function(func) {
     var old = Module['onRuntimeInitialized'];
     Module['onRuntimeInitialized'] = function() {
       if (old) old();
+      delete Module.then;
       func(Module);
     };
   }
