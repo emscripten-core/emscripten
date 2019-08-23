@@ -17,7 +17,7 @@ import logging
 from math import floor, log
 import os
 import re
-from subprocess import Popen, PIPE
+import subprocess
 import sys
 
 
@@ -173,12 +173,7 @@ async function convertDwarfToJSON(input, enableXScopes = false) {
 }
 convertDwarfToJSON(process.argv[2], false).then(json => console.log(json));"""
 
-  process = Popen(["node", "-e", js, "--", sys.argv[0], wasm], stdout=PIPE)
-  output, err = process.communicate()
-  exit_code = process.wait()
-  if exit_code != 0:
-    logging.error('Error during dwarf-to-json execution (%s)' % exit_code)
-    sys.exit(1)
+  output = subprocess.check_output(["node", "-e", js, "--", sys.argv[0], wasm])
 
   return json.loads(output)
 
