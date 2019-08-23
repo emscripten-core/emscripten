@@ -12,7 +12,7 @@ executors:
 commands:
   run_tests:
     description: "Runs emscripten tests"
-    paramaters:
+    parameters:
       test_targets:
         description: "Test suites to run"
         type: string
