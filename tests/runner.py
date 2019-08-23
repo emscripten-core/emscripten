@@ -498,7 +498,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     if value is None:
       self.clear_setting(key)
     if not self.has_changed_setting(key):
-      # Sanity check: tests shouldn't be setting value to thier defaults
+      # Sanity check: tests shouldn't be setting value to their defaults
       assert value != shared.Settings[key], 'attempt to set_setting to default value'
     self.settings_mods[key] = value
 
