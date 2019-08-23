@@ -8,6 +8,7 @@ executors:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
+      EM_PYTHON: ./tools/emcoverage.py
 
 commands:
   run-tests:
@@ -29,7 +30,14 @@ commands:
             apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
       - run:
           name: run tests
-          command: python3 tests/runner.py << parameters.test_targets >>
+          command: ${EM_PYTHON:-python3} tests/runner.py << parameters.test_targets >>
+      - run:
+          name: upload coverage
+          command: |
+            if [ "$EM_PYTHON" = ./tools/emcoverage.py ]; then
+              ./tools/emcoverage.py xml -i
+              python3 -m codecov -F $TEST_TYPE
+            fi
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -134,9 +142,16 @@ commands:
             EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
-            python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            ${EM_PYTHON:-python3} tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
+      - run:
+          name: upload coverage
+          command: |
+            if [ "$EM_PYTHON" = ./tools/emcoverage.py ]; then
+              ./tools/emcoverage.py xml -i
+              python3 -m codecov -F $TEST_TYPE
+            fi
   test-chrome:
     description: "Runs emscripten tests under firefox"
     steps:
@@ -170,7 +185,14 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            python3 tests/runner.py browser
+            ${EM_PYTHON:-python3} tests/runner.py browser
+      - run:
+          name: upload coverage
+          command: |
+            if [ "$EM_PYTHON" = ./tools/emcoverage.py ]; then
+              ./tools/emcoverage.py xml -i
+              python3 -m codecov -F $TEST_TYPE
+            fi
 
 jobs:
   build:
@@ -204,12 +226,19 @@ jobs:
       - run:
           name: embuilder build ALL
           command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
+            ${EM_PYTHON:-python3} ./embuilder.py build ALL
+            ${EM_PYTHON:-python3} tests/runner.py test_hello_world
       - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - run:
+          name: upload coverage
+          command: |
+            if [ "$EM_PYTHON" = ./tools/emcoverage.py ]; then
+              ./tools/emcoverage.py xml -i
+              python3 -m codecov -F fastcomp
+            fi
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -252,84 +281,118 @@ jobs:
           # CircleCI actively kills memory-over-consuming process
           # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+    environment:
+      - TEST_TYPE=fastcomp
   test-browser-firefox:
     executor: bionic
     steps:
       - test-firefox
+    environment:
+      - TEST_TYPE=fastcomp
   test-browser-chrome:
     executor: bionic
     steps:
       - test-chrome
+    environment:
+      - TEST_TYPE=fastcomp
   test-ab:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_a* asm*.test_b*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-c:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_c*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-d:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-e:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_e*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-f:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_f*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-ghi:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_g* asm*.test_h* asm*.test_i*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-jklmno:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-p:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-qrst:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-uvwxyz:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*"
+    environment:
+      - TEST_TYPE=fastcomp
   test-wasm0:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm0"
+    environment:
+      - TEST_TYPE=fastcomp
   test-wasm2:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm2"
+    environment:
+      - TEST_TYPE=fastcomp
   test-wasm3:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm3"
+    environment:
+      - TEST_TYPE=fastcomp
   test-sanity:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "sanity"
+    environment:
+      - TEST_TYPE=fastcomp
   build-upstream:
     executor: bionic
     steps:
@@ -363,27 +426,34 @@ jobs:
       - run:
           name: embuilder build ALL
           command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
+            ${EM_PYTHON:-python3} ./embuilder.py build ALL
+            ${EM_PYTHON:-python3} tests/runner.py test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
-            python3 tests/runner.py test_hello_world
+            ${EM_PYTHON:-python3} ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
+            ${EM_PYTHON:-python3} tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            python3 ./embuilder.py build SYSTEM --pic
-            python3 tests/runner.py test_hello_world
+            ${EM_PYTHON:-python3} ./embuilder.py build SYSTEM --pic
+            ${EM_PYTHON:-python3} tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
-            python3 tests/runner.py test_hello_world
+            ${EM_PYTHON:-python3} ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
+            ${EM_PYTHON:-python3} tests/runner.py test_hello_world
       - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - run:
+          name: upload coverage
+          command: |
+            if [ "$EM_PYTHON" = ./tools/emcoverage.py ]; then
+              ./tools/emcoverage.py xml -i
+              python3 -m codecov -F upstream
+            fi
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -398,36 +468,50 @@ jobs:
     steps:
       - run-tests:
           test_targets: "wasm0"
+    environment:
+      - TEST_TYPE=upstream
   test-upstream-wasm2:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm2"
+    environment:
+      - TEST_TYPE=upstream
   test-upstream-wasm3:
     executor: bionic
     steps:
       - run-tests:
           # TODO: test wasms
           test_targets: "wasm3"
+    environment:
+      - TEST_TYPE=upstream
   test-upstream-wasm2js1:
     executor: bionic
     steps:
       - run-tests:
           test_targets: "wasm2js1"
+    environment:
+      - TEST_TYPE=upstream
   test-upstream-other:
     executor: bionic
     steps:
       - run-tests:
           # see explanations in the fastcomp skips for these, earlier
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+    environment:
+      - TEST_TYPE=upstream
   test-upstream-browser-chrome:
     executor: bionic
     steps:
       - test-chrome
+    environment:
+      - TEST_TYPE=upstream
   test-upstream-browser-firefox:
     executor: bionic
     steps:
       - test-firefox
+    environment:
+      - TEST_TYPE=upstream
 
 workflows:
   build-test:
