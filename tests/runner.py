@@ -497,8 +497,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self._check_settings_key(key)
     if value is None:
       self.clear_setting(key)
-    if not self.has_changed_setting(key):
-      # Sanity check: tests shouldn't be setting value to their defaults
+    # The default for some keys is variable, for example ASSERTIONS is set
+    # by default by the -O opt level.  This means that setting it to 1 is still
+    # meaning full, even thought 1 is the default value in the file.
+    if key not in ['ASSERTIONS'] and not self.has_changed_setting(key):
+      # Sanity check: its probably a bug if a test tries to set a setting to its
+      # default value.
       assert value != shared.Settings[key], 'attempt to set_setting to default value'
     self.settings_mods[key] = value
 

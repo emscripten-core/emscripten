@@ -6387,15 +6387,15 @@ return malloc(size);
     def test(output_prefix='', args=[]):
       old = self.emcc_args[:]
       self.emcc_args += args
-      self.do_run(open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers.cpp')).read(),
-                  open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers' + output_prefix + '.txt')).read(), assert_returncode=None)
+      self.do_run_from_file(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers.cpp'),
+                            path_from_root('tests', 'core', 'legacy_exported_runtime_numbers' + output_prefix + '.txt'),
+                            assert_returncode=None)
       self.emcc_args = old
 
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
     test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS')
     test('_assert')
     self.set_setting('ASSERTIONS', 0)
@@ -7851,7 +7851,7 @@ extern "C" {
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_global_initializer(self):
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    self.set_setting('MINIMAL_RUNTIME')
+    self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
 
@@ -8165,7 +8165,7 @@ def make_run(name, emcc_args, settings=None, env=None):
 asm0 = make_run('asm0', emcc_args=[], settings={'ASM_JS': 2, 'WASM': 0})
 asm2 = make_run('asm2', emcc_args=['-O2'], settings={'WASM': 0})
 asm3 = make_run('asm3', emcc_args=['-O3'], settings={'WASM': 0})
-asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'SAFE_HEAP': 1})
+asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTIONS': 1, 'SAFE_HEAP': 1})
 
 # Main wasm test modes
 wasm0 = make_run('wasm0', emcc_args=['-O0'])
