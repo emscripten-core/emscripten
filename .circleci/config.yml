@@ -252,10 +252,10 @@ jobs:
     executor: bionic
     steps:
       - run_tests:
+          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
           # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
           # CircleCI actively kills memory-over-consuming process
           # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
   test-browser-firefox:
     <<: *test-firefox
   test-browser-chrome:
