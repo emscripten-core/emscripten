@@ -60,7 +60,7 @@ sys.path.append(__rootpath__)
 
 import parallel_runner
 from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
-from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
+from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy
 from tools import jsrun, shared, line_endings
 
 
@@ -484,20 +484,30 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       #     assert not temp_file.endswith('.ll'), temp_file
       #     # TODO assert not temp_file.startswith('emscripten_'), temp_file
 
+  def _check_settings_key(self, key):
+    self.assertIn(key, shared.Settings)
+
   def get_setting(self, key):
+    self._check_settings_key(key)
     if key in self.settings_mods:
       return self.settings_mods[key]
-    return Settings[key]
+    return shared.Settings[key]
 
   def set_setting(self, key, value=1):
+    self._check_settings_key(key)
     if value is None:
       self.clear_setting(key)
+    if not self.has_changed_setting(key):
+      # Sanity check: tests shouldn't be setting value to thier defaults
+      assert value != shared.Settings[key], 'attempt to set_setting to default value'
     self.settings_mods[key] = value
 
   def has_changed_setting(self, key):
+    self._check_settings_key(key)
     return key in self.settings_mods
 
   def clear_setting(self, key):
+    self._check_settings_key(key)
     self.settings_mods.pop(key, None)
 
   def serialize_settings(self):
@@ -1026,7 +1036,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     ccshared('libb.cpp', ['liba' + so])
     ccshared('libc.cpp', ['liba' + so])
 
-    self.set_setting('MAIN_MODULE', 1)
+    self.set_setting('MAIN_MODULE')
     self.set_setting('RUNTIME_LINKED_LIBS', ['libb' + so, 'libc' + so])
     do_run(r'''
       void bfunc();

@@ -1195,6 +1195,10 @@ class SettingsManager(object):
       return cls.attrs[key]
 
     @classmethod
+    def __contains__(cls, key):
+      return key in cls.attrs
+
+    @classmethod
     def target_environment_may_be(self, environment):
       return self.attrs['ENVIRONMENT'] == '' or environment in self.attrs['ENVIRONMENT'].split(',')
 
@@ -1214,6 +1218,9 @@ class SettingsManager(object):
 
   def get(self, key):
     return self.instance().get(key)
+
+  def __contains__(self, key):
+    return key in self.instance()
 
   def __getitem__(self, key):
     return self.instance()[key]

@@ -9323,7 +9323,7 @@ int main () {
   def test_strict_mode_legacy_settings_runtime(self):
     # Verify that legacy settings are not accessible at runtime under strict
     # mode.
-    self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
+    self.set_setting('RETAIN_COMPILER_SETTINGS')
     src = r'''\
     #include <stdio.h>
     #include <emscripten.h>
@@ -9336,13 +9336,13 @@ int main () {
     self.do_run(src, 'BINARYEN_METHOD: native-wasm')
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
-    self.set_setting('STRICT', 1)
+    self.set_setting('STRICT')
     self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
 
   def test_strict_mode_renamed_setting(self):
     # Verify that renamed settings are available by either name (when not in
     # strict mode.
-    self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
+    self.set_setting('RETAIN_COMPILER_SETTINGS')
     src = r'''\
     #include <stdio.h>
     #include <emscripten.h>
