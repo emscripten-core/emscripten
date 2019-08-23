@@ -992,13 +992,16 @@ var proxyHandler = {
       return obj[prop] = invoke_X;
     }
 
+    // Check if the minification mapping exists first, if not just
+    // use the original name.
+    let funcName = Module["mapping"] ? Module["mapping"][prop]: prop;
+    
     // if not a global, then a function - call it indirectly
     return env[prop] = function() {
-      unminifiedName = Module["mapping"][prop];
 #if ASSERTIONS
-      assert(Module[unminifiedName], 'missing linked function ' + unminifiedName + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+      assert(Module[funcName], 'missing linked function ' + funcName + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
-      return Module[unminifiedName].apply(null, arguments);
+      return Module[funcName].apply(null, arguments);
     };
   }
 };
