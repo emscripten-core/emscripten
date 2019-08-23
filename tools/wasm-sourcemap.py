@@ -152,28 +152,8 @@ def process_sources_references(map, prefixes, collect_sources):
 def dwarf_to_json(wasm):
   logging.debug('Read %s and convert to json' % wasm)
 
-  js = """const fs = require("fs"); const path = require("path");
-const __scriptdir = path.dirname(process.argv[1]);
-async function convertDwarfToJSON(input, enableXScopes = false) {
-    const dwarf_to_json_code = fs.readFileSync(__scriptdir + "/dwarf_to_json.wasm");
-    const {instance: {exports: { alloc_mem, free_mem, convert_dwarf, memory }}} =
-        await WebAssembly.instantiate(dwarf_to_json_code);
-    wasm = fs.readFileSync(input)
-    const wasmPtr = alloc_mem(wasm.byteLength);
-    new Uint8Array(memory.buffer, wasmPtr, wasm.byteLength).set(new Uint8Array(wasm));
-    const resultPtr = alloc_mem(12);
-    convert_dwarf(wasmPtr, wasm.byteLength, resultPtr, resultPtr + 4, enableXScopes);
-    free_mem(wasmPtr);
-    const resultView = new DataView(memory.buffer, resultPtr, 12);
-    const outputPtr = resultView.getUint32(0, true), outputLen = resultView.getUint32(4, true);
-    free_mem(resultPtr);
-    const output = Buffer.from(new Uint8Array(memory.buffer, outputPtr, outputLen)).toString("utf8");
-    free_mem(outputPtr);
-    return output;
-}
-convertDwarfToJSON(process.argv[2], false).then(json => console.log(json));"""
-
-  output = subprocess.check_output(["node", "-e", js, "--", sys.argv[0], wasm])
+  js = os.path.join(os.path.dirname(sys.argv[0]), "dwarf_to_json.js")
+  output = subprocess.check_output(["node", js, wasm])
 
   return json.loads(output)
 
