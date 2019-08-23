@@ -117,13 +117,13 @@ commands:
           # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
           name: run tests
           environment:
-            EMTEST_BROWSER: "$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1" # looks broken in ff nightly
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             DISPLAY: ":0"
           command: |
+            export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
             # Start an X session. Openbox might be optional for now, but
             # an ICCCM/EWMH compliant window manager is potentially needed
             # for tests with fullscreen toggling (if we move to a headless
