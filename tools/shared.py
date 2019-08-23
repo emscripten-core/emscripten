@@ -1810,7 +1810,6 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-
     if Settings.RELOCATABLE:
       if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
         cmd.append('--no-export-dynamic')
