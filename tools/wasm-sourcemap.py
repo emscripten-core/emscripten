@@ -31,8 +31,6 @@ def parse_args():
   parser.add_argument('-w', nargs='?', help='set output wasm file')
   parser.add_argument('-x', '--strip', action='store_true', help='removes debug and linking sections')
   parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
-  parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
-  parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   return parser.parse_args()
 
 
@@ -68,16 +66,6 @@ class Prefixes:
 #  - "sources" is for names that output to source maps JSON
 #  - "load" is for paths that used to load source text
 SourceMapPrefixes = namedtuple('SourceMapPrefixes', 'sources, load')
-
-
-def encode_vlq(n):
-  VLQ_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  x = (n << 1) if n >= 0 else ((-n << 1) + 1)
-  result = ""
-  while x > 31:
-    result = result + VLQ_CHARS[32 + (x & 31)]
-    x = x >> 5
-  return result + VLQ_CHARS[x]
 
 
 def read_var_uint(wasm, pos):
@@ -142,172 +130,73 @@ def get_code_section_offset(wasm):
     pos = pos + section_size
 
 
-def remove_dead_entries(entries):
-  # Remove entries for dead functions. It is a heuristics to ignore data if the
-  # function starting address near to 0 (is equal to its size field length).
-  block_start = 0
-  cur_entry = 0
-  while cur_entry < len(entries):
-    if not entries[cur_entry]['eos']:
-      cur_entry += 1
-      continue
-    fn_start = entries[block_start]['address']
-    # Calculate the LEB encoded function size (including size field)
-    fn_size_length = floor(log(entries[cur_entry]['address'] - fn_start + 1, 128)) + 1
-    min_live_offset = 1 + fn_size_length # 1 byte is for code section entries
-    if fn_start < min_live_offset:
-      # Remove dead code debug info block.
-      del entries[block_start:cur_entry + 1]
-      cur_entry = block_start
-      continue
-    cur_entry += 1
-    block_start = cur_entry
+def process_sources_references(map, prefixes, collect_sources):
+  logging.debug('Re-map and collect sources')
+  sources = map['sources']
+  sources_content = []
+  for source_id in range(len(sources)):
+    file_name = sources[source_id]
+    source_name = prefixes.sources.resolve(file_name)
+    sources[source_id] = source_name
+    if collect_sources:
+      load_name = prefixes.load.resolve(file_name)
+      try:
+        with open(load_name, 'r') as infile:
+          source_content = infile.read()
+        sources_content.append(source_content)
+      except:
+        print('Failed to read source: %s' % load_name)
+        sources_content.append(None)
+  map['sourcesContent'] = sources_content
 
+def dwarf_to_json(wasm):
+  logging.debug('Read %s and convert to json' % wasm)
 
-def read_dwarf_entries(wasm, options):
-  if options.dwarfdump_output:
-    output = open(options.dwarfdump_output, 'r').read()
-  elif options.dwarfdump:
-    logging.debug('Reading DWARF information from %s' % wasm)
-    if not os.path.exists(options.dwarfdump):
-      logging.error('llvm-dwarfdump not found: ' + options.dwarfdump)
-      sys.exit(1)
-    process = Popen([options.dwarfdump, "-debug-info", "-debug-line", wasm], stdout=PIPE)
-    output, err = process.communicate()
-    exit_code = process.wait()
-    if exit_code != 0:
-      logging.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
-      sys.exit(1)
-  else:
-    logging.error('Please specify either --dwarfdump or --dwarfdump-output')
+  js = """const fs = require("fs"); const path = require("path");
+const __scriptdir = path.dirname(process.argv[1]);
+async function convertDwarfToJSON(input, enableXScopes = false) {
+    const dwarf_to_json_code = fs.readFileSync(__scriptdir + "/dwarf_to_json.wasm");
+    const {instance: {exports: { alloc_mem, free_mem, convert_dwarf, memory }}} =
+        await WebAssembly.instantiate(dwarf_to_json_code);
+    wasm = fs.readFileSync(input)
+    const wasmPtr = alloc_mem(wasm.byteLength);
+    new Uint8Array(memory.buffer, wasmPtr, wasm.byteLength).set(new Uint8Array(wasm));
+    const resultPtr = alloc_mem(12);
+    convert_dwarf(wasmPtr, wasm.byteLength, resultPtr, resultPtr + 4, enableXScopes);
+    free_mem(wasmPtr);
+    const resultView = new DataView(memory.buffer, resultPtr, 12);
+    const outputPtr = resultView.getUint32(0, true), outputLen = resultView.getUint32(4, true);
+    free_mem(resultPtr);
+    const output = Buffer.from(new Uint8Array(memory.buffer, outputPtr, outputLen)).toString("utf8");
+    free_mem(outputPtr);
+    return output;
+}
+convertDwarfToJSON(process.argv[2], false).then(json => console.log(json));"""
+
+  process = Popen(["node", "-e", js, "--", sys.argv[0], wasm], stdout=PIPE)
+  output, err = process.communicate()
+  exit_code = process.wait()
+  if exit_code != 0:
+    logging.error('Error during dwarf-to-json execution (%s)' % exit_code)
     sys.exit(1)
 
-  entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
-  maybe_debug_info_content = debug_line_chunks[0]
-  for i in range(1, len(debug_line_chunks), 2):
-    stmt_list = debug_line_chunks[i]
-    comp_dir_match = re.search(r"DW_AT_stmt_list\s+\(" + stmt_list + r"\)\s+" +
-                               r"DW_AT_comp_dir\s+\(\"([^\"]+)", maybe_debug_info_content)
-    comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ""
-
-    line_chunk = debug_line_chunks[i + 1]
-
-    # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"
-    # file_names[  1]:
-    #            name: "playground.c"
-    #       dir_index: 1
-    #        mod_time: 0x00000000
-    #          length: 0x00000000
-    #
-    # Address            Line   Column File   ISA Discriminator Flags
-    # ------------------ ------ ------ ------ --- ------------- -------------
-    # 0x0000000000000006     22      0      1   0             0  is_stmt
-    # 0x0000000000000007     23     10      1   0             0  is_stmt prologue_end
-    # 0x000000000000000f     23      3      1   0             0
-    # 0x0000000000000010     23      3      1   0             0  end_sequence
-    # 0x0000000000000011     28      0      1   0             0  is_stmt
-
-    include_directories = {'0': comp_dir}
-    for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
-      include_directories[dir.group(1)] = dir.group(2)
-
-    files = {}
-    for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
-      dir = include_directories[file.group(3)]
-      file_path = (dir + '/' if file.group(2)[0] != '/' else '') + file.group(2)
-      files[file.group(1)] = file_path
-
-    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
-      entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
-      if not entry['eos']:
-        entries.append(entry)
-      else:
-        # move end of function to the last END operator
-        entry['address'] -= 1
-        if entries[-1]['address'] == entry['address']:
-          # last entry has the same address, reusing
-          entries[-1]['eos'] = True
-        else:
-          entries.append(entry)
-
-  remove_dead_entries(entries)
-
-  # return entries sorted by the address field
-  return sorted(entries, key=lambda entry: entry['address'])
-
-
-def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
-  sources = []
-  sources_content = [] if collect_sources else None
-  mappings = []
-
-  sources_map = {}
-  last_address = 0
-  last_source_id = 0
-  last_line = 1
-  last_column = 1
-  for entry in entries:
-    line = entry['line']
-    column = entry['column']
-    # ignore entries with line 0
-    if line == 0:
-      continue
-    # start at least at column 1
-    if column == 0:
-      column = 1
-    address = entry['address'] + code_section_offset
-    file_name = entry['file']
-    source_name = prefixes.sources.resolve(file_name)
-    if source_name not in sources_map:
-      source_id = len(sources)
-      sources_map[source_name] = source_id
-      sources.append(source_name)
-      if collect_sources:
-        load_name = prefixes.load.resolve(file_name)
-        try:
-          with open(load_name, 'r') as infile:
-            source_content = infile.read()
-          sources_content.append(source_content)
-        except:
-          print('Failed to read source: %s' % load_name)
-          sources_content.append(None)
-    else:
-      source_id = sources_map[source_name]
-
-    address_delta = address - last_address
-    source_id_delta = source_id - last_source_id
-    line_delta = line - last_line
-    column_delta = column - last_column
-    mappings.append(encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta))
-    last_address = address
-    last_source_id = source_id
-    last_line = line
-    last_column = column
-  return OrderedDict([('version', 3),
-                      ('names', []),
-                      ('sources', sources),
-                      ('sourcesContent', sources_content),
-                      ('mappings', ','.join(mappings))])
-
+  return json.loads(output)
 
 def main():
   options = parse_args()
 
   wasm_input = options.wasm
-  with open(wasm_input, 'rb') as infile:
-    wasm = infile.read()
-
-  entries = read_dwarf_entries(wasm_input, options)
-
-  code_section_offset = get_code_section_offset(wasm)
+  map = dwarf_to_json(wasm_input)
 
   prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
+  process_sources_references(map, prefixes, options.sources)
 
   logging.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
   with open(options.output, 'w') as outfile:
     json.dump(map, outfile, separators=(',', ':'))
+
+  with open(wasm_input, 'rb') as infile:
+    wasm = infile.read()
 
   if options.strip:
     wasm = strip_debug_sections(wasm)
