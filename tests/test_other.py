@@ -3204,20 +3204,18 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
     process = run_process([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
     assert process.returncode == 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
 
+  def test_output_is_dir(self):
+    outdir = 'out_dir/'
+    os.mkdir(outdir)
+    err = self.expect_fail([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir])
+    self.assertContained('error: unable to open output file', err)
+
   def test_default_obj_ext(self):
-    outdir = 'out_dir' + '/'
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
+    self.assertExists('hello_world.o')
 
-    self.clear()
-    os.mkdir(outdir)
-    err = run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir], stderr=PIPE).stderr
-    assert not err, err
-    assert os.path.isfile(outdir + 'hello_world.o')
-
-    self.clear()
-    os.mkdir(outdir)
-    err = run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stderr=PIPE).stderr
-    assert not err, err
-    assert os.path.isfile(outdir + 'hello_world.obj')
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '--default-obj-ext', 'obj'])
+    self.assertExists('hello_world.obj')
 
   def test_doublestart_bug(self):
     create_test_file('code.cpp', r'''
