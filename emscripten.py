@@ -372,6 +372,8 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   basic_funcs = define_asmjs_import_names(basic_funcs)
   global_funcs = define_asmjs_import_names(global_funcs)
   side_funcs = define_asmjs_import_names(side_funcs)
+
+  shared.Building.missing_imports.update(dict(side_funcs))
   basic_vars = define_asmjs_import_names(basic_vars)
   global_vars = define_asmjs_import_names(global_vars)
 
