@@ -9,29 +9,30 @@ executors:
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
 
-defaults: &defaults
-  executor: bionic
-
-test-defaults: &test-defaults
-  <<: *defaults
-  steps:
-    - checkout
-    - attach_workspace:
-        # Must be absolute path or relative path from working_directory
-        at: ~/
-    - run:
-        name: install package dependencies
-        command: |
-          apt-get update -q
-          # openjdk-9 is also available, but hits #7232
-          apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
-    - run:
-        name: run tests
-        command: |
-          python3 tests/runner.py $TEST_TARGET
+commands:
+  run_tests:
+    description: "Runs emscripten tests"
+    paramaters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+    steps:
+      - checkout
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            # openjdk-9 is also available, but hits #7232
+            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
+      - run:
+          name: run tests
+          command: python3 tests/runner.py << paramaters.test_targets >>
 
 test-firefox: &test-firefox
-  <<: *defaults
+  executor: bionic
   environment:
     EMTEST_DETECT_TEMPFILE_LEAKS: "0"
   steps:
@@ -140,7 +141,7 @@ test-firefox: &test-firefox
           wait || true # wait for startx to shutdown cleanly, or not
 
 test-chrome: &test-chrome
-  <<: *defaults
+  executor: bionic
   environment:
     EMTEST_LACKS_SOUND_HARDWARE: "1"
     EMTEST_DETECT_TEMPFILE_LEAKS: "0"
@@ -177,7 +178,7 @@ test-chrome: &test-chrome
 
 jobs:
   build:
-    <<: *defaults
+    executor: bionic
     steps:
       - checkout
       - run:
@@ -223,7 +224,7 @@ jobs:
             - .emscripten_ports/
             - .emscripten
   build-docs:
-    <<: *defaults
+    executor: bionic
     steps:
       - checkout
       - run:
@@ -233,7 +234,7 @@ jobs:
             DEBIAN_FRONTEND=noninteractive apt-get install -q -y sphinx-common
       - run: make -C site html
   flake8:
-    <<: *defaults
+    executor: bionic
     steps:
       - checkout
       - run:
@@ -248,74 +249,74 @@ jobs:
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-other:
-    <<: *test-defaults
-    environment:
-      TEST_TARGET: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-      # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
-      # CircleCI actively kills memory-over-consuming process
-      # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
+    steps:
+      - run_tests:
+          # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
+          # CircleCI actively kills memory-over-consuming process
+          # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
+          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
   test-browser-firefox:
     <<: *test-firefox
   test-browser-chrome:
     <<: *test-chrome
   test-ab:
-    <<: *test-defaults
-    environment:
-      TEST_TARGET: "asm*.test_a* asm*.test_b*"
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_a* asm*.test_b*"
   test-c:
-    <<: *test-defaults
-    environment:
-      TEST_TARGET: "asm*.test_c*"
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_c*"
   test-d:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*
+    steps:
+      - run_tests:
+          test_targets: "default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*"
   test-e:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm*.test_e*
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_e*"
   test-f:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm*.test_f*
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_f*"
   test-ghi:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm*.test_g* asm*.test_h* asm*.test_i*
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_g* asm*.test_h* asm*.test_i*"
   test-jklmno:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   test-p:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*
+    steps:
+      - run_tests:
+          test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
   test-qrst:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
   test-uvwxyz:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*
+    steps:
+      - run_tests:
+          test_targets: "asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*"
   test-wasm0:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm0
+    steps:
+      - run_tests:
+          test_targets: "wasm0"
   test-wasm2:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm2
+    steps:
+      - run_tests:
+          test_targets: "wasm2"
   test-wasm3:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm3
+    steps:
+      - run_tests:
+          test_targets: "wasm3"
   test-sanity:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=sanity
+    steps:
+      - run_tests:
+          test_targets: "sanity"
   build-upstream:
-    <<: *defaults
+    executor: bionic
     steps:
       - checkout
       - run:
@@ -378,27 +379,27 @@ jobs:
             - .emscripten_ports/
             - .emscripten
   test-upstream-wasm0:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm0
+    steps:
+      - run_tests:
+          test_targets: "wasm0"
   test-upstream-wasm2:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm2
+    steps:
+      - run_tests:
+          test_targets: "wasm2"
   test-upstream-wasm3:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm3
-      # TODO: test wasms
+    steps:
+      - run_tests:
+          # TODO: test wasms
+          test_targets: "wasm3"
   test-upstream-wasm2js1:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=wasm2js1
+    steps:
+      - run_tests:
+          test_targets: "wasm2js1"
   test-upstream-other:
-    <<: *test-defaults
-    environment:
-      - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v
-      # see explanations in the fastcomp skips for these, earlier
+    steps:
+      - run_tests:
+          # see explanations in the fastcomp skips for these, earlier
+          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
   test-upstream-browser-chrome:
     <<: *test-chrome
   test-upstream-browser-firefox:
