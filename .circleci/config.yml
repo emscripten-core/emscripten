@@ -249,6 +249,7 @@ jobs:
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-other:
+    executor: bionic
     steps:
       - run_tests:
           # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
@@ -260,58 +261,72 @@ jobs:
   test-browser-chrome:
     <<: *test-chrome
   test-ab:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_a* asm*.test_b*"
   test-c:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_c*"
   test-d:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*"
   test-e:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_e*"
   test-f:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_f*"
   test-ghi:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_g* asm*.test_h* asm*.test_i*"
   test-jklmno:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*"
   test-p:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*"
   test-qrst:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t*"
   test-uvwxyz:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*"
   test-wasm0:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "wasm0"
   test-wasm2:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "wasm2"
   test-wasm3:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "wasm3"
   test-sanity:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "sanity"
@@ -379,19 +394,23 @@ jobs:
             - .emscripten_ports/
             - .emscripten
   test-upstream-wasm0:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "wasm0"
   test-upstream-wasm2:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "wasm2"
   test-upstream-wasm3:
+    executor: bionic
     steps:
       - run_tests:
           # TODO: test wasms
           test_targets: "wasm3"
   test-upstream-wasm2js1:
+    executor: bionic
     steps:
       - run_tests:
           test_targets: "wasm2js1"
