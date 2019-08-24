@@ -994,7 +994,7 @@ var proxyHandler = {
 
     // Check if the minification mapping exists first, if not just
     // use the original name.
-    let funcName = Module["mapping"] ? Module["mapping"][prop]: prop;
+    var funcName = Module["mapping"] ? Module["mapping"][prop]: prop;
     
     // if not a global, then a function - call it indirectly
     return env[prop] = function() {
