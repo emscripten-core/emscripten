@@ -513,6 +513,38 @@ var LibraryGL = {
 #if TRACE_WEBGL_CALLS
       if (ctx) GL.hookWebGL(ctx);
 #endif
+
+#if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
+      function disableHalfFloatExtensionIfBroken(ctx) {
+        var t = ctx.createTexture();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, t);
+        for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
+        var ext = ctx.getExtension('OES_texture_half_float');
+        if (!ext) return; // no half-float extension - nothing needed to fix.
+        // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
+        // rendering them useless.
+        // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+        // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+        ctx.texImage2D(0x0de1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
+        var broken = ctx.getError();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, null);
+        ctx.deleteTexture(t);
+        if (broken) {
+          ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
+          ctx.getSupportedExtensions = function() {
+#if GL_ASSERTIONS
+            warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
+#endif
+            // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+            return (this.realGetSupportedExtensions() || []).filter(function(ext) {
+              return ext.indexOf('texture_half_float') == -1;
+            });
+          }
+        }
+      }
+      disableHalfFloatExtensionIfBroken(ctx);
+#endif
+
       return ctx ? GL.registerContext(ctx, webGLContextAttributes) : 0;
     },
 
@@ -868,6 +900,35 @@ var LibraryGL = {
       GL.contexts[contextHandle] = null;
     },
 
+    acquireInstancedArraysExtension: function(ctx) {
+      // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
+      var ext = ctx.getExtension('ANGLE_instanced_arrays');
+      if (ext) {
+        ctx['vertexAttribDivisor'] = function(index, divisor) { ext['vertexAttribDivisorANGLE'](index, divisor); };
+        ctx['drawArraysInstanced'] = function(mode, first, count, primcount) { ext['drawArraysInstancedANGLE'](mode, first, count, primcount); };
+        ctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { ext['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
+      }
+    },
+
+    acquireVertexArrayObjectExtension: function(ctx) {
+      // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
+      var ext = ctx.getExtension('OES_vertex_array_object');
+      if (ext) {
+        ctx['createVertexArray'] = function() { return ext['createVertexArrayOES'](); };
+        ctx['deleteVertexArray'] = function(vao) { ext['deleteVertexArrayOES'](vao); };
+        ctx['bindVertexArray'] = function(vao) { ext['bindVertexArrayOES'](vao); };
+        ctx['isVertexArray'] = function(vao) { return ext['isVertexArrayOES'](vao); };
+      }
+    },
+
+    acquireDrawBuffersExtension: function(ctx) {
+      // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
+      var ext = ctx.getExtension('WEBGL_draw_buffers');
+      if (ext) {
+        ctx['drawBuffers'] = function(n, bufs) { ext['drawBuffersWEBGL'](n, bufs); };
+      }
+    },
+
     // In WebGL, extensions must be explicitly enabled to be active, see http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
     // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
     // code here, so that GLES2 code can operate without changing behavior.
@@ -887,27 +948,9 @@ var LibraryGL = {
 #endif
 
       if (context.version < 2) {
-        // Extension available from Firefox 26 and Google Chrome 30
-        var instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
-        if (instancedArraysExt) {
-          GLctx['vertexAttribDivisor'] = function(index, divisor) { instancedArraysExt['vertexAttribDivisorANGLE'](index, divisor); };
-          GLctx['drawArraysInstanced'] = function(mode, first, count, primcount) { instancedArraysExt['drawArraysInstancedANGLE'](mode, first, count, primcount); };
-          GLctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { instancedArraysExt['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
-        }
-
-        // Extension available from Firefox 25 and WebKit
-        var vaoExt = GLctx.getExtension('OES_vertex_array_object');
-        if (vaoExt) {
-          GLctx['createVertexArray'] = function() { return vaoExt['createVertexArrayOES'](); };
-          GLctx['deleteVertexArray'] = function(vao) { vaoExt['deleteVertexArrayOES'](vao); };
-          GLctx['bindVertexArray'] = function(vao) { vaoExt['bindVertexArrayOES'](vao); };
-          GLctx['isVertexArray'] = function(vao) { return vaoExt['isVertexArrayOES'](vao); };
-        }
-
-        var drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
-        if (drawBuffersExt) {
-          GLctx['drawBuffers'] = function(n, bufs) { drawBuffersExt['drawBuffersWEBGL'](n, bufs); };
-        }
+        GL.acquireInstancedArraysExtension(GLctx);
+        GL.acquireVertexArrayObjectExtension(GLctx);
+        GL.acquireDrawBuffersExtension(GLctx);
       }
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
@@ -939,14 +982,12 @@ var LibraryGL = {
         return ret;
       }
 
-      var exts = GLctx.getSupportedExtensions();
-      if (exts && exts.length > 0) {
-        GLctx.getSupportedExtensions().forEach(function(ext) {
-          if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-            GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
-          }
-        });
-      }
+      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      exts.forEach(function(ext) {
+        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
@@ -1020,15 +1061,11 @@ var LibraryGL = {
     var ret;
     switch(name_) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(exts[i]);
+        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          gl_exts.push("GL_" + exts[i]);
+        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-        }
-        ret = stringToNewUTF8(gl_exts.join(' '));
+        ret = stringToNewUTF8(exts.join(' '));
         break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
@@ -1131,16 +1168,13 @@ var LibraryGL = {
           return;
         }
 #endif
-        var exts = GLctx.getSupportedExtensions();
-        if (exts === null) {
-          ret = 0;
-        } else {
+        // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+        var exts = GLctx.getSupportedExtensions() || [];
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
 #else
-          ret = exts.length;
+        ret = exts.length;
 #endif
-        }
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION

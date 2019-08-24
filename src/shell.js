@@ -3,6 +3,10 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#if STRICT_JS
+"use strict;"
+
+#endif
 #if SIDE_MODULE == 0
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
@@ -97,11 +101,12 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
 function locateFile(path) {
+#if expectToReceiveOnModule('locateFile')
   if (Module['locateFile']) {
     return Module['locateFile'](path, scriptDirectory);
-  } else {
-    return scriptDirectory + path;
   }
+#endif
+  return scriptDirectory + path;
 }
 
 // Hooks that are implemented differently in different runtime environments.
@@ -232,12 +237,11 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  if (typeof console !== 'undefined') {
-    // Support odd shell environments that lack console.* but have other stuff.
-    console = {
-      log: print,
-      warn: typeof printErr !== 'undefined' ? printErr : print
-    }
+  if (typeof print !== 'undefined') {
+    // Prefer to use print/printErr where they exist, as they usually work better.
+    if (typeof console === 'undefined') console = {};
+    console.log = print;
+    console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
@@ -345,10 +349,6 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
-// If the user provided Module.print or printErr, use that. Otherwise,
-// console.log is checked first, as 'print' on the web will open a print dialogue
-// printErr is preferable to console.warn (works better in shells)
-// bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
 {{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
 

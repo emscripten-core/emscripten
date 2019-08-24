@@ -43,7 +43,7 @@ def run():
   # 'ar x libfoo.a'.
   if len(newargs) > 3:
     cmd = newargs[1]
-    if 'r' in cmd:
+    if 'r' in cmd or 'q' in cmd:
       # We are adding files to the archive.
       # Normally the output file is then arg 2, except in the case were the
       # a or b modifiers are used in which case its arg 3.
@@ -78,7 +78,7 @@ def run():
           newargs[j] = full_newname
           to_delete.append(full_newname)
           contents.add(newname)
-        except:
+        except Exception:
           # it is ok to fail here, we just don't get hashing
           contents.add(basename)
           pass

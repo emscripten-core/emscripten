@@ -48,7 +48,7 @@ Compiler configuration file-format
 
 The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user installed python to the **C:/Python27/** directory, then the file might have the line: ::
 
-	PTYHON = 'C:\\Python27\\python2.exe'
+	PYTHON = 'C:\\Python27\\python2.exe'
 	
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::
@@ -71,25 +71,6 @@ The compiler configuration file can be edited with the text editor of your choic
 
 	.. note:: Use forward slashes!
 
-#. Edit the variable ``TEMP_DIR`` to point to a valid path on your local system, e.g. ``TEMP_DIR = '/tmp'`` (``TEMP_DIR = 'c:/tmp'`` on Windows), and create that folder on the local filesystem if it doesn't exist.
-
 .. comment .. The settings are now correct in the configuration file, but the paths and environment variables are not set in the command prompt/terminal. **HamishW** Follow up with Jukka on this.
  
 After setting those paths, run ``emcc`` again. It should again perform the sanity checks to test the specified paths. There are further validation tests available at :ref:`verifying-the-emscripten-environment`.
-
-
-
-
-
-	
-	
-
-
-
-
-	
-
-
- 
-
-

@@ -80,8 +80,6 @@ EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
 
-EMTEST_WASM_PTHREADS = int(os.getenv('EMTEST_WASM_PTHREADS', '1'))
-
 # Also suppot the old name: EM_SAVE_DIR
 EMTEST_SAVE_DIR = os.getenv('EMTEST_SAVE_DIR', os.getenv('EM_SAVE_DIR'))
 
@@ -174,27 +172,6 @@ def no_asmjs(note=''):
   return decorated
 
 
-# used for tests that fail now and then on CI, due to timing or other
-# random causes. this tries the test a few times, looking for at least
-# one pass
-def flaky(f):
-  assert callable(f)
-  max_tries = 3
-
-  @wraps(f)
-  def decorated(self):
-    for i in range(max_tries - 1):
-      try:
-        f(self)
-        return
-      except Exception:
-        print('flaky...')
-        continue
-    # run the last time normally, to get a simpler stack trace
-    f(self)
-  return decorated
-
-
 @contextlib.contextmanager
 def env_modify(updates):
   """A context manager that updates os.environ."""
@@ -256,12 +233,6 @@ def create_test_file(name, contents, binary=False):
 
 # The core test modes
 core_test_modes = [
-  'asm0',
-  'asm1',
-  'asm2',
-  'asm3',
-  'asm2g',
-  'asm2f',
   'wasm0',
   'wasm1',
   'wasm2',
@@ -274,9 +245,17 @@ core_test_modes = [
   'wasm2js3',
   'wasm2jss',
   'wasm2jsz',
-  'asmi',
-  'asm2i',
 ]
+
+if not shared.Settings.WASM_BACKEND:
+  core_test_modes += [
+    'asm0',
+    'asm2',
+    'asm3',
+    'asm2g',
+    'asm2f',
+    'asm2i',
+  ]
 
 # The default core test mode, used when none is specified
 default_core_test_mode = 'wasm0'
@@ -291,6 +270,7 @@ non_core_test_modes = [
   'benchmark',
   'asan',
   'lsan',
+  'wasm2ss',
 ]
 
 test_index = 0
@@ -650,7 +630,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           # Make sure we notice if compilation steps failed
           os.remove(f + '.o')
-        except:
+        except OSError:
           pass
         args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
@@ -865,6 +845,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         limit_size(value), limit_size(string),
         limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
       ))
+
+  def assertContainedIf(self, value, string, condition):
+    if condition:
+      self.assertContained(value, string)
+    else:
+      self.assertNotContained(value, string)
 
   library_cache = {}
 
@@ -1104,7 +1090,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
              no_build=False, main_file=None, additional_files=[],
              js_engines=None, post_build=None, basename='src.cpp', libraries=[],
              includes=[], force_c=False, build_ll_hook=None,
-             assert_returncode=None, assert_identical=False, assert_all=False,
+             assert_returncode=0, assert_identical=False, assert_all=False,
              check_for_error=True):
     if force_c or (main_file is not None and main_file[-2:]) == '.c':
       basename = 'src.c'
@@ -1136,7 +1122,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       else:
         js_engines = js_engines[:1]
     for engine in js_engines:
-      # print 'test in', engine
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
@@ -1336,7 +1321,7 @@ class BrowserCore(RunnerCore):
 
       webbrowser.open_new = run_in_other_browser
       print("Using Emscripten browser: " + str(cmd))
-    cls.browser_timeout = 30
+    cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
@@ -1362,7 +1347,12 @@ class BrowserCore(RunnerCore):
         self.harness_out_queue.get()
       raise Exception('excessive responses from %s' % who)
 
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None):
+  # @param tries_left: how many more times to try this test, if it fails. browser tests have
+  #                    many more causes of flakiness (in particular, they do not run
+  #                    synchronously, so we have a timeout, which can be hit if the VM
+  #                    we run on stalls temporarily), so we let each test try more than
+  #                    once by default
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
@@ -1397,7 +1387,16 @@ class BrowserCore(RunnerCore):
         if output.startswith('/report_result?skipped:'):
           self.skipTest(unquote(output[len('/report_result?skipped:'):]).strip())
         else:
-          self.assertIdentical(expectedResult, output)
+          # verify the result, and try again if we should do so
+          try:
+            self.assertIdentical(expectedResult, output)
+          except Exception as e:
+            if tries_left > 0:
+              print('[test error (see below), automatically retrying]')
+              print(e)
+              return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
+            else:
+              raise e
       finally:
         time.sleep(0.1) # see comment about Windows above
       self.assert_out_queue_empty('this test')
@@ -1548,14 +1547,7 @@ class BrowserCore(RunnerCore):
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
     original_args = args[:]
-    if 'USE_PTHREADS=1' in args:
-      if not self.is_wasm_backend():
-        if 'ALLOW_MEMORY_GROWTH=1' not in args:
-          if EMTEST_WASM_PTHREADS:
-            also_asmjs = True
-          elif 'WASM=0' not in args:
-            args += ['-s', 'WASM=0']
-      else:
+    if 'USE_PTHREADS=1' in args and self.is_wasm_backend():
         # wasm2js does not support threads yet
         also_asmjs = False
     if 'WASM=0' not in args:
@@ -1657,10 +1649,7 @@ def build_library(name,
         stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
       else:
         stderr = None
-      try:
-        Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError as e:
-        pass # Ignore exit code != 0
+      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
 
     def open_make_out(mode='r'):
       return open(os.path.join(project_dir, 'make.out'), mode)
@@ -1671,25 +1660,17 @@ def build_library(name,
     if EM_BUILD_VERBOSE >= 3:
       make_args += ['VERBOSE=1']
 
-    try:
-      with open_make_out('w') as make_out:
-        with open_make_err('w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    with open_make_out('w') as make_out:
+      with open_make_err('w') as make_err:
+        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
 
-      if cache is not None:
-        cache[cache_name] = []
-        for f in generated_libs:
-          basename = os.path.basename(f)
-          cache[cache_name].append((basename, open(f, 'rb').read()))
-    except Exception as e:
-      if EM_BUILD_VERBOSE == 0:
-         with open_make_err() as ferr:
-           for line in ferr:
-             sys.stderr.write(line)
-
-      raise Exception('could not build library ' + name + ' due to exception ' + str(e))
+    if cache is not None:
+      cache[cache_name] = []
+      for f in generated_libs:
+        basename = os.path.basename(f)
+        cache[cache_name].append((basename, open(f, 'rb').read()))
 
   return generated_libs
 
@@ -1764,7 +1745,7 @@ def skip_requested_tests(args, modules):
             suite = getattr(m, suite_name)
             setattr(suite, test_name, lambda s: s.skipTest("requested to be skipped"))
             break
-          except:
+          except AttributeError:
             pass
       args[i] = None
   return [a for a in args if a is not None]

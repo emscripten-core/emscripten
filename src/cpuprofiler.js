@@ -287,6 +287,9 @@ var emscriptenCpuProfiler = {
       if (!div) {
         div = document.createElement("div");
         document.body.appendChild(div);
+
+        // It is common to set 'overflow: hidden;' on canvas pages that do WebGL. When CpuProfiler is being used, there will be a long block of text on the page, so force-enable scrolling.
+        document.body.style.overflow = '';
       }
       var helpText = "<div style='margin-left: 10px;'>Color Legend:";
       helpText += "<div class='colorbox' style='background-color: " + this.colorCpuTimeSpentInUserCode + ";'></div>Main Loop (C/C++) Code"

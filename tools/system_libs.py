@@ -18,7 +18,7 @@ from glob import iglob
 
 from . import ports
 from . import shared
-from tools.shared import check_call
+from tools.shared import check_call, mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
 stderr = None
@@ -154,6 +154,37 @@ class Library(object):
   Other class methods act upon a group of libraries. For example,
   `Library.get_all_variations()` returns a mapping of all variations of
   existing libraries.
+
+  To add a new type of variation, you must add an parameter to `__init__` that
+  selects the variant. Then, override one of `vary_on` or `variations`, as well
+  as `get_default_variation`.
+
+  If the parameter is boolean, overriding `vary_on` to add the parameter name
+  to the returned list is sufficient:
+
+    @classmethod
+    def vary_on(cls):
+      return super().vary_on() + ['my_parameter']
+
+  Otherwise, you must override `variations`:
+
+    @classmethod
+    def variations(cls):
+      return [{'my_parameter': value, **other} for value, other in
+              itertools.product([1, 2, 3], super().variations())]
+
+  Overriding either `vary_on` or `variations` allows `embuilder.py` to know all
+  possible variations so it can build all of them.
+
+  You then need to modify `get_default_variation` to detect the correct value
+  for your new parameter based on the settings:
+
+    @classmethod
+    def get_default_variation(cls, **kwargs):
+      return super().get_default_variation(my_parameter=shared.Settings.MY_PARAMETER, **kwargs)
+
+  This allows the correct variation of the library to be selected when building
+  code with Emscripten.
   """
 
   # The simple name of the library. When linking, this is the name to use to
@@ -529,11 +560,6 @@ class AsanInstrumentedLibrary(Library):
     return vary_on
 
   @classmethod
-  def variations(cls):
-    return [variation for variation in super(AsanInstrumentedLibrary, cls).variations()
-            if not shared.Settings.WASM_BACKEND or not variation['is_asan'] or not variation.get('is_mt')]
-
-  @classmethod
   def get_default_variation(cls, **kwargs):
     return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
 
@@ -615,10 +641,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
         'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
         'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c',
-        'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c',
-        'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c',
-        'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
-        'rintf.c'
+        'logl.c', 'sqrtl.c', 'round.c', 'roundf.c',
+        'fabsl.c', 'ceill.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c',
     ]
 
     if self.is_asan:
@@ -639,6 +663,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
       blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
+    else:
+      blacklist += ['rintf.c', 'ceil.c', 'ceilf.c', 'floor.c', 'floorf.c',
+                    'fabs.c', 'fabsf.c', 'sqrt.c', 'sqrtf.c']
 
     blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -703,7 +730,6 @@ class libcxxabi(CXXLibrary, MTLibrary):
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     return cflags
 
-  includes = ['system', 'lib', 'libcxxabi', 'include']
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
   src_files = [
     'abort_message.cpp',
@@ -727,7 +753,6 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx.symbols'))
   depends = ['libc++abi']
 
-  includes = ['system', 'lib', 'libcxxabi', 'include']
   cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
@@ -913,8 +938,32 @@ class libembind(CXXLibrary):
   depends = ['libc++abi']
   never_force = True
 
+  def __init__(self, **kwargs):
+    self.with_rtti = kwargs.pop('with_rtti', False)
+    super(libembind, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(libembind, self).get_cflags()
+    if not self.with_rtti:
+      cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libembind, cls).vary_on() + ['with_rtti']
+
+  def get_base_name(self):
+    name = super(libembind, self).get_base_name()
+    if self.with_rtti:
+      name += '-rtti'
+    return name
+
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
 
 
 class libfetch(CXXLibrary, MTLibrary):
@@ -1049,6 +1098,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libubsan_minimal_rt_wasm'
   never_force = True
 
+  includes = [['system', 'lib', 'compiler-rt', 'lib']]
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
   src_files = ['ubsan_minimal_handlers.cpp']
 
@@ -1107,6 +1157,16 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+# If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
+# confusing, so issue a warning.
+def warn_on_unexported_main(symbolses):
+  if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+    for symbols in symbolses:
+      if 'main' in symbols.defs:
+        logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
+        return
+
+
 def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   global stdout, stderr
   stdout = stdout_
@@ -1143,12 +1203,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
             logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+          shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
   symbolses = shared.Building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+
+  warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
     class Dummy(object):
@@ -1160,7 +1222,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for export in shared.Settings.EXPORTED_FUNCTIONS:
     if shared.Settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
-    symbolses[0].undefs.add(export[1:])
+    symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
     add_back_deps(symbols)
@@ -1171,7 +1233,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if only_forced:
     for key, value in deps_info.items():
       for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
   always_include.add('libpthreads')
   if shared.Settings.MALLOC != 'none':
@@ -1540,7 +1602,7 @@ def get_ports(settings):
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-  except:
+  except Exception:
     logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
     raise
 

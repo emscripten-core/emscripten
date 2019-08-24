@@ -86,7 +86,11 @@ class Benchmarker(object):
       std = math.sqrt(mean_of_squared - mean * mean)
       sorted_times = self.times[:]
       sorted_times.sort()
-      median = sum(sorted_times[len(sorted_times) // 2 - 1:len(sorted_times) // 2 + 1]) / 2
+      count = len(sorted_times)
+      if count % 2 == 0:
+        median = sum(sorted_times[count // 2 - 1:count // 2 + 1]) / 2
+      else:
+        median = sorted_times[count // 2]
 
       print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps), end=' ')
 
@@ -121,7 +125,9 @@ class NativeBenchmarker(Benchmarker):
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.parent = parent
     if lib_builder:
-      native_args += lib_builder(self.name, native=True, env_init={'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"})
+      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
+      env.update(shared.get_clang_native_env())
+      native_args += lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -184,7 +190,7 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd = [
       PYTHON, EMCC, filename,
       OPTIMIZATIONS,
-      '-s', 'TOTAL_MEMORY=256*1024*1024',
+      '-s', 'TOTAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
       '-s', 'MINIMAL_RUNTIME=0',
@@ -335,18 +341,18 @@ class benchmark(RunnerCore):
   save_dir = True
 
   @classmethod
-  def setUpClass(self):
-    super(benchmark, self).setUpClass()
+  def setUpClass(cls):
+    super(benchmark, cls).setUpClass()
 
     fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
     try:
       fingerprint.append('em: ' + run_process(['git', 'show'], stdout=PIPE).stdout.splitlines()[0])
-    except:
+    except Exception:
       pass
     try:
       with chdir(os.path.expanduser('~/Dev/mozilla-central')):
         fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
-    except:
+    except Exception:
       pass
     fingerprint.append('llvm: ' + LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))

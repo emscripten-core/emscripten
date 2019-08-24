@@ -895,7 +895,6 @@ LibraryManager.library = {
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
-      ENV['LANG'] = 'C.UTF-8';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
       ENV['_'] = thisProgram;
@@ -3413,7 +3412,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons'],
+  _inet_pton6_raw__deps: ['htons', 'ntohs'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -3578,7 +3577,7 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw'],
+  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
   _read_sockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
@@ -4214,6 +4213,16 @@ LibraryManager.library = {
       );
   },
 
+#if MINIMAL_RUNTIME
+  $warnOnce: function(text) {
+    if (!warnOnce.shown) warnOnce.shown = {};
+    if (!warnOnce.shown[text]) {
+      warnOnce.shown[text] = 1;
+      err(text);
+    }
+  },
+#endif
+
   // Returns [parentFuncArguments, functionName, paramListName]
   _emscripten_traverse_stack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
@@ -4244,7 +4253,11 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+#if MINIMAL_RUNTIME
+    , '$warnOnce'
+#endif
+  ],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4450,10 +4463,12 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address__deps: ['emscripten_generate_pc'],
   emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
+    var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     // skip this function and the caller to get caller's return address
     return _emscripten_generate_pc(callstack[level + 2]);
   },
@@ -4492,8 +4507,7 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
-                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
@@ -4547,18 +4561,26 @@ LibraryManager.library = {
   // Look up the function name from our stack frame cache with our PC representation.
   emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
+#endif
+    var name;
+    if (pc & 0x80000000) {
+      // If this is a JavaScript function, try looking it up in the unwind cache.
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return 0;
 
-    var name = null;
-    var match;
-    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-      name = match[1];
-    } else if (match = /^(.+?)@/.exec(frame)) {
-      name = match[1];
+      var match;
+      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+        name = match[1];
+      } else if (match = /^(.+?)@/.exec(frame)) {
+        name = match[1];
+      } else {
+        return 0;
+      }
+    } else {
+      name = wasmOffsetConverter.getName(pc);
     }
-    if (!name) return 0;
-
     _emscripten_with_builtin_malloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
@@ -4568,8 +4590,6 @@ LibraryManager.library = {
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return null;
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -4584,6 +4604,8 @@ LibraryManager.library = {
 #endif
 
     if (!source) {
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return null;
       // Example: at callMain (a.out.js:6335:22)
       if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
         source = {file: match[1], line: match[2], column: match[3]};
@@ -4805,6 +4827,14 @@ LibraryManager.library = {
   },
   emscripten_autodebug_double: function(line, value) {
     out('AD:' + [line, value]);
+  },
+
+  // special runtime support
+
+  emscripten_scan_stack: function(func) {
+    var base = STACK_BASE; // TODO verify this is right on pthreads
+    var end = stackSave();
+    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
@@ -5162,6 +5192,9 @@ LibraryManager.library = {
   },
   // =======================================================================
 
+  __handle_stack_overflow: function() {
+    abort('stack overflow')
+  },
 };
 
 function autoAddDeps(object, name) {

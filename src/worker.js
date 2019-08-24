@@ -239,6 +239,9 @@ this.onmessage = function(e) {
 #if WASM_BACKEND
       Module['_emscripten_tls_init']();
 #endif
+#if SAFE_STACK
+      Module['___set_stack_limit'](STACK_MAX);
+#endif
 #if STACK_OVERFLOW_CHECK
       {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
 #endif

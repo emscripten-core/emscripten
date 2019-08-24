@@ -18,6 +18,20 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v.1.38.42: 08/19/2019
+----------------------
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+   and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
+   with multiple threads. (#9060, #9076)
+ - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
+ - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
+   suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
+   will no longer work. This is done because the mechanism may result in
+   execution of arbitrary code via command line flags.
+
+v.1.38.41: 08/07/2019
+---------------------
  - Remove fastcomp's implementation of Asyncify. This has been deprecated for
    a long time, since we added Emterpreter-Async, and now we have a new Asyncify
    implementation in the upstream wasm backend. It is recommended to upgrade to
@@ -27,6 +41,17 @@ Current Trunk
    global scope, preventing temporary variables at page startup from being garbage
    collected. (#9108)
  - `__builtin_return_address` now requires `-s USE_OFFSET_CONVERTER=1` to work. (#9073)
+ - emrun now uses HTTP/1.1 instead of HTTP/1.0.
+ - `callMain` is no longer exported by default on Module, to allow better JS
+   minification. You must add it to `EXTRA_EXPORTED_RUNTIME_METHODS` if you want
+   to call it on Module. (In assertions builds, an error with an explanation is
+   shown.)
+ - Allow expressions with side effects as `EM_ASM`'s arguments and prohibit
+   non-arithmetic arguments (e.g. pointers, functions, arrays, objects). (#9054)
+ - `emcc` on Windows now uses native newline byte sequence to get a line to
+   print for parse error reporting. (#9088)
+ - Internal API update: one can now specialize embind's (un)marshalling for a
+   group of types via SFINAE, instead of a single type. (#9089)
 
 v.1.38.40: 07/24/2019
 ---------------------

@@ -145,7 +145,7 @@ def parse_fastcomp_output(backend_output, DEBUG):
 
   try:
     metadata = json.loads(metadata_raw, object_pairs_hook=OrderedDict)
-  except:
+  except ValueError:
     logger.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise
 
@@ -344,7 +344,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   # calculate globals
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-  except:
+  except KeyError:
     pass
   if not shared.Settings.RELOCATABLE:
     global_vars = metadata['externs']
@@ -450,7 +450,7 @@ def collapse_redundant_vars(code):
   old_code = ''
   while code != old_code: # Repeated vars overlap, so can't run in one regex pass. Runs in O(log(N)) time
     old_code = code
-    code = re.sub('(var [^;]*);\s*var ', r'\1,\n  ', code)
+    code = re.sub(r'(var [^;]*);\s*var ', r'\1,\n  ', code)
   return code
 
 
@@ -631,7 +631,7 @@ def is_int(x):
   try:
     int(x)
     return True
-  except:
+  except ValueError:
     return False
 
 
@@ -2211,7 +2211,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   try:
     del forwarded_json['Variables']['globals']['_llvm_global_ctors'] # not a true variable
-  except:
+  except KeyError:
     pass
 
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
@@ -2291,6 +2291,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       cmd.append('--global-base=0')
     else:
       cmd.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
+  if shared.Settings.SAFE_STACK:
+    cmd.append('--check-stack-overflow')
   shared.print_compiler_stage(cmd)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:

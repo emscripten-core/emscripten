@@ -265,8 +265,6 @@ function getMemory(size) {
 
 #include "runtime_strings.js"
 
-#include "runtime_stack_trace.js"
-
 // Memory management
 
 var PAGE_SIZE = 16384;
@@ -755,6 +753,10 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 
 var memoryInitializer = null;
 
+#if MEMORYPROFILER
+#include "memoryprofiler.js"
+#endif
+
 #if USE_PTHREADS && PTHREAD_HINT_NUM_CORES < 0
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
   addRunDependency('pthreads_querycores');
@@ -1050,10 +1052,15 @@ function createWasm(env) {
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
 #if USE_OFFSET_CONVERTER
-      wasmOffsetConverter = new WasmOffsetConverter(binary);
-      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-#endif
+      var result = WebAssembly.instantiate(binary, info);
+      result.then(function (instance) {
+        wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
+        {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+      });
+      return result;
+#else
       return WebAssembly.instantiate(binary, info);
+#endif
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
@@ -1068,16 +1075,16 @@ function createWasm(env) {
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+        var result = WebAssembly.instantiateStreaming(response, info);
 #if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
-        response.clone().arrayBuffer().then(function (buffer) {
-          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
+        Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
+          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
           {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
         });
 #endif
-        return WebAssembly.instantiateStreaming(response, info)
-          .then(receiveInstantiatedSource, function(reason) {
+        return result.then(receiveInstantiatedSource, function(reason) {
             // We expect the most common failure cause to be a bad MIME type for the binary,
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
@@ -1096,12 +1103,12 @@ function createWasm(env) {
     var binary;
     try {
       binary = getBinary();
-#if USE_OFFSET_CONVERTER
-      wasmOffsetConverter = new WasmOffsetConverter(binary);
-      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-#endif
       module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
+#if USE_OFFSET_CONVERTER
+      wasmOffsetConverter = new WasmOffsetConverter(binary, module);
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+#endif
     } catch (e) {
       var str = e.toString();
       err('failed to compile wasm module: ' + str);

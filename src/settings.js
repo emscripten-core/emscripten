@@ -242,6 +242,10 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
+// Check each stack pointer decrement on WASM backend to ensure that the stack
+// does not overflow.
+var SAFE_STACK = 0;
+
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
@@ -328,6 +332,7 @@ var WEBSOCKET_URL = 'ws://';
 
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
+// You can set 'null', if you don't want to specify it.
 var WEBSOCKET_SUBPROTOCOL = 'binary';
 
 // Print out debugging information from our OpenAL implementation.
@@ -453,6 +458,12 @@ var STB_IMAGE = 0;
 // If you do not care about old iOS 9 support, keep this disabled.
 var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
 
+// From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
+// are broken and do not function correctly, when used as source textures.
+// See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+// https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
+
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
 var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 
@@ -540,7 +551,12 @@ var ASYNCIFY = 0;
 
 // The imports which can do a sync operation. If you add more you will need to
 // add them to here.
-var ASYNCIFY_IMPORTS = ['emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load', 'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists', 'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118'];
+var ASYNCIFY_IMPORTS = [
+  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
+  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
+  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118',
+  'emscripten_scan_registers'
+];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
@@ -794,11 +810,14 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * ERROR_ON_MISSING_LIBRARIES is enabled
 //   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
+//   * STRICT_JS is enabled
 var STRICT = 0;
+
+// Add "use strict;" to generated JS
+var STRICT_JS = 0;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
 // the library_*.js files. Note that it is common in large projects to not
@@ -816,10 +835,6 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
 // be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
-
-// My default any -lfoo directives pointing to nonexistent library files will
-// issue a linker error.  Set to 0 to downgrade this to a warning.
-var ERROR_ON_MISSING_LIBRARIES = 1;
 
 // Specifies a list of Emscripten-provided JS libraries to link against.
 // (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
@@ -925,6 +940,11 @@ var SEPARATE_ASM_MODULE_NAME = '';
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;
+
+// Use the ES6 Module relative import feature 'import.meta.url'
+// to auto-detect WASM Module path.
+// It might not be supported on old browsers / toolchains
+var USE_ES6_IMPORT_META = 1;
 
 // If 1, will just time how long main() takes to execute, and not print out
 // anything at all whatsoever. This is useful for benchmarking.
@@ -1242,6 +1262,9 @@ var PTHREADS_PROFILING = 0;
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 
+// If true, building against Emscripten's asm.js/wasm heap memory profiler.
+var MEMORYPROFILER = 0;
+
 var MAX_GLOBAL_ALIGN = -1; // received from the backend
 var IMPLEMENTED_FUNCTIONS = []; // received from the backend
 
@@ -1376,6 +1399,9 @@ var EMSCRIPTEN_VERSION = '';
 
 // This will contain the optimization level (-Ox). You should not modify this.
 var OPT_LEVEL = 0;
+
+// Will be set to 0 if -fno-rtti is used on the command line.
+var USE_RTTI = 1;
 
 // This will contain the debug level (-gx). You should not modify this.
 var DEBUG_LEVEL = 0;
@@ -1581,4 +1607,5 @@ var LEGACY_SETTINGS = [
   ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-s WASM=1 - default), or to asm.js (-s WASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
+  ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
 ];

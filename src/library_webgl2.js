@@ -29,14 +29,13 @@ var LibraryWebGL2 = {
     }
     switch(name) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(stringToNewUTF8(exts[i]));
-          // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
-          gl_exts.push(stringToNewUTF8('GL_' + exts[i]));
-        }
-        stringiCache = GL.stringiCache[name] = gl_exts;
+        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
+        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
+#endif
+        exts = exts.map(function(e) { return stringToNewUTF8(e); });
+
+        stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x0501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
