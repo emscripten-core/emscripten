@@ -7246,12 +7246,12 @@ Success!
       struct Global {
         Global() {
           printf("in Global()\n");
-          if (testPre) { EM_ASM(Module['noExitRuntime'] = true;); }
+          if (testPre) { EM_ASM(noExitRuntime = true;); }
         }
         ~Global() { printf("ERROR: in ~Global()\n"); }
       } global;
       int main() {
-        if (!testPre) { EM_ASM(Module['noExitRuntime'] = true;); }
+        if (!testPre) { EM_ASM(noExitRuntime = true;); }
         printf("in main()\n");
       }
     '''
