@@ -2546,7 +2546,7 @@ class Building(object):
     if missing_import_mapping:
       mapping_object = 'Module["mapping"]={'
       lastItem = missing_import_mapping.popitem()
-      for orig_name, minified_name  in missing_import_mapping.items():
+      for orig_name, minified_name in missing_import_mapping.items():
         mapping_object += minified_name + ':"' + orig_name + '",'
       mapping_object += lastItem[1] + ':"' + lastItem[0] + '"}'
 
