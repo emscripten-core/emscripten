@@ -3548,16 +3548,18 @@ int main() {
       ]:
       print(name, args)
       self.clear()
-      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args, stdout=PIPE, stderr=PIPE)
+      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
     # -c should not affect code size
     for name in ['0', '1', '2', '3', 's', 'z']:
-      assert sizes[name] == sizes[name + 'c']
+      self.assertEqual(sizes[name], sizes[name + 'c'])
     opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
     opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
-    assert opt_min - opt_max <= opt_max * 0.1, 'opt builds are all fairly close'
-    assert sizes['0'] > (1.20 * opt_max), 'unopt build is quite larger'
+    # 'opt builds are all fairly close'
+    self.assertLess(opt_min - opt_max, opt_max * 0.1)
+    # unopt build is quite larger'
+    self.assertGreater(sizes['0'], (1.20 * opt_max))
 
   @no_wasm_backend('relies on ctor evaluation and dtor elimination')
   def test_global_inits(self):
