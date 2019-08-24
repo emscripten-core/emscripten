@@ -415,7 +415,9 @@ function exit(status, implicit) {
 
     exitRuntime();
 
+#if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
+#endif
   }
 
   quit_(status, new ExitStatus(status));
@@ -424,9 +426,11 @@ function exit(status, implicit) {
 var abortDecorators = [];
 
 function abort(what) {
+#if expectToReceiveOnModule('onAbort')
   if (Module['onAbort']) {
     Module['onAbort'](what);
   }
+#endif
 
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);

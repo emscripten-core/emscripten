@@ -443,6 +443,7 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
     'callMain',
+    'abort',
   ];
 
   if (!MINIMAL_RUNTIME) {
