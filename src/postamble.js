@@ -455,7 +455,6 @@ function abort(what) {
   throw output;
 #endif // ASSERTIONS
 }
-Module['abort'] = abort;
 
 #if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {
