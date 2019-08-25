@@ -25,6 +25,8 @@ var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer 
 var DYNAMICTOP_PTR = 0;
 var DYNAMIC_BASE = 0;
 
+var noExitRuntime;
+
 var PthreadWorkerInit = {};
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
