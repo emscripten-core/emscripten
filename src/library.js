@@ -494,44 +494,27 @@ LibraryManager.library = {
   },
 #else
 
+  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
+  // Returns 1 on success, or undefined if growing failed.
   $emscripten_realloc_buffer: function(size) {
-#if WASM
-    var PAGE_MULTIPLE = {{{ getPageSize() }}};
-    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var oldSize = buffer.byteLength;
-    // native wasm support
-    // note that this is *not* threadsafe. multiple threads can call .grow(), and each
-    // presents a delta, so in theory we may over-allocate here (e.g. if two threads
-    // ask to grow from 256MB to 512MB, we get 2 requests to add +256MB, and may end
-    // up growing to 768MB (even though we may have been able to make do with 512MB).
-    // TODO: consider decreasing the step sizes in emscripten_resize_heap
     try {
-      var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
-      if (result !== (-1 | 0)) {
-        // success in native wasm memory growth, get the buffer from the memory
-        buffer = wasmMemory.buffer;
-        return true;
-      } else {
-        return false;
-      }
+#if WASM
+      // round size grow request up to wasm page size (fixed 64KB per spec)
+      wasmMemory.grow((size - buffer.byteLength + 65535) >> 16); // .grow() takes a delta compared to the previous size
+      updateGlobalBufferAndViews(wasmMemory.buffer);
+#else // asm.js:
+      var newBuffer = new ArrayBuffer(size);
+      if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
+      new Int8Array(newBuffer).set(HEAP8);
+      _emscripten_replace_memory(newBuffer);
+      updateGlobalBufferAndViews(newBuffer);
+#endif
+      return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
-      return false;
     }
-#else // asm.js:
-    try {
-      var newBuffer = new ArrayBuffer(size);
-      if (newBuffer.byteLength != size) return false;
-      new Int8Array(newBuffer).set(HEAP8);
-    } catch(e) {
-      return false;
-    }
-    buffer = newBuffer;
-    Module['_emscripten_replace_memory'](newBuffer);
-    return true;
-#endif
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
@@ -631,23 +614,13 @@ LibraryManager.library = {
     }
 #endif
 
-#if ASSERTIONS
-    var start = Date.now();
-#endif
-
-    if (!emscripten_realloc_buffer(newSize)) {
+    var replacement = emscripten_realloc_buffer(newSize);
+    if (!replacement) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
 #endif
       return false;
     }
-
-#if USE_PTHREADS
-    // Updating the views here is not strictly necessary, since we instrument each load and store
-    // to do so, but doing it here is clean and may be more efficient (avoid surprising the JIT
-    // later by taking a never-taken branch).
-#endif
-    updateGlobalBufferViews();
 
 #if ASSERTIONS && (!WASM || WASM2JS)
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
