@@ -590,6 +590,41 @@ function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
 
+#if EMTERPRETIFY_ASYNC && ASSERTIONS
+var abortDecorators = [];
+#endif
+
+function abort(what) {
+#if expectToReceiveOnModule('onAbort')
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
+#endif
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+#endif
+  what += '';
+  out(what);
+  err(what);
+
+  ABORT = true;
+  EXITSTATUS = 1;
+
+#if ASSERTIONS == 0
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+#else
+  var extra = '';
+  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+#if EMTERPRETIFY_ASYNC
+  abortDecorators.forEach(function(decorator) {
+    output = decorator(output, what);
+  });
+#endif
+  throw output;
+#endif // ASSERTIONS
+}
+
 {{{ unSign }}}
 {{{ reSign }}}
 
