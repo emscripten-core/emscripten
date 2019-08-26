@@ -5,7 +5,7 @@
 
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
-  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls', '$ERRNO_CODES'],
+  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls', '$ERRNO_CODES', 'emscripten_futex_wake'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
@@ -724,7 +724,7 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls'],
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait'],
   {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');

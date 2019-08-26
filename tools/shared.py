@@ -1661,12 +1661,11 @@ class Building(object):
     # On Windows, run the execution through shell to get PATH expansion and
     # executable extension lookup, e.g. 'sdl2-config' will match with
     # 'sdl2-config.bat' in PATH.
-    if EM_BUILD_VERBOSE >= 3:
-      print('make: ' + str(args), file=sys.stderr)
     if EM_BUILD_VERBOSE >= 2:
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
+    print('make: ' + str(args), file=sys.stderr)
     run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
 
   @staticmethod
@@ -3180,6 +3179,7 @@ def safe_move(src, dst):
     return
   if dst == '/dev/null':
     return
+  logging.debug('move: %s -> %s', src, dst)
   shutil.move(src, dst)
 
 
