@@ -303,15 +303,20 @@ mergeInto(LibraryManager.library, {
         };
 
         function handleMessage(data) {
-          assert(typeof data !== 'string' && data.byteLength !== undefined);  // must receive an ArrayBuffer
-
-          // An empty ArrayBuffer will emit a pseudo disconnect event
-          // as recv/recvmsg will return zero which indicates that a socket
-          // has performed a shutdown although the connection has not been disconnected yet.
-          if (data.byteLength == 0) {
-            return;
+          if (typeof data === 'string') {
+            var encoder = new TextEncoder(); // should be utf-8
+            data = encoder.encode(data); // make a typed array from the string
+          } else {
+            assert(data.byteLength !== undefined); // must receive an ArrayBuffer
+            if (data.byteLength == 0) {
+              // An empty ArrayBuffer will emit a pseudo disconnect event
+              // as recv/recvmsg will return zero which indicates that a socket
+              // has performed a shutdown although the connection has not been disconnected yet.
+              return;
+            } else {
+              data = new Uint8Array(data); // make a typed array view on the array buffer
+            }
           }
-          data = new Uint8Array(data);  // make a typed array view on the array buffer
 
 #if SOCKET_DEBUG
           out('websocket handle message (' + data.byteLength + ' bytes): ' + [Array.prototype.slice.call(data)]);
