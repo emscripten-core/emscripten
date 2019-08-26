@@ -996,7 +996,7 @@ var proxyHandler = {
     // use the original name.
     var funcName = Module["mapping"] ? Module["mapping"][prop]: prop;
     
-    // if not a global, then a function - call it indirectly
+    // For a missing property generate a stub that will do a runtime lookup and error out if its still missing
     return env[prop] = function() {
 #if ASSERTIONS
       assert(Module[funcName], 'missing linked function ' + funcName + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
@@ -1008,7 +1008,7 @@ var proxyHandler = {
 
   // prepare imports
   var info = {
-    env: new Proxy(env, proxyHandler),
+    'env': new Proxy(env, proxyHandler),
 #if WASM_BACKEND == 0
     'global': {
       'NaN': NaN,

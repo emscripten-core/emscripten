@@ -97,7 +97,7 @@ def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
-          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG)) 
+          function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG))
     with ToolchainProfiler.profile_block('write_output_file'):
       finalize_output(outfile, post, function_table_data, bundled_args, metadata, DEBUG)
     success = True
