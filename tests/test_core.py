@@ -7648,6 +7648,23 @@ extern "C" {
       with open('src.c.o.js.mem', 'rb') as f:
         self.assertTrue(f.read()[-1] != b'\0')
 
+  @no_fastcomp('wasm-backend specific feature')
+  def test_maybe_wasm2js(self):
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+    self.set_setting('MAYBE_WASM2JS', 1)
+    # see that running as wasm works
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+    # run wasm2js, bundle the code, and use the wasm2js path
+    cmd = [PYTHON, path_from_root('tools', 'maybe_wasm2js.py'), 'src.c.o.js', 'src.c.o.wasm']
+    if is_optimizing(self.emcc_args):
+      cmd += ['-O2']
+    run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
+    # remove the wasm to make sure we never use it again
+    os.unlink('src.c.o.wasm')
+    # verify that it runs
+    self.assertContained('hello, world!', run_js('do_wasm2js.js'))
+
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
     self.do_run(r'''
