@@ -1810,10 +1810,6 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    export_all = False
-    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
-      export_all = True
-
     if Settings.RELOCATABLE:
       if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
         cmd.append('--no-export-dynamic')
@@ -1821,17 +1817,17 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
-    if export_all:
+    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
       cmd.append('--export-all')
-    else:
-      cmd += [
-        '--export',
-        '__wasm_call_ctors',
-        '--export',
-        '__data_end'
-      ]
-      for export in Settings.EXPORTED_FUNCTIONS:
-        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    cmd += [
+      '--export',
+      '__wasm_call_ctors',
+      '--export',
+      '__data_end'
+    ]
+    for export in Settings.EXPORTED_FUNCTIONS:
+      cmd += ['--export', export[1:]] # Strip the leading underscore
 
     if Settings.RELOCATABLE:
       if Settings.SIDE_MODULE:
