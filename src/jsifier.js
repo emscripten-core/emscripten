@@ -203,7 +203,11 @@ function JSify(data, functionsOnly) {
             Functions.libraryFunctions[finalName] = 1;
             return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
           } else {
-            Functions.sideFunctions[finalName] = 1;  
+            // The JS stubs are still generated for asm.js because we are not loading the asm.js code dynamically
+            if (WASM) 
+              Functions.sideFunctions[finalName] = 1;  
+            else
+              LibraryManager.library[ident] = new Function(functionBody);
           }
           noExport = true;
         }
