@@ -96,6 +96,8 @@ namespace emscripten {
                 EM_VAR_ARGS argv);
             EM_VAL _emval_typeof(EM_VAL value);
             bool _emval_instanceof(EM_VAL object, EM_VAL constructor);
+            bool _emval_is_number(EM_VAL object);
+            bool _emval_is_string(EM_VAL object);
             bool _emval_in(EM_VAL item, EM_VAL object);
             bool _emval_delete(EM_VAL object, EM_VAL property);
             bool _emval_throw(EM_VAL object);
@@ -403,11 +405,11 @@ namespace emscripten {
         }
 
         bool isNumber() const {
-            return typeOf().as<std::string>() == "number";
+            return internal::_emval_is_number(handle);
         }
 
         bool isString() const {
-            return typeOf().as<std::string>() == "string";
+            return internal::_emval_is_string(handle);
         }
 
         bool isArray() const {
