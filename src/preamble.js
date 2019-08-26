@@ -983,18 +983,13 @@ var proxyHandler = {
     if (prop in obj) {
       return obj[prop]; // already present
     }
-    
-    if (prop.startsWith('invoke_')) {
-      // A missing invoke, i.e., an invoke for a function type
-      // present in the dynamic library but not in the main JS,
-      // and the dynamic library cannot provide JS for it. Use
-      // the generic "X" invoke for it.
-      return obj[prop] = invoke_X;
-    }
 
     // Check if the minification mapping exists first, if not just
     // use the original name.
-    var funcName = Module["mapping"] ? Module["mapping"][prop]: prop;
+    var funcName = prop;
+    if (Module["mapping"] && Module["mapping"][prop]) {
+      funcName = prop;
+    }
     
     // For a missing property generate a stub that will do a runtime lookup and error out if its still missing
     return env[prop] = function() {
