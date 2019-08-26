@@ -756,7 +756,7 @@ mergeInto(LibraryManager.library, {
       }
     };
 
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
     Module['websocket']['on'](event, callback ? _callback : null);
   },
   emscripten_set_socket_error_callback__deps: ['__set_network_callback'],

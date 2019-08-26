@@ -220,7 +220,7 @@ function callMain(args) {
 #if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
-    if (!Module['noExitRuntime']) {
+    if (!noExitRuntime) {
 #endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
@@ -235,7 +235,7 @@ function callMain(args) {
       return;
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
 #if EMTERPRETIFY_ASYNC
       // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
       Module['emtStackRestore'](initialEmtStackTop);
@@ -390,11 +390,11 @@ function exit(status, implicit) {
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && Module['noExitRuntime'] && status === 0) {
+  if (implicit && noExitRuntime && status === 0) {
     return;
   }
 
-  if (Module['noExitRuntime']) {
+  if (noExitRuntime) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
@@ -480,7 +480,7 @@ if (Module['noInitialRun']) shouldRunNow = false;
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
 #endif
-  Module["noExitRuntime"] = true;
+  noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS

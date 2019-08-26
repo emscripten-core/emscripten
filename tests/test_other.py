@@ -2923,7 +2923,7 @@ m0.ccall('myread0','number',[],[]);
     create_test_file('proxyfs_pre.js', r'''
 if (typeof Module === 'undefined') Module = {};
 Module["noInitialRun"]=true;
-Module["noExitRuntime"]=true;
+noExitRuntime=true;
 ''')
 
     create_test_file('proxyfs_embed.txt', r'''test
@@ -9604,7 +9604,7 @@ int main () {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 6279), 100)
+    self.assertLess(abs(changed - 6231), 100)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')

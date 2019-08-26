@@ -98,7 +98,7 @@ int main()
 #endif
     return 0;
   }
-  EM_ASM(Module['noExitRuntime'] = true;);
+  EM_ASM(noExitRuntime = true;);
   CreateThread();
   emscripten_async_call(PollThreadExit, 0, 100);
   return 0;
