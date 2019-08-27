@@ -1155,8 +1155,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
-    if shared.Settings.MODULARIZE_INSTANCE:
+    if shared.Settings.MODULARIZE_INSTANCE is 1:
       shared.Settings.MODULARIZE = 1
+    elif shared.Settings.MODULARIZE_INSTANCE is 2:
+      shared.Settings.MODULARIZE = 2
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
@@ -2407,7 +2409,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                     optimizer)
 
       if shared.Settings.MODULARIZE:
-        modularize()
+        modularize(shared.Settings.MODULARIZE)
 
       module_export_name_substitution()
 
@@ -3013,7 +3015,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       f.write(js)
 
 
-def modularize():
+def modularize(mode):
   global final
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
@@ -3021,18 +3023,26 @@ def modularize():
   # TODO: exports object generation for MINIMAL_RUNTIME
   exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME else shared.Settings.EXPORT_NAME
 
+  if mode is 1:
+    # Deprecated.
+    return_value = exports_object
+  elif mode is 2:
+    return_value = exports_object + '.ready'
+  else:
+    assert False, 'MODULARIZE must be 1 or 2'
+
   src = '''
 function(%(EXPORT_NAME)s) {
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  return %(exports_object)s
+  return %(return_value)s;
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
-    'exports_object': exports_object
+    'return_value': return_value
   }
 
   if not shared.Settings.MODULARIZE_INSTANCE:

@@ -116,7 +116,7 @@ if (memoryInitializer) {
 
 var calledRun;
 
-#if MODULARIZE
+#if MODULARIZE == 1
 #if MODULARIZE_INSTANCE == 0
 // Modularize mode returns a function, which can be called to
 // create instances. The instances provide a then() method,
@@ -144,6 +144,24 @@ Module['then'] = function(func) {
   return Module;
 };
 #endif
+#endif
+
+#if MODULARIZE != 1
+if (typeof Promise !== 'undefined') {
+  Module['ready'] = new Promise(resolve => {
+#if ASSERTIONS && !expectToReceiveOnModule('onRuntimeInitialized')
+    abort('.ready requires adding onRuntimeInitialized to INCOMING_MODULE_JS_API');
+#endif
+    var old = Module['onRuntimeInitialized'];
+    Module['onRuntimeInitialized'] = function() {
+      if (old) old();
+      resolve(Module);
+    };
+  });
+}
+#else
+// XXX: How to deprecate this properly?
+err('-s MODULARIZE=1 is deprecated. Use -s MODULARIZE=2 instead.');
 #endif
 
 /**

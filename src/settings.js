@@ -858,12 +858,12 @@ var DETERMINISTIC = 0;
 
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
-// page, it will use the global scope. With MODULARIZE set, we will instead emit
+// page, it will use the global scope. With MODULARIZE=2 set, we will instead emit
 //
 //   var EXPORT_NAME = function(Module) {
 //     Module = Module || {};
 //     // .. all the emitted code from emscripten ..
-//     return Module;
+//     return Module.ready;
 //   };
 //
 // where EXPORT_NAME is from the option of the same name (so, by default
@@ -872,11 +872,11 @@ var DETERMINISTIC = 0;
 //
 // You can then use this by something like
 //
-//   var instance = EXPORT_NAME();
+//   var instance = await EXPORT_NAME();
 //
 // or
 //
-//   var instance = EXPORT_NAME({ option: value, ... });
+//   var instance = await EXPORT_NAME({ option: value, ... });
 //
 // Note the parentheses - we are calling EXPORT_NAME in order to instantiate
 // the module. (This allows, in particular, for you to create multiple
@@ -887,7 +887,7 @@ var DETERMINISTIC = 0;
 // The default .html shell file provided by traditional runtime mode is only
 // compatible with MODULARIZE=0 mode, so when building with traditional
 // runtime, you should provided your own html shell file to perform the
-// instantiation when building with MODULARIZE=1. (For more details, see
+// instantiation when building with MODULARIZE. (For more details, see
 // https://github.com/emscripten-core/emscripten/issues/7950)
 //
 // If you add --pre-js or --post-js files, they will be included inside
@@ -900,14 +900,14 @@ var DETERMINISTIC = 0;
 // optimized with the rest of the emitted code, allowing better dead code
 // elimination and minification.)
 //
-// Modularize also provides a promise-like API,
+// MODULARIZE=2 encapsulates the module in a Promise:
 //
-//   var instance = EXPORT_NAME().then(function(Module) { .. });
+//   var instance = await EXPORT_NAME();
 //
-// The callback is called when it is safe to run compiled code, similar
-// to the onRuntimeInitialized callback (i.e., it waits for all
-// necessary async events). It receives the instance as a parameter,
-// for convenience.
+// The Promise resolves when it is safe to run compiled code, similar to the
+// onRuntimeInitialized callback (i.e., it waits for all necessary async
+// events). Unlike the deprecated -s MODULARIZE=1, the instance is not
+// accessible at all until initialization is complete.
 //
 // Note that in MODULARIZE mode we do *not* look at the global `Module`
 // object, so if you define things there they will be ignored. The reason
@@ -918,13 +918,13 @@ var DETERMINISTIC = 0;
 // is constructed by the setup code.
 var MODULARIZE = 0;
 
-// Similar to MODULARIZE, but while that mode exports a function, with which you
-// can create multiple instances, this option exports a singleton instance. In
-// other words, it's the same as if you used MODULARIZE and did EXPORT_NAME =
-// EXPORT_NAME() to create the instance manually.
+// MODULARIZE_INSTANCE=2 is similar to MODULARIZE=2, but while that mode
+// exports a function, with which you can create multiple instances, this
+// option exports a singleton instance. In other words, it's the same as if you
+// used MODULARIZE=2 and did EXPORT_NAME = EXPORT_NAME() to create the instance
+// manually.
 //
-// Note that the promise-like API MODULARIZE provides isn't available here
-// (since you aren't creating the instance yourself).
+// The deprecated MODULARIZE_INSTANCE=1 is the same but with MODULARIZE=1.
 var MODULARIZE_INSTANCE = 0;
 
 // If we separate out asm.js with the --separate-asm option,
