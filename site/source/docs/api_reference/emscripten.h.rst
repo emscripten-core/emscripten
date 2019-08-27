@@ -502,6 +502,10 @@ Functions
 
   Sets the window title.
 
+.. c:function:: void emscripten_get_screen_size(int *width, int *height)
+
+  Returns the width and height of the screen.
+
 .. c:function:: void emscripten_hide_mouse(void)
 
   Hide the OS mouse cursor over the canvas.
