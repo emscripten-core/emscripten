@@ -653,10 +653,16 @@ class TestCoreBase(RunnerCore):
   def test_rounding(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    for precise_f32 in [0, 1]:
+    for precise_f32 in [1, 0]:
       print(precise_f32)
+      if precise_f32:
+        node_version = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
+        node_version = node_version.lstrip('v')
+        node_version = [int(v) for v in node_version.split('.')[:2]]
+        if node_version >= [8, 12] and node_version < [12, 0]:
+          print('test triggers crash in certain versions of node')
+          continue
       self.set_setting('PRECISE_F32', precise_f32)
-
       self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
   def test_fcvt(self):
