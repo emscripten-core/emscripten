@@ -204,10 +204,12 @@ function JSify(data, functionsOnly) {
             return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
           } else {
             // The JS stubs are still generated for asm.js because we are not loading the asm.js code dynamically
-            if (WASM) 
+            if (WASM) {
               Functions.sideFunctions[finalName] = 1;  
-            else
+            }
+            else {
               LibraryManager.library[ident] = new Function(functionBody);
+            }  
           }
           noExport = true;
         }
@@ -322,8 +324,9 @@ function JSify(data, functionsOnly) {
         noExport = true; // if it needs to be exported, that will happen in emscripten.py
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
-      // we also export library methods as necessary.
-      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
+      // we also export library methods as necessary. Do not add the function to the Module
+      // if it does not exist in the first place.
+      if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport && contentText) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
       if (!LibraryManager.library[ident + '__asm']) {
