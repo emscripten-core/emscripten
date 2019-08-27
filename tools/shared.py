@@ -459,21 +459,25 @@ def check_llvm():
   return True
 
 
-EXPECTED_NODE_VERSION = (4, 1, 1)
+EXPECTED_NODE_VERSION = [8, 10]
 
 
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
-    actual = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
-    version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
-    if version >= EXPECTED_NODE_VERSION:
-      return True
-    logger.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
-    return False
+    output = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
   except Exception as e:
-    logger.warning('cannot check node version: %s', e)
+    logger.warning('error running node (%s) to check node version: %s', NODE_JS, e)
     return False
+
+  # Only check for major and minor version
+  version = [int(v) for v in output.lstrip('v').split('.')[:2]]
+  if version <= EXPECTED_NODE_VERSION:
+    expected = 'v' + '.'.join(str(v) for v in EXPECTED_NODE_VERSION)
+    logger.warning('node version (%s) appears too old (seeing "%s", required "%s")' % (NODE_JS, output, expected))
+    return False
+
+  return True
 
 
 def check_closure_compiler():
@@ -576,7 +580,7 @@ def check_sanity(force=False):
         force = False
 
     # some warning, mostly not fatal checks - do them even if EM_IGNORE_SANITY is on
-    check_node_version()
+    node_ok = check_node_version()
 
     llvm_ok = check_llvm()
 
@@ -584,8 +588,8 @@ def check_sanity(force=False):
       logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
       return
 
-    if not llvm_ok:
-      exit_with_error('failing sanity checks due to previous llvm failure')
+    if not llvm_ok or not node_ok:
+      exit_with_error('exiting due to sanity check failures (use EM_IGNORE_SANITY to ignore)')
 
     perform_sanify_checks()
 
