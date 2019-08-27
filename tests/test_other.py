@@ -97,7 +97,7 @@ def is_python3_version_supported():
     # ignore final component which can contains non-integers (e.g 'rc1')
     version = [int(x) for x in output.split('.')[:2]]
     return version >= [3, 5]
-  except:
+  except Exception:
     # If anything goes wrong (no python3, unexpected output format), then we do
     # not support this python3
     return False
