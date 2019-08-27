@@ -25,6 +25,8 @@ var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer 
 var DYNAMICTOP_PTR = 0;
 var DYNAMIC_BASE = 0;
 
+var noExitRuntime;
+
 var PthreadWorkerInit = {};
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
@@ -284,7 +286,7 @@ this.onmessage = function(e) {
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
       // (This is a no-op if explicit pthread_exit() had been called prior.)
-      if (!Module['noExitRuntime']) PThread.threadExit(result);
+      if (!noExitRuntime) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
         PThread.threadCancel();

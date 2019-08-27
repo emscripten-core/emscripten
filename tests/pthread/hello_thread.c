@@ -21,5 +21,5 @@ int main()
 {
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
-	EM_ASM(Module['noExitRuntime']=true);
+	EM_ASM(noExitRuntime=true);
 }

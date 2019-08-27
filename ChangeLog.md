@@ -18,6 +18,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
+   instead of `Module.noExitRuntime`.
  - Module.abort is no longer exported by default. It can be exported in the normal
    way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
    the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
