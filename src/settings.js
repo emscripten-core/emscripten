@@ -813,7 +813,11 @@ var LINKABLE = 0;
 //   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
+//   * STRICT_JS is enabled
 var STRICT = 0;
+
+// Add "use strict;" to generated JS
+var STRICT_JS = 0;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
 // the library_*.js files. Note that it is common in large projects to not
@@ -936,6 +940,11 @@ var SEPARATE_ASM_MODULE_NAME = '';
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports.
 var EXPORT_ES6 = 0;
+
+// Use the ES6 Module relative import feature 'import.meta.url'
+// to auto-detect WASM Module path.
+// It might not be supported on old browsers / toolchains
+var USE_ES6_IMPORT_META = 1;
 
 // If 1, will just time how long main() takes to execute, and not print out
 // anything at all whatsoever. This is useful for benchmarking.
@@ -1540,6 +1549,13 @@ var AUTODEBUG = 0;
 // wasm backend is in use with WASM=0 (to enable non-wasm output, we compile to
 // wasm normally, then compile that to JS).
 var WASM2JS = 0;
+
+// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets you
+// run wasm2js *later* on the wasm, and you can pick between running the normal
+// wasm or that wasm2js code. For details of how to do that, see the test_maybe_wasm2js
+// test.
+// This option can be useful for debugging and bisecting.
+var MAYBE_WASM2JS = 0;
 
 // Whether we should link in the runtime for ubsan.
 // 0 means do not link ubsan, 1 means link minimal ubsan runtime.

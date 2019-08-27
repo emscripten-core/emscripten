@@ -846,6 +846,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(value.split('\n'), string.split('\n'), fromfile='expected', tofile='actual')]))
       ))
 
+  def assertContainedIf(self, value, string, condition):
+    if condition:
+      self.assertContained(value, string)
+    else:
+      self.assertNotContained(value, string)
+
   library_cache = {}
 
   def get_build_dir(self):

@@ -80,6 +80,11 @@ static void InitializeFlags() {
   parser.ParseString(GetEnv("LSAN_OPTIONS"));
 #endif // SANITIZER_EMSCRIPTEN
 
+#if SANITIZER_EMSCRIPTEN
+  if (common_flags()->malloc_context_size <= 1)
+    StackTrace::snapshot_stack = false;
+#endif // SANITIZER_EMSCRIPTEN
+
   SetVerbosity(common_flags()->verbosity);
 
   if (Verbosity()) ReportUnrecognizedFlags();

@@ -14,9 +14,16 @@ out = err = function(){};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
+{{{ makeModuleReceiveWithVar('noExitRuntime') }}}
 
-#if WASM2JS
+#if MAYBE_WASM2JS && !WASM2JS
+if (Module['doWasm2JS']) {
+#endif
+#if MAYBE_WASM2JS
 #include "wasm2js.js"
+#endif
+#if MAYBE_WASM2JS && !WASM2JS
+}
 #endif
 
 #if WASM
@@ -129,15 +136,30 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
-#else // EMTERPRETIFY_ASYNC
-#if ASSERTIONS
-  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
 #endif
-#endif // EMTERPRETIFY_ASYNC
+#if ASYNCIFY && WASM_BACKEND
+  if (typeof Asyncify === 'object' && Asyncify.currData) {
+    // The WASM function ran asynchronous and unwound its stack.
+    // We need to return a Promise that resolves the return value
+    // once the stack is rewound and execution finishes.
+#if ASSERTIONS
+    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    // Once the asyncFinalizers are called, asyncFinalizers gets reset to [].
+    // If they are not empty, then another async ccall is in-flight and not finished.
+    assert(Asyncify.asyncFinalizers.length === 0, 'Cannot have multiple async ccalls in flight at once');
+#endif
+    return new Promise(function(resolve) {
+      Asyncify.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
+      });
+    });
+  }
+#endif
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC
+#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -297,15 +319,16 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
-function updateGlobalBufferViews() {
-  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+function updateGlobalBufferAndViews(buf) {
+  buffer = buf;
+  Module['HEAP8'] = HEAP8 = new Int8Array(buf);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buf);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buf);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
 #if USE_PTHREADS
@@ -448,7 +471,7 @@ assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
 assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif
-updateGlobalBufferViews();
+updateGlobalBufferAndViews(buffer);
 
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
@@ -891,7 +914,7 @@ var wasmOffsetConverter;
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm(env) {
-#if WASM2JS || AUTODEBUG
+#if MAYBE_WASM2JS || AUTODEBUG
   // wasm2js legalization of i64 support code may require these
   // autodebug may also need them
   env['setTempRet0'] = setTempRet0;

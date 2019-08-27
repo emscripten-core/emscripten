@@ -110,7 +110,7 @@ void *mymain(void*)
 int main()
 {
 #ifdef TEST_CHAINED_WEBGL_CONTEXT_PASSING
-  EM_ASM(Module['noExitRuntime'] = true;);
+  EM_ASM(noExitRuntime = true;);
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 #ifndef TRANSFER_TO_CHAINED_THREAD_FROM_MAIN_THREAD
