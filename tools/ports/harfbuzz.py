@@ -39,7 +39,7 @@ def get(ports, settings, shared):
       '-DFREETYPE_LIBRARY=' + freetype_lib,
       '-DHB_HAVE_FREETYPE=ON'
     ])
-    shared.Building.make(['make', '-C' + dest_path, 'install'])
+    shared.Building.make(['make', '-j%d' % shared.Building.get_num_cores(), '-C' + dest_path, 'install'])
     return os.path.join(dest_path, 'libharfbuzz.a')
 
   return [shared.Cache.get('libharfbuzz.a', create, what='port')]

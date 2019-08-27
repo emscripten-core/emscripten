@@ -1661,12 +1661,11 @@ class Building(object):
     # On Windows, run the execution through shell to get PATH expansion and
     # executable extension lookup, e.g. 'sdl2-config' will match with
     # 'sdl2-config.bat' in PATH.
-    if EM_BUILD_VERBOSE >= 3:
-      print('make: ' + str(args), file=sys.stderr)
     if EM_BUILD_VERBOSE >= 2:
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
+    print('make: ' + str(args), file=sys.stderr)
     run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
 
   @staticmethod
@@ -1811,10 +1810,6 @@ class Building(object):
     # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
     #   cmd.append('--strip-debug')
 
-    export_all = False
-    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
-      export_all = True
-
     if Settings.RELOCATABLE:
       if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
         cmd.append('--no-export-dynamic')
@@ -1822,17 +1817,17 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
-    if export_all:
+    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
       cmd.append('--export-all')
-    else:
-      cmd += [
-        '--export',
-        '__wasm_call_ctors',
-        '--export',
-        '__data_end'
-      ]
-      for export in Settings.EXPORTED_FUNCTIONS:
-        cmd += ['--export', export[1:]] # Strip the leading underscore
+
+    cmd += [
+      '--export',
+      '__wasm_call_ctors',
+      '--export',
+      '__data_end'
+    ]
+    for export in Settings.EXPORTED_FUNCTIONS:
+      cmd += ['--export', export[1:]] # Strip the leading underscore
 
     if Settings.RELOCATABLE:
       if Settings.SIDE_MODULE:
@@ -3180,6 +3175,7 @@ def safe_move(src, dst):
     return
   if dst == '/dev/null':
     return
+  logging.debug('move: %s -> %s', src, dst)
   shutil.move(src, dst)
 
 

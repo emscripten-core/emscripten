@@ -165,6 +165,11 @@ void InitializeFlags() {
   // TODO(eugenis): dump all flags at verbosity>=2?
   if (Verbosity()) ReportUnrecognizedFlags();
 
+#if SANITIZER_EMSCRIPTEN
+  if (common_flags()->malloc_context_size <= 1)
+    StackTrace::snapshot_stack = false;
+#endif // SANITIZER_EMSCRIPTEN
+
   if (common_flags()->help) {
     // TODO(samsonov): print all of the flags (ASan, LSan, common).
     asan_parser.PrintFlagDescriptions();
