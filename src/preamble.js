@@ -129,7 +129,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
-#else // EMTERPRETIFY_ASYNC
+#endif
+#if ASYNCIFY && WASM_BACKEND
   if (typeof Asyncify === 'object' && Asyncify.currData) {
     // The WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
@@ -147,11 +148,11 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
-#endif // EMTERPRETIFY_ASYNC
+#endif
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC || ASYNCIFY
+#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
