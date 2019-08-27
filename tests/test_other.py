@@ -90,14 +90,17 @@ def is_python3_version_supported():
 
   Note: Emscripten requires python3.5 or above since python3.4 and below do not
   support circular dependencies."""
-  python3 = Building.which('python3')
-  if not python3:
+  try:
+    python3 = Building.which('python3')
+    output = run_process([python3, '--version'], stdout=PIPE).stdout
+    output = output.split(' ')[1]
+    # ignore final component which can contains non-integers (e.g 'rc1')
+    version = [int(x) for x in output.split('.')[:2]]
+    return version >= [3, 5]
+  except:
+    # If anything goes wrong (no python3, unexpected output format), then we do
+    # not support this python3
     return False
-  output = run_process([python3, '--version'], stdout=PIPE).stdout
-  output = output.split()[1]
-  # ignore final component which can contains non-integers (e.g 'rc1')
-  version = [int(x) for x in output.split('.')[:2]]
-  return version >= [3, 5]
 
 
 def encode_leb(number):
