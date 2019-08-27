@@ -14,9 +14,71 @@ var LibraryPThread = {
     },
     // Since creating a new Web Worker is so heavy (it must reload the whole compiled script page!), maintain a pool of such
     // workers that have already parsed and loaded the scripts.
-    unusedWorkerPool: [],
-    // The currently executing pthreads.
-    runningWorkers: [],
+    workerPool: (function() {
+      function Pool() {
+        // private
+        this._unusedWorkers = [];
+        this._runningWorkers = []; // workers that are currently executing pthreads
+      }
+      Pool.prototype = {
+        'pushUnused': function(worker) {
+#if ASSERTIONS
+          if (worker.pthread) throw 'Internal error! Unused workers cannot have an associated pthread';
+#endif
+          this._unusedWorkers.push(worker);
+        },
+
+        'pushRunning': function(worker) {
+#if ASSERTIONS
+          if (!worker.pthread) throw 'Internal error! Running workers must have an associated pthread';
+          if (this._unusedWorkers.indexOf(worker) >= 0) throw 'Internal error: Cannot mark a worker as running while it\'s still in the unused pool';
+#endif
+          this._runningWorkers.push(worker);
+        },
+
+        'hasUnused': function() {
+          return this._unusedWorkers.length > 0;
+        },
+
+        'popUnused': function() {
+          return this._unusedWorkers.length ? this._unusedWorkers.pop() : null;
+        },
+
+        'markUnused': function(worker) {
+          this._removeRunning(worker);
+          this.pushUnused(worker);
+        },
+
+        'terminateAll': function() {
+          this._runningWorkers.forEach(function(w) {
+            w.terminate();
+          });
+          this._unusedWorkers.forEach(function(w) {
+            w.terminate();
+          });
+          this._runningWorkers.length = 0;
+          this._unusedWorkers.length = 0;
+        },
+
+        'terminateRunning': function(worker) {
+          worker.terminate();
+          // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
+          // but don't put it back to the pool.
+          this._removeRunning(worker);
+        },
+
+        // private
+        '_removeRunning': function(worker) {
+          var index = this._runningWorkers.indexOf(worker);
+#if ASSERTIONS
+          if (index < 0) throw 'Internal error! Worker to be removed was not found in the collection of running workers';
+#endif
+          this._runningWorkers.splice(index, 1);
+        }
+      };
+      return new Pool();
+    })(),
+
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
     initRuntime: function() {
@@ -181,30 +243,12 @@ var LibraryPThread = {
     },
 
     terminateAllThreads: function() {
+      PThread.workerPool.terminateAll();
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
+        if (pthread) PThread.freeThreadData(pthread);
       }
       PThread.pthreads = {};
-      for (var t in PThread.unusedWorkerPool) {
-        var pthread = PThread.unusedWorkerPool[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
-      }
-      PThread.unusedWorkerPool = [];
-      for (var t in PThread.runningWorkers) {
-        var pthread = PThread.runningWorkers[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
-      }
-      PThread.runningWorkers = [];
     },
     freeThreadData: function(pthread) {
       if (!pthread) return;
@@ -217,15 +261,14 @@ var LibraryPThread = {
       pthread.threadInfoStruct = 0;
       if (pthread.allocatedOwnStack && pthread.stackBase) _free(pthread.stackBase);
       pthread.stackBase = 0;
-      if (pthread.worker) pthread.worker.pthread = null;
+      if (pthread.worker) delete pthread.worker.pthread; // detach by making worker.pthread undefined
     },
     returnWorkerToPool: function(worker) {
       delete PThread.pthreads[worker.pthread.thread];
-      //Note: worker is intentionally not terminated so the pool can dynamically grow.
-      PThread.unusedWorkerPool.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore
       PThread.freeThreadData(worker.pthread);
-      worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
+      // Worker is detached from the pthread object in freeThreadData. Return it to the worker pool as an unused worker.
+      // Note: worker is intentionally not terminated so the pool can dynamically grow.
+      PThread.workerPool.markUnused(worker);
     },
     receiveObjectTransfer: function(data) {
 #if OFFSCREENCANVAS_SUPPORT
@@ -372,14 +415,13 @@ var LibraryPThread = {
           DYNAMICTOP_PTR: DYNAMICTOP_PTR,
           PthreadWorkerInit: PthreadWorkerInit
         });
-        PThread.unusedWorkerPool.push(worker);
+        PThread.workerPool.pushUnused(worker);
       }
     },
 
     getNewWorker: function() {
-      if (PThread.unusedWorkerPool.length == 0) PThread.allocateUnusedWorkers(1);
-      if (PThread.unusedWorkerPool.length > 0) return PThread.unusedWorkerPool.pop();
-      else return null;
+      if (!PThread.workerPool.hasUnused()) PThread.allocateUnusedWorkers(1);
+      return PThread.workerPool.popUnused();
     },
 
     busySpinWait: function(msecs) {
@@ -395,12 +437,8 @@ var LibraryPThread = {
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _kill_thread!';
     {{{ makeSetValue('pthread_ptr', C_STRUCTS.pthread.self, 0, 'i32') }}};
     var pthread = PThread.pthreads[pthread_ptr];
-    pthread.worker.terminate();
+    PThread.workerPool.terminateRunning(pthread.worker);
     PThread.freeThreadData(pthread);
-    // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
-    // but don't put it back to the pool.
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker.pthread), 1); // Not a running Worker anymore.
-    pthread.worker.pthread = undefined;
   },
 
   _cleanup_thread: function(pthread_ptr) {
@@ -425,52 +463,63 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main application thread!';
 
     var worker = PThread.getNewWorker();
-    if (worker.pthread !== undefined) throw 'Internal error!';
-    if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
-    PThread.runningWorkers.push(worker);
+    // Worker has been removed from the unused pool, but if the code below throws before it's added to the running pool
+    // it'll be left unaccounted for, so we should protect against that.
+    // Also we don't want to mark a worker as running until it has an associated pthread.
+    var pthread = null;
+    try {
+      if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
 
-    // Allocate memory for thread-local storage and initialize it to zero.
-    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
-      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
-    }
+      // Allocate memory for thread-local storage and initialize it to zero.
+      var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
+      for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
+        {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
+      }
 
-    var stackHigh = threadParams.stackBase + threadParams.stackSize;
+      var stackHigh = threadParams.stackBase + threadParams.stackSize;
 
-    var pthread = PThread.pthreads[threadParams.pthread_ptr] = { // Create a pthread info object to represent this thread.
-      worker: worker,
-      stackBase: threadParams.stackBase,
-      stackSize: threadParams.stackSize,
-      allocatedOwnStack: threadParams.allocatedOwnStack,
-      thread: threadParams.pthread_ptr,
-      threadInfoStruct: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
-    };
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0); // profilerBlock <- 0.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, pthread.threadInfoStruct); // Main thread ID.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
+      pthread = PThread.pthreads[threadParams.pthread_ptr] = { // Create a pthread info object to represent this thread.
+        worker: worker,
+        stackBase: threadParams.stackBase,
+        stackSize: threadParams.stackSize,
+        allocatedOwnStack: threadParams.allocatedOwnStack,
+        thread: threadParams.pthread_ptr,
+        threadInfoStruct: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
+      };
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0); // profilerBlock <- 0.
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, pthread.threadInfoStruct); // Main thread ID.
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
 
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.stack_size }}}) >> 2, threadParams.stackSize);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.stack }}}) >> 2, stackHigh);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, stackHigh);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.stack_size }}}) >> 2, threadParams.stackSize);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.stack }}}) >> 2, stackHigh);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, stackHigh);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
 
-    var global_libc = _emscripten_get_global_libc();
-    var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, global_locale);
+      var global_libc = _emscripten_get_global_libc();
+      var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
+      Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, global_locale);
 
 #if PTHREADS_PROFILING
-    PThread.createProfilerBlock(pthread.threadInfoStruct);
+      PThread.createProfilerBlock(pthread.threadInfoStruct);
 #endif
-
+    }
+    catch(e) {
+      // prevent worker dangling
+      if (pthread) delete pthread.worker;
+      PThread.workerPool.pushUnused(worker);
+      throw e;
+    }
     worker.pthread = pthread;
+    PThread.workerPool.pushRunning(worker);
+
     var msg = {
         cmd: 'run',
         start_routine: threadParams.startRoutine,
