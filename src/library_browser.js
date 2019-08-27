@@ -1381,6 +1381,12 @@ var LibraryBrowser = {
     exit(status);
   },
 
+  emscripten_set_window_title__proxy: 'sync',
+  emscripten_set_window_title__sig: 'vi',
+  emscripten_set_window_title: function(title) {
+    setWindowTitle(AsciiToString(title));
+  },
+
   emscripten_hide_mouse__proxy: 'sync',
   emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
