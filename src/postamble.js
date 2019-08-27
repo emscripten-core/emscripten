@@ -159,9 +159,6 @@ if (typeof Promise !== 'undefined') {
     };
   });
 }
-#else
-// XXX: How to deprecate this properly?
-err('-s MODULARIZE=1 is deprecated. Use -s MODULARIZE=2 instead.');
 #endif
 
 /**

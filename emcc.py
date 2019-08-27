@@ -2409,7 +2409,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                     optimizer)
 
       if shared.Settings.MODULARIZE:
-        modularize(shared.Settings.MODULARIZE)
+        if shared.Settings.MODULARIZE == 1:
+          logger.warn('MODULARIZE=1 is deprecated. Use MODULARIZE=2 instead.')
+        modularize(export_promise=shared.Settings.MODULARIZE == 2)
 
       module_export_name_substitution()
 
@@ -3015,7 +3017,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       f.write(js)
 
 
-def modularize(mode):
+def modularize(export_promise):
   global final
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
@@ -3023,13 +3025,9 @@ def modularize(mode):
   # TODO: exports object generation for MINIMAL_RUNTIME
   exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME else shared.Settings.EXPORT_NAME
 
-  if mode is 1:
-    # Deprecated.
-    return_value = exports_object
-  elif mode is 2:
+  return_value = exports_object
+  if export_promise:
     return_value = exports_object + '.ready'
-  else:
-    assert False, 'MODULARIZE must be 1 or 2'
 
   src = '''
 function(%(EXPORT_NAME)s) {

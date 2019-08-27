@@ -857,8 +857,8 @@ var HEADLESS = 0;
 var DETERMINISTIC = 0;
 
 // By default we emit all code in a straightforward way into the output
-// .js file. That means that if you load that in a script tag in a web
-// page, it will use the global scope. With MODULARIZE=2 set, we will instead emit
+// .js file. That means that if you load that in a script tag in a web page,
+// it will use the global scope. With MODULARIZE=2 set, we will instead emit
 //
 //   var EXPORT_NAME = function(Module) {
 //     Module = Module || {};
@@ -867,16 +867,28 @@ var DETERMINISTIC = 0;
 //   };
 //
 // where EXPORT_NAME is from the option of the same name (so, by default
-// it will be var Module = ..., and so you should change EXPORT_NAME if
-// you want more than one module in the same web page).
+// it will be var Module = ..., and so you should change EXPORT_NAME or use
+// EXPORT_ES6=1 if you want more than one module in the same web page).
+//
+// MODULARIZE=2 encapsulates the module in a Promise, which resolves when it is
+// safe to run compiled code, similar to the onRuntimeInitialized callback
+// (i.e. it waits for all necessary async events). Unlike the deprecated
+// MODULARIZE=1, the instance is not accessible at all until initialization is
+// complete.
 //
 // You can then use this by something like
 //
-//   var instance = await EXPORT_NAME();
+//   const instance = await EXPORT_NAME();
 //
 // or
 //
-//   var instance = await EXPORT_NAME({ option: value, ... });
+//   const instance = await EXPORT_NAME({ option: value, ... });
+//
+// or
+//
+//   EXPORT_NAME().then(function(instance) {
+//     /* ... */
+//   });
 //
 // Note the parentheses - we are calling EXPORT_NAME in order to instantiate
 // the module. (This allows, in particular, for you to create multiple
@@ -899,15 +911,6 @@ var DETERMINISTIC = 0;
 // non-modularize mode, their big feature is that they add code to be
 // optimized with the rest of the emitted code, allowing better dead code
 // elimination and minification.)
-//
-// MODULARIZE=2 encapsulates the module in a Promise:
-//
-//   var instance = await EXPORT_NAME();
-//
-// The Promise resolves when it is safe to run compiled code, similar to the
-// onRuntimeInitialized callback (i.e., it waits for all necessary async
-// events). Unlike the deprecated -s MODULARIZE=1, the instance is not
-// accessible at all until initialization is complete.
 //
 // Note that in MODULARIZE mode we do *not* look at the global `Module`
 // object, so if you define things there they will be ignored. The reason
