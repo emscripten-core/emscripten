@@ -466,15 +466,15 @@ def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
     output = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
+    # Only check for major and minor version
+    version = [int(v) for v in output.lstrip('v').split('.')[:2]]
   except Exception as e:
     logger.warning('error running node (%s) to check node version: %s', NODE_JS, e)
     return False
 
-  # Only check for major and minor version
-  version = [int(v) for v in output.lstrip('v').split('.')[:2]]
-  if version <= EXPECTED_NODE_VERSION:
+  if version < EXPECTED_NODE_VERSION:
     expected = 'v' + '.'.join(str(v) for v in EXPECTED_NODE_VERSION)
-    logger.warning('node version (%s) appears too old (seeing "%s", required "%s")' % (NODE_JS, output, expected))
+    logger.warning('node version appears too old (seeing "%s", required "%s"): %s' % (output, expected, NODE_JS))
     return False
 
   return True
