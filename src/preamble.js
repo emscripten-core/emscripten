@@ -988,7 +988,7 @@ var proxyHandler = {
     // use the original name.
     var funcName = prop;
     if (Module["mapping"] && Module["mapping"][prop]) {
-      funcName = prop;
+      Module["mapping"][prop];
     }
     
     // For a missing property generate a stub that will do a runtime lookup and error out if its still missing
