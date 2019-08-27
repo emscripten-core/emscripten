@@ -1155,13 +1155,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
-    if shared.Settings.MODULARIZE_INSTANCE is 1:
+    if shared.Settings.MODULARIZE_INSTANCE == 1:
       shared.Settings.MODULARIZE = 1
-    elif shared.Settings.MODULARIZE_INSTANCE is 2:
+    elif shared.Settings.MODULARIZE_INSTANCE == 2:
       shared.Settings.MODULARIZE = 2
 
     if shared.Settings.MODULARIZE:
-      assert not options.proxy_to_worker, 'MODULARIZE and MODULARIZE_INSTANCE are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      assert not options.proxy_to_worker, '-s MODULARIZE=* and -s MODULARIZE_INSTANCE=* are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=*, you likely want to do the worker side setup manually)'
       # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
       # it is expected to be used.
       shared.Settings.INCOMING_MODULE_JS_API += ['onRuntimeInitialized']
@@ -1417,7 +1417,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.SEPARATE_ASM_MODULE_NAME = 'var ' + shared.Settings.EXPORT_NAME
 
     if shared.Settings.MODULARIZE and shared.Settings.SEPARATE_ASM and not shared.Settings.WASM and not shared.Settings.SEPARATE_ASM_MODULE_NAME:
-      exit_with_error('Targeting asm.js with --separate-asm and -s MODULARIZE=1 requires specifying the target variable name to which the asm.js module is loaded into. See https://github.com/emscripten-core/emscripten/pull/7949 for details')
+      exit_with_error('Targeting asm.js with --separate-asm and -s MODULARIZE=* requires specifying the target variable name to which the asm.js module is loaded into. See https://github.com/emscripten-core/emscripten/pull/7949 for details')
     # Apply default option if no custom name is provided
     if not shared.Settings.SEPARATE_ASM_MODULE_NAME:
       shared.Settings.SEPARATE_ASM_MODULE_NAME = 'Module["asm"]'
@@ -1448,7 +1448,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MODULARIZE and not shared.Settings.MODULARIZE_INSTANCE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
-      exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
+      exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=* -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
     if shared.Settings.WASM:
       if shared.Settings.SINGLE_FILE:
@@ -2410,7 +2410,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.MODULARIZE:
         if shared.Settings.MODULARIZE == 1:
-          logger.warn('MODULARIZE=1 is deprecated. Use MODULARIZE=2 instead.')
+          logger.warn('-s MODULARIZE=1 is deprecated. Use -s MODULARIZE=2 instead.')
         modularize(export_promise=shared.Settings.MODULARIZE == 2)
 
       module_export_name_substitution()
@@ -3024,7 +3024,7 @@ def modularize(export_promise):
 
   if export_promise:
     assert 'onRuntimeInitialized' in shared.Settings.INCOMING_MODULE_JS_API
-    assert not shared.Settings.MINIMAL_RUNTIME, 'MINIMAL_RUNTIME cannot be used with MODULARIZE=2'
+    assert not shared.Settings.MINIMAL_RUNTIME, '-s MINIMAL_RUNTIME=1 cannot be used with -s MODULARIZE=2'
     return_value = '''new Promise(function(resolve) {
     var old = %(exports_object)s.onRuntimeInitialized;
     %(exports_object)s.onRuntimeInitialized = function() {
