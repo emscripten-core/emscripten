@@ -7299,7 +7299,7 @@ int main() {
 
     self.do_run(src, 'HelloWorld!99')
 
-    if emterpretify:
+    if self.is_wasm_backend() or emterpretify:
       print('check bad ccall use')
       src = r'''
 #include <stdio.h>
