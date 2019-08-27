@@ -1161,7 +1161,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MODULARIZE = 2
 
     if shared.Settings.MODULARIZE:
-      assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
+      assert not options.proxy_to_worker, 'MODULARIZE and MODULARIZE_INSTANCE are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
       # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
       # it is expected to be used.
       shared.Settings.INCOMING_MODULE_JS_API += ['onRuntimeInitialized']
@@ -3022,12 +3022,19 @@ def modularize(export_promise):
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
-  # TODO: exports object generation for MINIMAL_RUNTIME
-  exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME else shared.Settings.EXPORT_NAME
-
-  return_value = exports_object
   if export_promise:
-    return_value = exports_object + '.ready'
+    assert 'onRuntimeInitialized' in shared.Settings.INCOMING_MODULE_JS_API
+    assert not shared.Settings.MINIMAL_RUNTIME, 'MINIMAL_RUNTIME cannot be used with MODULARIZE=2'
+    return_value = '''new Promise(function(resolve) {
+    var old = %(exports_object)s.onRuntimeInitialized;
+    %(exports_object)s.onRuntimeInitialized = function() {
+      if (old) old();
+      resolve(%(exports_object)s);
+    };
+  })''' % { 'exports_object': shared.Settings.EXPORT_NAME }
+  else:
+    # TODO: exports object generation for MINIMAL_RUNTIME
+    return_value = '{}' if shared.Settings.MINIMAL_RUNTIME else shared.Settings.EXPORT_NAME
 
   src = '''
 function(%(EXPORT_NAME)s) {

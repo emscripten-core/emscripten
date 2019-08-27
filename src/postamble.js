@@ -146,21 +146,6 @@ Module['then'] = function(func) {
 #endif
 #endif
 
-#if MODULARIZE != 1
-if (typeof Promise !== 'undefined') {
-  Module['ready'] = new Promise(function(resolve) {
-#if ASSERTIONS && !expectToReceiveOnModule('onRuntimeInitialized')
-    abort('.ready requires adding onRuntimeInitialized to INCOMING_MODULE_JS_API');
-#endif
-    var old = Module['onRuntimeInitialized'];
-    Module['onRuntimeInitialized'] = function() {
-      if (old) old();
-      resolve(Module);
-    };
-  });
-}
-#endif
-
 /**
  * @constructor
  * @this {ExitStatus}
