@@ -343,6 +343,8 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_double_i64_conversion')
 
   def test_float32_precise(self):
+    if self.run_name == 'asm2i' and buggy_node_version():
+      self.skipTest('buggy node version')
     self.set_setting('PRECISE_F32', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_float32_precise')
 
@@ -5536,6 +5538,9 @@ int main(void) {
       self.emcc_args = old + extra_args
       for precision in [0, 1, 2]:
         self.set_setting('PRECISE_F32', precision)
+        if precision and self.run_name == 'asm2i' and buggy_node_version():
+          print('buggy node version')
+          continue
         for t in ['float', 'double']:
           print(precision, t)
           src = orig_src.replace('double', t)
