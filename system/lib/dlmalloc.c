@@ -1,7 +1,13 @@
 
 /* XXX Emscripten XXX */
 #if __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) && !defined(__asmjs__)
+// When building for wasm we export `malloc` and `emscripten_builtin_malloc` as
+// weak alias of the internal `dlmalloc` which is static to this file.
+#define DLMALLOC_EXPORT static
+#else
 #define DLMALLOC_EXPORT __attribute__((__weak__))
+#endif
 /* mmap uses malloc, so malloc can't use mmap */
 #define HAVE_MMAP 0
 /* we can only grow the heap up anyhow, so don't try to trim */
