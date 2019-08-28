@@ -5560,15 +5560,13 @@ int main(void) {
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark', assert_returncode=None)
 
   def test_dlmalloc(self):
-    self.set_setting('MALLOC', "dlmalloc")
-
     self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
     self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
-    self.do_run(src, '*1,0*', ['200', '1'])
-    self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
+    self.do_run(src, '*1,0*', ['200', '1'], force_c=True)
+    self.do_run(None, '*400,0*', ['400', '400'], force_c=True, no_build=True)
 
     # Linked version
     src = open(path_from_root('tests', 'dlmalloc_test.c')).read()
