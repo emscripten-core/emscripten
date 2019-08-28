@@ -18,12 +18,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Update minimum nodejs version from v4.1.1 for v8.10.0.
-   v8.10.0 is still very old but is the version included in the current ubuntu
-   LTS (https://packages.ubuntu.com/bionic/nodejs).
-   This version will allow us to use more modern JS features.
- - noExitRuntime is no longer a property on the Module object. Use
-   `noExitRuntime` instead of `Module.noExitRuntime`.
+ - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
+   instead of `Module.noExitRuntime`.
 
 v.1.38.42: 08/19/2019
 ----------------------
