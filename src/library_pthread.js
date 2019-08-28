@@ -12,10 +12,11 @@ var LibraryPThread = {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
-    // Since creating a new Web Worker is so heavy (it must reload the whole compiled script page!), maintain a pool of such
-    // workers that have already parsed and loaded the scripts.
-    unusedWorkerPool: [],
-    // The currently executing pthreads.
+    // Contains all Workers that are idle/unused and not currently hosting an executing pthread.
+    // Unused Workers can either be pooled up before page startup, but also when a pthread quits, its hosting
+    // Worker is not terminated, but is returned to this pool as an optimization so that starting the next thread is faster.
+    unusedWorkers: [],
+    // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
@@ -189,20 +190,24 @@ var LibraryPThread = {
         }
       }
       PThread.pthreads = {};
-      for (var t in PThread.unusedWorkerPool) {
-        var pthread = PThread.unusedWorkerPool[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
+
+      for (var t in PThread.unusedWorkers) {
+        var worker = PThread.unusedWorkers[t];
+#if ASSERTIONS
+        assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
+#endif
+        worker.terminate();
       }
-      PThread.unusedWorkerPool = [];
+      PThread.unusedWorkers = [];
+
       for (var t in PThread.runningWorkers) {
-        var pthread = PThread.runningWorkers[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
+        var worker = PThread.runningWorkers[t];
+        var pthread = worker.pthread;
+#if ASSERTIONS
+        assert(pthread); // This Worker should have a pthread it is executing
+#endif
+        PThread.freeThreadData(pthread);
+        worker.terminate();
       }
       PThread.runningWorkers = [];
     },
@@ -222,8 +227,8 @@ var LibraryPThread = {
     returnWorkerToPool: function(worker) {
       delete PThread.pthreads[worker.pthread.thread];
       //Note: worker is intentionally not terminated so the pool can dynamically grow.
-      PThread.unusedWorkerPool.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore
+      PThread.unusedWorkers.push(worker);
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
       PThread.freeThreadData(worker.pthread);
       worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
     },
@@ -372,13 +377,13 @@ var LibraryPThread = {
           DYNAMICTOP_PTR: DYNAMICTOP_PTR,
           PthreadWorkerInit: PthreadWorkerInit
         });
-        PThread.unusedWorkerPool.push(worker);
+        PThread.unusedWorkers.push(worker);
       }
     },
 
     getNewWorker: function() {
-      if (PThread.unusedWorkerPool.length == 0) PThread.allocateUnusedWorkers(1);
-      if (PThread.unusedWorkerPool.length > 0) return PThread.unusedWorkerPool.pop();
+      if (PThread.unusedWorkers.length == 0) PThread.allocateUnusedWorkers(1);
+      if (PThread.unusedWorkers.length > 0) return PThread.unusedWorkers.pop();
       else return null;
     },
 
@@ -399,7 +404,7 @@ var LibraryPThread = {
     PThread.freeThreadData(pthread);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker.pthread), 1); // Not a running Worker anymore.
+    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker), 1); // Not a running Worker anymore.
     pthread.worker.pthread = undefined;
   },
 
