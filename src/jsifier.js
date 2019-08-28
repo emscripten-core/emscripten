@@ -323,8 +323,7 @@ function JSify(data, functionsOnly) {
         noExport = true; // if it needs to be exported, that will happen in emscripten.py
       }
       // asm module exports are done in emscripten.py, after the asm module is ready. Here
-      // we also export library methods as necessary. Do not add the function to the Module
-      // if it does not exist in the first place.
+      // we also export library methods as necessary.
       if ((EXPORT_ALL || (finalName in EXPORTED_FUNCTIONS)) && !noExport) {
         contentText += '\nModule["' + finalName + '"] = ' + finalName + ';';
       }
