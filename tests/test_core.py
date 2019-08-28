@@ -153,6 +153,14 @@ def no_asan(note):
   return decorator
 
 
+def buggy_node_version():
+  """Certain version of node have a crash bug with EMTERPRETIFY and PRECISE_F32"""
+  node_version = run_process(NODE_JS + ['--version'], stdout=PIPE).stdout.strip()
+  node_version = node_version.lstrip('v')
+  node_version = [int(v) for v in node_version.split('.')[:2]]
+  return node_version >= [8, 12] and node_version < [12, 0]
+
+
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.is_wasm_backend() and not self.get_setting('WASM')
@@ -304,6 +312,8 @@ class TestCoreBase(RunnerCore):
 
   def test_llvm_fabs(self):
     self.set_setting('PRECISE_F32', 1)
+    if self.run_name == 'asm2i' and buggy_node_version():
+      self.skipTest('buggy node version')
     self.do_run_in_out_file_test('tests', 'core', 'test_llvm_fabs')
 
   def test_double_varargs(self):
@@ -333,6 +343,8 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_double_i64_conversion')
 
   def test_float32_precise(self):
+    if self.run_name == 'asm2i' and buggy_node_version():
+      self.skipTest('buggy node version')
     self.set_setting('PRECISE_F32', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_float32_precise')
 
@@ -653,10 +665,10 @@ class TestCoreBase(RunnerCore):
   def test_rounding(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
-    for precise_f32 in [0, 1]:
-      print(precise_f32)
+    for precise_f32 in [1, 0]:
+      if precise_f32 and self.run_name == 'asm2i' and buggy_node_version():
+        continue
       self.set_setting('PRECISE_F32', precise_f32)
-
       self.do_run_in_out_file_test('tests', 'core', 'test_rounding')
 
   def test_fcvt(self):
@@ -1464,6 +1476,8 @@ int main() {
     if self.is_emterpreter():
       print('emterpreter f32')
       self.set_setting('PRECISE_F32', 1)
+      if self.run_name == 'asm2i' and buggy_node_version():
+        self.skipTest('buggy node version')
       self.do_run_in_out_file_test('tests', 'core', 'test_mathfuncptr')
 
   def test_funcptrfunc(self):
@@ -5524,6 +5538,9 @@ int main(void) {
       self.emcc_args = old + extra_args
       for precision in [0, 1, 2]:
         self.set_setting('PRECISE_F32', precision)
+        if precision and self.run_name == 'asm2i' and buggy_node_version():
+          print('buggy node version')
+          continue
         for t in ['float', 'double']:
           print(precision, t)
           src = orig_src.replace('double', t)
@@ -5773,6 +5790,8 @@ return malloc(size);
 
     if self.is_emterpreter():
       self.set_setting('PRECISE_F32', 1)
+      if self.run_name == 'asm2i' and buggy_node_version():
+        self.skipTest('buggy node version')
 
     for aggro in ([0, 1] if self.get_setting('ASM_JS') and '-O2' in self.emcc_args else [0]):
       self.set_setting('AGGRESSIVE_VARIABLE_ELIMINATION', aggro)

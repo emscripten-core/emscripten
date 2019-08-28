@@ -334,7 +334,7 @@ class sanity(RunnerCore):
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
-    NODE_WARNING_2 = 'cannot check node version'
+    NODE_WARNING_2 = 'error running node'
 
     restore_and_set_up()
 
@@ -351,9 +351,9 @@ class sanity(RunnerCore):
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
-                               ('v4.1.0', False),
-                               ('v4.1.1', True),
-                               ('v4.2.3-pre', True),
+                               ('v8.7.0', False),
+                               ('v8.10.0', True),
+                               ('v8.10.3-pre', True),
                                ('cheez', False)]:
         print(version, succeed)
         f = open(path_from_root('tests', 'fake', 'nodejs'), 'w')
