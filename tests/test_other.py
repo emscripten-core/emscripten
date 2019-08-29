@@ -93,7 +93,7 @@ def is_python3_version_supported():
   try:
     python3 = Building.which('python3')
     output = run_process([python3, '--version'], stdout=PIPE).stdout
-    output = output.split(' ')[1]
+    output = output.split()[1]
     # ignore final component which can contains non-integers (e.g 'rc1')
     version = [int(x) for x in output.split('.')[:2]]
     return version >= [3, 5]
