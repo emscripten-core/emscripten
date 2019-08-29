@@ -1581,9 +1581,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         else:
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
+          passes += ['--post-emscripten']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
-          passes += ['--post-emscripten']
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
             passes += ['--low-memory-unused']
           if options.debug_level < 3:
