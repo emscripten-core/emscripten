@@ -556,7 +556,7 @@ def check_sanity(force=False):
       sanity_file += '_wasm'
     if os.path.exists(sanity_file):
       sanity_mtime = os.path.getmtime(sanity_file)
-      if sanity_mtime <= settings_mtime:
+      if sanity_mtime < settings_mtime:
         reason = 'settings file has changed'
       else:
         sanity_data = open(sanity_file).read().rstrip()
