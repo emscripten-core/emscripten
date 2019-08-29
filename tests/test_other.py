@@ -91,8 +91,11 @@ def is_python3_version_supported():
   Note: Emscripten requires python3.5 or above since python3.4 and below do not
   support circular dependencies."""
   try:
+    print('is_python3_version_supported')
     python3 = Building.which('python3')
+    print('  python3 =', python3)
     output = run_process([python3, '--version'], stdout=PIPE).stdout
+    print('  output =', output)
     output = output.split()[1]
     # ignore final component which can contains non-integers (e.g 'rc1')
     version = [int(x) for x in output.split('.')[:2]]
