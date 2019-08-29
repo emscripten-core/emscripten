@@ -1695,9 +1695,10 @@ namespace emscripten {
     class_<std::map<K, V>> register_map(const char* name) {
         typedef std::map<K,V> MapType;
 
+        size_t (MapType::*size)() const = &MapType::size;
         return class_<MapType>(name)
             .template constructor<>()
-            .function("size", &MapType::size)
+            .function("size", size)
             .function("get", internal::MapAccess<MapType>::get)
             .function("set", internal::MapAccess<MapType>::set)
             .function("keys", internal::MapAccess<MapType>::keys)
