@@ -586,8 +586,11 @@ mergeInto(LibraryManager.library, {
                 return original.apply(null, arguments);
               } finally {
                 // Only functions in the list of known relevant imports are allowed to change the state.
+                // Note that invoke_* functions are allowed to change the state if we do not ignore
+                // indirect calls.
                 if (Asyncify.state !== originalAsyncifyState &&
-                    ASYNCIFY_IMPORTS.indexOf(x) < 0) {
+                    ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
+                    !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
                   throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
                 }
               }
