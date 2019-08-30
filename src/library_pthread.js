@@ -191,8 +191,8 @@ var LibraryPThread = {
       }
       PThread.pthreads = {};
 
-      for (var t in PThread.unusedWorkers) {
-        var worker = PThread.unusedWorkers[t];
+      for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
+        var worker = PThread.unusedWorkers[i];
 #if ASSERTIONS
         assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
 #endif
@@ -200,8 +200,8 @@ var LibraryPThread = {
       }
       PThread.unusedWorkers = [];
 
-      for (var t in PThread.runningWorkers) {
-        var worker = PThread.runningWorkers[t];
+      for (var i = 0; i < PThread.runningWorkers.length; ++i) {
+        var worker = PThread.runningWorkers[i];
         var pthread = worker.pthread;
 #if ASSERTIONS
         assert(pthread); // This Worker should have a pthread it is executing
