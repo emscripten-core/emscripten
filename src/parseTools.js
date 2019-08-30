@@ -1615,7 +1615,7 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { writable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
 }
 
 // Make code to receive a value on the incoming Module object.
