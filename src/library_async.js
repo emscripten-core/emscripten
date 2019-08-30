@@ -573,6 +573,30 @@ mergeInto(LibraryManager.library, {
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
 
+#if ASSERTIONS
+    instrumentWasmImports: function(imports) {
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}};
+      for (var x in imports) {
+        (function(x) {
+          var original = imports[x];
+          if (typeof original === 'function') {
+            imports[x] = function() {
+              var originalAsyncifyState = Asyncify.state;
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                // Only functions in the list of known relevant imports are allowed to change the state.
+                if (Asyncify.state !== originalAsyncifyState &&
+                    ASYNCIFY_IMPORTS.indexOf(x) < 0) {
+                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                }
+              }
+            }
+          }
+        })(x);
+      }
+    },
+
     instrumentWasmExports: function(exports) {
       var ret = {};
       for (var x in exports) {
@@ -616,6 +640,7 @@ mergeInto(LibraryManager.library, {
       }
       return ret;
     },
+#endif
 
     allocateData: function() {
       // An asyncify data structure has two fields: the

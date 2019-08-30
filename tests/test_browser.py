@@ -3313,6 +3313,7 @@ window.close = function() {
     'normal': (['-s', 'ASYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
+    'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
   })
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
