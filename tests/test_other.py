@@ -3579,7 +3579,7 @@ int main() {
       ]:
       print(name, args)
       self.clear()
-      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args)
+      run_process([PYTHON, EMCC, path_from_root('lib', 'dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
     # -c should not affect code size
