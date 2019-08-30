@@ -18,6 +18,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v.1.38.43: 08/30/2019
+---------------------
  - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
    instead of `Module.noExitRuntime`.
 
