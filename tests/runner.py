@@ -254,7 +254,6 @@ if not shared.Settings.WASM_BACKEND:
     'asm3',
     'asm2g',
     'asm2f',
-    'asm2i',
   ]
 
 # The default core test mode, used when none is specified
