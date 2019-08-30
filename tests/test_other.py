@@ -8081,7 +8081,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 21, 33, 750) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 21, 33, None) # noqa
 
   @parameterized({
     'normal': (['-O2'], 36, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
