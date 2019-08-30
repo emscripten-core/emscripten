@@ -596,6 +596,7 @@ mergeInto(LibraryManager.library, {
         })(x);
       }
     },
+#endif
 
     instrumentWasmExports: function(exports) {
       var ret = {};
@@ -640,7 +641,6 @@ mergeInto(LibraryManager.library, {
       }
       return ret;
     },
-#endif
 
     allocateData: function() {
       // An asyncify data structure has two fields: the
