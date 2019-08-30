@@ -2,12 +2,14 @@
 
 [![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/incoming)
 
-Emscripten is an [LLVM](https://en.wikipedia.org/wiki/LLVM)-to-JavaScript compiler. It takes LLVM bitcode - which can be generated
-from C/C++, using `llvm-gcc` (DragonEgg) or `clang`, or any other language that can be
-converted into LLVM - and compiles that into JavaScript, which can be run on the web (or
+Emscripten is an [LLVM](https://en.wikipedia.org/wiki/LLVM)-to-JavaScript
+compiler. It takes LLVM bitcode - which can be generated from C/C++, using
+`llvm-gcc` (DragonEgg) or `clang`, or any other language that can be converted
+into LLVM - and compiles that into JavaScript, which can be run on the web (or
 anywhere else JavaScript can run).
 
-Links to **demos**, **tutorial**, **FAQ**, etc: <https://github.com/emscripten-core/emscripten/wiki>
+Links to **demos**, **tutorial**, **FAQ**, etc:
+<https://github.com/emscripten-core/emscripten/wiki>
 
 Main project page: <http://emscripten.org>
 
