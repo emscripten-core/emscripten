@@ -824,7 +824,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += ['-fno-builtin'] + list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+    self.do_run(open(path_from_root('lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                 open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
   def test_newstruct(self):
@@ -5547,7 +5547,7 @@ int main(void) {
     # needed with typed arrays
     self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
 
-    src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
+    src = open(path_from_root('lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', ['200', '1'], force_c=True)
     self.do_run(None, '*400,0*', ['400', '400'], force_c=True, no_build=True)
 

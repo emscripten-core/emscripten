@@ -408,26 +408,24 @@ def inspect_code(headers, cpp_opts, structs, defines):
     cmd += ['-s', 'WASM_OBJECT_FILES=0']
 
   try:
-    try:
-      subprocess.check_call(cmd, env=safe_env)
-    except subprocess.CalledProcessError:
-      sys.stderr.write('FAIL: Compilation failed!\n')
-      sys.exit(1)
+    subprocess.check_call(cmd, env=safe_env)
+  except subprocess.CalledProcessError:
+    sys.stderr.write('FAIL: Compilation failed!\n')
+    sys.exit(1)
 
-    # Run the compiled program.
-    show('Calling generated program...')
-    try:
-      info = shared.run_js(js_file[1]).splitlines()
-    except subprocess.CalledProcessError:
-      sys.stderr.write('FAIL: Running the generated program failed!\n')
-      sys.exit(1)
+  # Run the compiled program.
+  show('Calling generated program...')
+  try:
+    info = shared.run_js(js_file[1]).splitlines()
+  except subprocess.CalledProcessError:
+    sys.stderr.write('FAIL: Running the generated program failed!\n')
+    sys.exit(1)
 
-  finally:
-    # Remove all temporary files.
-    os.unlink(src_file[1])
+  # Remove all temporary files.
+  os.unlink(src_file[1])
 
-    if os.path.exists(js_file[1]):
-      os.unlink(js_file[1])
+  if os.path.exists(js_file[1]):
+    os.unlink(js_file[1])
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)
@@ -541,6 +539,7 @@ def main(args):
   structs = {}
   defines = {}
 
+  print(args.headers)
   for header in args.headers:
     if header[-5:] == '.json':
       # This is a JSON file, parse it.

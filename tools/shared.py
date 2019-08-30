@@ -999,13 +999,13 @@ def emsdk_opts():
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
     path_from_root('system', 'include', 'libc'),
-    path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'emscripten'),
+    path_from_root('system', 'include', 'libc', 'arch', 'emscripten'),
     path_from_root('system', 'local', 'include')
   ]
 
   cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
-    path_from_root('system', 'lib', 'libcxxabi', 'include')
+    path_from_root('system', 'include', 'libcxxabi')
   ]
 
   c_opts = ['-Xclang', '-nostdsysteminc']
@@ -2654,7 +2654,7 @@ class Building(object):
       cmd += ['-o', wasm_file]
     cmd += Building.get_binaryen_feature_flags()
     # ignore stderr because if wasm-opt is run without a -o it will warn
-    output = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
+    output = check_call(cmd, stdout=PIPE).stdout
     if symbols_file:
       with open(symbols_file, 'w') as f:
         f.write(output)

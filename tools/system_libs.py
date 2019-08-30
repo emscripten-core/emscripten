@@ -107,7 +107,7 @@ def get_wasm_libc_rt_files():
   # functions - fmin uses signbit, for example, so signbit must be here (so if
   # fmin is added by codegen, it will have all it needs).
   math_files = files_in_path(
-    path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
+    path_components=['lib', 'libc', 'musl', 'src', 'math'],
     filenames=[
       'fmin.c', 'fminf.c', 'fminl.c',
       'fmax.c', 'fmaxf.c', 'fmaxl.c',
@@ -118,7 +118,7 @@ def get_wasm_libc_rt_files():
       '__signbitl.c', '__signbitf.c', '__signbit.c'
     ])
   other_files = files_in_path(
-    path_components=['system', 'lib', 'libc'],
+    path_components=['lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                'emscripten_memmove.c'])
   return math_files + other_files
@@ -220,9 +220,9 @@ class Library(object):
 
   # A list of directories to put in the include path when building.
   # This is a list of tuples of path components.
-  # For example, to put system/lib/a and system/lib/b under the emscripten
+  # For example, to put lib/a and lib/b under the emscripten
   # directory into the include path, you would write:
-  #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
+  #    includes = [('lib', 'a'), ('lib', 'b')]
   # The include path of the parent class is automatically inherited.
   includes = []
 
@@ -530,8 +530,8 @@ class NoExceptLibrary(Library):
 
 class MuslInternalLibrary(Library):
   includes = [
-    ['system', 'lib', 'libc', 'musl', 'src', 'internal'],
-    ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
+    ['lib', 'libc', 'musl', 'src', 'internal'],
+    ['lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
 
@@ -580,11 +580,11 @@ class NoBCLibrary(Library):
 
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcompiler_rt.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'libcompiler_rt.symbols'))
   depends = ['libc']
 
   cflags = ['-O2']
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
 
@@ -593,7 +593,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
   #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'libc.symbols'))
 
   depends = ['libcompiler_rt']
 
@@ -615,7 +615,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
   def get_files(self):
     libc_files = []
-    musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
+    musl_srcdir = shared.path_from_root('lib', 'libc', 'musl', 'src')
 
     # musl modules
     blacklist = [
@@ -653,11 +653,11 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
                     'aligned_alloc.c', 'fcntl.c']
       libc_files += [
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strcpy.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_memchr.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strchrnul.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strlen.c'),
-        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_fcntl.c'),
+        shared.path_from_root('lib', 'libc', 'emscripten_asan_strcpy.c'),
+        shared.path_from_root('lib', 'libc', 'emscripten_asan_memchr.c'),
+        shared.path_from_root('lib', 'libc', 'emscripten_asan_strchrnul.c'),
+        shared.path_from_root('lib', 'libc', 'emscripten_asan_strlen.c'),
+        shared.path_from_root('lib', 'libc', 'emscripten_asan_fcntl.c'),
       ]
 
     if shared.Settings.WASM_BACKEND:
@@ -694,10 +694,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
 class libc_wasm(MuslInternalLibrary):
   name = 'libc-wasm'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc-wasm.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'libc-wasm.symbols'))
 
   cflags = ['-O2', '-fno-builtin']
-  src_dir = ['system', 'lib', 'libc', 'musl', 'src', 'math']
+  src_dir = ['lib', 'libc', 'musl', 'src', 'math']
   src_files = ['cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
                'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
                'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
@@ -711,15 +711,15 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   name = 'libc-extras'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc-extras.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'libc-extras.symbols'))
 
-  src_dir = ['system', 'lib', 'libc']
+  src_dir = ['lib', 'libc']
   src_files = ['extras.c']
 
 
 class libcxxabi(CXXLibrary, MTLibrary):
   name = 'libc++abi'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'libcxxabi.symbols'))
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
@@ -730,7 +730,7 @@ class libcxxabi(CXXLibrary, MTLibrary):
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     return cflags
 
-  src_dir = ['system', 'lib', 'libcxxabi', 'src']
+  src_dir = ['lib', 'libcxxabi', 'src']
   src_files = [
     'abort_message.cpp',
     'cxa_aux_runtime.cpp',
@@ -750,13 +750,13 @@ class libcxxabi(CXXLibrary, MTLibrary):
 
 class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'libcxx.symbols'))
   depends = ['libc++abi']
 
   cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
-  src_dir = ['system', 'lib', 'libcxx']
+  src_dir = ['lib', 'libcxx']
   src_files = [
     'algorithm.cpp',
     'any.cpp',
@@ -816,7 +816,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
       assert not self.is_tracing
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', {
+    return [shared.path_from_root('lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
     }[self.malloc])]
 
@@ -875,19 +875,19 @@ class libmalloc(MTLibrary, NoBCLibrary):
 class libal(Library):
   name = 'libal'
   depends = ['libc']
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'al.symbols'))
 
   cflags = ['-Os']
-  src_dir = ['system', 'lib']
+  src_dir = ['lib']
   src_files = ['al.c']
 
 
 class libgl(MTLibrary):
   name = 'libgl'
   depends = ['libc']
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'gl.symbols'))
 
-  src_dir = ['system', 'lib', 'gl']
+  src_dir = ['lib', 'gl']
   src_glob = '*.c'
 
   cflags = ['-Oz']
@@ -959,7 +959,7 @@ class libembind(CXXLibrary):
     return name
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
+    return [shared.path_from_root('lib', 'embind', 'bind.cpp')]
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -972,7 +972,7 @@ class libfetch(CXXLibrary, MTLibrary):
   never_force = True
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
+    return [shared.path_from_root('lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
 class libasmfs(CXXLibrary, MTLibrary):
@@ -981,15 +981,15 @@ class libasmfs(CXXLibrary, MTLibrary):
   never_force = True
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
+    return [shared.path_from_root('lib', 'fetch', 'asmfs.cpp')]
 
 
 class libhtml5(Library):
   name = 'libhtml5'
-  symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
+  symbols = read_symbols(shared.path_from_root('lib', 'html5.symbols'))
 
   cflags = ['-Oz']
-  src_dir = ['system', 'lib', 'html5']
+  src_dir = ['lib', 'html5']
   src_glob = '*.c'
 
 
@@ -1001,7 +1001,7 @@ class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   def get_files(self):
     if self.is_mt:
       files = files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        path_components=['lib', 'libc', 'musl', 'src', 'thread'],
         filenames=[
           'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
           'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
@@ -1036,21 +1036,21 @@ class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
           'pthread_setspecific.c', 'pthread_setcancelstate.c'
         ])
-      files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread.c')]
+      files += [shared.path_from_root('lib', 'pthread', 'library_pthread.c')]
       if shared.Settings.WASM_BACKEND:
-        files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_wasm.c')]
+        files += [shared.path_from_root('lib', 'pthread', 'library_pthread_wasm.c')]
       else:
-        files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_asmjs.c')]
+        files += [shared.path_from_root('lib', 'pthread', 'library_pthread_asmjs.c')]
       return files
     else:
-      return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
+      return [shared.path_from_root('lib', 'pthread', 'library_pthread_stub.c')]
 
   def get_base_name_prefix(self):
     return 'libpthreads' if self.is_mt else 'libpthreads_stub'
 
-  pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
-  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads_asmjs.symbols'))
-  pthreads_stub_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads_stub.symbols'))
+  pthreads_symbols = read_symbols(shared.path_from_root('lib', 'pthreads.symbols'))
+  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('lib', 'pthreads_asmjs.symbols'))
+  pthreads_stub_symbols = read_symbols(shared.path_from_root('lib', 'pthreads_stub.symbols'))
 
   def get_symbols(self):
     symbols = self.pthreads_symbols if self.is_mt else self.pthreads_stub_symbols
@@ -1070,7 +1070,7 @@ class CompilerRTWasmLibrary(NoBCLibrary):
 class libcompiler_rt_wasm(CompilerRTWasmLibrary):
   name = 'libcompiler_rt_wasm'
 
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
                'divtf3.c', 'divti3.c', 'udivmodti4.c',
                'extenddftf2.c', 'extendsftf2.c',
@@ -1084,7 +1084,7 @@ class libcompiler_rt_wasm(CompilerRTWasmLibrary):
                'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
 
   def get_files(self):
-    return super(libcompiler_rt_wasm, self).get_files() + [shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c')]
+    return super(libcompiler_rt_wasm, self).get_files() + [shared.path_from_root('lib', 'compiler-rt', 'extras.c')]
 
 
 class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
@@ -1098,8 +1098,8 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libubsan_minimal_rt_wasm'
   never_force = True
 
-  includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
+  includes = [['lib', 'compiler-rt', 'lib']]
+  src_dir = ['lib', 'compiler-rt', 'lib', 'ubsan_minimal']
   src_files = ['ubsan_minimal_handlers.cpp']
 
 
@@ -1110,7 +1110,7 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   cflags = ['-std=c++11']
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'sanitizer_common']
   src_glob = '*.cc'
   src_glob_exclude = ['sanitizer_common_nolibc.cc']
 
@@ -1119,7 +1119,7 @@ class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   depends = ['libsanitizer_common_rt_wasm']
   never_force = True
 
-  includes = [['system', 'lib', 'compiler-rt', 'lib']]
+  includes = [['lib', 'compiler-rt', 'lib']]
   cflags = ['-std=c++11']
   src_glob = '*.cc'
 
@@ -1129,14 +1129,14 @@ class libubsan_rt_wasm(SanitizerLibrary):
   js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
 
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'ubsan']
 
 
 class liblsan_common_rt_wasm(SanitizerLibrary):
   name = 'liblsan_common_rt_wasm'
   js_depends = ['__global_base']
 
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'lsan']
   src_glob = 'lsan_common*.cc'
 
 
@@ -1145,7 +1145,7 @@ class liblsan_rt_wasm(SanitizerLibrary):
   depends = ['liblsan_common_rt_wasm']
   js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
 
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'lsan']
   src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
                       'lsan_common_emscripten.cc']
 
@@ -1154,7 +1154,7 @@ class libasan_rt_wasm(SanitizerLibrary):
   name = 'libasan_rt_wasm'
   depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
 
-  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
+  src_dir = ['lib', 'compiler-rt', 'lib', 'asan']
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
