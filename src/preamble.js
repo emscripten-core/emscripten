@@ -978,28 +978,63 @@ function createWasm(env) {
     return value;
   };
 #endif
-var proxyHandler = {
-  'get': function(obj, prop) {
-    if (prop in obj) {
-      return obj[prop]; // already present
-    }
 
-    // Check if the minification mapping exists first, if not just
-    // use the original name.
-    var funcName = prop;
-    if (Module["mapping"] && Module["mapping"][prop]) {
-      Module["mapping"][prop];
-    }
-    
-    // For a missing property generate a stub that will do a runtime lookup and error out if its still missing
-    return env[prop] = function() {
-#if ASSERTIONS
-      assert(Module[funcName], 'missing linked function ' + funcName + '. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+  var resolveSymbol = function(sym, type) {
+#if WASM_BACKEND
+    sym = '_' + sym;
 #endif
-      return Module[funcName].apply(null, arguments);
-    };
+    var resolved = Module[sym];
+    if (!resolved)
+    resolved = moduleLocal[sym];
+#if ASSERTIONS
+    assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
+    return resolved;
   }
-};
+
+  var proxyHandler = {
+    'get': function(obj, prop) {
+      if (prop in obj) {
+        return obj[prop]; // already present
+      }
+
+      // Check if the minification mapping exists first, if not just
+      // use the original name.
+      var funcName = prop;
+      if (Module["mapping"] && Module["mapping"][prop]) {
+        Module["mapping"][prop];
+      }
+      
+      if (prop.startsWith('g$')) {
+        // a global. the g$ function returns the global address.
+        var name = prop.substr(2); // without g$ prefix
+        return obj[prop] = function() {
+          return resolveSymbol(name, 'global');
+        };
+      }
+
+      if (prop.startsWith('fp$')) {
+        // the fp$ function returns the address (table index) of the function
+        var parts = prop.split('$');
+        assert(parts.length == 3)
+        var name = parts[1];
+        var sig = parts[2];
+        var fp = 0;
+        return obj[prop] = function() {
+          if (!fp) {
+            var f = resolveSymbol(name, 'function');
+            fp = addFunctionWasm(f, sig);
+          }
+          return fp;
+        };
+      }
+
+      // For a missing property generate a stub that will do a runtime lookup and error out if its still missing
+      return env[prop] = function() {
+        return resolveSymbol(prop, 'function').apply(null, arguments);
+      };
+    }
+  };
 
   // prepare imports
   var info = {
