@@ -3311,12 +3311,15 @@ window.close = function() {
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
     'normal': (['-s', 'ASYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
+    'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
     'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
   })
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
+    if '@' in str(args):
+      create_test_file('filey.txt', '["sync_tunnel"]')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
 
   @no_fastcomp('wasm backend asyncify specific')
