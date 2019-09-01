@@ -6749,7 +6749,7 @@ int main() {
     src = open('a.out.js').read()
     matches = re.findall(r'''function ___syscall(\d+)\(''', src)
     print('seen syscalls:', matches)
-    assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
+    assert set(matches) == set(['6', '54', '140']) # close, ioctl, llseek, writev
 
   @no_windows('posix-only')
   def test_emcc_dev_null(self):

@@ -5,15 +5,16 @@ ___syscall140
 ___syscall54
 ___syscall6
 ___unlock
+___wasi_fd_write
 _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap
+_fd_write
 abort
 abortOnCannotGrowMemory
 abortStackOverflow
 demangle
 demangleAll
-fd_write
 flush_NO_FILESYSTEM
 getTempRet0
 jsStackTrace

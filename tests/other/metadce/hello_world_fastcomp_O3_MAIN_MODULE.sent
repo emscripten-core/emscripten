@@ -403,6 +403,7 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_fd_write
 __addDays
 __arraySum
 __battery
@@ -1042,6 +1043,7 @@ _exit
 _fabs
 _fabsf
 _fabsl
+_fd_write
 _fexecve
 _filledEllipseColor
 _filledEllipseRGBA
@@ -1557,7 +1559,6 @@ emscriptenWebGLGetUniform
 emscriptenWebGLGetVertexAttrib
 emscripten_realloc_buffer
 fb
-fd_write
 gb
 getTempRet0
 invoke_X
