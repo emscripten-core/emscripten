@@ -942,29 +942,30 @@ var SyscallsLibrary = {
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
-  __syscall146__deps: ['$flush_NO_FILESYSTEM'],
+  fd_write__deps: ['$flush_NO_FILESYSTEM'],
 #if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
-  __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif
-  __syscall146: function(which, varargs) { // writev
+  fd_write: function(stream, iov, iovcnt, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    return SYSCALLS.doWritev(stream, iov, iovcnt);
+    stream = FS.getStream(stream);
+    if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
 #else
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    var ret = 0;
+    var num = 0;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
       var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
       for (var j = 0; j < len; j++) {
         SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
       }
-      ret += len;
+      num += len;
     }
-    return ret;
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
   },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid

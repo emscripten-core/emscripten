@@ -535,6 +535,10 @@ class MuslInternalLibrary(Library):
   ]
 
 
+class WasiLibrary(Library):
+  includes = [['system', 'include', 'wasi']]
+
+
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
     self.is_asan = kwargs.pop('is_asan', False)
@@ -588,7 +592,7 @@ class libcompiler_rt(Library):
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
 
-class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+class libc(AsanInstrumentedLibrary, MuslInternalLibrary, WasiLibrary, MTLibrary):
   name = 'libc'
 
   # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
