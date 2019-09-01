@@ -509,7 +509,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 4)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 5)
 
 
 def generate_sanity():
@@ -2500,6 +2500,11 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    # fix wasi imports
+    WASI_IMPORTS = set(['fd_write'])
+    for item in graph:
+      if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
+        item['import'][0] = 'wasi_unstable'
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
