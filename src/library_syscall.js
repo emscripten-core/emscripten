@@ -967,6 +967,9 @@ var SyscallsLibrary = {
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
+#if !WASM_BACKEND // fastcomp lacks the attributes to unprefix wasi syscalls
+  __wasi_fd_write: 'fd_write',
+#endif
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
