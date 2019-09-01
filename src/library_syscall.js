@@ -1821,17 +1821,27 @@ if (SYSCALL_DEBUG) {
   }
 }
 
+var WASI_SYSCALLS = set(['fd_write']);
+
 for (var x in SyscallsLibrary) {
+  var which = null; // if this is a musl syscall, its number
   var m = /^__syscall(\d+)$/.exec(x);
-  if (!m) continue;
-  var which = +m[1];
+  if (m) {
+    which = +m[1];
+  } else {
+    if (!(x in WASI_SYSCALLS)) {
+      continue;
+    }
+  }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
   t = t.toString();
   var pre = '', post = '';
-  pre += 'SYSCALLS.varargs = varargs;\n';
+  if (which) {
+    pre += 'SYSCALLS.varargs = varargs;\n';
+  }
 #if SYSCALL_DEBUG
-  pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  pre += "err('syscall! ' + [" + which + ", '" + (which ? SYSCALL_CODE_TO_NAME[which] : x) + "']);\n";
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
