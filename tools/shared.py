@@ -2500,7 +2500,7 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
-    # fix wasi imports
+    # fix wasi imports TODO: support wasm stable with an option?
     WASI_IMPORTS = set(['fd_write'])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
