@@ -6,7 +6,6 @@ ___map_file
 ___setErrNo
 ___syscall140
 ___syscall145
-___syscall146
 ___syscall54
 ___syscall6
 ___syscall91
@@ -29,6 +28,7 @@ abort
 abortOnCannotGrowMemory
 demangle
 demangleAll
+fd_write
 getTempRet0
 jsStackTrace
 setTempRet0

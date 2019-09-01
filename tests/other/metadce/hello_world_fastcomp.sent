@@ -2,7 +2,6 @@ DYNAMICTOP_PTR
 ___lock
 ___setErrNo
 ___syscall140
-___syscall146
 ___syscall54
 ___syscall6
 ___unlock
@@ -14,6 +13,7 @@ abortOnCannotGrowMemory
 abortStackOverflow
 demangle
 demangleAll
+fd_write
 flush_NO_FILESYSTEM
 getTempRet0
 jsStackTrace

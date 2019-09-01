@@ -1,7 +1,6 @@
 DYNAMICTOP_PTR
 __setErrNo
 __syscall140
-__syscall146
 __syscall54
 __syscall6
 abortOnCannotGrowMemory
@@ -10,6 +9,7 @@ demangleAll
 emscripten_get_heap_size
 emscripten_memcpy_big
 emscripten_resize_heap
+fd_write
 flush_NO_FILESYSTEM
 jsStackTrace
 memcpy

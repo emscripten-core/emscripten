@@ -303,7 +303,6 @@ ___syscall140
 ___syscall142
 ___syscall144
 ___syscall145
-___syscall146
 ___syscall147
 ___syscall148
 ___syscall15
@@ -1558,6 +1557,7 @@ emscriptenWebGLGetUniform
 emscriptenWebGLGetVertexAttrib
 emscripten_realloc_buffer
 fb
+fd_write
 gb
 getTempRet0
 invoke_X

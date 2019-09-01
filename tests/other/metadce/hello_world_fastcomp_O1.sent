@@ -1,7 +1,6 @@
 DYNAMICTOP_PTR
 ___setErrNo
 ___syscall140
-___syscall146
 ___syscall54
 ___syscall6
 _emscripten_get_heap_size
@@ -12,6 +11,7 @@ abortOnCannotGrowMemory
 demangle
 demangleAll
 flush_NO_FILESYSTEM
+fd_write
 getTempRet0
 jsStackTrace
 setTempRet0
