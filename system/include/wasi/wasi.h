@@ -452,8 +452,13 @@ _Static_assert(
 _Static_assert(sizeof(__wasi_subscription_t) == 56, "non-wasi data layout");
 _Static_assert(_Alignof(__wasi_subscription_t) == 8, "non-wasi data layout");
 
+#if __wasm__
 #define __WASI_SYSCALL_NAME(name) \
     __attribute__((__import_module__("wasi_unstable"), __import_name__(#name)))
+#else
+// Support for older compilers (fastcomp) which lack the new attributes.
+#define __WASI_SYSCALL_NAME(name)
+#endif
 
 __wasi_errno_t __wasi_args_get(
     char **argv,
