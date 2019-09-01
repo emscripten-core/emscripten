@@ -967,9 +967,11 @@ var SyscallsLibrary = {
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
-#if !WASM_BACKEND // fastcomp lacks the attributes to unprefix wasi syscalls
+  // Fallback for cases where the wasi_unstable.name prefixing fails,
+  // and we have the full name from C. This happens in fastcomp (which
+  // lacks the attribute to set the import module and base names) and
+  // in LTO mode (as bitcode does not preserve them).
   __wasi_fd_write: 'fd_write',
-#endif
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
