@@ -8066,7 +8066,7 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      26, ['abort'], ['waka'], 22712, 22, 14, 30), # noqa
+    'O0': ([],      26, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
     'O1': (['-O1'], 14, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
     'O2': (['-O2'], 14, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
