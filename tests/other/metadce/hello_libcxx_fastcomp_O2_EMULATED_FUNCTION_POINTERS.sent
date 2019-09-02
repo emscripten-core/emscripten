@@ -30,7 +30,6 @@ abort
 abortOnCannotGrowMemory
 demangle
 demangleAll
-_fd_write
 getTempRet0
 jsStackTrace
 setTempRet0

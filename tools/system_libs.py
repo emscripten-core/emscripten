@@ -979,7 +979,7 @@ class libfetch(CXXLibrary, MTLibrary):
     return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
 
 
-class libasmfs(CXXLibrary, MTLibrary):
+class libasmfs(CXXLibrary, MTLibrary, WasiLibrary):
   name = 'libasmfs'
   depends = ['libc++abi']
   never_force = True
