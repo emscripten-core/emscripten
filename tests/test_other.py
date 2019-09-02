@@ -6744,12 +6744,12 @@ int main() {
       if not expected:
         assert err == '', err
 
-  def test_static_syscalls(self):
+  def test_musl_syscalls(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
     src = open('a.out.js').read()
     matches = re.findall(r'''function ___syscall(\d+)\(''', src)
-    print('seen syscalls:', matches)
-    assert set(matches) == set(['6', '54', '140']) # close, ioctl, llseek, writev
+    # there should be no musl syscalls in hello world output
+    self.assertEqual(matches, [])
 
   @no_windows('posix-only')
   def test_emcc_dev_null(self):
@@ -7171,7 +7171,7 @@ int main() {
   def test_only_my_code(self):
     run_process([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'WASM=0'])
     count = open('a.out.asm.js').read().count('function ')
-    assert count > 29, count # libc brings in a bunch of stuff
+    self.assertGreater(count, 20) # libc brings in a bunch of stuff
 
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
@@ -7352,20 +7352,23 @@ int main() {
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
     for wasm in (1, 0):
-      if self.is_wasm_backend() and not wasm:
-        continue
       print('wasm', wasm)
+      create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  external_thing: function() {}
+});
+''')
       create_test_file('src.cpp', r'''
-  #include <stdio.h>
+  extern "C" void external_thing();
   struct C {
-    C() { printf("constructing!\n"); } // don't remove this!
+    C() { external_thing(); } // don't remove this!
   };
   C c;
   int main() {}
       ''')
-      err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-      self.assertContained('__syscall54', err) # the failing call should be mentioned
-      if not wasm: # js will show a stack trace
+      err = run_process([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
+      self.assertContained('external_thing', err) # the failing call should be mentioned
+      if not self.is_wasm_backend(): # asm.js will show a stack trace
         self.assertContained('ctorEval.js', err) # with a stack trace
       self.assertContained('ctor_evaller: not successful', err) # with logging
 
