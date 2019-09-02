@@ -7368,7 +7368,7 @@ mergeInto(LibraryManager.library, {
       ''')
       err = run_process([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
       self.assertContained('external_thing', err) # the failing call should be mentioned
-      if not self.is_wasm_backend(): # asm.js will show a stack trace
+      if not wasm and not self.is_wasm_backend(): # asm.js will show a stack trace
         self.assertContained('ctorEval.js', err) # with a stack trace
       self.assertContained('ctor_evaller: not successful', err) # with logging
 
