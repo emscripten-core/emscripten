@@ -979,6 +979,9 @@ function createWasm(env) {
   };
 #endif
 
+  // This is similar to what we do in support.js where we resolve
+  // against a local module.
+  var moduleLocal = {};
   var resolveSymbol = function(sym, type) {
 #if WASM_BACKEND
     sym = '_' + sym;
