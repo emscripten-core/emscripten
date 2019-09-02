@@ -1,9 +1,6 @@
 DYNAMICTOP_PTR
 ___lock
 ___setErrNo
-___syscall140
-___syscall54
-___syscall6
 ___unlock
 ___wasi_fd_write
 _emscripten_get_heap_size

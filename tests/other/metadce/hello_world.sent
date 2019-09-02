@@ -1,9 +1,6 @@
 DYNAMICTOP_PTR
 __lock
 __setErrNo
-__syscall140
-__syscall54
-__syscall6
 __unlock
 abortOnCannotGrowMemory
 demangle

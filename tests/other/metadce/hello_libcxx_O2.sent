@@ -7,7 +7,6 @@ __map_file
 __setErrNo
 __syscall140
 __syscall145
-__syscall54
 __syscall6
 __syscall91
 __unlock
