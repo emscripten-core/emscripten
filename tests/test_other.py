@@ -1284,8 +1284,7 @@ int f() {
       void libf1() { printf("libf1\n"); }
       void libf2() { printf("libf2\n"); }
     '''
-    lib_name = 'lib.c'
-    create_test_file(lib_name, lib)
+    create_test_file('lib.c', lib)
 
     create_test_file('main.js', '''
       var Module = {
@@ -1296,9 +1295,35 @@ int f() {
       };
     ''')
 
-    Building.emcc(lib_name, ['-s', 'EXPORT_ALL=1', '-s', 'LINKABLE=1', '--pre-js', 'main.js'], output_filename='a.out.js')
-
+    Building.emcc('lib.c', ['-s', 'EXPORT_ALL', '-s', 'LINKABLE', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libf1\nlibf2\n', run_js('a.out.js'))
+
+  def test_export_all_and_exported_functions(self):
+    # EXPORT_ALL should not export library functions by default.
+    # This mans that to export library function you also need to explicitly
+    # list them in EXPORTED_FUNCTIONS.
+    lib = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      EMSCRIPTEN_KEEPALIVE void libfunc() { puts("libfunc\n"); }
+    '''
+    create_test_file('lib.c', lib)
+    create_test_file('main.js', '''
+      var Module = {
+        onRuntimeInitialized: function() {
+          _libfunc();
+          __get_environ();
+        }
+      };
+    ''')
+
+    # __get_environ should not be linked by default, even with EXPORT_ALL
+    Building.emcc('lib.c', ['-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    err = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+    self.assertContained('__get_environ is not defined', err)
+
+    Building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=['__get_environ']", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    self.assertContained('libfunc\n', run_js('a.out.js'))
 
   def test_stdin(self):
     def make_js_command(filename, engine):
@@ -2356,7 +2381,7 @@ int f() {
           for tf in testFiles:
             f.write(open(tf, 'rb').read())
 
-        output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, assert_returncode=0, engine=NODE_JS)
+        output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
         assert "FAIL" not in output, output
 
   @no_wasm_backend('cannot nativize a wasm object file (...yet?)')
@@ -2898,7 +2923,7 @@ m0.ccall('myread0','number',[],[]);
     create_test_file('proxyfs_pre.js', r'''
 if (typeof Module === 'undefined') Module = {};
 Module["noInitialRun"]=true;
-Module["noExitRuntime"]=true;
+noExitRuntime=true;
 ''')
 
     create_test_file('proxyfs_embed.txt', r'''test
@@ -3204,20 +3229,18 @@ printErr('dir was ' + process.env.EMCC_BUILD_DIR);
     process = run_process([PYTHON, EMCC, path_from_root('tests', 'float+.c')], stdout=PIPE, stderr=PIPE)
     assert process.returncode == 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
 
+  def test_output_is_dir(self):
+    outdir = 'out_dir/'
+    os.mkdir(outdir)
+    err = self.expect_fail([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir])
+    self.assertContained('error: unable to open output file', err)
+
   def test_default_obj_ext(self):
-    outdir = 'out_dir' + '/'
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
+    self.assertExists('hello_world.o')
 
-    self.clear()
-    os.mkdir(outdir)
-    err = run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir], stderr=PIPE).stderr
-    assert not err, err
-    assert os.path.isfile(outdir + 'hello_world.o')
-
-    self.clear()
-    os.mkdir(outdir)
-    err = run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', outdir, '--default-obj-ext', 'obj'], stderr=PIPE).stderr
-    assert not err, err
-    assert os.path.isfile(outdir + 'hello_world.obj')
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '--default-obj-ext', 'obj'])
+    self.assertExists('hello_world.obj')
 
   def test_doublestart_bug(self):
     create_test_file('code.cpp', r'''
@@ -3550,16 +3573,18 @@ int main() {
       ]:
       print(name, args)
       self.clear()
-      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args, stdout=PIPE, stderr=PIPE)
+      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
     # -c should not affect code size
     for name in ['0', '1', '2', '3', 's', 'z']:
-      assert sizes[name] == sizes[name + 'c']
+      self.assertEqual(sizes[name], sizes[name + 'c'])
     opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
     opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
-    assert opt_min - opt_max <= opt_max * 0.1, 'opt builds are all fairly close'
-    assert sizes['0'] > (1.20 * opt_max), 'unopt build is quite larger'
+    # 'opt builds are all fairly close'
+    self.assertLess(opt_min - opt_max, opt_max * 0.1)
+    # unopt build is quite larger'
+    self.assertGreater(sizes['0'], (1.20 * opt_max))
 
   @no_wasm_backend('relies on ctor evaluation and dtor elimination')
   def test_global_inits(self):
@@ -5973,7 +5998,7 @@ public:
 Descriptor desc;
     ''')
     try_delete('a.out.js')
-    run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL=1'])
+    run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'EXPORT_ALL'])
     self.assertExists('a.out.js')
 
   @no_wasm_backend('tests PRECISE_F32=1')
@@ -6332,7 +6357,7 @@ int main(int argc, char** argv) {
           #endif
           }
         ''')
-        run_process([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL=1'] + library_args)
+        run_process([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL'] + library_args)
         create_test_file('main.c', r'''
           #include <dlfcn.h>
           #include <stdio.h>
@@ -8200,7 +8225,7 @@ int main() {
     run_process(cmd)
 
     # build main module
-    args = ['-s', 'EXPORT_ALL=0', '-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME=1']
+    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME=1']
     cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     run_process(cmd)
@@ -9579,7 +9604,7 @@ int main () {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 6279), 100)
+    self.assertLess(abs(changed - 6231), 100)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
