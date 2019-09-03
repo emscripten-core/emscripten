@@ -933,45 +933,6 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  $flush_NO_FILESYSTEM: function() {
-    // flush anything remaining in the buffers during shutdown
-    var fflush = Module["_fflush"];
-    if (fflush) fflush(0);
-    var buffers = SYSCALLS.buffers;
-    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
-  },
-  fd_write__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
-  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
-#endif
-#endif
-  fd_write: function(stream, iov, iovcnt, pnum) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    stream = FS.getStream(stream);
-    if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
-    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var num = 0;
-    for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-      for (var j = 0; j < len; j++) {
-        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
-      }
-      num += len;
-    }
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
-    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
-    return 0;
-  },
-  // Fallback for cases where the wasi_unstable.name prefixing fails,
-  // and we have the full name from C. This happens in fastcomp (which
-  // lacks the attribute to set the import module and base names) and
-  // in LTO mode (as bitcode does not preserve them).
-  __wasi_fd_write: 'fd_write',
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
@@ -1466,6 +1427,47 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+
+  // WASI (WebAssembly System Interface) call support
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  $flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers during shutdown
+    var fflush = Module["_fflush"];
+    if (fflush) fflush(0);
+    var buffers = SYSCALLS.buffers;
+    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
+  },
+  fd_write__deps: ['$flush_NO_FILESYSTEM'],
+#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
+  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+#endif
+#endif
+  fd_write: function(stream, iov, iovcnt, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    stream = FS.getStream(stream);
+    if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
+#else
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+    var num = 0;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      for (var j = 0; j < len; j++) {
+        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
+      }
+      num += len;
+    }
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
+  // Fallback for cases where the wasi_unstable.name prefixing fails,
+  // and we have the full name from C. This happens in fastcomp (which
+  // lacks the attribute to set the import module and base names) and
+  // in LTO mode (as bitcode does not preserve them).
+  __wasi_fd_write: 'fd_write',
 };
 
 if (SYSCALL_DEBUG) {

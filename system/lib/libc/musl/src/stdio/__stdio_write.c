@@ -1,6 +1,6 @@
 #include "stdio_impl.h"
 #include <sys/uio.h>
-#include "wasi.h"
+#include <wasi/wasi.h>
 
 size_t __stdio_write(FILE *f, const unsigned char *buf, size_t len)
 {

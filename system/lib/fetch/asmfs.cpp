@@ -20,7 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
-#include <wasi.h>
+#include <wasi/wasi.h>
 
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to
 // enable internal debugging. #define ASMFS_DEBUG
