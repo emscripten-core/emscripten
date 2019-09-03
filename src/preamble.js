@@ -1039,11 +1039,17 @@ function createWasm(env) {
           return fp;
         };
       }
-
+#if WASM_BACKEND == 0
       // For a missing property generate a stub that will do a runtime lookup and error out if its still missing
       return env[prop] = function() {
         return resolveSymbol(prop, 'function').apply(null, arguments);
       };
+#else
+      // The Wasm backend generates fp accessors that require the target function to exist in moduleLocal 
+      return env[prop] = moduleLocal['_' + prop] = function() {
+        return resolveSymbol(prop, 'function').apply(null, arguments);
+      };
+#endif
     }
   };
 
