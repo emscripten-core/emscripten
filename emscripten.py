@@ -2398,12 +2398,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
   side_funcs = set(key for key, value in forwarded_json['Functions']['sideFunctions'].items())
   side_funcs = sorted(side_funcs.difference(set(global_vars)).difference(implemented_functions))
-  
+
   # Converts list of imports ['foo', 'bar', ...] to a dictionary of
   # name mappings in form { 'minified': 'unminified', ... }
   def define_asmjs_import_names(imports):
     return [(i, i) for i in imports]
-  
+
   shared.Building.missing_imports.update(dict(define_asmjs_import_names(side_funcs)))
   send_items = (basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars)
 
