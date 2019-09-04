@@ -816,9 +816,11 @@ class libmalloc(MTLibrary, NoBCLibrary):
       assert not self.is_tracing
 
   def get_files(self):
-    return [shared.path_from_root('system', 'lib', {
+    malloc = shared.path_from_root('system', 'lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
     }[self.malloc])]
+    sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
+    return [malloc, sbrk]
 
   def get_cflags(self):
     cflags = super(libmalloc, self).get_cflags()
