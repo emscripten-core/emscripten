@@ -152,7 +152,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
     # if we got here, then require_engine succeeded, so we can raise the original error
     raise
   if assert_returncode is not None and proc.returncode is not assert_returncode:
-    raise CalledProcessError(proc.returncode, str(command), str(ret))
+    raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
   return ret
 
 
