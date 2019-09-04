@@ -756,18 +756,13 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     stderr = self.in_dir('stderr')
     # Make sure that we produced proper line endings to the .js file we are about to run.
     self.assertEqual(line_endings.check_line_endings(filename), 0)
-    js_subprocess_failed = False
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
-    try:
-      with chdir(self.get_dir()):
-        jsrun.run_js(filename, engine, args, check_timeout,
-                     stdout=open(stdout, 'w'),
-                     stderr=open(stderr, 'w'),
-                     assert_returncode=assert_returncode)
-    except subprocess.CalledProcessError:
-      js_subprocess_failed = True
-
+    with chdir(self.get_dir()):
+      jsrun.run_js(filename, engine, args, check_timeout,
+                   stdout=open(stdout, 'w'),
+                   stderr=open(stderr, 'w'),
+                   assert_returncode=assert_returncode)
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
@@ -776,14 +771,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = output_nicerizer(out, err)
     else:
       ret = out + err
-    if js_subprocess_failed or EMTEST_VERBOSE:
+    assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
+    if EMTEST_VERBOSE:
       print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
-    self.assertFalse(js_subprocess_failed, 'JS subprocess failed')
-
-    #  We should pass all strict mode checks
-    self.assertNotContained('strict warning:', ret)
     return ret
 
   def assertExists(self, filename, msg=None):
