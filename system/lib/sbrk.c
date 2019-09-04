@@ -12,9 +12,17 @@
 
 #define WASM_PAGE_SIZE 65536
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern intptr_t* emscripten_get_sbrk_ptr();
 extern int emscripten_resize_heap(size_t requested_size);
 extern size_t emscripten_get_heap_size();
+
+#ifdef __cplusplus
+}
+#endif
 
 void *sbrk(intptr_t increment) {
   intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
@@ -39,4 +47,12 @@ void *sbrk(intptr_t increment) {
   }
   *sbrk_ptr = new_brk;
   return (void*)old_brk;
+}
+
+int brk(intptr_t ptr) {
+  intptr_t last = (intptr_t)sbrk(0);
+  if (sbrk(ptr - last) == (void*)-1) {
+    return -1;
+  }
+  return 0;
 }
