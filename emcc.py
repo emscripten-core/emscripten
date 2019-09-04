@@ -1582,7 +1582,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
           passes += ['--post-emscripten']
-          passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
@@ -2901,6 +2900,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         os.unlink(memfile)
     log_time('asm2wasm')
   if options.binaryen_passes:
+    if '--post-emscripten' in options.binaryen_passes:
+      # the value of the sbrk pointer has been computed by now, and we can send it if it is expected
+      options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
