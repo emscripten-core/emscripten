@@ -756,26 +756,33 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     stderr = self.in_dir('stderr')
     # Make sure that we produced proper line endings to the .js file we are about to run.
     self.assertEqual(line_endings.check_line_endings(filename), 0)
+    print_program_output = EMTEST_VERBOSE
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
-    with chdir(self.get_dir()):
-      jsrun.run_js(filename, engine, args, check_timeout,
-                   stdout=open(stdout, 'w'),
-                   stderr=open(stderr, 'w'),
-                   assert_returncode=assert_returncode)
-    out = open(stdout, 'r').read()
-    err = open(stderr, 'r').read()
-    if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
-      err = self.validate_asmjs(err)
-    if output_nicerizer:
-      ret = output_nicerizer(out, err)
-    else:
-      ret = out + err
+    try:
+      with chdir(self.get_dir()):
+        jsrun.run_js(filename, engine, args, check_timeout,
+                     stdout=open(stdout, 'w'),
+                     stderr=open(stderr, 'w'),
+                     assert_returncode=assert_returncode)
+    except:
+      print_program_output = True
+      raise
+    finally:
+      out = open(stdout, 'r').read()
+      err = open(stderr, 'r').read()
+      if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
+        err = self.validate_asmjs(err)
+      if output_nicerizer:
+        ret = output_nicerizer(out, err)
+      else:
+        ret = out + err
+      if print_program_output:
+        print('-- begin program output --')
+        print(ret, end='')
+        print('-- end program output --')
+
     assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
-    if EMTEST_VERBOSE:
-      print('-- begin program output --')
-      print(ret, end='')
-      print('-- end program output --')
     return ret
 
   def assertExists(self, filename, msg=None):

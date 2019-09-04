@@ -8221,12 +8221,13 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
-wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
-wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
-wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
-wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
-wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
-wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
+if shared.Settings.WASM_BACKEND:
+  wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+  wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+  wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+  wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+  wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+  wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 
@@ -8246,10 +8247,11 @@ wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'SAFE_STACK': 1})
 # emterpreter
 asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
-lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
-asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1})
+if shared.Settings.WASM_BACKEND:
+  lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
+  asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
+  asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+                   settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
