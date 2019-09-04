@@ -314,6 +314,42 @@ function loadDynamicLibrary(lib, flags) {
 }
 
 #if WASM
+// Applies relocations to exported things.
+function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
+  var relocated = {};
+
+  for (var e in exports) {
+    var value = exports[e];
+    if (typeof value === 'object') {
+      // a breaking change in the wasm spec, globals are now objects
+      // https://github.com/WebAssembly/mutable-global/issues/1
+      value = value.value;
+    }
+    if (typeof value === 'number') {
+      // relocate it - modules export the absolute value, they can't relocate before they export
+#if EMULATE_FUNCTION_POINTER_CASTS
+      // it may be a function pointer
+      if (e.substr(0, 3) == 'fp$' && typeof exports[e.substr(3)] === 'function') {
+        value = value + tableBase;
+      } else {
+#endif
+        value = value + memoryBase;
+#if EMULATE_FUNCTION_POINTER_CASTS
+      }
+#endif
+    }
+    relocated[e] = value;
+    if (moduleLocal) {
+#if WASM_BACKEND
+      moduleLocal['_' + e] = value;
+#else
+      moduleLocal[e] = value;
+#endif
+    }
+  }
+  return relocated;
+}
+
 // Loads a side module from binary data
 function loadWebAssemblyModule(binary, flags) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
@@ -405,8 +441,9 @@ function loadWebAssemblyModule(binary, flags) {
       sym = '_' + sym;
 #endif
       var resolved = Module[sym];
-      if (!resolved)
+      if (!resolved) {
         resolved = moduleLocal[sym];
+      }
 #if ASSERTIONS
       assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
@@ -498,7 +535,6 @@ function loadWebAssemblyModule(binary, flags) {
 #endif
 
     function postInstantiation(instance, moduleLocal) {
-      var exports = {};
 #if ASSERTIONS
       // the table should be unchanged
       assert(table === originalTable);
@@ -512,33 +548,7 @@ function loadWebAssemblyModule(binary, flags) {
         assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
       }
 #endif
-      for (var e in instance.exports) {
-        var value = instance.exports[e];
-        if (typeof value === 'object') {
-          // a breaking change in the wasm spec, globals are now objects
-          // https://github.com/WebAssembly/mutable-global/issues/1
-          value = value.value;
-        }
-        if (typeof value === 'number') {
-          // relocate it - modules export the absolute value, they can't relocate before they export
-#if EMULATE_FUNCTION_POINTER_CASTS
-          // it may be a function pointer
-          if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
-            value = value + tableBase;
-          } else {
-#endif
-            value = value + memoryBase;
-#if EMULATE_FUNCTION_POINTER_CASTS
-          }
-#endif
-        }
-        exports[e] = value;
-#if WASM_BACKEND
-        moduleLocal['_' + e] = value;
-#else
-        moduleLocal[e] = value;
-#endif
-      }
+      var exports = relocateExports(instance.exports, memoryBase, tableBase, moduleLocal);
       // initialize the module
       var init = exports['__post_instantiate'];
       if (init) {
