@@ -1,5 +1,4 @@
 DYNAMICTOP_PTR
-___setErrNo
 ___wasi_fd_write
 _emscripten_get_heap_size
 _emscripten_memcpy_big
