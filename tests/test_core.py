@@ -2013,6 +2013,7 @@ Success!''')
 
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr')
 
+  @no_wasm2js('extremely deep nesting, hits stack limit on some VMs')
   def test_indirectbr_many(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_indirectbr_many')
 
