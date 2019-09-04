@@ -7,7 +7,7 @@ import logging
 import os
 import sys
 import time
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, CalledProcessError
 
 TRACK_PROCESS_SPAWNS = int(os.getenv('EM_BUILD_VERBOSE', '0')) >= 3
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
@@ -21,10 +21,10 @@ def timeout_run(proc, timeout=None, note='unnamed process', full_output=False, n
     if proc.poll() is None:
       proc.kill() # XXX bug: killing emscripten.py does not kill it's child process!
       raise Exception("Timed out: " + note)
-  out = proc.communicate()
-  out = ['' if o is None else o for o in out]
+  stdout, stderr = proc.communicate()
+  out = ['' if o is None else o for o in (stdout, stderr)]
   if throw_on_failure and proc.returncode != 0:
-    raise Exception('Subprocess "' + ' '.join(note_args) + '" failed with exit code ' + str(proc.returncode) + '!')
+    raise CalledProcessError(proc.returncode, ' '.join(note_args), stdout, stderr)
   if TRACK_PROCESS_SPAWNS:
     logging.info('Process ' + str(proc.pid) + ' finished after ' + str(time.time() - start) + ' seconds. Exit code: ' + str(proc.returncode))
   return '\n'.join(out) if full_output else out[0]
@@ -152,7 +152,7 @@ def run_js(filename, engine=None, args=[], check_timeout=False, stdin=None, stdo
     # if we got here, then require_engine succeeded, so we can raise the original error
     raise
   if assert_returncode is not None and proc.returncode is not assert_returncode:
-    raise Exception('Expected the command ' + str(command) + ' to finish with return code ' + str(assert_returncode) + ', but it returned with code ' + str(proc.returncode) + ' instead! Output: ' + str(ret)[:error_limit])
+    raise CalledProcessError(proc.returncode, str(command), str(ret))
   return ret
 
 
