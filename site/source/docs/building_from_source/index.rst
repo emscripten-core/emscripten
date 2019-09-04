@@ -11,7 +11,15 @@ Emscripten's core codebase, which is in the main "emscripten" repo, does not nee
 Building LLVM
 -------------
 
-For using the LLVM wasm backend (recommended), simply build normal upstream LLVM from the monorepo, including clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS=lld;clang'``), following `that project's instructions <http://llvm.org/docs/CMake.html>`_. The build must not disable the WebAssembly backend (which is included by default).
+For using the LLVM wasm backend (recommended), simply build normal upstream LLVM from the monorepo, including clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS=lld;clang'``) and the wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_. For example, something like this can work:
+
+  ::
+
+      mkdir build
+      cd build
+      cmake .. -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS='lld;clang' -DLLVM_TARGETS_TO_BUILD="host;WebAssembly" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF
+
+Please refer to the upstream docs for more detail.
 
 For using the older fastcomp backend, see :ref:`the fastcomp docs <building-fastcomp-from-source>`.
 
