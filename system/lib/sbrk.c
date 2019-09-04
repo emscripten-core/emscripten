@@ -16,9 +16,9 @@
 extern "C" {
 #endif
 
-extern intptr_t* emscripten_get_sbrk_ptr();
+extern intptr_t* emscripten_get_sbrk_ptr(void);
 extern int emscripten_resize_heap(size_t requested_size);
-extern size_t emscripten_get_heap_size();
+extern size_t emscripten_get_heap_size(void);
 
 #ifdef __cplusplus
 }
