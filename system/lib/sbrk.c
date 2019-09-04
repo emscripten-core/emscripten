@@ -6,25 +6,37 @@
  *
 */
 
+#include <errno.h>
+#include <stddef.h>
 #include <stdint.h>
 
-extern intptr_t emscripten_get_sbrk_ptr();
+#define WASM_PAGE_SIZE 65536
+
+extern intptr_t* emscripten_get_sbrk_ptr();
 extern int emscripten_resize_heap(size_t requested_size);
+extern size_t emscripten_get_heap_size();
 
 void *sbrk(intptr_t increment) {
-  intptr_t old_brk = emscripten_get_sbrk_ptr();
+  intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+  intptr_t old_brk = *sbrk_ptr;
   // TODO: overflow checks
-  intptr_t updated_brk = old_brk + increment;
+  intptr_t new_brk = old_brk + increment;
+#if __wasm__
   uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
-  if (updated_brk >= old_size) {
+#else
+  uintptr_t old_size = emscripten_get_heap_size();
+#endif
+  // TODO In a multithreaded build dlmalloc uses locks around each malloc/free,
+  //      which means we don't need to use atomics here. In theory however
+  //      someone could use sbrk outside of dlmalloc in a racy manner.
+  if (new_brk > old_size) {
     // Try to grow memory.
-    intptr_t diff = updated_brk - old_size;
-XXX emscripten_resize_heap
-    uintptr_t result = __builtin_wasm_memory_grow(0, (diff + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE);
-    if (result == SIZE_MAX) {
+    intptr_t diff = new_brk - old_size;
+    if (!emscripten_resize_heap(new_brk)) {
       errno = ENOMEM;
       return (void*)-1;
     }
   }
+  *sbrk_ptr = new_brk;
   return (void*)old_brk;
 }

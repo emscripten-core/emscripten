@@ -818,7 +818,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
   def get_files(self):
     malloc = shared.path_from_root('system', 'lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
-    }[self.malloc])]
+    }[self.malloc])
     sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
     return [malloc, sbrk]
 
