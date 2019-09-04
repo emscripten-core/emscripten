@@ -780,7 +780,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
-    self.assertFalse(js_subprocess_failed, 'JS subprocess failed')
+    self.assertFalse(js_subprocess_failed, 'JS subprocess failed. Output:\n' + ret)
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
