@@ -8056,9 +8056,9 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   @parameterized({
-    'O0': ([],      15, [], ['waka'],  9211,  5, 12, 16), # noqa
-    'O1': (['-O1'], 13, [], ['waka'],  7886,  2, 11, 10), # noqa
-    'O2': (['-O2'], 13, [], ['waka'],  7871,  2, 11, 10), # noqa
+    'O0': ([],      14, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O1': (['-O1'], 12, [], ['waka'],  7886,  2, 11, 12), # noqa
+    'O2': (['-O2'], 12, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -8098,9 +8098,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      18, [], ['waka'], 22185,  8,  17, 54), # noqa
-    'O1': (['-O1'], 16, [], ['waka'], 10415,  6,  14, 28), # noqa
-    'O2': (['-O2'], 16, [], ['waka'], 10183,  6,  14, 23), # noqa
+    'O0': ([],      17, [], ['waka'], 22185,  8,  17, 56), # noqa
+    'O1': (['-O1'], 15, [], ['waka'], 10415,  6,  14, 30), # noqa
+    'O2': (['-O2'], 15, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  2, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  2, [], [],        1963,  4,   2, 12), # noqa
     'Oz': (['-Oz'],  2, [], [],        1929,  4,   1, 11), # noqa
@@ -8112,7 +8112,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1493, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1495, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   10, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
