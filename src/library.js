@@ -474,14 +474,11 @@ LibraryManager.library = {
     return HEAP8.length;
   },
 
-#if !WASM_BACKEND
-  // The wasm backend uses binaryen to embed this value in the binary.
   emscripten_get_sbrk_ptr__asm: true,
   emscripten_get_sbrk_ptr__sig: 'i',
   emscripten_get_sbrk_ptr: function() {
     return {{{ DYNAMICTOP_PTR }}};
   },
-#endif
 
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {

@@ -2387,7 +2387,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
   global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
 
-  send_items = (basic_funcs + invoke_funcs + global_funcs + basic_vars + global_vars)
+  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
 
   def fix_import_name(g):
     if g.startswith('Math_'):

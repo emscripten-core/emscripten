@@ -1583,9 +1583,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             passes += parse_passes(shared.Settings.BINARYEN_PASSES)
         else:
+          # Safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
+          if shared.Settings.SAFE_HEAP:
+            passes += ['--safe-heap']
+          passes += ['--post-emscripten']
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
-          passes += ['--post-emscripten']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
@@ -1644,8 +1647,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
-      # run safe-heap as a binaryen pass
-      if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
+      # run safe-heap as a binaryen pass in fastcomp wasm
+      if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
         options.binaryen_passes += ['--safe-heap']
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         # emulated function pointer casts is emulated in wasm using a binaryen pass
