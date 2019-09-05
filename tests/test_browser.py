@@ -3653,7 +3653,11 @@ window.close = function() {
   # Test that preallocating worker threads work.
   @requires_threads
   def test_pthread_preallocates_workers(self):
+<<<<<<< HEAD
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_preallocates_workers.cpp'), expected='0', args=['-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PREWARM_PTHREAD_POOL_WORKERS_SIZE=8'])
+=======
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_preallocates_workers.cpp'), expected='6765', args=['-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PREWARM_POOL_WORKERS=1'])
+>>>>>>> a4107ba0968f5d875a1286173f260ac760ea3268
 
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
