@@ -6,11 +6,11 @@ ___map_file
 ___setErrNo
 ___syscall140
 ___syscall145
-___syscall146
 ___syscall54
 ___syscall6
 ___syscall91
 ___unlock
+___wasi_fd_write
 __addDays
 __arraySum
 __emscripten_syscall_munmap
@@ -19,6 +19,7 @@ _abort
 _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap
+_fd_write
 _getenv
 _llvm_stackrestore
 _llvm_stacksave

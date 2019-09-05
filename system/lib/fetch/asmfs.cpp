@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <wasi/wasi.h>
 
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to
 // enable internal debugging. #define ASMFS_DEBUG
@@ -1922,6 +1923,27 @@ long __syscall146(int which, ...) // writev
     }
   }
   return total_write_amount;
+}
+
+// WASI support: provide a shim between the wasi fd_write syscall and the
+// syscall146 that is implemented here in ASMFS.
+// TODO: Refactor ASMFS's syscall146 into a direct handler for fd_write.
+
+__wasi_errno_t __wasi_fd_write(
+    __wasi_fd_t fd,
+    const __wasi_ciovec_t *iovs,
+    size_t iovs_len,
+    size_t *nwritten
+)
+{
+  long result;
+  result = __syscall146(146 /*writev*/, fd, iovs, iovs_len);
+  if (result < 0) {
+    *nwritten = 0;
+    return result;
+  }
+  *nwritten = result;
+  return 0;
 }
 
 // TODO: syscall148: fdatasync
