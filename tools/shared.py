@@ -496,7 +496,7 @@ EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.t
 parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
 EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 # For the Emscripten-specific WASM metadata section, follows semver, changes
-# whenever metadata section changes structure
+# whenever metadata section changes structure.
 # NB: major version 0 implies no compatibility
 # NB: when changing the metadata format, we should only append new fields, not
 #     reorder, modify, or remove existing ones.
@@ -508,7 +508,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
-# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
+# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
 (EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 6)
 
 
