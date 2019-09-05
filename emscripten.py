@@ -149,6 +149,10 @@ def parse_fastcomp_output(backend_output, DEBUG):
     logger.error('emscript: failure to parse metadata output from compiler backend. raw output is: \n' + metadata_raw)
     raise
 
+  # This key is being added to fastcomp but doesn't exist in the current
+  # version.
+  metadata.setdefault('externFunctions', [])
+
   if 'externUses' not in metadata:
     exit_with_error('Your fastcomp compiler is out of date, please update! (need >= 1.38.26)')
 
@@ -354,6 +358,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   global_funcs = sorted(global_funcs.difference(set(global_vars)).difference(implemented_functions))
   if shared.Settings.RELOCATABLE:
     global_funcs += ['g$' + extern for extern in metadata['externs']]
+    global_funcs += ['fp$' + extern for extern in metadata['externFunctions']]
 
   # Tracks the set of used (minified) function names in
   # JS symbols imported to asm.js module.
@@ -663,6 +668,7 @@ def update_settings_glue(metadata, DEBUG):
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
   implemented_funcs = [x[1:] for x in metadata['implementedFunctions']]
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(implemented_funcs))
+
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
 
   if metadata['simd']:
@@ -1503,7 +1509,7 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     def check(extern):
       if shared.Settings.ASSERTIONS:
-        return ('\n  assert(%sModule["%s"], "external global `%s` is missing.' % (side, extern, extern) +
+        return ('\n  assert(%sModule["%s"] || %s, "external symbol `%s` is missing.' % (side, extern, extern, extern) +
                 'perhaps a side module was not linked in? if this symbol was expected to arrive '
                 'from a system library, try to build the MAIN_MODULE with '
                 'EMCC_FORCE_STDLIBS=1 in the environment");')
@@ -1511,6 +1517,19 @@ def create_asm_setup(debug_tables, function_table_data, invoke_function_names, m
 
     for extern in metadata['externs']:
       asm_setup += 'var g$' + extern + ' = function() {' + check(extern) + '\n  return ' + side + 'Module["' + extern + '"];\n}\n'
+    for extern in metadata['externFunctions']:
+      barename, sig = extern.split('$')
+      fullname = "fp$" + extern
+      key = '%sModule["%s"]' % (side, fullname)
+      asm_setup += '''\
+    var %s = function() {
+      if (!%s) { %s
+        var fid = addFunction(%sModule["%s"] || %s, "%s");
+        %s = fid;
+      }
+      return %s;
+    }
+    ''' % (fullname, key, check(barename), side, barename, barename, sig, key, key)
 
   asm_setup += create_invoke_wrappers(invoke_function_names)
   asm_setup += setup_function_pointers(function_table_sigs)
@@ -1778,7 +1797,7 @@ Module['%(full)s'] = function() {
   var func = Module['%(mangled)s'];
   if (!func)
     func = %(mangled)s;
-  var fp = addFunctionWasm(func, '%(sig)s');
+  var fp = addFunction(func, '%(sig)s');
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
