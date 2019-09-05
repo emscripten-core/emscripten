@@ -508,10 +508,16 @@ var LibraryGL = {
       canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
       if (!ctx) {
         err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
+        return 0;
       }
+#else
+      if (!ctx) return 0;
 #endif
+
+      var handle = GL.registerContext(ctx, webGLContextAttributes);
+
 #if TRACE_WEBGL_CALLS
-      if (ctx) GL.hookWebGL(ctx);
+      GL.hookWebGL(ctx);
 #endif
 
 #if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
@@ -545,7 +551,7 @@ var LibraryGL = {
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
 
-      return ctx ? GL.registerContext(ctx, webGLContextAttributes) : 0;
+      return handle;
     },
 
 #if OFFSCREEN_FRAMEBUFFER
