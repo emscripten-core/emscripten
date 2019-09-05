@@ -756,7 +756,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     stderr = self.in_dir('stderr')
     # Make sure that we produced proper line endings to the .js file we are about to run.
     self.assertEqual(line_endings.check_line_endings(filename), 0)
-    js_subprocess_failed = False
+    error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
     try:
@@ -766,7 +766,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
                      stderr=open(stderr, 'w'),
                      assert_returncode=assert_returncode)
     except subprocess.CalledProcessError as e:
-      js_subprocess_failed = True
+      error = e
 
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
@@ -776,11 +776,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = output_nicerizer(out, err)
     else:
       ret = out + err
-    if js_subprocess_failed or EMTEST_VERBOSE:
+    if error or EMTEST_VERBOSE:
       print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
-    self.assertFalse(js_subprocess_failed, 'JS subprocess failed (%s): %s.  Output:\n%s' % (e.cmd, e.returncode, ret))
+    if error:
+      self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
     #  We should pass all strict mode checks
     self.assertNotContained('strict warning:', ret)
