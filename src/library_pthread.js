@@ -279,12 +279,12 @@ var LibraryPThread = {
       var workers = [];
 
       var createNumNewWorkers = numWorkers;
-      if (PThread.preallocatedWorkerPool.length > 0) {
-        var workersUsed = Math.min(PThread.preallocatedWorkerPool.length, numWorkers);
+      if (PThread.preallocatedWorkers.length > 0) {
+        var workersUsed = Math.min(PThread.preallocatedWorkers.length, numWorkers);
 #if PTHREADS_DEBUG
         out('using ' + workersUsed + 'preallocated workers');
 #endif
-        workers.push(...PThread.preallocatedWorkerPool.splice(0, workersUsed));
+        workers.push(...PThread.preallocatedWorkers.splice(0, workersUsed));
         createNumNewWorkers -= workersUsed;
       }
       if (createNumNewWorkers > 0) {
