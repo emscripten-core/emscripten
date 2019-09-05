@@ -499,9 +499,6 @@ function exportRuntime() {
   }).join('\n');
 }
 
-// Assigned in preamble parsing.
-var DYNAMICTOP_PTR;
-
 var PassManager = {
   serialize: function() {
     print('\n//FORWARDED_DATA:' + JSON.stringify({

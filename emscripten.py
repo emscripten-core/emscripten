@@ -1583,9 +1583,6 @@ def create_basic_vars(exported_implemented_functions, forwarded_json, metadata):
   if 'tempDoublePtr' in shared.Settings.ASM_PRIMITIVE_VARS:
     basic_vars += ['tempDoublePtr']
 
-  if shared.Settings.SAFE_HEAP or shared.Settings.USES_DYNAMIC_ALLOC or not shared.Settings.MINIMAL_RUNTIME:
-    basic_vars += ['DYNAMICTOP_PTR']
-
   if shared.Settings.RELOCATABLE:
     if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE):
       basic_vars += ['gb', 'fb', 'STACKTOP', 'STACK_MAX']
@@ -2380,8 +2377,6 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
-
-  basic_vars = ['DYNAMICTOP_PTR']
 
   if not shared.Settings.RELOCATABLE:
     global_vars = metadata['externs']
