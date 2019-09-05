@@ -30,7 +30,7 @@ mergeInto(LibraryManager.library, {
       // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
       // Buffer.from before 4.5 was just a method inherited from Uint8Array
       // Buffer.alloc has been added with Buffer.from together, so check it instead
-      return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
+      return Buffer["alloc"] ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
     },
     mount: function (mount) {
       assert(ENVIRONMENT_HAS_NODE);
