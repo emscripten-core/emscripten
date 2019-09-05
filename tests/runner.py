@@ -1275,6 +1275,8 @@ def harness_server_func(in_queue, out_queue, port):
           # the browser must keep polling
           self.wfile.write(b'(wait)')
       else:
+        print('[simple HTTP serving:', unquote_plus(self.path), ']')
+
         # Use SimpleHTTPServer default file serving operation for GET.
         if DEBUG:
           print('[simple HTTP serving:', unquote_plus(self.path), ']')

@@ -194,6 +194,7 @@ var LibraryPThread = {
     },
 
     terminateAllThreads: function() {
+      out('TERMINATING');
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
         if (pthread) {
@@ -282,7 +283,7 @@ var LibraryPThread = {
       if (PThread.preallocatedWorkers.length > 0) {
         var workersUsed = Math.min(PThread.preallocatedWorkers.length, numWorkers);
 #if PTHREADS_DEBUG
-        out('using ' + workersUsed + 'preallocated workers');
+        out('Using ' + workersUsed + ' preallocated workers');
 #endif
         workers.push(...PThread.preallocatedWorkers.splice(0, workersUsed));
         createNumNewWorkers -= workersUsed;
@@ -428,7 +429,7 @@ var LibraryPThread = {
       // Creates new workers with the discovered pthread worker file.
       if (typeof SharedArrayBuffer === 'undefined') return; // No multithreading support, no-op.
 #if PTHREADS_DEBUG
-      out('Creating ' + numWorkers + ' workers for a pthread spawn pool.');
+      out('Creating ' + numWorkers + ' workers.');
 #endif
       var pthreadMainJs = "{{{ PTHREAD_WORKER_FILE }}}";
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
@@ -489,7 +490,6 @@ var LibraryPThread = {
 
   _spawn_thread: function(threadParams) {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _spawn_thread() can only ever be called from main application thread!';
-
     var worker = PThread.getNewWorker();
     if (worker.pthread !== undefined) throw 'Internal error!';
     if (!threadParams.pthread_ptr) throw 'Internal error, no pthread ptr!';
