@@ -669,11 +669,7 @@ def update_settings_glue(metadata, DEBUG):
   implemented_funcs = [x[1:] for x in metadata['implementedFunctions']]
   shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = sorted(set(all_funcs).difference(implemented_funcs))
 
-  # Externs are undefined data symbols in the wasm/asm binary.  For RELOCATABLE
-  # output these are access via access functions in the form of `g$foo` as
-  # opposed to being imported directly as a global address.
-  if not shared.Settings.RELOCATABLE:
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
+  shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [x[1:] for x in metadata['externs']]
 
   if metadata['simd']:
     shared.Settings.SIMD = 1
