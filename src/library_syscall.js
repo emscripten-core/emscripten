@@ -1830,10 +1830,8 @@ for (var x in SyscallsLibrary) {
   var m = /^__syscall(\d+)$/.exec(x);
   if (m) {
     which = +m[1];
-  } else {
-    if (!(x in WASI_SYSCALLS)) {
-      continue;
-    }
+  } else if (!(x in WASI_SYSCALLS)) {
+    continue;
   }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
@@ -1843,7 +1841,11 @@ for (var x in SyscallsLibrary) {
     pre += 'SYSCALLS.varargs = varargs;\n';
   }
 #if SYSCALL_DEBUG
-  pre += "err('syscall! ' + [" + which + ", '" + (which ? SYSCALL_CODE_TO_NAME[which] : x) + "']);\n";
+  if (which) {
+    pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  } else {
+    pre += "err('syscall! " + x + "');\n";
+  }
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
