@@ -345,9 +345,7 @@ var LibraryPThread = {
       for (var i = 0; i < numWorkers; ++i) {
         var worker = workers[i];
         (function(worker) {
-          console.log('attaching listener...');
           worker.onmessage = function(e) {
-            console.log(e);
             var d = e.data;
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
