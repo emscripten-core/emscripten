@@ -10,18 +10,36 @@
 
 void PrintWide ( const wchar_t * format, ... )
 {
-  wchar_t buffer[256];
-  memset(buffer, 0, 256);
+  int max_chars = 256;
+  wchar_t buffer[max_chars];
+  memset(buffer, 0, max_chars);
   va_list args;
   va_start ( args, format );
   wprintf(L"format    starts with 0x%x\n", *(int*)format);
   wprintf(L"fmt    continues with 0x%x\n", *(((int*)format) + 1));
   wprintf(L"fmt    continues with 0x%x\n", *(((int*)format) + 2));
-  int r = vswprintf ( buffer, 256, format, args );
+  int r = vswprintf ( buffer, max_chars-1, format, args );
   wprintf(L"vswprintf told us %d\n", r);
   wprintf(L"vswoutput st-rts with 0x%x\n", *(int*)buffer);
   wprintf(L"vsw    continues with 0x%x\n", *(((int*)buffer) + 1));
   wprintf(L"vsw    continues with 0x%x\n", *(((int*)buffer) + 2));
+  wprintf(buffer);
+  va_end ( args );
+}
+
+void PrintBigWide ( const wchar_t * format, ... )
+{
+  int max_chars = 8096;
+	wchar_t buffer[max_chars] = { 0 };
+  va_list args;
+  va_start ( args, format );
+  int ret = vswprintf ( buffer, max_chars-1, format, args );
+  if (ret >= max_chars) {
+		ret = max_chars - 1;
+	}
+	if (ret > 0) {
+		wprintf(L"PrintBigWide wrote %d wchars:\n", ret);
+	}
   wprintf(buffer);
   va_end ( args );
 }
@@ -45,7 +63,15 @@ int main ()
    PrintWide ( str, wcslen(str) );
    PrintWide ( str, wcslen(str) );
    PrintWide ( str, wcslen(str) );
-
+  
+  
+   wchar_t long_str[] = L"test string has %d wide characters.\n"
+     "Internally the variadic print functions use a 256 char buffer, so this is a string that's longer than 256 chars, "
+     "so in case this breaks we have a test case. As discovered in #9305 vswprintf had been broken for some time, "
+     "but was never picked up as the test strings were all shorter then 256 chars. So hopefully this long rambly string "
+     "will help guard against that bug being re-introduced.\n";
+   PrintWide ( str, wcslen(str) );
+  
    wprintf (L"Characters: %lc %lc \n", L'a', 65);
    wprintf (L"Decimals: %d %ld\n", 1977, 650000L);
    wprintf (L"Preceding with blanks: %10d \n", 1977);
