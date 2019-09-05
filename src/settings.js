@@ -1240,10 +1240,11 @@ var USE_PTHREADS = 0;
 // created on demand.
 var PTHREAD_POOL_SIZE = 0;
 
-// If true, PTHREAD_POOL_SIZE web workers are preallocated before the
-// webassembly module is compiled. If 0, workers are created on after the
-// module is compiled. This flag does not do anything if PTHREAD_POOL_SIZE <= 0
-var PREWARM_POOL_WORKERS = 0
+// Specifies the number of web workers that are preallocated before the
+// webassembly module is compiled. If 0, workers are created on demand. You
+// likely want this to be >= PTHREAD_POOL_SIZE. Note that this starts the
+// webworkers in a state where they have yet to load the webassembly module.
+var PREWARM_PTHREAD_POOL_WORKERS_SIZE = 0
 
 // If not explicitly specified, this is the stack size to use for newly created
 // pthreads.  According to

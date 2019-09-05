@@ -33,11 +33,11 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
 
-#if PREWARM_POOL_WORKERS && PTHREAD_POOL_SIZE > 0
+#if PREWARM_PTHREAD_POOL_WORKERS_SIZE > 0
 #if PTHREADS_DEBUG
-      out('Preallocating ' + {{{ PTHREAD_POOL_SIZE }}} + ' workers.');
+      out('Preallocating ' + {{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}} + ' workers.');
 #endif
-      PThread.preallocatedWorkers = PThread.createNewWorkers({{{ PTHREAD_POOL_SIZE }}});
+      PThread.preallocatedWorkers = PThread.createNewWorkers({{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}});
 #endif
 
       PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
@@ -194,6 +194,7 @@ var LibraryPThread = {
     },
 
     terminateAllThreads: function() {
+      out('TERMINATING');
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
         if (pthread) {
@@ -303,6 +304,7 @@ var LibraryPThread = {
         // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
         var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
 #endif
+
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
           cmd: 'load',
@@ -345,9 +347,7 @@ var LibraryPThread = {
       for (var i = 0; i < numWorkers; ++i) {
         var worker = workers[i];
         (function(worker) {
-          console.log('attaching listener...');
           worker.onmessage = function(e) {
-            console.log(e);
             var d = e.data;
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
