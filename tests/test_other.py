@@ -6749,7 +6749,7 @@ int main() {
     src = open('a.out.js').read()
     matches = re.findall(r'''function ___syscall(\d+)\(''', src)
     print('seen syscalls:', matches)
-    assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
+    assert set(matches) == set(['6', '54', '140']) # close, ioctl, llseek, writev
 
   @no_windows('posix-only')
   def test_emcc_dev_null(self):
@@ -8066,7 +8066,7 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      25, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
+    'O0': ([],      26, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
     'O1': (['-O1'], 14, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
     'O2': (['-O2'], 14, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -8084,10 +8084,10 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 21, 33, None) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 36, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
+    'normal': (['-O2'], 37, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        36, ['abort'], ['waka'], 188310, 29, 39, 520), # noqa
+                        37, ['abort'], ['waka'], 188310, 29, 39, 520), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8117,9 +8117,9 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      27, ['abort'], ['waka'], 42701,  24,   17, 57), # noqa
-    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,  15,   14, 33), # noqa
-    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,  15,   14, 28), # noqa
+    'O0': ([],      28, ['abort'], ['waka'], 42701,  24,   17, 57), # noqa
+    'O1': (['-O1'], 20, ['abort'], ['waka'], 13199,  15,   14, 33), # noqa
+    'O2': (['-O2'], 20, ['abort'], ['waka'], 12425,  15,   14, 28), # noqa
     'O3': (['-O3'],  6, [],        [],        2443,   9,    2, 15), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  6, [],        [],        2412,   9,    2, 17), # noqa
     'Oz': (['-Oz'],  6, [],        [],        2389,   9,    2, 16), # noqa
@@ -9610,7 +9610,7 @@ int main () {
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 6231), 100)
+    self.assertLess(abs(changed - 6048), 100)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
