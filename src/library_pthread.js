@@ -12,6 +12,10 @@ var LibraryPThread = {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
+    // Workers that have been created but uninitialized. These have already been
+    // parsed, but the wabassembly model has not yet been loaded, making it
+    // distinct from the unusedWorkers below.
+    preallocatedWorkers: [],
     // Contains all Workers that are idle/unused and not currently hosting an executing pthread.
     // Unused Workers can either be pooled up before page startup, but also when a pthread quits, its hosting
     // Worker is not terminated, but is returned to this pool as an optimization so that starting the next thread is faster.
@@ -28,6 +32,14 @@ var LibraryPThread = {
     },
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
+
+#if PREWARM_PTHREAD_POOL_WORKERS_SIZE > 0
+#if PTHREADS_DEBUG
+      out('Preallocating ' + {{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}} + ' workers.');
+#endif
+      PThread.preallocatedWorkers = PThread.createNewWorkers({{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}});
+#endif
+
       PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
@@ -191,6 +203,15 @@ var LibraryPThread = {
       }
       PThread.pthreads = {};
 
+      for (var i = 0; i < PThread.preallocatedWorkers.length; ++i) {
+        var worker = PThread.preallocatedWorkers[i];
+#if ASSERTIONS
+        assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
+#endif
+        worker.terminate();
+      }
+      PThread.preallocatedWorkers = [];
+
       for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
         var worker = PThread.unusedWorkers[i];
 #if ASSERTIONS
@@ -252,19 +273,78 @@ var LibraryPThread = {
     allocateUnusedWorkers: function(numWorkers, onFinishedLoading) {
       if (typeof SharedArrayBuffer === 'undefined') return; // No multithreading support, no-op.
 #if PTHREADS_DEBUG
-      out('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
+      out('Allocating ' + numWorkers + ' workers for a pthread spawn pool.');
 #endif
 
-      var numWorkersLoaded = 0;
-      var pthreadMainJs = "{{{ PTHREAD_WORKER_FILE }}}";
-      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
-      // to the main html file is loaded.
-      pthreadMainJs = locateFile(pthreadMainJs);
+      var workers = [];
 
+      var createNumNewWorkers = numWorkers;
+      if (PThread.preallocatedWorkers.length > 0) {
+        var workersUsed = Math.min(PThread.preallocatedWorkers.length, numWorkers);
+#if PTHREADS_DEBUG
+        out('Using ' + workersUsed + ' preallocated workers');
+#endif
+        workers.push(...PThread.preallocatedWorkers.splice(0, workersUsed));
+        createNumNewWorkers -= workersUsed;
+      }
+      if (createNumNewWorkers > 0) {
+        workers.push(...PThread.createNewWorkers(createNumNewWorkers));
+      }
+
+      // Add the listeners.
+      PThread.attachListenerToWorkers(workers, onFinishedLoading);
+
+      // Load the wasm module into the worker.
       for (var i = 0; i < numWorkers; ++i) {
-        var worker = new Worker(pthreadMainJs);
+        var worker = workers[i];
 
+#if !WASM_BACKEND
+        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
+        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
+        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
+#endif
+
+        // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
+        worker.postMessage({
+          cmd: 'load',
+          // If the application main .js file was loaded from a Blob, then it is not possible
+          // to access the URL of the current script that could be passed to a Web Worker so that
+          // it could load up the same file. In that case, developer must either deliver the Blob
+          // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+          // independently load up the same main application file.
+          urlOrBlob: Module['mainScriptUrlOrBlob'] || _scriptDir,
+#if WASM
+          wasmMemory: wasmMemory,
+          wasmModule: wasmModule,
+#if LOAD_SOURCE_MAP
+          wasmSourceMap: wasmSourceMap,
+#endif
+#if USE_OFFSET_CONVERTER
+          wasmOffsetConverter: wasmOffsetConverter,
+#endif
+#else
+          buffer: HEAPU8.buffer,
+          asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
+#endif
+#if !WASM_BACKEND
+          tempDoublePtr: tempDoublePtr,
+#endif
+          DYNAMIC_BASE: DYNAMIC_BASE,
+          DYNAMICTOP_PTR: DYNAMICTOP_PTR,
+          PthreadWorkerInit: PthreadWorkerInit
+        });
+        PThread.unusedWorkers.push(worker);
+      }
+    },
+
+    // Attaches the listeners to the given workers. If onFinishedLoading is provided,
+    // will call that function when all workers have been loaded. It is assumed that no worker
+    // is yet loaded.
+    attachListenerToWorkers: function(workers, onFinishedLoading) {
+      var numWorkersLoaded = 0;
+      var numWorkers = workers.length;
+      for (var i = 0; i < numWorkers; ++i) {
+        var worker = workers[i];
         (function(worker) {
           worker.onmessage = function(e) {
             var d = e.data;
@@ -341,44 +421,25 @@ var LibraryPThread = {
             err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
           };
         }(worker));
+      }  // for each worker
+    },
 
-#if !WASM_BACKEND
-        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
-        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
-        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
+    createNewWorkers: function(numWorkers) {
+      // Creates new workers with the discovered pthread worker file.
+      if (typeof SharedArrayBuffer === 'undefined') return; // No multithreading support, no-op.
+#if PTHREADS_DEBUG
+      out('Creating ' + numWorkers + ' workers.');
 #endif
-
-        // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
-        worker.postMessage({
-          cmd: 'load',
-          // If the application main .js file was loaded from a Blob, then it is not possible
-          // to access the URL of the current script that could be passed to a Web Worker so that
-          // it could load up the same file. In that case, developer must either deliver the Blob
-          // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
-          // independently load up the same main application file.
-          urlOrBlob: Module['mainScriptUrlOrBlob'] || _scriptDir,
-#if WASM
-          wasmMemory: wasmMemory,
-          wasmModule: wasmModule,
-#if LOAD_SOURCE_MAP
-          wasmSourceMap: wasmSourceMap,
-#endif
-#if USE_OFFSET_CONVERTER
-          wasmOffsetConverter: wasmOffsetConverter,
-#endif
-#else
-          buffer: HEAPU8.buffer,
-          asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
-#endif
-#if !WASM_BACKEND
-          tempDoublePtr: tempDoublePtr,
-#endif
-          DYNAMIC_BASE: DYNAMIC_BASE,
-          DYNAMICTOP_PTR: DYNAMICTOP_PTR,
-          PthreadWorkerInit: PthreadWorkerInit
-        });
-        PThread.unusedWorkers.push(worker);
+      var pthreadMainJs = "{{{ PTHREAD_WORKER_FILE }}}";
+      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
+      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
+      // to the main html file is loaded.
+      pthreadMainJs = locateFile(pthreadMainJs);
+      var newWorkers = [];
+      for (var i = 0; i < numWorkers; ++i) {
+        newWorkers.push(new Worker(pthreadMainJs));
       }
+      return newWorkers;
     },
 
     getNewWorker: function() {
