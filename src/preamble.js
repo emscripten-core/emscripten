@@ -121,6 +121,9 @@ function ccall(ident, returnType, argTypes, args, opts) {
       }
     }
   }
+#if ASYNCIFY && WASM_BACKEND
+  var currData = Asyncify.currData
+#endif
   var ret = func.apply(null, cArgs);
 #if EMTERPRETIFY_ASYNC
   if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
@@ -138,7 +141,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
 #endif
 #if ASYNCIFY && WASM_BACKEND
-  if (typeof Asyncify === 'object' && Asyncify.currData) {
+  if (typeof Asyncify === 'object' && Asyncify.currData && Asyncify.currData !== currData) {
     // The WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
@@ -218,7 +221,7 @@ function allocate(slab, types, allocator, ptr) {
     ret = ptr;
   } else {
     ret = [_malloc,
-#if DECLARE_ASM_MODULE_EXPORTS    
+#if DECLARE_ASM_MODULE_EXPORTS
     stackAlloc,
 #else
     typeof stackAlloc !== 'undefined' ? stackAlloc : null,
