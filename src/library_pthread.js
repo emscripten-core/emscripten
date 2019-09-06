@@ -13,8 +13,9 @@ var LibraryPThread = {
       schedPrio: 0
     },
     // Workers that have been created but uninitialized. These have already been
-    // parsed, but the wabassembly model has not yet been loaded, making it
-    // distinct from the unusedWorkers below.
+    // parsed, but the wasm file has not yet been loaded, making it
+    // distinct from the unusedWorkers below. These workers will be created before
+    // loading wasm on the main thread.
     preallocatedWorkers: [],
     // Contains all Workers that are idle/unused and not currently hosting an executing pthread.
     // Unused Workers can either be pooled up before page startup, but also when a pthread quits, its hosting
@@ -278,17 +279,17 @@ var LibraryPThread = {
 
       var workers = [];
 
-      var createNumNewWorkers = numWorkers;
+      var numWorkersToCreate = numWorkers;
       if (PThread.preallocatedWorkers.length > 0) {
         var workersUsed = Math.min(PThread.preallocatedWorkers.length, numWorkers);
 #if PTHREADS_DEBUG
         out('Using ' + workersUsed + ' preallocated workers');
 #endif
         workers.push(...PThread.preallocatedWorkers.splice(0, workersUsed));
-        createNumNewWorkers -= workersUsed;
+        numWorkersToCreate -= workersUsed;
       }
-      if (createNumNewWorkers > 0) {
-        workers.push(...PThread.createNewWorkers(createNumNewWorkers));
+      if (numWorkersToCreate > 0) {
+        workers.push(...PThread.createNewWorkers(numWorkersToCreate));
       }
 
       // Add the listeners.

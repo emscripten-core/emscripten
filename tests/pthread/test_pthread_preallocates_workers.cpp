@@ -14,10 +14,16 @@
 #include <emscripten/threading.h>
 #include <vector>
 
+bool alive[5] = {0};
+pthread_t threads[5];
+
 static void *thread_start(void *arg)
 {
   // This should be long enough for threads to pile up.
-  sleep(2);
+  int idx = (int)arg;
+  while (alive[idx]) {
+    sleep(1);
+  }
   pthread_exit((void*)0);
 }
 
@@ -39,10 +45,9 @@ int main()
   // This test should be run with a prepopulated pool of size 4.
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 4);
 
-  pthread_t threads[5];
-  int n = 20;
-  EM_ASM(out('Main: Spawning thread to compute fib('+$0+')...'), n);
-  int rc = pthread_create(&threads[0], NULL, thread_start, NULL);
+  EM_ASM(out('Main: Spawning thread...'), NULL);
+  alive[0] = true;
+  int rc = pthread_create(&threads[0], NULL, thread_start, (void*)0);
   assert(rc == 0);
   EM_ASM(out('Main: Waiting for thread to join.'));
   int result = 0;
@@ -52,6 +57,7 @@ int main()
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 3);
 
   // We can join here because 4 threads were preallocated.
+  alive[0] = false;
   rc = pthread_join(threads[0], NULL);
   assert(rc == 0);
   EM_ASM(out('Main: Thread joined with result: '+$0+'.'), result);
@@ -61,8 +67,9 @@ int main()
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 4);
 
   for (int i = 0; i < 5; ++i) {
-    EM_ASM(out('Main: Spawning thread '+$0+' to compute fib('+$1+')...'), i, n);
-    int rc = pthread_create(&threads[i], NULL, thread_start, NULL);
+    alive[i] = true;
+    EM_ASM(out('Main: Spawning thread '+$0+'...'), i);
+    int rc = pthread_create(&threads[i], NULL, thread_start, (void*)i);
     assert(rc == 0);
   }
 
@@ -72,8 +79,11 @@ int main()
 
   // We can join the first 4 threads, as they were preallocated.
   for (int i = 0; i < 4; ++i) {
+    alive[i] = false;
     rc = pthread_join(threads[i], NULL);
   }
+  // Mark the last thread to be killed.
+  alive[4] = false;
 
   // We can't join the last one or we'll hang forever. The main thread
   // won't give up the thread to let the 5th thread be created. This is
