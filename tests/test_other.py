@@ -9606,14 +9606,16 @@ int main () {
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure', '1'] + args)
       for engine in JS_ENGINES:
         self.assertContained('hello, world!', run_js('a.out.js', engine=engine))
-      return os.path.getsize('a.out.js')
+      with open('a.out.js') as f:
+        # ignore \r which on windows can increase the size
+        return len(f.read().replace('\r', ''))
     normal = test([])
     changed = test(['-s', 'INCOMING_MODULE_JS_API=[]'])
     print('sizes', normal, changed)
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 5905), 100)
+    self.assertLess(abs(changed - 5905), 150)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
