@@ -8069,9 +8069,9 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      22, ['abort'], ['waka'], 22712, 17, 15, 28), # noqa
-    'O1': (['-O1'], 13, ['abort'], ['waka'], 10450,  5, 11, 12), # noqa
-    'O2': (['-O2'], 13, ['abort'], ['waka'], 10440,  5, 11, 12), # noqa
+    'O0': ([],      21, ['abort'], ['waka'], 22712, 16, 15, 28), # noqa
+    'O1': (['-O1'], 12, ['abort'], ['waka'], 10450,  4, 11, 12), # noqa
+    'O2': (['-O2'], 12, ['abort'], ['waka'], 10440,  4, 11, 12), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
     'Os': (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
@@ -8087,10 +8087,10 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 20, 33, None) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 36, ['abort'], ['waka'], 186423, 26, 38, 541), # noqa
+    'normal': (['-O2'], 35, ['abort'], ['waka'], 186423, 25, 38, 541), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        36, ['abort'], ['waka'], 188310, 26, 39, 521), # noqa
+                        35, ['abort'], ['waka'], 188310, 25, 39, 521), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8120,9 +8120,9 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      24, ['abort'], ['waka'], 42701,  19,   17, 55), # noqa
-    'O1': (['-O1'], 16, ['abort'], ['waka'], 13199,  10,   14, 31), # noqa
-    'O2': (['-O2'], 16, ['abort'], ['waka'], 12425,  10,   14, 27), # noqa
+    'O0': ([],      23, ['abort'], ['waka'], 42701,  18,   17, 55), # noqa
+    'O1': (['-O1'], 15, ['abort'], ['waka'], 13199,   9,   14, 31), # noqa
+    'O2': (['-O2'], 15, ['abort'], ['waka'], 12425,   9,   14, 27), # noqa
     'O3': (['-O3'],  3, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  3, [],        [],        2064,   6,    2, 15), # noqa
     'Oz': (['-Oz'],  3, [],        [],        2045,   6,    2, 14), # noqa
@@ -8133,7 +8133,7 @@ int main() {
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
     'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, None, 97, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   10, [], [],  10017,   14,  9,   20), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],    9, [], [],  10017,   13,  9,   20), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):

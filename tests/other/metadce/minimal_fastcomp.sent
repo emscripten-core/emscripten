@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 ___lock
 ___unlock
 ___wasi_fd_write
