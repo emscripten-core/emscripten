@@ -1647,7 +1647,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
-      # run safe-heap as a binaryen pass in fastcomp wasm
+      # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
+      # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
         options.binaryen_passes += ['--safe-heap']
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
@@ -2908,7 +2909,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     log_time('asm2wasm')
   if options.binaryen_passes:
     if '--post-emscripten' in options.binaryen_passes:
-      # the value of the sbrk pointer has been computed by now, and we can send it if it is expected
+      # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
+      # (we can't add this value when we placed post-emscripten in the proper position in the list of
+      # passes because that was before the value was computed)
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
