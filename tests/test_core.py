@@ -3638,9 +3638,12 @@ ok
         printf("main\n");
         EM_ASM({
           // make the function table sizes a non-power-of-two
-          alignFunctionTables();
-          Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
           var newSize = alignFunctionTables();
+          //out('old size of function tables: ' + newSize);
+          while ((newSize & 3) !== 3) {
+            Module['FUNCTION_TABLE_v'].push(0);
+            newSize = alignFunctionTables();
+          }
           //out('new size of function tables: ' + newSize);
           // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
           assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
@@ -4654,19 +4657,16 @@ Module = {
     src = open(path_from_root('tests', 'files.cpp')).read()
 
     mem_file = 'src.cpp.o.js.mem'
-    orig_args = self.emcc_args
-    for mode in [[], ['-s', 'SYSCALL_DEBUG=1']]:
-      print(mode)
-      self.emcc_args = orig_args + mode
-      try_delete(mem_file)
+    try_delete(mem_file)
 
-      def clean(out, err):
-        return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
+    def clean(out, err):
+      return '\n'.join([line for line in (out + err).split('\n') if 'binaryen' not in line and 'wasm' not in line and 'so not running' not in line])
 
-      self.do_run(src, [x if 'SYSCALL_DEBUG=1' not in mode else ('syscall! 146,SYS_writev' if self.run_name == 'default' else 'syscall! 146') for x in ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n')],
-                  output_nicerizer=clean)
-      if self.uses_memory_init_file():
-        self.assertExists(mem_file)
+    self.do_run(src, ('size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\ntexte\n', 'size: 7\ndata: 100,-56,50,25,10,77,123\nloop: 100 -56 50 25 10 77 123 \ninput:hi there!\ntexto\ntexte\n$\n5 : 10,30,20,11,88\nother=some data.\nseeked=me da.\nseeked=ata.\nseeked=ta.\nfscanfed: 10 - hello\n5 bytes to dev/null: 5\nok.\n'),
+                output_nicerizer=clean)
+
+    if self.uses_memory_init_file():
+      self.assertExists(mem_file)
 
   def test_files_m(self):
     # Test for Module.stdin etc.
@@ -8199,10 +8199,11 @@ def make_run(name, emcc_args, settings=None, env=None):
 
 
 # Main asm.js test modes
-asm0 = make_run('asm0', emcc_args=[], settings={'ASM_JS': 2, 'WASM': 0})
-asm2 = make_run('asm2', emcc_args=['-O2'], settings={'WASM': 0})
-asm3 = make_run('asm3', emcc_args=['-O3'], settings={'WASM': 0})
-asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTIONS': 1, 'SAFE_HEAP': 1})
+if not shared.Settings.WASM_BACKEND:
+  asm0 = make_run('asm0', emcc_args=[], settings={'ASM_JS': 2, 'WASM': 0})
+  asm2 = make_run('asm2', emcc_args=['-O2'], settings={'WASM': 0})
+  asm3 = make_run('asm3', emcc_args=['-O3'], settings={'WASM': 0})
+  asm2g = make_run('asm2g', emcc_args=['-O2', '-g'], settings={'WASM': 0, 'ASSERTIONS': 1, 'SAFE_HEAP': 1})
 
 # Main wasm test modes
 wasm0 = make_run('wasm0', emcc_args=['-O0'])
@@ -8221,12 +8222,13 @@ wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES'
 wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
 wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
 
-wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
-wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
-wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
-wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
-wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
-wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
+if shared.Settings.WASM_BACKEND:
+  wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
+  wasm2js1 = make_run('wasm2js1', emcc_args=['-O1'], settings={'WASM': 0})
+  wasm2js2 = make_run('wasm2js2', emcc_args=['-O2'], settings={'WASM': 0})
+  wasm2js3 = make_run('wasm2js3', emcc_args=['-O3'], settings={'WASM': 0})
+  wasm2jss = make_run('wasm2jss', emcc_args=['-Os'], settings={'WASM': 0})
+  wasm2jsz = make_run('wasm2jsz', emcc_args=['-Oz'], settings={'WASM': 0})
 
 # Secondary test modes - run directly when there is a specific need
 
@@ -8243,13 +8245,15 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'SAFE_STACK': 1})
 
-# emterpreter
-asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
+if not shared.Settings.WASM_BACKEND:
+  # emterpreter
+  asm2i = make_run('asm2i', emcc_args=['-O2'], settings={'EMTERPRETIFY': 1, 'WASM': 0})
 
-lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
-asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
-                 settings={'ALLOW_MEMORY_GROWTH': 1})
+if shared.Settings.WASM_BACKEND:
+  lsan = make_run('lsan', emcc_args=['-fsanitize=leak'], settings={'ALLOW_MEMORY_GROWTH': 1})
+  asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
+  asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+                   settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa

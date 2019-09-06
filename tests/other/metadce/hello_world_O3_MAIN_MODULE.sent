@@ -297,7 +297,6 @@ __syscall140
 __syscall142
 __syscall144
 __syscall145
-__syscall146
 __syscall147
 __syscall148
 __syscall15
@@ -1045,6 +1044,7 @@ exit
 fabs
 fabsf
 fabsl
+fd_write
 fexecve
 filledEllipseColor
 filledEllipseRGBA
