@@ -588,6 +588,8 @@ var ENVIRONMENT = '';
 //   * LZ4 files are read-only.
 var LZ4 = 0;
 
+// Emscripten exception handling options
+
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
 // currently (in the future, wasm should improve that). When exceptions are
@@ -611,6 +613,9 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // DISABLE_EXCEPTION_CATCHING = 2 is set
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_WHITELIST = [];
+
+// New WebAssembly exception handling (experimental)
+var EXCEPTION_HANDLING = 0;
 
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no

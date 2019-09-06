@@ -18,4 +18,4 @@ Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
 2. Duplicate __isOurExceptionClass in cxa_handlers.cpp since we don't compile
    cxa_exception.cpp.
 
-3. Define and use NOTHROW macro in cxxabi.h
+3. Define and use _NOTHROW macro in cxxabi.h

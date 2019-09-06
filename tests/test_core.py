@@ -88,6 +88,21 @@ def all_engines(f):
   return decorated
 
 
+# Tests exception handling in emscripten exception handling mode, and if
+# possible, new wasm EH mode.
+def with_both_exception_handling(f):
+  def decorated(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    f(self, None)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    # Wasm EH is currently supported only in wasm backend and V8
+    if self.is_wasm_backend() and V8_ENGINE and \
+       V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
+      self.set_setting('EXCEPTION_HANDLING', 1)
+      f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-eh']])
+  return decorated
+
+
 def no_emterpreter(f):
   assert callable(f)
   return skip_if(f, 'is_emterpreter')
@@ -1177,16 +1192,18 @@ int main() {
 '''
     self.do_run(src, r'''ok.''')
 
-  def test_exceptions(self):
+  @with_both_exception_handling
+  def test_exceptions(self, js_engines):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'), js_engines=js_engines)
 
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
-
+  def test_exceptions_off(self):
+    for support_longjmp in [0, 1]:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+      self.set_setting('EXCEPTION_HANDLING', 0)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
   @no_emterpreter
@@ -1204,6 +1221,7 @@ int main() {
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
@@ -1258,16 +1276,17 @@ int main() {
 
     self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
-  def test_exceptions_2(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_2(self, js_engines):
     for safe in [0, 1]:
       print(safe)
       if safe and '-fsanitize=address' in self.emcc_args:
         # Can't use safe heap with ASan
         continue
       self.set_setting('SAFE_HEAP', safe)
-      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2')
+      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2', js_engines=js_engines)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_3(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
@@ -1363,6 +1382,7 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_uncaught(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
@@ -1401,6 +1421,7 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'success')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_uncaught_2(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
@@ -1426,76 +1447,88 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'OK\n')
 
+  # TODO Enable @with_both_exception_handling (unknown error)
   def test_exceptions_typed(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_virtual_inheritance(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_convert(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert')
 
-  def test_exceptions_multi(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi')
+  # TODO Make setjmp-longjmp also use Wasm exception handling
+  @with_both_exception_handling
+  def test_exceptions_multi(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi', js_engines=js_engines)
 
-  def test_exceptions_std(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_std(self, js_engines):
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std', js_engines=js_engines)
 
-  def test_exceptions_alias(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias')
+  @with_both_exception_handling
+  def test_exceptions_alias(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias', js_engines=js_engines)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_rethrow(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_resume(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_destroy_virtual(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_refcount(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_primary(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_simplify_cfg(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_libcxx(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
 
-  def test_exceptions_multiple_inherit(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
+  @with_both_exception_handling
+  def test_exceptions_multiple_inherit(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit', js_engines=js_engines)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_multiple_inherit_rethrow(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_bad_typeid(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    #self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.do_run(r'''
 // exception example
@@ -3460,6 +3493,7 @@ pre 9
 out!
 ''', force_c=True)
 
+  # TODO Enable @with_both_exception_handling (the test is not working now)
   @needs_dlfcn
   def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -4400,6 +4434,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
+  # TODO Enable @with_both_exception_handling (wasm-ld error)
   @needs_dlfcn
   def test_dylink_raii_exceptions(self):
     self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678

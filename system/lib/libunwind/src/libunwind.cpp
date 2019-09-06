@@ -24,7 +24,7 @@
 #include <stdlib.h>
 
 
-#if !defined(__USING_SJLJ_EXCEPTIONS__)
+#if !defined(__USING_SJLJ_EXCEPTIONS__) && !defined(__USING_WASM_EXCEPTIONS__)
 #include "AddressSpace.hpp"
 #include "UnwindCursor.hpp"
 
@@ -362,7 +362,8 @@ void _unw_remove_dynamic_fde(unw_word_t fde) {
   DwarfFDECache<LocalAddressSpace>::removeAllIn((LocalAddressSpace::pint_t)fde);
 }
 #endif // defined(_LIBUNWIND_SUPPORT_DWARF_UNWIND)
-#endif // !defined(__USING_SJLJ_EXCEPTIONS__)
+#endif // !defined(__USING_SJLJ_EXCEPTIONS__) &&
+       // !defined(__USING_WASM_EXCEPTIONS__)
 
 
 

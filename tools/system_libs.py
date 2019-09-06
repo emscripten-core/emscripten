@@ -549,30 +549,47 @@ class MTLibrary(Library):
 
 class NoExceptLibrary(Library):
   def __init__(self, **kwargs):
-    self.is_noexcept = kwargs.pop('is_noexcept')
+    self.eh_mode = kwargs.pop('eh_mode')
+    if self.eh_mode not in ('noexcept', 'emscripten', 'wasm'):
+      raise Exception('Invalid exception mode')
     super(NoExceptLibrary, self).__init__(**kwargs)
 
   def get_cflags(self):
     cflags = super(NoExceptLibrary, self).get_cflags()
-    if self.is_noexcept:
+    if self.eh_mode == 'noexcept':
       cflags += ['-fno-exceptions']
-    else:
+    elif self.eh_mode == 'emscripten':
       cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+    elif self.eh_mode == 'wasm':
+      cflags += ['-fwasm-exceptions']
     return cflags
 
   def get_base_name(self):
     name = super(NoExceptLibrary, self).get_base_name()
-    if self.is_noexcept:
+    # TODO Currently emscripten-based exception is the default mode, thus no
+    # suffixes. Change the default to wasm exception later.
+    if self.eh_mode == 'noexcept':
       name += '-noexcept'
+    elif self.eh_mode == 'wasm':
+      name += '-except'
     return name
 
   @classmethod
-  def vary_on(cls):
-    return super(NoExceptLibrary, cls).vary_on() + ['is_noexcept']
+  def variations(cls, **kwargs):
+    combos = super(NoExceptLibrary, cls).variations()
+    return ([dict(eh_mode='noexcept', **combo) for combo in combos] +
+            [dict(eh_mode='emscripten', **combo) for combo in combos] +
+            [dict(eh_mode='wasm', **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING, **kwargs)
+    if shared.Settings.EXCEPTION_HANDLING:
+      eh_mode = 'wasm'
+    elif shared.Settings.DISABLE_EXCEPTION_CATCHING == 1:
+      eh_mode = 'noexcept'
+    else:
+      eh_mode = 'emscripten'
+    return super(NoExceptLibrary, cls).get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -842,7 +859,6 @@ class libc_extras(MuslInternalLibrary):
 
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
-  depends = ['libc']
   cflags = [
       '-std=c++11',
       '-Oz',
@@ -852,13 +868,22 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
       '-D_LIBCXXABI_GUARD_ABI_ARM',
     ]
 
+  def get_depends(self):
+    if self.eh_mode == 'wasm':
+      return ['libc', 'libunwind']
+    return ['libc']
+
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.is_noexcept:
+    if self.eh_mode == 'noexcept':
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
+    elif self.eh_mode == 'emscripten':
+      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+    elif self.eh_mode == 'wasm':
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
   def get_files(self):
@@ -878,8 +903,15 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp'
     ]
-    if self.is_noexcept:
+    if self.eh_mode == 'noexcept':
       filenames += ['cxa_noexception.cpp']
+    elif self.eh_mode == 'wasm':
+      filenames += [
+        'cxa_exception.cpp',
+        'cxa_noexception.cpp',
+        'cxa_personality.cpp'
+      ]
+
     return files_in_path(
         path_components=['system', 'lib', 'libcxxabi', 'src'],
         filenames=filenames)
@@ -932,6 +964,17 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
     os.path.join('filesystem', 'int128_builtins.cpp'),
     os.path.join('filesystem', 'operations.cpp')
   ]
+
+
+class libunwind(CXXLibrary, NoExceptLibrary):
+  name = 'libunwind'
+  cflags = ['-Oz', '-D__USING_WASM_EXCEPTIONS__',
+            '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
+  src_dir = ['system', 'lib', 'libunwind', 'src']
+  src_files = ['libunwind.cpp', 'Unwind-wasm.cpp']
+
+  def __init__(self, **kwargs):
+    super(libunwind, self).__init__(**kwargs)
 
 
 class libmalloc(MTLibrary, NoBCLibrary):
