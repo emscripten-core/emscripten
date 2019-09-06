@@ -5,3 +5,4 @@ Some changes have been made to the version that was taken from upstream, includi
  * Emscripten-specific changes (from before this readme existed). These should be marked with `XXX EMSCRIPTEN` in the source. They are mostly in pthreads code and hopefully temporary.
  * Backporting an operator-precedence warning fix from 6e76e1540fc58a418494bf5eb832b556f9c5763e in the upstream version
 
+Most of the source comes from musl 1.1.15. Some is from older versions, but I'm assuming that this is because these files haven't changed between versions. src/stdio/vswprintf.c is from version 1.1.23 because that resolves #9305.
