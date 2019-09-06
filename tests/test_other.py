@@ -8469,7 +8469,7 @@ int main() {
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
       expect_wast = debug_enabled and wasm_enabled and not self.is_wasm_backend()
 
-      if self.is_wasm_backend() and (emterpreter_enabled or not wasm_enabled):
+      if self.is_wasm_backend() and emterpreter_enabled:
         continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
