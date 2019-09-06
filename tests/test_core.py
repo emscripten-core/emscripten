@@ -3640,9 +3640,12 @@ ok
         printf("main\n");
         EM_ASM({
           // make the function table sizes a non-power-of-two
-          alignFunctionTables();
-          Module['FUNCTION_TABLE_v'].push(0, 0, 0, 0, 0);
           var newSize = alignFunctionTables();
+          //out('old size of function tables: ' + newSize);
+          while ((newSize & 3) !== 3) {
+            Module['FUNCTION_TABLE_v'].push(0);
+            newSize = alignFunctionTables();
+          }
           //out('new size of function tables: ' + newSize);
           // when masked, the two function pointers 1 and 2 should not happen to fall back to the right place
           assert(((newSize+1) & 3) !== 1 || ((newSize+2) & 3) !== 2);
