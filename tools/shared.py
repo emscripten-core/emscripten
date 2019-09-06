@@ -2538,7 +2538,15 @@ class Building(object):
   @staticmethod
   def write_mapping_to_file(js_file, mapping):
     logger.debug('inject the minified mapping to the js file as a js object')
-    missing_import_mapping = {k: v for k, v in mapping.items() if Building.missing_imports.get(k)}
+    missing_import_mapping = {}
+    for k, v in mapping.items():
+      for key,value in Building.missing_imports.items():
+        # LLVM backend has 1 less underscore
+        if Settings.WASM_BACKEND:
+          temp_k = '_' + k
+        if temp_k == key:
+          missing_import_mapping[k] = v
+      
     if missing_import_mapping:
       mapping_object = 'Module["mapping"]={'
       lastItem = missing_import_mapping.popitem()

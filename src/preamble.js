@@ -996,7 +996,14 @@ function createWasm(env) {
 #endif
     var resolved = Module[sym];
     if (!resolved)
-    resolved = moduleLocal[sym];
+      resolved = moduleLocal[sym];
+    
+    // Generate the stub if it doesn't exist
+    if (!resolved) {
+      resolved = moduleLocal[sym] = function() {
+        return Module[sym].apply(null, arguments);
+      };
+    }
 #if ASSERTIONS
     assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
@@ -1011,9 +1018,8 @@ function createWasm(env) {
 
       // Check if the minification mapping exists first, if not just
       // use the original name.
-      var funcName = prop;
       if (Module["mapping"] && Module["mapping"][prop]) {
-        Module["mapping"][prop];
+        prop = Module["mapping"][prop];
       }
       
       if (prop.startsWith('g$')) {
