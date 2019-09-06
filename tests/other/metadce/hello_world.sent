@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 __lock
 __unlock
 abortOnCannotGrowMemory

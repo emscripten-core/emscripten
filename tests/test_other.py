@@ -8056,9 +8056,9 @@ int main() {
       self.assertEqual(funcs, expected_funcs)
 
   @parameterized({
-    'O0': ([],      14, [], ['waka'],  9211,  5, 12, 18), # noqa
-    'O1': (['-O1'], 12, [], ['waka'],  7886,  2, 11, 12), # noqa
-    'O2': (['-O2'], 12, [], ['waka'],  7871,  2, 11, 11), # noqa
+    'O0': ([],      13, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O1': (['-O1'], 11, [], ['waka'],  7886,  2, 11, 12), # noqa
+    'O2': (['-O2'], 11, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -8084,7 +8084,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 36, [], ['waka'], 226582, 20, 33, None) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 20, 33, None) # noqa
 
   @parameterized({
     'normal': (['-O2'], 36, ['abort'], ['waka'], 186423, 26, 38, 541), # noqa
@@ -8098,9 +8098,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      17, [], ['waka'], 22185,  8,  17, 56), # noqa
-    'O1': (['-O1'], 15, [], ['waka'], 10415,  6,  14, 30), # noqa
-    'O2': (['-O2'], 15, [], ['waka'], 10183,  6,  14, 24), # noqa
+    'O0': ([],      16, [], ['waka'], 22185,  8,  17, 56), # noqa
+    'O1': (['-O1'], 14, [], ['waka'], 10415,  6,  14, 30), # noqa
+    'O2': (['-O2'], 14, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  2, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  2, [], [],        1963,  4,   2, 12), # noqa
     'Oz': (['-Oz'],  2, [], [],        1929,  4,   1, 11), # noqa
