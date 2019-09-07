@@ -1583,7 +1583,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             passes += parse_passes(shared.Settings.BINARYEN_PASSES)
         else:
-          # Safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
+          # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
           if shared.Settings.SAFE_HEAP:
             passes += ['--safe-heap']
           passes += ['--post-emscripten']
