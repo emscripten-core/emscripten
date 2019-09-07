@@ -1980,7 +1980,7 @@ function SAFE_FT_MASK(value, mask) {
   if ((ret|0) != (value|0)) ftfault();
   return ret | 0;
 }
-''' % { 'brk_check': brk_check })
+''' % {'brk_check': brk_check})
 
   return funcs
 
