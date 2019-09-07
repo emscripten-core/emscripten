@@ -488,7 +488,7 @@ def create_module_asmjs(function_table_sigs, metadata,
                         funcs_js, asm_setup, the_global, sending, receiving, asm_global_vars,
                         asm_global_funcs, pre_tables, final_function_tables, exports):
   receiving += create_named_globals(metadata)
-  runtime_funcs = create_runtime_funcs_asmjs(exports)
+  runtime_funcs = create_runtime_funcs_asmjs(exports, metadata)
 
   asm_start_pre = create_asm_start_pre(asm_setup, the_global, sending, metadata)
   memory_views = create_memory_views(metadata)
@@ -1835,7 +1835,7 @@ for (var named in NAMED_GLOBALS) {
   return named_globals
 
 
-def create_runtime_funcs_asmjs(exports):
+def create_runtime_funcs_asmjs(exports, metadata):
   if shared.Settings.ONLY_MY_CODE:
     return []
 
@@ -1903,13 +1903,19 @@ function setEmtStackMax(x) {
 ''')
 
   if asm_safe_heap():
+    if '_sbrk' in metadata['implementedFunctions']:
+      brk_check = 'if ((dest + bytes|0) > (HEAP32[(_emscripten_get_sbrk_ptr()|0)>>2]|0)) segfault();'
+    else:
+      # sbrk and malloc were not linked in, but SAFE_HEAP is used - so safe heap
+      # can ignore the sbrk location.
+      brk_check = ''
     funcs.append('''
 function SAFE_HEAP_STORE(dest, value, bytes) {
   dest = dest | 0;
   value = value | 0;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (HEAP32[(_emscripten_get_sbrk_ptr()|0)>>2]|0)) segfault();
+  %(brk_check)s
   if ((bytes|0) == 4) {
     if ((dest&3)) alignfault();
     HEAP32[dest>>2] = value;
@@ -1925,7 +1931,7 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
   value = +value;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if (((dest + bytes)|0) > (HEAP32[(_emscripten_get_sbrk_ptr()|0)>>2]|0)) segfault();
+  %(brk_check)s
   if ((bytes|0) == 8) {
     if ((dest&7)) alignfault();
     HEAPF64[dest>>3] = value;
@@ -1939,7 +1945,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned) {
   bytes = bytes | 0;
   unsigned = unsigned | 0;
   if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (HEAP32[(_emscripten_get_sbrk_ptr()|0)>>2]|0)) segfault();
+  %(brk_check)s
   if ((bytes|0) == 4) {
     if ((dest&3)) alignfault();
     return HEAP32[dest>>2] | 0;
@@ -1958,7 +1964,7 @@ function SAFE_HEAP_LOAD_D(dest, bytes) {
   dest = dest | 0;
   bytes = bytes | 0;
   if ((dest|0) <= 0) segfault();
-  if ((dest + bytes|0) > (HEAP32[(_emscripten_get_sbrk_ptr()|0)>>2]|0)) segfault();
+  %(brk_check)s
   if ((bytes|0) == 8) {
     if ((dest&7)) alignfault();
     return +HEAPF64[dest>>3];
@@ -1974,7 +1980,7 @@ function SAFE_FT_MASK(value, mask) {
   if ((ret|0) != (value|0)) ftfault();
   return ret | 0;
 }
-''')
+''' % { 'brk_check': brk_check })
 
   return funcs
 
