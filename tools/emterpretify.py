@@ -89,8 +89,9 @@ temp_files = config.get_temp_files()
 # emterpreted code in them. To avoid that, we blacklist SAFE_FT_MASK, which
 # should be blacklisted anyhow as it has no need for emterpretation.
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset',
-                 '_strlen', 'stackAlloc', 'setThrew', 'stackRestore',
+BLACKLIST = set(['_malloc', '_free', '_sbrk', '_emscripten_get_sbrk_ptr',
+                 '_memcpy', '_memmove', '_memset', '_strlen',
+                 'stackAlloc', 'setThrew', 'stackRestore',
                  'setTempRet0', 'getTempRet0', 'stackSave',
                  '_emscripten_autodebug_double',
                  '_emscripten_autodebug_float', '_emscripten_autodebug_i8',
