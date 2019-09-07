@@ -830,7 +830,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
     else:
       cflags += ['-DNDEBUG']
     if not self.use_errno:
-      cflags += ['-DMALLOC_FAILURE_ACTION=']
+      cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
     return cflags

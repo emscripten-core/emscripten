@@ -6,7 +6,9 @@
  *
 */
 
+#ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
+#endif
 #include <stddef.h>
 #include <stdint.h>
 
@@ -41,7 +43,9 @@ void *sbrk(intptr_t increment) {
     // Try to grow memory.
     intptr_t diff = new_brk - old_size;
     if (!emscripten_resize_heap(new_brk)) {
+#ifndef EMSCRIPTEN_NO_ERRNO
       errno = ENOMEM;
+#endif
       return (void*)-1;
     }
   }
