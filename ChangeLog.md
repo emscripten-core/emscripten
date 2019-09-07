@@ -18,6 +18,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Remove Binaryen from the ports system. This means that emscripten will
+   no longer automatically build Binaryen from source. Instead, either use
+   the emsdk (binaries are provided automatically, just like for LLVM), or
+   build it yourself and point BINARYEN_ROOT in .emscripten to it. See #9409
 
 v.1.38.43: 08/30/2019
 ---------------------

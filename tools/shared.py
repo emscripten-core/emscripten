@@ -2757,10 +2757,7 @@ class Building(object):
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
     if not BINARYEN_ROOT:
-      # ensure we have the port available if needed.
-      from . import system_libs
-      system_libs.get_port('binaryen', Settings)
-      assert os.path.exists(BINARYEN_ROOT)
+      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 
