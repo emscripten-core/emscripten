@@ -8104,7 +8104,7 @@ int main() {
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
     'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1514, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,   18,   13, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   7, [], [],  10770,   18,   13, None), # noqa
   })
   @no_fastcomp()
   def test_binaryen_metadce_hello(self, *args):
