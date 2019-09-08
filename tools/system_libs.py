@@ -1438,9 +1438,9 @@ class Ports(object):
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
       shared.Cache.acquire_cache_lock()
+      logger.warning('using local ports: %s' % local_ports)
+      local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
       try:
-        logger.warning('using local ports: %s' % local_ports)
-        local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
         for local in local_ports:
           if name == local[0]:
             path = local[1]
@@ -1455,9 +1455,9 @@ class Ports(object):
             shared.try_delete(fullname)
             shutil.copytree(path, os.path.join(fullname, subdir))
             Ports.clear_project_build(name)
-            return
       finally:
         shared.Cache.release_cache_lock()
+      return
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
