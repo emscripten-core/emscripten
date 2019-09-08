@@ -1728,6 +1728,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.WASM:
       options.separate_asm = True
 
+    if shared.Settings.WASI:
+      # we cannot legalize the JS FFI when using wasi, as it can run standalone in wasm
+      shared.Settings.LEGALIZE_JS_FFI = 0
+
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
         newargs.append('-msimd128')

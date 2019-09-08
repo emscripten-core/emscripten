@@ -1028,6 +1028,10 @@ function createWasm(env) {
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
+#if WASI
+    // In wasi the memory is exported.
+    updateGlobalBufferAndViews(exports['memory'].buffer);
+#endif
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
