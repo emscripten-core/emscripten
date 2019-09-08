@@ -1072,9 +1072,29 @@ var USE_GLFW = 2;
 // port, which can useful for local dev work on binaryen itself).
 var WASM = 1;
 
-// Whether to use the WASI APIs. This still emits a JS+wasm combination, but
-// the wasm part can run as a wasi executable inside a wasi runtime, without
-// any JS - basically, the JS is just a convenient way to run it on the Web.
+// Whether to emit a wasm file with maximum WASI compatibility. Note that
+// even without this option we use some wasi syscalls in our ABI, which
+// makes sense to do when the choice is between something arbitrary (like
+// linux/musl or something else) or wasi. However, there are cases where
+// the choice is not arbitrary, and supporting wasi comes at a cost, and
+// that is gated behind this option.
+//
+// For example, when this option is set then we assume the WASI view of
+// the world in which the wasm is standalone - we cannot depend on JS for
+// anything. That means, for example, that we don't import the memory,
+// since we must create it ourselves. And that prevents various optimizations
+// like preloading files into memory while the wasm is still loading (which
+// is why Emscripten by default creates the Memory in JS).
+//
+// Note that this option is a best-effort: we enable all wasi compatibility
+// we have, but if you ask for non-wasi APIs, we will still use them, and
+// if you try to run in a wasi VM you'll get an error. Please file an issue
+// if you find an API we missed and need to add, but in general most such
+// APIs may just be missing in wasi.
+//
+// When this option is set we still emit both JS and wasm. The wasm will
+// be runnable in a wasi VM, and you can also run it using the JS in a
+// JS+wasm VM - basically, the JS is a convenient way to run it.
 var WASI = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You

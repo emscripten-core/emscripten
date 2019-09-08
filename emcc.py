@@ -1729,7 +1729,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.separate_asm = True
 
     if shared.Settings.WASI:
-      # we cannot legalize the JS FFI when using wasi, as it can run standalone in wasm
+      if not shared.Settings.WASM_BACKEND:
+        exit_with_error('wasi is only available in the upstream wasm backend path')
+      if shared.Settings.USE_PTHREADS:
+        exit_with_error('wasi does not support pthreads yet')
+      if shared.Settings.SIMD:
+        exit_with_error('wasi does not support simd yet')
+      # the wasm must be runnable without the JS, so there cannot be anything that
+      # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
 
     if shared.Settings.WASM_BACKEND:

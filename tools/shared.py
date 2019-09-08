@@ -1796,8 +1796,9 @@ class Building(object):
         '--lto-O%d' % lto_level,
     ] + args
 
-    # wasi does not import the memory, but for JS it is convenient to do so,
-    # as it allows us to set up memory even before the wasm module arrives
+    # wasi does not import the memory (but for JS it is efficient to do so,
+    # as it allows us to set up memory, preload files, etc. even before the
+    # wasm module arrives)
     if not Settings.WASI:
       cmd.append('--import-memory')
       cmd.append('--import-table')
@@ -2469,7 +2470,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        # For wasi, in theory we could minify the non-wasi ones, but the point of wasi is to not have such things anyhow.
+        # For wasi, we must not minify the wasi ones (and there should be no others), so disable minification.
         if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.WASI:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
