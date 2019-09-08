@@ -1997,7 +1997,7 @@ var LibraryJSEvents = {
 #else
       var gamepadEvent = JSEvents.gamepadEvent;
 #endif
-      __fillGamepadEventData(gamepadEvent, e.gamepad);
+      __fillGamepadEventData(gamepadEvent, e["gamepad"]);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);

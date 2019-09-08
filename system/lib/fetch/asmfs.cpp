@@ -20,6 +20,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <wasi/wasi.h>
 
 // Uncomment the following and clear the cache with emcc --clear-cache to rebuild this file to
 // enable internal debugging. #define ASMFS_DEBUG
@@ -963,8 +964,7 @@ static long open(const char* pathname, int flags, int mode) {
     if ((flags & O_CREAT) && (flags & O_EXCL))
       RETURN_ERRNO(EEXIST, "pathname already exists and O_CREAT and O_EXCL were used");
     if (node->type == INODE_DIR && accessMode != O_RDONLY)
-      RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved "
-                           "writing (that is, O_WRONLY or O_RDWR is set)");
+      RETURN_ERRNO(EISDIR, "pathname refers to a directory and the access requested involved writing (that is, O_WRONLY or O_RDWR is set)");
     if (node->type == INODE_DIR && (flags & O_TRUNC))
       RETURN_ERRNO(EISDIR,
         "pathname refers to a directory and the access flags specified invalid flag O_TRUNC");
@@ -975,9 +975,7 @@ static long open(const char* pathname, int flags, int mode) {
       // cannot stop to wait for it to finish, and must return a failure (file not found)
       if (emscripten_is_main_browser_thread()) {
         if (emscripten_fetch_wait(node->fetch, 0) != EMSCRIPTEN_RESULT_SUCCESS) {
-          RETURN_ERRNO(ENOENT, "Attempted to open a file that is still downloading on the main "
-                               "browser thread. Could not block to wait! (try preloading the file "
-                               "to the filesystem before application start)");
+          RETURN_ERRNO(ENOENT, "Attempted to open a file that is still downloading on the main browser thread. Could not block to wait! (try preloading the file to the filesystem before application start)");
         }
       } else {
         // On worker threads, we can pause to wait for the fetch.
@@ -1007,8 +1005,7 @@ static long open(const char* pathname, int flags, int mode) {
       if (!node &&
           __emscripten_asmfs_file_open_behavior_mode != EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER) {
         RETURN_ERRNO(
-          ENOENT, "O_CREAT is not set, the named file does not exist in local filesystem and "
-                  "EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER is not specified");
+          ENOENT, "O_CREAT is not set, the named file does not exist in local filesystem and EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER is not specified");
       }
 
       // Report an error if there is an inode entry, but file data is not synchronously available
@@ -1016,16 +1013,13 @@ static long open(const char* pathname, int flags, int mode) {
       if (node && !node->data &&
           __emscripten_asmfs_file_open_behavior_mode == EMSCRIPTEN_ASMFS_OPEN_MEMORY) {
         RETURN_ERRNO(
-          ENOENT, "O_CREAT is not set, the named file exists, but file data is not synchronously "
-                  "available in memory (EMSCRIPTEN_ASMFS_OPEN_MEMORY specified)");
+          ENOENT, "O_CREAT is not set, the named file exists, but file data is not synchronously available in memory (EMSCRIPTEN_ASMFS_OPEN_MEMORY specified)");
       }
 
       if (emscripten_is_main_browser_thread() &&
           (!node || !emscripten_asmfs_file_is_synchronously_accessible(node))) {
         RETURN_ERRNO(ENOENT,
-          "O_CREAT is not set, the named file exists, but file data is not synchronously available "
-          "in memory, and file open is attempted on the main thread which cannot synchronously "
-          "open files! (try preloading the file to the filesystem before application start)");
+          "O_CREAT is not set, the named file exists, but file data is not synchronously available in memory, and file open is attempted on the main thread which cannot synchronously open files! (try preloading the file to the filesystem before application start)");
       }
 
       // Kick off the file download, either from IndexedDB or via an XHR.
@@ -1052,8 +1046,7 @@ static long open(const char* pathname, int flags, int mode) {
 
       if (!(flags & O_CREAT) && (fetch->status != 200 || fetch->totalBytes == 0)) {
         emscripten_fetch_close(fetch);
-        RETURN_ERRNO(ENOENT, "O_CREAT is not set and the named file does not exist (attempted "
-                             "emscripten_fetch() XHR to download)");
+        RETURN_ERRNO(ENOENT, "O_CREAT is not set and the named file does not exist (attempted emscripten_fetch() XHR to download)");
       }
     }
 
@@ -1296,8 +1289,7 @@ long __syscall10(int which, ...) // unlink
   inode* parent = node->parent;
 
   if (parent && !(parent->mode & 0222))
-    RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the "
-                         "process's effective UID");
+    RETURN_ERRNO(EACCES, "Write access to the directory containing pathname is not allowed for the process's effective UID");
 
   // TODO: RETURN_ERRNO(EPERM, "The directory containing pathname has the sticky bit (S_ISVTX) set
   // and the process's effective user ID is neither the user ID of the file to be deleted nor that
@@ -1628,9 +1620,7 @@ long __syscall40(int which, ...) // rmdir
   if (!node)
     RETURN_ERRNO(ENOENT, "directory does not exist");
   if (node == filesystem_root() || node == get_cwd())
-    RETURN_ERRNO(EBUSY, "pathname is currently in use by the system or some process that prevents "
-                        "its removal (pathname is currently used as a mount point or is the root "
-                        "directory of the calling process)");
+    RETURN_ERRNO(EBUSY, "pathname is currently in use by the system or some process that prevents its removal (pathname is currently used as a mount point or is the root directory of the calling process)");
   if (node->parent && !(node->parent->mode & 0222))
     RETURN_ERRNO(EACCES, "Write access to the directory containing pathname was not allowed");
   if (node->type != INODE_DIR)
@@ -1743,9 +1733,7 @@ long __syscall140(int which, ...) // llseek
   if (desc->node->fetch) {
     if (emscripten_is_main_browser_thread()) {
       if (emscripten_fetch_wait(desc->node->fetch, 0) != EMSCRIPTEN_RESULT_SUCCESS) {
-        RETURN_ERRNO(ENOENT, "Attempted to seek a file that is still downloading on the main "
-                             "browser thread. Could not block to wait! (try preloading the file to "
-                             "the filesystem before application start)");
+        RETURN_ERRNO(ENOENT, "Attempted to seek a file that is still downloading on the main browser thread. Could not block to wait! (try preloading the file to the filesystem before application start)");
       }
     } else
       emscripten_fetch_wait(desc->node->fetch, INFINITY);
@@ -1822,9 +1810,7 @@ long __syscall145(int which, ...) // readv
   if (node->fetch) {
     if (emscripten_is_main_browser_thread()) {
       if (emscripten_fetch_wait(node->fetch, 0) != EMSCRIPTEN_RESULT_SUCCESS) {
-        RETURN_ERRNO(ENOENT, "Attempted to read a file that is still downloading on the main "
-                             "browser thread. Could not block to wait! (try preloading the file to "
-                             "the filesystem before application start)");
+        RETURN_ERRNO(ENOENT, "Attempted to read a file that is still downloading on the main browser thread. Could not block to wait! (try preloading the file to the filesystem before application start)");
       }
     } else
       emscripten_fetch_wait(node->fetch, INFINITY);
@@ -1939,6 +1925,27 @@ long __syscall146(int which, ...) // writev
   return total_write_amount;
 }
 
+// WASI support: provide a shim between the wasi fd_write syscall and the
+// syscall146 that is implemented here in ASMFS.
+// TODO: Refactor ASMFS's syscall146 into a direct handler for fd_write.
+
+__wasi_errno_t __wasi_fd_write(
+    __wasi_fd_t fd,
+    const __wasi_ciovec_t *iovs,
+    size_t iovs_len,
+    size_t *nwritten
+)
+{
+  long result;
+  result = __syscall146(146 /*writev*/, fd, iovs, iovs_len);
+  if (result < 0) {
+    *nwritten = 0;
+    return result;
+  }
+  *nwritten = result;
+  return 0;
+}
+
 // TODO: syscall148: fdatasync
 // TODO: syscall168: poll
 
@@ -1969,9 +1976,7 @@ long __syscall183(int which, ...) // getcwd
   // denied");
   inode_abspath(cwd, buf, size);
   if (strlen(buf) >= size - 1)
-    RETURN_ERRNO(ERANGE, "The size argument is less than the length of the absolute pathname of "
-                         "the working directory, including the terminating null byte.  You need to "
-                         "allocate a bigger array and try again");
+    RETURN_ERRNO(ERANGE, "The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte.  You need to allocate a bigger array and try again");
 
   return 0;
 }

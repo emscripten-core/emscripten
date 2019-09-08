@@ -1004,7 +1004,8 @@ function createWasm(env) {
 
   // prepare imports
   var info = {
-    'env': env
+    'env': env,
+    'wasi_unstable': env
 #if WASM_BACKEND == 0
     ,
     'global': {
@@ -1020,6 +1021,9 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
+#if RELOCATABLE
+    exports = relocateExports(exports, GLOBAL_BASE, 0);
+#endif
 #if WASM_BACKEND && ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
