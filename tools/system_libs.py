@@ -1437,23 +1437,27 @@ class Ports(object):
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
+      shared.Cache.acquire_cache_lock()
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      for local in local_ports:
-        if name == local[0]:
-          path = local[1]
-          if name not in ports.ports_by_name:
-            shared.exit_with_error('%s is not a known port' % name)
-          port = ports.ports_by_name[name]
-          if not hasattr(port, 'SUBDIR'):
-            logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
-            sys.exit(1)
-          subdir = port.SUBDIR
-          logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
-          shared.try_delete(fullname)
-          shutil.copytree(path, os.path.join(fullname, subdir))
-          Ports.clear_project_build(name)
-          return
+      try:
+        for local in local_ports:
+          if name == local[0]:
+            path = local[1]
+            if name not in ports.ports_by_name:
+              shared.exit_with_error('%s is not a known port' % name)
+            port = ports.ports_by_name[name]
+            if not hasattr(port, 'SUBDIR'):
+              logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+              sys.exit(1)
+            subdir = port.SUBDIR
+            logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+            shared.try_delete(fullname)
+            shutil.copytree(path, os.path.join(fullname, subdir))
+            Ports.clear_project_build(name)
+      finally:
+        shared.Cache.release_cache_lock()
+      return
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
