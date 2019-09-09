@@ -838,7 +838,7 @@ fi
     self.assertExists(os.path.join(root_cache, 'asmjs'))
 
   def test_binaryen_root(self):
-    # we no binaryen root, an error is shown
+    # with no binaryen root, an error is shown
     restore_and_set_up()
     open(CONFIG_FILE, 'a').write('''
 BINARYEN_ROOT = ''
