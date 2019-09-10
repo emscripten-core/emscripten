@@ -987,6 +987,7 @@ function createWasm(env) {
   };
 #endif
 
+#if WASM && !WASM2JS && MAIN_MODULE
   // This is similar to what we do in support.js where we resolve
   // against a local module.
   var moduleLocal = {};
@@ -1058,10 +1059,16 @@ function createWasm(env) {
 #endif
     }
   };
+#endif
 
   // prepare imports
   var info = {
+#if WASM && !WASM2JS && MAIN_MODULE
     'env': new Proxy(env, proxyHandler),
+#else
+    'env': env,
+#endif
+
 #if WASM_BACKEND == 0
     'global': {
       'NaN': NaN,

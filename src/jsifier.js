@@ -204,7 +204,7 @@ function JSify(data, functionsOnly) {
             return processLibraryFunction(LibraryManager.library[ident], ident, finalName);
           } else {
             // The JS stubs are still generated for asm.js because we are not loading the asm.js code dynamically
-            if (WASM && !WASM2JS) {
+            if (WASM && !WASM2JS && MAIN_MODULE) {
               Functions.sideFunctions[finalName] = 1;  
               return; // Just return and do not generate anything else
             }
