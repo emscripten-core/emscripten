@@ -11,6 +11,10 @@ function Pointer_stringify(ptr, length) {
 
 function AsciiToString(ptr) {
   var str = '';
+#if SAFE_HEAP
+  if (ptr === 0)
+    return str;
+#endif
   while (1) {
     var ch = {{{ makeGetValue('ptr++', 0, 'i8', null, true) }}};
     if (!ch) return str;
@@ -220,6 +224,12 @@ function UTF16ToString(ptr) {
 #if ASSERTIONS
   assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
+
+#if SAFE_HEAP
+  if (ptr === 0)
+    return '';
+#endif
+
 #if TEXTDECODER
   var endPtr = ptr;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
@@ -301,6 +311,10 @@ function UTF32ToString(ptr) {
   var i = 0;
 
   var str = '';
+#if SAFE_HEAP
+  if (ptr === 0)
+    return str;
+#endif
   while (1) {
     var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
     if (utf32 == 0)
