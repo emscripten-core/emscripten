@@ -34,11 +34,12 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
 
-#if PREWARM_PTHREAD_POOL_WORKERS_SIZE > 0
+#if PREWARM_PTHREAD_POOL_WORKERS_SIZE > 0 || PTHREAD_POOL_SIZE > 0
+      var requestedPoolSize = Math.max({{{ PTHREAD_POOL_SIZE }}}, {{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}});
 #if PTHREADS_DEBUG
-      out('Preallocating ' + {{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}} + ' workers.');
+      out('Preallocating ' + requestedPoolSize + ' workers.');
 #endif
-      PThread.preallocatedWorkers = PThread.createNewWorkers({{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}});
+      PThread.preallocatedWorkers = PThread.createNewWorkers(requestedPoolSize);
 #endif
 
       PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
