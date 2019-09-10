@@ -557,6 +557,7 @@ mergeInto(LibraryManager.library, {
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
+    currCount: 0,
     // A map from data pointers to extra info about the data.
     // That includes the name of the function on the bottom
     // of the call stack, that we need to call to rewind.
@@ -630,6 +631,7 @@ mergeInto(LibraryManager.library, {
       Asyncify.dataInfo[ptr] = {
         bottomOfCallStack: bottomOfCallStack
       };
+      Asyncify.currCount++
       return ptr;
     },
 

@@ -122,7 +122,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
     }
   }
 #if ASYNCIFY && WASM_BACKEND
-  var currData = Asyncify.currData
+  var currCount = Asyncify.currCount
 #endif
   var ret = func.apply(null, cArgs);
 #if EMTERPRETIFY_ASYNC
@@ -141,7 +141,7 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
 #endif
 #if ASYNCIFY && WASM_BACKEND
-  if (typeof Asyncify === 'object' && Asyncify.currData && Asyncify.currData !== currData) {
+  if (typeof Asyncify === 'object' && Asyncify.currData && Asyncify.currCount !== currCount) {
     // The WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
