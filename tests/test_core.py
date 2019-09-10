@@ -3476,9 +3476,9 @@ ok
       # main is just a library
       try_delete('src.cpp.o.js')
       run_process([PYTHON, EMCC] + main + self.emcc_args + self.serialize_settings() + ['-o', 'src.cpp.o.js'])
-      self.do_run(None, expected, no_build=True, **kwargs)
+      self.do_run(None, expected, no_build=True, args=['--max-old-space-size=4096'], **kwargs)
     else:
-      self.do_run(main, expected, force_c=force_c, **kwargs)
+      self.do_run(main, expected, force_c=force_c, args=['--max-old-space-size=4096'], **kwargs)
 
     self.emcc_args = old_args
 
