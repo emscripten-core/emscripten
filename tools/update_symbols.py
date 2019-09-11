@@ -47,7 +47,8 @@ def filter_and_sort(symbols):
     elif sym_type not in ('W', 'U'):
       # We don't expect to see two defined version of a given symbol
       if existing_type != sym_type:
-        print('Unexpected symbol types found: %s: %s vs %s' % (sym_name, existing_type, sym_type))
+        print('Unexpected symbol types found: %s: %s vs %s' %
+              (sym_name, existing_type, sym_type))
   symbols = [(typ, name) for name, typ in symbol_map.items()]
 
   # sort by name
@@ -90,7 +91,8 @@ def handle_symbol_file(args, symbol_file):
     print('Generating %s based on syms from: %s' % (basename, libs))
     output = ''
     for lib in libs:
-      output += shared.run_process([shared.LLVM_NM, '-g', lib], stdout=shared.PIPE).stdout
+      output += shared.run_process([shared.LLVM_NM, '-g', lib],
+                                   stdout=shared.PIPE).stdout
   new_symbols = filter_and_sort(output)
 
   with open(symbol_file, 'w') as f:
@@ -98,12 +100,14 @@ def handle_symbol_file(args, symbol_file):
 
 
 def main():
-  parser = argparse.ArgumentParser(description=__doc__, usage="usage: %prog [options] [<file>...]")
+  parser = argparse.ArgumentParser(
+      description=__doc__, usage="%(prog)s [options] [files ...]")
   parser.add_argument('--asmjs', dest='asmjs', action='store_true',
                       help='Use asmjs library files')
   parser.add_argument('-i', dest='filter_in_place', action='store_true',
-                      help='filter symbols in place rather than re-generating from library file')
-  parser.add_argument('files', metavar='N', type=int, nargs='*',
+                      help='filter symbols in place rather than re-generating '
+                           'from library file')
+  parser.add_argument('files', metavar='files', type=str, nargs='*',
                       help='symbol files to regenerate (default: all)')
   args = parser.parse_args()
   if args.asmjs:

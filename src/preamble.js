@@ -1001,7 +1001,9 @@ function createWasm(env) {
     return value;
   };
 #endif
-
+#if WASM_BACKEND && ASYNCIFY && ASSERTIONS
+  Asyncify.instrumentWasmImports(env);
+#endif
   // prepare imports
   var info = {
     'env': env,

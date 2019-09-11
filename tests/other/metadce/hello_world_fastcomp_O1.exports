@@ -1,0 +1,14 @@
+___errno_location
+_free
+_main
+_malloc
+_memcpy
+_memset
+_sbrk
+dynCall_ii
+dynCall_iiii
+dynCall_jiji
+establishStackSpace
+stackAlloc
+stackRestore
+stackSave

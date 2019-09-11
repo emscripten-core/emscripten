@@ -130,6 +130,28 @@ def get_fastcomp_src_dir():
   return None
 
 
+def parse_wasm(filename):
+  wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), filename], stdout=PIPE).stdout
+  imports = []
+  exports = []
+  funcs = []
+  for line in wast.splitlines():
+    line = line.strip()
+    if line.startswith('(import '):
+      line = line.strip('()')
+      name = line.split()[2].strip('"')
+      imports.append(name)
+    if line.startswith('(export '):
+      line = line.strip('()')
+      name = line.split()[1].strip('"')
+      exports.append(name)
+    if line.startswith('(func '):
+      line = line.strip('()')
+      name = line.split()[1].strip('"')
+      funcs.append(name)
+  return imports, exports, funcs
+
+
 class other(RunnerCore):
   # Utility to run a simple test in this suite. This receives a directory which
   # should contain a test.cpp and test.out files, compiles the cpp, and runs it
@@ -8030,7 +8052,7 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    if expected_imports is not None:
+    if expected_sent is not None:
       sent_file = expected_basename + '.sent'
       sent_data = '\n'.join(sent) + '\n'
       self.assertFileContents(sent_file, sent_data)
@@ -8040,20 +8062,47 @@ int main() {
       self.assertIn(exists, sent)
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
+
     wasm_size = os.path.getsize('a.out.wasm')
     if expected_size is not None:
       ratio = abs(wasm_size - expected_size) / float(expected_size)
       print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
     self.assertLess(ratio, size_slack)
-    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-    imports = wast.count('(import ')
-    exports = wast.count('(export ')
-    funcs = wast.count('\n (func ')
+    imports, exports, funcs = parse_wasm('a.out.wasm')
+    imports.sort()
+    exports.sort()
+    funcs.sort()
+
+    # filter out _NNN suffixed that can be the result of bitcode linking when
+    # internal symbol names collide.
+    def strip_numeric_suffixes(funcname):
+      parts = funcname.split('_')
+      while parts:
+        if parts[-1].isdigit():
+          parts.pop()
+        else:
+          break
+      return '_'.join(parts)
+
+    funcs = [strip_numeric_suffixes(f) for f in funcs]
+
     if expected_imports is not None:
-      self.assertEqual(imports, expected_imports)
-    self.assertEqual(exports, expected_exports)
+      filename = expected_basename + '.imports'
+      data = '\n'.join(imports) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(imports), expected_imports)
+
+    if expected_exports is not None:
+      filename = expected_basename + '.exports'
+      data = '\n'.join(exports) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(exports), expected_exports)
+
     if expected_funcs is not None:
-      self.assertEqual(funcs, expected_funcs)
+      filename = expected_basename + '.funcs'
+      data = '\n'.join(funcs) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
     'O0': ([],      13, [], ['waka'],  9211,  5, 12, 18), # noqa
@@ -8112,7 +8161,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1495, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1608, [], [], 517336, None, 1495, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   10, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8469,7 +8518,7 @@ int main() {
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
       expect_wast = debug_enabled and wasm_enabled and not self.is_wasm_backend()
 
-      if self.is_wasm_backend() and (emterpreter_enabled or not wasm_enabled):
+      if self.is_wasm_backend() and emterpreter_enabled:
         continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
