@@ -1,0 +1,5 @@
+__lock
+__unlock
+memory
+sbrk
+table

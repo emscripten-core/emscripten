@@ -8073,6 +8073,19 @@ int main() {
     exports.sort()
     funcs.sort()
 
+    # filter out _NNN suffixed that can be the result of bitcode linking when
+    # internal symbol names collide.
+    def strip_numeric_suffixes(funcname):
+      parts = funcname.split('_')
+      while parts:
+        if parts[-1].isdigit():
+          parts.pop()
+        else:
+          break
+      return '_'.join(parts)
+
+    funcs = [strip_numeric_suffixes(f) for f in funcs]
+
     if expected_imports is not None:
       filename = expected_basename + '.imports'
       data = '\n'.join(imports) + '\n'
@@ -8148,7 +8161,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1493, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1610, [], [], 517336, None, 1493, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   10, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()

@@ -443,7 +443,7 @@ $_freelocale
 $_frexp
 $_fwrite
 $_getc
-$_getint_228
+$_getint
 $_hexfloat
 $_isdigit
 $_isspace
@@ -457,9 +457,9 @@ $_memchr
 $_memcpy
 $_memmove
 $_memset
-$_out_227
-$_pad_233
-$_pop_arg_230
+$_out
+$_pad
+$_pop_arg
 $_pop_arg_long_double
 $_printf_core
 $_realloc
@@ -476,7 +476,7 @@ $_strlen
 $_strtoll_l
 $_strtoull_l
 $_strtox
-$_strtox_468
+$_strtox
 $_try_realloc_chunk
 $_ungetc
 $_vasprintf
