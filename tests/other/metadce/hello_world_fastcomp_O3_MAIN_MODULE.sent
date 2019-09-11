@@ -279,6 +279,7 @@ ___exception_decRef
 ___execvpe
 ___gcc_personality_v0
 ___gxx_personality_v0
+___handle_stack_overflow
 ___libc_current_sigrtmax
 ___libc_current_sigrtmin
 ___lock
@@ -927,6 +928,8 @@ _emscripten_run_script
 _emscripten_run_script_int
 _emscripten_run_script_string
 _emscripten_sample_gamepad_data
+_emscripten_scan_registers
+_emscripten_scan_stack
 _emscripten_set_batterychargingchange_callback_on_thread
 _emscripten_set_batterylevelchange_callback_on_thread
 _emscripten_set_beforeunload_callback_on_thread
@@ -1553,6 +1556,8 @@ _waitpid
 _zoomSurface
 abort
 abortOnCannotGrowMemory
+demangle
+demangleAll
 emscriptenWebGLGet
 emscriptenWebGLGetTexPixelData
 emscriptenWebGLGetUniform
@@ -1571,7 +1576,9 @@ invoke_iiiiii
 invoke_v
 invoke_vi
 invoke_vii
+jsStackTrace
 runAndAbortIfError
 setTempRet0
+stackTrace
 stringToNewUTF8
 tempDoublePtr

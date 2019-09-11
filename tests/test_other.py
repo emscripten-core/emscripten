@@ -130,6 +130,28 @@ def get_fastcomp_src_dir():
   return None
 
 
+def parse_wasm(filename):
+  wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), filename], stdout=PIPE).stdout
+  imports = []
+  exports = []
+  funcs = []
+  for line in wast.splitlines():
+    line = line.strip()
+    if line.startswith('(import '):
+      line = line.strip('()')
+      name = line.split()[2].strip('"')
+      imports.append(name)
+    if line.startswith('(export '):
+      line = line.strip('()')
+      name = line.split()[1].strip('"')
+      exports.append(name)
+    if line.startswith('(func '):
+      line = line.strip('()')
+      name = line.split()[1].strip('"')
+      funcs.append(name)
+  return imports, exports, funcs
+
+
 class other(RunnerCore):
   # Utility to run a simple test in this suite. This receives a directory which
   # should contain a test.cpp and test.out files, compiles the cpp, and runs it
@@ -8030,7 +8052,7 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    if expected_imports is not None:
+    if expected_sent is not None:
       sent_file = expected_basename + '.sent'
       sent_data = '\n'.join(sent) + '\n'
       self.assertFileContents(sent_file, sent_data)
@@ -8040,20 +8062,34 @@ int main() {
       self.assertIn(exists, sent)
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
+
     wasm_size = os.path.getsize('a.out.wasm')
     if expected_size is not None:
       ratio = abs(wasm_size - expected_size) / float(expected_size)
       print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
     self.assertLess(ratio, size_slack)
-    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-    imports = wast.count('(import ')
-    exports = wast.count('(export ')
-    funcs = wast.count('\n (func ')
+    imports, exports, funcs = parse_wasm('a.out.wasm')
+    imports.sort()
+    exports.sort()
+    funcs.sort()
+
     if expected_imports is not None:
-      self.assertEqual(imports, expected_imports)
-    self.assertEqual(exports, expected_exports)
+      filename = expected_basename + '.imports'
+      data = '\n'.join(imports) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(imports), expected_imports)
+
+    if expected_exports is not None:
+      filename = expected_basename + '.exports'
+      data = '\n'.join(exports) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(exports), expected_exports)
+
     if expected_funcs is not None:
-      self.assertEqual(funcs, expected_funcs)
+      filename = expected_basename + '.funcs'
+      data = '\n'.join(funcs) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
     'O0': ([],      15, [], ['waka'],  9211,  5, 12, 16), # noqa
@@ -8132,7 +8168,7 @@ int main() {
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, None, 97, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1584, [], [], 226403, None, 97, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10571,   16,  9,   20), # noqa
   })
   @no_wasm_backend()

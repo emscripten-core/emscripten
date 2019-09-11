@@ -1,0 +1,12 @@
+DYNAMICTOP_PTR
+___setErrNo
+___wasi_fd_write
+__table_base
+_emscripten_get_heap_size
+_emscripten_memcpy_big
+_emscripten_resize_heap
+abort
+abortOnCannotGrowMemory
+memory
+setTempRet0
+table
