@@ -240,7 +240,6 @@
          U __syscall142
          U __syscall144
          U __syscall145
-         U __syscall146
          U __syscall147
          U __syscall148
          U __syscall15
@@ -353,6 +352,7 @@
 -------- W __vm_wait
 -------- T __vsyslog
          U __wait
+         U __wasi_fd_write
 -------- T __wcscoll_l
 -------- T __wcsxfrm_l
 -------- T __wctrans_l
@@ -375,7 +375,7 @@
 -------- T acoshf
 -------- T acoshl
 -------- T addmntent
--------- T aligned_alloc
+-------- W aligned_alloc
 -------- T alphasort
 -------- W alphasort64
 -------- T asinh

@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2019 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -11,15 +11,58 @@ symbols and the symbols from all object in that archive are sorted and
 de-duplicated.
 """
 
-import argparse
-import glob
-import os
 import sys
+if sys.version_info < (3, 0):
+  sys.stderr.write('This script requires Python 3 or above\n')
+  sys.exit(1)
+import argparse
+import os
+import filecmp
+from pathlib import Path
 
 root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, root_dir)
+symbols_base_dir = os.path.join(root_dir, 'system', 'lib', 'symbols')
+asmjs_symbols_dir = os.path.join(symbols_base_dir, 'asmjs')
+wasm_symbols_dir = os.path.join(symbols_base_dir, 'wasm')
 
 from tools import shared, cache
+from tools.system_libs import Library
+
+# Libraries that need .symbols file
+target_libs = ['libal', 'libc', 'libc-extras', 'libcompiler_rt', 'libc-wasm',
+               'libc++', 'libc++abi', 'libgl', 'libhtml5', 'libpthreads']
+
+
+def get_symbols_dir():
+  if shared.Settings.WASM_BACKEND:
+    return wasm_symbols_dir
+  else:
+    return asmjs_symbols_dir
+
+
+def is_symbol_file_supported(symbol_file):
+  if shared.Settings.ASM_JS and \
+     os.path.abspath(symbol_file).startswith(asmjs_symbols_dir):
+    return True
+  if shared.Settings.WASM and \
+     os.path.abspath(symbol_file).startswith(wasm_symbols_dir):
+    return True
+  return False
+
+
+# Given a symbol file name, returns a matching library file name.
+def get_lib_file(symbol_file):
+  basename = os.path.splitext(os.path.basename(symbol_file))[0]
+  cache_dir = cache.Cache().dirname
+  lib_extension = 'a' if shared.Settings.WASM_BACKEND else 'bc'
+  return os.path.join(cache_dir, basename + '.' + lib_extension)
+
+
+# Given a library file name, returns a matching symbols file name.
+def get_symbol_file(lib_file):
+  basename = os.path.splitext(os.path.basename(lib_file))[0]
+  return os.path.join(get_symbols_dir(), basename + '.symbols')
 
 
 def filter_and_sort(symbols):
@@ -64,37 +107,18 @@ def filter_and_sort(symbols):
   return '\n'.join(lines) + '\n'
 
 
-def handle_symbol_file(args, symbol_file):
-  """Regenerate the contents of a given symbol file."""
-
-  if args.filter_in_place:
-    output = open(symbol_file).read()
-  else:
-    basename = os.path.splitext(os.path.basename(symbol_file))[0]
-    if not basename.startswith('lib'):
-      basename = 'lib' + basename
-    if basename.endswith('_asmjs'):
-      basename = basename.rsplit('_asmjs', 1)[0]
-    basename = basename.replace('cxx', 'c++')
-    cache_dir = cache.Cache().dirname
-    pattern = os.path.join(cache_dir, basename + '.*')
-    libs = glob.glob(pattern)
-    if basename == 'libgl':
-      # For libgl we generate the symbol list based on a superset of all
-      # library variants.
-      pattern = os.path.join(cache_dir, basename + '-*.*')
-      libs += glob.glob(pattern)
-    if not libs:
-      print(cache_dir)
-      print("%s: Unable to find library to generate symbols from" % symbol_file)
-      return
-    print('Generating %s based on syms from: %s' % (basename, libs))
-    output = ''
-    for lib in libs:
-      output += shared.run_process([shared.LLVM_NM, '-g', lib],
-                                   stdout=shared.PIPE).stdout
+def update_symbol_file(symbol_file):
+  output = open(symbol_file).read()
   new_symbols = filter_and_sort(output)
+  with open(symbol_file, 'w') as f:
+    f.write(new_symbols)
 
+
+def generate_symbol_file(symbol_file, lib_file):
+  """Regenerate the contents of a given symbol file."""
+  output = shared.run_process([shared.LLVM_NM, '-g', lib_file],
+                              stdout=shared.PIPE).stdout
+  new_symbols = filter_and_sort(output)
   with open(symbol_file, 'w') as f:
     f.write(new_symbols)
 
@@ -102,35 +126,65 @@ def handle_symbol_file(args, symbol_file):
 def main():
   parser = argparse.ArgumentParser(
       description=__doc__, usage="%(prog)s [options] [files ...]")
-  parser.add_argument('--asmjs', dest='asmjs', action='store_true',
-                      help='Use asmjs library files')
   parser.add_argument('-i', dest='filter_in_place', action='store_true',
                       help='filter symbols in place rather than re-generating '
                            'from library file')
   parser.add_argument('files', metavar='files', type=str, nargs='*',
                       help='symbol files to regenerate (default: all)')
   args = parser.parse_args()
-  if args.asmjs:
-    shared.Settings.WASM_BACKEND = False
-    shared.Settings.ASM_JS = True
 
+  if not shared.Settings.WASM:
+    sys.stderr.write('This script only runs in WASM mode\n')
+    sys.exit(1)
+
+  # If args.filter_in_place is set, read existing symbol files and make it
+  # up-to-date by resorting the entries.
+  if args.filter_in_place:
+    if args.files:
+      for symbol_file in args.files:
+        update_symbol_file(symbol_file)
+    else:
+      for symbol_file in Path(get_symbols_dir()).glob('**/*.symbols'):
+        update_symbol_file(symbol_file)
+    return
+
+  # If args.filter_in_place is NOT set, generate new symbols files.
+  os.makedirs(get_symbols_dir(), exist_ok=True)
   if args.files:
-    for f in args.files:
-      handle_symbol_file(args, f)
+    for symbol_file in args.files:
+      if not is_symbol_file_supported(symbol_file):
+        print('skipping %s because it is not supported' % symbol_file)
+        continue
+      lib_file = get_lib_file(symbol_file)
+      if not os.path.exists(lib_file):
+        print('skipping %s because %s does not exist' % (symbol_file, lib_file))
+        continue
+      generate_symbol_file(symbol_file, lib_file)
   else:
-    symbols_dir = os.path.join(root_dir, 'system', 'lib')
-    for symbol_file in glob.glob(os.path.join(symbols_dir, '*.symbols')):
-      if shared.Settings.WASM_BACKEND:
-        if symbol_file.endswith('_asmjs.symbols'):
-          print('skipping asmjs-only file: %s' % symbol_file)
-          continue
-      else:
-        asmjs_only_file = os.path.splitext(symbol_file)[0] + '_asmjs.symbols'
-        if os.path.exists(asmjs_only_file):
-          print('skipping wasm-only file: %s' % symbol_file)
-          continue
-      handle_symbol_file(args, symbol_file)
+    # Build all combinations of libraries and generate symbols files
+    system_libs = Library.get_all_variations()
+    for lib in system_libs.values():
+      if lib.name not in target_libs:
+        continue
+      lib_file = lib.get_path()
+      symbol_file = get_symbol_file(lib_file)
+      generate_symbol_file(symbol_file, lib_file)
 
+    # Not to generate too many symbols files with the same contents, if there
+    # exists a default symbols file (that has a library name without any
+    # suffices, such as -mt) and its contents are the same as another symbols
+    # file with suffices, remove it.
+    for lib in system_libs.values():
+      if lib.name not in target_libs:
+        continue
+      lib_file = lib.get_path()
+      symbol_file = get_symbol_file(lib_file)
+      default_symbol_file = os.path.join(get_symbols_dir(),
+                                           lib.name + '.symbols')
+      if symbol_file != default_symbol_file and \
+         os.path.isfile(default_symbol_file) and \
+         filecmp.cmp(default_symbol_file, symbol_file):
+        os.unlink(symbol_file)
   return 0
 
 
