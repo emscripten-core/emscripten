@@ -1603,6 +1603,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.ASYNCIFY:
             # TODO: allow whitelist as in asyncify
             passes += ['--asyncify']
+            if shared.Settings.ASSERTIONS:
+              passes += ['--pass-arg=asyncify-asserts']
             if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
               passes += ['--pass-arg=asyncify-ignore-indirect']
             else:
