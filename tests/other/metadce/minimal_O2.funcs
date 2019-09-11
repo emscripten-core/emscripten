@@ -4,6 +4,7 @@ $__wasm_call_ctors
 $add
 $dlfree
 $dlmalloc
+$sbrk
 $setThrew
 $stackAlloc
 $stackRestore
