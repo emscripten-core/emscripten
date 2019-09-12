@@ -704,9 +704,7 @@ def update_settings_glue(metadata, DEBUG):
           proxied_function_signatures.add(sig + '_async')
     return list(proxied_function_signatures)
 
-  # Proxying EM_ASM calls is not yet implemented in Wasm backend
-  if not shared.Settings.WASM_BACKEND:
-    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
+  shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 

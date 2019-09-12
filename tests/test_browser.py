@@ -3969,14 +3969,22 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
-  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=[])
 
-  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   @requires_threads
   def test_main_thread_em_asm_signatures_pthreads(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
+
+  @requires_threads
+  def test_main_thread_em_asm_blocking(self):
+    create_test_file('page.html',
+      open(path_from_root('tests', 'browser', 'test_em_asm_blocking.html')).read())
+    create_test_file('wasm.cpp', self.with_report_result(
+      open(path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp')).read()))
+
+    self.compile_btest(['wasm.cpp', '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.run_browser('page.html', '', '/report_result?8')
 
   # test atomicrmw i64
   @no_wasm_backend('uses an asm.js .ll file')
