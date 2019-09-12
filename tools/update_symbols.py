@@ -42,13 +42,10 @@ def get_symbols_dir():
 
 
 def is_symbol_file_supported(symbol_file):
-  if shared.Settings.ASM_JS and \
-     os.path.abspath(symbol_file).startswith(asmjs_symbols_dir):
-    return True
-  if shared.Settings.WASM and \
-     os.path.abspath(symbol_file).startswith(wasm_symbols_dir):
-    return True
-  return False
+  if shared.Settings.WASM_BACKEND:
+    return os.path.abspath(symbol_file).startswith(wasm_symbols_dir)
+  else:
+    return os.path.abspath(symbol_file).startswith(asmjs_symbols_dir)
 
 
 # Given a symbol file name, returns a matching library file name.
