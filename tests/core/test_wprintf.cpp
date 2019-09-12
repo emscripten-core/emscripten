@@ -36,12 +36,7 @@ void PrintBigWide ( const wchar_t * format, ... )
   va_start ( args, format );
   int ret = vswprintf ( buffer, MAX_CHARS_BIG-1, format, args );
   va_end ( args );
-  if (ret >= MAX_CHARS_BIG) {
-    ret = MAX_CHARS_BIG - 1;
-  }
-  if (ret > 0) {
-    wprintf(L"PrintBigWide wrote %d wchars:\n", ret);
-  }
+  wprintf(L"PrintBigWide wrote %d wchars:\n", ret);
   wprintf(buffer);
 }
 
