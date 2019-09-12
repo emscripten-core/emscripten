@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 #if STRICT_JS
-"use strict;"
+"use strict";
 
 #endif
 #if SIDE_MODULE == 0
