@@ -1,4 +1,5 @@
-This folder contains the musl version of libc at `/musl`.  The upstream version can be found at http://www.musl-libc.org/
+This folder contains the musl version of libc at `/musl`. The upstream version can be found at http://www.musl-libc.org/.
+Most of the source comes from musl 1.1.15. Some is from older versions, but I'm assuming that this is because these files haven't changed between versions.
 
 Some changes have been made to the version that was taken from upstream, including:
 
@@ -7,4 +8,4 @@ Some changes have been made to the version that was taken from upstream, includi
  * Switch to using the wasi `fd_write` syscall instead of `writev`.
  * Simplify stdout stream handling: do not support seeking, terminal handling, etc., as it just increases code size and Emscripten doesn't have those features anyhow.
 
-Most of the source comes from musl 1.1.15. Some is from older versions, but I'm assuming that this is because these files haven't changed between versions. src/stdio/vswprintf.c is from version 1.1.23 because that resolves #9305.
+Backported src/stdio/vswprintf.c from 1.1.23 to fix #9305.
