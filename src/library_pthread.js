@@ -34,8 +34,8 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
 
-#if PREWARM_PTHREAD_POOL_WORKERS_SIZE > 0 || PTHREAD_POOL_SIZE > 0
-      var requestedPoolSize = Math.max({{{ PTHREAD_POOL_SIZE }}}, {{{ PREWARM_PTHREAD_POOL_WORKERS_SIZE }}});
+#if PTHREAD_POOL_SIZE > 0
+      var requestedPoolSize = {{{ PTHREAD_POOL_SIZE }}};
 #if PTHREADS_DEBUG
       out('Preallocating ' + requestedPoolSize + ' workers.');
 #endif
