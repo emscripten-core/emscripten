@@ -1563,13 +1563,6 @@ emscriptenWebGLGetUniform
 emscriptenWebGLGetVertexAttrib
 emscripten_realloc_buffer
 fb
-fp$___dn_expand$iiiiii
-fp$___stdio_close$ii
-fp$___stdio_exit$v
-fp$___stdio_read$iiii
-fp$___stdio_seek$iiiii
-fp$___stdio_write$iiii
-fp$___strdup$ii
 gb
 getTempRet0
 invoke_X

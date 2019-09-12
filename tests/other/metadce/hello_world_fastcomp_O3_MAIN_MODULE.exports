@@ -1,14 +1,7 @@
 ___divdi3
-___dn_expand
 ___errno_location
 ___lockfile
 ___muldi3
-___stdio_close
-___stdio_exit
-___stdio_read
-___stdio_seek
-___stdio_write
-___strdup
 ___udivdi3
 ___unlockfile
 __apply_relocations
