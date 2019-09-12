@@ -431,6 +431,7 @@ $_copysignl
 $_decfloat
 $_dispose_chunk
 $_do_read
+$_emscripten_get_sbrk_ptr
 $_fflush
 $_fmod
 $_fmodl

@@ -2,6 +2,7 @@ __ZSt18uncaught_exceptionv
 ___cxa_can_catch
 ___cxa_is_pointer_type
 ___errno_location
+_emscripten_get_sbrk_ptr
 _free
 _main
 _malloc
@@ -9,7 +10,6 @@ _memcpy
 _memmove
 _memset
 _pthread_cond_broadcast
-_sbrk
 dynCall_ii
 dynCall_iidiiii
 dynCall_iii

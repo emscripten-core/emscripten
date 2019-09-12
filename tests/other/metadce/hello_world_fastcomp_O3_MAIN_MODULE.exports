@@ -33,6 +33,7 @@ _emscripten_atomic_cas_u64
 _emscripten_atomic_exchange_u64
 _emscripten_atomic_load_u64
 _emscripten_atomic_store_u64
+_emscripten_get_sbrk_ptr
 _exp
 _expf
 _expl
@@ -69,7 +70,6 @@ _rintf
 _round
 _roundf
 _saveSetjmp
-_sbrk
 _setThrew
 _sin
 _sinf
