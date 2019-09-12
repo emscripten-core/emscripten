@@ -6320,8 +6320,8 @@ int main(int argc, char** argv) {
     create_test_file('src.c', r'''
       #include <emscripten.h>
       typedef void (*fp)();
-      void one() { EM_ASM( out('one') ); }
-      void two() { EM_ASM( out('two') ); }
+      static void one() { EM_ASM( out('one') ); }
+      static void two() { EM_ASM( out('two') ); }
       void test() {
         volatile fp f = one;
         f();
