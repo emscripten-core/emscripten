@@ -279,6 +279,7 @@ ___exception_decRef
 ___execvpe
 ___gcc_personality_v0
 ___gxx_personality_v0
+___handle_stack_overflow
 ___libc_current_sigrtmax
 ___libc_current_sigrtmin
 ___lock
@@ -303,7 +304,6 @@ ___syscall140
 ___syscall142
 ___syscall144
 ___syscall145
-___syscall146
 ___syscall147
 ___syscall148
 ___syscall15
@@ -404,6 +404,7 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_fd_write
 __addDays
 __arraySum
 __battery
@@ -927,6 +928,8 @@ _emscripten_run_script
 _emscripten_run_script_int
 _emscripten_run_script_string
 _emscripten_sample_gamepad_data
+_emscripten_scan_registers
+_emscripten_scan_stack
 _emscripten_set_batterychargingchange_callback_on_thread
 _emscripten_set_batterylevelchange_callback_on_thread
 _emscripten_set_beforeunload_callback_on_thread
@@ -1043,6 +1046,7 @@ _exit
 _fabs
 _fabsf
 _fabsl
+_fd_write
 _fexecve
 _filledEllipseColor
 _filledEllipseRGBA
@@ -1552,12 +1556,21 @@ _waitpid
 _zoomSurface
 abort
 abortOnCannotGrowMemory
+demangle
+demangleAll
 emscriptenWebGLGet
 emscriptenWebGLGetTexPixelData
 emscriptenWebGLGetUniform
 emscriptenWebGLGetVertexAttrib
 emscripten_realloc_buffer
 fb
+fp$___dn_expand$iiiiii
+fp$___stdio_close$ii
+fp$___stdio_exit$v
+fp$___stdio_read$iiii
+fp$___stdio_seek$iiiii
+fp$___stdio_write$iiii
+fp$___strdup$ii
 gb
 getTempRet0
 invoke_X
@@ -1570,7 +1583,9 @@ invoke_iiiiii
 invoke_v
 invoke_vi
 invoke_vii
+jsStackTrace
 runAndAbortIfError
 setTempRet0
+stackTrace
 stringToNewUTF8
 tempDoublePtr

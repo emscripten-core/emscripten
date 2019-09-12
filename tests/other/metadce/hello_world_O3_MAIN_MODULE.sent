@@ -269,6 +269,7 @@ __exception_decRef
 __execvpe
 __gcc_personality_v0
 __gxx_personality_v0
+__handle_stack_overflow
 __libc_current_sigrtmax
 __libc_current_sigrtmin
 __lock
@@ -297,7 +298,6 @@ __syscall140
 __syscall142
 __syscall144
 __syscall145
-__syscall146
 __syscall147
 __syscall148
 __syscall15
@@ -399,6 +399,7 @@ __syscall97
 __table_base
 __unlock
 __wait
+__wasi_fd_write
 _addDays
 _arraySum
 _battery
@@ -569,8 +570,6 @@ bitshift64Shl
 boxColor
 boxRGBA
 brk
-ceil
-ceilf
 ceill
 chroot
 clearenv
@@ -582,6 +581,8 @@ clock_settime
 confstr
 ctime
 ctime_r
+demangle
+demangleAll
 difftime
 dladdr
 dlclose
@@ -929,6 +930,8 @@ emscripten_run_script
 emscripten_run_script_int
 emscripten_run_script_string
 emscripten_sample_gamepad_data
+emscripten_scan_registers
+emscripten_scan_stack
 emscripten_set_batterychargingchange_callback_on_thread
 emscripten_set_batterylevelchange_callback_on_thread
 emscripten_set_beforeunload_callback_on_thread
@@ -1042,22 +1045,18 @@ execv
 execve
 execvp
 exit
-fabs
-fabsf
 fabsl
+fd_write
 fexecve
 filledEllipseColor
 filledEllipseRGBA
 flock
-floor
-floorf
 floorl
 fork
 fp$__stdio_close$ii
 fp$__stdio_read$iiii
 fp$__stdio_seek$jiji
 fp$__stdio_write$iiii
-fp$__stdout_write$iiii
 fpathconf
 ftime
 g$__THREW__
@@ -1394,6 +1393,7 @@ i64Add
 i64Subtract
 inet_addr
 invoke_X
+jsStackTrace
 kill
 killpg
 lineColor
@@ -1539,7 +1539,6 @@ putenv
 raise
 rectangleColor
 rectangleRGBA
-rintf
 rotozoomSurface
 round
 roundf
@@ -1569,9 +1568,8 @@ siglongjmp
 signal
 sigpending
 sigprocmask
-sqrt
-sqrtf
 sqrtl
+stackTrace
 stime
 strftime
 strftime_l

@@ -1001,10 +1001,13 @@ function createWasm(env) {
     return value;
   };
 #endif
-
+#if WASM_BACKEND && ASYNCIFY && ASSERTIONS
+  Asyncify.instrumentWasmImports(env);
+#endif
   // prepare imports
   var info = {
-    'env': env
+    'env': env,
+    'wasi_unstable': env
 #if WASM_BACKEND == 0
     ,
     'global': {

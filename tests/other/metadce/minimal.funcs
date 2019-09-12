@@ -1,0 +1,16 @@
+$__errno_location
+$__fflush_unlocked
+$__growWasmMemory
+$__lockfile
+$__ofl_lock
+$__ofl_unlock
+$__unlockfile
+$__wasm_call_ctors
+$add
+$dlfree
+$dlmalloc
+$fflush
+$setThrew
+$stackAlloc
+$stackRestore
+$stackSave

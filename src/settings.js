@@ -304,7 +304,10 @@ var DEMANGLE_SUPPORT = 0;
 //   emscripten_run_script("Runtime.debug = ...;");
 var LIBRARY_DEBUG = 0;
 
-// Print out all syscalls
+// Print out all musl syscalls, including translating their numeric index
+// to the string name, which can be convenient for debugging. (Other system
+// calls are not numbered and already have clear names; use LIBRARY_DEBUG
+// to get logging for all of them.)
 var SYSCALL_DEBUG = 0;
 
 // Log out socket/network data transfer.

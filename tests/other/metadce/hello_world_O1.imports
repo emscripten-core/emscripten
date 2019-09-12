@@ -1,0 +1,6 @@
+emscripten_memcpy_big
+fd_write
+memory
+sbrk
+setTempRet0
+table
