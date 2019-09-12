@@ -177,7 +177,7 @@ def main():
       lib_file = lib.get_path()
       symbol_file = get_symbol_file(lib_file)
       default_symbol_file = os.path.join(get_symbols_dir(),
-                                           lib.name + '.symbols')
+                                         lib.name + '.symbols')
       if symbol_file != default_symbol_file and \
          os.path.isfile(default_symbol_file) and \
          filecmp.cmp(default_symbol_file, symbol_file):
