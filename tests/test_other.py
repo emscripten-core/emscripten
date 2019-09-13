@@ -944,7 +944,7 @@ f.close()
   def test_wl_linkflags(self):
     # Test path -L and -l via -Wl, arguments and -Wl, response files
     create_test_file('main.cpp', '''
-      extern void printey();
+      extern "C" void printey();
       int main() {
         printey();
         return 0;
@@ -952,7 +952,7 @@ f.close()
     ''')
     create_test_file('libfile.cpp', '''
       #include <stdio.h>
-      void printey() {
+      extern "C" void printey() {
         printf("hello from lib\\n");
       }
     ''')
@@ -961,7 +961,7 @@ f.close()
     -lfoo
     ''')
     run_process([PYTHON, EMCC, '-o', 'libfile.o', 'libfile.cpp'])
-    run_process([PYTHON, EMAR, 'rv', 'libfoo.a', 'libfile.o'])
+    run_process([PYTHON, EMAR, 'cr', 'libfoo.a', 'libfile.o'])
     run_process([PYTHON, EMCC, 'main.cpp', '-L.', '-lfoo'])
     run_process([PYTHON, EMCC, 'main.cpp', '-Wl,-L.', '-Wl,-lfoo'])
     run_process([PYTHON, EMCC, 'main.cpp', '-Wl,@linkflags.txt'])
@@ -5948,7 +5948,7 @@ int main(void) {
         for f in ['hello_world.c', 'files.cpp']:
           print(i, f)
           self.clear()
-          run_process([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', f)], stderr=PIPE)
+          run_process([PYTHON, path_from_root('emconfigure'), PYTHON, EMCC, '-c', '-o', 'a.o', path_from_root('tests', f)])
           run_process([PYTHON, EMCC, 'a.o'], check=False, stderr=PIPE)
           if f == 'hello_world.c':
             if i == 0:
