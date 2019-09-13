@@ -298,7 +298,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   pre, funcs_js = get_js_funcs(pre, funcs)
   all_exported_functions = get_all_exported_functions(function_table_data)
   all_implemented = get_all_implemented(forwarded_json, metadata)
-  check_all_implemented(all_implemented, pre)
+  report_missing_symbols(all_implemented, pre)
   implemented_functions = get_implemented_functions(metadata)
   pre = include_asm_consts(pre, forwarded_json, metadata)
   pre = apply_table(pre)
@@ -869,28 +869,28 @@ def get_all_exported_functions(function_table_data):
 
 
 def get_all_implemented(forwarded_json, metadata):
-  return metadata['implementedFunctions'] + list(forwarded_json['Functions']['implementedFunctions'].keys()) # XXX perf?
+  return set(metadata['implementedFunctions']).union(forwarded_json['Functions']['implementedFunctions'])
 
 
-def check_all_implemented(all_implemented, pre):
+def report_missing_symbols(all_implemented, pre):
   # we are not checking anyway, so just skip this
   if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
     return
+
   # the initial list of missing functions are those we expected to export, but were not implemented in compiled code
-  missing = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - set(all_implemented))
-  # special-case malloc, EXPORTED by default for internal use, but we bake in a
-  # trivial allocator and warn at runtime if used in ASSERTIONS
-  if '_malloc' in missing:
-    missing.remove('_malloc')
+  missing = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - all_implemented)
 
   for requested in missing:
-    in_pre = ('function ' + asstr(requested)) in pre
-    if not in_pre:
-      # could be a js library func
-      if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-        exit_with_error('undefined exported function: "%s"', requested)
-      elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-        logger.warning('undefined exported function: "%s"', requested)
+    if ('function ' + asstr(requested)) in pre:
+      continue
+    # special-case malloc, EXPORTED by default for internal use, but we bake in a
+    # trivial allocator and warn at runtime if used in ASSERTIONS
+    if missing == '_malloc':
+      continue
+    if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
+      exit_with_error('undefined exported function: "%s"', requested)
+    elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
+      logger.warning('undefined exported function: "%s"', requested)
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
@@ -2205,12 +2205,12 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
   # merge forwarded data
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
-  all_implemented = metadata['exports']
+  exports = metadata['exports']
 
   if shared.Settings.ASYNCIFY:
-    all_implemented += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
+    exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
-  check_all_implemented([asmjs_mangle(f) for f in all_implemented], pre)
+  report_missing_symbols(set([asmjs_mangle(f) for f in exports]), pre)
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
@@ -2234,7 +2234,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
     pass
 
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
-  receiving = create_receiving_wasm(all_implemented)
+  receiving = create_receiving_wasm(exports)
 
   module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
