@@ -5420,7 +5420,7 @@ function emterpretify(ast) {
   // functions which are ok to run while async, even if not emterpreted
   // safe-heap methods may be called at any time
   // stack operations are called from invokes for proper stack unwinding
-  var OK_TO_CALL_WHILE_ASYNC = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK', 'stackSave', 'stackRestore');
+  var OK_TO_CALL_WHILE_ASYNC = set('SAFE_HEAP_LOAD', 'SAFE_HEAP_STORE', 'SAFE_FT_MASK', 'stackSave', 'stackRestore', '_emscripten_get_sbrk_ptr');
   function okToCallDuringAsyncRestore(name) {
     // dynCall *can* be on the stack, they are just bridges; what matters is where they go
     if (/^dynCall_/.test(name)) return true;

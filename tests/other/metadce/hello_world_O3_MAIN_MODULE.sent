@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 IMG_Init
 IMG_Load
 IMG_Load_RW
@@ -569,7 +568,6 @@ bitshift64Lshr
 bitshift64Shl
 boxColor
 boxRGBA
-brk
 ceill
 chroot
 clearenv
@@ -694,6 +692,7 @@ emscripten_get_orientation_status
 emscripten_get_pointerlock_status
 emscripten_get_preloaded_image_data
 emscripten_get_preloaded_image_data_from_FILE
+emscripten_get_sbrk_ptr
 emscripten_get_stack_base
 emscripten_get_stack_top
 emscripten_get_visibility_status
@@ -1544,7 +1543,6 @@ round
 roundf
 runAndAbortIfError
 saveSetjmp
-sbrk
 sched_yield
 sem_destroy
 sem_init

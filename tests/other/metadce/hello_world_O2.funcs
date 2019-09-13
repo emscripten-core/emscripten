@@ -16,6 +16,7 @@ $legalstub$dynCall_jiji
 $main
 $memcpy
 $puts
+$sbrk
 $setThrew
 $stackAlloc
 $stackRestore

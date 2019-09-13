@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 __cxa_atexit
 __cxa_pure_virtual
 __cxa_uncaught_exceptions
@@ -20,6 +19,7 @@ atexit
 demangle
 demangleAll
 emscripten_get_heap_size
+emscripten_get_sbrk_ptr
 emscripten_memcpy_big
 emscripten_resize_heap
 fd_write
@@ -29,7 +29,6 @@ memcpy
 memset
 pthread_cond_broadcast
 pthread_cond_wait
-sbrk
 setTempRet0
 stackTrace
 strftime

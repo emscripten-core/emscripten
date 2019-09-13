@@ -5,6 +5,7 @@ $___fwritex
 $___overflow
 $___stdio_write
 $___towrite
+$_emscripten_get_sbrk_ptr
 $_free
 $_fwrite
 $_main
