@@ -27,30 +27,57 @@ extern size_t emscripten_get_heap_size(void);
 #endif
 
 void *sbrk(intptr_t increment) {
-  intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
-  intptr_t old_brk = *sbrk_ptr;
-  // TODO: overflow checks
-  intptr_t new_brk = old_brk + increment;
-#if __wasm__
-  uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
+#if __EMSCRIPTEN_PTHREADS__
+  // Our default dlmalloc uses locks around each malloc/free, so no additional
+  // work is necessary to keep things threadsafe, but we also make sure sbrk
+  // itself is threadsafe so alternative allocators work. We do that by looping
+  // and retrying if we hit interference with another thread.
+  while (1) {
+#endif // __EMSCRIPTEN_PTHREADS__
+
+    intptr_t* sbrk_ptr = emscripten_get_sbrk_ptr();
+#if __EMSCRIPTEN_PTHREADS__
+    intptr_t old_brk = __c11_atomic_load((_Atomic(intptr_t)*)sbrk_ptr, __ATOMIC_SEQ_CST);
 #else
-  uintptr_t old_size = emscripten_get_heap_size();
+    intptr_t old_brk = *sbrk_ptr;
 #endif
-  // TODO In a multithreaded build dlmalloc uses locks around each malloc/free,
-  //      which means we don't need to use atomics here. In theory however
-  //      someone could use sbrk outside of dlmalloc in a racy manner.
-  if (new_brk > old_size) {
-    // Try to grow memory.
-    intptr_t diff = new_brk - old_size;
-    if (!emscripten_resize_heap(new_brk)) {
+    // TODO: overflow checks
+    intptr_t new_brk = old_brk + increment;
+#ifdef __wasm__
+    uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
+#else
+    uintptr_t old_size = emscripten_get_heap_size();
+#endif
+    if (new_brk > old_size) {
+      // Try to grow memory.
+      intptr_t diff = new_brk - old_size;
+      if (!emscripten_resize_heap(new_brk)) {
 #ifndef EMSCRIPTEN_NO_ERRNO
-      errno = ENOMEM;
+        errno = ENOMEM;
 #endif
-      return (void*)-1;
+        return (void*)-1;
+      }
     }
+#if __EMSCRIPTEN_PTHREADS__
+    // Attempt to update the dynamic top to new value. Another thread may have
+    // beat this one to the update, in which case we will need to start over
+    // by iterating the loop body again.
+    intptr_t expected = old_brk;
+    __c11_atomic_compare_exchange_strong(
+        (_Atomic(intptr_t)*)sbrk_ptr,
+        &expected, new_brk,
+        __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    if (expected != old_brk) {
+      continue;
+    }
+#else // __EMSCRIPTEN_PTHREADS__
+    *sbrk_ptr = new_brk;
+#endif // __EMSCRIPTEN_PTHREADS__
+    return (void*)old_brk;
+
+#if __EMSCRIPTEN_PTHREADS__
   }
-  *sbrk_ptr = new_brk;
-  return (void*)old_brk;
+#endif // __EMSCRIPTEN_PTHREADS__
 }
 
 int brk(intptr_t ptr) {
