@@ -98,3 +98,6 @@ function reSign(value, bits, ignore) {
   return value;
 }
 
+// Allocated here in JS, after we have the runtime etc. prepared.
+// This constant is emitted into the JS or wasm code.
+var DYNAMICTOP_PTR = makeStaticAlloc(4);

@@ -192,7 +192,8 @@ the `.emscripten` file, which it does at the `activate step.) Some of the
 key values in that file include:
 
  * `LLVM_ROOT`: The path to the LLVM binaries.
- * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` there).
+ * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` under there; note that
+    despite the name this differs from `LLVM_ROOT` which points directly to the binaries).
  * `NODE_JS`: The path to Node.js, which is needed internally.
  * `COMPILER_ENGINE`: The VM used internally for the JS compiler. Normally this should be `NODE_JS`.
  * `JS_ENGINES`: The full list of JS engines (or just `[NODE_JS]`). Used in the test suite.

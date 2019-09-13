@@ -474,6 +474,12 @@ LibraryManager.library = {
     return HEAP8.length;
   },
 
+  emscripten_get_sbrk_ptr__asm: true,
+  emscripten_get_sbrk_ptr__sig: 'i',
+  emscripten_get_sbrk_ptr: function() {
+    return {{{ DYNAMICTOP_PTR }}};
+  },
+
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -635,143 +641,6 @@ LibraryManager.library = {
     return true;
 #endif // ALLOW_MEMORY_GROWTH
   },
-
-#if MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH
-
-// If USES_DYNAMIC_ALLOC is not defined, do not compile in sbrk() or brk(), so that user gets a linker error if they attempt
-// to call into malloc() that would sbrk().
-#if USES_DYNAMIC_ALLOC
-  // If building with minimal runtime in release mode, where malloc() failures are not expected to throw and memory growth
-  // is not allowed, use a really small stub for sbrk() and brk() that return failure.
-  sbrk__asm: true,
-  sbrk__sig: ['ii'],
-#if USES_DYNAMIC_ALLOC == 1
-  sbrk__deps: ['emscripten_get_heap_size'],
-#endif
-  sbrk: function(increment) {
-    increment = increment|0;
-    var oldDynamicTop = 0;
-    var newDynamicTop = 0;
-    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-    newDynamicTop = oldDynamicTop + increment | 0;
-#if USES_DYNAMIC_ALLOC == 1
-    if ((newDynamicTop|0) > (_emscripten_get_heap_size()|0)) {
-      return -1;
-    }
-#endif
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop | 0;
-    return oldDynamicTop | 0;
-  },
-  brk__asm: true,
-  brk__sig: ['ii'],
-#if USES_DYNAMIC_ALLOC == 1
-  brk__deps: ['emscripten_get_heap_size'],
-#endif
-  brk: function(newDynamicTop) {
-    newDynamicTop = newDynamicTop|0;
-#if USES_DYNAMIC_ALLOC == 1
-    if ((newDynamicTop|0) > (_emscripten_get_heap_size()|0)) {
-      return -1;
-    }
-#endif
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop | 0;
-    return 0;
-  },
-#endif // USES_DYNAMIC_ALLOC
-
-#else
-  // Implement a Linux-like 'memory area' for our 'process'.
-  // Changes the size of the memory area by |bytes|; returns the
-  // address of the previous top ('break') of the memory area
-  // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
-  sbrk__asm: true,
-  sbrk__sig: ['ii'],
-  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
-#if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
-#endif
-  ],
-  sbrk: function(increment) {
-    increment = increment|0;
-    var oldDynamicTop = 0;
-    var oldDynamicTopOnChange = 0;
-    var newDynamicTop = 0;
-    var totalMemory = 0;
-    totalMemory = _emscripten_get_heap_size()|0;
-#if USE_PTHREADS
-    // Perform a compare-and-swap loop to update the new dynamic top value. This is because
-    // this function can be called simultaneously in multiple threads.
-    do {
-#endif
-
-#if !USE_PTHREADS
-      oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-#else
-      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
-#endif
-      newDynamicTop = oldDynamicTop + increment | 0;
-
-      if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
-        | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
-#if ABORTING_MALLOC
-        abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#endif
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
-        return -1;
-      }
-
-      if ((newDynamicTop|0) > (totalMemory|0)) {
-        if (_emscripten_resize_heap(newDynamicTop|0)|0) {
-          // We resized the heap. Start another loop iteration if we need to.
-#if USE_PTHREADS
-          totalMemory = _emscripten_get_heap_size()|0;
-          continue;
-#endif
-        } else {
-          // We failed to resize the heap.
-#if USE_PTHREADS
-          // Possibly another thread has grown memory meanwhile, if we race with them. If memory grew,
-          // start another loop iteration.
-          if ((_emscripten_get_heap_size()|0) > totalMemory) {
-            totalMemory = _emscripten_get_heap_size()|0;
-            continue;
-          }
-#endif
-          ___setErrNo({{{ cDefine('ENOMEM') }}});
-          return -1;
-        }
-      }
-
-#if !USE_PTHREADS
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-#else
-      // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
-      // in which case we will need to start over by iterating the loop body again.
-      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
-    } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
-#endif
-
-    return oldDynamicTop|0;
-  },
-
-  brk__deps: ['sbrk'],
-  brk__asm: true,
-  brk__sig: ['ii'],
-  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
-#if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
-#endif
-  ],
-  brk: function(newDynamicTop) {
-    newDynamicTop = newDynamicTop|0;
-    var diff = 0;
-    diff = newDynamicTop - (_sbrk(0) | 0) | 0;
-    if ((_sbrk(diff | 0) | 0) == -1) {
-      return -1;
-    }
-    return 0;
-  },
-#endif // ~ (MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH)
 
   system__deps: ['__setErrNo'],
   system: function(command) {
@@ -3554,7 +3423,7 @@ LibraryManager.library = {
   _read_sockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
-    var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16') }}});
+    var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16', undefined, true) }}});
     var addr;
 
     switch (family) {

@@ -304,7 +304,10 @@ var DEMANGLE_SUPPORT = 0;
 //   emscripten_run_script("Runtime.debug = ...;");
 var LIBRARY_DEBUG = 0;
 
-// Print out all syscalls
+// Print out all musl syscalls, including translating their numeric index
+// to the string name, which can be convenient for debugging. (Other system
+// calls are not numbered and already have clear names; use LIBRARY_DEBUG
+// to get logging for all of them.)
 var SYSCALL_DEBUG = 0;
 
 // Log out socket/network data transfer.
@@ -724,12 +727,12 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-	'memcpy',
-	'memset',
-	'malloc',
-	'free',
-	'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-	];
+  'memcpy',
+  'memset',
+  'malloc',
+  'free',
+  'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
+];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
@@ -810,10 +813,11 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled
+//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled.
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
-//   * STRICT_JS is enabled
+//   * STRICT_JS is enabled.
+//   * AUTO_JS_LIBRARIES is disabled.
 var STRICT = 0;
 
 // Add "use strict;" to generated JS
@@ -835,10 +839,6 @@ var WARN_ON_UNDEFINED_SYMBOLS = 1;
 // occur.  Any undefined symbols that are listed in EXPORTED_FUNCTIONS will also
 // be reported.
 var ERROR_ON_UNDEFINED_SYMBOLS = 1;
-
-// Specifies a list of Emscripten-provided JS libraries to link against.
-// (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
-var SYSTEM_JS_LIBRARIES = [];
 
 // Use small chunk size for binary synchronous XHR's in Web Workers.  Used for
 // testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
@@ -1388,9 +1388,19 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
+// If set to 1, all JS libraries will be automaticially available at link time.
+// This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
+// need to explictly specify -lfoo.js in at link time in order to access
+// library function in library_foo.js.
+var AUTO_JS_LIBRARIES = 1;
+
 //==============================
 // Internal use only, from here
 //==============================
+
+// Specifies a list of Emscripten-provided JS libraries to link against.
+// (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
+var SYSTEM_JS_LIBRARIES = [];
 
 // This will contain the emscripten version. You should not modify this. This
 // and the following few settings are useful in combination with
@@ -1590,6 +1600,9 @@ var EMBIND = 0;
 
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
+
+// The computed location of the pointer to the sbrk position.
+var DYNAMICTOP_PTR = -1;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

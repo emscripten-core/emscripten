@@ -496,8 +496,10 @@ EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.t
 parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
 EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 # For the Emscripten-specific WASM metadata section, follows semver, changes
-# whenever metadata section changes structure
+# whenever metadata section changes structure.
 # NB: major version 0 implies no compatibility
+# NB: when changing the metadata format, we should only append new fields, not
+#     reorder, modify, or remove existing ones.
 (EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 2)
 # For the JS/WASM ABI, specifies the minimum ABI version required of
 # the WASM runtime implementation by the generated WASM binary. It follows
@@ -506,8 +508,8 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
-# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 4)
+# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 6)
 
 
 def generate_sanity():
@@ -556,7 +558,7 @@ def check_sanity(force=False):
       sanity_file += '_wasm'
     if os.path.exists(sanity_file):
       sanity_mtime = os.path.getmtime(sanity_file)
-      if sanity_mtime <= settings_mtime:
+      if sanity_mtime < settings_mtime:
         reason = 'settings file has changed'
       else:
         sanity_data = open(sanity_file).read().rstrip()
@@ -1243,9 +1245,6 @@ def verify_settings():
     if Settings.EMTERPRETIFY:
       exit_with_error('emcc: EMTERPRETIFY is not supported by the LLVM wasm backend')
 
-    if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
-      exit_with_error('emcc: WASM_BACKEND selected but could not find lld (wasm-ld): %s', WASM_LD)
-
     if Settings.EMULATED_FUNCTION_POINTERS:
       exit_with_error('emcc: EMULATED_FUNCTION_POINTERS is not meaningful with the wasm backend.')
 
@@ -1780,6 +1779,8 @@ class Building(object):
     # semantics are more like the windows linker where there is no need for
     # grouping.
     args = [a for a in args if a not in ('--start-group', '--end-group')]
+    if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
+      exit_with_error('linker binary not found in LLVM direcotry: %s', WASM_LD)
 
     # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
     # include all archive contents.
@@ -2464,7 +2465,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS and not Settings.AUTODEBUG:
+        if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.ASSERTIONS:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
@@ -2499,6 +2500,11 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    # fix wasi imports TODO: support wasm stable with an option?
+    WASI_IMPORTS = set(['fd_write'])
+    for item in graph:
+      if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
+        item['import'][0] = 'wasi_unstable'
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
@@ -2751,10 +2757,7 @@ class Building(object):
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
     if not BINARYEN_ROOT:
-      # ensure we have the port available if needed.
-      from . import system_libs
-      system_libs.get_port('binaryen', Settings)
-      assert os.path.exists(BINARYEN_ROOT)
+      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 
@@ -3223,7 +3226,7 @@ def read_and_preprocess(filename, expand_macros=False):
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);

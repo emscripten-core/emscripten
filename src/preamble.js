@@ -136,15 +136,30 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
-#else // EMTERPRETIFY_ASYNC
-#if ASSERTIONS
-  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
 #endif
-#endif // EMTERPRETIFY_ASYNC
+#if ASYNCIFY && WASM_BACKEND
+  if (typeof Asyncify === 'object' && Asyncify.currData) {
+    // The WASM function ran asynchronous and unwound its stack.
+    // We need to return a Promise that resolves the return value
+    // once the stack is rewound and execution finishes.
+#if ASSERTIONS
+    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    // Once the asyncFinalizers are called, asyncFinalizers gets reset to [].
+    // If they are not empty, then another async ccall is in-flight and not finished.
+    assert(Asyncify.asyncFinalizers.length === 0, 'Cannot have multiple async ccalls in flight at once');
+#endif
+    return new Promise(function(resolve) {
+      Asyncify.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
+      });
+    });
+  }
+#endif
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC
+#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -325,7 +340,7 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
     DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
-    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
+    DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
@@ -1021,10 +1036,13 @@ function createWasm(env) {
     return value;
   };
 #endif
-
+#if WASM_BACKEND && ASYNCIFY && ASSERTIONS
+  Asyncify.instrumentWasmImports(env);
+#endif
   // prepare imports
   var info = {
-    'env': env
+    'env': env,
+    'wasi_unstable': env
 #if WASM_BACKEND == 0
     ,
     'global': {
@@ -1040,6 +1058,9 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
+#if RELOCATABLE
+    exports = relocateExports(exports, GLOBAL_BASE, 0);
+#endif
 #if WASM_BACKEND && ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif

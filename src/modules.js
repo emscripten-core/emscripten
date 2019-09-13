@@ -88,8 +88,8 @@ var LibraryManager = {
         'library_pipefs.js',
       ]);
 
-      // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
-      if (!STRICT && !MINIMAL_RUNTIME) {
+      // Additional filesystem libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
+      if (AUTO_JS_LIBRARIES) {
         if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
           libraries = libraries.concat([
             'library_idbfs.js',
@@ -109,8 +109,8 @@ var LibraryManager = {
       }
     }
 
-    // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
-    if (!STRICT && !MINIMAL_RUNTIME) {
+    // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
+    if (AUTO_JS_LIBRARIES) {
       libraries = libraries.concat([
         'library_webgl.js',
         'library_openal.js',
@@ -506,6 +506,7 @@ var PassManager = {
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       STATIC_BUMP: STATIC_BUMP, // updated with info from JS
+      DYNAMICTOP_PTR: DYNAMICTOP_PTR,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),

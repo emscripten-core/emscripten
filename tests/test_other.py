@@ -90,14 +90,20 @@ def is_python3_version_supported():
 
   Note: Emscripten requires python3.5 or above since python3.4 and below do not
   support circular dependencies."""
-  python3 = Building.which('python3')
-  if not python3:
+  try:
+    print('is_python3_version_supported')
+    python3 = Building.which('python3')
+    print('  python3 =', python3)
+    output = run_process([python3, '--version'], stdout=PIPE).stdout
+    print('  output =', output, output.split())
+    output = output.split()[1]
+    # ignore final component which can contains non-integers (e.g 'rc1')
+    version = [int(x) for x in output.split('.')[:2]]
+    return version >= [3, 5]
+  except Exception:
+    # If anything goes wrong (no python3, unexpected output format), then we do
+    # not support this python3
     return False
-  output = run_process([python3, '--version'], stdout=PIPE).stdout
-  output = output.split(' ')[1]
-  # ignore final component which can contains non-integers (e.g 'rc1')
-  version = [int(x) for x in output.split('.')[:2]]
-  return version >= [3, 5]
 
 
 def encode_leb(number):
@@ -122,6 +128,28 @@ def get_fastcomp_src_dir():
     else:
       d = os.path.dirname(d)
   return None
+
+
+def parse_wasm(filename):
+  wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), filename], stdout=PIPE).stdout
+  imports = []
+  exports = []
+  funcs = []
+  for line in wast.splitlines():
+    line = line.strip()
+    if line.startswith('(import '):
+      line = line.strip('()')
+      name = line.split()[2].strip('"')
+      imports.append(name)
+    if line.startswith('(export '):
+      line = line.strip('()')
+      name = line.split()[1].strip('"')
+      exports.append(name)
+    if line.startswith('(func '):
+      line = line.strip('()')
+      name = line.split()[1].strip('"')
+      funcs.append(name)
+  return imports, exports, funcs
 
 
 class other(RunnerCore):
@@ -6292,8 +6320,8 @@ int main(int argc, char** argv) {
     create_test_file('src.c', r'''
       #include <emscripten.h>
       typedef void (*fp)();
-      void one() { EM_ASM( out('one') ); }
-      void two() { EM_ASM( out('two') ); }
+      static void one() { EM_ASM( out('one') ); }
+      static void two() { EM_ASM( out('two') ); }
       void test() {
         volatile fp f = one;
         f();
@@ -6738,12 +6766,12 @@ int main() {
       if not expected:
         assert err == '', err
 
-  def test_static_syscalls(self):
+  def test_musl_syscalls(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
     src = open('a.out.js').read()
     matches = re.findall(r'''function ___syscall(\d+)\(''', src)
-    print('seen syscalls:', matches)
-    assert set(matches) == set(['6', '54', '140', '146']) # close, ioctl, llseek, writev
+    # there should be no musl syscalls in hello world output
+    self.assertEqual(matches, [])
 
   @no_windows('posix-only')
   def test_emcc_dev_null(self):
@@ -7165,7 +7193,7 @@ int main() {
   def test_only_my_code(self):
     run_process([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'WASM=0'])
     count = open('a.out.asm.js').read().count('function ')
-    assert count > 29, count # libc brings in a bunch of stuff
+    self.assertGreater(count, 20) # libc brings in a bunch of stuff
 
     def test(filename, opts, expected_funcs, expected_vars):
       print(filename, opts)
@@ -7346,20 +7374,23 @@ int main() {
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
     for wasm in (1, 0):
-      if self.is_wasm_backend() and not wasm:
-        continue
       print('wasm', wasm)
+      create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  external_thing: function() {}
+});
+''')
       create_test_file('src.cpp', r'''
-  #include <stdio.h>
+  extern "C" void external_thing();
   struct C {
-    C() { printf("constructing!\n"); } // don't remove this!
+    C() { external_thing(); } // don't remove this!
   };
   C c;
   int main() {}
       ''')
-      err = run_process([PYTHON, EMCC, 'src.cpp', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-      self.assertContained('__syscall54', err) # the failing call should be mentioned
-      if not wasm: # js will show a stack trace
+      err = run_process([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
+      self.assertContained('external_thing', err) # the failing call should be mentioned
+      if not wasm and not self.is_wasm_backend(): # asm.js will show a stack trace
         self.assertContained('ctorEval.js', err) # with a stack trace
       self.assertContained('ctor_evaller: not successful', err) # with logging
 
@@ -8021,7 +8052,7 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    if expected_imports is not None:
+    if expected_sent is not None:
       sent_file = expected_basename + '.sent'
       sent_data = '\n'.join(sent) + '\n'
       self.assertFileContents(sent_file, sent_data)
@@ -8031,25 +8062,52 @@ int main() {
       self.assertIn(exists, sent)
     for not_exists in expected_not_exists:
       self.assertNotIn(not_exists, sent)
+
     wasm_size = os.path.getsize('a.out.wasm')
     if expected_size is not None:
       ratio = abs(wasm_size - expected_size) / float(expected_size)
       print('  seen wasm size: %d (expected: %d), ratio to expected: %f' % (wasm_size, expected_size, ratio))
     self.assertLess(ratio, size_slack)
-    wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-    imports = wast.count('(import ')
-    exports = wast.count('(export ')
-    funcs = wast.count('\n (func ')
+    imports, exports, funcs = parse_wasm('a.out.wasm')
+    imports.sort()
+    exports.sort()
+    funcs.sort()
+
+    # filter out _NNN suffixed that can be the result of bitcode linking when
+    # internal symbol names collide.
+    def strip_numeric_suffixes(funcname):
+      parts = funcname.split('_')
+      while parts:
+        if parts[-1].isdigit():
+          parts.pop()
+        else:
+          break
+      return '_'.join(parts)
+
+    funcs = [strip_numeric_suffixes(f) for f in funcs]
+
     if expected_imports is not None:
-      self.assertEqual(imports, expected_imports)
-    self.assertEqual(exports, expected_exports)
+      filename = expected_basename + '.imports'
+      data = '\n'.join(imports) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(imports), expected_imports)
+
+    if expected_exports is not None:
+      filename = expected_basename + '.exports'
+      data = '\n'.join(exports) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(exports), expected_exports)
+
     if expected_funcs is not None:
-      self.assertEqual(funcs, expected_funcs)
+      filename = expected_basename + '.funcs'
+      data = '\n'.join(funcs) + '\n'
+      self.assertFileContents(filename, data)
+      self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],      15, [], ['waka'],  9211,  5, 12, 16), # noqa
-    'O1': (['-O1'], 13, [], ['waka'],  7886,  2, 11, 10), # noqa
-    'O2': (['-O2'], 13, [], ['waka'],  7871,  2, 11, 10), # noqa
+    'O0': ([],      13, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O1': (['-O1'], 11, [], ['waka'],  7886,  2, 11, 12), # noqa
+    'O2': (['-O2'], 11, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  0, [], [],          85,  0,  2,  2), # noqa
@@ -8060,9 +8118,9 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      25, ['abort'], ['waka'], 22712, 22, 15, 30), # noqa
-    'O1': (['-O1'], 14, ['abort'], ['waka'], 10450,  7, 11, 11), # noqa
-    'O2': (['-O2'], 14, ['abort'], ['waka'], 10440,  7, 11, 11), # noqa
+    'O0': ([],      21, ['abort'], ['waka'], 22712, 16, 15, 28), # noqa
+    'O1': (['-O1'], 12, ['abort'], ['waka'], 10450,  4, 11, 12), # noqa
+    'O2': (['-O2'], 12, ['abort'], ['waka'], 10440,  4, 11, 12), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
     'Os': (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
@@ -8075,13 +8133,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 21, 33, 750) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 20, 33, None) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 36, ['abort'], ['waka'], 186423,  29,  38, 540), # noqa
+    'normal': (['-O2'], 35, ['abort'], ['waka'], 186423, 25, 38, 541), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        36, ['abort'], ['waka'], 188310, 29, 39, 520), # noqa
+                        35, ['abort'], ['waka'], 188310, 25, 39, 521), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8089,12 +8147,12 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      21, [], ['waka'], 22185, 11,  17, 57), # noqa
-    'O1': (['-O1'], 19, [], ['waka'], 10415,  9,  14, 31), # noqa
-    'O2': (['-O2'], 19, [], ['waka'], 10183,  9,  14, 25), # noqa
-    'O3': (['-O3'],  5, [], [],        2353,  7,   2, 13), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  5, [], [],        2310,  7,   2, 14), # noqa
-    'Oz': (['-Oz'],  5, [], [],        2272,  7,   1, 13), # noqa
+    'O0': ([],      16, [], ['waka'], 22185,  8,  17, 56), # noqa
+    'O1': (['-O1'], 14, [], ['waka'], 10415,  6,  14, 30), # noqa
+    'O2': (['-O2'], 14, [], ['waka'], 10183,  6,  14, 24), # noqa
+    'O3': (['-O3'],  2, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'],  2, [], [],        1963,  4,   2, 12), # noqa
+    'Oz': (['-Oz'],  2, [], [],        1929,  4,   1, 11), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
@@ -8103,28 +8161,28 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1612, [], [], 517336, None, 1514, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   16, [], [],  10770,   18,   13, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1608, [], [], 517336, None, 1495, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   10, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
   def test_binaryen_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      27, ['abort'], ['waka'], 42701,  24,   17, 57), # noqa
-    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,  15,   14, 33), # noqa
-    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,  15,   14, 28), # noqa
-    'O3': (['-O3'],  6, [],        [],        2443,   9,    2, 15), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  6, [],        [],        2412,   9,    2, 17), # noqa
-    'Oz': (['-Oz'],  6, [],        [],        2389,   9,    2, 16), # noqa
+    'O0': ([],      23, ['abort'], ['waka'], 42701,  18,   17, 55), # noqa
+    'O1': (['-O1'], 15, ['abort'], ['waka'], 13199,   9,   14, 31), # noqa
+    'O2': (['-O2'], 15, ['abort'], ['waka'], 12425,   9,   14, 27), # noqa
+    'O3': (['-O3'],  3, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'],  3, [],        [],        2064,   6,    2, 15), # noqa
+    'Oz': (['-Oz'],  3, [],        [],        2045,   6,    2, 14), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
            (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
                       0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1576, [], [], 226403, None, 97, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   15, [], [],  10571,   19,  9,   21), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1590, [], [], 226403, None, 104, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],    9, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):
@@ -8460,7 +8518,7 @@ int main() {
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
       expect_wast = debug_enabled and wasm_enabled and not self.is_wasm_backend()
 
-      if self.is_wasm_backend() and (emterpreter_enabled or not wasm_enabled):
+      if self.is_wasm_backend() and emterpreter_enabled:
         continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
@@ -9268,11 +9326,11 @@ int main () {
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 985, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 972, 'a.js': 624, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 885, 'a.js': 4980, 'a.asm.js': 10965, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 5027, 'a.wasm': 8830}),
-      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6157, 'a.wasm': 8830}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_world_sources, {'a.html': 981, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 968, 'a.js': 616, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 881, 'a.js': 5034, 'a.asm.js': 11094, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 5091, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6201, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
@@ -9597,14 +9655,16 @@ int main () {
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '--closure', '1'] + args)
       for engine in JS_ENGINES:
         self.assertContained('hello, world!', run_js('a.out.js', engine=engine))
-      return os.path.getsize('a.out.js')
+      with open('a.out.js') as f:
+        # ignore \r which on windows can increase the size
+        return len(f.read().replace('\r', ''))
     normal = test([])
     changed = test(['-s', 'INCOMING_MODULE_JS_API=[]'])
     print('sizes', normal, changed)
     # Changing this option to [] should decrease code size.
     self.assertLess(changed, normal)
     # Check an absolute code size as well, with some slack.
-    self.assertLess(abs(changed - 6152), 100)
+    self.assertLess(abs(changed - 5840), 150)
 
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
