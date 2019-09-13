@@ -1107,8 +1107,9 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
     end = raw.rindex(']')
     body = raw[start + 1:end].split(',')
     if shared.Settings.EMULATED_FUNCTION_POINTERS:
-      #this speeds up this section when all_implemented is very big > 150000
+      # this speeds up this section when all_implemented is very big > 150000
       notinImplemented = list(set(body) - set(all_implemented))
+
       def receive(item):
         if item == '0':
           return item
