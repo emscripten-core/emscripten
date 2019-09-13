@@ -120,7 +120,7 @@ def main():
     sys.stderr.write('This script only runs in WASM mode\n')
     sys.exit(1)
 
-  os.makedirs(get_symbols_dir(), exist_ok=True)
+  shared.safe_ensure_dirs(get_symbols_dir())
   if args.files:
     for symbol_file in args.files:
       if not is_symbol_file_supported(symbol_file):
