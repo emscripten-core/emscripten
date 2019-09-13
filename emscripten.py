@@ -1107,10 +1107,12 @@ def make_function_tables_defs(implemented_functions, all_implemented, function_t
     end = raw.rindex(']')
     body = raw[start + 1:end].split(',')
     if shared.Settings.EMULATED_FUNCTION_POINTERS:
+      #this speeds up this section when all_implemented is very big > 150000
+      notinImplemented = list(set(body) - set(all_implemented))
       def receive(item):
         if item == '0':
           return item
-        if item not in all_implemented:
+        if item in notinImplemented:
           # this is not implemented; it would normally be wrapped, but with emulation, we just use it directly outside
           return item
         in_table.add(item)
