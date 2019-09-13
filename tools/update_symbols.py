@@ -12,13 +12,9 @@ de-duplicated.
 """
 
 import sys
-if sys.version_info < (3, 0):
-  sys.stderr.write('This script requires Python 3 or above\n')
-  sys.exit(1)
 import argparse
 import os
 import filecmp
-from pathlib import Path
 
 root_dir = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, root_dir)
@@ -104,13 +100,6 @@ def filter_and_sort(symbols):
   return '\n'.join(lines) + '\n'
 
 
-def update_symbol_file(symbol_file):
-  output = open(symbol_file).read()
-  new_symbols = filter_and_sort(output)
-  with open(symbol_file, 'w') as f:
-    f.write(new_symbols)
-
-
 def generate_symbol_file(symbol_file, lib_file):
   """Regenerate the contents of a given symbol file."""
   output = shared.run_process([shared.LLVM_NM, '-g', lib_file],
@@ -123,9 +112,6 @@ def generate_symbol_file(symbol_file, lib_file):
 def main():
   parser = argparse.ArgumentParser(
       description=__doc__, usage="%(prog)s [options] [files ...]")
-  parser.add_argument('-i', dest='filter_in_place', action='store_true',
-                      help='filter symbols in place rather than re-generating '
-                           'from library file')
   parser.add_argument('files', metavar='files', type=str, nargs='*',
                       help='symbol files to regenerate (default: all)')
   args = parser.parse_args()
@@ -134,18 +120,6 @@ def main():
     sys.stderr.write('This script only runs in WASM mode\n')
     sys.exit(1)
 
-  # If args.filter_in_place is set, read existing symbol files and make it
-  # up-to-date by resorting the entries.
-  if args.filter_in_place:
-    if args.files:
-      for symbol_file in args.files:
-        update_symbol_file(symbol_file)
-    else:
-      for symbol_file in Path(get_symbols_dir()).glob('**/*.symbols'):
-        update_symbol_file(symbol_file)
-    return
-
-  # If args.filter_in_place is NOT set, generate new symbols files.
   os.makedirs(get_symbols_dir(), exist_ok=True)
   if args.files:
     for symbol_file in args.files:
