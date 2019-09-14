@@ -1,0 +1,11 @@
+$__errno_location
+$__growWasmMemory
+$__wasm_call_ctors
+$add
+$dlfree
+$dlmalloc
+$sbrk
+$setThrew
+$stackAlloc
+$stackRestore
+$stackSave

@@ -1,0 +1,12 @@
+__data_end
+__errno_location
+__growWasmMemory
+__wasm_call_ctors
+add
+fflush
+free
+malloc
+setThrew
+stackAlloc
+stackRestore
+stackSave
