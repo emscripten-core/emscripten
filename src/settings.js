@@ -558,7 +558,7 @@ var ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118',
-  'emscripten_scan_registers'
+  'emscripten_scan_registers', 'emscripten_lazy_load_code'
 ];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
@@ -599,6 +599,10 @@ var ASYNCIFY_BLACKLIST = [];
 // your application.
 // See notes on ASYNCIFY_BLACKLIST about the names.
 var ASYNCIFY_WHITELIST = [];
+
+// Allows lazy code loading: where emscripten_lazy_load_code() is written, we
+// will pause execution, load the rest of the code, and then resume.
+var ASYNCIFY_LAZY_LOAD_CODE = 0;
 
 // Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;

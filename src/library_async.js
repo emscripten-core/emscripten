@@ -810,6 +810,19 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_lazy_load_code: function() {
+    Asyncify.handleSleep(function(wakeUp) {
+      readAsync(
+        'lazy.wasm',
+        function() {
+          Module['asm'] = 
+        },
+        function() {
+        }
+      );
+    });
+  },
+
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
