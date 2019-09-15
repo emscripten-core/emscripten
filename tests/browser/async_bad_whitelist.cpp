@@ -29,7 +29,8 @@ int main() {
 
   emscripten_sleep(1);
 
-  // We should not get here - the unwind will fail as the stack is too small
+  // We should not get here - the unwind will fail as the whitelist is wrong, this function
+  // should be instrumented but will not be.
   puts("We should not get here!");
   REPORT_RESULT(1);
 
