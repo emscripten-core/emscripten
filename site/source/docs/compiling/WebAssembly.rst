@@ -37,6 +37,7 @@ To use fastcomp, just use the emsdk normally to get ``latest``. For the upstream
 There are some differences you may notice between the two backends, if you upgrade from fastcomp to upstream:
 
 * The wasm backend is strict about linking files with different features sets - for example, if one file was built with atomics but another was not, it will error at link time. This prevents possible bugs, but may mean you need to make some build system fixes.
+* ``WASM=0`` behaves differently in the two backends. In fastcomp we emit asm.js, while in upstream we emit JS (as we want to support all wasm, not all of which can work in asm.js). Also, the implementation of the JS support is to make it look like wasm as much as possible to the outside APIs, so in particular startup will be async just like wasm by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even though ``WASM=0``).
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
 Binaryen codegen options
