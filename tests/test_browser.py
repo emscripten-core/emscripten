@@ -3648,7 +3648,6 @@ window.close = function() {
     test(['-s', 'MODULARIZE_INSTANCE=1'])
     test(['-s', 'PTHREAD_POOL_ONLY_PREWARM=1'])
 
-
   # Test that preallocating worker threads work.
   @requires_threads
   def test_pthread_preallocates_workers(self):
