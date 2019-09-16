@@ -577,40 +577,77 @@ v128_t TESTFN f64x2_max(v128_t x, v128_t y) {
 #endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN i32x4_trunc_s_f32x4_sat(v128_t vec) {
-  return wasm_trunc_saturate_i32x4_f32x4(vec);
+  return wasm_i32x4_trunc_saturate_f32x4(vec);
 }
 v128_t TESTFN i32x4_trunc_u_f32x4_sat(v128_t vec) {
-  return wasm_trunc_saturate_u32x4_f32x4(vec);
+  return wasm_u32x4_trunc_saturate_f32x4(vec);
 }
 
 #ifdef __wasm_unimplemented_simd128__
 
 v128_t TESTFN i64x2_trunc_s_f64x2_sat(v128_t vec) {
-  return wasm_trunc_saturate_i64x2_f64x2(vec);
+  return wasm_i64x2_trunc_saturate_f64x2(vec);
 }
 v128_t TESTFN i64x2_trunc_u_f64x2_sat(v128_t vec) {
-  return wasm_trunc_saturate_u64x2_f64x2(vec);
+  return wasm_u64x2_trunc_saturate_f64x2(vec);
 }
 
 #endif // __wasm_unimplemented_simd128__
 
 v128_t TESTFN f32x4_convert_s_i32x4(v128_t vec) {
-  return wasm_convert_f32x4_i32x4(vec);
+  return wasm_f32x4_convert_i32x4(vec);
 }
 v128_t TESTFN f32x4_convert_u_i32x4(v128_t vec) {
-  return wasm_convert_f32x4_u32x4(vec);
+  return wasm_f32x4_convert_u32x4(vec);
 }
 
 #ifdef __wasm_unimplemented_simd128__
 
 v128_t TESTFN f64x2_convert_s_i64x2(v128_t vec) {
-  return wasm_convert_f64x2_i64x2(vec);
+  return wasm_f64x2_convert_i64x2(vec);
 }
 v128_t TESTFN f64x2_convert_u_i64x2(v128_t vec) {
-  return wasm_convert_f64x2_u64x2(vec);
+  return wasm_f64x2_convert_u64x2(vec);
 }
 
 #endif // __wasm_unimplemented_simd128__
+
+v128_t TESTFN i8x16_narrow_i16x8_s(v128_t a, v128_t b) {
+  return wasm_i8x16_narrow_i16x8(a, b);
+}
+v128_t TESTFN i8x16_narrow_i16x8_u(v128_t a, v128_t b) {
+  return wasm_u8x16_narrow_i16x8(a, b);
+}
+v128_t TESTFN i16x8_narrow_i32x4_s(v128_t a, v128_t b) {
+  return wasm_i16x8_narrow_i32x4(a, b);
+}
+v128_t TESTFN i16x8_narrow_i32x4_u(v128_t a, v128_t b) {
+  return wasm_u16x8_narrow_i32x4(a, b);
+}
+v128_t TESTFN i16x8_widen_low_i8x16_s(v128_t a) {
+  return wasm_i16x8_widen_low_i8x16(a);
+}
+v128_t TESTFN i16x8_widen_high_i8x16_s(v128_t a) {
+  return wasm_i16x8_widen_high_i8x16(a);
+}
+v128_t TESTFN i16x8_widen_low_i8x16_u(v128_t a) {
+  return wasm_i16x8_widen_low_u8x16(a);
+}
+v128_t TESTFN i16x8_widen_high_i8x16_u(v128_t a) {
+  return wasm_i16x8_widen_high_u8x16(a);
+}
+v128_t TESTFN i32x4_widen_low_i16x8_s(v128_t a) {
+  return wasm_i32x4_widen_low_i16x8(a);
+}
+v128_t TESTFN i32x4_widen_high_i16x8_s(v128_t a) {
+  return wasm_i32x4_widen_high_i16x8(a);
+}
+v128_t TESTFN i32x4_widen_low_i16x8_u(v128_t a) {
+  return wasm_i32x4_widen_low_u16x8(a);
+}
+v128_t TESTFN i32x4_widen_high_i16x8_u(v128_t a) {
+  return wasm_i32x4_widen_high_u16x8(a);
+}
 
 static int failures = 0;
 
@@ -1565,6 +1602,65 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
 
 #endif // __wasm_unimplemented_simd128__
+
+  expect_vec(
+    i8x16_narrow_i16x8_s(
+      (v128_t)i16x8(129, 127, -32767, 32767, -32768, -1, 1, 0),
+      (v128_t)i16x8(0, 1, -1, -32768, 32767, -32767, 127, 129)
+    ),
+    i8x16(127, 127, -128, 127, -128, -1, 1, 0, 0, 1, -1, -128, 127, -128, 127, 127)
+  );
+  // https://bugs.chromium.org/p/v8/issues/detail?id=9729
+  /* expect_vec( */
+  /*   i8x16_narrow_i16x8_u( */
+  /*     (v128_t)i16x8(129, 127, -32767, 32767, -32768, -1, 1, 0), */
+  /*     (v128_t)i16x8(0, 1, -1, -32768, 32767, -32767, 127, 129) */
+  /*   ), */
+  /*   i8x16(129, 127, 0, 255, 0, 0, 1, 0, 0, 1, 0, 0, 255, 0, 127, 129) */
+  /* ); */
+  expect_vec(
+    i16x8_narrow_i32x4_s(
+      (v128_t)i32x4(32769, 32767, -2147483647, 2147483647),
+      (v128_t)i32x4(0, 1, -1, -2147483647 - 1)
+    ),
+    i16x8(32767, 32767, -32768, 32767, 0, 1, -1, -32768)
+  );
+  // https://bugs.chromium.org/p/v8/issues/detail?id=9729
+  /* expect_vec( */
+  /*   i16x8_narrow_i32x4_u( */
+  /*     (v128_t)i32x4(32769, 32767, -2147483647, 2147483647), */
+  /*     (v128_t)i32x4(0, 1, -1, -2147483647 - 1) */
+  /*   ), */
+  /*   i16x8(-32767, 32767, 0, -1, 0, 1, 0, 0) */
+  /* ); */
+  expect_vec(
+    i16x8_widen_low_i8x16_s(
+      (v128_t)i8x16(0, 1, -1, -128, 127, 129, 64, -64, -64, 64, 129, 127, -128, -1, 1, 0)
+    ),
+    i16x8(0, 1, -1, -128, 127, -127, 64, -64)
+  );
+  expect_vec(
+    i16x8_widen_high_i8x16_s(
+      (v128_t)i8x16(0, 1, -1, -128, 127, 129, 64, -64, -64, 64, 129, 127, -128, -1, 1, 0)
+    ),
+    i16x8(-64, 64, -127, 127, -128, -1, 1, 0)
+  );
+  expect_vec(
+    i16x8_widen_low_i8x16_u(
+      (v128_t)i8x16(0, 1, -1, -128, 127, 129, 64, -64, -64, 64, 129, 127, -128, -1, 1, 0)
+    ),
+    i16x8(0, 1, 255, 128, 127, 129, 64, 192)
+  );
+  expect_vec(
+    i16x8_widen_high_i8x16_u(
+      (v128_t)i8x16(0, 1, -1, -128, 127, 129, 64, -64, -64, 64, 129, 127, -128, -1, 1, 0)
+    ),
+    i16x8(192, 64, 129, 127, 128, 255, 1, 0)
+  );
+  expect_vec(i32x4_widen_low_i16x8_s((v128_t)i16x8(0, 1, -1, -32768, 32767, -32767, 16384, -16384)), i32x4(0, 1, -1, -32768));
+  expect_vec(i32x4_widen_high_i16x8_s((v128_t)i16x8(0, 1, -1, -32768, 32767, -32767, 16384, -16384)), i32x4(32767, -32767, 16384, -16384));
+  expect_vec(i32x4_widen_low_i16x8_u((v128_t)i16x8(0, 1, -1, -32768, 32767, -32767, 16384, -16384)), i32x4(0, 1, 65535, 32768));
+  expect_vec(i32x4_widen_high_i16x8_u((v128_t)i16x8(0, 1, -1, -32768, 32767, -32767, 16384, -16384)), i32x4(32767, 32769, 16384, 49152));
 
   if (failures == 0) {
     printf("Success!\n");
