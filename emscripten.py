@@ -2454,6 +2454,93 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
+  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG:
+    # wasm2js legalization of i64 support code may require these
+    # autodebug may also need them
+    send_items_map['setTempRet0'] = 'setTempRet0'
+    send_items_map['getTempRet0'] = 'getTempRet0'
+
+  if shared.Settings.AUTODEBUG:
+    send_items_map['log_execution'] = '''function(loc) {
+      console.log('log_execution ' + loc);
+    }'''
+    send_items_map['get_i32'] = '''function(loc, index, value) {
+      console.log('get_i32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_i64'] = '''function(loc, index, low, high) {
+      console.log('get_i64 ' + [loc, index, low, high]);
+      send_items_map['setTempRet0'](high);
+      return low;
+    }'''
+    send_items_map['get_f32'] = '''function(loc, index, value) {
+      console.log('get_f32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_f64'] = '''function(loc, index, value) {
+      console.log('get_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_i32'] = '''function(loc, index, value) {
+      console.log('set_i32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_i64'] = '''function(loc, index, low, high) {
+      console.log('set_i64 ' + [loc, index, low, high]);
+      send_items_map['setTempRet0'](high);
+      return low;
+    }'''
+    send_items_map['set_f32'] = '''function(loc, index, value) {
+      console.log('set_f32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_f64'] = '''function(loc, index, value) {
+      console.log('set_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
+      console.log('load_ptr ' + [loc, bytes, offset, ptr]);
+      return ptr;
+    }'''
+    send_items_map['load_val_i32'] = '''function(loc, value) {
+      console.log('load_val_i32 ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['load_val_i64'] = '''function(loc, low, high) {
+      console.log('load_val_i64 ' + [loc, low, high]);
+      env['setTempRet0'](high);
+      return low;
+    }'''
+    send_items_map['load_val_f32'] = '''function(loc, value) {
+      console.log('loaload_val_i32d_ptr ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['load_val_f64'] = '''function(loc, value) {
+      console.log('load_val_f64 ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['store_ptr'] = '''function(loc, bytes, offset, ptr) {
+      console.log('store_ptr ' + [loc, bytes, offset, ptr]);
+      return ptr;
+    }'''
+    send_items_map['store_val_i32'] = '''function(loc, value) {
+      console.log('store_val_i32 ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['store_val_i64'] = '''function(loc, low, high) {
+      console.log('store_val_i64 ' + [loc, low, high]);
+      env['setTempRet0'](high);
+      return low;
+    }'''
+    send_items_map['store_val_f32'] = '''function(loc, value) {
+      console.log('loastore_val_i32d_ptr ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['store_val_f64'] = '''function(loc, value) {
+      console.log('store_val_f64 ' + [loc, value]);
+      return value;
+    }'''
+
   sorted_keys = sorted(send_items_map.keys())
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
