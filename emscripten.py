@@ -2440,7 +2440,7 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['get_i64'] = '''function(loc, index, low, high) {
       console.log('get_i64 ' + [loc, index, low, high]);
-      send_items_map['setTempRet0'](high);
+      setTempRet0(high);
       return low;
     }'''
     send_items_map['get_f32'] = '''function(loc, index, value) {
@@ -2457,7 +2457,7 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['set_i64'] = '''function(loc, index, low, high) {
       console.log('set_i64 ' + [loc, index, low, high]);
-      send_items_map['setTempRet0'](high);
+      setTempRet0(high);
       return low;
     }'''
     send_items_map['set_f32'] = '''function(loc, index, value) {

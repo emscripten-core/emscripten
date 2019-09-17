@@ -576,7 +576,9 @@ function emitDCEGraph(ast) {
       var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties.forEach(function(item) {
         var value = item.value;
-        if (value.type === 'Literal') return; // if it's a numeric literal, nothing to do here
+        if (value.type === 'Literal' || value.type === 'FunctionExpression') {
+          return; // if it's a numeric or function literal, nothing to do here
+        }
         if (value.type === 'LogicalExpression') {
           // We may have something like  wasmMemory || Module.wasmMemory  in pthreads code;
           // use the left hand identifier.
