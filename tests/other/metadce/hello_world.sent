@@ -11,6 +11,8 @@ fd_write
 flush_NO_FILESYSTEM
 jsStackTrace
 memcpy
+memory
 memset
 setTempRet0
 stackTrace
+table
