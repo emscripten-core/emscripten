@@ -2479,7 +2479,7 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
-  module.append("var asm = Module['asm'](asmGlobalArg, asmLibraryArg, buffer);\n")
+  module.append("var asm = createWasm();\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)

@@ -915,9 +915,43 @@ var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
 #endif
 
-// Create the wasm instance.
-// Receives the wasm imports, returns the exports.
-function createWasm(env) {
+function createEnvImport() {
+  var env = asmLibraryArg;
+  // memory was already allocated (so js could use the buffer)
+  env['memory'] = wasmMemory
+#if MODULARIZE && USE_PTHREADS
+  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+  // Module scope, so lookup via Module as well.
+  || Module['wasmMemory']
+#endif
+  ;
+  // import table
+  env['table'] = wasmTable = new WebAssembly.Table({
+    'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+#if WASM_BACKEND
+    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+#else
+    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif
+#endif // WASM_BACKEND
+    'element': 'anyfunc'
+  });
+  // With the wasm backend __memory_base and __table_base and only needed for
+  // relocatable output.
+#if RELOCATABLE || !WASM_BACKEND
+  env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
+#if WASM_BACKEND
+  env['__stack_pointer'] = STACK_BASE;
+  // We reserve slot 0 in the table for the NULL function pointer.
+  // This means the __table_base for the main module (even in dynamic linking)
+  // is always 1.
+  env['__table_base'] = 1;
+#else
+  // table starts at 0 by default (even in dynamic linking, for the main module)
+  env['__table_base'] = 0;
+#endif
+#endif
 #if MAYBE_WASM2JS || AUTODEBUG
   // wasm2js legalization of i64 support code may require these
   // autodebug may also need them
@@ -1008,6 +1042,13 @@ function createWasm(env) {
 #if WASM_BACKEND && ASYNCIFY && ASSERTIONS
   Asyncify.instrumentWasmImports(env);
 #endif
+  return env;
+}
+
+// Create the wasm instance.
+// Receives the wasm imports, returns the exports.
+function createWasm() {
+  var env = createEnvImport();
   // prepare imports
   var info = {
     'env': env,
@@ -1186,54 +1227,6 @@ function createWasm(env) {
   return Module['asm']; // exports were assigned here
 #endif
 }
-
-// Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
-// the wasm module at that time, and it receives imports and provides exports and so forth, the app
-// doesn't need to care that it is wasm or asm.js.
-
-Module['asm'] = function(global, env, providedBuffer) {
-  // memory was already allocated (so js could use the buffer)
-  env['memory'] = wasmMemory
-#if MODULARIZE && USE_PTHREADS
-  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-  // Module scope, so lookup via Module as well.
-  || Module['wasmMemory']
-#endif
-  ;
-  // import table
-  env['table'] = wasmTable = new WebAssembly.Table({
-    'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#endif
-#endif // WASM_BACKEND
-    'element': 'anyfunc'
-  });
-  // With the wasm backend __memory_base and __table_base and only needed for
-  // relocatable output.
-#if RELOCATABLE || !WASM_BACKEND
-  env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
-#if WASM_BACKEND
-  env['__stack_pointer'] = STACK_BASE;
-  // We reserve slot 0 in the table for the NULL function pointer.
-  // This means the __table_base for the main module (even in dynamic linking)
-  // is always 1.
-  env['__table_base'] = 1;
-#else
-  // table starts at 0 by default (even in dynamic linking, for the main module)
-  env['__table_base'] = 0;
-#endif
-#endif
-
-  var exports = createWasm(env);
-#if ASSERTIONS
-  assert(exports, 'binaryen setup failed (no wasm support?)');
-#endif
-  return exports;
-};
 #endif
 
 // Globals used by JS i64 conversions
