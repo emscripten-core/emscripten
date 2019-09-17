@@ -8325,7 +8325,7 @@ int main() {
         print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
 
         self.clear()
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target, '--profiling'] + opts)
         self.assertExists('out.wasm')
         if target.endswith('.wasm'):
           assert not os.path.exists('out.js'), 'only wasm requested'

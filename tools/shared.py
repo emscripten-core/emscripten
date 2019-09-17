@@ -2531,6 +2531,14 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    # in pure wasm, always export the memory
+    if Settings.PURE_WASM:
+      graph.append({
+        'export': 'memory',
+        'name': 'emcc$export$memory',
+        'reaches': [],
+        'root': True
+      })
     # fix wasi imports TODO: support wasm stable with an option?
     WASI_IMPORTS = set([
       'fd_write',
