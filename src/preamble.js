@@ -925,18 +925,10 @@ var wasmOffsetConverter;
 #include "wasm_offset_converter.js"
 #endif
 
-function createEnvImport() {
-  var env = asmLibraryArg;
-#if WASM_BACKEND && ASYNCIFY && ASSERTIONS
-  Asyncify.instrumentWasmImports(env);
-#endif
-  return env;
-}
-
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
 function createWasm() {
-  var env = createEnvImport();
+  var env = asmLibraryArg;
   // prepare imports
   var info = {
     'env': env,

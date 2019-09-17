@@ -2586,6 +2586,9 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
+  if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
+    module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
+
   module.append("var asm = createWasm();\n")
 
   module.append(receiving)
