@@ -675,7 +675,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(args))
     if not use_js:
-      cmd += shared.EMSDK_OPTS + ['-D__EMSCRIPTEN__']
+      cmd += shared.emsdk_cflags() + ['-D__EMSCRIPTEN__']
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
       if not shared.Settings.STRICT:
@@ -887,8 +887,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     has_source_inputs = False
     has_header_inputs = False
-    lib_dirs = [shared.path_from_root('system', 'local', 'lib'),
-                shared.path_from_root('system', 'lib')]
+    lib_dirs = []
+
+    has_dash_c = '-c' in newargs
+    has_dash_S = '-S' in newargs
+    executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
+    compile_only = final_suffix not in executable_endings or has_dash_c or has_dash_S
+
+    if not compile_only:
+      newargs += shared.emsdk_ldflags(newargs)
 
     # find input files this a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
@@ -957,9 +964,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif arg.startswith('-L'):
         lib_dirs.append(arg[2:])
         newargs[i] = ''
+        link_flags.append((i, arg))
       elif arg.startswith('-l'):
         libs.append((i, arg[2:]))
         newargs[i] = ''
+        link_flags.append((i, arg))
       elif arg.startswith('-Wl,'):
         # Multiple comma separated link flags can be specified. Create fake
         # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
@@ -970,8 +979,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             libs.append((i, flag[2:]))
           elif flag.startswith('-L'):
             lib_dirs.append(flag[2:])
-          else:
-            link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
+          link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
 
         newargs[i] = ''
       elif arg == '-s':
@@ -985,8 +993,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if '-fno-rtti' in newargs:
       shared.Settings.USE_RTTI = 0
 
-    has_dash_c = '-c' in newargs
-    has_dash_S = '-S' in newargs
     if has_dash_c or has_dash_S:
       assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c or -S'
       if has_dash_c:
@@ -1041,9 +1047,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      shared.COMPILER_OPTS += ['-DEMSCRIPTEN']
+      newargs += ['-DEMSCRIPTEN']
 
-    settings_changes.append(process_libraries(libs, lib_dirs, input_files))
+    consumed = process_libraries(libs, lib_dirs, input_files)
+    # Filter out libraries that are actually JS libs
+    link_flags = [l for l in link_flags if l[0] not in consumed]
+    # Filter out libraries that musl includes in libc itself
+    link_flags = [l for l in link_flags if l[1] not in ('-lm', '-lrt', '-ldl')]
 
     # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
     # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
@@ -1060,7 +1070,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if len(input_files) == 0:
       exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + BITCODE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
 
-    newargs = shared.COMPILER_OPTS + newargs
+    newargs = shared.COMPILER_OPTS + shared.get_cflags(newargs) + newargs
 
     if options.separate_asm and final_suffix != '.html':
       shared.WarningManager.warn('SEPARATE_ASM')
@@ -1483,7 +1493,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           exit_with_error('WASM2JS does not yet support pthreads')
         # in wasm2js, keep the mem init in the wasm itself if we can and if the
         # options wouldn't tell a js build to use a separate mem init file
-        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file
+        shared.Settings.MEM_INIT_IN_WASM = not options.memory_init_file or shared.Settings.SINGLE_FILE
       else:
         # wasm includes the mem init in the wasm binary. The exception is
         # wasm2js, which behaves more like js.
@@ -1583,9 +1593,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.BINARYEN_PASSES:
             passes += parse_passes(shared.Settings.BINARYEN_PASSES)
         else:
+          # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
+          if shared.Settings.SAFE_HEAP:
+            passes += ['--safe-heap']
+          passes += ['--post-emscripten']
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
-          passes += ['--post-emscripten']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
@@ -1644,8 +1657,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # to bootstrap struct_info, we need binaryen
         os.environ['EMCC_WASM_BACKEND_BINARYEN'] = '1'
 
-      # run safe-heap as a binaryen pass
-      if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only():
+      # run safe-heap as a binaryen pass in fastcomp wasm, while in the wasm backend we
+      # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
+      if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
         options.binaryen_passes += ['--safe-heap']
       if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
         # emulated function pointer casts is emulated in wasm using a binaryen pass
@@ -1766,9 +1780,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('compiling to bitcode')
 
     temp_files = []
-
-  executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
-  compile_only = final_suffix not in executable_endings or has_dash_c or has_dash_S
 
   # exit block 'parse arguments and setup'
   log_time('parse arguments and setup')
@@ -1917,6 +1928,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         def supported(f):
           if f in SUPPORTED_LINKER_FLAGS:
             return True
+          if f.startswith('-l') or f.startswith('-L'):
+            return False
           logger.warning('ignoring unsupported linker flag: `%s`', f)
           return False
         link_flags = [f for f in link_flags if supported(f[1])]
@@ -2606,9 +2619,8 @@ def parse_args(newargs):
       options.ignore_dynamic_linking = True
       newargs[i] = ''
     elif newargs[i] == '-v':
-      shared.COMPILER_OPTS += ['-v']
+      shared.PRINT_STAGES = True
       shared.check_sanity(force=True)
-      newargs[i] = ''
     elif newargs[i].startswith('--shell-file'):
       check_bad_eq(newargs[i])
       options.shell_path = newargs[i + 1]
@@ -2915,6 +2927,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         os.unlink(memfile)
     log_time('asm2wasm')
   if options.binaryen_passes:
+    if '--post-emscripten' in options.binaryen_passes:
+      # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
+      # (we can't add this value when we placed post-emscripten in the proper position in the list of
+      # passes because that was before the value was computed)
+      options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
@@ -3414,19 +3431,28 @@ def worker_js_script(proxy_worker_filename):
 
 def process_libraries(libs, lib_dirs, input_files):
   libraries = []
+  consumed = []
 
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
+    suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
+
+    if shared.Settings.WASM_BACKEND:
+      # under the wasm .a files are found using the normal -l/-L flags to
+      # the linker.
+      suffixes = DYNAMICLIB_ENDINGS
+
     found = False
     for prefix in LIB_PREFIXES:
-      for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
+      for suff in suffixes:
         name = prefix + lib + suff
         for lib_dir in lib_dirs:
           path = os.path.join(lib_dir, name)
           if os.path.exists(path):
             logger.debug('found library "%s" at %s', lib, path)
             input_files.append((i, path))
+            consumed.append(i)
             found = True
             break
         if found:
@@ -3434,9 +3460,13 @@ def process_libraries(libs, lib_dirs, input_files):
       if found:
         break
     if not found:
-      libraries += shared.Building.path_to_system_js_libraries(lib)
+      jslibs = shared.Building.path_to_system_js_libraries(lib)
+      if jslibs:
+        libraries += jslibs
+        consumed.append(i)
 
-  return 'SYSTEM_JS_LIBRARIES="' + ','.join(libraries) + '"'
+  shared.Settings.SYSTEM_JS_LIBRARIES = libraries
+  return consumed
 
 
 class ScriptSource(object):

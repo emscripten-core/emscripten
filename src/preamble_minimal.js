@@ -49,7 +49,7 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     , DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}}
 #endif
 #if USES_DYNAMIC_ALLOC
-    , DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}}
+    , DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
 #endif
     ;
 

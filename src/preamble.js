@@ -138,15 +138,19 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
 #endif
 #if ASYNCIFY && WASM_BACKEND
-  if (typeof Asyncify === 'object' && Asyncify.currData) {
-    // The WASM function ran asynchronous and unwound its stack.
+  var asyncMode = opts && opts.async;
+  var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
+  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0; 
+#if ASSERTIONS
+  assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
+#endif
+  // Check if we started an async operation just now.
+  if (runningAsync && !prevRunningAsync) {
+    // If so, the WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
-    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-    // Once the asyncFinalizers are called, asyncFinalizers gets reset to [].
-    // If they are not empty, then another async ccall is in-flight and not finished.
-    assert(Asyncify.asyncFinalizers.length === 0, 'Cannot have multiple async ccalls in flight at once');
+    assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
 #endif
     return new Promise(function(resolve) {
       Asyncify.asyncFinalizers.push(function(ret) {
@@ -340,7 +344,7 @@ var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
     DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
-    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
+    DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
@@ -724,6 +728,41 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
+#if EMTERPRETIFY_ASYNC && ASSERTIONS
+var abortDecorators = [];
+#endif
+
+function abort(what) {
+#if expectToReceiveOnModule('onAbort')
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
+#endif
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+#endif
+  what += '';
+  out(what);
+  err(what);
+
+  ABORT = true;
+  EXITSTATUS = 1;
+
+#if ASSERTIONS == 0
+  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+#else
+  var extra = '';
+  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+#if EMTERPRETIFY_ASYNC
+  abortDecorators.forEach(function(decorator) {
+    output = decorator(output, what);
+  });
+#endif
+  throw output;
+#endif // ASSERTIONS
+}
+
 #if RELOCATABLE
 {{{
 (function() {
@@ -1001,7 +1040,9 @@ function createWasm(env) {
     return value;
   };
 #endif
-
+#if WASM_BACKEND && ASYNCIFY && ASSERTIONS
+  Asyncify.instrumentWasmImports(env);
+#endif
   // prepare imports
   var info = {
     'env': env,

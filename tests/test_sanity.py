@@ -626,8 +626,7 @@ fi
       assert not os.path.exists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
-      # (avoid wasm to avoid the binaryen port)
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0'])
+      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
       assert RETRIEVING_MESSAGE not in output, output
       assert BUILDING_MESSAGE not in output
       print('no', output)
@@ -838,67 +837,13 @@ fi
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
     self.assertExists(os.path.join(root_cache, 'asmjs'))
 
-  def test_wasm_backend_builds(self):
-    # we can build a program using the wasm backend, rebuilding binaryen etc. as needed
+  def test_binaryen_root(self):
+    # with no binaryen root, an error is shown
     restore_and_set_up()
-
-    def check():
-      print(self.do([PYTHON, EMCC, '--clear-cache']))
-      print(self.do([PYTHON, EMCC, '--clear-ports']))
-      with env_modify({'EMCC_WASM_BACKEND': '1'}):
-        self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
-
-    print('normally')
-    check()
-    print('with no BINARYEN_ROOT')
     open(CONFIG_FILE, 'a').write('''
 BINARYEN_ROOT = ''
     ''')
-    print(open(CONFIG_FILE).read())
-    check()
-
-  def test_binaryen(self):
-    import tools.ports.binaryen as binaryen
-    tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
-
-    assert not os.environ.get('BINARYEN') # must not have binaryen env var set
-
-    # test with BINARYEN_ROOT in the config file, which is how developers usually
-    # have things set up. testing without it in the config file (which makes
-    # it get fetched from ports) is how the bots work, so it is tested there
-
-    def prep():
-      restore_and_set_up()
-      print('clearing ports...')
-      print(self.do([PYTHON, EMCC, '--clear-ports']))
-      wipe()
-      self.do([PYTHON, EMCC]) # first run stage
-      try_delete(tag_file)
-      config = open(CONFIG_FILE).read()
-      assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
-      print('created config:')
-      print(config)
-      restore_and_set_up()
-      config = open(CONFIG_FILE).read()
-      config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
-      print('modified config:')
-      print(config)
-      open(CONFIG_FILE, 'w').write(config)
-
-    print('build using embuilder')
-    prep()
-    run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
-    self.assertExists(tag_file)
-    run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-    print('see we show an error for emmake (we cannot build natively under emmake)')
-    prep()
-    try_delete('a.out.js')
-    out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-    assert not os.path.exists(tag_file)
-    assert not os.path.exists('a.out.js')
-    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT must be set up in .emscripten')
 
   def test_embuilder_wasm_backend(self):
     if not Settings.WASM_BACKEND:

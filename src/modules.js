@@ -137,10 +137,8 @@ var LibraryManager = {
       }
     }
 
-    // If there are any explicitly specified system JS libraries to link to, add those to link.
-    if (SYSTEM_JS_LIBRARIES) {
-      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
-    }
+    // Add any explicitly specified system JS libraries to link to, add those to link.
+    libraries = libraries.concat(SYSTEM_JS_LIBRARIES)
 
     if (LZ4) {
       libraries.push('library_lz4.js');
@@ -447,6 +445,7 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
     'callMain',
+    'abort',
   ];
 
   if (!MINIMAL_RUNTIME) {
@@ -509,6 +508,7 @@ var PassManager = {
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       STATIC_BUMP: STATIC_BUMP, // updated with info from JS
+      DYNAMICTOP_PTR: DYNAMICTOP_PTR,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),

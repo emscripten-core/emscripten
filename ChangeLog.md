@@ -19,10 +19,20 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+v.1.38.44: 09/11/2019
+---------------------
+ - Remove Binaryen from the ports system. This means that emscripten will
+   no longer automatically build Binaryen from source. Instead, either use
+   the emsdk (binaries are provided automatically, just like for LLVM), or
+   build it yourself and point BINARYEN_ROOT in .emscripten to it. See #9409
+
 v.1.38.43: 08/30/2019
 ---------------------
  - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
    instead of `Module.noExitRuntime`.
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
 
 v.1.38.42: 08/19/2019
 ----------------------
