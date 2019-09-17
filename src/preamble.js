@@ -43,7 +43,17 @@ if (typeof WebAssembly !== 'object') {
 var wasmMemory;
 
 // Potentially used for direct table calls.
-var wasmTable;
+var wasmTable = new WebAssembly.Table({
+  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+#if WASM_BACKEND
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+#else
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif
+#endif // WASM_BACKEND
+  'element': 'anyfunc'
+});
 
 #if USE_PTHREADS
 // For sending to workers.
@@ -917,41 +927,8 @@ var wasmOffsetConverter;
 
 function createEnvImport() {
   var env = asmLibraryArg;
-  // memory was already allocated (so js could use the buffer)
-  env['memory'] = wasmMemory
-#if MODULARIZE && USE_PTHREADS
-  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-  // Module scope, so lookup via Module as well.
-  || Module['wasmMemory']
-#endif
-  ;
-  // import table
-  env['table'] = wasmTable = new WebAssembly.Table({
-    'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#endif
-#endif // WASM_BACKEND
-    'element': 'anyfunc'
-  });
-  // With the wasm backend __memory_base and __table_base and only needed for
-  // relocatable output.
-#if RELOCATABLE || !WASM_BACKEND
-  env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
-#if WASM_BACKEND
-  env['__stack_pointer'] = STACK_BASE;
-  // We reserve slot 0 in the table for the NULL function pointer.
-  // This means the __table_base for the main module (even in dynamic linking)
-  // is always 1.
-  env['__table_base'] = 1;
-#else
-  // table starts at 0 by default (even in dynamic linking, for the main module)
-  env['__table_base'] = 0;
-#endif
-#endif
+
+
 #if MAYBE_WASM2JS || AUTODEBUG
   // wasm2js legalization of i64 support code may require these
   // autodebug may also need them

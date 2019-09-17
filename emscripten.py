@@ -2434,6 +2434,26 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     send_items_map[internal_name] = name
 
+  # memory was already allocated (so that js could use the buffer); import it
+  memory_import = 'wasmMemory'
+  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+    # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+    # Module scope, so lookup via Module as well.
+    memory_import += " || Module['wasmMemory']"
+  send_items_map['memory'] = memory_import
+
+  send_items_map['table'] = 'wasmTable'
+
+  # With the wasm backend __memory_base and __table_base and only needed for
+  # relocatable output.
+  if shared.Settings.RELOCATABLE or not shared.Settings.WASM_BACKEND: # FIXME
+    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE) # tell the memory segments where to place themselves
+    # the wasm backend reserves slot 0 for the NULL function pointer
+    table_base = '1' if shared.Settings.WASM_BACKEND else '0'
+    send_items_map['__table_base'] = table_base
+  if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
+    send_items_map['__stack_pointer'] = 'STACK_BASE'
+
   sorted_keys = sorted(send_items_map.keys())
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
