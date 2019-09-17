@@ -1359,7 +1359,7 @@ def g_multiprocessing_initializer(*args):
       os.environ[key] = value
 
 
-PRINT_STAGES = False
+PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
 
 
 def print_compiler_stage(cmd):

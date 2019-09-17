@@ -3425,23 +3425,23 @@ def process_libraries(libs, lib_dirs, input_files):
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
+    suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
+
     if shared.Settings.WASM_BACKEND:
-      # under the wasm backend -l/-L flags already work with the linker
-      jslibs = shared.Building.path_to_system_js_libraries(lib)
-      if jslibs:
-        libraries += jslibs
-        consumed.append(i)
-      continue
+      # under the wasm .a files are found using the normal -l/-L flags to
+      # the linker.
+      suffixes = DYNAMICLIB_ENDINGS
 
     found = False
     for prefix in LIB_PREFIXES:
-      for suff in STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS:
+      for suff in suffixes:
         name = prefix + lib + suff
         for lib_dir in lib_dirs:
           path = os.path.join(lib_dir, name)
           if os.path.exists(path):
             logger.debug('found library "%s" at %s', lib, path)
             input_files.append((i, path))
+            consumed.append(i)
             found = True
             break
         if found:
@@ -3449,7 +3449,10 @@ def process_libraries(libs, lib_dirs, input_files):
       if found:
         break
     if not found:
-      libraries += shared.Building.path_to_system_js_libraries(lib)
+      jslibs = shared.Building.path_to_system_js_libraries(lib)
+      if jslibs:
+        libraries += jslibs
+        consumed.append(i)
 
   shared.Settings.SYSTEM_JS_LIBRARIES = libraries
   return consumed
