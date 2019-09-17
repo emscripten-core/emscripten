@@ -2478,7 +2478,7 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['load_val_i64'] = '''function(loc, low, high) {
       console.log('load_val_i64 ' + [loc, low, high]);
-      env['setTempRet0'](high);
+      setTempRet0(high);
       return low;
     }'''
     send_items_map['load_val_f32'] = '''function(loc, value) {
@@ -2499,7 +2499,7 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['store_val_i64'] = '''function(loc, low, high) {
       console.log('store_val_i64 ' + [loc, low, high]);
-      env['setTempRet0'](high);
+      setTempRet0(high);
       return low;
     }'''
     send_items_map['store_val_f32'] = '''function(loc, value) {
