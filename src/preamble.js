@@ -1109,6 +1109,10 @@ function createWasm() {
 }
 #endif
 
+#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like funciton
+Module['asm'] = createWasm;
+#endif
+
 // Globals used by JS i64 conversions
 var tempDouble;
 var tempI64;

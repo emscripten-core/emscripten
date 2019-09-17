@@ -239,15 +239,18 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
-  'wasm2js0',
-  'wasm2js1',
-  'wasm2js2',
-  'wasm2js3',
-  'wasm2jss',
-  'wasm2jsz',
 ]
 
-if not shared.Settings.WASM_BACKEND:
+if shared.Settings.WASM_BACKEND:
+  core_test_modes += [
+    'wasm2js0',
+    'wasm2js1',
+    'wasm2js2',
+    'wasm2js3',
+    'wasm2jss',
+    'wasm2jsz',
+  ]
+else:
   core_test_modes += [
     'asm0',
     'asm2',

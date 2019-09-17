@@ -576,6 +576,7 @@ function emitDCEGraph(ast) {
       var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties.forEach(function(item) {
         var value = item.value;
+        if (value.type === 'Literal') return; // if it's a numeric literal, nothing to do here
         assert(value.type === 'Identifier');
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });
