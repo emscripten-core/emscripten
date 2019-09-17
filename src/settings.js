@@ -1080,7 +1080,7 @@ var WASM = 1;
 // We may still emit JS with this flag, but the JS should only be a convenient
 // way to run the wasm on the Web or in Node.js, and you can run the wasm by
 // itself without that JS (again, unless you use APIs for which there is no
-// non-JS alternative).
+// non-JS alternative) in a wasm runtime like wasmer or wasmtime.
 //
 // Note that even without this option we try to use wasi etc. syscalls as much
 // as possible. What this option changes is that we do so even when it means

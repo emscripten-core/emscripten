@@ -1072,6 +1072,7 @@ function createWasm(env) {
 #if PURE_WASM
     // In pure wasm mode the memory is created in the wasm (not imported), and
     // then exported.
+    // TODO: do not create a Memory earlier in JS
     updateGlobalBufferAndViews(exports['memory'].buffer);
 #endif
 #if USE_PTHREADS
