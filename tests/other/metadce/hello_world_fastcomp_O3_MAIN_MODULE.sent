@@ -437,6 +437,7 @@ __inet_pton4_raw
 __inet_pton6
 __inet_pton6_raw
 __isLeapYear
+__memory_base
 __polyfill_set_immediate
 __pthread_cleanup_pop
 __pthread_cleanup_push
@@ -466,6 +467,7 @@ __screenOrientation
 __setLetterbox
 __set_canvas_element_size
 __softFullscreenResizeWebGLRenderTarget
+__table_base
 __write_sockaddr
 _abort
 _abs
@@ -1563,13 +1565,6 @@ emscriptenWebGLGetUniform
 emscriptenWebGLGetVertexAttrib
 emscripten_realloc_buffer
 fb
-fp$___dn_expand$iiiiii
-fp$___stdio_close$ii
-fp$___stdio_exit$v
-fp$___stdio_read$iiii
-fp$___stdio_seek$iiiii
-fp$___stdio_write$iiii
-fp$___strdup$ii
 gb
 getTempRet0
 invoke_X
@@ -1583,8 +1578,10 @@ invoke_v
 invoke_vi
 invoke_vii
 jsStackTrace
+memory
 runAndAbortIfError
 setTempRet0
 stackTrace
 stringToNewUTF8
+table
 tempDoublePtr

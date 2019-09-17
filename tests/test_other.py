@@ -8118,13 +8118,13 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      21, ['abort'], ['waka'], 22712, 16, 15, 28), # noqa
-    'O1': (['-O1'], 12, ['abort'], ['waka'], 10450,  4, 11, 12), # noqa
-    'O2': (['-O2'], 12, ['abort'], ['waka'], 10440,  4, 11, 12), # noqa
+    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 15, 28), # noqa
+    'O1': (['-O1'], 16, ['abort'], ['waka'], 10450,  4, 11, 12), # noqa
+    'O2': (['-O2'], 16, ['abort'], ['waka'], 10440,  4, 11, 12), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],  0, [],        [],          55,  0,  1, 1), # noqa
-    'Os': (['-Os'],  0, [],        [],          55,  0,  1, 1), # noqa
-    'Oz': (['-Oz'],  0, [],        [],          55,  0,  1, 1), # noqa
+    'O3': (['-O3'],  4, [],        [],          55,  0,  1, 1), # noqa
+    'Os': (['-Os'],  4, [],        [],          55,  0,  1, 1), # noqa
+    'Oz': (['-Oz'],  4, [],        [],          55,  0,  1, 1), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_minimal_fastcomp(self, *args):
@@ -8136,10 +8136,10 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 20, 33, None) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 35, ['abort'], ['waka'], 186423, 25, 38, 541), # noqa
+    'normal': (['-O2'], 39, ['abort'], ['waka'], 186423, 25, 38, 541), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        35, ['abort'], ['waka'], 188310, 25, 39, 521), # noqa
+                        39, ['abort'], ['waka'], 188310, 25, 39, 521), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8178,11 +8178,11 @@ int main() {
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
            (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                      0, [],        [],           8,   0,    0,  0), # noqa; totally empty!
+                      4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1590, [], [], 226403, None, 104, None), # noqa
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],    9, [], [],  10017,   13,   9,   20), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1587, [], [], 226403, None, 97, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,  9,   20), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_hello_fastcomp(self, *args):
