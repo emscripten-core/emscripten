@@ -6090,14 +6090,14 @@ Descriptor desc;
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
-    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'))
+    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'))
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check('emconfigure', [PYTHON, 'test.py'], expect=shared.LLVM_NM)
 
   @no_windows('This test is broken, https://github.com/emscripten-core/emscripten/issues/8872')
   def test_emmake_python(self):
