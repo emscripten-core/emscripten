@@ -144,8 +144,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
 #if ASSERTIONS
   assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
 #endif
+  // Check if we started an async operation just now.
   if (runningAsync && !prevRunningAsync) {
-     // Check if we started an async operation just now.
     // If so, the WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
