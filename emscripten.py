@@ -384,7 +384,12 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (math_fix(minified), unminified) for (minified, unminified) in sending_vars) + '\n}'
+
+  sending = OrderedDict([(math_fix(minified), unminified) for (minified, unminified) in sending_vars])
+  if shared.Settings.WASM:
+    add_standard_wasm_imports(sending)
+  sorted_sending_keys = sorted(sending.keys())
+  sending = '{ ' + ', '.join('"' + k + '": ' + sending[k] for k in sorted_sending_keys) + ' }'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, metadata['initializers'])
@@ -2398,42 +2403,7 @@ def create_em_js(forwarded_json, metadata):
   return em_js_funcs
 
 
-def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
-  basic_funcs = []
-  if shared.Settings.SAFE_HEAP:
-    basic_funcs += ['segfault', 'alignfault']
-
-  if not shared.Settings.RELOCATABLE:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-
-  implemented_functions = set(metadata['implementedFunctions'])
-  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
-  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
-
-  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
-
-  def fix_import_name(g):
-    if g.startswith('Math_'):
-      return g.split('_')[1]
-    # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
-    # symbols.  Emscripten currently expects symbols to start with '_' so we
-    # artificially add them to the output of emscripten-wasm-finalize and them
-    # strip them again here.
-    # note that we don't do this for EM_JS functions (which, rarely, may have
-    # a '_' prefix)
-    if g.startswith('_') and g not in metadata['emJsFuncs']:
-      return g[1:]
-    return g
-
-  send_items_map = OrderedDict()
-  for name in send_items:
-    internal_name = fix_import_name(name)
-    if internal_name in send_items_map:
-      exit_with_error('duplicate symbol in exports to wasm: %s', name)
-    send_items_map[internal_name] = name
-
+def add_standard_wasm_imports(send_items_map):
   # memory was already allocated (so that js could use the buffer); import it
   memory_import = 'wasmMemory'
   if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
@@ -2540,6 +2510,45 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
       console.log('store_val_f64 ' + [loc, value]);
       return value;
     }'''
+
+
+def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
+  basic_funcs = []
+  if shared.Settings.SAFE_HEAP:
+    basic_funcs += ['segfault', 'alignfault']
+
+  if not shared.Settings.RELOCATABLE:
+    global_vars = metadata['externs']
+  else:
+    global_vars = [] # linkable code accesses globals through function calls
+
+  implemented_functions = set(metadata['implementedFunctions'])
+  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
+  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
+
+  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
+
+  def fix_import_name(g):
+    if g.startswith('Math_'):
+      return g.split('_')[1]
+    # Unlike fastcomp the wasm backend doesn't use the '_' prefix for native
+    # symbols.  Emscripten currently expects symbols to start with '_' so we
+    # artificially add them to the output of emscripten-wasm-finalize and them
+    # strip them again here.
+    # note that we don't do this for EM_JS functions (which, rarely, may have
+    # a '_' prefix)
+    if g.startswith('_') and g not in metadata['emJsFuncs']:
+      return g[1:]
+    return g
+
+  send_items_map = OrderedDict()
+  for name in send_items:
+    internal_name = fix_import_name(name)
+    if internal_name in send_items_map:
+      exit_with_error('duplicate symbol in exports to wasm: %s', name)
+    send_items_map[internal_name] = name
+
+  add_standard_wasm_imports(send_items_map)
 
   sorted_keys = sorted(send_items_map.keys())
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
