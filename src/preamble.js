@@ -138,15 +138,19 @@ function ccall(ident, returnType, argTypes, args, opts) {
   }
 #endif
 #if ASYNCIFY && WASM_BACKEND
-  if (typeof Asyncify === 'object' && Asyncify.currData) {
-    // The WASM function ran asynchronous and unwound its stack.
+  var asyncMode = opts && opts.async;
+  var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
+  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0; 
+#if ASSERTIONS
+  assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
+#endif
+  if (runningAsync && !prevRunningAsync) {
+     // Check if we started an async operation just now.
+    // If so, the WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
-    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
-    // Once the asyncFinalizers are called, asyncFinalizers gets reset to [].
-    // If they are not empty, then another async ccall is in-flight and not finished.
-    assert(Asyncify.asyncFinalizers.length === 0, 'Cannot have multiple async ccalls in flight at once');
+    assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
 #endif
     return new Promise(function(resolve) {
       Asyncify.asyncFinalizers.push(function(ret) {
