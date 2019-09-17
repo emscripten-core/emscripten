@@ -30,6 +30,9 @@ v.1.38.43: 08/30/2019
 ---------------------
  - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
    instead of `Module.noExitRuntime`.
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
 
 v.1.38.42: 08/19/2019
 ----------------------
