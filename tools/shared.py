@@ -1825,7 +1825,7 @@ class Building(object):
     # wasi does not import the memory (but for JS it is efficient to do so,
     # as it allows us to set up memory, preload files, etc. even before the
     # wasm module arrives)
-    if not Settings.WASI:
+    if not Settings.PURE_WASM:
       cmd.append('--import-memory')
       cmd.append('--import-table')
 
@@ -2496,7 +2496,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.WASI:
+        if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.PURE_WASM:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
@@ -2532,7 +2532,10 @@ class Building(object):
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     # fix wasi imports TODO: support wasm stable with an option?
-    WASI_IMPORTS = set(['fd_write'])
+    WASI_IMPORTS = set([
+      'fd_write',
+      'proc_exit',
+    ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
         item['import'][0] = 'wasi_unstable'

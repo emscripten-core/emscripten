@@ -1140,12 +1140,12 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
-class libwasi(WasiLibrary):
+class libpurewasm(Library):
   name = 'libwasi'
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-  src_files = ['wasi.c']
+  src_files = ['pure_wasm.c']
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
@@ -1324,8 +1324,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     force_include.add('libasan_rt_wasm')
     add_library(system_libs_map['libasan_rt_wasm'])
 
-  if shared.Settings.WASI:
-    add_library(system_libs_map['libwasi'])
+  if shared.Settings.PURE_WASM:
+    add_library(system_libs_map['libpurewasm'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

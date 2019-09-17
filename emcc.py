@@ -1742,13 +1742,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.WASM:
       options.separate_asm = True
 
-    if shared.Settings.WASI:
+    if shared.Settings.PURE_WASM:
       if not shared.Settings.WASM_BACKEND:
-        exit_with_error('wasi is only available in the upstream wasm backend path')
+        exit_with_error('PURE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
-        exit_with_error('wasi does not support pthreads yet')
+        exit_with_error('PURE_WASM does not support pthreads yet')
       if shared.Settings.SIMD:
-        exit_with_error('wasi does not support simd yet')
+        exit_with_error('PURE_WASM does not support simd yet')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0

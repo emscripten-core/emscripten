@@ -1069,8 +1069,9 @@ function createWasm(env) {
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
-#if WASI
-    // In wasi the memory is exported.
+#if PURE_WASM
+    // In pure wasm mode the memory is created in the wasm (not imported), and
+    // then exported.
     updateGlobalBufferAndViews(exports['memory'].buffer);
 #endif
 #if USE_PTHREADS

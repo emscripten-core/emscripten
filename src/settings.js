@@ -1072,30 +1072,28 @@ var USE_GLFW = 2;
 // port, which can useful for local dev work on binaryen itself).
 var WASM = 1;
 
-// Whether to emit a wasm file with maximum WASI compatibility. Note that
-// even without this option we use some wasi syscalls in our ABI, which
-// makes sense to do when the choice is between something arbitrary (like
-// linux/musl or something else) or wasi. However, there are cases where
-// the choice is not arbitrary, and supporting wasi comes at a cost, and
-// that is gated behind this option.
+// PURE_WASM indicates that we want to emit a wasm file that can run without
+// JavaScript. The file will use standard APIs such as wasi as much as possible
+// to achieve that.
 //
-// For example, when this option is set then we assume the WASI view of
-// the world in which the wasm is standalone - we cannot depend on JS for
-// anything. That means, for example, that we don't import the memory,
-// since we must create it ourselves. And that prevents various optimizations
-// like preloading files into memory while the wasm is still loading (which
-// is why Emscripten by default creates the Memory in JS).
+// This option does not guarantee that the wasm can be used by itself - if you
+// use APIs with no non-JS alternative, we will still use those (e.g., WebGL
+// at the time of writing this).
 //
-// Note that this option is a best-effort: we enable all wasi compatibility
-// we have, but if you ask for non-wasi APIs, we will still use them, and
-// if you try to run in a wasi VM you'll get an error. Please file an issue
-// if you find an API we missed and need to add, but in general most such
-// APIs may just be missing in wasi.
+// We may still emit JS with this flag, but the JS should only be a convenient
+// way to run the wasm on the Web or in Node.js, and you can run the wasm by
+// itself without that JS (again, unless you use APIs for which there is no
+// non-JS alternative).
 //
-// When this option is set we still emit both JS and wasm. The wasm will
-// be runnable in a wasi VM, and you can also run it using the JS in a
-// JS+wasm VM - basically, the JS is a convenient way to run it.
-var WASI = 0;
+// Note that even without this option we try to use wasi etc. syscalls as much
+// as possible. What this option changes is that we do so even when it means
+// a tradeoff with JS size. For example, when this option is set we do not
+// import the Memory - importing it is useful for JS, so that JS can start to
+// use it before the wasm is even loaded, but in wasi and other wasm-only
+// environments the expectation is to create the memory in the wasm itself.
+// Doing so prevents some possible JS optimizations, so we only do it behind
+// this flag.
+var PURE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
 // should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the

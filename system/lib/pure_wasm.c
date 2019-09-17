@@ -41,7 +41,8 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
   // This normally calls out into JS which can do a single fast operation,
   // but with wasi we can't do that. As this is called when n >= 8192, we
   // can just split into smaller calls.
-  // TODO optimize, maybe build our memcpy with a wasi variant?
+  // TODO optimize, maybe build our memcpy with a wasi variant, maybe have
+  //      a SIMD variant, etc.
   const int CHUNK = 8192;
   unsigned char* d = (unsigned char*)dest;
   unsigned char* s = (unsigned char*)src;
