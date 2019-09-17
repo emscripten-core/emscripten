@@ -30,7 +30,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LINUX, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
@@ -8325,7 +8325,7 @@ int main() {
         print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
 
         self.clear()
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target, '--profiling'] + opts)
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
         self.assertExists('out.wasm')
         if target.endswith('.wasm'):
           assert not os.path.exists('out.js'), 'only wasm requested'
@@ -8344,7 +8344,13 @@ int main() {
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
-        # TODO: verify the wasm runs in a wasi VM
+        # verify the wasm runs in a wasm VM, without the JS
+        if LINUX: # TODO: other platforms
+          if target.endswith('.wasm') or 'PURE_WASM' in opts:
+            print('running pure wasm')
+            WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
+            out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
+            self.assertContained('hello, world!', out)
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
