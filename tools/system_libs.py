@@ -1141,7 +1141,7 @@ class libasan_rt_wasm(SanitizerLibrary):
 
 
 class libpurewasm(Library):
-  name = 'libwasi'
+  name = 'libpurewasm'
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']

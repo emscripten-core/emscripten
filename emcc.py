@@ -1677,7 +1677,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
-      shared.Settings.EMITTING_JS = 0
+      shared.Settings.PURE_WASM = 1
       js_target = misc_temp_files.get(suffix='.js').name
 
     if shared.Settings.EVAL_CTORS:

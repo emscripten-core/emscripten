@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "wasi.h"
+#include <wasi/wasi.h>
 
 /*
  * WASI support code. These are compiled with the program, and call out

@@ -8309,12 +8309,16 @@ int main() {
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
 
-  def test_wasm_targets(self):
+  @no_fastcomp('only upstream supports PURE_WASM')
+  def test_wasm_target_and_PURE_WASM(self):
+    # PURE_WASM means we never minify imports and exports. That flag is implied
+    # when we do -o X.wasm (i.e. do not emit any JS).
     for opts, potentially_expect_minified_exports_and_imports in (
-      ([], False),
-      (['-O2'], False),
-      (['-O3'], True),
-      (['-Os'], True),
+      ([],                         False),
+      (['-O2'],                    False),
+      (['-O3'],                    True),
+      (['-O3', '-s', 'PURE_WASM'], False),
+      (['-Os'],                    True),
     ):
       for target in ('out.js', 'out.wasm'):
         expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
@@ -8330,13 +8334,17 @@ int main() {
         exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
         imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
         exports_and_imports = exports + imports
-        print(exports)
-        print(imports)
+        print('exports', exports)
+        print('imports', imports)
         if expect_minified_exports_and_imports:
           assert 'a' in exports_and_imports
         else:
           assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports, 'some things are not minified anyhow'
+        assert 'memory' in exports_and_imports or 'fd_write' in exports_and_imports, 'some things are not minified anyhow'
+        # verify the wasm runs with the JS
+        if target.endswith('.js'):
+          self.assertContained('hello, world!', run_js('out.js'))
+        # TODO: verify the wasm runs in a wasi VM
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target

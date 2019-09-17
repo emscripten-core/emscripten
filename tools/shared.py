@@ -2492,11 +2492,11 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.acorn_optimizer(js_file, passes)
-        # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
+        # Also minify the names used between js and wasm, if we are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.PURE_WASM:
+        if not Settings.PURE_WASM and not Settings.AUTODEBUG and not Settings.ASSERTIONS:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
