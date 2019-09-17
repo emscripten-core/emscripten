@@ -8169,12 +8169,12 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      23, ['abort'], ['waka'], 42701,  18,   17, 55), # noqa
-    'O1': (['-O1'], 15, ['abort'], ['waka'], 13199,   9,   14, 31), # noqa
-    'O2': (['-O2'], 15, ['abort'], ['waka'], 12425,   9,   14, 27), # noqa
-    'O3': (['-O3'],  3, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  3, [],        [],        2064,   6,    2, 15), # noqa
-    'Oz': (['-Oz'],  3, [],        [],        2045,   6,    2, 14), # noqa
+    'O0': ([],      27, ['abort'], ['waka'], 42701,  18,   17, 55), # noqa
+    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,   9,   14, 31), # noqa
+    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,   9,   14, 27), # noqa
+    'O3': (['-O3'],  7, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'],  7, [],        [],        2064,   6,    2, 15), # noqa
+    'Oz': (['-Oz'],  7, [],        [],        2045,   6,    2, 14), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
            (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
