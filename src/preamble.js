@@ -140,12 +140,13 @@ function ccall(ident, returnType, argTypes, args, opts) {
 #if ASYNCIFY && WASM_BACKEND
   var asyncMode = opts && opts.async;
   var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
-  var prevRunningAsync = Asyncify.asyncFinalizers.length > 0; 
+  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0; 
 #if ASSERTIONS
   assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
 #endif
   if (runningAsync && !prevRunningAsync) {
-    // The WASM function ran asynchronous and unwound its stack.
+     // Check if we started an async operation just now.
+    // If so, the WASM function ran asynchronous and unwound its stack.
     // We need to return a Promise that resolves the return value
     // once the stack is rewound and execution finishes.
 #if ASSERTIONS
