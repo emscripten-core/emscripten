@@ -8348,10 +8348,20 @@ int main() {
         # verify the wasm runs in a wasm VM, without the JS
         if LINUX: # TODO: other platforms
           if standalone:
-            print('  running in wasm runtime')
             WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
-            out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
-            self.assertContained('hello, world!', out)
+            if os.path.isfile(WASMER):
+              print('  running in wasmer')
+              out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
+              self.assertContained('hello, world!', out)
+            else:
+              print('[WARNING - no wasmer]')
+            WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
+            if os.path.isfile(WASMTIME):
+              print('  running in wasmtime')
+              out = run_process([WASMTIME, 'out.wasm'], stdout=PIPE).stdout
+              self.assertContained('hello, world!', out)
+            else:
+              print('[WARNING - no wasmtime]')
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target

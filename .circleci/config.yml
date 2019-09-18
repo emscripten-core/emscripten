@@ -423,6 +423,12 @@ jobs:
           name: get wasmer
           command: |
             curl https://get.wasmer.io -sSfL | sh
+      - run:
+          name: get wasmtime
+          command: |
+            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
+            tar -xf wasmtime-dev-x86_64-linux.tar.xz
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/
       - run-tests:
           # see explanations in the fastcomp skips for these, earlier
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
