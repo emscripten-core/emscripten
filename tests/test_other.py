@@ -6384,7 +6384,7 @@ int main(int argc, char** argv) {
           #endif
           }
         ''')
-        # -fno-builtin to prevert printf -> iprintf optimization
+        # -fno-builtin to prevent printf -> iprintf optimization
         run_process([PYTHON, EMCC, 'library.c', '-fno-builtin', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL'] + library_args)
         create_test_file('main.c', r'''
           #include <dlfcn.h>
