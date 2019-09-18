@@ -212,16 +212,6 @@ jobs:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
-      - run:
-          name: get wasmer
-          command: |
-            curl https://get.wasmer.io -sSfL | sh
-      - run:
-          name: get wasmtime
-          command: |
-            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
-            tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -351,6 +341,16 @@ jobs:
           command: |
             apt-get update -q
             apt-get install -q -y python3 cmake
+      - run:
+          name: get wasmer
+          command: |
+            curl https://get.wasmer.io -sSfL | sh
+      - run:
+          name: get wasmtime
+          command: |
+            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
+            tar -xf wasmtime-dev-x86_64-linux.tar.xz
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/
       - run:
           name: install emsdk
           command: |
