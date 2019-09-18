@@ -8311,8 +8311,7 @@ int main() {
 
   @no_fastcomp('only upstream supports STANDALONE_WASM')
   def test_wasm_target_and_STANDALONE_WASM(self):
-    # STANDALONE_WASM means we never minify imports and exports. That flag is implied
-    # when we do -o X.wasm (i.e. do not emit any JS).
+    # STANDALONE_WASM means we never minify imports and exports.
     for opts, potentially_expect_minified_exports_and_imports in (
       ([],                               False),
       (['-O2'],                          False),
@@ -8320,9 +8319,11 @@ int main() {
       (['-O3', '-s', 'STANDALONE_WASM'], False),
       (['-Os'],                          True),
     ):
+      # targeting .wasm (without .js) means we enable STANDALONE_WASM automatically, and don't minify imports/exports
       for target in ('out.js', 'out.wasm'):
         expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
-        print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
+        standalone = target.endswith('.wasm') or 'STANDALONE_WASM' in opts
+        print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports, standalone)
 
         self.clear()
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
@@ -8334,8 +8335,8 @@ int main() {
         exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
         imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
         exports_and_imports = exports + imports
-        print('exports', exports)
-        print('imports', imports)
+        print('  exports', exports)
+        print('  imports', imports)
         if expect_minified_exports_and_imports:
           assert 'a' in exports_and_imports
         else:
@@ -8346,8 +8347,8 @@ int main() {
           self.assertContained('hello, world!', run_js('out.js'))
         # verify the wasm runs in a wasm VM, without the JS
         if LINUX: # TODO: other platforms
-          if target.endswith('.wasm') or 'STANDALONE_WASM' in opts:
-            print('running pure wasm')
+          if standalone:
+            print('  running in wasm runtime')
             WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
             out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
             self.assertContained('hello, world!', out)
