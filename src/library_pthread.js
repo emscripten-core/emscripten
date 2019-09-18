@@ -286,11 +286,11 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
         out('Using ' + workersUsed + ' preallocated workers');
 #endif
-        workers.push(...PThread.preallocatedWorkers.splice(0, workersUsed));
+        workers = workers.concat(PThread.preallocatedWorkers.splice(0, workersUsed));
         numWorkersToCreate -= workersUsed;
       }
       if (numWorkersToCreate > 0) {
-        workers.push(...PThread.createNewWorkers(numWorkersToCreate));
+        workers = workers.concat(PThread.createNewWorkers(numWorkersToCreate));
       }
 
       // Add the listeners.
@@ -428,7 +428,7 @@ var LibraryPThread = {
 
     createNewWorkers: function(numWorkers) {
       // Creates new workers with the discovered pthread worker file.
-      if (typeof SharedArrayBuffer === 'undefined') return; // No multithreading support, no-op.
+      if (typeof SharedArrayBuffer === 'undefined') return []; // No multithreading support, no-op.
 #if PTHREADS_DEBUG
       out('Creating ' + numWorkers + ' workers.');
 #endif
