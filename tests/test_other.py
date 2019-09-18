@@ -9792,3 +9792,9 @@ Module.arguments has been replaced with plain arguments_
     self.assertNotEqual(result.returncode, 0)
     self.assertIn('Cannot use EM_ASM* alongside setjmp/longjmp', result.stderr)
     self.assertIn('Please consider using EM_JS, or move the EM_ASM into another function.', result.stderr)
+
+  def test_missing_stdlibs(self):
+    # Certain standard libraries are expected to be useable via -l flags but
+    # don't actually exist in our standard library path.  Make sure we don't
+    # error out when linking with these flags.
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lm', '-ldl', '-lrt', '-lpthread'])
