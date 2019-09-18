@@ -1052,8 +1052,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     consumed = process_libraries(libs, lib_dirs, input_files)
     # Filter out libraries that are actually JS libs
     link_flags = [l for l in link_flags if l[0] not in consumed]
-    # Filter out libraries that musl includes in libc itself
-    link_flags = [l for l in link_flags if l[1] not in ('-lm', '-lrt', '-ldl')]
+    # Filter out libraries that musl includes in libc itself, or with we
+    # otherwise privide implicitly.
+    link_flags = [l for l in link_flags if l[1] not in ('-lm', '-lrt', '-ldl', '-lpthread')]
 
     # If not compiling to JS, then we are compiling to an intermediate bitcode objects or library, so
     # ignore dynamic linking, since multiple dynamic linkings can interfere with each other
