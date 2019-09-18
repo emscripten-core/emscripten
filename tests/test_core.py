@@ -8157,6 +8157,12 @@ extern "C" {
       }
     ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
+  def test_missing_stdlibs(self):
+    # Certain standard libraries are expected to be useable via -l flags but
+    # don't actually exist in our stdard library path.  Make sure we don't
+    # error out when linking with these flags.
+    self.emcc_args += ('-lm', '-ldl', '-lrt', '-lpthread')
+    self.build(open(path_from_root('tests', 'hello_world.cpp')).read(), self.get_dir(), 'hello_world.cpp')
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
