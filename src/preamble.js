@@ -1069,7 +1069,7 @@ function createWasm(env) {
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
-#if PURE_WASM
+#if STANDALONE_WASM
     // In pure wasm mode the memory is created in the wasm (not imported), and
     // then exported.
     // TODO: do not create a Memory earlier in JS

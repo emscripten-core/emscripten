@@ -152,7 +152,7 @@ var LibraryManager = {
       libraries.push('library_glemu.js');
     }
 
-    if (PURE_WASM) {
+    if (STANDALONE_WASM) {
       libraries.push('library_wasi.js');
     }
 

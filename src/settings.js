@@ -1069,7 +1069,7 @@ var USE_GLFW = 2;
 // port, which can useful for local dev work on binaryen itself).
 var WASM = 1;
 
-// PURE_WASM indicates that we want to emit a wasm file that can run without
+// STANDALONE indicates that we want to emit a wasm file that can run without
 // JavaScript. The file will use standard APIs such as wasi as much as possible
 // to achieve that.
 //
@@ -1090,7 +1090,7 @@ var WASM = 1;
 // environments the expectation is to create the memory in the wasm itself.
 // Doing so prevents some possible JS optimizations, so we only do it behind
 // this flag.
-var PURE_WASM = 0;
+var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
 // should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the

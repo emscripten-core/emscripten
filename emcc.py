@@ -1677,7 +1677,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
-      shared.Settings.PURE_WASM = 1
+      shared.Settings.STANDALONE_WASM = 1
       js_target = misc_temp_files.get(suffix='.js').name
 
     if shared.Settings.EVAL_CTORS:
@@ -1742,15 +1742,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.WASM:
       options.separate_asm = True
 
-    if shared.Settings.PURE_WASM:
+    if shared.Settings.STANDALONE_WASM:
       if not shared.Settings.WASM_BACKEND:
-        exit_with_error('PURE_WASM is only available in the upstream wasm backend path')
+        exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
-        exit_with_error('PURE_WASM does not support pthreads yet')
+        exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.SIMD:
-        exit_with_error('PURE_WASM does not support simd yet')
+        exit_with_error('STANDALONE_WASM does not support simd yet')
       if shared.Settings.ALLOW_MEMORY_GROWTH:
-        exit_with_error('PURE_WASM does not support memory growth yet')
+        exit_with_error('STANDALONE_WASM does not support memory growth yet')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0

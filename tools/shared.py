@@ -1825,7 +1825,7 @@ class Building(object):
     # wasi does not import the memory (but for JS it is efficient to do so,
     # as it allows us to set up memory, preload files, etc. even before the
     # wasm module arrives)
-    if not Settings.PURE_WASM:
+    if not Settings.STANDALONE_WASM:
       cmd.append('--import-memory')
       cmd.append('--import-table')
 
@@ -2496,7 +2496,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if not Settings.PURE_WASM and not Settings.AUTODEBUG and not Settings.ASSERTIONS:
+        if not Settings.STANDALONE_WASM and not Settings.AUTODEBUG and not Settings.ASSERTIONS:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
@@ -2531,8 +2531,8 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
-    # in pure wasm, always export the memory
-    if Settings.PURE_WASM:
+    # in standalone wasm, always export the memory
+    if Settings.STANDALONE_WASM:
       graph.append({
         'export': 'memory',
         'name': 'emcc$export$memory',

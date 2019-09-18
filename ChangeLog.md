@@ -18,7 +18,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Remove `EMITTING_JS` flag, and replace it with `PURE_WASM`. That flag indicates
+ - Remove `EMITTING_JS` flag, and replace it with `STANDALNE_WASM`. That flag indicates
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.

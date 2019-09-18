@@ -8309,16 +8309,16 @@ int main() {
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
 
-  @no_fastcomp('only upstream supports PURE_WASM')
-  def test_wasm_target_and_PURE_WASM(self):
-    # PURE_WASM means we never minify imports and exports. That flag is implied
+  @no_fastcomp('only upstream supports STANDALONE_WASM')
+  def test_wasm_target_and_STANDALONE_WASM(self):
+    # STANDALONE_WASM means we never minify imports and exports. That flag is implied
     # when we do -o X.wasm (i.e. do not emit any JS).
     for opts, potentially_expect_minified_exports_and_imports in (
-      ([],                         False),
-      (['-O2'],                    False),
-      (['-O3'],                    True),
-      (['-O3', '-s', 'PURE_WASM'], False),
-      (['-Os'],                    True),
+      ([],                               False),
+      (['-O2'],                          False),
+      (['-O3'],                          True),
+      (['-O3', '-s', 'STANDALONE_WASM'], False),
+      (['-Os'],                          True),
     ):
       for target in ('out.js', 'out.wasm'):
         expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
@@ -8346,7 +8346,7 @@ int main() {
           self.assertContained('hello, world!', run_js('out.js'))
         # verify the wasm runs in a wasm VM, without the JS
         if LINUX: # TODO: other platforms
-          if target.endswith('.wasm') or 'PURE_WASM' in opts:
+          if target.endswith('.wasm') or 'STANDALONE_WASM' in opts:
             print('running pure wasm')
             WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
             out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
