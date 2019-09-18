@@ -1069,13 +1069,15 @@ var USE_GLFW = 2;
 // port, which can useful for local dev work on binaryen itself).
 var WASM = 1;
 
-// STANDALONE indicates that we want to emit a wasm file that can run without
+// STANDALONE_WASM indicates that we want to emit a wasm file that can run without
 // JavaScript. The file will use standard APIs such as wasi as much as possible
 // to achieve that.
 //
 // This option does not guarantee that the wasm can be used by itself - if you
-// use APIs with no non-JS alternative, we will still use those (e.g., WebGL
-// at the time of writing this).
+// use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
+// at the time of writing this). This gives you the option to see which APIs
+// are missing, and if you are compiling for a custom wasi embedding, to add
+// those to your embedding.
 //
 // We may still emit JS with this flag, but the JS should only be a convenient
 // way to run the wasm on the Web or in Node.js, and you can run the wasm by
