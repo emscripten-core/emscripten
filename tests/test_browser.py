@@ -3650,7 +3650,6 @@ window.close = function() {
     test([])
     test(['-O3'])
     test(['-s', 'MODULARIZE_INSTANCE=1'])
-    test(['-s', 'PTHREAD_POOL_ONLY_PREWARM=1'])
 
   # Test that preallocating worker threads work.
   @requires_threads
