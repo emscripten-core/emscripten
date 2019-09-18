@@ -1849,7 +1849,7 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
-    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
+    if Settings.LINKABLE:
       cmd.append('--export-all')
 
     cmd += [

@@ -18,7 +18,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Remove `EMITTING_JS` flag, and replace it with `STANDALNE_WASM`. That flag indicates
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
+ - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.
@@ -34,9 +37,6 @@ v.1.38.43: 08/30/2019
 ---------------------
  - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
    instead of `Module.noExitRuntime`.
- - Module.abort is no longer exported by default. It can be exported in the normal
-   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
-   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
 
 v.1.38.42: 08/19/2019
 ----------------------
