@@ -6366,7 +6366,6 @@ int main(int argc, char** argv) {
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=2'], unchanged)
       test(['-O' + str(opts), '-s', 'MAIN_MODULE=1', '-s', 'EMULATED_FUNCTION_POINTERS=1'], flipped) # but you can disable that
 
-  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/9038')
   def test_minimal_dynamic(self):
     def run(wasm):
       print('wasm?', wasm)
@@ -6385,7 +6384,8 @@ int main(int argc, char** argv) {
           #endif
           }
         ''')
-        run_process([PYTHON, EMCC, 'library.c', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL'] + library_args)
+        # -fno-builtin to prevent printf -> iprintf optimization
+        run_process([PYTHON, EMCC, 'library.c', '-fno-builtin', '-s', 'SIDE_MODULE=1', '-O2', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL'] + library_args)
         create_test_file('main.c', r'''
           #include <dlfcn.h>
           #include <stdio.h>
@@ -6434,10 +6434,10 @@ int main(int argc, char** argv) {
       # exporting printf in main keeps it alive for the library
       dce_save = test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_printf", "_puts"]'], library_args=['-DUSE_PRINTF'])
 
-      assert percent_diff(full[0], printf[0]) < 4
-      assert percent_diff(dce[0], dce_fail[0]) < 4
-      assert dce[0] < 0.2 * full[0] # big effect, 80%+ is gone
-      assert dce_save[0] > 1.05 * dce[0] # save exported all of printf
+      self.assertLess(percent_diff(full[0], printf[0]), 4)
+      self.assertLess(percent_diff(dce[0], dce_fail[0]), 4)
+      self.assertLess(dce[0], 0.2 * full[0]) # big effect, 80%+ is gone
+      self.assertGreater(dce_save[0], 1.05 * dce[0]) # save exported all of printf
 
       # side module tests
 
@@ -6446,7 +6446,7 @@ int main(int argc, char** argv) {
       # mode 2, so dce in side, and library_func is not exported
       side_dce_work = test(main_args=['-s', 'MAIN_MODULE=1'], library_args=['-s', 'SIDE_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_library_func"]'], expected='hello from library')
 
-      assert side_dce_fail[1] < 0.95 * side_dce_work[1] # removing that function saves a chunk
+      self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
     run(wasm=1)
     if not self.is_wasm_backend():
