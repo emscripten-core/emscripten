@@ -9,7 +9,17 @@
 #include <emscripten.h>
 
 // A "sync" tunnel that adds 1.
+#if USE_EM_JS
+EM_JS(int, sync_tunnel, (int value), {
+  return Asyncify.handleSleep(function(wakeUp) {
+    setTimeout(function() {
+      wakeUp(value + 1);
+    }, 1);
+  });
+})
+#else
 extern "C" int sync_tunnel(int);
+#endif
 
 int main() {
 #ifdef BAD

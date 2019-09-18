@@ -496,8 +496,10 @@ EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.t
 parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
 EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 # For the Emscripten-specific WASM metadata section, follows semver, changes
-# whenever metadata section changes structure
+# whenever metadata section changes structure.
 # NB: major version 0 implies no compatibility
+# NB: when changing the metadata format, we should only append new fields, not
+#     reorder, modify, or remove existing ones.
 (EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 2)
 # For the JS/WASM ABI, specifies the minimum ABI version required of
 # the WASM runtime implementation by the generated WASM binary. It follows
@@ -506,8 +508,8 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # implied to be less than (EMSCRIPTEN_ABI_MAJOR + 1, 0). On an ABI
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
-# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 4)
+# EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 6)
 
 
 def generate_sanity():
@@ -963,38 +965,35 @@ def get_llvm_target():
   return LLVM_TARGET
 
 
-# Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-# data and other nice fixes.
-COMPILER_OPTS += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-                  '-target', get_llvm_target(),
-                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-                  '-D_LIBCPP_ABI_VERSION=2']
-
-if get_llvm_target() == WASM_TARGET:
-  # wasm target does not automatically define emscripten stuff, so do it here.
-  COMPILER_OPTS += ['-Dunix',
-                    '-D__unix',
-                    '-D__unix__']
-
-# Changes to default clang behavior
-
-# Implicit functions can cause horribly confusing function pointer type errors, see #2175
-# If your codebase really needs them - very unrecommended! - you can disable the error with
-#   -Wno-error=implicit-function-declaration
-# or disable even a warning about it with
-#   -Wno-implicit-function-declaration
-COMPILER_OPTS += ['-Werror=implicit-function-declaration']
-
-
-def emsdk_opts():
+def emsdk_ldflags(user_args):
   if os.environ.get('EMMAKEN_NO_SDK'):
     return []
 
+  library_paths = [
+      path_from_root('system', 'local', 'lib'),
+      path_from_root('system', 'lib'),
+      Cache.dirname
+  ]
+  ldflags = ['-L' + l for l in library_paths]
+
+  if '-nostdlib' in user_args:
+    return ldflags
+
+  # TODO(sbc): Add system libraries here rather than conditionally including
+  # them via .symbols files.
+  libraries = []
+  ldflags += ['-l' + l for l in libraries]
+
+  return ldflags
+
+
+def emsdk_cflags():
   # Disable system C and C++ include directories, and add our own (using
-  # -idirafter so they are last, like system dirs, which allows projects to
+  # -isystem so they are last, like system dirs, which allows projects to
   # override them)
+
+  c_opts = ['-Xclang', '-nostdsysteminc']
+
   c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
@@ -1008,8 +1007,6 @@ def emsdk_opts():
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  c_opts = ['-Xclang', '-nostdsysteminc']
-
   def include_directive(paths):
     result = []
     for path in paths:
@@ -1020,8 +1017,36 @@ def emsdk_opts():
   return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
 
 
-EMSDK_OPTS = emsdk_opts()
-COMPILER_OPTS += EMSDK_OPTS
+def get_cflags(user_args):
+  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
+  # data and other nice fixes.
+  c_opts = [# '-fno-threadsafe-statics', # disabled due to issue 1289
+            '-target', get_llvm_target(),
+            '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
+            '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
+            '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
+            '-D_LIBCPP_ABI_VERSION=2']
+
+  if get_llvm_target() == WASM_TARGET:
+    # wasm target does not automatically define emscripten stuff, so do it here.
+    c_opts += ['-Dunix',
+               '-D__unix',
+               '-D__unix__']
+
+  # Changes to default clang behavior
+
+  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
+  # If your codebase really needs them - very unrecommended! - you can disable the error with
+  #   -Wno-error=implicit-function-declaration
+  # or disable even a warning about it with
+  #   -Wno-implicit-function-declaration
+  c_opts += ['-Werror=implicit-function-declaration']
+
+  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+    return c_opts
+
+  return c_opts + emsdk_cflags()
+
 
 # Engine tweaks
 if SPIDERMONKEY_ENGINE:
@@ -1334,10 +1359,13 @@ def g_multiprocessing_initializer(*args):
       os.environ[key] = value
 
 
+PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+
+
 def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
-  if '-v' in COMPILER_OPTS:
+  if PRINT_STAGES:
     print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
@@ -2463,7 +2491,7 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS and not Settings.AUTODEBUG:
+        if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.ASSERTIONS:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
@@ -2498,6 +2526,11 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    # fix wasi imports TODO: support wasm stable with an option?
+    WASI_IMPORTS = set(['fd_write'])
+    for item in graph:
+      if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
+        item['import'][0] = 'wasi_unstable'
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:
@@ -2730,7 +2763,8 @@ class Building(object):
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
-    else:
+    elif not Settings.WASM_BACKEND:
+      # The wasm backend will report these when wasm-ld runs
       exit_with_error('emcc: cannot find library "%s"', library_name)
 
     return library_files
@@ -2750,10 +2784,7 @@ class Building(object):
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
     if not BINARYEN_ROOT:
-      # ensure we have the port available if needed.
-      from . import system_libs
-      system_libs.get_port('binaryen', Settings)
-      assert os.path.exists(BINARYEN_ROOT)
+      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 
@@ -3222,7 +3253,7 @@ def read_and_preprocess(filename, expand_macros=False):
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait']
+  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);

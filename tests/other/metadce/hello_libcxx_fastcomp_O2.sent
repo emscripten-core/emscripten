@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 ___cxa_uncaught_exceptions
 ___gxx_personality_v0
 ___lock
@@ -6,19 +5,21 @@ ___map_file
 ___setErrNo
 ___syscall140
 ___syscall145
-___syscall146
-___syscall54
 ___syscall6
 ___syscall91
 ___unlock
+___wasi_fd_write
 __addDays
 __arraySum
 __emscripten_syscall_munmap
 __isLeapYear
+__memory_base
+__table_base
 _abort
 _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap
+_fd_write
 _getenv
 _llvm_stackrestore
 _llvm_stacksave
@@ -31,6 +32,8 @@ demangle
 demangleAll
 getTempRet0
 jsStackTrace
+memory
 setTempRet0
 stackTrace
+table
 tempDoublePtr
