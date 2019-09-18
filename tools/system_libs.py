@@ -1147,6 +1147,9 @@ class libstandalonewasm(Library):
   src_dir = ['system', 'lib']
   src_files = ['standalone_wasm.c']
 
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
+
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
