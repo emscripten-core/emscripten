@@ -52,7 +52,7 @@ if sys.version_info < (2, 7, 12):
 
 
 def exit_with_error(msg, *args):
-  logger.error(msg, *args)
+  logger.error(str(msg), *args)
   sys.exit(1)
 
 
@@ -2278,10 +2278,10 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      run_process(cmd, stdout=open(next, 'w'))
+      check_call(cmd, stdout=open(next, 'w'))
       return next
     else:
-      return run_process(cmd, stdout=PIPE).stdout
+      return check_call(cmd, stdout=PIPE).stdout
 
   @staticmethod
   def acorn_optimizer(filename, passes, extra_info=None, return_output=False):

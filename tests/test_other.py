@@ -197,15 +197,6 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
-  def expect_fail(self, cmd, **args):
-    """Run a subprocess and assert that it returns non-zero.
-
-    Return the stderr of the subprocess.
-    """
-    proc = run_process(cmd, check=False, stderr=PIPE, **args)
-    self.assertNotEqual(proc.returncode, 0)
-    return proc.stderr
-
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
       # -v, without input files
