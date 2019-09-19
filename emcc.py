@@ -456,6 +456,7 @@ def do_emscripten(infile, memfile, js_libraries):
 
   return outfile
 
+
 #
 # Main run() function
 #
