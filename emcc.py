@@ -38,6 +38,7 @@ import sys
 import time
 from subprocess import PIPE
 
+import emscripten
 from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -443,6 +444,17 @@ def find_output_arg(args):
       outargs.append(arg)
   return specified_target, outargs
 
+
+def do_emscripten(infile, memfile, js_libraries):
+  # Run Emscripten
+  outfile = infile + '.o.js'
+  with ToolchainProfiler.profile_block('emscripten.py'):
+    emscripten.run(infile, outfile, memfile, js_libraries)
+
+  # Detect compilation crashes and errors
+  assert os.path.exists(outfile), 'Emscripten failed to generate .js'
+
+  return outfile
 
 #
 # Main run() function
@@ -2150,7 +2162,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = shared.Building.emscripten(final, target + '.mem', js_libraries)
+      final = do_emscripten(final, target + '.mem', js_libraries)
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
