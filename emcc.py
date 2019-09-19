@@ -479,7 +479,10 @@ def run(args):
   # Handle some global flags
 
   # read response files very early on
-  args = substitute_response_files(args)
+  try:
+    args = substitute_response_files(args)
+  except IOError as e:
+    exit_with_error(e)
 
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:

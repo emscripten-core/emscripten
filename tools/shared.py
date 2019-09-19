@@ -52,7 +52,7 @@ if sys.version_info < (2, 7, 12):
 
 
 def exit_with_error(msg, *args):
-  logger.error(msg, *args)
+  logger.error(str(msg), *args)
   sys.exit(1)
 
 
