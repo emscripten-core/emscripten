@@ -2979,16 +2979,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
-  if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
-    # TODO: artisinal optimization
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
-    cmd += shared.Building.get_binaryen_feature_flags()
-    if intermediate_debug_info:
-      cmd += ['-g'] # preserve the debug info
-    cmd += ['--remove-memory']
-    # TODO: source maps etc.?
-    shared.print_compiler_stage(cmd)
-    shared.check_call(cmd)
 
   # after generating the wasm, do some final operations
   if shared.Settings.SIDE_MODULE and not shared.Settings.WASM_BACKEND:
@@ -3020,6 +3010,19 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                            minify_whitespace=optimizer.minify_whitespace,
                                            debug_info=intermediate_debug_info)
     save_intermediate_with_wasm('postclean', wasm_binary_target)
+
+  if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
+    if not shared.Settings.ASYNCIFY:
+      exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
+    # TODO: artisinal optimization
+    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
+    cmd += shared.Building.get_binaryen_feature_flags()
+    if intermediate_debug_info:
+      cmd += ['-g'] # preserve the debug info
+    cmd += ['--remove-memory']
+    # TODO: source maps etc.?
+    shared.print_compiler_stage(cmd)
+    shared.check_call(cmd)
 
   def run_closure_compiler(final):
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
