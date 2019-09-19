@@ -7683,6 +7683,8 @@ extern "C" {
     # but breaking the second wasm actually breaks us
     break_wasm('src.cpp.o.wasm.lazy.wasm')
     self.assertNotContained('foo_end', run_js('src.cpp.o.js', stderr=STDOUT, assert_returncode=None))
+    # TODO: add tests after binaryen can optimize the first wasm so it doesn't even contain a function
+    #       that is only called after lazy-loading
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
