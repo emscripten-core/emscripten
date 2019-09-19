@@ -865,7 +865,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 });
 #endif
 
-#if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_ONLY_PREWARM == 0
+#if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_PREALLOCATE == 0
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
