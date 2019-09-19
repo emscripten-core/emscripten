@@ -7646,6 +7646,44 @@ extern "C" {
     self.set_setting('ASYNCIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
+  @no_fastcomp('wasm-backend specific feature')
+  @no_wasm2js('TODO: lazy loading in wasm2js')
+  def test_emscripten_lazy_load_code(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
+    self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code')
+    with open('src.cpp.o.wasm', 'rb') as f:
+      with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
+        assert f.read() != g.read(), 'the lazy-loaded wasm is different'
+
+    def break_wasm(name):
+      wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
+      lines = wat.splitlines()
+      wat = None
+      for i in range(len(lines)):
+        if '(func $foo_end ' in lines[i]:
+          j = i + 1
+          while '(local ' in lines[j]:
+            j += 1
+          # we found the first line after the local defs
+          lines[j] = '(unreachable)' + lines[j]
+          wat = '\n'.join(lines)
+          break
+      assert wat is not None, 'we found the right place'
+      with open('wat.wat', 'w') as f:
+        f.write(wat)
+      shutil.move(name, name + '.orig')
+      run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+
+    # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
+    # verify that by changing the first wasm to throw in that function
+    break_wasm('src.cpp.o.wasm')
+    self.assertContained('foo_end', run_js('src.cpp.o.js'))
+    # but breaking the second wasm actually breaks us
+    break_wasm('src.cpp.o.wasm.lazy.wasm')
+    self.assertNotContained('foo_end', run_js('src.cpp.o.js', stderr=STDOUT, assert_returncode=None))
+
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
   def test_wasm2js(self):
