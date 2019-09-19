@@ -1068,25 +1068,21 @@ int main() {
       self.assertContained("unknown suffix", proc.stderr)
 
   def test_multiply_defined_libsymbols(self):
-    lib = "int mult() { return 1; }"
     lib_name = 'libA.c'
-    create_test_file(lib_name, lib)
-    a2 = "void x() {}"
     a2_name = 'a2.c'
-    create_test_file(a2_name, a2)
-    b2 = "void y() {}"
     b2_name = 'b2.c'
-    create_test_file(b2_name, b2)
-    main = r'''
+    main_name = 'main.c'
+    create_test_file(lib_name, 'int mult() { return 1; }')
+    create_test_file(a2_name, 'void x() {}')
+    create_test_file(b2_name, 'void y() {}')
+    create_test_file(main_name, r'''
       #include <stdio.h>
       int mult();
       int main() {
         printf("result: %d\n", mult());
         return 0;
       }
-    '''
-    main_name = 'main.c'
-    create_test_file(main_name, main)
+    ''')
 
     Building.emcc(lib_name, output_filename='libA.so')
 
@@ -3586,27 +3582,18 @@ int main() {
   def test_oz_size(self):
     sizes = {}
     for name, args in [
-        ('0', ['-o', 'dlmalloc.o']),
-        ('1', ['-o', 'dlmalloc.o', '-O1']),
-        ('2', ['-o', 'dlmalloc.o', '-O2']),
-        ('s', ['-o', 'dlmalloc.o', '-Os']),
-        ('z', ['-o', 'dlmalloc.o', '-Oz']),
-        ('3', ['-o', 'dlmalloc.o', '-O3']),
-        ('0c', ['-c']),
-        ('1c', ['-c', '-O1']),
-        ('2c', ['-c', '-O2']),
-        ('sc', ['-c', '-Os']),
-        ('zc', ['-c', '-Oz']),
-        ('3c', ['-c', '-O3']),
+        ('0', []),
+        ('1', ['-O1']),
+        ('2', ['-O2']),
+        ('s', ['-Os']),
+        ('z', ['-Oz']),
+        ('3', ['-O3']),
       ]:
       print(name, args)
       self.clear()
-      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args)
+      run_process([PYTHON, EMCC, '-c', path_from_root('system', 'lib', 'dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
-    # -c should not affect code size
-    for name in ['0', '1', '2', '3', 's', 'z']:
-      self.assertEqual(sizes[name], sizes[name + 'c'])
     opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
     opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
     # 'opt builds are all fairly close'
