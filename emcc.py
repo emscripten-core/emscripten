@@ -3014,7 +3014,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
     if not shared.Settings.ASYNCIFY:
       exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
-    # TODO: artisinal optimization
+    # create the lazy-loaded wasm. remove the memory segments from it, as memory
+    # segments have already been applied by the initial wasm
+    # TODO: artisinal optimization on both wasms
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
     cmd += shared.Building.get_binaryen_feature_flags()
     if intermediate_debug_info:
