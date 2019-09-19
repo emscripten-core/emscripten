@@ -543,7 +543,7 @@ def check_sanity(force=False):
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
-  if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
     return
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
   # not re-run the tests.
