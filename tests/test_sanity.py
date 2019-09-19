@@ -106,6 +106,9 @@ class sanity(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super(sanity, cls).setUpClass()
+    # Unlike the other test suites we explicitly don't want to be skipping
+    # the sanity checks here
+    del os.environ['EMCC_SKIP_SANITY_CHECK']
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()

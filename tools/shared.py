@@ -543,11 +543,14 @@ def check_sanity(force=False):
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
+  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+    return
+  # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
+  # not re-run the tests.
+  os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
     expected = generate_sanity()
-    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
-      return
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
