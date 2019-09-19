@@ -196,7 +196,7 @@ jobs:
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
-            rm -Rf `find -name emscripten`
+            rm -Rf emscripten
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
@@ -353,7 +353,7 @@ jobs:
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
-            rm -Rf `find -name "emscripten"`
+            rm -Rf emscripten
             echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
             cd -
