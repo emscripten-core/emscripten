@@ -52,7 +52,7 @@ if sys.version_info < (2, 7, 12):
 
 
 def exit_with_error(msg, *args):
-  logger.error(msg, *args)
+  logger.error(str(msg), *args)
   sys.exit(1)
 
 
@@ -543,11 +543,14 @@ def check_sanity(force=False):
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
+  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+    return
+  # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
+  # not re-run the tests.
+  os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
     expected = generate_sanity()
-    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
-      return
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
@@ -965,38 +968,35 @@ def get_llvm_target():
   return LLVM_TARGET
 
 
-# Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
-# data and other nice fixes.
-COMPILER_OPTS += [# '-fno-threadsafe-statics', # disabled due to issue 1289
-                  '-target', get_llvm_target(),
-                  '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
-                  '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
-                  '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
-                  '-D_LIBCPP_ABI_VERSION=2']
-
-if get_llvm_target() == WASM_TARGET:
-  # wasm target does not automatically define emscripten stuff, so do it here.
-  COMPILER_OPTS += ['-Dunix',
-                    '-D__unix',
-                    '-D__unix__']
-
-# Changes to default clang behavior
-
-# Implicit functions can cause horribly confusing function pointer type errors, see #2175
-# If your codebase really needs them - very unrecommended! - you can disable the error with
-#   -Wno-error=implicit-function-declaration
-# or disable even a warning about it with
-#   -Wno-implicit-function-declaration
-COMPILER_OPTS += ['-Werror=implicit-function-declaration']
-
-
-def emsdk_opts():
+def emsdk_ldflags(user_args):
   if os.environ.get('EMMAKEN_NO_SDK'):
     return []
 
+  library_paths = [
+      path_from_root('system', 'local', 'lib'),
+      path_from_root('system', 'lib'),
+      Cache.dirname
+  ]
+  ldflags = ['-L' + l for l in library_paths]
+
+  if '-nostdlib' in user_args:
+    return ldflags
+
+  # TODO(sbc): Add system libraries here rather than conditionally including
+  # them via .symbols files.
+  libraries = []
+  ldflags += ['-l' + l for l in libraries]
+
+  return ldflags
+
+
+def emsdk_cflags():
   # Disable system C and C++ include directories, and add our own (using
-  # -idirafter so they are last, like system dirs, which allows projects to
+  # -isystem so they are last, like system dirs, which allows projects to
   # override them)
+
+  c_opts = ['-Xclang', '-nostdsysteminc']
+
   c_include_paths = [
     path_from_root('system', 'include', 'compat'),
     path_from_root('system', 'include'),
@@ -1010,8 +1010,6 @@ def emsdk_opts():
     path_from_root('system', 'lib', 'libcxxabi', 'include')
   ]
 
-  c_opts = ['-Xclang', '-nostdsysteminc']
-
   def include_directive(paths):
     result = []
     for path in paths:
@@ -1022,8 +1020,36 @@ def emsdk_opts():
   return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
 
 
-EMSDK_OPTS = emsdk_opts()
-COMPILER_OPTS += EMSDK_OPTS
+def get_cflags(user_args):
+  # Set the LIBCPP ABI version to at least 2 so that we get nicely aligned string
+  # data and other nice fixes.
+  c_opts = [# '-fno-threadsafe-statics', # disabled due to issue 1289
+            '-target', get_llvm_target(),
+            '-D__EMSCRIPTEN_major__=' + str(EMSCRIPTEN_VERSION_MAJOR),
+            '-D__EMSCRIPTEN_minor__=' + str(EMSCRIPTEN_VERSION_MINOR),
+            '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
+            '-D_LIBCPP_ABI_VERSION=2']
+
+  if get_llvm_target() == WASM_TARGET:
+    # wasm target does not automatically define emscripten stuff, so do it here.
+    c_opts += ['-Dunix',
+               '-D__unix',
+               '-D__unix__']
+
+  # Changes to default clang behavior
+
+  # Implicit functions can cause horribly confusing function pointer type errors, see #2175
+  # If your codebase really needs them - very unrecommended! - you can disable the error with
+  #   -Wno-error=implicit-function-declaration
+  # or disable even a warning about it with
+  #   -Wno-implicit-function-declaration
+  c_opts += ['-Werror=implicit-function-declaration']
+
+  if os.environ.get('EMMAKEN_NO_SDK') or '-nostdinc' in user_args:
+    return c_opts
+
+  return c_opts + emsdk_cflags()
+
 
 # Engine tweaks
 if SPIDERMONKEY_ENGINE:
@@ -1336,10 +1362,13 @@ def g_multiprocessing_initializer(*args):
       os.environ[key] = value
 
 
+PRINT_STAGES = int(os.getenv('EMCC_VERBOSE', '0'))
+
+
 def print_compiler_stage(cmd):
   """Emulate the '-v' of clang/gcc by printing the name of the sub-command
   before executing it."""
-  if '-v' in COMPILER_OPTS:
+  if PRINT_STAGES:
     print(' "%s" %s' % (cmd[0], ' '.join(cmd[1:])), file=sys.stderr)
     sys.stderr.flush()
 
@@ -1818,7 +1847,7 @@ class Building(object):
         cmd.append('--no-gc-sections')
         cmd.append('--export-dynamic')
 
-    if Settings.MAIN_MODULE == 1 or Settings.EXPORT_ALL:
+    if Settings.LINKABLE:
       cmd.append('--export-all')
 
     cmd += [
@@ -2148,21 +2177,6 @@ class Building(object):
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
   @staticmethod
-  def emscripten(infile, memfile, js_libraries):
-    if path_from_root() not in sys.path:
-      sys.path += [path_from_root()]
-    import emscripten
-    # Run Emscripten
-    outfile = infile + '.o.js'
-    with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten.run(infile, outfile, memfile, js_libraries)
-
-    # Detect compilation crashes and errors
-    assert os.path.exists(outfile), 'Emscripten failed to generate .js'
-
-    return outfile
-
-  @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
 
@@ -2264,10 +2278,10 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      run_process(cmd, stdout=open(next, 'w'))
+      check_call(cmd, stdout=open(next, 'w'))
       return next
     else:
-      return run_process(cmd, stdout=PIPE).stdout
+      return check_call(cmd, stdout=PIPE).stdout
 
   @staticmethod
   def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
@@ -2737,7 +2751,8 @@ class Building(object):
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
-    else:
+    elif not Settings.WASM_BACKEND:
+      # The wasm backend will report these when wasm-ld runs
       exit_with_error('emcc: cannot find library "%s"', library_name)
 
     return library_files

@@ -239,15 +239,18 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
-  'wasm2js0',
-  'wasm2js1',
-  'wasm2js2',
-  'wasm2js3',
-  'wasm2jss',
-  'wasm2jsz',
 ]
 
-if not shared.Settings.WASM_BACKEND:
+if shared.Settings.WASM_BACKEND:
+  core_test_modes += [
+    'wasm2js0',
+    'wasm2js1',
+    'wasm2js2',
+    'wasm2js3',
+    'wasm2jss',
+    'wasm2jsz',
+  ]
+else:
   core_test_modes += [
     'asm0',
     'asm2',
@@ -909,6 +912,17 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
   # Shared test code between main suite and others
+
+  def expect_fail(self, cmd, **args):
+    """Run a subprocess and assert that it returns non-zero.
+
+    Return the stderr of the subprocess.
+    """
+    proc = run_process(cmd, check=False, stderr=PIPE, **args)
+    self.assertNotEqual(proc.returncode, 0)
+    # When we check for failure we user-visible error, not a traceback
+    self.assertNotContained('Traceback', proc.stderr)
+    return proc.stderr
 
   def setup_runtimelink_test(self):
     create_test_file('header.h', r'''

@@ -53,7 +53,7 @@ def read_response_file(response_filename):
     response_filename = response_filename[1:]
 
   if not os.path.exists(response_filename):
-    raise Exception("Response file '%s' not found!" % response_filename)
+    raise IOError("response file not found: %s" % response_filename)
 
   with open(response_filename) as f:
     args = f.read()

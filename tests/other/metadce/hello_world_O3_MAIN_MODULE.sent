@@ -1472,6 +1472,7 @@ localtime_r
 longjmp
 major
 makedev
+memory
 minor
 mktime
 nanosleep
@@ -1576,6 +1577,7 @@ strptime
 strptime_l
 sysconf
 system
+table
 terminate
 testSetjmp
 time

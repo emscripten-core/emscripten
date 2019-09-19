@@ -717,7 +717,7 @@ LibraryManager.library = {
     // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
     throw 'abort';
 #else
-    Module['abort']();
+    abort();
 #endif
   },
 

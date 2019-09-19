@@ -45,18 +45,9 @@ function initRuntime(asm) {
 #if WASM
 
 // Initialize wasm (asynchronous)
-var env = asmLibraryArg;
-env['memory'] = wasmMemory;
-env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}
-#if !ALLOW_TABLE_GROWTH
-  , 'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}}
-#endif
-  , 'element': 'anyfunc' });
-env['__memory_base'] = STATIC_BASE;
-env['__table_base'] = 0;
 
 var imports = {
-  'env': env
+  'env': asmLibraryArg
 #if WASM_BACKEND == 0
   , 'global': {
     'NaN': NaN,
