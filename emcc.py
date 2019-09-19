@@ -1676,9 +1676,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
-    # wasm outputs are only possible with a side wasm
     if target.endswith(WASM_ENDINGS):
-      shared.Settings.STANDALONE_WASM = 1
+      # if the output is just a wasm file, it will normally be a standalone one,
+      # as there is no JS. an exception are side modules, as we can't tell at
+      # compile time whether JS will be involved or not - the main module may
+      # have JS, and the side module is expected to link against that.
+      if not shared.Settings.SIDE_MODULE:
+        shared.Settings.STANDALONE_WASM = 1
       js_target = misc_temp_files.get(suffix='.js').name
 
     if shared.Settings.EVAL_CTORS:
