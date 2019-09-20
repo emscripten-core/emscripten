@@ -38,6 +38,7 @@ import sys
 import time
 from subprocess import PIPE
 
+import emscripten
 from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
@@ -444,6 +445,18 @@ def find_output_arg(args):
   return specified_target, outargs
 
 
+def do_emscripten(infile, memfile, js_libraries):
+  # Run Emscripten
+  outfile = infile + '.o.js'
+  with ToolchainProfiler.profile_block('emscripten.py'):
+    emscripten.run(infile, outfile, memfile, js_libraries)
+
+  # Detect compilation crashes and errors
+  assert os.path.exists(outfile), 'Emscripten failed to generate .js'
+
+  return outfile
+
+
 #
 # Main run() function
 #
@@ -479,7 +492,10 @@ def run(args):
   # Handle some global flags
 
   # read response files very early on
-  args = substitute_response_files(args)
+  try:
+    args = substitute_response_files(args)
+  except IOError as e:
+    exit_with_error(e)
 
   if '--help' in args:
     # Documentation for emcc and its options must be updated in:
@@ -1117,12 +1133,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logger.warning('disabling closure because debug info was requested')
       options.use_closure_compiler = False
 
-    assert not (shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE), 'cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time'
+    if shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE:
+      exit_with_error('cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time')
 
-    assert not (not shared.Settings.DYNAMIC_EXECUTION and options.use_closure_compiler), 'cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time'
+    if options.use_closure_compiler and not shared.Settings.DYNAMIC_EXECUTION:
+      exit_with_error('cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time')
 
     if options.emrun:
-      assert not shared.Settings.MINIMAL_RUNTIME, '--emrun is not compatible with -s MINIMAL_RUNTIME=1'
+      if shared.Settings.MINIMAL_RUNTIME:
+        exit_with_error('--emrun is not compatible with -s MINIMAL_RUNTIME=1')
       shared.Settings.EXPORTED_RUNTIME_METHODS.append('addOnExit')
 
     if options.use_closure_compiler:
@@ -2168,7 +2187,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = shared.Building.emscripten(final, target + '.mem', js_libraries)
+      final = do_emscripten(final, target + '.mem', js_libraries)
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:

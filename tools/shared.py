@@ -52,7 +52,7 @@ if sys.version_info < (2, 7, 12):
 
 
 def exit_with_error(msg, *args):
-  logger.error(msg, *args)
+  logger.error(str(msg), *args)
   sys.exit(1)
 
 
@@ -543,11 +543,14 @@ def check_sanity(force=False):
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
+  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+    return
+  # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
+  # not re-run the tests.
+  os.environ['EMCC_SKIP_SANITY_CHECK'] = '1'
   with ToolchainProfiler.profile_block('sanity'):
     check_llvm_version()
     expected = generate_sanity()
-    if os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
-      return
     reason = None
     if not CONFIG_FILE:
       return # config stored directly in EM_CONFIG => skip sanity checks
@@ -2179,21 +2182,6 @@ class Building(object):
       assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
 
   @staticmethod
-  def emscripten(infile, memfile, js_libraries):
-    if path_from_root() not in sys.path:
-      sys.path += [path_from_root()]
-    import emscripten
-    # Run Emscripten
-    outfile = infile + '.o.js'
-    with ToolchainProfiler.profile_block('emscripten.py'):
-      emscripten.run(infile, outfile, memfile, js_libraries)
-
-    # Detect compilation crashes and errors
-    assert os.path.exists(outfile), 'Emscripten failed to generate .js'
-
-    return outfile
-
-  @staticmethod
   def can_inline():
     return Settings.INLINING_LIMIT == 0
 
@@ -2295,10 +2283,10 @@ class Building(object):
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      run_process(cmd, stdout=open(next, 'w'))
+      check_call(cmd, stdout=open(next, 'w'))
       return next
     else:
-      return run_process(cmd, stdout=PIPE).stdout
+      return check_call(cmd, stdout=PIPE).stdout
 
   @staticmethod
   def acorn_optimizer(filename, passes, extra_info=None, return_output=False):

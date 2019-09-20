@@ -1064,9 +1064,11 @@ var EMSCRIPTEN_TRACING = 0;
 var USE_GLFW = 2;
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to
-// asm.js.  This will fetch the binaryen port and build it. (If, instead, you
-// set BINARYEN_ROOT in your ~/.emscripten file, then we use that instead of the
-// port, which can useful for local dev work on binaryen itself).
+// asm.js in fastcomp, or JS in upstream.
+//
+// Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
+// startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
+// still make sense there, see that option for more details.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1160,6 +1162,14 @@ var WASM_MEM_MAX = -1;
 // Whether to compile the wasm asynchronously, which is more efficient and does
 // not block the main thread. This is currently required for all but the
 // smallest modules to run in chrome.
+//
+// Note that this flag is still useful even if WASM=0 when using the upstream
+// backend, as startup behaves the same there as WASM=1 (the implementation is
+// of a fake WebAssembly.* object, so the startup code doesn't know it's JS
+// and not wasm). That makes it easier to swap between JS and wasm builds,
+// however, this is a difference from fastcomp in which WASM=0 always meant
+// sync startup as asm.js (unless a mem init file was used or some other thing
+// that forced async).
 //
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
