@@ -7652,7 +7652,9 @@ extern "C" {
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
     self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
-    self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code')
+
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
+
     with open('src.cpp.o.wasm', 'rb') as f:
       with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
         assert f.read() != g.read(), 'the lazy-loaded wasm is different'
@@ -7676,13 +7678,33 @@ extern "C" {
       shutil.move(name, name + '.orig')
       run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
 
+    def verify_working(args=['0']):
+      self.assertContained('foo_end', run_js('src.cpp.o.js', args=args))
+
+    def verify_broken(args=['0']):
+      self.assertNotContained('foo_end', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
+
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
     break_wasm('src.cpp.o.wasm')
-    self.assertContained('foo_end', run_js('src.cpp.o.js'))
+    verify_working()
     # but breaking the second wasm actually breaks us
     break_wasm('src.cpp.o.wasm.lazy.wasm')
-    self.assertNotContained('foo_end', run_js('src.cpp.o.js', stderr=STDOUT, assert_returncode=None))
+    verify_broken()
+
+    # restore
+    shutil.copyfile('src.cpp.o.wasm.orig', 'src.cpp.o.wasm')
+    shutil.copyfile('src.cpp.o.wasm.lazy.wasm.orig', 'src.cpp.o.wasm.lazy.wasm')
+    verify_working()
+
+    # if we do not call the lazy load function, then we do not need the lazy wasm,
+    # and we do the second call in the first wasm
+    os.unlink('src.cpp.o.wasm.lazy.wasm')
+    verify_broken()
+    verify_working(['42'])
+    break_wasm('src.cpp.o.wasm')
+    verify_broken()
+
     # TODO: add tests after binaryen can optimize the first wasm so it doesn't even contain a function
     #       that is only called after lazy-loading
 
