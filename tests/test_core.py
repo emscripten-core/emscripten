@@ -7648,12 +7648,17 @@ extern "C" {
 
   @no_fastcomp('wasm-backend specific feature')
   @no_wasm2js('TODO: lazy loading in wasm2js')
-  def test_emscripten_lazy_load_code(self):
+  @parameterized({
+    'conditional': (True,),
+    'unconditional': (False,),
+  })
+  def test_emscripten_lazy_load_code(self, conditional):
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT', 1)
     self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
-
+    if conditional:
+      self.emcc_args += ['-DCONDITIONAL']
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
 
     print('first wasm size', os.path.getsize('src.cpp.o.wasm'))
@@ -7696,7 +7701,9 @@ extern "C" {
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('src.cpp.o.wasm')
-    print('found $foo_end', found_foo_end)
+    print('found $foo_end?', found_foo_end, 'unconditional?', not conditional, 'optimizing?', is_optimizing(self.emcc_args))
+    if not conditional and is_optimizing(self.emcc_args):
+      self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
     verify_working()
     # but breaking the second wasm actually breaks us
     break_wasm('src.cpp.o.wasm.lazy.wasm')
@@ -7707,16 +7714,14 @@ extern "C" {
     shutil.copyfile('src.cpp.o.wasm.lazy.wasm.orig', 'src.cpp.o.wasm.lazy.wasm')
     verify_working()
 
-    # if we do not call the lazy load function, then we do not need the lazy wasm,
-    # and we do the second call in the first wasm
-    os.unlink('src.cpp.o.wasm.lazy.wasm')
-    verify_broken()
-    verify_working(['42'])
-    break_wasm('src.cpp.o.wasm')
-    verify_broken()
-
-    # TODO: add tests after binaryen can optimize the first wasm so it doesn't even contain a function
-    #       that is only called after lazy-loading
+    if conditional:
+      # if we do not call the lazy load function, then we do not need the lazy wasm,
+      # and we do the second call in the first wasm
+      os.unlink('src.cpp.o.wasm.lazy.wasm')
+      verify_broken()
+      verify_working(['42'])
+      break_wasm('src.cpp.o.wasm')
+      verify_broken()
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')

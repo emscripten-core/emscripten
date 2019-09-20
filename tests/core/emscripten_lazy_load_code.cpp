@@ -23,8 +23,12 @@ void foo_end(int n) {
 int main(int argc, char** argv) {
   int x = atoi(argv[1]);
   foo_start(x);
+#ifdef CONDITIONAL
   if (x != 42) {
+#endif
     emscripten_lazy_load_code();
+#ifdef CONDITIONAL
   }
+#endif
   foo_end(x); // this can be elided in the first download, only needed after we lazily load the second
 }
