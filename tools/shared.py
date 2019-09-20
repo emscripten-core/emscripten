@@ -2245,7 +2245,10 @@ class Building(object):
   @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
     from . import js_optimizer
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    try:
+      ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    except subprocess.CalledProcessError as e:
+      exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
