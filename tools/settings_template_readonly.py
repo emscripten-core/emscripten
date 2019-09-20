@@ -23,36 +23,28 @@ BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # if not set, we w
 # EMSCRIPTEN_NATIVE_OPTIMIZER.
 # EMSCRIPTEN_NATIVE_OPTIMIZER='/path/to/custom/optimizer(.exe)'
 
-# See below for notes on which JS engine(s) you need
+# Location of the node binary to use for running the JS parts of the compiler.
+# This engine must exist, or nothing can be compiled.
 NODE_JS = os.path.expanduser(os.getenv('NODE', '{{{ NODE }}}')) # executable
-SPIDERMONKEY_ENGINE = [os.path.expanduser(os.getenv('SPIDERMONKEY', 'js'))] # executable
-V8_ENGINE = os.path.expanduser(os.getenv('V8', 'd8')) # executable
 
 JAVA = 'java' # executable
 
 # CLOSURE_COMPILER = '..' # define this to not use the bundled version
 
 ################################################################################
-
-
-# Pick the JS engine to use for running the compiler. This engine must exist, or
-# nothing can be compiled.
 #
-# This should be left on node.js, as that is the VM we test running the
-# compiler in. Other VMs may or may not work.
-
-COMPILER_ENGINE = NODE_JS
-
-
+# Test suite options:
+#
+# Alternative JS engines to use during testing:
+#
+# SPIDERMONKEY_ENGINE = [os.path.expanduser(os.getenv('SPIDERMONKEY', 'js'))] # executable
+# V8_ENGINE = os.path.expanduser(os.getenv('V8', 'd8')) # executable
+#
 # All JS engines to use when running the automatic tests. Not all the engines in
 # this list must exist (if they don't, they will be skipped in the test runner).
 #
-# Recommendation: If you already have node installed, use that. If you can, also
-#                 build spidermonkey from source as well to get more test
-#                 coverage.
-
-JS_ENGINES = [NODE_JS] # add this if you have spidermonkey installed too, SPIDERMONKEY_ENGINE]
-
+# JS_ENGINES = [NODE_JS] # add V8_ENGINE or SPIDERMONKEY_ENGINE if you have them installed too.
+#
 # Other options
 #
 # FROZEN_CACHE = True # never clears the cache, and disallows building to the cache
