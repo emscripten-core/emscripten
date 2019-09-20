@@ -1631,6 +1631,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--log-execution']
             passes += ['--instrument-memory']
             passes += ['--legalize-js-interface']
+          if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
+            # note that this pass must run before asyncify, as if it runs afterwards we only
+            # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
+            # be able to whitelist them etc.
+            passes += ['--fpcast-emu']
           if shared.Settings.ASYNCIFY:
             # TODO: allow whitelist as in asyncify
             passes += ['--asyncify']
@@ -1679,13 +1684,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # run it in binaryen_passes so that it can be synchronized with the sbrk ptr
       if shared.Settings.SAFE_HEAP and shared.Building.is_wasm_only() and not shared.Settings.WASM_BACKEND:
         options.binaryen_passes += ['--safe-heap']
-      if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS:
-        # emulated function pointer casts is emulated in wasm using a binaryen pass
+      if shared.Settings.EMULATE_FUNCTION_POINTER_CASTS and not shared.Settings.WASM_BACKEND:
+        # emulated function pointer casts is emulated in fastcomp wasm using a binaryen pass
         options.binaryen_passes += ['--fpcast-emu']
-        if not shared.Settings.WASM_BACKEND:
-          # we also need emulated function pointers for that, as we need a single flat
-          # table, as is standard in wasm, and not asm.js split ones.
-          shared.Settings.EMULATED_FUNCTION_POINTERS = 1
+        # we also need emulated function pointers for that, as we need a single flat
+        # table, as is standard in wasm, and not asm.js split ones.
+        shared.Settings.EMULATED_FUNCTION_POINTERS = 1
 
     if shared.Settings.WASM2JS:
       if not shared.Settings.WASM_BACKEND:

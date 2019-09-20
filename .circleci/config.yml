@@ -10,6 +10,73 @@ executors:
       EMCC_CORES: "4"
 
 commands:
+  build-upstream:
+    description: "Install emsdk build all libraries using embuilder"
+    steps:
+      - run:
+          name: install emsdk
+          command: |
+            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
+            tar -C ~ -xf ~/emsdk-master.tar.gz
+            cd ~/emsdk-master
+            ./emsdk update-tags
+            ./emsdk install tot-upstream
+            ./emsdk activate tot-upstream
+            # Remove the emsdk version of emscripten to save space in the
+            # persistent workspace and to avoid any confusion with the version
+            # we are trying to test.
+            rm -Rf emscripten
+            echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
+            echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
+            cd -
+            echo "final .emscripten:"
+            cat ~/.emscripten
+            # Remove any system libs the emsdk installed: we want to rebuild
+            # them all from source here, to check whether new changes work.
+            rm -Rf ~/.emscripten_cache
+      - run:
+          name: embuilder build ALL
+          command: |
+            python3 ./embuilder.py build ALL
+            python3 tests/runner.py test_hello_world
+      - run:
+          name: embuilder (LTO)
+          command: |
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
+            python3 tests/runner.py test_hello_world
+      - run:
+          name: embuilder (PIC)
+          command: |
+            python3 ./embuilder.py build SYSTEM --pic
+            python3 tests/runner.py test_hello_world
+      - run:
+          name: embuilder (PIC+LTO)
+          command: |
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 tests/runner.py test_hello_world
+      - run:
+          name: freeze cache
+          command: |
+            echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - run:
+          name: get wasmer
+          command: |
+            curl https://get.wasmer.io -sSfL | sh
+      - run:
+          name: get wasmtime
+          command: |
+            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
+            tar -xf wasmtime-dev-x86_64-linux.tar.xz
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory
+          root: ~/
+          # Must be relative path from root
+          paths:
+            - emsdk-master/
+            - .emscripten_cache/
+            - .emscripten_ports/
+            - .emscripten
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -27,6 +94,27 @@ commands:
             apt-get update -q
             # openjdk-9 is also available, but hits #7232
             apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
+      - run:
+          name: run tests
+          command: |
+            python3 tests/runner.py << parameters.test_targets >>
+            tools/check_clean.py
+  run-tests-mac:
+    description: "Runs emscripten tests"
+    parameters:
+      test_targets:
+        description: "Test suites to run"
+        type: string
+    steps:
+      - checkout
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: Install brew package dependencies
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          command: brew install python3 cmake
       - run:
           name: run tests
           command: |
@@ -187,16 +275,16 @@ jobs:
       - run:
           name: install emsdk
           command: |
-            wget -O ~/emsdk-master.tar.gz https://github.com/juj/emsdk/archive/master.tar.gz
+            curl -# -L -o ~/emsdk-master.tar.gz https://github.com/emscripten-core/emsdk/archive/master.tar.gz
             tar -C ~ -xf ~/emsdk-master.tar.gz
             cd ~/emsdk-master
-            ./emsdk --notty update-tags
-            ./emsdk --notty install tot-fastcomp
-            ./emsdk --notty activate tot-fastcomp
+            ./emsdk update-tags
+            ./emsdk install tot-fastcomp
+            ./emsdk activate tot-fastcomp
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
-            rm -Rf `find -name emscripten`
+            rm -Rf emscripten
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
@@ -250,9 +338,10 @@ jobs:
     executor: bionic
     steps:
       - run-tests:
-          # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
-          # CircleCI actively kills memory-over-consuming process
-          # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
+          # some native-dependent tests fail because of the lack of native
+          # headers on emsdk-bundled clang>
+          # CircleCI actively kills memory-over-consuming process skip llvm-lit
+          # tests which need lit, and pip to get lit, but pip has broken on CI
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
   test-browser-firefox:
     executor: bionic
@@ -332,79 +421,16 @@ jobs:
     steps:
       - run-tests:
           test_targets: "sanity"
-  build-upstream:
+  build-upstream-linux:
     executor: bionic
     steps:
-      - checkout
       - run:
           name: install package dependencies
           command: |
             apt-get update -q
             apt-get install -q -y python3 cmake
-      - run:
-          name: get wasmer
-          command: |
-            curl https://get.wasmer.io -sSfL | sh
-      - run:
-          name: get wasmtime
-          command: |
-            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
-            tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/
-      - run:
-          name: install emsdk
-          command: |
-            wget -O ~/emsdk-master.tar.gz https://github.com/juj/emsdk/archive/master.tar.gz
-            tar -C ~ -xf ~/emsdk-master.tar.gz
-            cd ~/emsdk-master
-            ./emsdk --notty update-tags
-            ./emsdk --notty install tot-upstream
-            ./emsdk --notty activate tot-upstream
-            # Remove the emsdk version of emscripten to save space in the
-            # persistent workspace and to avoid any confusion with the version
-            # we are trying to test.
-            rm -Rf `find -name "emscripten"`
-            echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
-            cd -
-            echo "final .emscripten:"
-            cat ~/.emscripten
-            # Remove any system libs the emsdk installed: we want to rebuild
-            # them all from source here, to check whether new changes work.
-            rm -Rf ~/.emscripten_cache
-      - run:
-          name: embuilder build ALL
-          command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: embuilder (LTO)
-          command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: embuilder (PIC)
-          command: |
-            python3 ./embuilder.py build SYSTEM --pic
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: embuilder (PIC+LTO)
-          command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
-            python3 tests/runner.py test_hello_world
-      - run:
-          name: freeze cache
-          command: |
-            echo "FROZEN_CACHE=True" >> ~/.emscripten
-      - persist_to_workspace:
-          # Must be an absolute path, or relative path from working_directory
-          root: ~/
-          # Must be relative path from root
-          paths:
-            - emsdk-master/
-            - .emscripten_cache/
-            - .emscripten_ports/
-            - .emscripten
+      - checkout
+      - build-upstream
   test-upstream-wasm0:
     executor: bionic
     steps:
@@ -440,6 +466,25 @@ jobs:
     executor: bionic
     steps:
       - test-firefox
+  build-upstream-mac:
+    macos:
+      xcode: "9.0"
+    environment:
+      EMSDK_NOTTY: "1"
+    steps:
+      - run:
+          name: Install brew package dependencies
+          environment:
+            HOMEBREW_NO_AUTO_UPDATE: "1"
+          command: brew install python3 cmake
+      - checkout
+      - build-upstream
+  test-upstream-mac:
+    macos:
+      xcode: "9.0"
+    steps:
+      - run-tests-mac:
+          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
 
 workflows:
   build-test:
@@ -498,25 +543,29 @@ workflows:
       - test-sanity:
           requires:
             - build
-      - build-upstream
+      - build-upstream-linux
       - test-upstream-wasm0:
           requires:
-            - build-upstream
+            - build-upstream-linux
       - test-upstream-wasm2:
           requires:
-            - build-upstream
+            - build-upstream-linux
       - test-upstream-wasm3:
           requires:
-            - build-upstream
+            - build-upstream-linux
       - test-upstream-wasm2js1:
           requires:
-            - build-upstream
+            - build-upstream-linux
       - test-upstream-other:
           requires:
-            - build-upstream
+            - build-upstream-linux
       - test-upstream-browser-chrome:
           requires:
-            - build-upstream
+            - build-upstream-linux
       - test-upstream-browser-firefox:
           requires:
-            - build-upstream
+            - build-upstream-linux
+      - build-upstream-mac
+      - test-upstream-mac:
+          requires:
+            - build-upstream-mac
