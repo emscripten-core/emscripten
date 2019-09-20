@@ -286,13 +286,11 @@ EM_POPEN_WORKAROUND = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE = None
 LLVM_ROOT = None
-COMPILER_ENGINE = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
-JS_ENGINE = None
 JS_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
@@ -315,12 +313,10 @@ def parse_config_file():
     'EMSCRIPTEN_NATIVE_OPTIMIZER',
     'V8_ENGINE',
     'LLVM_ROOT',
-    'COMPILER_ENGINE',
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
-    'JS_ENGINE',
     'JS_ENGINES',
     'COMPILER_OPTS',
     'FROZEN_CACHE',
@@ -360,7 +356,6 @@ parse_config_file()
 SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-COMPILER_ENGINE = listify(COMPILER_ENGINE)
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 
 if EM_POPEN_WORKAROUND is None:
@@ -520,8 +515,8 @@ def perform_sanify_checks():
   logger.info('(Emscripten: Running sanity checks)')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
-    if not jsrun.check_engine(COMPILER_ENGINE):
-      exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
+    if not jsrun.check_engine(NODE_JS):
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s', NODE_JS, EM_CONFIG)
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
@@ -890,10 +885,7 @@ apply_configuration()
 
 # EM_CONFIG stuff
 if JS_ENGINES is None:
-  if JS_ENGINE is None:
-    raise 'ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG
-  else:
-    JS_ENGINES = [JS_ENGINE]
+  JS_ENGINES = [NODE_JS]
 
 if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')

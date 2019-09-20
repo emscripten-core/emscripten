@@ -32,7 +32,7 @@ if __name__ == '__main__':
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
-from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
+from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
@@ -8391,28 +8391,28 @@ int main() {
       else:
         self.assertContained('no native wasm support detected', out)
 
-  def test_check_engine(self):
-    compiler_engine = COMPILER_ENGINE
-    bogus_engine = ['/fake/inline4']
-    print(compiler_engine)
+  def test_jsrun(self):
+    print(NODE_JS)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
-    assert jsrun.check_engine(COMPILER_ENGINE)
+    self.assertTrue(jsrun.check_engine(NODE_JS))
     # Run it a second time (cache hit)
-    assert jsrun.check_engine(COMPILER_ENGINE)
+    self.assertTrue(jsrun.check_engine(NODE_JS))
+
     # Test that engine check fails
-    assert not jsrun.check_engine(bogus_engine)
-    assert not jsrun.check_engine(bogus_engine)
+    bogus_engine = ['/fake/inline4']
+    self.assertFalse(jsrun.check_engine(bogus_engine))
+    self.assertFalse(jsrun.check_engine(bogus_engine))
 
     # Test the other possible way (list vs string) to express an engine
-    if type(compiler_engine) is list:
-      engine2 = compiler_engine[0]
+    if type(NODE_JS) is list:
+      engine2 = NODE_JS[0]
     else:
-      engine2 = [compiler_engine]
-    assert jsrun.check_engine(engine2)
+      engine2 = [NODE_JS]
+    self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that run_js requires the engine
-    jsrun.run_js(path_from_root('src', 'hello_world.js'), compiler_engine)
+    jsrun.run_js(path_from_root('src', 'hello_world.js'), NODE_JS)
     caught_exit = 0
     try:
       jsrun.run_js(path_from_root('src', 'hello_world.js'), bogus_engine)

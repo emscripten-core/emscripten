@@ -18,6 +18,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+   node as the compiler engine so just use a single `NODE_JS` option for that.
  - Module.abort is no longer exported by default. It can be exported in the normal
    way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
    the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
@@ -27,7 +29,7 @@ v.1.38.44: 09/11/2019
  - Remove Binaryen from the ports system. This means that emscripten will
    no longer automatically build Binaryen from source. Instead, either use
    the emsdk (binaries are provided automatically, just like for LLVM), or
-   build it yourself and point BINARYEN_ROOT in .emscripten to it. See #9409
+   build it yourself and point `BINARYEN_ROOT` in .emscripten to it. See #9409
 
 v.1.38.43: 08/30/2019
 ---------------------
@@ -39,7 +41,7 @@ v.1.38.42: 08/19/2019
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
    and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
    with multiple threads. (#9060, #9076)
- - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
+ - Remove `ERROR_ON_MISSING_LIBRARIES` setting (it's always on now)
  - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
    suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
    will no longer work. This is done because the mechanism may result in
