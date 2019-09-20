@@ -781,8 +781,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.Settings.TARGET_BASENAME = target_basename = unsuffixed_basename(target)
 
-  final_suffix = suffix(target)
-
   temp_dir = shared.get_emscripten_temp_dir()
 
   def in_temp(name):
@@ -796,8 +794,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     while filename:
       filename, suffix = os.path.splitext(filename)
       if not suffix[1:].isdigit():
-        return suffix
+        return suffix.lower()
     return ''
+
+  final_suffix = get_file_suffix(target)
 
   def optimizing(opts):
     return '-O0' not in opts
@@ -907,7 +907,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
-    executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
     compile_only = has_dash_c or has_dash_S
 
     if not compile_only:
@@ -1035,11 +1034,24 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if final_suffix == '.mjs':
       shared.Settings.EXPORT_ES6 = 1
       shared.Settings.MODULARIZE = 1
-      js_target = target
-    else:
-      js_target = unsuffixed(target) + '.js'
 
-    asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
+    if final_suffix == '.html':
+      js_target = unsuffixed(target) + '.js'
+      asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
+    elif final_suffix in WASM_ENDINGS:
+      # if the output is just a wasm file, it will normally be a standalone one,
+      # as there is no JS. an exception are side modules, as we can't tell at
+      # compile time whether JS will be involved or not - the main module may
+      # have JS, and the side module is expected to link against that.
+      # we also do not support standalone mode in fastcomp.
+      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+        shared.Settings.STANDALONE_WASM = 1
+      js_target = unsuffixed(target) + '.js' # might not be used, but if it is, this is the name
+      asm_target = unsuffixed(target) + '.asm.js' # might not be used, but if it is, this is the name
+    else:
+      js_target = target
+      asm_target = target + '.asm.js' # might not be used, but if it is, this is the name
+
     wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
     wasm_source_map_target = wasm_binary_target + '.map'
@@ -1697,16 +1709,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
-    if target.endswith(WASM_ENDINGS):
-      # if the output is just a wasm file, it will normally be a standalone one,
-      # as there is no JS. an exception are side modules, as we can't tell at
-      # compile time whether JS will be involved or not - the main module may
-      # have JS, and the side module is expected to link against that.
-      # we also do not support standalone mode in fastcomp.
-      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
-        shared.Settings.STANDALONE_WASM = 1
-      js_target = misc_temp_files.get(suffix='.js').name
-
     if shared.Settings.EVAL_CTORS:
       if not shared.Settings.WASM:
         # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
@@ -2007,13 +2009,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
-    if final_suffix not in executable_endings:
+    if final_suffix in OBJECT_FILE_ENDINGS or final_suffix in ('.so', '.dylib', '.dll') or target == '/dev/null':
       with ToolchainProfiler.profile_block('linking to object file'):
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
         if shared.Settings.SIDE_MODULE:
           exit_with_error('SIDE_MODULE must only be used when compiling to an executable shared library, and not when emitting an object file.  That is, you should be emitting a .wasm file (for wasm) or a .js file (for asm.js). Note that when compiling to a typical native suffix for a shared library (.so, .dylib, .dll; which many build systems do) then Emscripten emits an object file, which you should then compile to .wasm or .js with SIDE_MODULE.')
-        if final_suffix.lower() in ('.so', '.dylib', '.dll'):
+        if final_suffix in ('.so', '.dylib', '.dll'):
           logger.warning('When Emscripten compiles to a typical native suffix for shared libraries (.so, .dylib, .dll) then it emits an object file. You should then compile that to an emscripten SIDE_MODULE (using that flag) with suffix .wasm (for wasm) or .js (for asm.js). (You may also want to adapt your build system to emit the more standard suffix for a an object file, \'.bc\' or \'.o\', which would avoid this warning.)')
         logger.debug('link_to_object: ' + str(linker_inputs) + ' -> ' + specified_target)
         shared.Building.link_to_object(linker_inputs, specified_target)

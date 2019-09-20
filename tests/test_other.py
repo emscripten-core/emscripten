@@ -276,9 +276,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for compiler in [EMCC, EMXX]:
       suffix = '.c' if compiler == EMCC else '.cpp'
 
-      # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
-      #      regression check: -o js should create "js", with bitcode content
-      for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
+      # emcc src.cpp -c and emcc src.cpp -o src.[o|bc] ==> should give an object file
+      for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
         print('-c stuff', args)
         if '/dev/null' in args and WINDOWS:
           print('skip because windows')
@@ -290,15 +289,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           print('(no output)')
           continue
         syms = Building.llvm_nm(target)
-        assert 'main' in syms.defs
+        self.assertContained('main', syms.defs)
         if self.is_wasm_backend():
           # wasm backend will also have '__original_main' or such
-          assert len(syms.defs) == 2
+          self.assertEqual(len(syms.defs), 2)
         else:
-          assert len(syms.defs) == 1
-        if target == 'js': # make sure emcc can recognize the target as a bitcode file
-          shutil.move(target, target + '.bc')
-          target += '.bc'
+          self.assertEqual(len(syms.defs), 1)
         run_process([PYTHON, compiler, target, '-o', target + '.js'])
         self.assertContained('hello, world!', run_js(target + '.js'))
 

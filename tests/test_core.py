@@ -5784,11 +5784,11 @@ return malloc(size);
       self.set_setting('AGGRESSIVE_VARIABLE_ELIMINATION', aggro)
       self.set_setting('TOTAL_MEMORY', total_memory)
       print(aggro)
-      self.do_run('',
+      lua_binary = self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None)[0]
+      self.do_run(lua_binary,
                   'hello lua world!\n17\n1\n2\n3\n4\n7',
                   args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
-                  includes=[path_from_root('tests', 'lua')],
+                  no_build=True,
                   output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
   @needs_make('configure script')
