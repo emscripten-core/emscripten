@@ -420,6 +420,16 @@ jobs:
             apt-get update -q
             apt-get install -q -y python3 cmake
       - checkout
+      - run:
+          name: get wasmer
+          command: |
+            curl https://get.wasmer.io -sSfL | sh
+      - run:
+          name: get wasmtime
+          command: |
+            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
+            tar -xf wasmtime-dev-x86_64-linux.tar.xz
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/
       - build-upstream
   test-upstream-wasm0:
     executor: bionic

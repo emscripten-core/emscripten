@@ -152,6 +152,10 @@ var LibraryManager = {
       libraries.push('library_glemu.js');
     }
 
+    if (STANDALONE_WASM) {
+      libraries.push('library_wasi.js');
+    }
+
     libraries = libraries.concat(additionalLibraries);
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
