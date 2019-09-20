@@ -8296,7 +8296,6 @@ int main() {
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
 
-  @no_fastcomp('only upstream supports STANDALONE_WASM')
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
     for opts, potentially_expect_minified_exports_and_imports in (
@@ -8306,6 +8305,8 @@ int main() {
       (['-O3', '-s', 'STANDALONE_WASM'], False),
       (['-Os'],                          True),
     ):
+      if 'STANDALONE_WASM' in opts and not self.is_wasm_backend():
+        continue
       # targeting .wasm (without .js) means we enable STANDALONE_WASM automatically, and don't minify imports/exports
       for target in ('out.js', 'out.wasm'):
         expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
@@ -8333,22 +8334,22 @@ int main() {
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
         # verify the wasm runs in a wasm VM, without the JS
-        if LINUX: # TODO: other platforms
-          if standalone:
-            WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
-            if os.path.isfile(WASMER):
-              print('  running in wasmer')
-              out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
-              self.assertContained('hello, world!', out)
-            else:
-              print('[WARNING - no wasmer]')
-            WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
-            if os.path.isfile(WASMTIME):
-              print('  running in wasmtime')
-              out = run_process([WASMTIME, 'out.wasm'], stdout=PIPE).stdout
-              self.assertContained('hello, world!', out)
-            else:
-              print('[WARNING - no wasmtime]')
+        # TODO: more platforms than linux
+        if LINUX and standalone and self.is_wasm_backend():
+          WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
+          if os.path.isfile(WASMER):
+            print('  running in wasmer')
+            out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
+            self.assertContained('hello, world!', out)
+          else:
+            print('[WARNING - no wasmer]')
+          WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
+          if os.path.isfile(WASMTIME):
+            print('  running in wasmtime')
+            out = run_process([WASMTIME, 'out.wasm'], stdout=PIPE).stdout
+            self.assertContained('hello, world!', out)
+          else:
+            print('[WARNING - no wasmtime]')
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
