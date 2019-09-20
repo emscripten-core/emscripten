@@ -8391,7 +8391,7 @@ int main() {
       else:
         self.assertContained('no native wasm support detected', out)
 
-  def test_node_js(self):
+  def test_jsrun(self):
     print(NODE_JS)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
@@ -8409,7 +8409,7 @@ int main() {
       engine2 = NODE_JS[0]
     else:
       engine2 = [NODE_JS]
-    assert jsrun.check_engine(engine2)
+    self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that run_js requires the engine
     jsrun.run_js(path_from_root('src', 'hello_world.js'), NODE_JS)
