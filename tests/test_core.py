@@ -7651,9 +7651,14 @@ extern "C" {
   def test_emscripten_lazy_load_code(self):
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
+    self.set_setting('ASYNCIFY_IGNORE_INDIRECT', 1)
     self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
 
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
+
+    print()
+    print('first wasm size', os.path.getsize('src.cpp.o.wasm'))
+    print('second wasm size', os.path.getsize('src.cpp.o.wasm.lazy.wasm'))
 
     with open('src.cpp.o.wasm', 'rb') as f:
       with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:

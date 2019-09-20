@@ -2863,6 +2863,14 @@ def separate_asm_js(final, asm_target):
     shutil.move(temp, asm_target)
 
 
+def get_binaryen_command(tool='wasm-opt', args=[], debug=False):
+  cmd = [os.path.join(shared.Building.get_binaryen_bin(), tool)]
+  cmd += shared.Building.get_binaryen_feature_flags()
+  if debug:
+    cmd += ['-g'] # preserve the debug info
+  return cmd
+
+
 def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                 wasm_text_target, wasm_source_map_target, misc_temp_files,
                 optimizer):
@@ -2951,10 +2959,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
-    cmd += shared.Building.get_binaryen_feature_flags()
-    if intermediate_debug_info:
-      cmd += ['-g'] # preserve the debug info
+    cmd = get_binaryen_command(debug=intermediate_debug_info)
+    cmd += [wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
     if use_source_map(options):
       cmd += ['--input-source-map=' + wasm_source_map_target]
       cmd += ['--output-source-map=' + wasm_source_map_target]
@@ -3015,14 +3021,26 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if not shared.Settings.ASYNCIFY:
       exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
-    # segments have already been applied by the initial wasm
-    # TODO: artisinal optimization on both wasms
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
-    cmd += shared.Building.get_binaryen_feature_flags()
-    if intermediate_debug_info:
-      cmd += ['-g'] # preserve the debug info
+    # segments have already been applied by the initial wasm, and apply the knowledge
+    # that it will only rewind, after which optimizations can remove some code
+    cmd = get_binaryen_command(debug=intermediate_debug_info)
+    cmd += [wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
     cmd += ['--remove-memory']
-    # TODO: source maps etc.?
+    cmd += ['--post-asyncify-never-unwind']
+    if options.opt_level > 0:
+      cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    shared.print_compiler_stage(cmd)
+    shared.check_call(cmd)
+    # re-optimize the original, by applying the knowledge that imports will
+    # definitely unwind, and we never rewind, after which optimizations can remove
+    # a lot of code
+    # TODO: support other asyncify stuff, imports that don't always unwind?
+    # TODO: source maps etc.
+    cmd = get_binaryen_command(debug=intermediate_debug_info)
+    cmd += [wasm_binary_target, '-o', wasm_binary_target]
+    cmd += ['--post-asyncify-always-and-only-unwind']
+    if options.opt_level > 0:
+      cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     shared.print_compiler_stage(cmd)
     shared.check_call(cmd)
 
