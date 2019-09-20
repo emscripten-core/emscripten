@@ -3656,6 +3656,11 @@ window.close = function() {
   def test_pthread_preallocates_workers(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_preallocates_workers.cpp'), expected='0', args=['-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_PREALLOCATE=0'])
 
+  # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
+  @requires_threads
+  def test_pthread_large_pthread_allocation(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_large_pthread_allocation.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=128MB', '-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
+
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
   def test_pthread_proxy_to_pthread(self):
