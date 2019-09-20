@@ -7656,7 +7656,6 @@ extern "C" {
 
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
 
-    print()
     print('first wasm size', os.path.getsize('src.cpp.o.wasm'))
     print('second wasm size', os.path.getsize('src.cpp.o.wasm.lazy.wasm'))
 
@@ -7664,6 +7663,7 @@ extern "C" {
       with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
         assert f.read() != g.read(), 'the lazy-loaded wasm is different'
 
+    # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
     def break_wasm(name):
       wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
       lines = wat.splitlines()
@@ -7677,11 +7677,15 @@ extern "C" {
           lines[j] = '(unreachable)' + lines[j]
           wat = '\n'.join(lines)
           break
-      assert wat is not None, 'we found the right place'
+      if wat is None:
+        # $foo_end is not present in the wasm, nothing to break
+        shutil.copyfile(name, name + '.orig')
+        return False
       with open('wat.wat', 'w') as f:
         f.write(wat)
       shutil.move(name, name + '.orig')
       run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+      return True
 
     def verify_working(args=['0']):
       self.assertContained('foo_end', run_js('src.cpp.o.js', args=args))
@@ -7691,7 +7695,8 @@ extern "C" {
 
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
-    break_wasm('src.cpp.o.wasm')
+    found_foo_end = break_wasm('src.cpp.o.wasm')
+    print('found $foo_end', found_foo_end)
     verify_working()
     # but breaking the second wasm actually breaks us
     break_wasm('src.cpp.o.wasm.lazy.wasm')

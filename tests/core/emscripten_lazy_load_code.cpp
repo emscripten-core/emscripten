@@ -4,20 +4,18 @@
 
 extern "C" {
 
-void foo_end(int n);
-
 void foo_start(int n) {
   puts("foo_start");
   // prevent inlining
-  if (n > 10000) foo_end(n - 1);
-  if (n > 15000) foo_end(n - 3);
+  if (n > 10000) foo_start(n - 1);
+  if (n > 15000) foo_start(n - 3);
 }
 
 void foo_end(int n) {
   puts("foo_end");
   // prevent inlining
-  if (n > 20000) foo_start(n - 2);
-  if (n > 30000) foo_start(n - 5);
+  if (n > 20000) foo_end(n - 2);
+  if (n > 30000) foo_end(n - 5);
 }
 
 } // extern "C"
