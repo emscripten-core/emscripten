@@ -1,3 +1,5 @@
+// Create the main memory. (Note: this isn't used in STANDALONE_WASM mode since the wasm
+// memory is created in the wasm, not in JS.)
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE && WASM
@@ -79,4 +81,3 @@ HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 #if USE_PTHREADS
 }
 #endif
-
