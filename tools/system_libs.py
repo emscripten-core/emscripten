@@ -1140,12 +1140,17 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
-class libstandalonewasm(Library):
+class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-  src_files = ['standalone_wasm.c']
+  src_files = ['standalone_wasm.c',
+               os.path.join('libc', 'musl', 'src', 'time', 'strftime.c'),
+               os.path.join('libc', 'musl', 'src', 'time', '__month_to_secs.c'),
+               os.path.join('libc', 'musl', 'src', 'time', '__tm_to_secs.c'),
+               os.path.join('libc', 'musl', 'src', 'time', '__tz.c'),
+               os.path.join('libc', 'musl', 'src', 'time', '__year_to_secs.c')]
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
