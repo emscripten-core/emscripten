@@ -8291,6 +8291,7 @@ int main() {
     # STANDALONE_WASM means we never minify imports and exports.
     for opts, potentially_expect_minified_exports_and_imports in (
       ([],                               False),
+      (['-s', 'STANDALONE_WASM'],        False),
       (['-O2'],                          False),
       (['-O3'],                          True),
       (['-O3', '-s', 'STANDALONE_WASM'], False),
