@@ -469,7 +469,7 @@ jobs:
           command: brew install python3 cmake
       - checkout
       - build-upstream
-  test-upstream-mac:
+  test-upstream-other-mac:
     macos:
       xcode: "9.0"
     steps:
@@ -562,9 +562,9 @@ workflows:
           requires:
             - build-upstream-linux
       - build-upstream-mac
-      - test-upstream-mac:
+      - test-upstream-other-mac:
           requires:
             - build-upstream-mac
-      - test-wasm0-mac:
+      - test-upstream-wasm0-mac:
           requires:
             - build-upstream-mac
