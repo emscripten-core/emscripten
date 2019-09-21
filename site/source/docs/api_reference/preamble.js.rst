@@ -234,7 +234,7 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: intArrayFromString(stringy, dontAddNull[, length])
 
-  This converts a JavaScript string into a C-line array of numbers, 0-terminated.
+  This converts a JavaScript string into a C-line array of numbers, 0-terminated, encoded as UTF-8.
 
   :param stringy: The string to be converted.
   :type stringy: String
@@ -246,7 +246,7 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: intArrayToString(array)
 
-  This creates a JavaScript string from a zero-terminated C-line array of numbers.
+  This creates a JavaScript string from an optionally zero-terminated C-line array of numbers, interpreted as UTF-8.
 
   :param array: The array to convert.
   :returns: A ``String``, containing the content of ``array``.
