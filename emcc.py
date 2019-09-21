@@ -1982,6 +1982,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logger.debug('stopping after compile phase')
       return 0
 
+    # Decide what we will link
     consumed = process_libraries(libs, lib_dirs, temp_files)
     # Filter out libraries that are actually JS libs
     link_flags = [l for l in link_flags if l[0] not in consumed]
@@ -1990,8 +1991,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     link_flags = [l for l in link_flags if l[1] not in ('-lm', '-lrt', '-ldl', '-lpthread')]
     temp_files = filter_out_dynamic_libs(temp_files)
 
-    # Decide what we will link
-    if not (shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES):
+    link_to_object = final_suffix not in executable_endings
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
+    if using_lld:
+      # Filter out link flags that lld doesn't support.  bind_at_load is often
+      # passed on OSX because libtool/autoconf add this link flag.
+      link_flags = [f for f in link_flags if f not in ('-bind_at_load',)]
+    else:
       # Filter link flags, keeping only those that shared.Building.link knows
       # how to deal with.  We currently can't handle flags with options (like
       # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
@@ -2007,7 +2013,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
-    if final_suffix not in executable_endings:
+    if link_to_object:
       with ToolchainProfiler.profile_block('linking to object file'):
         # We have a specified target (-o <target>), which is not JavaScript or HTML, and
         # we have multiple files: Link them
