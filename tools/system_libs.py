@@ -713,7 +713,7 @@ class libc_extras(MuslInternalLibrary):
   src_files = ['extras.c']
 
 
-class libcxxabi(CXXLibrary, MTLibrary):
+class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
@@ -723,6 +723,8 @@ class libcxxabi(CXXLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+    if self.is_noexcept:
+      cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     return cflags
 
   src_dir = ['system', 'lib', 'libcxxabi', 'src']

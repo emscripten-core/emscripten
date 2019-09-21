@@ -6607,7 +6607,12 @@ return malloc(size);
                  '|1.266,1413754136|')) # wasm, reinterpret the bits
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
-  def test_demangle_stacks(self):
+  @parameterized({
+    'normal': ([],),
+    'noexcept': (['-fno-exceptions'],)
+  })
+  def test_demangle_stacks(self, extra_args):
+    self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
     # when optimizing function names are not preserved by default.
