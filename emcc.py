@@ -1997,7 +1997,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Filter out link flags that lld doesn't support.  bind_at_load is often
       # passed on OSX because libtool/autoconf add this link flag.
       def supported(f):
-        if any(f.startswith(p) for p in ('-bind_at_load','-rpath')):
+        if any(f.startswith(p) for p in ('-bind_at_load', '-rpath')):
           logger.warning('ignoring unsupported linker flag: `%s`', f)
           return False
         return True
