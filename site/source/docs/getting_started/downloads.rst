@@ -6,6 +6,8 @@ Download and install
 
 .. note:: You can also :ref:`build Emscripten from source <installing-from-source>` if you prefer that to downloading binaries using the emsdk.
 
+.. note:: There are additional ways to install Emscripten than the instructions below, for example, using brew on MacOS, the package manager on your linux distro, or a Docker image, etc. However, the emsdk is the only officially supported way to use Emscripten that is supported by the Emscripten project, and the only one that we constantly test (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_, `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/master/.circleci/config.yml>`_, `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we don't officially support other ways of getting Emscripten, we definitely appreciate the efforts by third parties to package Emscripten for users' convenience, and we'd like to help out, please get in touch if you are such a packager!)
+
 .. _sdk-installation-instructions:
 
 Installation instructions
@@ -46,6 +48,40 @@ Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Git
   .. note:: ``git pull`` will fetch the current list of tags, but very recent ones may not yet be present there. You can run ``./emsdk update-tags`` to update the list of tags directly.
 
 If you change the location of the SDK (e.g. take it to another computer on an USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh`` commands.
+
+Emsdk install targets
+---------------------
+
+In the description above we asked the emsdk to install and activate ``latest``, which is the latest tagged release. That is often what you want.
+
+You can also install a specific version by specifying it, for example,
+
+  ::
+
+    ./emsdk install 1.38.45
+
+You can also specify which backend you want to use, either ``fastcomp`` or ``upstream`` (without specifying the backend, the current default is used), for example,
+
+  ::
+
+    # Get a specific version using the upstream backend.
+    ./emsdk install latest-upstream
+
+    # Get a specific version using the fastcomp backend.
+    ./emsdk install 1.38.45-fastcomp
+
+
+There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/incoming/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
+
+  ::
+
+    # Get a tip-of-tree using the upstream backend.
+    ./emsdk install tot-upstream
+
+    # Get a tip-of-tree using the fastcomp backend.
+    ./emsdk install tot-fastcomp
+
+(In the above examples we installed the various targets; remember to also ``activate`` them as in the full example from earlier.)
 
 .. _platform-notes-installation_instructions-SDK:
 
