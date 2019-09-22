@@ -1619,6 +1619,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:
             passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          elif shared.Settings.STANDALONE_WASM:
+            # even if not optimizing, make an effort to remove all unused imports and
+            # exports, to make the wasm as standalone as possible
+            passes += ['--remove-unused-module-elements']
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
             passes += ['--low-memory-unused']
           if options.debug_level < 3:
