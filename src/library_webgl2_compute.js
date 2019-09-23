@@ -21,27 +21,174 @@ var LibraryWebGL2Compute = {
 
   glGetProgramInterfaceiv__sig: 'viiii',
   glGetProgramInterfaceiv: function(program, programInterface, pname, params) {
-    throw 'glGetProgramInterfaceiv: TODO';
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramInterfaceiv', 'program');
+#endif
+    switch (pname) {
+      case 0x92F5: // GL_ACTIVE_RESOURCES
+      case 0x92F6: // GL_MAX_NAME_LENGTH
+      case 0x92F7: // GL_MAX_NUM_ACTIVE_VARIABLES
+        break;
+      default:
+        // in case pname is valid for getProgramInterfaceParameter() but the return value is incompatible with an integer
+        GL.recordError(0x0500); // GL_INVALID_ENUM
+        return;
+    }
+    var ret = GLctx.getProgramInterfaceParameter(GL.programs[program], programInterface, pname);
+    if (ret === null) return;
+    {{{ makeSetValue('params', '0', 'ret', 'i32') }}};
   },
 
   glGetProgramResourceiv__sig: 'viiiiiiii',
   glGetProgramResourceiv: function(program, programInterface, index, propCount, props, bufSize, length, params) {
-    throw 'glGetProgramResourceiv: TODO';
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramResourceiv', 'program');
+#endif
+    var i, j;
+    if (propCount <= 0 || bufSize < 0) {
+      GL.recordError(0x0501); // GL_INVALID_VALUE
+      return;
+    }
+    var properties = new Array(propCount);
+    for (i = 0; i < propCount; i++) {
+      var property = {{{ makeGetValue('props', 'i*4', 'i32') }}};
+      switch (property) {
+        case 0x92F9: // GL_NAME_LENGTH
+        case 0x92FA: // GL_TYPE
+        case 0x92FB: // GL_ARRAY_SIZE
+        case 0x92FC: // GL_OFFSET
+        case 0x92FD: // GL_BLOCK_INDEX
+        case 0x92FE: // GL_ARRAY_STRIDE
+        case 0x92FF: // GL_MATRIX_STRIDE
+        case 0x9300: // GL_IS_ROW_MAJOR
+        case 0x9301: // GL_ATOMIC_COUNTER_BUFFER_INDEX
+        case 0x9302: // GL_BUFFER_BINDING
+        case 0x9303: // GL_BUFFER_DATA_SIZE
+        case 0x9304: // GL_NUM_ACTIVE_VARIABLES
+        case 0x9305: // GL_ACTIVE_VARIABLES
+        case 0x9306: // GL_REFERENCED_BY_VERTEX_SHADER
+        case 0x930A: // GL_REFERENCED_BY_FRAGMENT_SHADER
+        case 0x930B: // GL_REFERENCED_BY_COMPUTE_SHADER
+        case 0x930C: // GL_TOP_LEVEL_ARRAY_SIZE
+        case 0x930D: // GL_TOP_LEVEL_ARRAY_STRIDE
+        case 0x930E: // GL_LOCATION
+          break;
+        default:
+          // in case any value in props is valid for getProgramResource() but the return value is incompatible with an integer
+          GL.recordError(0x0500); // GL_INVALID_ENUM
+          return;
+      }
+      properties[i] = property;
+    }
+    var ret = GLctx.getProgramResource(GL.programs[program], programInterface, index, properties);
+    if (ret === null) return;
+    var len = 0;
+    for (i = 0; i < propCount; i++) {
+      switch (properties[i]) {
+        case 0x92F9: // GL_NAME_LENGTH
+        case 0x92FA: // GL_TYPE
+        case 0x92FB: // GL_ARRAY_SIZE
+        case 0x92FC: // GL_OFFSET
+        case 0x92FD: // GL_BLOCK_INDEX
+        case 0x92FE: // GL_ARRAY_STRIDE
+        case 0x92FF: // GL_MATRIX_STRIDE
+        case 0x9300: // GL_IS_ROW_MAJOR
+        case 0x9301: // GL_ATOMIC_COUNTER_BUFFER_INDEX
+        case 0x9302: // GL_BUFFER_BINDING
+        case 0x9303: // GL_BUFFER_DATA_SIZE
+        case 0x9304: // GL_NUM_ACTIVE_VARIABLES
+        case 0x9306: // GL_REFERENCED_BY_VERTEX_SHADER
+        case 0x930A: // GL_REFERENCED_BY_FRAGMENT_SHADER
+        case 0x930B: // GL_REFERENCED_BY_COMPUTE_SHADER
+        case 0x930C: // GL_TOP_LEVEL_ARRAY_SIZE
+        case 0x930D: // GL_TOP_LEVEL_ARRAY_STRIDE
+          if (len >= bufSize) break;
+          {{{ makeSetValue('params', 'len*4', 'ret[i]', 'i32') }}};
+          len++;
+          break;
+        case 0x930E: // GL_LOCATION
+          var loc = -1;
+          switch (programInterface) {
+            case 0x92E3: // GL_PROGRAM_INPUT
+            case 0x92E4: // GL_PROGRAM_OUTPUT
+              loc = ret[i];
+              break;
+            case 0x92E1: // GL_UNIFORM
+              var str = GLctx.getProgramResourceName(GL.programs[program], programInterface, index);
+              loc = GL.lookupUniformTable(program, str);
+              break;
+            default:
+#if GL_ASSERTIONS
+              err('internal bug: unhandled programInterface in glGetProgramResourceiv');
+#endif
+          }
+          if (len >= bufSize) break;
+          {{{ makeSetValue('params', 'len*4', 'loc', 'i32') }}};
+          len++;
+          break;
+        case 0x9305: // GL_ACTIVE_VARIABLES
+          for (j = 0; j < ret[i].length; j++) {
+            if (len >= bufSize) break;
+            {{{ makeSetValue('params', 'len*4', 'ret[i][j]', 'i32') }}};
+            len++;
+          }
+          break;
+        default:
+#if GL_ASSERTIONS
+          err('internal bug: unhandled value in props in glGetProgramResourceiv');
+#endif
+      }
+    }
+    if (length) {
+      {{{ makeSetValue('length', '0', 'len', 'i32') }}};
+    }
   },
 
   glGetProgramResourceIndex__sig: 'iiii',
   glGetProgramResourceIndex: function(program, programInterface, name) {
-    throw 'glGetProgramResourceIndex: TODO';
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramResourceIndex', 'program');
+#endif
+    return GLctx.getProgramResourceIndex(GL.programs[program], programInterface, UTF8ToString(name));
   },
 
   glGetProgramResourceName__sig: 'viiiiii',
   glGetProgramResourceName: function(program, programInterface, index, bufSize, length, name) {
-    throw 'glGetProgramResourceName: TODO';
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramResourceName', 'program');
+#endif
+    if (bufSize < 0) {
+      GL.recordError(0x0501); // GL_INVALID_VALUE
+      return;
+    }
+    var str = GLctx.getProgramResourceName(GL.programs[program], programInterface, index);
+    if (str === null) return;
+    var len = stringToUTF8(str, name, bufSize);
+    if (length) {
+      {{{ makeSetValue('length', '0', 'len', 'i32') }}};
+    }
   },
 
   glGetProgramResourceLocation__sig: 'iiii',
   glGetProgramResourceLocation: function(program, programInterface, name) {
-    throw 'glGetProgramResourceLocation: TODO';
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.programs, program, 'glGetProgramResourceLocation', 'program');
+#endif
+    var str = UTF8ToString(name);
+    var loc = GLctx.getProgramResourceLocation(GL.programs[program], programInterface, str);
+    switch (programInterface) {
+      case 0x92E3: // GL_PROGRAM_INPUT
+      case 0x92E4: // GL_PROGRAM_OUTPUT
+        break;
+      case 0x92E1: // GL_UNIFORM
+        loc = GL.lookupUniformTable(program, str);
+        break;
+      default:
+#if GL_ASSERTIONS
+        err('internal bug: unhandled programInterface in glGetProgramResourceLocation');
+#endif
+    }
+    return loc;
   },
 
   glProgramUniform1i__sig: 'viii',
