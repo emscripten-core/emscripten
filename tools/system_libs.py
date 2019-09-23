@@ -592,7 +592,8 @@ class libcompiler_rt(Library):
   name = 'libcompiler_rt'
   depends = ['libc']
 
-  cflags = ['-O2']
+  cflags = ['-O2', '-Wno-int-in-bool-context']
+
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
@@ -1056,6 +1057,8 @@ class CompilerRTWasmLibrary(NoBCLibrary):
 
 class libcompiler_rt_wasm(CompilerRTWasmLibrary):
   name = 'libcompiler_rt_wasm'
+
+  cflags = ['-Wno-int-in-bool-context']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
