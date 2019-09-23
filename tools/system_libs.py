@@ -616,6 +616,7 @@ class libcompiler_rt(Library):
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libc'
+  depends = ['libcompiler_rt']
 
   # Without -fno-builtin, LLVM can optimize away or convert calls to library
   # functions to something else based on assumptions that they behave exactly
@@ -1234,6 +1235,8 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   always_include.add('libpthreads')
   if shared.Settings.MALLOC != 'none':
     always_include.add('libmalloc')
+  if shared.Settings.WASM_BACKEND:
+    always_include.add('libcompiler_rt')
 
   libs_to_link = []
   already_included = set()
@@ -1310,7 +1313,6 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     # We need to build and link the library in
     add_library(lib)
 
-  add_library(system_libs_map['libcompiler_rt'])
   if shared.Settings.WASM_BACKEND:
     add_library(system_libs_map['libc_rt_wasm'])
 
