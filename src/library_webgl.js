@@ -1086,6 +1086,26 @@ var LibraryGL = {
           }
         }
       }
+    },
+
+    lookupUniformTable: function(program, name) {
+#if GL_ASSERTIONS
+      GL.validateGLObjectID(GL.programs, program, 'lookupUniformTable', 'program');
+#endif
+      var arrayIndex = 0;
+      // If user passed an array accessor "[index]", parse the array index off the accessor.
+      if (name[name.length - 1] == ']') {
+        var leftBrace = name.lastIndexOf('[');
+        arrayIndex = name[leftBrace+1] != ']' ? parseInt(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
+        name = name.slice(0, leftBrace);
+      }
+
+      var uniformInfo = GL.programInfos[program] && GL.programInfos[program].uniforms[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
+      if (uniformInfo && arrayIndex >= 0 && arrayIndex < uniformInfo[0]) { // Check if user asked for an out-of-bounds element, i.e. for 'vec4 colors[3];' user could ask for 'colors[10]' which should return -1.
+        return uniformInfo[1] + arrayIndex;
+      } else {
+        return -1;
+      }
     }
   },
 
@@ -2035,22 +2055,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
 #endif
-    name = UTF8ToString(name);
-
-    var arrayIndex = 0;
-    // If user passed an array accessor "[index]", parse the array index off the accessor.
-    if (name[name.length - 1] == ']') {
-      var leftBrace = name.lastIndexOf('[');
-      arrayIndex = name[leftBrace+1] != ']' ? parseInt(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
-      name = name.slice(0, leftBrace);
-    }
-
-    var uniformInfo = GL.programInfos[program] && GL.programInfos[program].uniforms[name]; // returns pair [ dimension_of_uniform_array, uniform_location ]
-    if (uniformInfo && arrayIndex >= 0 && arrayIndex < uniformInfo[0]) { // Check if user asked for an out-of-bounds element, i.e. for 'vec4 colors[3];' user could ask for 'colors[10]' which should return -1.
-      return uniformInfo[1] + arrayIndex;
-    } else {
-      return -1;
-    }
+    return GL.lookupUniformTable(program, UTF8ToString(name));
   },
 
   $emscriptenWebGLGetVertexAttrib: function(index, pname, params, type) {
