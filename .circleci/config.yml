@@ -42,7 +42,7 @@ commands:
       - run:
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
@@ -52,7 +52,7 @@ commands:
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libcompiler_rt_wasm libc_rt_wasm struct_info libc-wasm --pic --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: freeze cache
@@ -479,12 +479,18 @@ jobs:
           command: brew install python3 cmake
       - checkout
       - build-upstream
-  test-upstream-mac:
+  test-upstream-other-mac:
     macos:
       xcode: "9.0"
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+  test-upstream-wasm0-mac:
+    macos:
+      xcode: "9.0"
+    steps:
+      - run-tests-mac:
+          test_targets: "wasm0"
 
 workflows:
   build-test:
@@ -566,6 +572,9 @@ workflows:
           requires:
             - build-upstream-linux
       - build-upstream-mac
-      - test-upstream-mac:
+      - test-upstream-other-mac:
+          requires:
+            - build-upstream-mac
+      - test-upstream-wasm0-mac:
           requires:
             - build-upstream-mac
