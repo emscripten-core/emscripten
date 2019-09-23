@@ -345,7 +345,7 @@ var LibraryEGL = {
       }
       contextAttribs += 8;
     }
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (glesContextVersion < 2 || glesContextVersion > 3) {
 #else
     if (glesContextVersion != 2) {

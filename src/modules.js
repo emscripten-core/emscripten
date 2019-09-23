@@ -146,7 +146,7 @@ var LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
-    if (USE_WEBGL2) {
+    if (GL_MAX_FEATURE_LEVEL >= 20) {
       libraries.push('library_webgl2.js');
     }
 

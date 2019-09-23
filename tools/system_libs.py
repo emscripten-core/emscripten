@@ -894,7 +894,7 @@ class libgl(MTLibrary):
 
   def __init__(self, **kwargs):
     self.is_legacy = kwargs.pop('is_legacy')
-    self.is_webgl2 = kwargs.pop('is_webgl2')
+    self.max_feature_level = kwargs.pop('max_feature_level')
     self.is_ofb = kwargs.pop('is_ofb')
     super(libgl, self).__init__(**kwargs)
 
@@ -902,8 +902,10 @@ class libgl(MTLibrary):
     name = super(libgl, self).get_base_name()
     if self.is_legacy:
       name += '-emu'
-    if self.is_webgl2:
+    if self.max_feature_level == 20:
       name += '-webgl2'
+    else:
+      assert self.max_feature_level == 10
     if self.is_ofb:
       name += '-ofb'
     return name
@@ -912,21 +914,31 @@ class libgl(MTLibrary):
     cflags = super(libgl, self).get_cflags()
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
-    if self.is_webgl2:
+    cflags += ['-DGL_MAX_FEATURE_LEVEL=%d' % self.max_feature_level]
+    if self.max_feature_level == 20:
       cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
+    else:
+      assert self.max_feature_level == 10
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb']
+    return super(libgl, cls).vary_on() + ['is_legacy', 'is_ofb']
+
+  @classmethod
+  def variations(cls):
+    combos = super(libgl, cls).variations()
+    return [dict(max_feature_level=max_feature_level, **combo)
+            for max_feature_level in [10, 20]
+            for combo in combos]
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     return super(libgl, cls).get_default_variation(
       is_legacy=shared.Settings.LEGACY_GL_EMULATION,
-      is_webgl2=shared.Settings.USE_WEBGL2,
+      max_feature_level=shared.Settings.GL_MAX_FEATURE_LEVEL,
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
       **kwargs
     )

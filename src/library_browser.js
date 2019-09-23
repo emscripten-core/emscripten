@@ -306,16 +306,25 @@ var LibraryBrowser = {
       var ctx;
       var contextHandle;
       if (useWebGL) {
-        // For GLES2/desktop GL compatibility, adjust a few defaults to be different to WebGL defaults, so that they align better with the desktop defaults.
+        var majorVersion, minorVersion;
+        if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 20
+        } else if (typeof WebGL2RenderingContext !== 'undefined') {
+          majorVersion = 2;
+          minorVersion = 0;
+#endif
+        } else {
+          majorVersion = 1;
+          minorVersion = 0;
+        }
         var contextAttributes = {
+          // For GLES2/desktop GL compatibility, adjust a few defaults to be different to WebGL defaults, so that they align better with the desktop defaults.
           antialias: false,
           alpha: false,
-#if USE_WEBGL2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
-          majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
-#else
-          majorVersion: 1,
-#endif
-          minorVersion: 0,
+
+          // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+          majorVersion: majorVersion,
+          minorVersion: minorVersion,
         };
 
         if (webGLContextAttributes) {

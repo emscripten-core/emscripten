@@ -12,7 +12,7 @@ var LibraryWebGL2 = {
   glGetStringi__deps: ['$stringToNewUTF8'],
   glGetStringi__sig: 'iii',
   glGetStringi: function(name, index) {
-    if (GL.currentContext.version < 2) {
+    if (GL.currentContext.featureLevel < 20) {
       GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
     }
@@ -1107,12 +1107,10 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
  [9, 'copyTexSubImage3D'],
  [10, 'blitFramebuffer']];
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
 
-// If user passes -s USE_WEBGL2=1 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
-// be linked in as well.
 if (typeof createGLPassthroughFunctions === 'undefined') {
-  throw 'In order to use WebGL 2 in strict mode with -s USE_WEBGL2=1, you need to link in WebGL support with -lGL!';
+  throw 'In order to use strict mode(-s STRICT=1) with WebGL 2 onwards, you need to link in WebGL support with -lGL!';
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);

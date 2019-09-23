@@ -1572,6 +1572,17 @@ var EMBIND = 0;
 // Whether the main() function reads the argc/argv parameters.
 var MAIN_READS_PARAMS = 1;
 
+// the maximum targeted GL feature level.
+// The concept of "feature level" is coined to workaround some versioning
+// difficulties, using the following mappings:
+//
+//   | GL feature level | WebGL version | OpenGL ES version |
+//   | ---------------- | ------------- | ----------------- |
+//   | 10               | 1.0           | 2.0               |
+//   | 20               | 2.0           | 3.0               |
+//
+var GL_MAX_FEATURE_LEVEL = 10;
+
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]

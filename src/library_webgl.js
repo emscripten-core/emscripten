@@ -38,7 +38,7 @@ var LibraryGL = {
     currentContext: null,
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
     timerQueriesEXT: [],
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     queries: [],
     samplers: [],
     transformFeedbacks: [],
@@ -73,7 +73,7 @@ var LibraryGL = {
        } */
 
     stringCache: {},
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     stringiCache: {},
 #endif
 
@@ -362,8 +362,8 @@ var LibraryGL = {
           sizeBytes = 8;
           break;
         default:
-#if USE_WEBGL2
-          if (GL.currentContext.version >= 2 && (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */)) {
+#if GL_MAX_FEATURE_LEVEL >= 20
+          if (GL.currentContext.featureLevel >= 20 && (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */)) {
             sizeBytes = 4;
             break;
           } else {
@@ -486,20 +486,41 @@ var LibraryGL = {
       // code has been downloaded.
       if (Module['preinitializedWebGLContext']) {
         var ctx = Module['preinitializedWebGLContext'];
-#if USE_WEBGL2
-        webGLContextAttributes.majorVersion = (typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext) ? 2 : 1;
-#else
-        webGLContextAttributes.majorVersion = 1;
+        var featureLevel;
+        if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 20
+        } else if (typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext) {
+          featureLevel = 20;
+          webGLContextAttributes.majorVersion = 2;
+          webGLContextAttributes.minorVersion = 0;
 #endif
-        webGLContextAttributes.minorVersion = 0;
+        } else {
+          featureLevel = 10;
+          webGLContextAttributes.majorVersion = 1;
+          webGLContextAttributes.minorVersion = 0;
+        }
       } else {
 #endif
 
-      var ctx = 
-#if USE_WEBGL2
-        (webGLContextAttributes.majorVersion > 1) ? canvas.getContext("webgl2", webGLContextAttributes) :
+#if GL_MAX_FEATURE_LEVEL >= 20
+      var maxFeatureLevel = 20;
+      var maxContextId = "webgl2";
 #endif
-        (canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes));
+      var featureLevel;
+      var ctx;
+      if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 20
+      } else if (webGLContextAttributes.majorVersion == 2) {
+        featureLevel = 20;
+        ctx = canvas.getContext("webgl2", webGLContextAttributes);
+      } else if (webGLContextAttributes.majorVersion > 1) {
+        featureLevel = maxFeatureLevel;
+        ctx = canvas.getContext(maxContextId, webGLContextAttributes);
+#endif
+      } else {
+        featureLevel = 10;
+        ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
+      }
 
 #if GL_PREINITIALIZED_CONTEXT
       }
@@ -527,18 +548,18 @@ var LibraryGL = {
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
-        version: webGLContextAttributes.majorVersion,
+        featureLevel: featureLevel,
         GLctx: ctx
       };
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome did not actually implement the new WebGL 2 functions.
       //      Those are supported only in Chrome 58 and newer.
       function getChromeVersion() {
         var raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
         return raw ? parseInt(raw[2], 10) : false;
       }
-      context.supportsWebGL2EntryPoints = (context.version >= 2) && (getChromeVersion() === false || getChromeVersion() >= 58);
+      context.supportsWebGL2EntryPoints = (context.featureLevel >= 20) && (getChromeVersion() === false || getChromeVersion() >= 58);
 #endif
 
 #if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
@@ -648,7 +669,7 @@ var LibraryGL = {
       gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
       context.defaultFbo = fbo;
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       context.defaultFboForbidBlitFramebuffer = false;
       if (gl.getContextAttributes().antialias) {
         context.defaultFboForbidBlitFramebuffer = true;
@@ -762,7 +783,7 @@ var LibraryGL = {
 
       var prevFbo = gl.getParameter(gl.FRAMEBUFFER_BINDING);
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       if (gl.blitFramebuffer && !context.defaultFboForbidBlitFramebuffer) {
         gl.bindFramebuffer(gl.READ_FRAMEBUFFER, context.defaultFbo);
         gl.bindFramebuffer(gl.DRAW_FRAMEBUFFER, null);
@@ -948,7 +969,7 @@ var LibraryGL = {
       context.anisotropicExt = GLctx.getExtension('EXT_texture_filter_anisotropic');
 #endif
 
-      if (context.version < 2) {
+      if (context.featureLevel < 20) {
         GL.acquireInstancedArraysExtension(GLctx);
         GL.acquireVertexArrayObjectExtension(GLctx);
         GL.acquireDrawBuffersExtension(GLctx);
@@ -1088,15 +1109,13 @@ var LibraryGL = {
 
 #if GL_EMULATE_GLES_VERSION_STRING_FORMAT
       case 0x1F02 /* GL_VERSION */:
-        var glVersion = GLctx.getParameter(GLctx.VERSION);
         // return GLES version string corresponding to the version of the WebGL context
-#if USE_WEBGL2
-        if (GL.currentContext.version >= 2) glVersion = 'OpenGL ES 3.0 (' + glVersion + ')';
-        else
+        var glVersion =
+#if GL_MAX_FEATURE_LEVEL >= 20
+          GL.currentContext.featureLevel == 20 ? 'OpenGL ES 3.0' :
 #endif
-        {
-          glVersion = 'OpenGL ES 2.0 (' + glVersion + ')';
-        }
+          'OpenGL ES 2.0';
+        glVersion += ' (' + GLctx.getParameter(GLctx.VERSION) + ')';
         ret = stringToNewUTF8(glVersion);
         break;
       case 0x8B8C /* GL_SHADING_LANGUAGE_VERSION */:
@@ -1149,7 +1168,7 @@ var LibraryGL = {
         }
 #endif
         return; // Do not write anything to the out pointer, since no binary formats are supported.
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
 #endif
       case 0x8DF9: // GL_NUM_SHADER_BINARY_FORMATS
@@ -1161,10 +1180,10 @@ var LibraryGL = {
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         ret = formats ? formats.length : 0;
         break;
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       case 0x821D: // GL_NUM_EXTENSIONS
 #if GL_TRACK_ERRORS
-        if (GL.currentContext.version < 2) {
+        if (GL.currentContext.featureLevel < 20) {
           GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
           return;
         }
@@ -1180,12 +1199,15 @@ var LibraryGL = {
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
 #if GL_TRACK_ERRORS
-        if (GL.currentContext.version < 2) {
+        if (GL.currentContext.featureLevel < 20) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
           return;
         }
 #endif
-        ret = name_ == 0x821B ? 3 : 0; // return version 3.0
+        var major, minor;
+        major = 3;
+        minor = 0;
+        ret = name_ == 0x821B ? major : minor; // return version major.minor
         break;
 #endif
     }
@@ -1217,7 +1239,7 @@ var LibraryGL = {
               case 0x8CA7: // RENDERBUFFER_BINDING
               case 0x8069: // TEXTURE_BINDING_2D
               case 0x85B5: // WebGL 2 GL_VERTEX_ARRAY_BINDING, or WebGL 1 extension OES_vertex_array_object GL_VERTEX_ARRAY_BINDING_OES
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
               case 0x8919: // GL_SAMPLER_BINDING
               case 0x8E25: // GL_TRANSFORM_FEEDBACK_BINDING
 #endif
@@ -1314,7 +1336,7 @@ var LibraryGL = {
 
   glCompressedTexImage2D__sig: 'viiiiiiii',
   glCompressedTexImage2D: function(target, level, internalFormat, width, height, border, imageSize, data) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx['compressedTexImage2D'](target, level, internalFormat, width, height, border, imageSize, data);
@@ -1330,7 +1352,7 @@ var LibraryGL = {
 
   glCompressedTexSubImage2D__sig: 'viiiiiiiii',
   glCompressedTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, imageSize, data) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx['compressedTexSubImage2D'](target, level, xoffset, yoffset, width, height, format, imageSize, data);
@@ -1364,7 +1386,7 @@ var LibraryGL = {
     0x8C40 /* GL_SRGB_EXT */: 3,
     0x1908 /* GL_RGBA */: 4,
     0x8C42 /* GL_SRGB_ALPHA_EXT */: 4,
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     0x1903 /* GL_RED */: 1,
     0x8D94 /* GL_RED_INTEGER */: 1,
     0x8227 /* GL_RG */: 2,
@@ -1384,7 +1406,7 @@ var LibraryGL = {
     0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 2,
     0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 2,
     0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 2,
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     0x1400 /* GL_BYTE */: 1,
     0x140B /* GL_HALF_FLOAT */: 2,
     0x1402 /* GL_SHORT */: 2,
@@ -1409,13 +1431,13 @@ var LibraryGL = {
     var bytes = __computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
     var end = pixels + bytes;
     switch(type) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       case 0x1400 /* GL_BYTE */:
         return HEAP8.subarray(pixels, end);
 #endif
       case 0x1401 /* GL_UNSIGNED_BYTE */:
         return HEAPU8.subarray(pixels, end);
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       case 0x1402 /* GL_SHORT */:
 #if GL_ASSERTIONS
         assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
@@ -1434,7 +1456,7 @@ var LibraryGL = {
         return HEAPF32.subarray(pixels>>2, end>>2);
       case 0x1405 /* GL_UNSIGNED_INT */:
       case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
       case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
       case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
@@ -1448,7 +1470,7 @@ var LibraryGL = {
       case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
       case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
       case 0x8D61 /* GL_HALF_FLOAT_OES */:
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       case 0x140B /* GL_HALF_FLOAT */:
 #endif
 #if GL_ASSERTIONS
@@ -1465,14 +1487,14 @@ var LibraryGL = {
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
                        , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
-    if (GL.currentContext.version >= 2) {
+    if (GL.currentContext.featureLevel >= 20) {
       // WebGL 1 unsized texture internalFormats are no longer supported in WebGL 2, so patch those format
       // enums to the ones that are present in WebGL 2.
       if (format == 0x1902/*GL_DEPTH_COMPONENT*/ && internalFormat == 0x1902/*GL_DEPTH_COMPONENT*/ && type == 0x1405/*GL_UNSIGNED_INT*/) {
@@ -1506,14 +1528,14 @@ var LibraryGL = {
 
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
                           , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
-    if (GL.currentContext.version >= 2) {
+    if (GL.currentContext.featureLevel >= 20) {
       // In WebGL 1 to do half float textures, one uses the type enum GL_HALF_FLOAT_OES, but in
       // WebGL 2 when half float textures were adopted to the core spec, the enum changed value
       // which breaks backwards compatibility. Route old enum number to the new one.
@@ -1539,12 +1561,12 @@ var LibraryGL = {
 
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
                        , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
 #endif
   ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
@@ -1682,7 +1704,7 @@ var LibraryGL = {
 
       if (id == GL.currArrayBuffer) GL.currArrayBuffer = 0;
       if (id == GL.currElementArrayBuffer) GL.currElementArrayBuffer = 0;
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
       if (id == GLctx.currentPixelPackBufferBinding) GLctx.currentPixelPackBufferBinding = 0;
       if (id == GLctx.currentPixelUnpackBufferBinding) GLctx.currentPixelUnpackBufferBinding = 0;
 #endif
@@ -1721,7 +1743,7 @@ var LibraryGL = {
         break;
     }
 #endif
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (data) {
         GLctx.bufferData(target, HEAPU8, usage, data, size);
@@ -1733,14 +1755,14 @@ var LibraryGL = {
       // N.b. here first form specifies a heap subarray, second form an integer size, so the ?: code here is polymorphic. It is advised to avoid
       // randomly mixing both uses in calling code, to avoid any potential JS engine JIT issues.
       GLctx.bufferData(target, data ? HEAPU8.subarray(data, data+size) : size, usage);
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     }
 #endif
   },
 
   glBufferSubData__sig: 'viiii',
   glBufferSubData: function(target, offset, size, data) {
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.bufferSubData(target, offset, HEAPU8, data, size);
       return;
@@ -2157,7 +2179,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1iv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform1iv(GL.uniforms[location], HEAP32, value>>2, count);
       return;
@@ -2174,7 +2196,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2iv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform2iv(GL.uniforms[location], HEAP32, value>>2, count*2);
       return;
@@ -2191,7 +2213,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3iv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform3iv(GL.uniforms[location], HEAP32, value>>2, count*3);
       return;
@@ -2208,7 +2230,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4iv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform4iv(GL.uniforms[location], HEAP32, value>>2, count*4);
       return;
@@ -2225,7 +2247,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform1fv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform1fv(GL.uniforms[location], HEAPF32, value>>2, count);
       return;
@@ -2257,7 +2279,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform2fv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform2fv(GL.uniforms[location], HEAPF32, value>>2, count*2);
       return;
@@ -2290,7 +2312,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform3fv must be aligned to four bytes!' + value);
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform3fv(GL.uniforms[location], HEAPF32, value>>2, count*3);
       return;
@@ -2324,7 +2346,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniform4fv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniform4fv(GL.uniforms[location], HEAPF32, value>>2, count*4);
       return;
@@ -2359,7 +2381,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2fv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniformMatrix2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*4);
       return;
@@ -2394,7 +2416,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3fv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniformMatrix3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*9);
       return;
@@ -2434,7 +2456,7 @@ var LibraryGL = {
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4fv must be aligned to four bytes!');
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       GLctx.uniformMatrix4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*16);
       return;
@@ -2490,7 +2512,7 @@ var LibraryGL = {
     }
 #endif
 
-#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL >= 20
     if (target == 0x88EB /*GL_PIXEL_PACK_BUFFER*/) {
       // In WebGL 2 glReadPixels entry point, we need to use a different WebGL 2 API function call when a buffer is bound to
       // GL_PIXEL_PACK_BUFFER_BINDING point, so must keep track whether that binding point is non-null to know what is
@@ -2615,7 +2637,7 @@ var LibraryGL = {
     var source = GL.getSource(shader, count, string, length);
 
 #if WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION
-    if (GL.currentContext.version >= 2) {
+    if (GL.currentContext.featureLevel >= 20) {
       // If a WebGL 1 shader happens to use GL_EXT_shader_texture_lod extension,
       // it will not compile on WebGL 2, because WebGL 2 no longer supports that
       // extension for WebGL 1 shaders. Therefore upgrade shaders to WebGL 2
