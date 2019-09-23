@@ -218,9 +218,6 @@ How do I install and activate old Emscripten SDKs and tools?
   # Activate required version.
   ./emsdk activate <name_of_tool>
 
-On Windows, you can directly install an old SDK version by using one of :ref:`these archived NSIS installers <archived-nsis-windows-sdk-releases>`.
-
-
 
 .. _emsdk-master-or-incoming-sdk:
 
