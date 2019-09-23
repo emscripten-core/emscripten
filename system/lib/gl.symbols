@@ -3,6 +3,7 @@
 -------- T _webgl1_match_ext_proc_address_without_suffix
 -------- T _webgl2_compute_match_ext_proc_address_without_suffix
 -------- T _webgl2_match_ext_proc_address_without_suffix
+         U abort
 -------- C currentActiveWebGLContext
 -------- C currentThreadOwnsItsWebGLContext
 -------- T emscripten_GetProcAddress
@@ -21,6 +22,7 @@
          U emscripten_glBindBufferBase
          U emscripten_glBindBufferRange
          U emscripten_glBindFramebuffer
+         U emscripten_glBindImageTexture
          U emscripten_glBindProgram
          U emscripten_glBindRenderbuffer
          U emscripten_glBindSampler
@@ -28,6 +30,7 @@
          U emscripten_glBindTransformFeedback
          U emscripten_glBindVertexArray
          U emscripten_glBindVertexArrayOES
+         U emscripten_glBindVertexBuffer
          U emscripten_glBlendColor
          U emscripten_glBlendEquation
          U emscripten_glBlendEquationSeparate
@@ -114,7 +117,10 @@
          U emscripten_glDisable
          U emscripten_glDisableClientState
          U emscripten_glDisableVertexAttribArray
+         U emscripten_glDispatchCompute
+         U emscripten_glDispatchComputeIndirect
          U emscripten_glDrawArrays
+         U emscripten_glDrawArraysIndirect
          U emscripten_glDrawArraysInstanced
          U emscripten_glDrawArraysInstancedANGLE
          U emscripten_glDrawArraysInstancedARB
@@ -125,6 +131,7 @@
          U emscripten_glDrawBuffersEXT
          U emscripten_glDrawBuffersWEBGL
          U emscripten_glDrawElements
+         U emscripten_glDrawElementsIndirect
          U emscripten_glDrawElementsInstanced
          U emscripten_glDrawElementsInstancedANGLE
          U emscripten_glDrawElementsInstancedARB
@@ -147,6 +154,7 @@
          U emscripten_glFogCoorddv
          U emscripten_glFogCoordf
          U emscripten_glFogCoordfv
+         U emscripten_glFramebufferParameteri
          U emscripten_glFramebufferRenderbuffer
          U emscripten_glFramebufferTexture2D
          U emscripten_glFramebufferTextureLayer
@@ -170,6 +178,7 @@
          U emscripten_glGetActiveUniformsiv
          U emscripten_glGetAttachedShaders
          U emscripten_glGetAttribLocation
+         U emscripten_glGetBooleani_v
          U emscripten_glGetBooleanv
          U emscripten_glGetBufferParameteri64v
          U emscripten_glGetBufferParameteriv
@@ -178,16 +187,23 @@
          U emscripten_glGetFloatv
          U emscripten_glGetFragDataLocation
          U emscripten_glGetFramebufferAttachmentParameteriv
+         U emscripten_glGetFramebufferParameteriv
          U emscripten_glGetInfoLog
          U emscripten_glGetInteger64i_v
          U emscripten_glGetInteger64v
          U emscripten_glGetIntegeri_v
          U emscripten_glGetIntegerv
          U emscripten_glGetInternalformativ
+         U emscripten_glGetMultisamplefv
          U emscripten_glGetObjectParameteriv
          U emscripten_glGetPointerv
          U emscripten_glGetProgramBinary
          U emscripten_glGetProgramInfoLog
+         U emscripten_glGetProgramInterfaceiv
+         U emscripten_glGetProgramResourceIndex
+         U emscripten_glGetProgramResourceLocation
+         U emscripten_glGetProgramResourceName
+         U emscripten_glGetProgramResourceiv
          U emscripten_glGetProgramiv
          U emscripten_glGetQueryObjecti64vEXT
          U emscripten_glGetQueryObjectivEXT
@@ -262,6 +278,8 @@
          U emscripten_glMateriali
          U emscripten_glMaterialiv
          U emscripten_glMatrixMode
+         U emscripten_glMemoryBarrier
+         U emscripten_glMemoryBarrierByRegion
          U emscripten_glMultMatrixd
          U emscripten_glMultMatrixf
          U emscripten_glMultTransposeMatrixd
@@ -285,6 +303,39 @@
          U emscripten_glPopMatrix
          U emscripten_glProgramBinary
          U emscripten_glProgramParameteri
+         U emscripten_glProgramUniform1f
+         U emscripten_glProgramUniform1fv
+         U emscripten_glProgramUniform1i
+         U emscripten_glProgramUniform1iv
+         U emscripten_glProgramUniform1ui
+         U emscripten_glProgramUniform1uiv
+         U emscripten_glProgramUniform2f
+         U emscripten_glProgramUniform2fv
+         U emscripten_glProgramUniform2i
+         U emscripten_glProgramUniform2iv
+         U emscripten_glProgramUniform2ui
+         U emscripten_glProgramUniform2uiv
+         U emscripten_glProgramUniform3f
+         U emscripten_glProgramUniform3fv
+         U emscripten_glProgramUniform3i
+         U emscripten_glProgramUniform3iv
+         U emscripten_glProgramUniform3ui
+         U emscripten_glProgramUniform3uiv
+         U emscripten_glProgramUniform4f
+         U emscripten_glProgramUniform4fv
+         U emscripten_glProgramUniform4i
+         U emscripten_glProgramUniform4iv
+         U emscripten_glProgramUniform4ui
+         U emscripten_glProgramUniform4uiv
+         U emscripten_glProgramUniformMatrix2fv
+         U emscripten_glProgramUniformMatrix2x3fv
+         U emscripten_glProgramUniformMatrix2x4fv
+         U emscripten_glProgramUniformMatrix3fv
+         U emscripten_glProgramUniformMatrix3x2fv
+         U emscripten_glProgramUniformMatrix3x4fv
+         U emscripten_glProgramUniformMatrix4fv
+         U emscripten_glProgramUniformMatrix4x2fv
+         U emscripten_glProgramUniformMatrix4x3fv
          U emscripten_glPushMatrix
          U emscripten_glQueryCounterEXT
          U emscripten_glReadBuffer
@@ -296,6 +347,7 @@
          U emscripten_glRotated
          U emscripten_glRotatef
          U emscripten_glSampleCoverage
+         U emscripten_glSampleMaski
          U emscripten_glSamplerParameterf
          U emscripten_glSamplerParameterfv
          U emscripten_glSamplerParameteri
@@ -359,6 +411,7 @@
          U emscripten_glTexParameteri
          U emscripten_glTexParameteriv
          U emscripten_glTexStorage2D
+         U emscripten_glTexStorage2DMultisample
          U emscripten_glTexStorage3D
          U emscripten_glTexSubImage2D
          U emscripten_glTexSubImage3D
@@ -434,17 +487,21 @@
          U emscripten_glVertexAttrib3fv
          U emscripten_glVertexAttrib4f
          U emscripten_glVertexAttrib4fv
+         U emscripten_glVertexAttribBinding
          U emscripten_glVertexAttribDivisor
          U emscripten_glVertexAttribDivisorANGLE
          U emscripten_glVertexAttribDivisorARB
          U emscripten_glVertexAttribDivisorEXT
          U emscripten_glVertexAttribDivisorNV
+         U emscripten_glVertexAttribFormat
          U emscripten_glVertexAttribI4i
          U emscripten_glVertexAttribI4iv
          U emscripten_glVertexAttribI4ui
          U emscripten_glVertexAttribI4uiv
+         U emscripten_glVertexAttribIFormat
          U emscripten_glVertexAttribIPointer
          U emscripten_glVertexAttribPointer
+         U emscripten_glVertexBindingDivisor
          U emscripten_glVertexPointer
          U emscripten_glViewport
          U emscripten_glWaitSync
@@ -473,12 +530,14 @@
 -------- T glBindBufferBase
 -------- T glBindBufferRange
 -------- T glBindFramebuffer
+-------- T glBindImageTexture
 -------- T glBindRenderbuffer
 -------- T glBindSampler
 -------- T glBindTexture
 -------- T glBindTransformFeedback
 -------- T glBindVertexArray
 -------- T glBindVertexArrayOES
+-------- T glBindVertexBuffer
 -------- T glBlendColor
 -------- T glBlendEquation
 -------- T glBlendEquationSeparate
@@ -529,7 +588,10 @@
 -------- T glDetachShader
 -------- T glDisable
 -------- T glDisableVertexAttribArray
+-------- T glDispatchCompute
+-------- T glDispatchComputeIndirect
 -------- T glDrawArrays
+-------- T glDrawArraysIndirect
 -------- T glDrawArraysInstanced
 -------- T glDrawArraysInstancedANGLE
 -------- T glDrawArraysInstancedARB
@@ -539,6 +601,7 @@
 -------- T glDrawBuffersEXT
 -------- T glDrawBuffersWEBGL
 -------- T glDrawElements
+-------- T glDrawElementsIndirect
 -------- T glDrawElementsInstanced
 -------- T glDrawElementsInstancedANGLE
 -------- T glDrawElementsInstancedARB
@@ -554,6 +617,7 @@
 -------- T glFinish
 -------- T glFlush
 -------- T glFlushMappedBufferRange
+-------- T glFramebufferParameteri
 -------- T glFramebufferRenderbuffer
 -------- T glFramebufferTexture2D
 -------- T glFramebufferTextureLayer
@@ -576,6 +640,7 @@
 -------- T glGetActiveUniformsiv
 -------- T glGetAttachedShaders
 -------- T glGetAttribLocation
+-------- T glGetBooleani_v
 -------- T glGetBooleanv
 -------- T glGetBufferParameteri64v
 -------- T glGetBufferParameteriv
@@ -584,13 +649,20 @@
 -------- T glGetFloatv
 -------- T glGetFragDataLocation
 -------- T glGetFramebufferAttachmentParameteriv
+-------- T glGetFramebufferParameteriv
 -------- T glGetInteger64i_v
 -------- T glGetInteger64v
 -------- T glGetIntegeri_v
 -------- T glGetIntegerv
 -------- T glGetInternalformativ
+-------- T glGetMultisamplefv
 -------- T glGetProgramBinary
 -------- T glGetProgramInfoLog
+-------- T glGetProgramInterfaceiv
+-------- T glGetProgramResourceIndex
+-------- T glGetProgramResourceLocation
+-------- T glGetProgramResourceName
+-------- T glGetProgramResourceiv
 -------- T glGetProgramiv
 -------- T glGetQueryObjecti64vEXT
 -------- T glGetQueryObjectivEXT
@@ -609,6 +681,8 @@
 -------- T glGetString
 -------- T glGetStringi
 -------- T glGetSynciv
+-------- T glGetTexLevelParameterfv
+-------- T glGetTexLevelParameteriv
 -------- T glGetTexParameterfv
 -------- T glGetTexParameteriv
 -------- T glGetTransformFeedbackVarying
@@ -643,11 +717,46 @@
 -------- T glLineWidth
 -------- T glLinkProgram
 -------- T glMapBufferRange
+-------- T glMemoryBarrier
+-------- T glMemoryBarrierByRegion
 -------- T glPauseTransformFeedback
 -------- T glPixelStorei
 -------- T glPolygonOffset
 -------- T glProgramBinary
 -------- T glProgramParameteri
+-------- T glProgramUniform1f
+-------- T glProgramUniform1fv
+-------- T glProgramUniform1i
+-------- T glProgramUniform1iv
+-------- T glProgramUniform1ui
+-------- T glProgramUniform1uiv
+-------- T glProgramUniform2f
+-------- T glProgramUniform2fv
+-------- T glProgramUniform2i
+-------- T glProgramUniform2iv
+-------- T glProgramUniform2ui
+-------- T glProgramUniform2uiv
+-------- T glProgramUniform3f
+-------- T glProgramUniform3fv
+-------- T glProgramUniform3i
+-------- T glProgramUniform3iv
+-------- T glProgramUniform3ui
+-------- T glProgramUniform3uiv
+-------- T glProgramUniform4f
+-------- T glProgramUniform4fv
+-------- T glProgramUniform4i
+-------- T glProgramUniform4iv
+-------- T glProgramUniform4ui
+-------- T glProgramUniform4uiv
+-------- T glProgramUniformMatrix2fv
+-------- T glProgramUniformMatrix2x3fv
+-------- T glProgramUniformMatrix2x4fv
+-------- T glProgramUniformMatrix3fv
+-------- T glProgramUniformMatrix3x2fv
+-------- T glProgramUniformMatrix3x4fv
+-------- T glProgramUniformMatrix4fv
+-------- T glProgramUniformMatrix4x2fv
+-------- T glProgramUniformMatrix4x3fv
 -------- T glQueryCounterEXT
 -------- T glReadBuffer
 -------- T glReadPixels
@@ -656,6 +765,7 @@
 -------- T glRenderbufferStorageMultisample
 -------- T glResumeTransformFeedback
 -------- T glSampleCoverage
+-------- T glSampleMaski
 -------- T glSamplerParameterf
 -------- T glSamplerParameterfv
 -------- T glSamplerParameteri
@@ -676,6 +786,7 @@
 -------- T glTexParameteri
 -------- T glTexParameteriv
 -------- T glTexStorage2D
+-------- T glTexStorage2DMultisample
 -------- T glTexStorage3D
 -------- T glTexSubImage2D
 -------- T glTexSubImage3D
@@ -725,17 +836,21 @@
 -------- T glVertexAttrib3fv
 -------- T glVertexAttrib4f
 -------- T glVertexAttrib4fv
+-------- T glVertexAttribBinding
 -------- T glVertexAttribDivisor
 -------- T glVertexAttribDivisorANGLE
 -------- T glVertexAttribDivisorARB
 -------- T glVertexAttribDivisorEXT
 -------- T glVertexAttribDivisorNV
+-------- T glVertexAttribFormat
 -------- T glVertexAttribI4i
 -------- T glVertexAttribI4iv
 -------- T glVertexAttribI4ui
 -------- T glVertexAttribI4uiv
+-------- T glVertexAttribIFormat
 -------- T glVertexAttribIPointer
 -------- T glVertexAttribPointer
+-------- T glVertexBindingDivisor
 -------- T glViewport
 -------- T glWaitSync
          U malloc

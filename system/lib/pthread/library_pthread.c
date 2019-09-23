@@ -268,6 +268,9 @@ static void _do_call(em_queued_call* q) {
     case EM_FUNC_SIG_VIIFI:
       ((em_func_viifi)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].f, q->args[3].i);
       break;
+    case EM_FUNC_SIG_VIIFF:
+      ((em_func_viiff)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].f, q->args[3].f);
+      break;
     case EM_FUNC_SIG_VIFFF:
       ((em_func_vifff)q->functionPtr)(q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f);
       break;
@@ -278,6 +281,10 @@ static void _do_call(em_queued_call* q) {
       ((em_func_viiiii)q->functionPtr)(
         q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i);
       break;
+    case EM_FUNC_SIG_VIIFFF:
+      ((em_func_viifff)q->functionPtr)(
+        q->args[0].i, q->args[1].i, q->args[2].f, q->args[3].f, q->args[4].f);
+      break;
     case EM_FUNC_SIG_VIFFFF:
       ((em_func_viffff)q->functionPtr)(
         q->args[0].i, q->args[1].f, q->args[2].f, q->args[3].f, q->args[4].f);
@@ -285,6 +292,10 @@ static void _do_call(em_queued_call* q) {
     case EM_FUNC_SIG_VIIIIII:
       ((em_func_viiiiii)q->functionPtr)(
         q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i, q->args[4].i, q->args[5].i);
+      break;
+    case EM_FUNC_SIG_VIIFFFF:
+      ((em_func_viiffff)q->functionPtr)(
+        q->args[0].i, q->args[1].i, q->args[2].f, q->args[3].f, q->args[4].f, q->args[5].f);
       break;
     case EM_FUNC_SIG_VIIIIIII:
       ((em_func_viiiiiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i, q->args[3].i,
