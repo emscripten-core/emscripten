@@ -11,7 +11,8 @@
 #include <stdlib.h>
 #include <emscripten.h>
 
-#define GL_GLEXT_PROTOTYPES
+#ifdef LEGACY_GL_EMULATION
+
 #include <GL/gl.h>
 #include <GL/glext.h>
 
@@ -107,8 +108,6 @@ GLAPI GLint GLAPIENTRY emscripten_glRenderMode( GLenum mode );
 GLAPI GLenum GLAPIENTRY emscripten_glGetError( void );
 
 GLAPI const GLubyte * GLAPIENTRY emscripten_glGetString( GLenum name );
-
-GLAPI const GLubyte * GLAPIENTRY emscripten_glGetStringi( GLenum name, GLuint index);
 
 GLAPI void GLAPIENTRY emscripten_glFinish( void );
 
@@ -581,21 +580,6 @@ GLAPI void GLAPIENTRY emscripten_glGetTexImage( GLenum target, GLint level,
                                      GLenum format, GLenum type,
                                      GLvoid *pixels );
 
-GLAPI void GLAPIENTRY emscripten_glTexStorage2D( GLenum target, GLsizei levels,
- 	                                GLenum internalformat, GLsizei width,
- 	                                GLsizei height );
-
-GLAPI void GLAPIENTRY emscripten_glTexStorage3D( GLenum target, GLsizei levels,
- 	                                GLenum internalformat, GLsizei width,
- 	                                GLsizei height,	GLsizei depth );
-
-GLAPI void GLAPIENTRY emscripten_glTexStorage2D( GLenum target, GLsizei levels,
-                                                 GLenum internalformat, GLsizei width,
-                                                 GLsizei height );
-
-GLAPI void GLAPIENTRY emscripten_glTexStorage3D( GLenum target, GLsizei levels,
-                                                 GLenum internalformat, GLsizei width,
-                                                 GLsizei height, GLsizei depth );
 
 /* 1.1 functions */
 
@@ -1162,412 +1146,19 @@ GLAPI void APIENTRY emscripten_glGetBufferParameteriv (GLenum target, GLenum pna
 GLAPI void APIENTRY emscripten_glGetBufferPointerv (GLenum target, GLenum pname, GLvoid* *params);
 
 
-GLAPI void APIENTRY emscripten_glBlendEquationSeparate (GLenum modeRGB, GLenum modeAlpha);
-GLAPI void APIENTRY emscripten_glDrawBuffers (GLsizei n, const GLenum *bufs);
-GLAPI void APIENTRY emscripten_glStencilOpSeparate (GLenum face, GLenum sfail, GLenum dpfail, GLenum dppass);
-GLAPI void APIENTRY emscripten_glStencilFuncSeparate (GLenum face, GLenum func, GLint ref, GLuint mask);
-GLAPI void APIENTRY emscripten_glStencilMaskSeparate (GLenum face, GLuint mask);
 GLAPI void APIENTRY emscripten_glAttachShader (GLuint program, GLuint shader);
-GLAPI void APIENTRY emscripten_glBindAttribLocation (GLuint program, GLuint index, const GLchar *name);
-GLAPI void APIENTRY emscripten_glCompileShader (GLuint shader);
 GLAPI GLuint APIENTRY emscripten_glCreateProgram (void);
 GLAPI GLuint APIENTRY emscripten_glCreateShader (GLenum type);
-GLAPI void APIENTRY emscripten_glDeleteProgram (GLuint program);
-GLAPI void APIENTRY emscripten_glDeleteShader (GLuint shader);
 GLAPI void APIENTRY emscripten_glDetachShader (GLuint program, GLuint shader);
-GLAPI void APIENTRY emscripten_glDisableVertexAttribArray (GLuint index);
-GLAPI void APIENTRY emscripten_glEnableVertexAttribArray (GLuint index);
-GLAPI void APIENTRY emscripten_glGetActiveAttrib (GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name);
-GLAPI void APIENTRY emscripten_glGetActiveUniform (GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLint *size, GLenum *type, GLchar *name);
-GLAPI void APIENTRY emscripten_glGetAttachedShaders (GLuint program, GLsizei maxCount, GLsizei *count, GLuint *obj);
-GLAPI GLint APIENTRY emscripten_glGetAttribLocation (GLuint program, const GLchar *name);
-GLAPI void APIENTRY emscripten_glGetProgramiv (GLuint program, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetProgramInfoLog (GLuint program, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
-GLAPI void APIENTRY emscripten_glGetShaderiv (GLuint shader, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetShaderInfoLog (GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
-GLAPI void APIENTRY emscripten_glGetShaderSource (GLuint shader, GLsizei bufSize, GLsizei *length, GLchar *source);
-GLAPI GLint APIENTRY emscripten_glGetUniformLocation (GLuint program, const GLchar *name);
-GLAPI void APIENTRY emscripten_glGetUniformfv (GLuint program, GLint location, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetUniformiv (GLuint program, GLint location, GLint *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribdv (GLuint index, GLenum pname, GLdouble *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribfv (GLuint index, GLenum pname, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribiv (GLuint index, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribPointerv (GLuint index, GLenum pname, GLvoid* *pointer);
-GLAPI GLboolean APIENTRY emscripten_glIsProgram (GLuint program);
-GLAPI GLboolean APIENTRY emscripten_glIsShader (GLuint shader);
-GLAPI void APIENTRY emscripten_glLinkProgram (GLuint program);
-GLAPI void APIENTRY emscripten_glShaderSource (GLuint shader, GLsizei count, const GLchar *const*string, const GLint *length);
 GLAPI void APIENTRY emscripten_glUseProgram (GLuint program);
-GLAPI void APIENTRY emscripten_glUniform1f (GLint location, GLfloat v0);
-GLAPI void APIENTRY emscripten_glUniform2f (GLint location, GLfloat v0, GLfloat v1);
-GLAPI void APIENTRY emscripten_glUniform3f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
-GLAPI void APIENTRY emscripten_glUniform4f (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
-GLAPI void APIENTRY emscripten_glUniform1i (GLint location, GLint v0);
-GLAPI void APIENTRY emscripten_glUniform2i (GLint location, GLint v0, GLint v1);
-GLAPI void APIENTRY emscripten_glUniform3i (GLint location, GLint v0, GLint v1, GLint v2);
-GLAPI void APIENTRY emscripten_glUniform4i (GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
-GLAPI void APIENTRY emscripten_glUniform1fv (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform2fv (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform3fv (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform4fv (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform1iv (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniform2iv (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniform3iv (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniform4iv (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix2fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glValidateProgram (GLuint program);
-GLAPI void APIENTRY emscripten_glVertexAttrib1d (GLuint index, GLdouble x);
-GLAPI void APIENTRY emscripten_glVertexAttrib1dv (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib1f (GLuint index, GLfloat x);
-GLAPI void APIENTRY emscripten_glVertexAttrib1fv (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib1s (GLuint index, GLshort x);
-GLAPI void APIENTRY emscripten_glVertexAttrib1sv (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib2d (GLuint index, GLdouble x, GLdouble y);
-GLAPI void APIENTRY emscripten_glVertexAttrib2dv (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib2f (GLuint index, GLfloat x, GLfloat y);
-GLAPI void APIENTRY emscripten_glVertexAttrib2fv (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib2s (GLuint index, GLshort x, GLshort y);
-GLAPI void APIENTRY emscripten_glVertexAttrib2sv (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib3d (GLuint index, GLdouble x, GLdouble y, GLdouble z);
-GLAPI void APIENTRY emscripten_glVertexAttrib3dv (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib3f (GLuint index, GLfloat x, GLfloat y, GLfloat z);
-GLAPI void APIENTRY emscripten_glVertexAttrib3fv (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib3s (GLuint index, GLshort x, GLshort y, GLshort z);
-GLAPI void APIENTRY emscripten_glVertexAttrib3sv (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Nbv (GLuint index, const GLbyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Niv (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Nsv (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Nub (GLuint index, GLubyte x, GLubyte y, GLubyte z, GLubyte w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Nubv (GLuint index, const GLubyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Nuiv (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4Nusv (GLuint index, const GLushort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4bv (GLuint index, const GLbyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4d (GLuint index, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4dv (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4f (GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4fv (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4iv (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4s (GLuint index, GLshort x, GLshort y, GLshort z, GLshort w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4sv (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4ubv (GLuint index, const GLubyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4uiv (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4usv (GLuint index, const GLushort *v);
-GLAPI void APIENTRY emscripten_glVertexAttribPointer (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid *pointer);
 
-
-GLAPI void APIENTRY emscripten_glUniformMatrix2x3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix3x2fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix2x4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix4x2fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix3x4fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix4x3fv (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-
-
-GLAPI void APIENTRY emscripten_glColorMaski (GLuint index, GLboolean r, GLboolean g, GLboolean b, GLboolean a);
-GLAPI void APIENTRY emscripten_glGetBooleani_v (GLenum target, GLuint index, GLboolean *data);
-GLAPI void APIENTRY emscripten_glGetIntegeri_v (GLenum target, GLuint index, GLint *data);
-GLAPI void APIENTRY emscripten_glEnablei (GLenum target, GLuint index);
-GLAPI void APIENTRY emscripten_glDisablei (GLenum target, GLuint index);
-GLAPI GLboolean APIENTRY emscripten_glIsEnabledi (GLenum target, GLuint index);
-GLAPI void APIENTRY emscripten_glBeginTransformFeedback (GLenum primitiveMode);
-GLAPI void APIENTRY emscripten_glEndTransformFeedback (void);
-GLAPI void APIENTRY emscripten_glBindBufferRange (GLenum target, GLuint index, GLuint buffer, GLintptr offset, GLsizeiptr size);
-GLAPI void APIENTRY emscripten_glBindBufferBase (GLenum target, GLuint index, GLuint buffer);
-GLAPI void APIENTRY emscripten_glTransformFeedbackVaryings (GLuint program, GLsizei count, const GLchar* *varyings, GLenum bufferMode);
-GLAPI void APIENTRY emscripten_glGetTransformFeedbackVarying (GLuint program, GLuint index, GLsizei bufSize, GLsizei *length, GLsizei *size, GLenum *type, GLchar *name);
-GLAPI void APIENTRY emscripten_glClampColor (GLenum target, GLenum clamp);
-GLAPI void APIENTRY emscripten_glBeginConditionalRender (GLuint id, GLenum mode);
-GLAPI void APIENTRY emscripten_glEndConditionalRender (void);
-GLAPI void APIENTRY emscripten_glVertexAttribIPointer (GLuint index, GLint size, GLenum type, GLsizei stride, const GLvoid *pointer);
-GLAPI void APIENTRY emscripten_glGetVertexAttribIiv (GLuint index, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribIuiv (GLuint index, GLenum pname, GLuint *params);
-GLAPI void APIENTRY emscripten_glVertexAttribI1i (GLuint index, GLint x);
-GLAPI void APIENTRY emscripten_glVertexAttribI2i (GLuint index, GLint x, GLint y);
-GLAPI void APIENTRY emscripten_glVertexAttribI3i (GLuint index, GLint x, GLint y, GLint z);
-GLAPI void APIENTRY emscripten_glVertexAttribI4i (GLuint index, GLint x, GLint y, GLint z, GLint w);
-GLAPI void APIENTRY emscripten_glVertexAttribI1ui (GLuint index, GLuint x);
-GLAPI void APIENTRY emscripten_glVertexAttribI2ui (GLuint index, GLuint x, GLuint y);
-GLAPI void APIENTRY emscripten_glVertexAttribI3ui (GLuint index, GLuint x, GLuint y, GLuint z);
-GLAPI void APIENTRY emscripten_glVertexAttribI4ui (GLuint index, GLuint x, GLuint y, GLuint z, GLuint w);
-GLAPI void APIENTRY emscripten_glVertexAttribI1iv (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI2iv (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI3iv (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI4iv (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI1uiv (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI2uiv (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI3uiv (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI4uiv (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI4bv (GLuint index, const GLbyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI4sv (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI4ubv (GLuint index, const GLubyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttribI4usv (GLuint index, const GLushort *v);
-GLAPI void APIENTRY emscripten_glGetUniformuiv (GLuint program, GLint location, GLuint *params);
-GLAPI void APIENTRY emscripten_glBindFragDataLocation (GLuint program, GLuint color, const GLchar *name);
-GLAPI GLint APIENTRY emscripten_glGetFragDataLocation (GLuint program, const GLchar *name);
-GLAPI void APIENTRY emscripten_glUniform1ui (GLint location, GLuint v0);
-GLAPI void APIENTRY emscripten_glUniform2ui (GLint location, GLuint v0, GLuint v1);
-GLAPI void APIENTRY emscripten_glUniform3ui (GLint location, GLuint v0, GLuint v1, GLuint v2);
-GLAPI void APIENTRY emscripten_glUniform4ui (GLint location, GLuint v0, GLuint v1, GLuint v2, GLuint v3);
-GLAPI void APIENTRY emscripten_glUniform1uiv (GLint location, GLsizei count, const GLuint *value);
-GLAPI void APIENTRY emscripten_glUniform2uiv (GLint location, GLsizei count, const GLuint *value);
-GLAPI void APIENTRY emscripten_glUniform3uiv (GLint location, GLsizei count, const GLuint *value);
-GLAPI void APIENTRY emscripten_glUniform4uiv (GLint location, GLsizei count, const GLuint *value);
-GLAPI void APIENTRY emscripten_glTexParameterIiv (GLenum target, GLenum pname, const GLint *params);
-GLAPI void APIENTRY emscripten_glTexParameterIuiv (GLenum target, GLenum pname, const GLuint *params);
-GLAPI void APIENTRY emscripten_glGetTexParameterIiv (GLenum target, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetTexParameterIuiv (GLenum target, GLenum pname, GLuint *params);
-GLAPI void APIENTRY emscripten_glClearBufferiv (GLenum buffer, GLint drawbuffer, const GLint *value);
-GLAPI void APIENTRY emscripten_glClearBufferuiv (GLenum buffer, GLint drawbuffer, const GLuint *value);
-GLAPI void APIENTRY emscripten_glClearBufferfv (GLenum buffer, GLint drawbuffer, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glClearBufferfi (GLenum buffer, GLint drawbuffer, GLfloat depth, GLint stencil);
-
-
-GLAPI void APIENTRY emscripten_glDrawArraysInstanced (GLenum mode, GLint first, GLsizei count, GLsizei primcount);
-GLAPI void APIENTRY emscripten_glDrawElementsInstanced (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices, GLsizei primcount);
-GLAPI void APIENTRY emscripten_glTexBuffer (GLenum target, GLenum internalformat, GLuint buffer);
-GLAPI void APIENTRY emscripten_glPrimitiveRestartIndex (GLuint index);
-
-
-GLAPI void APIENTRY emscripten_glActiveTextureARB (GLenum texture);
-GLAPI void APIENTRY emscripten_glClientActiveTextureARB (GLenum texture);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1dARB (GLenum target, GLdouble s);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1dvARB (GLenum target, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1fARB (GLenum target, GLfloat s);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1fvARB (GLenum target, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1iARB (GLenum target, GLint s);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1ivARB (GLenum target, const GLint *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1sARB (GLenum target, GLshort s);
-GLAPI void APIENTRY emscripten_glMultiTexCoord1svARB (GLenum target, const GLshort *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2dARB (GLenum target, GLdouble s, GLdouble t);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2dvARB (GLenum target, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2fARB (GLenum target, GLfloat s, GLfloat t);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2fvARB (GLenum target, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2iARB (GLenum target, GLint s, GLint t);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2ivARB (GLenum target, const GLint *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2sARB (GLenum target, GLshort s, GLshort t);
-GLAPI void APIENTRY emscripten_glMultiTexCoord2svARB (GLenum target, const GLshort *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3dARB (GLenum target, GLdouble s, GLdouble t, GLdouble r);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3dvARB (GLenum target, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3fARB (GLenum target, GLfloat s, GLfloat t, GLfloat r);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3fvARB (GLenum target, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3iARB (GLenum target, GLint s, GLint t, GLint r);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3ivARB (GLenum target, const GLint *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3sARB (GLenum target, GLshort s, GLshort t, GLshort r);
-GLAPI void APIENTRY emscripten_glMultiTexCoord3svARB (GLenum target, const GLshort *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4dARB (GLenum target, GLdouble s, GLdouble t, GLdouble r, GLdouble q);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4dvARB (GLenum target, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4fARB (GLenum target, GLfloat s, GLfloat t, GLfloat r, GLfloat q);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4fvARB (GLenum target, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4iARB (GLenum target, GLint s, GLint t, GLint r, GLint q);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4ivARB (GLenum target, const GLint *v);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4sARB (GLenum target, GLshort s, GLshort t, GLshort r, GLshort q);
-GLAPI void APIENTRY emscripten_glMultiTexCoord4svARB (GLenum target, const GLshort *v);
-
-
-GLAPI void APIENTRY emscripten_glLoadTransposeMatrixfARB (const GLfloat *m);
-GLAPI void APIENTRY emscripten_glLoadTransposeMatrixdARB (const GLdouble *m);
-GLAPI void APIENTRY emscripten_glMultTransposeMatrixfARB (const GLfloat *m);
-GLAPI void APIENTRY emscripten_glMultTransposeMatrixdARB (const GLdouble *m);
-
-
-GLAPI void APIENTRY emscripten_glCompressedTexImage3DARB (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLsizei imageSize, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glCompressedTexImage2DARB (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLsizei height, GLint border, GLsizei imageSize, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glCompressedTexImage1DARB (GLenum target, GLint level, GLenum internalformat, GLsizei width, GLint border, GLsizei imageSize, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glCompressedTexSubImage3DARB (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLint zoffset, GLsizei width, GLsizei height, GLsizei depth, GLenum format, GLsizei imageSize, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glCompressedTexSubImage2DARB (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLsizei imageSize, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glCompressedTexSubImage1DARB (GLenum target, GLint level, GLint xoffset, GLsizei width, GLenum format, GLsizei imageSize, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glGetCompressedTexImageARB (GLenum target, GLint level, GLvoid *img);
-
-
-GLAPI void APIENTRY emscripten_glVertexAttrib1dARB (GLuint index, GLdouble x);
-GLAPI void APIENTRY emscripten_glVertexAttrib1dvARB (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib1fARB (GLuint index, GLfloat x);
-GLAPI void APIENTRY emscripten_glVertexAttrib1fvARB (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib1sARB (GLuint index, GLshort x);
-GLAPI void APIENTRY emscripten_glVertexAttrib1svARB (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib2dARB (GLuint index, GLdouble x, GLdouble y);
-GLAPI void APIENTRY emscripten_glVertexAttrib2dvARB (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib2fARB (GLuint index, GLfloat x, GLfloat y);
-GLAPI void APIENTRY emscripten_glVertexAttrib2fvARB (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib2sARB (GLuint index, GLshort x, GLshort y);
-GLAPI void APIENTRY emscripten_glVertexAttrib2svARB (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib3dARB (GLuint index, GLdouble x, GLdouble y, GLdouble z);
-GLAPI void APIENTRY emscripten_glVertexAttrib3dvARB (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib3fARB (GLuint index, GLfloat x, GLfloat y, GLfloat z);
-GLAPI void APIENTRY emscripten_glVertexAttrib3fvARB (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib3sARB (GLuint index, GLshort x, GLshort y, GLshort z);
-GLAPI void APIENTRY emscripten_glVertexAttrib3svARB (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NbvARB (GLuint index, const GLbyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NivARB (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NsvARB (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NubARB (GLuint index, GLubyte x, GLubyte y, GLubyte z, GLubyte w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NubvARB (GLuint index, const GLubyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NuivARB (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4NusvARB (GLuint index, const GLushort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4bvARB (GLuint index, const GLbyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4dARB (GLuint index, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4dvARB (GLuint index, const GLdouble *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4fARB (GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4fvARB (GLuint index, const GLfloat *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4ivARB (GLuint index, const GLint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4sARB (GLuint index, GLshort x, GLshort y, GLshort z, GLshort w);
-GLAPI void APIENTRY emscripten_glVertexAttrib4svARB (GLuint index, const GLshort *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4ubvARB (GLuint index, const GLubyte *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4uivARB (GLuint index, const GLuint *v);
-GLAPI void APIENTRY emscripten_glVertexAttrib4usvARB (GLuint index, const GLushort *v);
-GLAPI void APIENTRY emscripten_glVertexAttribPointerARB (GLuint index, GLint size, GLenum type, GLboolean normalized, GLsizei stride, const GLvoid *pointer);
-GLAPI void APIENTRY emscripten_glEnableVertexAttribArrayARB (GLuint index);
-GLAPI void APIENTRY emscripten_glDisableVertexAttribArrayARB (GLuint index);
-GLAPI void APIENTRY emscripten_glProgramStringARB (GLenum target, GLenum format, GLsizei len, const GLvoid *string);
-GLAPI void APIENTRY emscripten_glBindProgramARB (GLenum target, GLuint program);
-GLAPI void APIENTRY emscripten_glDeleteProgramsARB (GLsizei n, const GLuint *programs);
-GLAPI void APIENTRY emscripten_glGenProgramsARB (GLsizei n, GLuint *programs);
-GLAPI void APIENTRY emscripten_glProgramEnvParameter4dARB (GLenum target, GLuint index, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
-GLAPI void APIENTRY emscripten_glProgramEnvParameter4dvARB (GLenum target, GLuint index, const GLdouble *params);
-GLAPI void APIENTRY emscripten_glProgramEnvParameter4fARB (GLenum target, GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
-GLAPI void APIENTRY emscripten_glProgramEnvParameter4fvARB (GLenum target, GLuint index, const GLfloat *params);
-GLAPI void APIENTRY emscripten_glProgramLocalParameter4dARB (GLenum target, GLuint index, GLdouble x, GLdouble y, GLdouble z, GLdouble w);
-GLAPI void APIENTRY emscripten_glProgramLocalParameter4dvARB (GLenum target, GLuint index, const GLdouble *params);
-GLAPI void APIENTRY emscripten_glProgramLocalParameter4fARB (GLenum target, GLuint index, GLfloat x, GLfloat y, GLfloat z, GLfloat w);
-GLAPI void APIENTRY emscripten_glProgramLocalParameter4fvARB (GLenum target, GLuint index, const GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetProgramEnvParameterdvARB (GLenum target, GLuint index, GLdouble *params);
-GLAPI void APIENTRY emscripten_glGetProgramEnvParameterfvARB (GLenum target, GLuint index, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetProgramLocalParameterdvARB (GLenum target, GLuint index, GLdouble *params);
-GLAPI void APIENTRY emscripten_glGetProgramLocalParameterfvARB (GLenum target, GLuint index, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetProgramivARB (GLenum target, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetProgramStringARB (GLenum target, GLenum pname, GLvoid *string);
-GLAPI void APIENTRY emscripten_glGetVertexAttribdvARB (GLuint index, GLenum pname, GLdouble *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribfvARB (GLuint index, GLenum pname, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribivARB (GLuint index, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetVertexAttribPointervARB (GLuint index, GLenum pname, GLvoid* *pointer);
-GLAPI GLboolean APIENTRY emscripten_glIsProgramARB (GLuint program);
-
-
-GLAPI void APIENTRY emscripten_glBindBufferARB (GLenum target, GLuint buffer);
-GLAPI void APIENTRY emscripten_glDeleteBuffersARB (GLsizei n, const GLuint *buffers);
-GLAPI void APIENTRY emscripten_glGenBuffersARB (GLsizei n, GLuint *buffers);
-GLAPI GLboolean APIENTRY emscripten_glIsBufferARB (GLuint buffer);
-GLAPI void APIENTRY emscripten_glBufferDataARB (GLenum target, GLsizeiptrARB size, const GLvoid *data, GLenum usage);
-GLAPI void APIENTRY emscripten_glBufferSubDataARB (GLenum target, GLintptrARB offset, GLsizeiptrARB size, const GLvoid *data);
-GLAPI void APIENTRY emscripten_glGetBufferSubDataARB (GLenum target, GLintptrARB offset, GLsizeiptrARB size, GLvoid *data);
-GLAPI GLvoid* APIENTRY emscripten_glMapBufferARB (GLenum target, GLenum access);
-GLAPI GLboolean APIENTRY emscripten_glUnmapBufferARB (GLenum target);
-GLAPI void APIENTRY emscripten_glGetBufferParameterivARB (GLenum target, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetBufferPointervARB (GLenum target, GLenum pname, GLvoid* *params);
-
-
-GLAPI void APIENTRY emscripten_glGenQueriesARB (GLsizei n, GLuint *ids);
-GLAPI void APIENTRY emscripten_glDeleteQueriesARB (GLsizei n, const GLuint *ids);
-GLAPI GLboolean APIENTRY emscripten_glIsQueryARB (GLuint id);
-GLAPI void APIENTRY emscripten_glBeginQueryARB (GLenum target, GLuint id);
-GLAPI void APIENTRY emscripten_glEndQueryARB (GLenum target);
-GLAPI void APIENTRY emscripten_glGetQueryivARB (GLenum target, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetQueryObjectivARB (GLuint id, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetQueryObjectuivARB (GLuint id, GLenum pname, GLuint *params);
-
-
-GLAPI void APIENTRY emscripten_glDeleteObjectARB (GLhandleARB obj);
-GLAPI GLhandleARB APIENTRY emscripten_glGetHandleARB (GLenum pname);
-GLAPI void APIENTRY emscripten_glDetachObjectARB (GLhandleARB containerObj, GLhandleARB attachedObj);
-GLAPI GLhandleARB APIENTRY emscripten_glCreateShaderObjectARB (GLenum shaderType);
-GLAPI void APIENTRY emscripten_glShaderSourceARB (GLhandleARB shaderObj, GLsizei count, const GLcharARB* *string, const GLint *length);
-GLAPI void APIENTRY emscripten_glCompileShaderARB (GLhandleARB shaderObj);
-GLAPI GLhandleARB APIENTRY emscripten_glCreateProgramObjectARB (void);
-GLAPI void APIENTRY emscripten_glAttachObjectARB (GLhandleARB containerObj, GLhandleARB obj);
-GLAPI void APIENTRY emscripten_glLinkProgramARB (GLhandleARB programObj);
-GLAPI void APIENTRY emscripten_glUseProgramObjectARB (GLhandleARB programObj);
-GLAPI void APIENTRY emscripten_glValidateProgramARB (GLhandleARB programObj);
-GLAPI void APIENTRY emscripten_glUniform1fARB (GLint location, GLfloat v0);
-GLAPI void APIENTRY emscripten_glUniform2fARB (GLint location, GLfloat v0, GLfloat v1);
-GLAPI void APIENTRY emscripten_glUniform3fARB (GLint location, GLfloat v0, GLfloat v1, GLfloat v2);
-GLAPI void APIENTRY emscripten_glUniform4fARB (GLint location, GLfloat v0, GLfloat v1, GLfloat v2, GLfloat v3);
-GLAPI void APIENTRY emscripten_glUniform1iARB (GLint location, GLint v0);
-GLAPI void APIENTRY emscripten_glUniform2iARB (GLint location, GLint v0, GLint v1);
-GLAPI void APIENTRY emscripten_glUniform3iARB (GLint location, GLint v0, GLint v1, GLint v2);
-GLAPI void APIENTRY emscripten_glUniform4iARB (GLint location, GLint v0, GLint v1, GLint v2, GLint v3);
-GLAPI void APIENTRY emscripten_glUniform1fvARB (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform2fvARB (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform3fvARB (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform4fvARB (GLint location, GLsizei count, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniform1ivARB (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniform2ivARB (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniform3ivARB (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniform4ivARB (GLint location, GLsizei count, const GLint *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix2fvARB (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix3fvARB (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glUniformMatrix4fvARB (GLint location, GLsizei count, GLboolean transpose, const GLfloat *value);
-GLAPI void APIENTRY emscripten_glGetObjectParameterfvARB (GLhandleARB obj, GLenum pname, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetObjectParameterivARB (GLhandleARB obj, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetInfoLogARB (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
-GLAPI void APIENTRY emscripten_glGetAttachedObjectsARB (GLhandleARB containerObj, GLsizei maxCount, GLsizei *count, GLhandleARB *obj);
-GLAPI GLint APIENTRY emscripten_glGetUniformLocationARB (GLhandleARB programObj, const GLcharARB *name);
-GLAPI void APIENTRY emscripten_glGetActiveUniformARB (GLhandleARB programObj, GLuint index, GLsizei maxLength, GLsizei *length, GLint *size, GLenum *type, GLcharARB *name);
-GLAPI void APIENTRY emscripten_glGetUniformfvARB (GLhandleARB programObj, GLint location, GLfloat *params);
-GLAPI void APIENTRY emscripten_glGetUniformivARB (GLhandleARB programObj, GLint location, GLint *params);
-GLAPI void APIENTRY emscripten_glGetShaderSourceARB (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *source);
-
-
-GLAPI void APIENTRY emscripten_glBindAttribLocationARB (GLhandleARB programObj, GLuint index, const GLcharARB *name);
-GLAPI void APIENTRY emscripten_glGetActiveAttribARB (GLhandleARB programObj, GLuint index, GLsizei maxLength, GLsizei *length, GLint *size, GLenum *type, GLcharARB *name);
-GLAPI GLint APIENTRY emscripten_glGetAttribLocationARB (GLhandleARB programObj, const GLcharARB *name);
-
-
-GLAPI void APIENTRY emscripten_glDrawArraysInstancedARB (GLenum mode, GLint first, GLsizei count, GLsizei primcount);
-GLAPI void APIENTRY emscripten_glDrawElementsInstancedARB (GLenum mode, GLsizei count, GLenum type, const GLvoid *indices, GLsizei primcount);
-
-
-GLAPI GLboolean APIENTRY emscripten_glIsRenderbuffer (GLuint renderbuffer);
-GLAPI void APIENTRY emscripten_glBindRenderbuffer (GLenum target, GLuint renderbuffer);
-GLAPI void APIENTRY emscripten_glDeleteRenderbuffers (GLsizei n, const GLuint *renderbuffers);
-GLAPI void APIENTRY emscripten_glGenRenderbuffers (GLsizei n, GLuint *renderbuffers);
-GLAPI void APIENTRY emscripten_glRenderbufferStorage (GLenum target, GLenum internalformat, GLsizei width, GLsizei height);
-GLAPI void APIENTRY emscripten_glGetRenderbufferParameteriv (GLenum target, GLenum pname, GLint *params);
-GLAPI GLboolean APIENTRY emscripten_glIsFramebuffer (GLuint framebuffer);
-GLAPI void APIENTRY emscripten_glBindFramebuffer (GLenum target, GLuint framebuffer);
-GLAPI void APIENTRY emscripten_glDeleteFramebuffers (GLsizei n, const GLuint *framebuffers);
-GLAPI void APIENTRY emscripten_glGenFramebuffers (GLsizei n, GLuint *framebuffers);
-GLAPI GLenum APIENTRY emscripten_glCheckFramebufferStatus (GLenum target);
-GLAPI void APIENTRY emscripten_glFramebufferTexture1D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
-GLAPI void APIENTRY emscripten_glFramebufferTexture2D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level);
-GLAPI void APIENTRY emscripten_glFramebufferTexture3D (GLenum target, GLenum attachment, GLenum textarget, GLuint texture, GLint level, GLint zoffset);
-GLAPI void APIENTRY emscripten_glFramebufferRenderbuffer (GLenum target, GLenum attachment, GLenum renderbuffertarget, GLuint renderbuffer);
-GLAPI void APIENTRY emscripten_glGetFramebufferAttachmentParameteriv (GLenum target, GLenum attachment, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGenerateMipmap (GLenum target);
-GLAPI void APIENTRY emscripten_glBlitFramebuffer (GLint srcX0, GLint srcY0, GLint srcX1, GLint srcY1, GLint dstX0, GLint dstY0, GLint dstX1, GLint dstY1, GLbitfield mask, GLenum filter);
-GLAPI void APIENTRY emscripten_glRenderbufferStorageMultisample (GLenum target, GLsizei samples, GLenum internalformat, GLsizei width, GLsizei height);
-GLAPI void APIENTRY emscripten_glFramebufferTextureLayer (GLenum target, GLenum attachment, GLuint texture, GLint level, GLint layer);
-
-
-GLAPI void APIENTRY emscripten_glBindVertexArray (GLuint array);
-GLAPI void APIENTRY emscripten_glDeleteVertexArrays (GLsizei n, const GLuint *arrays);
-GLAPI void APIENTRY emscripten_glGenVertexArrays (GLsizei n, GLuint *arrays);
-GLAPI GLboolean APIENTRY emscripten_glIsVertexArray (GLuint array);
-
-
-GLAPI void APIENTRY emscripten_glGetUniformIndices (GLuint program, GLsizei uniformCount, const GLchar* *uniformNames, GLuint *uniformIndices);
-GLAPI void APIENTRY emscripten_glGetActiveUniformsiv (GLuint program, GLsizei uniformCount, const GLuint *uniformIndices, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetActiveUniformName (GLuint program, GLuint uniformIndex, GLsizei bufSize, GLsizei *length, GLchar *uniformName);
-GLAPI GLuint APIENTRY emscripten_glGetUniformBlockIndex (GLuint program, const GLchar *uniformBlockName);
-GLAPI void APIENTRY emscripten_glGetActiveUniformBlockiv (GLuint program, GLuint uniformBlockIndex, GLenum pname, GLint *params);
-GLAPI void APIENTRY emscripten_glGetActiveUniformBlockName (GLuint program, GLuint uniformBlockIndex, GLsizei bufSize, GLsizei *length, GLchar *uniformBlockName);
-GLAPI void APIENTRY emscripten_glUniformBlockBinding (GLuint program, GLuint uniformBlockIndex, GLuint uniformBlockBinding);
-
-
-GLAPI void APIENTRY emscripten_glReleaseShaderCompiler (void);
-GLAPI void APIENTRY emscripten_glShaderBinary (GLsizei count, const GLuint *shaders, GLenum binaryformat, const GLvoid *binary, GLsizei length);
-GLAPI void APIENTRY emscripten_glGetShaderPrecisionFormat (GLenum shadertype, GLenum precisiontype, GLint *range, GLint *precision);
-GLAPI void APIENTRY emscripten_glDepthRangef (GLclampf n, GLclampf f);
-GLAPI void APIENTRY emscripten_glClearDepthf (GLclampf d);
-
-
-GLAPI void APIENTRY emscripten_glVertexAttribDivisor (GLuint index, GLuint divisor);
 
 GLAPI void APIENTRY emscripten_glDeleteObject (GLhandleARB obj);
 GLAPI void APIENTRY emscripten_glGetObjectParameteriv (GLhandleARB obj, GLenum pname, GLint *params);
 GLAPI void APIENTRY emscripten_glGetInfoLog (GLhandleARB obj, GLsizei maxLength, GLsizei *length, GLcharARB *infoLog);
 GLAPI void APIENTRY emscripten_glBindProgram (GLenum target, GLuint program);
+
+#endif // ~LEGACY_GL_EMULATION
 
 extern void *emscripten_webgl1_get_proc_address(const char *name);
 extern void *_webgl1_match_ext_proc_address_without_suffix(const char *name);
@@ -1579,16 +1170,6 @@ extern void *_webgl2_match_ext_proc_address_without_suffix(const char *name);
 #define RETURN_GL_EMU_FN(functionName) if (!strcmp(name, #functionName)) return emscripten_##functionName;
 
 void* emscripten_legacy_gl_emulation_GetProcAddress(const char *name) {
-  // main list, autogenerated from the earlier part of the file using
-  /*
-for line in open('a').readlines():
-  if "emscripten" not in line: continue
-  line = line.replace(' * ', ' ').replace('const ', '').replace('(', ' ')
-  func = line.split(' ')[3].strip().replace('(', '')
-  short = func.replace('EXT', '').replace('ARB', '').replace('OES', '').replace('ANGLE', '').replace('emscripten_', '')
-  print '  if (!strcmp(name, "%s")) return %s;' % (short, func);
-  */
-
   // The following list contains only exactly those functions that library_glemu.js currently implements.
   // Others will return a null pointer.
 
@@ -1790,7 +1371,8 @@ for line in open('a').readlines():
 
   return 0;
 }
-#endif
+
+#endif // ~LEGACY_GL_EMULATION
 
 // "Sloppy" desktop OpenGL/mobile GLES emulating
 // behavior: different functionality is available under
