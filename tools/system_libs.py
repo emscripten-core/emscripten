@@ -44,6 +44,10 @@ def get_cflags(force_object_files=False):
     flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
+  if shared.Settings.WASM_BACKEND:
+    # musl, compiler-rt, etc use ints in bool contexts in many places, like
+    #  (x << 10) ? y : z
+    flags += ['-Wno-int-in-bool-context']
   return flags
 
 
@@ -540,10 +544,6 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
-  # musl uses ints in bool contexts in many places, stuff like
-  #  (x << 10) ? y : z
-  cflags = ['-Wno-int-in-bool-context']
-
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
@@ -592,7 +592,7 @@ class libcompiler_rt(Library):
   name = 'libcompiler_rt'
   depends = ['libc']
 
-  cflags = ['-O2', '-Wno-int-in-bool-context']
+  cflags = ['-O2']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
@@ -1059,8 +1059,6 @@ class CompilerRTWasmLibrary(NoBCLibrary):
 
 class libcompiler_rt_wasm(CompilerRTWasmLibrary):
   name = 'libcompiler_rt_wasm'
-
-  cflags = ['-Wno-int-in-bool-context']
 
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
