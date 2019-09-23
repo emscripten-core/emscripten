@@ -518,25 +518,29 @@ var LibraryGL = {
       maxContextId = "webgl2-compute";
 #endif
       var featureLevel;
-      var ctx;
+      var contextId;
       if (false) {
 #if GL_MAX_FEATURE_LEVEL >= 30
       } else if (webGLContextAttributes.majorVersion == {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MAJOR_VERSION') }}} &&
                  webGLContextAttributes.minorVersion == {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MINOR_VERSION') }}}) {
         featureLevel = 30;
-        ctx = canvas.getContext("webgl2-compute", webGLContextAttributes);
+        contextId = "webgl2-compute";
 #endif
 #if GL_MAX_FEATURE_LEVEL >= 20
       } else if (webGLContextAttributes.majorVersion == 2) {
         featureLevel = 20;
-        ctx = canvas.getContext("webgl2", webGLContextAttributes);
+        contextId = "webgl2";
       } else if (webGLContextAttributes.majorVersion > 1) {
         featureLevel = maxFeatureLevel;
-        ctx = canvas.getContext(maxContextId, webGLContextAttributes);
+        contextId = maxContextId;
 #endif
       } else {
         featureLevel = 10;
-        ctx = canvas.getContext("webgl", webGLContextAttributes) || canvas.getContext("experimental-webgl", webGLContextAttributes);
+        contextId = "webgl";
+      }
+      var ctx = canvas.getContext(contextId, webGLContextAttributes);
+      if (featureLevel == 10) {
+        ctx = ctx || canvas.getContext("experimental-webgl", webGLContextAttributes);
       }
 
 #if GL_PREINITIALIZED_CONTEXT
