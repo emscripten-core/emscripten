@@ -211,7 +211,10 @@ var LibraryWebGL2Compute = {
 
   glBindImageTexture__sig: 'viiiiiii',
   glBindImageTexture: function(unit, texture, level, layered, layer, access, format) {
-    throw 'glBindImageTexture: TODO';
+#if GL_ASSERTIONS
+    GL.validateGLObjectID(GL.textures, texture, 'glBindImageTexture', 'texture');
+#endif
+    GLctx.bindImageTexture(unit, GL.textures[texture], level, !!layered, layer, access, format);
   },
 
   glGetBooleani_v__sig: 'viii',
