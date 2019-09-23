@@ -42,7 +42,6 @@ var LibraryPThread = {
 
       // Allocate memory for thread-local storage.
       var tlsMemory = {{{ makeStaticAlloc(cDefine('PTHREAD_KEYS_MAX') * 4) }}};
-      for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) HEAPU32[tlsMemory/4+i] = 0;
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
@@ -433,10 +432,7 @@ var LibraryPThread = {
     PThread.runningWorkers.push(worker);
 
     // Allocate memory for thread-local storage and initialize it to zero.
-    var tlsMemory = _malloc({{{ cDefine('PTHREAD_KEYS_MAX') }}} * 4);
-    for (var i = 0; i < {{{ cDefine('PTHREAD_KEYS_MAX') }}}; ++i) {
-      {{{ makeSetValue('tlsMemory', 'i*4', 0, 'i32') }}};
-    }
+    var tlsMemory = _calloc({{{ cDefine('PTHREAD_KEYS_MAX') }}}, 4);
 
     var stackHigh = threadParams.stackBase + threadParams.stackSize;
 
@@ -665,8 +661,7 @@ var LibraryPThread = {
     }
 
     // Allocate thread block (pthread_t structure).
-    var threadInfoStruct = _malloc({{{ C_STRUCTS.pthread.__size__ }}});
-    for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}} >> 2; ++i) HEAPU32[(threadInfoStruct>>2) + i] = 0; // zero-initialize thread structure.
+    var threadInfoStruct = _calloc({{{ C_STRUCTS.pthread.__size__ }}}, 1);
     {{{ makeSetValue('pthread_ptr', 0, 'threadInfoStruct', 'i32') }}};
 
     // The pthread struct has a field that points to itself - this is used as a magic ID to detect whether the pthread_t
