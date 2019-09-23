@@ -510,9 +510,91 @@ var LibraryGL = {
       if (!ctx) {
         err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
       }
+#else
+      if (!ctx) return 0;
 #endif
+
+      var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
+#if GL_ASSERTIONS
+      assert(handle, 'malloc() failed in GL.createContext!');
+#endif
+#if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
+      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
+#endif
+#if USE_PTHREADS
+      {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
+#endif
+      var context = {
+        handle: handle,
+        attributes: webGLContextAttributes,
+        version: webGLContextAttributes.majorVersion,
+        GLctx: ctx
+      };
+
+#if USE_WEBGL2
+      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome did not actually implement the new WebGL 2 functions.
+      //      Those are supported only in Chrome 58 and newer.
+      function getChromeVersion() {
+        var raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
+        return raw ? parseInt(raw[2], 10) : false;
+      }
+      context.supportsWebGL2EntryPoints = (context.version >= 2) && (getChromeVersion() === false || getChromeVersion() >= 58);
+#endif
+
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
+        function b(c, t) {
+          var s = g.createShader(t);
+          g.shaderSource(s, c);
+          g.compileShader(s);
+          return s;
+        }
+        try {
+          var p = g.createProgram(); // Note: we do not delete this program so it stays part of the context we created, but that is ok - it does not do anything and we want to keep this detection size minimal.
+          g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", g.VERTEX_SHADER));
+          g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", g.FRAGMENT_SHADER));
+          g.linkProgram(p);
+          var h = new Float32Array(8);
+          h[4] = 1;
+          g.useProgram(p);
+          var l = g.getUniformLocation(p, "u");
+          g.uniform4fv(l, h.subarray(4, 8)); // Uploading a 4-vector GL uniform from last four elements of array [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
+          return !g.getUniform(p, l)[0]; // in proper WebGL we expect to read back the vector we just uploaded: (1,0,0,0). On buggy browser would instead have uploaded offset=0 of above array, i.e. vec4=(0,0,0,0)
+        } catch(e) { return false; } // If we get an exception, we assume we got some other error, and do not trigger this workaround.
+      })();
+#endif
+
+      // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
+      if (ctx.canvas) ctx.canvas.GLctxObject = context;
+      GL.contexts[handle] = context;
+#if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
+      if (typeof webGLContextAttributes.enableExtensionsByDefault === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
+        GL.initExtensions(context);
+      }
+#endif
+
+#if FULL_ES2
+      context.maxVertexAttribs = context.GLctx.getParameter(context.GLctx.MAX_VERTEX_ATTRIBS);
+      context.clientBuffers = [];
+      for (var i = 0; i < context.maxVertexAttribs; i++) {
+        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
+      }
+
+      GL.generateTempBuffers(false, context);
+#endif
+
+#if OFFSCREEN_FRAMEBUFFER
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) GL.createOffscreenFramebuffer(context);
+#else
+
+#if GL_DEBUG
+      if (webGLContextAttributes.renderViaOffscreenBackBuffer) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
+#endif
+
+#endif
+
 #if TRACE_WEBGL_CALLS
-      if (ctx) GL.hookWebGL(ctx);
+      GL.hookWebGL(ctx);
 #endif
 
 #if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
@@ -546,7 +628,7 @@ var LibraryGL = {
       disableHalfFloatExtensionIfBroken(ctx);
 #endif
 
-      return ctx ? GL.registerContext(ctx, webGLContextAttributes) : 0;
+      return handle;
     },
 
 #if OFFSCREEN_FRAMEBUFFER
@@ -790,88 +872,6 @@ var LibraryGL = {
       if (prevScissorTest) gl.enable(gl.SCISSOR_TEST);
     },
 #endif
-
-    registerContext: function(ctx, webGLContextAttributes) {
-      var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
-#if GL_ASSERTIONS
-      assert(handle, 'malloc() failed in GL.registerContext!');
-#endif
-#if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
-      {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
-#endif
-#if USE_PTHREADS
-      {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
-#endif
-      var context = {
-        handle: handle,
-        attributes: webGLContextAttributes,
-        version: webGLContextAttributes.majorVersion,
-        GLctx: ctx
-      };
-
-#if USE_WEBGL2
-      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome did not actually implement the new WebGL 2 functions.
-      //      Those are supported only in Chrome 58 and newer.
-      function getChromeVersion() {
-        var raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
-        return raw ? parseInt(raw[2], 10) : false;
-      }
-      context.supportsWebGL2EntryPoints = (context.version >= 2) && (getChromeVersion() === false || getChromeVersion() >= 58);
-#endif
-
-#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
-      context.cannotHandleOffsetsInUniformArrayViews = (function(g) {
-        function b(c, t) {
-          var s = g.createShader(t);
-          g.shaderSource(s, c);
-          g.compileShader(s);
-          return s;
-        }
-        try {
-          var p = g.createProgram(); // Note: we do not delete this program so it stays part of the context we created, but that is ok - it does not do anything and we want to keep this detection size minimal.
-          g.attachShader(p, b("attribute vec4 p;void main(){gl_Position=p;}", g.VERTEX_SHADER));
-          g.attachShader(p, b("precision lowp float;uniform vec4 u;void main(){gl_FragColor=u;}", g.FRAGMENT_SHADER));
-          g.linkProgram(p);
-          var h = new Float32Array(8);
-          h[4] = 1;
-          g.useProgram(p);
-          var l = g.getUniformLocation(p, "u");
-          g.uniform4fv(l, h.subarray(4, 8)); // Uploading a 4-vector GL uniform from last four elements of array [0,0,0,0,1,0,0,0], i.e. uploading vec4=(1,0,0,0) at offset=4.
-          return !g.getUniform(p, l)[0]; // in proper WebGL we expect to read back the vector we just uploaded: (1,0,0,0). On buggy browser would instead have uploaded offset=0 of above array, i.e. vec4=(0,0,0,0)
-        } catch(e) { return false; } // If we get an exception, we assume we got some other error, and do not trigger this workaround.
-      })();
-#endif
-
-      // Store the created context object so that we can access the context given a canvas without having to pass the parameters again.
-      if (ctx.canvas) ctx.canvas.GLctxObject = context;
-      GL.contexts[handle] = context;
-#if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
-      if (typeof webGLContextAttributes.enableExtensionsByDefault === 'undefined' || webGLContextAttributes.enableExtensionsByDefault) {
-        GL.initExtensions(context);
-      }
-#endif
-
-#if FULL_ES2
-      context.maxVertexAttribs = context.GLctx.getParameter(context.GLctx.MAX_VERTEX_ATTRIBS);
-      context.clientBuffers = [];
-      for (var i = 0; i < context.maxVertexAttribs; i++) {
-        context.clientBuffers[i] = { enabled: false, clientside: false, size: 0, type: 0, normalized: 0, stride: 0, ptr: 0, vertexAttribPointerAdaptor: null };
-      }
-
-      GL.generateTempBuffers(false, context);
-#endif
-
-#if OFFSCREEN_FRAMEBUFFER
-      if (webGLContextAttributes.renderViaOffscreenBackBuffer) GL.createOffscreenFramebuffer(context);
-#else
-
-#if GL_DEBUG
-      if (webGLContextAttributes.renderViaOffscreenBackBuffer) err('renderViaOffscreenBackBuffer=true specified in WebGL context creation attributes, pass linker flag -s OFFSCREEN_FRAMEBUFFER=1 to enable support!');
-#endif
-
-#endif
-      return handle;
-    },
 
     makeContextCurrent: function(contextHandle) {
 #if GL_DEBUG
