@@ -48,6 +48,9 @@ def get_cflags(force_object_files=False):
     # musl, compiler-rt, etc use ints in bool contexts in many places, like
     #  (x << 10) ? y : z
     flags += ['-Wno-int-in-bool-context']
+    # FIXME temporarily ignore an unknown warning flag, as our github CI
+    # doesn't have newer clang yet
+    flags += ['-Wno-unknown-warning-option']
   return flags
 
 
