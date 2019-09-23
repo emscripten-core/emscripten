@@ -6,6 +6,7 @@
 
 from __future__ import print_function
 import argparse
+import inspect
 import json
 import multiprocessing
 import os
@@ -22,7 +23,7 @@ import zlib
 
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized
 from tools import system_libs
-from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
+from tools.shared import PYTHON, EMCC, WINDOWS, LINUX, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
 from tools.shared import try_delete, Building, run_process, run_js
 
 try:
@@ -2653,6 +2654,26 @@ Module["preRun"].push(function () {
   @requires_graphics_hardware
   def test_webgl2_pbo(self):
     self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
+
+  @requires_graphics_hardware
+  def test_webgl2_compute_path_tracing(self):
+    if not (is_chrome() and '--enable-webgl2-compute-context' in EMTEST_BROWSER and (WINDOWS or LINUX)):
+      self.skipTest('WebGL 2.0 Compute is not enabled/supported')
+    # To skip the noisy frames produced at the beginning of path tracing
+    create_test_file('pre.js', inspect.cleandoc('''
+        (function() {
+          var counter = 0;
+          var realRequestAnimationFrame = window.requestAnimationFrame;
+          window.requestAnimationFrame = function(func) {
+            counter++;
+            if (counter == 2000) {
+              doReftest();
+            }
+            return realRequestAnimationFrame.call(window, func);
+          };
+        })();
+        '''))
+    self.btest('webgl2_compute_path_tracing.cpp', reference='webgl2_compute_path_tracing.png', manually_trigger_reftest=True, timeout=120, args=['-std=c++11', '-lglfw', '-lGLESv2', '-s', 'USE_GLFW=3', '-s', 'USE_WEBGL2_COMPUTE=1', '-s', 'EXIT_RUNTIME=1', '--pre-js', 'pre.js'])
 
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
