@@ -593,7 +593,6 @@ class libcompiler_rt(Library):
   depends = ['libc']
 
   cflags = ['-O2']
-
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
   src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
