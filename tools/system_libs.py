@@ -540,6 +540,10 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
+  # musl uses ints in bool contexts in many places, stuff like
+  #  (x << 10) ? y : z
+  cflags = ['-Wno-int-in-bool-context']
+
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
