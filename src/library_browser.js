@@ -315,6 +315,7 @@ var LibraryBrowser = {
 #else
           majorVersion: 1,
 #endif
+          minorVersion: 0,
         };
 
         if (webGLContextAttributes) {

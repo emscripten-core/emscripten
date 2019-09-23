@@ -491,6 +491,7 @@ var LibraryGL = {
 #else
         webGLContextAttributes.majorVersion = 1;
 #endif
+        webGLContextAttributes.minorVersion = 0;
       } else {
 #endif
 
