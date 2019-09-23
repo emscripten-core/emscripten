@@ -442,6 +442,9 @@ typedef int EM_WEBGL_POWER_PREFERENCE;
 #define EM_WEBGL_POWER_PREFERENCE_LOW_POWER 1
 #define EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE 2
 
+#define EM_WEBGL_2_0_COMPUTE_MAJOR_VERSION 0x40000002
+#define EM_WEBGL_2_0_COMPUTE_MINOR_VERSION 0x00000000
+
 typedef struct EmscriptenWebGLContextAttributes {
   EM_BOOL alpha;
   EM_BOOL depth;
@@ -500,7 +503,12 @@ extern void *emscripten_webgl1_get_proc_address(const char *name);
 // that calling this is causing a noticeable performance and compiled code size hit.
 extern void *emscripten_webgl2_get_proc_address(const char *name);
 
-// Combines emscripten_webgl1_get_proc_address() and emscripten_webgl2_get_proc_address() to return function pointers to both WebGL1 and WebGL2 functions. Same drawbacks apply.
+// Returns function pointers to WebGL 2 Compute functions. Please avoid using this function ever - all WebGL2 Compute/GLES3.1 functions, even those for WebGL2 Compute extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl2_compute_get_proc_address(const char *name);
+
+// Combines emscripten_webgl1_get_proc_address(), emscripten_webgl2_get_proc_address() and emscripten_webgl2_compute_get_proc_address() to return function pointers to all WebGL1, WebGL2 and WebGL2 Compute functions. Same drawbacks apply.
 extern void *emscripten_webgl_get_proc_address(const char *name);
 
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);

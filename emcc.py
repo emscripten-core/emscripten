@@ -1184,6 +1184,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.USE_WEBGL2:
       shared.Settings.GL_MAX_FEATURE_LEVEL = 20
+    if shared.Settings.USE_WEBGL2_COMPUTE:
+      shared.Settings.GL_MAX_FEATURE_LEVEL = 30
 
     forced_stdlibs = []
 

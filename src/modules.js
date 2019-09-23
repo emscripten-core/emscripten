@@ -150,6 +150,10 @@ var LibraryManager = {
       libraries.push('library_webgl2.js');
     }
 
+    if (GL_MAX_FEATURE_LEVEL >= 30) {
+      libraries.push('library_webgl2_compute.js');
+    }
+
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
     }

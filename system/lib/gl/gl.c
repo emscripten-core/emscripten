@@ -1164,6 +1164,8 @@ extern void *emscripten_webgl1_get_proc_address(const char *name);
 extern void *_webgl1_match_ext_proc_address_without_suffix(const char *name);
 extern void *emscripten_webgl2_get_proc_address(const char *name);
 extern void *_webgl2_match_ext_proc_address_without_suffix(const char *name);
+extern void *emscripten_webgl2_compute_get_proc_address(const char *name);
+extern void *_webgl2_compute_match_ext_proc_address_without_suffix(const char *name);
 
 #ifdef LEGACY_GL_EMULATION
 
@@ -1405,6 +1407,10 @@ void* emscripten_GetProcAddress(const char *name_) {
   if (!ptr) ptr = emscripten_webgl2_get_proc_address(name);
   if (!ptr) ptr = _webgl2_match_ext_proc_address_without_suffix(name);
 #endif
+#if GL_MAX_FEATURE_LEVEL >= 30
+  if (!ptr) ptr = emscripten_webgl2_compute_get_proc_address(name);
+  if (!ptr) ptr = _webgl2_compute_match_ext_proc_address_without_suffix(name);
+#endif
 
   free(name);
   return ptr;
@@ -1415,6 +1421,9 @@ extern void *emscripten_webgl_get_proc_address(const char *name)
   void *ptr = emscripten_webgl1_get_proc_address(name);
 #if GL_MAX_FEATURE_LEVEL >= 20
   if (!ptr) ptr = emscripten_webgl2_get_proc_address(name);
+#endif
+#if GL_MAX_FEATURE_LEVEL >= 30
+  if (!ptr) ptr = emscripten_webgl2_compute_get_proc_address(name);
 #endif
   return ptr;
 }

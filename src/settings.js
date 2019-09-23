@@ -423,6 +423,12 @@ var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
 var FULL_ES3 = 0;
 
+// Enables WebGL2 Compute native functions. This mode will also create a WebGL2
+// Compute context by default if no version is specified.
+// As of Sep 2019, the feature can be tested in Chrome behind commandline
+// arguments (https://crbug.com/859249).
+var USE_WEBGL2_COMPUTE = 0;
+
 // Includes code to emulate various desktop GL features. Incomplete but useful
 // in some cases, see
 // http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
@@ -1580,6 +1586,7 @@ var MAIN_READS_PARAMS = 1;
 //   | ---------------- | ------------- | ----------------- |
 //   | 10               | 1.0           | 2.0               |
 //   | 20               | 2.0           | 3.0               |
+//   | 30               | 2.0 Compute   | 3.1               |
 //
 var GL_MAX_FEATURE_LEVEL = 10;
 

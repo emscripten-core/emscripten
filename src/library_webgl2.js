@@ -1120,3 +1120,7 @@ recordGLProcAddressGet(LibraryWebGL2);
 mergeInto(LibraryManager.library, LibraryWebGL2);
 
 #endif
+
+#if USE_WEBGL2
+assert(GL_MAX_FEATURE_LEVEL == 20, 'cannot resolve conflicting USE_WEBGL* settings');
+#endif

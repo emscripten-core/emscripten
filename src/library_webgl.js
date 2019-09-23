@@ -432,7 +432,8 @@ var LibraryGL = {
       if (!glCtx) glCtx = this.detectWebGLContext();
       if (!glCtx) return;
       if (!((typeof WebGLRenderingContext !== 'undefined' && glCtx instanceof WebGLRenderingContext)
-       || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+       || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext)
+       || (typeof WebGL2ComputeRenderingContext !== 'undefined' && glCtx instanceof WebGL2ComputeRenderingContext))) {
         return;
       }
 
@@ -488,6 +489,12 @@ var LibraryGL = {
         var ctx = Module['preinitializedWebGLContext'];
         var featureLevel;
         if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 30
+        } else if (typeof WebGL2ComputeRenderingContext !== 'undefined' && ctx instanceof WebGL2ComputeRenderingContext) {
+          featureLevel = 30;
+          webGLContextAttributes.majorVersion = {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MAJOR_VERSION') }}};
+          webGLContextAttributes.minorVersion = {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MINOR_VERSION') }}};
+#endif
 #if GL_MAX_FEATURE_LEVEL >= 20
         } else if (typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext) {
           featureLevel = 20;
@@ -506,9 +513,19 @@ var LibraryGL = {
       var maxFeatureLevel = 20;
       var maxContextId = "webgl2";
 #endif
+#if GL_MAX_FEATURE_LEVEL >= 30
+      maxFeatureLevel = 30;
+      maxContextId = "webgl2-compute";
+#endif
       var featureLevel;
       var ctx;
       if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 30
+      } else if (webGLContextAttributes.majorVersion == {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MAJOR_VERSION') }}} &&
+                 webGLContextAttributes.minorVersion == {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MINOR_VERSION') }}}) {
+        featureLevel = 30;
+        ctx = canvas.getContext("webgl2-compute", webGLContextAttributes);
+#endif
 #if GL_MAX_FEATURE_LEVEL >= 20
       } else if (webGLContextAttributes.majorVersion == 2) {
         featureLevel = 20;
@@ -1111,6 +1128,9 @@ var LibraryGL = {
       case 0x1F02 /* GL_VERSION */:
         // return GLES version string corresponding to the version of the WebGL context
         var glVersion =
+#if GL_MAX_FEATURE_LEVEL >= 30
+          GL.currentContext.featureLevel == 30 ? 'OpenGL ES 3.1' :
+#endif
 #if GL_MAX_FEATURE_LEVEL >= 20
           GL.currentContext.featureLevel == 20 ? 'OpenGL ES 3.0' :
 #endif
@@ -1205,8 +1225,16 @@ var LibraryGL = {
         }
 #endif
         var major, minor;
-        major = 3;
-        minor = 0;
+        if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 30
+        } else if (GL.currentContext.featureLevel == 30) {
+          major = 3;
+          minor = 1;
+#endif
+        } else {
+          major = 3;
+          minor = 0;
+        }
         ret = name_ == 0x821B ? major : minor; // return version major.minor
         break;
 #endif

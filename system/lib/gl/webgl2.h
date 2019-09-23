@@ -2,6 +2,12 @@
 
 #include <GLES3/gl3.h>
 
+#if USE_WEBGL2
+#if GL_MAX_FEATURE_LEVEL != 20
+#error "cannot resolve conflicting USE_WEBGL* settings"
+#endif
+#endif
+
 GL_APICALL void GL_APIENTRY emscripten_glReadBuffer (GLenum src);
 GL_APICALL void GL_APIENTRY emscripten_glDrawRangeElements (GLenum mode, GLuint start, GLuint end, GLsizei count, GLenum type, const void *indices);
 GL_APICALL void GL_APIENTRY emscripten_glTexImage3D (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLsizei depth, GLint border, GLenum format, GLenum type, const void *pixels);

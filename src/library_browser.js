@@ -308,6 +308,11 @@ var LibraryBrowser = {
       if (useWebGL) {
         var majorVersion, minorVersion;
         if (false) {
+#if GL_MAX_FEATURE_LEVEL >= 30
+        } else if (typeof WebGL2ComputeRenderingContext !== 'undefined') {
+          majorVersion = {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MAJOR_VERSION') }}};
+          minorVersion = {{{ cDefine('EM_WEBGL_2_0_COMPUTE_MINOR_VERSION') }}};
+#endif
 #if GL_MAX_FEATURE_LEVEL >= 20
         } else if (typeof WebGL2RenderingContext !== 'undefined') {
           majorVersion = 2;

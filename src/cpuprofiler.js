@@ -554,7 +554,8 @@ var emscriptenCpuProfiler = {
     if (!glCtx) glCtx = this.detectWebGLContext();
     if (!glCtx) return;
     if (!((typeof WebGLRenderingContext !== 'undefined' && glCtx instanceof WebGLRenderingContext)
-     || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+     || (typeof WebGL2RenderingContext !== 'undefined' && glCtx instanceof WebGL2RenderingContext)
+     || (typeof WebGL2ComputeRenderingContext !== 'undefined' && glCtx instanceof WebGL2ComputeRenderingContext))) {
       document.getElementById("toggle_webgl_profile").disabled = true;
       return;
     }

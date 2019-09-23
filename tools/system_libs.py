@@ -902,7 +902,9 @@ class libgl(MTLibrary):
     name = super(libgl, self).get_base_name()
     if self.is_legacy:
       name += '-emu'
-    if self.max_feature_level == 20:
+    if self.max_feature_level == 30:
+      name += '-webgl2_compute'
+    elif self.max_feature_level == 20:
       name += '-webgl2'
     else:
       assert self.max_feature_level == 10
@@ -915,7 +917,9 @@ class libgl(MTLibrary):
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     cflags += ['-DGL_MAX_FEATURE_LEVEL=%d' % self.max_feature_level]
-    if self.max_feature_level == 20:
+    if self.max_feature_level == 30:
+      cflags += ['-DUSE_WEBGL2_COMPUTE=1', '-s', 'USE_WEBGL2_COMPUTE=1']
+    elif self.max_feature_level == 20:
       cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
     else:
       assert self.max_feature_level == 10
@@ -931,7 +935,7 @@ class libgl(MTLibrary):
   def variations(cls):
     combos = super(libgl, cls).variations()
     return [dict(max_feature_level=max_feature_level, **combo)
-            for max_feature_level in [10, 20]
+            for max_feature_level in [10, 20, 30]
             for combo in combos]
 
   @classmethod
