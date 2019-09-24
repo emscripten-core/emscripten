@@ -4363,6 +4363,7 @@ window.close = function() {
                also_asmjs=True)
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
+  @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
