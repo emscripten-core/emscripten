@@ -25,6 +25,7 @@ $dynCall_iidiiii
 $dynCall_iiii
 $dynCall_jiji
 $dynCall_vii
+$emscripten_get_sbrk_ptr
 $fflush
 $fmt_fp
 $fmt_o
@@ -45,6 +46,7 @@ $pop_arg_long_double
 $printf
 $printf_core
 $pthread_self
+$sbrk
 $setThrew
 $stackAlloc
 $stackRestore

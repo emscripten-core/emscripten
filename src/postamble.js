@@ -415,43 +415,13 @@ function exit(status, implicit) {
 
     exitRuntime();
 
+#if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
+#endif
   }
 
   quit_(status, new ExitStatus(status));
 }
-
-var abortDecorators = [];
-
-function abort(what) {
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
-  }
-
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
-#endif
-  what += '';
-  out(what);
-  err(what);
-
-  ABORT = true;
-  EXITSTATUS = 1;
-
-#if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-#else
-  var extra = '';
-  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
-  if (abortDecorators) {
-    abortDecorators.forEach(function(decorator) {
-      output = decorator(output, what);
-    });
-  }
-  throw output;
-#endif // ASSERTIONS
-}
-Module['abort'] = abort;
 
 #if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {

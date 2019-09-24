@@ -431,6 +431,7 @@ bcopy
 bind
 bind_textdomain_codeset
 bindtextdomain
+brk
 bsearch
 btowc
 bulk_free
@@ -1202,6 +1203,7 @@ rintf
 rintl
 rmdir
 roundl
+sbrk
 scalb
 scalbf
 scalbln

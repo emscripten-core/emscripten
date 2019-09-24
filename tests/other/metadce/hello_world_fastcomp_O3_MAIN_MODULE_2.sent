@@ -1,3 +1,5 @@
+__memory_base
+__table_base
 a
 b
 c
@@ -7,6 +9,5 @@ f
 g
 h
 i
-j
-k
-l
+memory
+table

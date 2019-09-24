@@ -1,5 +1,5 @@
 __lock
 __unlock
+emscripten_resize_heap
 memory
-sbrk
 table

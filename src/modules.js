@@ -137,10 +137,8 @@ var LibraryManager = {
       }
     }
 
-    // If there are any explicitly specified system JS libraries to link to, add those to link.
-    if (SYSTEM_JS_LIBRARIES) {
-      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
-    }
+    // Add any explicitly specified system JS libraries to link to, add those to link.
+    libraries = libraries.concat(SYSTEM_JS_LIBRARIES)
 
     if (LZ4) {
       libraries.push('library_lz4.js');
@@ -152,6 +150,10 @@ var LibraryManager = {
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
+    }
+
+    if (STANDALONE_WASM) {
+      libraries.push('library_wasi.js');
     }
 
     libraries = libraries.concat(additionalLibraries);
@@ -364,7 +366,7 @@ function exportRuntime() {
       if (!isNumber) {
         return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
       } else {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
       }
     }
     return '';
@@ -443,6 +445,7 @@ function exportRuntime() {
     'getTempRet0',
     'setTempRet0',
     'callMain',
+    'abort',
   ];
 
   if (!MINIMAL_RUNTIME) {
@@ -505,6 +508,7 @@ var PassManager = {
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       STATIC_BUMP: STATIC_BUMP, // updated with info from JS
+      DYNAMICTOP_PTR: DYNAMICTOP_PTR,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),

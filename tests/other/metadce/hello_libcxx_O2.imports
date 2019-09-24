@@ -9,12 +9,12 @@ __syscall91
 __unlock
 abort
 emscripten_memcpy_big
+emscripten_resize_heap
 fd_write
 getenv
 memory
 pthread_cond_broadcast
 pthread_cond_wait
-sbrk
 setTempRet0
 strftime_l
 table

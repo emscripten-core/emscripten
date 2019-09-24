@@ -8,6 +8,7 @@ $___ofl_unlock
 $___stdio_write
 $___unlockfile
 $_add
+$_emscripten_get_sbrk_ptr
 $_fflush
 $_free
 $_malloc

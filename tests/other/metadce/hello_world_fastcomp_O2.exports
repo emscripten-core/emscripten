@@ -1,10 +1,10 @@
 ___errno_location
+_emscripten_get_sbrk_ptr
 _free
 _main
 _malloc
 _memcpy
 _memset
-_sbrk
 dynCall_ii
 dynCall_iiii
 dynCall_jiji

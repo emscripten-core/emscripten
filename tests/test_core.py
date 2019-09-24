@@ -824,7 +824,9 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('MALLOC', 'none')
     self.emcc_args += ['-fno-builtin'] + list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() + open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
+                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
+                open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                 open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
   def test_newstruct(self):
@@ -3517,7 +3519,6 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dlfcn
-  @no_fastcomp('https://github.com/emscripten-core/emscripten/issues/8268')
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -6455,10 +6456,12 @@ return malloc(size);
     self.do_run(None, 'abort(', args=['x'], no_build=True, assert_returncode=None)
 
   def test_response_file(self):
-    response_data = '-o %s/response_file.o.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
+    response_data = '-o %s/response_file.js %s' % (self.get_dir(), path_from_root('tests', 'hello_world.cpp'))
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "@rsp_file"] + self.get_emcc_args())
-    self.do_run('response_file.o.js', 'hello, world', no_build=True)
+    self.do_run('response_file.js', 'hello, world', no_build=True)
+
+    self.assertContained('response file not found: foo.txt', self.expect_fail([PYTHON, EMCC, '@foo.txt']))
 
   def test_linker_response_file(self):
     objfile = 'response_file.o'
@@ -6604,7 +6607,12 @@ return malloc(size);
                  '|1.266,1413754136|')) # wasm, reinterpret the bits
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
-  def test_demangle_stacks(self):
+  @parameterized({
+    'normal': ([],),
+    'noexcept': (['-fno-exceptions'],)
+  })
+  def test_demangle_stacks(self, extra_args):
+    self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
     # when optimizing function names are not preserved by default.

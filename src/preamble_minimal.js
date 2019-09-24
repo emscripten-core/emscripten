@@ -49,7 +49,7 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     , DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}}
 #endif
 #if USES_DYNAMIC_ALLOC
-    , DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}}
+    , DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
 #endif
     ;
 
@@ -119,6 +119,20 @@ HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 #if USES_DYNAMIC_ALLOC
 HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
 #endif
+
+#if WASM
+var wasmTable = new WebAssembly.Table({
+  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+#if WASM_BACKEND
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+#else
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif
+#endif // WASM_BACKEND
+  'element': 'anyfunc'
+});
+#endif // WASM
 
 #include "runtime_stack_check.js"
 
