@@ -116,7 +116,6 @@ def also_with_noderawfs(func):
 # them (regardless we also check that the js+wasm combo works in js vms).
 def also_with_standalone_wasm(func):
   def decorated(self):
-    orig_args = self.emcc_args[:]
     func(self)
     # verify the wasm runs in a wasm VM, without the JS, if we can.
     if self.is_wasm_backend():
