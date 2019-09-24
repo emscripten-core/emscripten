@@ -36,6 +36,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
     });
 #if USE_PTHREADS
     assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+    // e.g. on node: --experimental-wasm-threads --experimental-wasm-bulk-memory
 #endif
   }
 
