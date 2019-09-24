@@ -31,7 +31,7 @@ from subprocess import CalledProcessError
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or ('configure' not in sys.argv[1] and 'cmake' not in sys.argv[1]):
+  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
     print('''
   emconfigure is a helper for configure, setting various environment
   variables so that emcc etc. are used. Typical usage:
@@ -41,6 +41,7 @@ def run():
   (but you can run any command instead of configure)
 
   ''', file=sys.stderr)
+    return 1
   elif 'cmake' in sys.argv[1]:
     node_js = shared.NODE_JS
     if type(node_js) is list:
@@ -51,9 +52,10 @@ def run():
 
   try:
     shared.Building.configure(sys.argv[1:])
+    return 0
   except CalledProcessError as e:
-    sys.exit(e.returncode)
+    return e.returncode
 
 
 if __name__ == '__main__':
-  run()
+  sys.exit(run())

@@ -7,5 +7,7 @@ emscripten_memcpy_big
 emscripten_resize_heap
 jsStackTrace
 memcpy
+memory
 memset
 stackTrace
+table

@@ -239,15 +239,18 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
-  'wasm2js0',
-  'wasm2js1',
-  'wasm2js2',
-  'wasm2js3',
-  'wasm2jss',
-  'wasm2jsz',
 ]
 
-if not shared.Settings.WASM_BACKEND:
+if shared.Settings.WASM_BACKEND:
+  core_test_modes += [
+    'wasm2js0',
+    'wasm2js1',
+    'wasm2js2',
+    'wasm2js3',
+    'wasm2jss',
+    'wasm2jsz',
+  ]
+else:
   core_test_modes += [
     'asm0',
     'asm2',
@@ -869,9 +872,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return ret
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
-                  configure_args=[], make=['make'], make_args='help',
+                  configure_args=[], make=['make'], make_args=None,
                   env_init={}, cache_name_extra='', native=False):
-    if make_args == 'help':
+    if make_args is None:
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
     build_dir = self.get_build_dir()
@@ -909,6 +912,17 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
   # Shared test code between main suite and others
+
+  def expect_fail(self, cmd, **args):
+    """Run a subprocess and assert that it returns non-zero.
+
+    Return the stderr of the subprocess.
+    """
+    proc = run_process(cmd, check=False, stderr=PIPE, **args)
+    self.assertNotEqual(proc.returncode, 0)
+    # When we check for failure we user-visible error, not a traceback
+    self.assertNotContained('Traceback', proc.stderr)
+    return proc.stderr
 
   def setup_runtimelink_test(self):
     create_test_file('header.h', r'''
@@ -1647,17 +1661,22 @@ def build_library(name,
     for k, v in env_init.items():
       env[k] = v
     if configure:
-      # Useful in debugging sometimes to comment this out (and the lines below
-      # up to and including the |link| call)
-      if EM_BUILD_VERBOSE < 2:
-        stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
-      else:
-        stdout = None
-      if EM_BUILD_VERBOSE < 1:
-        stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
-      else:
-        stderr = None
-      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+      try:
+        with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
+          with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
+            stdout = out if EM_BUILD_VERBOSE < 2 else None
+            stderr = err if EM_BUILD_VERBOSE < 1 else None
+            Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+      except subprocess.CalledProcessError:
+        with open(os.path.join(project_dir, 'configure_out')) as f:
+          print('-- configure stdout --')
+          print(f.read())
+          print('-- end configure stdout --')
+        with open(os.path.join(project_dir, 'configure_err')) as f:
+          print('-- configure stderr --')
+          print(f.read())
+          print('-- end configure stderr --')
+        raise
 
     def open_make_out(mode='r'):
       return open(os.path.join(project_dir, 'make.out'), mode)
@@ -1668,11 +1687,22 @@ def build_library(name,
     if EM_BUILD_VERBOSE >= 3:
       make_args += ['VERBOSE=1']
 
-    with open_make_out('w') as make_out:
-      with open_make_err('w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    try:
+      with open_make_out('w') as make_out:
+        with open_make_err('w') as make_err:
+          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    except subprocess.CalledProcessError:
+      with open_make_out() as f:
+        print('-- make stdout --')
+        print(f.read())
+        print('-- end make stdout --')
+      with open_make_err() as f:
+        print('-- make stderr --')
+        print(f.read())
+        print('-- end stderr --')
+      raise
 
     if cache is not None:
       cache[cache_name] = []

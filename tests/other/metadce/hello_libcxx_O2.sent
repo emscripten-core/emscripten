@@ -26,6 +26,7 @@ fd_write
 getenv
 jsStackTrace
 memcpy
+memory
 memset
 pthread_cond_broadcast
 pthread_cond_wait
@@ -33,3 +34,4 @@ setTempRet0
 stackTrace
 strftime
 strftime_l
+table

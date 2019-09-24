@@ -384,7 +384,12 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
 
   the_global = create_the_global(metadata)
   sending_vars = bg_funcs + bg_vars
-  sending = '{\n  ' + ',\n  '.join('"%s": %s' % (math_fix(minified), unminified) for (minified, unminified) in sending_vars) + '\n}'
+
+  sending = OrderedDict([(math_fix(minified), unminified) for (minified, unminified) in sending_vars])
+  if shared.Settings.WASM:
+    add_standard_wasm_imports(sending)
+  sorted_sending_keys = sorted(sending.keys())
+  sending = '{ ' + ', '.join('"' + k + '": ' + sending[k] for k in sorted_sending_keys) + ' }'
 
   receiving = create_receiving(function_table_data, function_tables_defs,
                                exported_implemented_functions, metadata['initializers'])
@@ -2316,6 +2321,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       cmd.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.SAFE_STACK:
     cmd.append('--check-stack-overflow')
+  if shared.Settings.STANDALONE_WASM:
+    cmd.append('--standalone-wasm')
   shared.print_compiler_stage(cmd)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
@@ -2398,6 +2405,115 @@ def create_em_js(forwarded_json, metadata):
   return em_js_funcs
 
 
+def add_standard_wasm_imports(send_items_map):
+  # memory was already allocated (so that js could use the buffer); import it
+  memory_import = 'wasmMemory'
+  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+    # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+    # Module scope, so lookup via Module as well.
+    memory_import += " || Module['wasmMemory']"
+  send_items_map['memory'] = memory_import
+
+  send_items_map['table'] = 'wasmTable'
+
+  # With the wasm backend __memory_base and __table_base and only needed for
+  # relocatable output.
+  if shared.Settings.RELOCATABLE or not shared.Settings.WASM_BACKEND: # FIXME
+    send_items_map['__memory_base'] = str(shared.Settings.GLOBAL_BASE) # tell the memory segments where to place themselves
+    # the wasm backend reserves slot 0 for the NULL function pointer
+    table_base = '1' if shared.Settings.WASM_BACKEND else '0'
+    send_items_map['__table_base'] = table_base
+  if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
+    send_items_map['__stack_pointer'] = 'STACK_BASE'
+
+  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG:
+    # wasm2js legalization of i64 support code may require these
+    # autodebug may also need them
+    send_items_map['setTempRet0'] = 'setTempRet0'
+    send_items_map['getTempRet0'] = 'getTempRet0'
+
+  if shared.Settings.AUTODEBUG:
+    send_items_map['log_execution'] = '''function(loc) {
+      console.log('log_execution ' + loc);
+    }'''
+    send_items_map['get_i32'] = '''function(loc, index, value) {
+      console.log('get_i32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_i64'] = '''function(loc, index, low, high) {
+      console.log('get_i64 ' + [loc, index, low, high]);
+      setTempRet0(high);
+      return low;
+    }'''
+    send_items_map['get_f32'] = '''function(loc, index, value) {
+      console.log('get_f32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_f64'] = '''function(loc, index, value) {
+      console.log('get_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_i32'] = '''function(loc, index, value) {
+      console.log('set_i32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_i64'] = '''function(loc, index, low, high) {
+      console.log('set_i64 ' + [loc, index, low, high]);
+      setTempRet0(high);
+      return low;
+    }'''
+    send_items_map['set_f32'] = '''function(loc, index, value) {
+      console.log('set_f32 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_f64'] = '''function(loc, index, value) {
+      console.log('set_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
+      console.log('load_ptr ' + [loc, bytes, offset, ptr]);
+      return ptr;
+    }'''
+    send_items_map['load_val_i32'] = '''function(loc, value) {
+      console.log('load_val_i32 ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['load_val_i64'] = '''function(loc, low, high) {
+      console.log('load_val_i64 ' + [loc, low, high]);
+      setTempRet0(high);
+      return low;
+    }'''
+    send_items_map['load_val_f32'] = '''function(loc, value) {
+      console.log('loaload_val_i32d_ptr ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['load_val_f64'] = '''function(loc, value) {
+      console.log('load_val_f64 ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['store_ptr'] = '''function(loc, bytes, offset, ptr) {
+      console.log('store_ptr ' + [loc, bytes, offset, ptr]);
+      return ptr;
+    }'''
+    send_items_map['store_val_i32'] = '''function(loc, value) {
+      console.log('store_val_i32 ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['store_val_i64'] = '''function(loc, low, high) {
+      console.log('store_val_i64 ' + [loc, low, high]);
+      setTempRet0(high);
+      return low;
+    }'''
+    send_items_map['store_val_f32'] = '''function(loc, value) {
+      console.log('loastore_val_i32d_ptr ' + [loc, value]);
+      return value;
+    }'''
+    send_items_map['store_val_f64'] = '''function(loc, value) {
+      console.log('store_val_f64 ' + [loc, value]);
+      return value;
+    }'''
+
+
 def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
@@ -2433,6 +2549,8 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     if internal_name in send_items_map:
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     send_items_map[internal_name] = name
+
+  add_standard_wasm_imports(send_items_map)
 
   sorted_keys = sorted(send_items_map.keys())
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
@@ -2479,7 +2597,10 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
     module.append("if (typeof SharedArrayBuffer !== 'undefined') asmGlobalArg['Atomics'] = Atomics;\n")
 
   module.append('var asmLibraryArg = %s;\n' % (sending))
-  module.append("var asm = Module['asm'](asmGlobalArg, asmLibraryArg, buffer);\n")
+  if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
+    module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
+
+  module.append("var asm = createWasm();\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)
@@ -2606,5 +2727,5 @@ def run(infile, outfile, memfile, libraries):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, memfile, libraries, shared.COMPILER_ENGINE, temp_files, shared.DEBUG)
+      infile, outfile_obj, memfile, libraries, shared.NODE_JS, temp_files, shared.DEBUG)
   )

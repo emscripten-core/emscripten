@@ -44,6 +44,10 @@ def get_cflags(force_object_files=False):
     flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
+  if shared.Settings.WASM_BACKEND:
+    # musl, compiler-rt, etc use ints in bool contexts in many places, like
+    #  (x << 10) ? y : z
+    flags += ['-Wno-int-in-bool-context']
   return flags
 
 
@@ -332,7 +336,7 @@ class Library(object):
     cflags = self.get_cflags()
     for src in self.get_files():
       o = self.in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, self.emcc, src, '-o', o] + cflags)
+      commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
       objects.append(o)
     run_commands(commands)
     return objects
@@ -713,7 +717,7 @@ class libc_extras(MuslInternalLibrary):
   src_files = ['extras.c']
 
 
-class libcxxabi(CXXLibrary, MTLibrary):
+class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
@@ -723,6 +727,8 @@ class libcxxabi(CXXLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+    if self.is_noexcept:
+      cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     return cflags
 
   src_dir = ['system', 'lib', 'libcxxabi', 'src']
@@ -1140,6 +1146,17 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+class libstandalonewasm(Library):
+  name = 'libstandalonewasm'
+
+  cflags = ['-Os']
+  src_dir = ['system', 'lib']
+  src_files = ['standalone_wasm.c']
+
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
+
+
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
@@ -1315,6 +1332,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_ASAN:
     force_include.add('libasan_rt_wasm')
     add_library(system_libs_map['libasan_rt_wasm'])
+
+  if shared.Settings.STANDALONE_WASM:
+    add_library(system_libs_map['libstandalonewasm'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

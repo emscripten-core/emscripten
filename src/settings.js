@@ -1049,9 +1049,6 @@ var EMTERPRETIFY_SYNCLIST = [];
 // whether js opts will be run, after the main compiler
 var RUNNING_JS_OPTS = 0;
 
-// whether we are emitting JS glue code
-var EMITTING_JS = 1;
-
 // whether we are in the generate struct_info bootstrap phase
 var BOOTSTRAPPING_STRUCT_INFO = 0;
 
@@ -1067,10 +1064,37 @@ var EMSCRIPTEN_TRACING = 0;
 var USE_GLFW = 2;
 
 // Whether to use compile code to WebAssembly. Set this to 0 to compile to
-// asm.js.  This will fetch the binaryen port and build it. (If, instead, you
-// set BINARYEN_ROOT in your ~/.emscripten file, then we use that instead of the
-// port, which can useful for local dev work on binaryen itself).
+// asm.js in fastcomp, or JS in upstream.
+//
+// Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
+// startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
+// still make sense there, see that option for more details.
 var WASM = 1;
+
+// STANDALONE_WASM indicates that we want to emit a wasm file that can run without
+// JavaScript. The file will use standard APIs such as wasi as much as possible
+// to achieve that.
+//
+// This option does not guarantee that the wasm can be used by itself - if you
+// use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
+// at the time of writing this). This gives you the option to see which APIs
+// are missing, and if you are compiling for a custom wasi embedding, to add
+// those to your embedding.
+//
+// We may still emit JS with this flag, but the JS should only be a convenient
+// way to run the wasm on the Web or in Node.js, and you can run the wasm by
+// itself without that JS (again, unless you use APIs for which there is no
+// non-JS alternative) in a wasm runtime like wasmer or wasmtime.
+//
+// Note that even without this option we try to use wasi etc. syscalls as much
+// as possible. What this option changes is that we do so even when it means
+// a tradeoff with JS size. For example, when this option is set we do not
+// import the Memory - importing it is useful for JS, so that JS can start to
+// use it before the wasm is even loaded, but in wasi and other wasm-only
+// environments the expectation is to create the memory in the wasm itself.
+// Doing so prevents some possible JS optimizations, so we only do it behind
+// this flag.
+var STANDALONE_WASM = 0;
 
 // Whether to use the WebAssembly backend that is in development in LLVM.  You
 // should not set this yourself, instead set EMCC_WASM_BACKEND=1 in the
@@ -1138,6 +1162,14 @@ var WASM_MEM_MAX = -1;
 // Whether to compile the wasm asynchronously, which is more efficient and does
 // not block the main thread. This is currently required for all but the
 // smallest modules to run in chrome.
+//
+// Note that this flag is still useful even if WASM=0 when using the upstream
+// backend, as startup behaves the same there as WASM=1 (the implementation is
+// of a fake WebAssembly.* object, so the startup code doesn't know it's JS
+// and not wasm). That makes it easier to swap between JS and wasm builds,
+// however, this is a difference from fastcomp in which WASM=0 always meant
+// sync startup as asm.js (unless a mem init file was used or some other thing
+// that forced async).
 //
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
@@ -1628,4 +1660,5 @@ var LEGACY_SETTINGS = [
   ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
+  ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
 ];
