@@ -45,12 +45,20 @@ def make_command(filename, engine=None, args=[]):
   # Use "'d8' in" because the name can vary, e.g. d8_g, d8, etc.
   is_d8 = 'd8' in jsengine or 'v8' in jsengine
   is_jsc = 'jsc' in jsengine
+  is_wasmer = 'wasmer' in jsengine
+  is_wasmtime = 'wasmtime' in jsengine
   # Disable true async compilation (async apis will in fact be synchronous) for now
   # due to https://bugs.chromium.org/p/v8/issues/detail?id=6263
   shell_option_flags = ['--no-wasm-async-compilation'] if is_d8 else []
+  command_flags = []
+  if is_wasmer:
+    command_flags += ['run']
+  if is_wasmer or is_wasmtime:
+    # in a wasm runtime, run the wasm, not the js
+    filename = filename[:-3] + '.wasm'
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
-  return engine + [filename] + shell_option_flags + flag_separator + args
+  return engine + command_flags + [filename] + shell_option_flags + flag_separator + args
 
 
 def check_engine(engine):
