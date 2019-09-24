@@ -543,16 +543,6 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
     __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress, reportReadyStateChange);
   };
 
-  // Should we try IndexedDB first?
-  var needsIndexedDbConnection = requestMethod === 'EM_IDB_STORE' || requestMethod === 'EM_IDB_DELETE';
-  if (needsIndexedDbConnection && !Fetch.dbInstance) {
-#if FETCH_DEBUG
-    console.error('fetch: failed to read IndexedDB! Database is not open.');
-#endif
-    reportError(fetch, 0, 'IndexedDB is not open');
-    return 0; // todo: free
-  }
-
   if (requestMethod === 'EM_IDB_STORE') {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
     var ptr = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestData }}} >> 2];
