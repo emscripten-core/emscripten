@@ -252,7 +252,7 @@ var LibraryGLEmulation = {
         if (GL.stringCache[name_]) return GL.stringCache[name_];
         switch(name_) {
           case 0x1F03 /* GL_EXTENSIONS */: // Add various extensions that we can support
-            var ret = stringToNewUTF8(GLctx.getSupportedExtensions().join(' ') +
+            var ret = stringToNewUTF8((GLctx.getSupportedExtensions() || []).join(' ') +
                    ' GL_EXT_texture_env_combine GL_ARB_texture_env_crossbar GL_ATI_texture_env_combine3 GL_NV_texture_env_combine4 GL_EXT_texture_env_dot3 GL_ARB_multitexture GL_ARB_vertex_buffer_object GL_EXT_framebuffer_object GL_ARB_vertex_program GL_ARB_fragment_program GL_ARB_shading_language_100 GL_ARB_shader_objects GL_ARB_vertex_shader GL_ARB_fragment_shader GL_ARB_texture_cube_map GL_EXT_draw_range_elements' +
                    (GL.currentContext.compressionExt ? ' GL_ARB_texture_compression GL_EXT_texture_compression_s3tc' : '') +
                    (GL.currentContext.anisotropicExt ? ' GL_EXT_texture_filter_anisotropic' : '')
@@ -285,7 +285,7 @@ var LibraryGLEmulation = {
 
       function ensurePrecision(source) {
         if (!/precision +(low|medium|high)p +float *;/.test(source)) {
-          source = 'precision mediump float;\n' + source;
+          source = '#ifdef GL_FRAGMENT_PRECISION_HIGH\nprecision highp float;\n#else\nprecision mediump float;\n#endif\n' + source;
         }
         return source;
       }
@@ -363,7 +363,6 @@ var LibraryGLEmulation = {
             source = 'varying float v_fogFragCoord;   \n' +
                      source.replace(/gl_FogFragCoord/g, 'v_fogFragCoord');
           }
-          source = ensurePrecision(source);
         } else { // Fragment shader
           for (i = 0; i < GLImmediate.MAX_TEXTURES; i++) {
             old = source;

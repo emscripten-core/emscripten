@@ -275,7 +275,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
           with open(load_name, 'r') as infile:
             source_content = infile.read()
           sources_content.append(source_content)
-        except:
+        except IOError:
           print('Failed to read source: %s' % load_name)
           sources_content.append(None)
     else:

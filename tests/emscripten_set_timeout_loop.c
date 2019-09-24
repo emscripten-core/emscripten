@@ -29,5 +29,5 @@ EM_BOOL tick(double time, void *userData)
 int main()
 {
 	emscripten_set_timeout_loop(tick, 100, (void*)1);
-	EM_ASM(Module['noExitRuntime'] = 1);
+	EM_ASM(noExitRuntime = 1);
 }

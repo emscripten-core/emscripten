@@ -4,6 +4,8 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
+import hashlib
+import itertools
 import json
 import logging
 import os
@@ -12,11 +14,11 @@ import shutil
 import sys
 import tarfile
 import zipfile
-from collections import namedtuple
+from glob import iglob
 
 from . import ports
 from . import shared
-from tools.shared import check_call
+from tools.shared import check_call, mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
 stderr = None
@@ -24,27 +26,14 @@ stderr = None
 logger = logging.getLogger('system_libs')
 
 
-def call_process(cmd):
-  shared.run_process(cmd, stdout=stdout, stderr=stderr)
-
-
-def run_commands(commands):
-  cores = min(len(commands), shared.Building.get_num_cores())
-  if cores <= 1:
-    for command in commands:
-      call_process(command)
-  else:
-    pool = shared.Building.get_multiprocessing_pool()
-    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-    # https://bugs.python.org/issue8296
-    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
-    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(call_process, commands, chunksize=1).get(999999)
-
-
 def files_in_path(path_components, filenames):
   srcdir = shared.path_from_root(*path_components)
   return [os.path.join(srcdir, f) for f in filenames]
+
+
+def glob_in_path(path_components, glob_pattern, excludes=()):
+  srcdir = shared.path_from_root(*path_components)
+  return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
 
 
 def get_cflags(force_object_files=False):
@@ -55,7 +44,33 @@ def get_cflags(force_object_files=False):
     flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
+  if shared.Settings.WASM_BACKEND:
+    # musl, compiler-rt, etc use ints in bool contexts in many places, like
+    #  (x << 10) ? y : z
+    flags += ['-Wno-int-in-bool-context']
   return flags
+
+
+def run_build_command(cmd):
+  # this must only be called on a standard build command
+  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+  # add standard cflags, but also allow the cmd to override them
+  cmd = cmd[:2] + get_cflags() + cmd[2:]
+  shared.run_process(cmd, stdout=stdout, stderr=stderr)
+
+
+def run_commands(commands):
+  cores = min(len(commands), shared.Building.get_num_cores())
+  if cores <= 1:
+    for command in commands:
+      run_build_command(command)
+  else:
+    pool = shared.Building.get_multiprocessing_pool()
+    # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+    # https://bugs.python.org/issue8296
+    # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
+    # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
+    pool.map_async(run_build_command, commands, chunksize=1).get(999999)
 
 
 def create_lib(libname, inputs):
@@ -68,161 +83,541 @@ def create_lib(libname, inputs):
     raise Exception('unknown suffix ' + libname)
 
 
-def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
-  global stdout, stderr
-  stdout = stdout_
-  stderr = stderr_
+def read_symbols(path):
+  with open(path) as f:
+    content = f.read()
 
-  # Check if we need to include some libraries that we compile. (We implement libc ourselves in js, but
-  # compile a malloc implementation and stdlibc++.)
+    # Require that Windows newlines should not be present in a symbols file, if running on Linux or macOS
+    # This kind of mismatch can occur if one copies a zip file of Emscripten cloned on Windows over to
+    # a Linux or macOS system. It will result in Emscripten linker getting confused on stray \r characters,
+    # and be unable to link any library symbols properly. We could harden against this by .strip()ping the
+    # opened files, but it is possible that the mismatching line endings can cause random problems elsewhere
+    # in the toolchain, hence abort execution if so.
+    if os.name != 'nt' and '\r\n' in content:
+      raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
 
-  def read_symbols(path):
-    with open(path) as f:
-      content = f.read()
+    return shared.Building.parse_symbols(content).defs
 
-      # Require that Windows newlines should not be present in a symbols file, if running on Linux or macOS
-      # This kind of mismatch can occur if one copies a zip file of Emscripten cloned on Windows over to
-      # a Linux or macOS system. It will result in Emscripten linker getting confused on stray \r characters,
-      # and be unable to link any library symbols properly. We could harden against this by .strip()ping the
-      # opened files, but it is possible that the mismatching line endings can cause random problems elsewhere
-      # in the toolchain, hence abort execution if so.
-      if os.name != 'nt' and '\r\n' in content:
-        raise Exception('Windows newlines \\r\\n detected in symbols file "' + path + '"! This could happen for example when copying Emscripten checkout from Windows to Linux or macOS. Please use Unix line endings on checkouts of Emscripten on Linux and macOS!')
 
-      return shared.Building.parse_symbols(content).defs
+def get_wasm_libc_rt_files():
+  # Static linking is tricky with LLVM, since e.g. memset might not be used
+  # from libc, but be used as an intrinsic, and codegen will generate a libc
+  # call from that intrinsic *after* static linking would have thought it is
+  # all in there. In asm.js this is not an issue as we do JS linking anyhow,
+  # and have asm.js-optimized versions of all the LLVM intrinsics. But for
+  # wasm, we need a better solution. For now, make another archive that gets
+  # included at the same time as compiler-rt.
+  # Note that this also includes things that may be depended on by those
+  # functions - fmin uses signbit, for example, so signbit must be here (so if
+  # fmin is added by codegen, it will have all it needs).
+  math_files = files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
+    filenames=[
+      'fmin.c', 'fminf.c', 'fminl.c',
+      'fmax.c', 'fmaxf.c', 'fmaxl.c',
+      'fmod.c', 'fmodf.c', 'fmodl.c',
+      'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
+      'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
+      'scalbn.c', '__fpclassifyl.c',
+      '__signbitl.c', '__signbitf.c', '__signbit.c'
+    ])
+  other_files = files_in_path(
+    path_components=['system', 'lib', 'libc'],
+    filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
+               'emscripten_memmove.c'])
+  return math_files + other_files
 
-  default_opts = ['-Werror']
 
-  # XXX We also need to add libc symbols that use malloc, for example strdup. It's very rare to use just them and not
-  #     a normal malloc symbol (like free, after calling strdup), so we haven't hit this yet, but it is possible.
-  libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc.symbols'))
-  libcxx_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxx', 'symbols'))
-  libcxxabi_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libcxxabi', 'symbols'))
-  gl_symbols = read_symbols(shared.path_from_root('system', 'lib', 'gl.symbols'))
-  al_symbols = read_symbols(shared.path_from_root('system', 'lib', 'al.symbols'))
-  compiler_rt_symbols = read_symbols(shared.path_from_root('system', 'lib', 'compiler-rt.symbols'))
-  libc_extras_symbols = read_symbols(shared.path_from_root('system', 'lib', 'libc_extras.symbols'))
-  pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'pthreads.symbols'))
-  asmjs_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'asmjs_pthreads.symbols'))
-  stub_pthreads_symbols = read_symbols(shared.path_from_root('system', 'lib', 'stub_pthreads.symbols'))
-  wasm_libc_symbols = read_symbols(shared.path_from_root('system', 'lib', 'wasm-libc.symbols'))
-  html5_symbols = read_symbols(shared.path_from_root('system', 'lib', 'html5.symbols'))
+class Library(object):
+  """
+  `Library` is the base class of all system libraries.
 
-  def get_wasm_libc_rt_files():
-    # Static linking is tricky with LLVM, since e.g. memset might not be used
-    # from libc, but be used as an intrinsic, and codegen will generate a libc
-    # call from that intrinsic *after* static linking would have thought it is
-    # all in there. In asm.js this is not an issue as we do JS linking anyhow,
-    # and have asm.js-optimized versions of all the LLVM intrinsics. But for
-    # wasm, we need a better solution. For now, make another archive that gets
-    # included at the same time as compiler-rt.
-    # Note that this also includes things that may be depended on by those
-    # functions - fmin uses signbit, for example, so signbit must be here (so if
-    # fmin is added by codegen, it will have all it needs).
-    math_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
-      filenames=[
-        'fmin.c', 'fminf.c', 'fminl.c',
-        'fmax.c', 'fmaxf.c', 'fmaxl.c',
-        'fmod.c', 'fmodf.c', 'fmodl.c',
-        'log2.c', 'log2f.c', 'log10.c', 'log10f.c',
-        'exp2.c', 'exp2f.c', 'exp10.c', 'exp10f.c',
-        'scalbn.c', '__fpclassifyl.c',
-        '__signbitl.c', '__signbitf.c', '__signbit.c'
-      ])
-    string_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
-      filenames=['memset.c', 'memmove.c'])
-    other_files = files_in_path(
-      path_components=['system', 'lib', 'libc'],
-      filenames=['emscripten_memcpy.c'])
-    return math_files + string_files + other_files
+  There are two types of libraries: abstract and concrete.
+    * An abstract library, e.g. MTLibrary, is a subclass of `Library` that
+      implements certain behaviour common to multiple libraries. The features
+      of multiple abstract libraries can be used through multiple inheritance.
+    * A concrete library, e.g. libc, is a subclass of `Library` that describes
+      how to build a particular library, and its properties, such as name and
+      dependencies.
 
-  # XXX we should disable EMCC_DEBUG when building libs, just like in the relooper
+  This library system is meant to handle having many versions of the same library,
+  which we call *variations*. For example, some libraries (those that inherit
+  from MTLibrary), have both single-threaded and multi-threaded versions.
 
-  def musl_internal_includes():
-    return [
-      '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'internal'),
-      '-I', shared.path_from_root('system', 'lib', 'libc', 'musl', 'arch', 'js'),
-    ]
+  An instance of a `Library` subclass represents a specific variation of the
+  library. Instance methods perform operations relating to this variation.
+  For example, `get_cflags()` would return the emcc flags needed to build this
+  variation, and `build()` would generate the library file for this variation.
+  The constructor takes keyword arguments that defines the variation.
 
-  def build_libc(lib_filename, files, lib_opts):
-    o_s = []
+  Class methods perform tasks relating to all variations. For example,
+  `variations()` returns a list of all variations that exists for this library,
+  and `get_default_variation()` returns the variation suitable for the current
+  environment.
+
+  Other class methods act upon a group of libraries. For example,
+  `Library.get_all_variations()` returns a mapping of all variations of
+  existing libraries.
+
+  To add a new type of variation, you must add an parameter to `__init__` that
+  selects the variant. Then, override one of `vary_on` or `variations`, as well
+  as `get_default_variation`.
+
+  If the parameter is boolean, overriding `vary_on` to add the parameter name
+  to the returned list is sufficient:
+
+    @classmethod
+    def vary_on(cls):
+      return super().vary_on() + ['my_parameter']
+
+  Otherwise, you must override `variations`:
+
+    @classmethod
+    def variations(cls):
+      return [{'my_parameter': value, **other} for value, other in
+              itertools.product([1, 2, 3], super().variations())]
+
+  Overriding either `vary_on` or `variations` allows `embuilder.py` to know all
+  possible variations so it can build all of them.
+
+  You then need to modify `get_default_variation` to detect the correct value
+  for your new parameter based on the settings:
+
+    @classmethod
+    def get_default_variation(cls, **kwargs):
+      return super().get_default_variation(my_parameter=shared.Settings.MY_PARAMETER, **kwargs)
+
+  This allows the correct variation of the library to be selected when building
+  code with Emscripten.
+  """
+
+  # The simple name of the library. When linking, this is the name to use to
+  # automatically get the correct version of the library.
+  # This should only be overridden in a concrete library class, e.g. libc,
+  # and left as None in an abstract library class, e.g. MTLibrary.
+  name = None
+
+  # A list of simple names of other libraries that this one depends on.
+  # For dynamic values, override `get_depends()` instead.
+  depends = []
+
+  # A set of symbols that this library exports. This will be set with a set
+  # returned by `read_symbols`.
+  symbols = set()
+
+  # A list of symbols that must be exported to keep the JavaScript
+  # dependencies of this library working.
+  js_depends = []
+
+  # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
+  never_force = False
+
+  # The C compile executable to use. You can override this to shared.EMXX for C++.
+  emcc = shared.EMCC
+
+  # A list of flags to pass to emcc.
+  # The flags for the parent class is automatically inherited.
+  cflags = ['-Werror']
+
+  # A list of directories to put in the include path when building.
+  # This is a list of tuples of path components.
+  # For example, to put system/lib/a and system/lib/b under the emscripten
+  # directory into the include path, you would write:
+  #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
+  # The include path of the parent class is automatically inherited.
+  includes = []
+
+  # By default, `get_files` look for source files for this library under `src_dir`.
+  # It will either use the files listed in `src_files`, or use the glob pattern in
+  # `src_glob`. You may not specify both `src_files` and `src_glob`.
+  # When using `src_glob`, you can specify a list of files in `src_glob_exclude`
+  # to be excluded from the library.
+  # Alternatively, you can override `get_files` to use your own logic.
+  src_dir = None
+  src_files = None
+  src_glob = None
+  src_glob_exclude = None
+
+  # Whether to always generate WASM object files, even though WASM_OBJECT_FILES=0.
+  force_object_files = False
+
+  def __init__(self):
+    """
+    Creates a variation of this library.
+
+    A variation is a specific combination of settings a library can have.
+    For example, libc++-mt-noexcept is a variation of libc++.
+    There might be only one variation of a library.
+
+    The constructor keyword arguments will define what variation to use.
+
+    Use the `variations` classmethod to get the list of all possible constructor
+    arguments for this library.
+
+    Use the `get_default_variation` classmethod to construct the variation
+    suitable for the current invocation of emscripten.
+    """
+    if not self.name:
+      raise NotImplementedError('Cannot instantiate an abstract library')
+
+    # Read .symbols file if it exists. This first tries to read a symbols file
+    # with the same basename with the library file name (e.g.
+    # libc++-mt.symbols), and if there isn't one, it tries to read the 'default'
+    # symbol file, which does not have any optional suffices (e.g.
+    # libc++.symbols).
+    basename = os.path.splitext(self.get_filename())[0]
+    if shared.Settings.WASM_BACKEND:
+      symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'wasm')
+    else:
+      symbols_dir = shared.path_from_root('system', 'lib', 'symbols', 'asmjs')
+    symbols_file = os.path.join(symbols_dir, basename + '.symbols')
+    default_symbols_file = os.path.join(symbols_dir, self.name + '.symbols')
+    if os.path.isfile(symbols_file):
+      self.symbols = read_symbols(symbols_file)
+    elif os.path.isfile(default_symbols_file):
+      self.symbols = read_symbols(default_symbols_file)
+
+  def in_temp(cls, *args):
+    """Gets the path of a file in our temporary directory."""
+    return os.path.join(shared.get_emscripten_temp_dir(), *args)
+
+  def can_use(self):
+    """
+    Whether this library can be used in the current environment.
+
+    For example, libmalloc would override this and return False
+    if the user requested no malloc.
+    """
+    return True
+
+  def can_build(self):
+    """
+    Whether this library can be built in the current environment.
+
+    Override this if, for example, the library can only be built on WASM backend.
+    """
+    return True
+
+  def get_path(self):
+    """
+    Gets the cached path of this library.
+
+    This will trigger a build if this library is not in the cache.
+    """
+    return shared.Cache.get(self.get_filename(), self.build)
+
+  def get_files(self):
+    """
+    Gets a list of source files for this library.
+
+    Typically, you will use `src_dir`, `src_files`, `src_glob` and `src_glob_exclude`.
+    If those are insufficient to describe the files needed, you can override this method.
+    """
+    if self.src_dir:
+      if self.src_files and self.src_glob:
+        raise Exception('Cannot use src_files and src_glob together')
+
+      if self.src_files:
+        return files_in_path(self.src_dir, self.src_files)
+      elif self.src_glob:
+        return glob_in_path(self.src_dir, self.src_glob, self.src_glob_exclude or ())
+
+    raise NotImplementedError()
+
+  def build_objects(self):
+    """
+    Returns a list of compiled object files for this library.
+
+    By default, this builds all the source files returned by `self.get_files()`,
+    with the `cflags` returned by `self.get_cflags()`.
+    """
     commands = []
-    # Hide several musl warnings that produce a lot of spam to unit test build server logs.
-    # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-    c_opts = ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
-              '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
-              '-Wno-dangling-else', '-Wno-unknown-pragmas',
-              '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
-              '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
-              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
-              '-Wno-empty-body']
-    for src in files:
-      o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-o', o] + musl_internal_includes() + default_opts + c_opts + lib_opts + get_cflags())
-      o_s.append(o)
+    objects = []
+    cflags = self.get_cflags()
+    for src in self.get_files():
+      o = self.in_temp(os.path.basename(src) + '.o')
+      commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
+      objects.append(o)
     run_commands(commands)
-    create_lib(in_temp(lib_filename), o_s)
-    return in_temp(lib_filename)
+    return objects
 
-  def build_libcxx(src_dirname, lib_filename, files, lib_opts, has_noexcept_version=False):
-    o_s = []
-    commands = []
-    opts = default_opts + lib_opts
-    # Make sure we don't mark symbols as default visibility.  This works around
-    # an issue with the wasm backend where all default visibility symbols are
-    # exported (and therefore can't be GC'd).
-    # FIXME(https://github.com/emscripten-core/emscripten/issues/7383)
-    opts += ['-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
-    if has_noexcept_version and shared.Settings.DISABLE_EXCEPTION_CATCHING:
-      opts += ['-fno-exceptions']
-    for src in files:
-      o = in_temp(src + '.o')
-      srcfile = shared.path_from_root(src_dirname, src)
-      commands.append([shared.PYTHON, shared.EMXX, srcfile, '-o', o, '-std=c++11'] + opts + get_cflags())
-      o_s.append(o)
-    run_commands(commands)
-    create_lib(in_temp(lib_filename), o_s)
+  def build(self):
+    """Builds the library and returns the path to the file."""
+    lib_filename = self.in_temp(self.get_filename())
+    create_lib(lib_filename, self.build_objects())
+    return lib_filename
 
-    return in_temp(lib_filename)
+  @classmethod
+  def _inherit_list(cls, attr):
+    # Some properties, like cflags and includes, makes more sense to inherit
+    # via concatenation than replacement.
+    result = []
+    for item in cls.__mro__[::-1]:
+      # Using  __dict__ to avoid inheritance
+      result += item.__dict__.get(attr, [])
+    return result
 
-  # Returns linker flags specific to singlethreading or multithreading
-  def threading_flags(libname):
-    if shared.Settings.USE_PTHREADS:
-      assert '-mt' in libname
-      return ['-s', 'USE_PTHREADS=1']
+  def get_cflags(self):
+    """
+    Returns the list of flags to pass to emcc when building this variation
+    of the library.
+
+    Override and add any flags as needed to handle new variations.
+    """
+    cflags = self._inherit_list('cflags')
+    cflags += get_cflags(force_object_files=self.force_object_files)
+
+    if self.includes:
+      cflags += ['-I' + shared.path_from_root(*path) for path in self._inherit_list('includes')]
+
+    return cflags
+
+  def get_base_name_prefix(self):
+    """
+    Returns the base name of the library without any suffixes.
+    """
+    return self.name
+
+  def get_base_name(self):
+    """
+    Returns the base name of the library file.
+
+    This will include suffixes such as -mt, but will not include a file extension.
+    """
+    return self.get_base_name_prefix()
+
+  def get_ext(self):
+    """
+    Return the appropriate file extension for this library.
+    """
+    return '.a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else '.bc'
+
+  def get_filename(self):
+    """
+    Return the full name of the library file, including the file extension.
+    """
+    return self.get_base_name() + self.get_ext()
+
+  def get_depends(self):
+    """
+    Return a list of simple names of libraries that this library depends on.
+
+    This is the dynamic version of `depends`.
+    """
+    return self.depends
+
+  @classmethod
+  def vary_on(cls):
+    """
+    Returns a list of strings that are the names of boolean constructor
+    arguments that defines the variations of this library.
+
+    This is used by the default implementation of `cls.variations()` to generate
+    every possible combination of boolean values to pass to these arguments.
+    """
+    return []
+
+  @classmethod
+  def variations(cls):
+    """
+    Returns a list of keyword arguments to pass to the constructor to create
+    every possible variation of this library.
+
+    By default, this is every possible combination of boolean values to pass
+    to the list of arguments returned by `vary_on`, but you can override
+    the behaviour.
+    """
+    vary_on = cls.vary_on()
+    return [dict(zip(vary_on, toggles)) for toggles in
+            itertools.product([False, True], repeat=len(vary_on))]
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    """
+    Construct the variation suitable for the current invocation of emscripten.
+
+    Subclasses should pass the keyword arguments they introduce to the
+    superclass version, and propagate **kwargs. The base class collects
+    all the keyword arguments and creates the instance.
+    """
+    return cls(**kwargs)
+
+  @classmethod
+  def get_inheritance_tree(cls):
+    """Returns all the classes in the inheritance tree of the current class."""
+    yield cls
+    for subclass in cls.__subclasses__():
+      for subclass in subclass.get_inheritance_tree():
+        yield subclass
+
+  @classmethod
+  def get_all_variations(cls):
+    """
+    Gets all the variations of libraries in the inheritance tree of the current
+    library.
+
+    Calling Library.get_all_variations() returns the variations of ALL libraries
+    that can be built as a dictionary of variation names to Library objects.
+    """
+    result = {}
+    for library in cls.get_inheritance_tree():
+      if library.name:
+        for flags in library.variations():
+          variation = library(**flags)
+          if variation.can_build():
+            result[variation.get_base_name()] = variation
+    return result
+
+  @classmethod
+  def get_usable_variations(cls):
+    """
+    Gets all libraries suitable for the current invocation of emscripten.
+
+    This returns a dictionary of simple names to Library objects.
+    """
+    result = {}
+    for subclass in cls.get_inheritance_tree():
+      if subclass.name:
+        library = subclass.get_default_variation()
+        if library.can_build() and library.can_use():
+          result[subclass.name] = library
+    return result
+
+
+class MTLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_mt = kwargs.pop('is_mt')
+    super(MTLibrary, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(MTLibrary, self).get_cflags()
+    if self.is_mt:
+      cflags += ['-s', 'USE_PTHREADS=1', '-DUSE_THREADS']
+    return cflags
+
+  def get_base_name(self):
+    name = super(MTLibrary, self).get_base_name()
+    if self.is_mt:
+      name += '-mt'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super(MTLibrary, cls).vary_on() + ['is_mt']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(MTLibrary, cls).get_default_variation(is_mt=shared.Settings.USE_PTHREADS, **kwargs)
+
+
+class NoExceptLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_noexcept = kwargs.pop('is_noexcept')
+    super(NoExceptLibrary, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(NoExceptLibrary, self).get_cflags()
+    if self.is_noexcept:
+      cflags += ['-fno-exceptions']
     else:
-      assert '-mt' not in libname
-      return []
+      cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+    return cflags
 
-  def legacy_gl_emulation_flags(libname):
-    if shared.Settings.LEGACY_GL_EMULATION:
-      assert '-emu' in libname
-      return ['-DLEGACY_GL_EMULATION=1']
-    else:
-      assert '-emu' not in libname
-      return []
+  def get_base_name(self):
+    name = super(NoExceptLibrary, self).get_base_name()
+    if self.is_noexcept:
+      name += '-noexcept'
+    return name
 
-  def gl_version_flags(libname):
-    if shared.Settings.USE_WEBGL2:
-      assert '-webgl2' in libname
-      return ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
-    else:
-      assert '-webgl2' not in libname
-      return []
+  @classmethod
+  def vary_on(cls):
+    return super(NoExceptLibrary, cls).vary_on() + ['is_noexcept']
 
-  def gl_offscreen_flags(libname):
-    if shared.Settings.OFFSCREEN_FRAMEBUFFER:
-      assert '-ofb' in libname
-      return ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
-    else:
-      assert '-ofb' not in libname
-      return []
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING, **kwargs)
 
-  # libc
-  def create_libc(libname):
-    logger.debug(' building libc for cache')
+
+class MuslInternalLibrary(Library):
+  includes = [
+    ['system', 'lib', 'libc', 'musl', 'src', 'internal'],
+    ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
+  ]
+
+
+class AsanInstrumentedLibrary(Library):
+  def __init__(self, **kwargs):
+    self.is_asan = kwargs.pop('is_asan', False)
+    super(AsanInstrumentedLibrary, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(AsanInstrumentedLibrary, self).get_cflags()
+    if self.is_asan:
+      cflags += ['-fsanitize=address']
+    return cflags
+
+  def get_base_name(self):
+    name = super(AsanInstrumentedLibrary, self).get_base_name()
+    if self.is_asan:
+      name += '-asan'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    vary_on = super(AsanInstrumentedLibrary, cls).vary_on()
+    if shared.Settings.WASM_BACKEND:
+      vary_on += ['is_asan']
+    return vary_on
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(AsanInstrumentedLibrary, cls).get_default_variation(is_asan=shared.Settings.USE_ASAN, **kwargs)
+
+
+class CXXLibrary(Library):
+  emcc = shared.EMXX
+
+
+class NoBCLibrary(Library):
+  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every object in the library.
+  # While the optimizer will readily optimize out most of the unused functions, things like global constructors that
+  # are linked in cannot be optimized out, even though they are not actually needed. If we use .a files for such
+  # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
+  # will be linked in.
+  def get_ext(self):
+    return '.a'
+
+
+class libcompiler_rt(Library):
+  name = 'libcompiler_rt'
+  depends = ['libc']
+
+  cflags = ['-O2']
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
+  src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
+
+
+class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+  name = 'libc'
+  depends = ['libcompiler_rt']
+
+  # Without -fno-builtin, LLVM can optimize away or convert calls to library
+  # functions to something else based on assumptions that they behave exactly
+  # like the standard library. This can cause unexpected bugs when we use our
+  # custom standard library. The same for other libc/libm builds.
+  cflags = ['-Os', '-fno-builtin']
+
+  # Hide several musl warnings that produce a lot of spam to unit test build server logs.
+  # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
+  cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
+             '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
+             '-Wno-dangling-else', '-Wno-unknown-pragmas',
+             '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
+             '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
+             '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
+             '-Wno-empty-body']
+
+  def get_files(self):
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
 
@@ -250,15 +645,31 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c', 'asin.c',
         'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c', 'atan2.c',
         'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c', 'log.c', 'logf.c',
-        'logl.c', 'sqrt.c', 'sqrtf.c', 'sqrtl.c', 'fabs.c', 'fabsf.c',
-        'fabsl.c', 'ceil.c', 'ceilf.c', 'ceill.c', 'floor.c', 'floorf.c',
-        'floorl.c', 'pow.c', 'powf.c', 'powl.c', 'round.c', 'roundf.c',
-        'rintf.c'
+        'logl.c', 'sqrtl.c', 'round.c', 'roundf.c',
+        'fabsl.c', 'ceill.c', 'floorl.c', 'pow.c', 'powf.c', 'powl.c',
     ]
+
+    if self.is_asan:
+      # With ASan, we need to use specialized implementations of certain libc
+      # functions that do not rely on undefined behavior, for example, reading
+      # multiple bytes at once as an int and overflowing a buffer.
+      # Otherwise, ASan will catch these errors and terminate the program.
+      blacklist += ['strcpy.c', 'memchr.c', 'strchrnul.c', 'strlen.c',
+                    'aligned_alloc.c', 'fcntl.c']
+      libc_files += [
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strcpy.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_memchr.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strchrnul.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_strlen.c'),
+        shared.path_from_root('system', 'lib', 'libc', 'emscripten_asan_fcntl.c'),
+      ]
 
     if shared.Settings.WASM_BACKEND:
       # With the wasm backend these are included in wasm_libc_rt instead
       blacklist += [os.path.basename(f) for f in get_wasm_libc_rt_files()]
+    else:
+      blacklist += ['rintf.c', 'ceil.c', 'ceilf.c', 'floor.c', 'floorf.c',
+                    'fabs.c', 'fabsf.c', 'sqrt.c', 'sqrtf.c']
 
     blacklist = set(blacklist)
     # TODO: consider using more math code from musl, doing so makes box2d faster
@@ -276,293 +687,490 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
-    # Without -fno-builtin, LLVM can optimize away or convert calls to library
-    # functions to something else based on assumptions that they behave exactly
-    # like the standard library. This can cause unexpected bugs when we use our
-    # custom standard library. The same for other libc/libm builds.
-    args = ['-Os', '-fno-builtin']
-    args += threading_flags(libname)
-    return build_libc(libname, libc_files, args)
+    return libc_files
 
-  def create_pthreads(libname):
-    # Add pthread files.
-    pthreads_files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
-      filenames=[
-        'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
-        'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
-        'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
-        'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
-        'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
-        'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
-        'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
-        'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
-        'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
-        'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
-        'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
-        'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
-        'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
-        'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
-        'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
-        'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
-        'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
-        'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
-        'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
-        'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
-        'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
-        'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
-        'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
-        'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
-        '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
-        'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
-        'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
-        'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
-        'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
-        'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
-        'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
-        'pthread_setspecific.c', 'pthread_setcancelstate.c'
-      ])
-    pthreads_files += [os.path.join('pthread', 'library_pthread.c')]
-    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+  def get_depends(self):
+    depends = super(libc, self).get_depends()
+    if shared.Settings.WASM:
+      return depends + ['libc-wasm']
+    return depends
 
-  def create_pthreads_stub(libname):
-    pthreads_files = [os.path.join('pthread', 'library_pthread_stub.c')]
-    return build_libc(libname, pthreads_files, ['-O2'])
 
-  def create_pthreads_asmjs(libname):
-    pthreads_files = [os.path.join('pthread', 'library_pthread_asmjs.c')]
-    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+class libc_wasm(MuslInternalLibrary):
+  name = 'libc-wasm'
+  cflags = ['-O2', '-fno-builtin']
+  src_dir = ['system', 'lib', 'libc', 'musl', 'src', 'math']
+  src_files = ['cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
+               'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
+               'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
+               'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
+               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c']
 
-  def create_pthreads_wasm(libname):
-    pthreads_files = [os.path.join('pthread', 'library_pthread_wasm.c')]
-    return build_libc(libname, pthreads_files, ['-O2', '-s', 'USE_PTHREADS=1'])
+  def can_use(self):
+    # if building to wasm, we need more math code, since we have fewer builtins
+    return shared.Settings.WASM
 
-  def create_wasm_libc(libname):
-    # in asm.js we just use Math.sin etc., which is good for code size. But
-    # wasm doesn't have such builtins, so we need to bundle in more code
-    files = files_in_path(
-      path_components=['system', 'lib', 'libc', 'musl', 'src', 'math'],
-      filenames=['cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
-                 'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
-                 'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
-                 'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
-                 'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c'])
 
-    return build_libc(libname, files, ['-O2', '-fno-builtin'])
+class libc_extras(MuslInternalLibrary):
+  name = 'libc-extras'
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['extras.c']
 
-  # libc++
-  def create_libcxx(libname):
-    logger.debug('building libc++ for cache')
-    libcxx_files = [
-      'algorithm.cpp',
-      'any.cpp',
-      'bind.cpp',
-      'chrono.cpp',
-      'condition_variable.cpp',
-      'debug.cpp',
-      'exception.cpp',
-      'future.cpp',
-      'functional.cpp',
-      'hash.cpp',
-      'ios.cpp',
-      'iostream.cpp',
-      'locale.cpp',
-      'memory.cpp',
-      'mutex.cpp',
-      'new.cpp',
-      'optional.cpp',
-      'random.cpp',
-      'regex.cpp',
-      'shared_mutex.cpp',
-      'stdexcept.cpp',
-      'string.cpp',
-      'strstream.cpp',
-      'system_error.cpp',
-      'thread.cpp',
-      'typeinfo.cpp',
-      'utility.cpp',
-      'valarray.cpp',
-      'variant.cpp',
-      'vector.cpp',
-      os.path.join('experimental', 'memory_resource.cpp'),
-      os.path.join('experimental', 'filesystem', 'directory_iterator.cpp'),
-      os.path.join('experimental', 'filesystem', 'path.cpp'),
-      os.path.join('experimental', 'filesystem', 'operations.cpp')
-    ]
-    libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
-    return build_libcxx(
-      os.path.join('system', 'lib', 'libcxx'), libname, libcxx_files,
-      ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz', '-I' + libcxxabi_include],
-      has_noexcept_version=True)
 
-  # libcxxabi - just for dynamic_cast for now
-  def create_libcxxabi(libname):
-    logger.debug('building libc++abi for cache')
-    libcxxabi_files = [
-      'abort_message.cpp',
-      'cxa_aux_runtime.cpp',
-      'cxa_default_handlers.cpp',
-      'cxa_demangle.cpp',
-      'cxa_exception_storage.cpp',
-      'cxa_guard.cpp',
-      'cxa_new_delete.cpp',
-      'cxa_handlers.cpp',
-      'exception.cpp',
-      'stdexcept.cpp',
-      'typeinfo.cpp',
-      'private_typeinfo.cpp'
-    ]
-    libcxxabi_include = shared.path_from_root('system', 'lib', 'libcxxabi', 'include')
-    return build_libcxx(
-      os.path.join('system', 'lib', 'libcxxabi', 'src'), libname, libcxxabi_files,
-      ['-Oz', '-I' + libcxxabi_include])
+class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
+  name = 'libc++abi'
+  depends = ['libc']
+  cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
-  # gl
-  def create_gl(libname):
-    src_dir = shared.path_from_root('system', 'lib', 'gl')
-    files = []
-    for dirpath, dirnames, filenames in os.walk(src_dir):
-      filenames = filter(lambda f: f.endswith('.c'), filenames)
-      files += map(lambda f: os.path.join(src_dir, f), filenames)
-    flags = ['-Oz']
-    flags += threading_flags(libname)
-    flags += legacy_gl_emulation_flags(libname)
-    flags += gl_version_flags(libname)
-    flags += gl_offscreen_flags(libname)
-    return build_libc(libname, files, flags)
+  def get_cflags(self):
+    cflags = super(libcxxabi, self).get_cflags()
+    cflags.append('-DNDEBUG')
+    if not self.is_mt:
+      cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+    if self.is_noexcept:
+      cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
+    return cflags
 
-  # al
-  def create_al(libname): # libname is ignored, this is just one .o file
-    o = in_temp('al.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'al.c'), '-o', o, '-Os'] + get_cflags())
-    return o
+  src_dir = ['system', 'lib', 'libcxxabi', 'src']
+  src_files = [
+    'abort_message.cpp',
+    'cxa_aux_runtime.cpp',
+    'cxa_default_handlers.cpp',
+    'cxa_demangle.cpp',
+    'cxa_exception_storage.cpp',
+    'cxa_guard.cpp',
+    'cxa_handlers.cpp',
+    'fallback_malloc.cpp',
+    'stdlib_new_delete.cpp',
+    'stdlib_exception.cpp',
+    'stdlib_stdexcept.cpp',
+    'stdlib_typeinfo.cpp',
+    'private_typeinfo.cpp'
+  ]
 
-  def create_html5(libname):
-    src_dir = shared.path_from_root('system', 'lib', 'html5')
-    files = []
-    for dirpath, dirnames, filenames in os.walk(src_dir):
-      files += [os.path.join(src_dir, f) for f in filenames]
-    return build_libc(libname, files, ['-Oz'])
 
-  def create_compiler_rt(libname):
-    files = files_in_path(
-      path_components=['system', 'lib', 'compiler-rt', 'lib', 'builtins'],
-      filenames=['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c'])
+class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
+  name = 'libc++'
+  depends = ['libc++abi']
 
-    o_s = []
-    commands = []
-    for src in files:
-      o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', src), '-O2', '-o', o] + get_cflags())
-      o_s.append(o)
-    run_commands(commands)
-    shared.Building.emar('cr', in_temp(libname), o_s)
-    return in_temp(libname)
+  cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
+            '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
-  # libc_extras
-  def create_libc_extras(libname): # libname is ignored, this is just one .o file
-    o = in_temp('libc_extras.o')
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', 'libc', 'extras.c'), '-o', o] + get_cflags())
-    return o
+  src_dir = ['system', 'lib', 'libcxx']
+  src_files = [
+    'algorithm.cpp',
+    'any.cpp',
+    'bind.cpp',
+    'chrono.cpp',
+    'condition_variable.cpp',
+    'debug.cpp',
+    'exception.cpp',
+    'future.cpp',
+    'functional.cpp',
+    'hash.cpp',
+    'ios.cpp',
+    'iostream.cpp',
+    'locale.cpp',
+    'memory.cpp',
+    'mutex.cpp',
+    'new.cpp',
+    'optional.cpp',
+    'random.cpp',
+    'regex.cpp',
+    'shared_mutex.cpp',
+    'stdexcept.cpp',
+    'string.cpp',
+    'strstream.cpp',
+    'system_error.cpp',
+    'thread.cpp',
+    'typeinfo.cpp',
+    'utility.cpp',
+    'valarray.cpp',
+    'variant.cpp',
+    'vector.cpp',
+    os.path.join('experimental', 'memory_resource.cpp'),
+    os.path.join('filesystem', 'directory_iterator.cpp'),
+    os.path.join('filesystem', 'int128_builtins.cpp'),
+    os.path.join('filesystem', 'operations.cpp')
+  ]
 
-  # decides which malloc to use, and returns the source for malloc and the full library name
-  def malloc_decision():
-    if shared.Settings.MALLOC == 'dlmalloc':
-      base = 'dlmalloc'
-    elif shared.Settings.MALLOC == 'emmalloc':
-      base = 'emmalloc'
-    else:
-      raise Exception('malloc must be one of "emmalloc", "dlmalloc", see settings.js')
 
-    # only dlmalloc supports most modes
-    def require_dlmalloc(what):
-      if base != 'dlmalloc':
-        shared.exit_with_error('only dlmalloc is possible when using %s' % what)
+class libmalloc(MTLibrary, NoBCLibrary):
+  name = 'libmalloc'
 
-    extra = ''
-    if shared.Settings.DEBUG_LEVEL >= 3:
-      extra += '_debug'
-    if not shared.Settings.SUPPORT_ERRNO:
-      # emmalloc does not use errno anyhow
-      if base != 'emmalloc':
-        extra += '_noerrno'
-    if shared.Settings.USE_PTHREADS:
-      extra += '_threadsafe'
-      require_dlmalloc('pthreads')
-    if shared.Settings.EMSCRIPTEN_TRACING:
-      extra += '_tracing'
-      require_dlmalloc('tracing')
-    if base == 'dlmalloc':
-      source = 'dlmalloc.c'
-    elif base == 'emmalloc':
-      source = 'emmalloc.cpp'
-    return (source, 'lib' + base + extra)
+  cflags = ['-O2', '-fno-builtin']
 
-  def malloc_source():
-    return malloc_decision()[0]
+  def __init__(self, **kwargs):
+    self.malloc = kwargs.pop('malloc')
+    if self.malloc not in ('dlmalloc', 'emmalloc', 'none'):
+      raise Exception('malloc must be one of "emmalloc", "dlmalloc" or "none", see settings.js')
 
-  def malloc_name():
-    return malloc_decision()[1]
+    self.is_debug = kwargs.pop('is_debug')
+    self.use_errno = kwargs.pop('use_errno')
+    self.is_tracing = kwargs.pop('is_tracing')
 
-  def create_malloc(out_name):
-    o = in_temp(out_name)
-    cflags = ['-O2', '-fno-builtin']
-    if shared.Settings.USE_PTHREADS:
-      cflags += ['-s', 'USE_PTHREADS=1']
-    if shared.Settings.EMSCRIPTEN_TRACING:
-      cflags += ['--tracing']
-    if shared.Settings.DEBUG_LEVEL >= 3:
+    super(libmalloc, self).__init__(**kwargs)
+
+    if self.malloc != 'dlmalloc':
+      assert not self.is_mt
+      assert not self.is_tracing
+
+  def get_files(self):
+    malloc = shared.path_from_root('system', 'lib', {
+      'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
+    }[self.malloc])
+    sbrk = shared.path_from_root('system', 'lib', 'sbrk.c')
+    return [malloc, sbrk]
+
+  def get_cflags(self):
+    cflags = super(libmalloc, self).get_cflags()
+    if self.is_debug:
       cflags += ['-UNDEBUG', '-DDLMALLOC_DEBUG']
       # TODO: consider adding -DEMMALLOC_DEBUG, but that is quite slow
     else:
       cflags += ['-DNDEBUG']
-    if not shared.Settings.SUPPORT_ERRNO:
-      cflags += ['-DMALLOC_FAILURE_ACTION=']
-    check_call([shared.PYTHON, shared.EMCC, shared.path_from_root('system', 'lib', malloc_source()), '-o', o] + cflags + get_cflags())
-    return o
+    if not self.use_errno:
+      cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
+    if self.is_tracing:
+      cflags += ['--tracing']
+    return cflags
 
-  def create_wasm_rt_lib(libname, files):
-    # compiler-rt has to be built with WASM_OBJECT_FILES=1.   This is because
-    # it includes the builtin symbols that the LTO complication can generate.
-    # It seems that LTO as implemented by lld assumes that builtins do not
-    # take part in LTO.
-    # TODO(sbc): If we ever fix https://bugs.llvm.org/show_bug.cgi?id=41384 then
-    # this restriction can be removed.
-    o_s = []
-    commands = []
-    for src in files:
-      o = in_temp(os.path.basename(src) + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, '-fno-builtin', '-O2',
-                       '-c', shared.path_from_root('system', 'lib', src),
-                       '-o', o] +
-                      musl_internal_includes() +
-                      get_cflags(force_object_files=True))
-      o_s.append(o)
-    run_commands(commands)
-    lib = in_temp(libname)
-    shared.Building.emar('cr', lib, o_s)
-    return lib
+  def get_base_name_prefix(self):
+    return 'lib%s' % self.malloc
 
-  def create_wasm_compiler_rt(libname):
-    files = files_in_path(
-      path_components=['system', 'lib', 'compiler-rt', 'lib', 'builtins'],
-      filenames=['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
-                 'divtf3.c', 'divti3.c', 'udivmodti4.c',
-                 'extenddftf2.c', 'extendsftf2.c',
-                 'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
-                 'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
-                 'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c',
-                 'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
-                 'modti3.c', 'multc3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
-                 'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
-                 'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
-                 'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c'])
-    files += files_in_path(path_components=['system', 'lib', 'compiler-rt'],
-                           filenames=['extras.c'])
-    return create_wasm_rt_lib(libname, files)
+  def get_base_name(self):
+    name = super(libmalloc, self).get_base_name()
+    if self.is_debug:
+      name += '-debug'
+    if not self.use_errno:
+      # emmalloc doesn't actually use errno, but it's easier to build it again
+      name += '-noerrno'
+    if self.is_tracing:
+      name += '-tracing'
+    return name
 
-  def create_wasm_libc_rt(libname):
-    return create_wasm_rt_lib(libname, get_wasm_libc_rt_files())
+  def can_use(self):
+    return shared.Settings.MALLOC != 'none'
+
+  @classmethod
+  def vary_on(cls):
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libmalloc, cls).get_default_variation(
+      malloc=shared.Settings.MALLOC,
+      is_debug=shared.Settings.DEBUG_LEVEL >= 3,
+      use_errno=shared.Settings.SUPPORT_ERRNO,
+      is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
+      **kwargs
+    )
+
+  @classmethod
+  def variations(cls):
+    combos = super(libmalloc, cls).variations()
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos] +
+            [dict(malloc='emmalloc', **combo) for combo in combos
+             if not combo['is_mt'] and not combo['is_tracing']])
+
+
+class libal(Library):
+  name = 'libal'
+  depends = ['libc']
+
+  cflags = ['-Os']
+  src_dir = ['system', 'lib']
+  src_files = ['al.c']
+
+
+class libgl(MTLibrary):
+  name = 'libgl'
+  depends = ['libc']
+
+  src_dir = ['system', 'lib', 'gl']
+  src_glob = '*.c'
+
+  cflags = ['-Oz']
+
+  def __init__(self, **kwargs):
+    self.is_legacy = kwargs.pop('is_legacy')
+    self.is_webgl2 = kwargs.pop('is_webgl2')
+    self.is_ofb = kwargs.pop('is_ofb')
+    super(libgl, self).__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super(libgl, self).get_base_name()
+    if self.is_legacy:
+      name += '-emu'
+    if self.is_webgl2:
+      name += '-webgl2'
+    if self.is_ofb:
+      name += '-ofb'
+    return name
+
+  def get_cflags(self):
+    cflags = super(libgl, self).get_cflags()
+    if self.is_legacy:
+      cflags += ['-DLEGACY_GL_EMULATION=1']
+    if self.is_webgl2:
+      cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
+    if self.is_ofb:
+      cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libgl, cls).get_default_variation(
+      is_legacy=shared.Settings.LEGACY_GL_EMULATION,
+      is_webgl2=shared.Settings.USE_WEBGL2,
+      is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
+      **kwargs
+    )
+
+
+class libembind(CXXLibrary):
+  name = 'libembind'
+  cflags = ['-std=c++11']
+  depends = ['libc++abi']
+  never_force = True
+
+  def __init__(self, **kwargs):
+    self.with_rtti = kwargs.pop('with_rtti', False)
+    super(libembind, self).__init__(**kwargs)
+
+  def get_cflags(self):
+    cflags = super(libembind, self).get_cflags()
+    if not self.with_rtti:
+      cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libembind, cls).vary_on() + ['with_rtti']
+
+  def get_base_name(self):
+    name = super(libembind, self).get_base_name()
+    if self.with_rtti:
+      name += '-rtti'
+    return name
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'embind', 'bind.cpp')]
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libembind, cls).get_default_variation(with_rtti=shared.Settings.USE_RTTI, **kwargs)
+
+
+class libfetch(CXXLibrary, MTLibrary):
+  name = 'libfetch'
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'fetch', 'emscripten_fetch.cpp')]
+
+
+class libasmfs(CXXLibrary, MTLibrary):
+  name = 'libasmfs'
+  depends = ['libc++abi']
+  never_force = True
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
+
+
+class libhtml5(Library):
+  name = 'libhtml5'
+
+  cflags = ['-Oz']
+  src_dir = ['system', 'lib', 'html5']
+  src_glob = '*.c'
+
+
+class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+  name = 'libpthreads'
+  depends = ['libc']
+  cflags = ['-O2']
+
+  def get_files(self):
+    if self.is_mt:
+      files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'thread'],
+        filenames=[
+          'pthread_attr_destroy.c', 'pthread_condattr_setpshared.c',
+          'pthread_mutex_lock.c', 'pthread_spin_destroy.c', 'pthread_attr_get.c',
+          'pthread_cond_broadcast.c', 'pthread_mutex_setprioceiling.c',
+          'pthread_spin_init.c', 'pthread_attr_init.c', 'pthread_cond_destroy.c',
+          'pthread_mutex_timedlock.c', 'pthread_spin_lock.c',
+          'pthread_attr_setdetachstate.c', 'pthread_cond_init.c',
+          'pthread_mutex_trylock.c', 'pthread_spin_trylock.c',
+          'pthread_attr_setguardsize.c', 'pthread_cond_signal.c',
+          'pthread_mutex_unlock.c', 'pthread_spin_unlock.c',
+          'pthread_attr_setinheritsched.c', 'pthread_cond_timedwait.c',
+          'pthread_once.c', 'sem_destroy.c', 'pthread_attr_setschedparam.c',
+          'pthread_cond_wait.c', 'pthread_rwlockattr_destroy.c', 'sem_getvalue.c',
+          'pthread_attr_setschedpolicy.c', 'pthread_equal.c', 'pthread_rwlockattr_init.c',
+          'sem_init.c', 'pthread_attr_setscope.c', 'pthread_getspecific.c',
+          'pthread_rwlockattr_setpshared.c', 'sem_open.c', 'pthread_attr_setstack.c',
+          'pthread_key_create.c', 'pthread_rwlock_destroy.c', 'sem_post.c',
+          'pthread_attr_setstacksize.c', 'pthread_mutexattr_destroy.c',
+          'pthread_rwlock_init.c', 'sem_timedwait.c', 'pthread_barrierattr_destroy.c',
+          'pthread_mutexattr_init.c', 'pthread_rwlock_rdlock.c', 'sem_trywait.c',
+          'pthread_barrierattr_init.c', 'pthread_mutexattr_setprotocol.c',
+          'pthread_rwlock_timedrdlock.c', 'sem_unlink.c',
+          'pthread_barrierattr_setpshared.c', 'pthread_mutexattr_setpshared.c',
+          'pthread_rwlock_timedwrlock.c', 'sem_wait.c', 'pthread_barrier_destroy.c',
+          'pthread_mutexattr_setrobust.c', 'pthread_rwlock_tryrdlock.c',
+          '__timedwait.c', 'pthread_barrier_init.c', 'pthread_mutexattr_settype.c',
+          'pthread_rwlock_trywrlock.c', 'vmlock.c', 'pthread_barrier_wait.c',
+          'pthread_mutex_consistent.c', 'pthread_rwlock_unlock.c', '__wait.c',
+          'pthread_condattr_destroy.c', 'pthread_mutex_destroy.c',
+          'pthread_rwlock_wrlock.c', 'pthread_condattr_init.c',
+          'pthread_mutex_getprioceiling.c', 'pthread_setcanceltype.c',
+          'pthread_condattr_setclock.c', 'pthread_mutex_init.c',
+          'pthread_setspecific.c', 'pthread_setcancelstate.c'
+        ])
+      files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread.c')]
+      if shared.Settings.WASM_BACKEND:
+        files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_wasm.c')]
+      else:
+        files += [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_asmjs.c')]
+      return files
+    else:
+      return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
+
+  def get_base_name_prefix(self):
+    return 'libpthreads' if self.is_mt else 'libpthreads_stub'
+
+
+class CompilerRTWasmLibrary(NoBCLibrary):
+  cflags = ['-O2', '-fno-builtin']
+  force_object_files = True
+
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
+
+
+class libcompiler_rt_wasm(CompilerRTWasmLibrary):
+  name = 'libcompiler_rt_wasm'
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
+  src_files = ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c',
+               'divtf3.c', 'divti3.c', 'udivmodti4.c',
+               'extenddftf2.c', 'extendsftf2.c',
+               'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
+               'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
+               'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c',
+               'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
+               'modti3.c', 'multc3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
+               'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
+               'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
+               'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
+
+  def get_files(self):
+    return super(libcompiler_rt_wasm, self).get_files() + [shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c')]
+
+
+class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
+  name = 'libc_rt_wasm'
+
+  def get_files(self):
+    return get_wasm_libc_rt_files()
+
+
+class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
+  name = 'libubsan_minimal_rt_wasm'
+  never_force = True
+
+  includes = [['system', 'lib', 'compiler-rt', 'lib']]
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan_minimal']
+  src_files = ['ubsan_minimal_handlers.cpp']
+
+
+class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
+  name = 'libsanitizer_common_rt_wasm'
+  depends = ['libc++abi']
+  js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
+  never_force = True
+
+  cflags = ['-std=c++11']
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
+  src_glob = '*.cc'
+  src_glob_exclude = ['sanitizer_common_nolibc.cc']
+
+
+class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
+  depends = ['libsanitizer_common_rt_wasm']
+  never_force = True
+
+  includes = [['system', 'lib', 'compiler-rt', 'lib']]
+  cflags = ['-std=c++11']
+  src_glob = '*.cc'
+
+
+class libubsan_rt_wasm(SanitizerLibrary):
+  name = 'libubsan_rt_wasm'
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
+
+  cflags = ['-DUBSAN_CAN_USE_CXXABI']
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'ubsan']
+
+
+class liblsan_common_rt_wasm(SanitizerLibrary):
+  name = 'liblsan_common_rt_wasm'
+  js_depends = ['__global_base']
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_glob = 'lsan_common*.cc'
+
+
+class liblsan_rt_wasm(SanitizerLibrary):
+  name = 'liblsan_rt_wasm'
+  depends = ['liblsan_common_rt_wasm']
+  js_depends = ['emscripten_builtin_malloc', 'emscripten_builtin_free']
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'lsan']
+  src_glob_exclude = ['lsan_common.cc', 'lsan_common_mac.cc', 'lsan_common_linux.cc',
+                      'lsan_common_emscripten.cc']
+
+
+class libasan_rt_wasm(SanitizerLibrary):
+  name = 'libasan_rt_wasm'
+  depends = ['liblsan_common_rt_wasm', 'libubsan_rt_wasm']
+
+  src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
+
+
+class libstandalonewasm(Library):
+  name = 'libstandalonewasm'
+
+  cflags = ['-Os']
+  src_dir = ['system', 'lib']
+  src_files = ['standalone_wasm.c']
+
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
+
+
+# If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
+# confusing, so issue a warning.
+def warn_on_unexported_main(symbolses):
+  if '_main' not in shared.Settings.EXPORTED_FUNCTIONS:
+    for symbols in symbolses:
+      if 'main' in symbols.defs:
+        logger.warning('main() is in the input files, but "_main" is not in EXPORTED_FUNCTIONS, which means it may be eliminated as dead code. Export it if you want main() to run.')
+        return
+
+
+def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
+  global stdout, stderr
+  stdout = stdout_
+  stderr = stderr_
 
   # Set of libraries to include on the link line, as opposed to `force` which
   # is the set of libraries to force include (with --whole-archive).
@@ -595,12 +1203,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
             logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
-          shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+          shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
     if more:
       add_back_deps(need) # recurse to get deps of deps
 
   # Scan symbols
   symbolses = shared.Building.parallel_llvm_nm([os.path.abspath(t) for t in temp_files])
+
+  warn_on_unexported_main(symbolses)
 
   if len(symbolses) == 0:
     class Dummy(object):
@@ -612,7 +1222,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   for export in shared.Settings.EXPORTED_FUNCTIONS:
     if shared.Settings.VERBOSE:
       logger.debug('adding dependency on export %s' % export)
-    symbolses[0].undefs.add(export[1:])
+    symbolses[0].undefs.add(demangle_c_symbol_name(export))
 
   for symbols in symbolses:
     add_back_deps(symbols)
@@ -623,78 +1233,27 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if only_forced:
     for key, value in deps_info.items():
       for dep in value:
-        shared.Settings.EXPORTED_FUNCTIONS.append('_' + dep)
+        shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
-  if shared.Settings.WASM_OBJECT_FILES:
-    ext = 'a'
-  else:
-    ext = 'bc'
-
-  libc_name = 'libc'
-  libc_deps = ['libcompiler_rt']
-  if shared.Settings.WASM:
-    libc_deps += ['libc-wasm']
-  if shared.Settings.USE_PTHREADS:
-    libc_name = 'libc-mt'
-    always_include.add('libpthreads')
-    if not shared.Settings.WASM_BACKEND:
-      always_include.add('libpthreads_asmjs')
-    else:
-      always_include.add('libpthreads_wasm')
-  else:
-    always_include.add('libpthreads_stub')
-  always_include.add(malloc_name())
+  always_include.add('libpthreads')
+  if shared.Settings.MALLOC != 'none':
+    always_include.add('libmalloc')
   if shared.Settings.WASM_BACKEND:
     always_include.add('libcompiler_rt')
 
-  Library = namedtuple('Library', ['shortname', 'suffix', 'create', 'symbols', 'deps', 'can_noexcept'])
-
-  system_libs = [Library('libc++',        'a', create_libcxx,      libcxx_symbols,      ['libc++abi'], True), # noqa
-                 Library('libc++abi',     ext, create_libcxxabi,   libcxxabi_symbols,   [libc_name],   False), # noqa
-                 Library('libal',         ext, create_al,          al_symbols,          [libc_name],   False), # noqa
-                 Library('libhtml5',      ext, create_html5,       html5_symbols,       [],            False), # noqa
-                 Library('libcompiler_rt','a', create_compiler_rt, compiler_rt_symbols, [libc_name],   False), # noqa
-                 Library(malloc_name(),   ext, create_malloc,      [],                  [],            False)] # noqa
-
-  gl_name = 'libgl'
-  if shared.Settings.USE_PTHREADS:
-    gl_name += '-mt'
-  if shared.Settings.LEGACY_GL_EMULATION:
-    gl_name += '-emu'
-  if shared.Settings.USE_WEBGL2:
-    gl_name += '-webgl2'
-  if shared.Settings.OFFSCREEN_FRAMEBUFFER:
-    gl_name += '-ofb'
-  system_libs += [Library(gl_name,        ext, create_gl,          gl_symbols,          [libc_name],   False)] # noqa
-
-  if shared.Settings.USE_PTHREADS:
-    system_libs += [Library('libpthreads',       ext, create_pthreads,       pthreads_symbols,       [libc_name],  False)] # noqa
-    if not shared.Settings.WASM_BACKEND:
-      system_libs += [Library('libpthreads_asmjs', ext, create_pthreads_asmjs, asmjs_pthreads_symbols, [libc_name], False)] # noqa
-    else:
-      system_libs += [Library('libpthreads_wasm', ext, create_pthreads_wasm,   [],                     [libc_name], False)] # noqa
-  else:
-    system_libs += [Library('libpthreads_stub',  ext, create_pthreads_stub,  stub_pthreads_symbols,  [libc_name],  False)] # noqa
-
-  system_libs.append(Library(libc_name, ext, create_libc, libc_symbols, libc_deps, False))
-
-  # if building to wasm, we need more math code, since we have less builtins
-  if shared.Settings.WASM:
-    system_libs.append(Library('libc-wasm', ext, create_wasm_libc, wasm_libc_symbols, [], False))
-
-  # Add libc-extras at the end, as libc may end up requiring them, and they depend on nothing.
-  system_libs.append(Library('libc-extras', ext, create_libc_extras, libc_extras_symbols, [], False))
-
   libs_to_link = []
   already_included = set()
-  system_libs_map = {l.shortname: l for l in system_libs}
+  system_libs_map = Library.get_usable_variations()
+  system_libs = sorted(system_libs_map.values(), key=lambda lib: lib.name)
 
-  # Setting this in the environment will avoid checking dependencies and make building big projects a little faster
-  # 1 means include everything; otherwise it can be the name of a lib (libc++, etc.)
-  # You can provide 1 to include everything, or a comma-separated list with the ones you want
+  # Setting this in the environment will avoid checking dependencies and make
+  # building big projects a little faster 1 means include everything; otherwise
+  # it can be the name of a lib (libc++, etc.).
+  # You can provide 1 to include everything, or a comma-separated list with the
+  # ones you want
   force = os.environ.get('EMCC_FORCE_STDLIBS')
   if force == '1':
-    force = ','.join(system_libs_map.keys())
+    force = ','.join(name for name, lib in system_libs_map.items() if not lib.never_force)
   force_include = set((force.split(',') if force else []) + forced)
   if force_include:
     logger.debug('forcing stdlibs: ' + str(force_include))
@@ -706,43 +1265,33 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     if lib not in system_libs_map:
       shared.exit_with_error('invalid forced library: %s', lib)
 
-  def maybe_noexcept(name):
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING:
-      name += '_noexcept'
-    return name
-
   def add_library(lib):
-    if lib.shortname in already_included:
+    if lib.name in already_included:
       return
-    already_included.add(lib.shortname)
+    already_included.add(lib.name)
 
-    shortname = lib.shortname
-    if lib.can_noexcept:
-      shortname = maybe_noexcept(shortname)
-    name = shortname + '.' + lib.suffix
+    logger.debug('including %s (%s)' % (lib.name, lib.get_filename()))
 
-    logger.debug('including %s' % name)
-
-    def do_create():
-      return lib.create(name)
-
-    libfile = shared.Cache.get(name, do_create)
-    need_whole_archive = lib.shortname in force_include and lib.suffix != 'bc'
-    libs_to_link.append((libfile, need_whole_archive))
+    need_whole_archive = lib.name in force_include and lib.get_ext() == '.a'
+    libs_to_link.append((lib.get_path(), need_whole_archive))
 
     # Recursively add dependencies
-    for d in lib.deps:
+    for d in lib.get_depends():
       add_library(system_libs_map[d])
+
+    for d in lib.js_depends:
+      d = '_' + d
+      if d not in shared.Settings.EXPORTED_FUNCTIONS:
+        shared.Settings.EXPORTED_FUNCTIONS.append(d)
 
   # Go over libraries to figure out which we must include
   for lib in system_libs:
-    assert lib.shortname.startswith('lib')
-    if lib.shortname in already_included:
+    if lib.name in already_included:
       continue
-    force_this = lib.shortname in force_include
+    force_this = lib.name in force_include
     if not force_this and only_forced:
       continue
-    include_this = force_this or lib.shortname in always_include
+    include_this = force_this or lib.name in always_include
 
     if not include_this:
       need_syms = set()
@@ -760,7 +1309,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
           # remove symbols that are supplied by another of the inputs
           need_syms.remove(haz)
       if shared.Settings.VERBOSE:
-        logger.debug('considering %s: we need %s and have %s' % (lib.shortname, str(need_syms), str(has_syms)))
+        logger.debug('considering %s: we need %s and have %s' % (lib.name, str(need_syms), str(has_syms)))
       if not len(need_syms):
         continue
 
@@ -768,8 +1317,24 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(lib)
 
   if shared.Settings.WASM_BACKEND:
-    libs_to_link.append((shared.Cache.get('libcompiler_rt_wasm.a', lambda: create_wasm_compiler_rt('libcompiler_rt_wasm.a')), False))
-    libs_to_link.append((shared.Cache.get('libc_rt_wasm.a', lambda: create_wasm_libc_rt('libc_rt_wasm.a')), False))
+    add_library(system_libs_map['libcompiler_rt_wasm'])
+    add_library(system_libs_map['libc_rt_wasm'])
+
+  if shared.Settings.UBSAN_RUNTIME == 1:
+    add_library(system_libs_map['libubsan_minimal_rt_wasm'])
+  elif shared.Settings.UBSAN_RUNTIME == 2:
+    add_library(system_libs_map['libubsan_rt_wasm'])
+
+  if shared.Settings.USE_LSAN:
+    force_include.add('liblsan_rt_wasm')
+    add_library(system_libs_map['liblsan_rt_wasm'])
+
+  if shared.Settings.USE_ASAN:
+    force_include.add('libasan_rt_wasm')
+    add_library(system_libs_map['libasan_rt_wasm'])
+
+  if shared.Settings.STANDALONE_WASM:
+    add_library(system_libs_map['libstandalonewasm'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
@@ -824,7 +1389,7 @@ class Ports(object):
     objects = []
     for src in srcs:
       obj = src + '.o'
-      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags + get_cflags())
+      commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
     run_commands(commands)
@@ -860,7 +1425,8 @@ class Ports(object):
   name_cache = set()
 
   @staticmethod
-  def fetch_project(name, url, subdir, is_tarbz2=False):
+  def fetch_project(name, url, subdir, is_tarbz2=False, sha512hash=None):
+    # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
     # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
@@ -874,23 +1440,27 @@ class Ports(object):
     # clears the build, so that it is rebuilt from that source.
     local_ports = os.environ.get('EMCC_LOCAL_PORTS')
     if local_ports:
+      shared.Cache.acquire_cache_lock()
       logger.warning('using local ports: %s' % local_ports)
       local_ports = [pair.split('=', 1) for pair in local_ports.split(',')]
-      for local in local_ports:
-        if name == local[0]:
-          path = local[1]
-          if name not in ports.ports_by_name:
-            shared.exit_with_error('%s is not a known port' % name)
-          port = ports.ports_by_name[name]
-          if not hasattr(port, 'SUBDIR'):
-            logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
-            sys.exit(1)
-          subdir = port.SUBDIR
-          logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
-          shared.try_delete(fullname)
-          shutil.copytree(path, os.path.join(fullname, subdir))
-          Ports.clear_project_build(name)
-          return
+      try:
+        for local in local_ports:
+          if name == local[0]:
+            path = local[1]
+            if name not in ports.ports_by_name:
+              shared.exit_with_error('%s is not a known port' % name)
+            port = ports.ports_by_name[name]
+            if not hasattr(port, 'SUBDIR'):
+              logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
+              sys.exit(1)
+            subdir = port.SUBDIR
+            logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+            shared.try_delete(fullname)
+            shutil.copytree(path, os.path.join(fullname, subdir))
+            Ports.clear_project_build(name)
+      finally:
+        shared.Cache.release_cache_lock()
+      return
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
@@ -912,12 +1482,25 @@ class Ports(object):
       # retrieve from remote server
       logger.warning('retrieving port: ' + name + ' from ' + url)
       try:
-        from urllib.request import urlopen
+        import requests
+        response = requests.get(url)
+        data = response.content
       except ImportError:
-        # Python 2 compatibility
-        from urllib2 import urlopen
-      f = urlopen(url)
-      data = f.read()
+        try:
+          from urllib.request import urlopen
+          f = urlopen(url)
+          data = f.read()
+        except ImportError:
+          # Python 2 compatibility
+          from urllib2 import urlopen
+          f = urlopen(url)
+          data = f.read()
+
+      if sha512hash:
+        actual_hash = hashlib.sha512(data).hexdigest()
+        if actual_hash != sha512hash:
+          raise RuntimeError('Unexpected hash: ' + actual_hash + '\n'
+                             'If you are updating the port, please update the hash in the port module.')
       open(fullpath, 'wb').write(data)
       State.retrieved = True
 
@@ -1026,7 +1609,7 @@ def get_ports(settings):
     for port in ports.ports:
       # ports return their output files, which will be linked, or a txt file
       ret += [f for f in port.get(Ports, settings, shared) if not f.endswith('.txt')]
-  except:
+  except Exception:
     logger.error('a problem occurred when using an emscripten-ports library.  try to run `emcc --clear-ports` and then run this command again')
     raise
 

@@ -508,12 +508,50 @@ var LibraryGL = {
       canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
       if (!ctx) {
         err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
+        return 0;
       }
+#else
+      if (!ctx) return 0;
 #endif
+
+      var handle = GL.registerContext(ctx, webGLContextAttributes);
+
 #if TRACE_WEBGL_CALLS
-      if (ctx) GL.hookWebGL(ctx);
+      GL.hookWebGL(ctx);
 #endif
-      return ctx && GL.registerContext(ctx, webGLContextAttributes);
+
+#if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
+      function disableHalfFloatExtensionIfBroken(ctx) {
+        var t = ctx.createTexture();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, t);
+        for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
+        var ext = ctx.getExtension('OES_texture_half_float');
+        if (!ext) return; // no half-float extension - nothing needed to fix.
+        // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
+        // rendering them useless.
+        // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+        // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+        ctx.texImage2D(0x0de1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
+        var broken = ctx.getError();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, null);
+        ctx.deleteTexture(t);
+        if (broken) {
+          ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
+          ctx.getSupportedExtensions = function() {
+#if GL_ASSERTIONS
+            warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
+#endif
+            // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+            return (this.realGetSupportedExtensions() || []).filter(function(ext) {
+              return ext.indexOf('texture_half_float') == -1;
+            });
+          }
+        }
+      }
+      disableHalfFloatExtensionIfBroken(ctx);
+#endif
+
+      return handle;
     },
 
 #if OFFSCREEN_FRAMEBUFFER
@@ -868,6 +906,35 @@ var LibraryGL = {
       GL.contexts[contextHandle] = null;
     },
 
+    acquireInstancedArraysExtension: function(ctx) {
+      // Extension available in WebGL 1 from Firefox 26 and Google Chrome 30 onwards. Core feature in WebGL 2.
+      var ext = ctx.getExtension('ANGLE_instanced_arrays');
+      if (ext) {
+        ctx['vertexAttribDivisor'] = function(index, divisor) { ext['vertexAttribDivisorANGLE'](index, divisor); };
+        ctx['drawArraysInstanced'] = function(mode, first, count, primcount) { ext['drawArraysInstancedANGLE'](mode, first, count, primcount); };
+        ctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { ext['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
+      }
+    },
+
+    acquireVertexArrayObjectExtension: function(ctx) {
+      // Extension available in WebGL 1 from Firefox 25 and WebKit 536.28/desktop Safari 6.0.3 onwards. Core feature in WebGL 2.
+      var ext = ctx.getExtension('OES_vertex_array_object');
+      if (ext) {
+        ctx['createVertexArray'] = function() { return ext['createVertexArrayOES'](); };
+        ctx['deleteVertexArray'] = function(vao) { ext['deleteVertexArrayOES'](vao); };
+        ctx['bindVertexArray'] = function(vao) { ext['bindVertexArrayOES'](vao); };
+        ctx['isVertexArray'] = function(vao) { return ext['isVertexArrayOES'](vao); };
+      }
+    },
+
+    acquireDrawBuffersExtension: function(ctx) {
+      // Extension available in WebGL 1 from Firefox 28 onwards. Core feature in WebGL 2.
+      var ext = ctx.getExtension('WEBGL_draw_buffers');
+      if (ext) {
+        ctx['drawBuffers'] = function(n, bufs) { ext['drawBuffersWEBGL'](n, bufs); };
+      }
+    },
+
     // In WebGL, extensions must be explicitly enabled to be active, see http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.14.14
     // In GLES2, all extensions are enabled by default without additional operations. Init all extensions we need to give to GLES2 user
     // code here, so that GLES2 code can operate without changing behavior.
@@ -887,27 +954,9 @@ var LibraryGL = {
 #endif
 
       if (context.version < 2) {
-        // Extension available from Firefox 26 and Google Chrome 30
-        var instancedArraysExt = GLctx.getExtension('ANGLE_instanced_arrays');
-        if (instancedArraysExt) {
-          GLctx['vertexAttribDivisor'] = function(index, divisor) { instancedArraysExt['vertexAttribDivisorANGLE'](index, divisor); };
-          GLctx['drawArraysInstanced'] = function(mode, first, count, primcount) { instancedArraysExt['drawArraysInstancedANGLE'](mode, first, count, primcount); };
-          GLctx['drawElementsInstanced'] = function(mode, count, type, indices, primcount) { instancedArraysExt['drawElementsInstancedANGLE'](mode, count, type, indices, primcount); };
-        }
-
-        // Extension available from Firefox 25 and WebKit
-        var vaoExt = GLctx.getExtension('OES_vertex_array_object');
-        if (vaoExt) {
-          GLctx['createVertexArray'] = function() { return vaoExt['createVertexArrayOES'](); };
-          GLctx['deleteVertexArray'] = function(vao) { vaoExt['deleteVertexArrayOES'](vao); };
-          GLctx['bindVertexArray'] = function(vao) { vaoExt['bindVertexArrayOES'](vao); };
-          GLctx['isVertexArray'] = function(vao) { return vaoExt['isVertexArrayOES'](vao); };
-        }
-
-        var drawBuffersExt = GLctx.getExtension('WEBGL_draw_buffers');
-        if (drawBuffersExt) {
-          GLctx['drawBuffers'] = function(n, bufs) { drawBuffersExt['drawBuffersWEBGL'](n, bufs); };
-        }
+        GL.acquireInstancedArraysExtension(GLctx);
+        GL.acquireVertexArrayObjectExtension(GLctx);
+        GL.acquireDrawBuffersExtension(GLctx);
       }
 
       GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
@@ -939,14 +988,12 @@ var LibraryGL = {
         return ret;
       }
 
-      var exts = GLctx.getSupportedExtensions();
-      if (exts && exts.length > 0) {
-        GLctx.getSupportedExtensions().forEach(function(ext) {
-          if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-            GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
-          }
-        });
-      }
+      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      exts.forEach(function(ext) {
+        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
@@ -1020,15 +1067,11 @@ var LibraryGL = {
     var ret;
     switch(name_) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(exts[i]);
+        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          gl_exts.push("GL_" + exts[i]);
+        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-        }
-        ret = stringToNewUTF8(gl_exts.join(' '));
+        ret = stringToNewUTF8(exts.join(' '));
         break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
@@ -1102,12 +1145,14 @@ var LibraryGL = {
         ret = 1;
         break;
       case 0x8DF8: // GL_SHADER_BINARY_FORMATS
-        if (type !== 'Integer' && type !== 'Integer64') {
+#if GL_TRACK_ERRORS
+        if (type != {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}} && type != {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGet' + type + 'v(GL_SHADER_BINARY_FORMATS): Invalid parameter type!');
 #endif
         }
+#endif
         return; // Do not write anything to the out pointer, since no binary formats are supported.
 #if USE_WEBGL2
       case 0x87FE: // GL_NUM_PROGRAM_BINARY_FORMATS
@@ -1123,27 +1168,28 @@ var LibraryGL = {
         break;
 #if USE_WEBGL2
       case 0x821D: // GL_NUM_EXTENSIONS
+#if GL_TRACK_ERRORS
         if (GL.currentContext.version < 2) {
           GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
           return;
         }
-        var exts = GLctx.getSupportedExtensions();
-        if (exts === null) {
-          ret = 0;
-        } else {
-#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
-#else
-          ret = exts.length;
 #endif
-        }
+        // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+        var exts = GLctx.getSupportedExtensions() || [];
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
+        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+#else
+        ret = exts.length;
+#endif
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
+#if GL_TRACK_ERRORS
         if (GL.currentContext.version < 2) {
           GL.recordError(0x0500); // GL_INVALID_ENUM
           return;
         }
+#endif
         ret = name_ == 0x821B ? 3 : 0; // return version 3.0
         break;
 #endif
@@ -1198,57 +1244,65 @@ var LibraryGL = {
                      result instanceof Array) {
             for (var i = 0; i < result.length; ++i) {
               switch (type) {
-                case 'Integer': {{{ makeSetValue('p', 'i*4', 'result[i]',     'i32') }}};   break;
-                case 'Float':   {{{ makeSetValue('p', 'i*4', 'result[i]',     'float') }}}; break;
-                case 'Boolean': {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}};    break;
+                case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'i32') }}}; break;
+                case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('p', 'i*4', 'result[i]', 'float') }}}; break;
+                case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', 'i',   'result[i] ? 1 : 0', 'i8') }}}; break;
+#if GL_ASSERTIONS
                 default: throw 'internal glGet error, bad type: ' + type;
+#endif
               }
             }
             return;
           } else {
+#if GL_TRACK_ERRORS
             try {
+#endif
               ret = result.name | 0;
+#if GL_TRACK_ERRORS
             } catch(e) {
               GL.recordError(0x0500); // GL_INVALID_ENUM
               err('GL_INVALID_ENUM in glGet' + type + 'v: Unknown object returned from WebGL getParameter(' + name_ + ')! (error: ' + e + ')');
               return;
             }
+#endif
           }
           break;
+#if GL_TRACK_ERRORS
         default:
           GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGet' + type + 'v: Native code calling glGet' + type + 'v(' + name_ + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
-#endif
           return;
+#endif
       }
     }
 
     switch (type) {
-      case 'Integer64': {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
-      case 'Integer': {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
-      case 'Float':   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
-      case 'Boolean': {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+#if GL_ASSERTIONS
       default: throw 'internal glGet error, bad type: ' + type;
+#endif
     }
   },
 
   glGetIntegerv__sig: 'vii',
   glGetIntegerv__deps: ['$emscriptenWebGLGet'],
   glGetIntegerv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Integer');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetFloatv__sig: 'vii',
   glGetFloatv__deps: ['$emscriptenWebGLGet'],
   glGetFloatv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Float');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetBooleanv__sig: 'vii',
   glGetBooleanv__deps: ['$emscriptenWebGLGet'],
   glGetBooleanv: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Boolean');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}});
   },
 
   glDeleteTextures__sig: 'vii',
@@ -1343,7 +1397,6 @@ var LibraryGL = {
     0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 4,
     0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 4,
     0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 4,
-    0x84FA /* GL_UNSIGNED_INT_24_8 */: 4,
 #endif
   },
 
@@ -1390,7 +1443,6 @@ var LibraryGL = {
       case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
       case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
       case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
 #endif
 #if GL_ASSERTIONS
         assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
@@ -1902,15 +1954,15 @@ var LibraryGL = {
     var data = GLctx.getUniform(GL.programs[program], GL.uniforms[location]);
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
-        case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
         default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
       }
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case 'Integer': {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case 'Float': {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
           default: throw 'internal emscriptenWebGLGetUniform() error, bad type: ' + type;
         }
       }
@@ -1920,13 +1972,13 @@ var LibraryGL = {
   glGetUniformfv__sig: 'viii',
   glGetUniformfv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformfv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, 'Float');
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetUniformiv__sig: 'viii',
   glGetUniformiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, 'Integer');
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetUniformLocation__sig: 'iii',
@@ -1972,17 +2024,17 @@ var LibraryGL = {
       {{{ makeSetValue('params', '0', 'data["name"]', 'i32') }}};
     } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
-        case 'Integer': {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
-        case 'Float': {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
-        case 'FloatToInteger': {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', '0', 'data', 'float') }}}; break;
+        case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', '0', 'Math.fround(data)', 'i32') }}}; break;
         default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
       }
     } else {
       for (var i = 0; i < data.length; i++) {
         switch (type) {
-          case 'Integer': {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
-          case 'Float': {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
-          case 'FloatToInteger': {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'i32') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('params', 'i*4', 'data[i]', 'float') }}}; break;
+          case {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}}: {{{ makeSetValue('params', 'i*4', 'Math.fround(data[i])', 'i32') }}}; break;
           default: throw 'internal emscriptenWebGLGetVertexAttrib() error, bad type: ' + type;
         }
       }
@@ -1994,7 +2046,7 @@ var LibraryGL = {
   glGetVertexAttribfv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, 'Float');
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetVertexAttribiv__sig: 'viii',
@@ -2002,7 +2054,7 @@ var LibraryGL = {
   glGetVertexAttribiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttrib*f(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, 'FloatToInteger');
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_F2I') }}});
   },
 
   glGetVertexAttribPointerv__sig: 'viii',
@@ -2033,13 +2085,8 @@ var LibraryGL = {
     var info = GLctx.getActiveUniform(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size, type and name.
 
-    if (bufSize > 0 && name) {
-      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
-
+    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
@@ -2520,13 +2567,8 @@ var LibraryGL = {
     var info = GLctx.getActiveAttrib(program, index);
     if (!info) return; // If an error occurs, nothing will be written to length, size and type and name.
 
-    if (bufSize > 0 && name) {
-      var numBytesWrittenExclNull = stringToUTF8(info.name, name, bufSize);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
-
+    var numBytesWrittenExclNull = (bufSize > 0 && name) ? stringToUTF8(info.name, name, bufSize) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
     if (size) {{{ makeSetValue('size', '0', 'info.size', 'i32') }}};
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
@@ -2629,12 +2671,8 @@ var LibraryGL = {
 #endif
     var result = GLctx.getShaderSource(GL.shaders[shader]);
     if (!result) return; // If an error occurs, nothing will be written to length or source.
-    if (bufSize > 0 && source) {
-      var numBytesWrittenExclNull = stringToUTF8(result, source, bufSize);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
+    var numBytesWrittenExclNull = (bufSize > 0 && source) ? stringToUTF8(result, source, bufSize) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
   glCompileShader__sig: 'vi',
@@ -2655,13 +2693,11 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.shaders, shader, 'glGetShaderInfoLog', 'shader');
 #endif
     var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
     if (log === null) log = '(unknown error)';
-    if (maxLength > 0 && infoLog) {
-      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
+#endif
+    var numBytesWrittenExclNull = (maxLength > 0 && infoLog) ? stringToUTF8(log, infoLog, maxLength) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
   glGetShaderiv__sig: 'viii',
@@ -2680,7 +2716,9 @@ var LibraryGL = {
 #endif
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
+#endif
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B88) { // GL_SHADER_SOURCE_LENGTH
       var source = GLctx.getShaderSource(GL.shaders[shader]);
@@ -2725,7 +2763,9 @@ var LibraryGL = {
 
     if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
       var log = GLctx.getProgramInfoLog(GL.programs[program]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
       if (log === null) log = '(unknown error)';
+#endif
       {{{ makeSetValue('p', '0', 'log.length + 1', 'i32') }}};
     } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
       {{{ makeSetValue('p', '0', 'ptable.maxUniformLength', 'i32') }}};
@@ -2833,14 +2873,11 @@ var LibraryGL = {
     GL.validateGLObjectID(GL.programs, program, 'glGetProgramInfoLog', 'program');
 #endif
     var log = GLctx.getProgramInfoLog(GL.programs[program]);
+#if GL_ASSERTIONS || GL_TRACK_ERRORS
     if (log === null) log = '(unknown error)';
-
-    if (maxLength > 0 && infoLog) {
-      var numBytesWrittenExclNull = stringToUTF8(log, infoLog, maxLength);
-      if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
-    } else {
-      if (length) {{{ makeSetValue('length', '0', 0, 'i32') }}};
-    }
+#endif
+    var numBytesWrittenExclNull = (maxLength > 0 && infoLog) ? stringToUTF8(log, infoLog, maxLength) : 0;
+    if (length) {{{ makeSetValue('length', '0', 'numBytesWrittenExclNull', 'i32') }}};
   },
 
   glUseProgram__sig: 'vi',
@@ -3224,17 +3261,13 @@ var LibraryGL = {
 
   glGetError__sig: 'i',
   glGetError: function() {
-    // First return any GL error generated by the emscripten library_webgl.js interop layer.
 #if GL_TRACK_ERRORS
-    if (GL.lastError) {
-      var error = GL.lastError;
-      GL.lastError = 0/*GL_NO_ERROR*/;
-      return error;
-    } else
+    var error = GLctx.getError() || GL.lastError;
+    GL.lastError = 0/*GL_NO_ERROR*/;
+    return error;
+#else
+    return GLctx.getError();
 #endif
-    { // If there were none, return the GL error from the browser GL context.
-      return GLctx.getError();
-    }
   },
 
   // ANGLE_instanced_arrays WebGL extension related functions (in core in WebGL 2)

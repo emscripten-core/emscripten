@@ -33,8 +33,9 @@ int main() {
     FS.writeFile('allaccess', ''); FS.chmod('allaccess', 0777);
   );
 #endif
+  // Empty path checks #9136 fix
   char* files[] = {"readable", "writeable",
-                   "allaccess", "forbidden", "nonexistent"};
+                   "allaccess", "forbidden", "nonexistent", ""};
   for (int i = 0; i < sizeof files / sizeof files[0]; i++) {
     printf("F_OK(%s): %d\n", files[i], access(files[i], F_OK));
     printf("errno: %d\n", errno);

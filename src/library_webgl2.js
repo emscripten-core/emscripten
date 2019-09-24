@@ -29,14 +29,13 @@ var LibraryWebGL2 = {
     }
     switch(name) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(stringToNewUTF8(exts[i]));
-          // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
-          gl_exts.push(stringToNewUTF8('GL_' + exts[i]));
-        }
-        stringiCache = GL.stringiCache[name] = gl_exts;
+        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
+        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
+#endif
+        exts = exts.map(function(e) { return stringToNewUTF8(e); });
+
+        stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x0501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
@@ -57,14 +56,14 @@ var LibraryWebGL2 = {
   glGetInteger64v__sig: 'vii',
   glGetInteger64v__deps: ['$emscriptenWebGLGet'],
   glGetInteger64v: function(name_, p) {
-    emscriptenWebGLGet(name_, p, 'Integer64');
+    emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
   },
 
-  glGetInternalFormativ__sig: 'viiiii',
-  glGetInternalFormativ: function(target, internalformat, pname, bufSize, params) {
+  glGetInternalformativ__sig: 'viiiii',
+  glGetInternalformativ: function(target, internalformat, pname, bufSize, params) {
     if (bufSize < 0) {
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
+      err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
 #endif
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
@@ -73,12 +72,12 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
       // if values == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalFormativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
+      err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
 #endif
       GL.recordError(0x0501 /* GL_INVALID_VALUE */);
       return;
     }
-    var ret = GLctx['getInternalFormatParameter'](target, internalformat, pname);
+    var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
     if (ret === null) return;
     for (var i = 0; i < ret.length && i < bufSize; ++i) {
       {{{ makeSetValue('params', 'i', 'ret[i]', 'i32') }}};
@@ -524,10 +523,10 @@ var LibraryWebGL2 = {
     }
 
     switch (type) {
-      case 'Integer64': {{{ makeSetValue('data', '0', 'ret', 'i64') }}};    break;
-      case 'Integer': {{{ makeSetValue('data', '0', 'ret', 'i32') }}};    break;
-      case 'Float':   {{{ makeSetValue('data', '0', 'ret', 'float') }}};  break;
-      case 'Boolean': {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: {{{ makeSetValue('data', '0', 'ret', 'i64') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
       default: throw 'internal emscriptenWebGLGetIndexed() error, bad type: ' + type;
     }
   },
@@ -535,13 +534,13 @@ var LibraryWebGL2 = {
   glGetIntegeri_v__sig: 'viii',
   glGetIntegeri_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetIntegeri_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, 'Integer');
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetInteger64i_v__sig: 'viii',
   glGetInteger64i_v__deps: ['$emscriptenWebGLGetIndexed'],
   glGetInteger64i_v: function(target, index, data) {
-    emscriptenWebGLGetIndexed(target, index, data, 'Integer64');
+    emscriptenWebGLGetIndexed(target, index, data, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
   },
 
   // Uniform Buffer objects
@@ -772,7 +771,7 @@ var LibraryWebGL2 = {
   glGetSynciv__sig: 'viiiii',
   glGetSynciv: function(sync, pname, bufSize, length, values) {
     if (bufSize < 0) {
-      // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalFormativ, it does say that GL_INVALID_VALUE should be raised,
+      // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalformativ, it does say that GL_INVALID_VALUE should be raised,
       // so raise GL_INVALID_VALUE here as well.
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values='+values+'): Function called with bufSize < 0!');
@@ -804,7 +803,7 @@ var LibraryWebGL2 = {
   glGetUniformuiv__sig: 'viii',
   glGetUniformuiv__deps: ['$emscriptenWebGLGetUniform'],
   glGetUniformuiv: function(program, location, params) {
-    emscriptenWebGLGetUniform(program, location, params, 'Integer');
+    emscriptenWebGLGetUniform(program, location, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetFragDataLocation__sig: 'iii',
@@ -820,7 +819,7 @@ var LibraryWebGL2 = {
   glGetVertexAttribIiv: function(index, pname, params) {
     // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4iv(),
     // otherwise the results are undefined. (GLES3 spec 6.1.12)
-    emscriptenWebGLGetVertexAttrib(index, pname, params, 'Integer');
+    emscriptenWebGLGetVertexAttrib(index, pname, params, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   // N.B. This function may only be called if the vertex attribute was specified using the function glVertexAttribI4uiv(),
@@ -1109,6 +1108,12 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
  [10, 'blitFramebuffer']];
 
 #if USE_WEBGL2
+
+// If user passes -s USE_WEBGL2=1 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
+// be linked in as well.
+if (typeof createGLPassthroughFunctions === 'undefined') {
+  throw 'In order to use WebGL 2 in strict mode with -s USE_WEBGL2=1, you need to link in WebGL support with -lGL!';
+}
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);
 

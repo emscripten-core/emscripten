@@ -83,6 +83,13 @@ def make_fake_llc(filename, targets):
   os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
 
+def make_fake_lld(filename):
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('exit 0\n')
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 EMBUILDER = path_from_root('embuilder.py')
@@ -99,6 +106,9 @@ class sanity(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super(sanity, cls).setUpClass()
+    # Unlike the other test suites we explicitly don't want to be skipping
+    # the sanity checks here
+    del os.environ['EMCC_SKIP_SANITY_CHECK']
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()
@@ -183,7 +193,7 @@ class sanity(RunnerCore):
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
-      if platform.system() is not 'Windows':
+      if platform.system() != 'Windows':
         # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         possible_nodes = [os.path.join(temp_bin, 'node')]
@@ -201,7 +211,7 @@ class sanity(RunnerCore):
       self.assertNotContained('}}}', config_file)
       self.assertContained('{{{', template_file)
       self.assertContained('}}}', template_file)
-      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
+      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
         self.assertContained(content, config_file)
 
       # The guessed config should be ok
@@ -211,7 +221,7 @@ class sanity(RunnerCore):
       # self.assertContained('hello, world!', run_js('a.out.js'), output)
 
       # Second run, with bad EM_CONFIG
-      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
+      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
         f = open(CONFIG_FILE, 'w')
         f.write(settings)
         f.close()
@@ -258,28 +268,35 @@ class sanity(RunnerCore):
     # Clang should report the version number we expect, and emcc should not warn
     assert shared.check_llvm_version()
     output = self.check_working(EMCC)
-    assert LLVM_WARNING not in output, output
+    self.assertNotContained(LLVM_WARNING, output)
 
     # Fake a different llvm version
     restore_and_set_up()
     with open(CONFIG_FILE, 'a') as f:
       f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
 
+    real_version_x, real_version_y = (int(x) for x in expected_llvm_version().split('.'))
+    if shared.get_llvm_target() == shared.WASM_TARGET:
+      make_fake_llc(path_from_root('tests', 'fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
+      make_fake_lld(path_from_root('tests', 'fake', 'wasm-ld'))
+    else:
+      make_fake_llc(path_from_root('tests', 'fake', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+
     with env_modify({'EM_IGNORE_SANITY': '1'}):
-      for x in range(-2, 3):
-        for y in range(-2, 3):
-          expected_x, expected_y = (int(x) for x in expected_llvm_version().split('.'))
-          expected_x += x
-          expected_y += y
+      for inc_x in range(-2, 3):
+        for inc_y in range(-2, 3):
+          expected_x = real_version_x + inc_x
+          expected_y = real_version_y + inc_y
           if expected_x < 0 or expected_y < 0:
             continue # must be a valid llvm version
-          print(expected_llvm_version(), x, y, expected_x, expected_y)
+          print("mod LLVM version: %d %d -> %d %d" % (real_version_x, real_version_x, expected_x, expected_y))
           make_fake_clang(path_from_root('tests', 'fake', 'clang'), '%s.%s' % (expected_x, expected_y))
-          if x != 0 or y != 0:
+          did_modify = inc_x != 0 or inc_y != 0
+          if did_modify:
             output = self.check_working(EMCC, LLVM_WARNING)
           else:
             output = self.check_working(EMCC)
-            assert LLVM_WARNING not in output, output
+            self.assertNotContained(LLVM_WARNING, output)
 
   def test_emscripten_root(self):
     # The correct path
@@ -317,21 +334,6 @@ class sanity(RunnerCore):
       open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
     try_delete(SANITY_FILE)
     self.check_working(EMCC, WARNING)
-    # make sure sanity checks notice there is no source dir with version #
-    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'there IZ a js backend: JavaScript (asm.js, emscripten) backend')
-    try_delete(SANITY_FILE)
-    self.check_working(EMCC, 'clang version does not appear to include fastcomp')
-
-    VERSION_WARNING = 'Emscripten, llvm and clang build versions do not match, this is dangerous'
-
-    # add version number
-    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), '%s (emscripten waka : waka)' % expected_llvm_version())
-    try_delete(SANITY_FILE)
-    self.check_working(EMCC, VERSION_WARNING)
-
-    restore_and_set_up()
-
-    self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'ASM_JS=0'], 'ASM_JS can only be set to either 1 or 2')
 
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
@@ -457,34 +459,26 @@ fi
     self.do([PYTHON, EMCC, '-O2', path_from_root('tests', 'hello_world.c')])
 
   def test_emcc_caching(self):
-    INCLUDING_MESSAGE = 'including X'
-    BUILDING_MESSAGE = 'building X for cache'
+    BUILDING_MESSAGE = 'generating system library: X'
     ERASING_MESSAGE = 'clearing cache'
 
     restore_and_set_up()
     self.erase_cache()
 
-    with env_modify({'EMCC_DEBUG': '1'}):
-      # Building a file that *does* need something *should* trigger cache
-      # generation, but only the first time
-      for filename, libname in [('hello_libcxx.cpp', 'libc++')]:
-        for i in range(3):
-          print(filename, libname, i)
-          self.clear()
-          output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', filename), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-          # print '\n\n\n', output
-          assert INCLUDING_MESSAGE.replace('X', libname) in output
-          if libname == 'libc':
-            assert INCLUDING_MESSAGE.replace('X', 'libc++') not in output # we don't need libc++ in this code
-          else:
-            assert INCLUDING_MESSAGE.replace('X', 'libc') in output # libc++ always forces inclusion of libc
-          assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
-          self.assertContained('hello, world!', run_js('a.out.js'))
-          self.assertExists(Cache.dirname)
-          full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
-          self.assertExists(os.path.join(Cache.dirname, full_libname))
+    # Building a file that *does* need something *should* trigger cache
+    # generation, but only the first time
+    libname = 'libc++'
+    for i in range(3):
+      print(i)
+      self.clear()
+      output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+      print('\n\n\n', output)
+      assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
+      self.assertContained('hello, world!', run_js('a.out.js'))
+      self.assertExists(Cache.dirname)
+      full_libname = libname + '.bc' if libname != 'libc++' else libname + '.a'
+      self.assertExists(os.path.join(Cache.dirname, full_libname))
 
-    try_delete(CANONICAL_TEMP_DIR)
     restore_and_set_up()
 
     # Manual cache clearing
@@ -500,6 +494,7 @@ fi
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     self.ensure_cache()
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
     with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
@@ -519,7 +514,7 @@ fi
     self.assertTrue(os.path.exists(Cache.dirname))
     self.assertTrue(os.path.exists(Cache.root_dirname))
     # building libraries is disallowed
-    output = self.do([PYTHON, EMBUILDER, 'build', 'emmalloc'])
+    output = self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
     self.assertIn('FROZEN_CACHE disallows building system libs', output)
 
   # Test that if multiple processes attempt to access or build stuff to the
@@ -634,8 +629,7 @@ fi
       assert not os.path.exists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
-      # (avoid wasm to avoid the binaryen port)
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0'])
+      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
       assert RETRIEVING_MESSAGE not in output, output
       assert BUILDING_MESSAGE not in output
       print('no', output)
@@ -762,11 +756,7 @@ fi
         f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
 
       make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), report)
-
-      with open(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), 'w') as f:
-        f.write('#!/bin/sh\n')
-        f.write('exit 0\n')
-      os.chmod(path_from_root('tests', 'fake', 'bin', 'wasm-ld'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+      make_fake_lld(path_from_root('tests', 'fake', 'bin', 'wasm-ld'))
 
     with env_modify({'EMCC_DEBUG': '1'}):
       make_fake('wasm32-unknown-unknown-elf')
@@ -850,67 +840,13 @@ fi
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
     self.assertExists(os.path.join(root_cache, 'asmjs'))
 
-  def test_wasm_backend_builds(self):
-    # we can build a program using the wasm backend, rebuilding binaryen etc. as needed
+  def test_binaryen_root(self):
+    # with no binaryen root, an error is shown
     restore_and_set_up()
-
-    def check():
-      print(self.do([PYTHON, EMCC, '--clear-cache']))
-      print(self.do([PYTHON, EMCC, '--clear-ports']))
-      with env_modify({'EMCC_WASM_BACKEND': '1'}):
-        self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
-
-    print('normally')
-    check()
-    print('with no BINARYEN_ROOT')
     open(CONFIG_FILE, 'a').write('''
 BINARYEN_ROOT = ''
     ''')
-    print(open(CONFIG_FILE).read())
-    check()
-
-  def test_binaryen(self):
-    import tools.ports.binaryen as binaryen
-    tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
-
-    assert not os.environ.get('BINARYEN') # must not have binaryen env var set
-
-    # test with BINARYEN_ROOT in the config file, which is how developers usually
-    # have things set up. testing without it in the config file (which makes
-    # it get fetched from ports) is how the bots work, so it is tested there
-
-    def prep():
-      restore_and_set_up()
-      print('clearing ports...')
-      print(self.do([PYTHON, EMCC, '--clear-ports']))
-      wipe()
-      self.do([PYTHON, EMCC]) # first run stage
-      try_delete(tag_file)
-      config = open(CONFIG_FILE).read()
-      assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
-      print('created config:')
-      print(config)
-      restore_and_set_up()
-      config = open(CONFIG_FILE).read()
-      config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
-      print('modified config:')
-      print(config)
-      open(CONFIG_FILE, 'w').write(config)
-
-    print('build using embuilder')
-    prep()
-    run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
-    self.assertExists(tag_file)
-    run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-    print('see we show an error for emmake (we cannot build natively under emmake)')
-    prep()
-    try_delete('a.out.js')
-    out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-    assert not os.path.exists(tag_file)
-    assert not os.path.exists('a.out.js')
-    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT must be set up in .emscripten')
 
   def test_embuilder_wasm_backend(self):
     if not Settings.WASM_BACKEND:

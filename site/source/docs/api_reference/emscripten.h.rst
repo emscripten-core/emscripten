@@ -113,7 +113,7 @@ Defines
       // units, but Emscripten C strings operate as UTF-8.
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
 
@@ -182,7 +182,7 @@ Defines
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
       var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
     printf("UTF8 string says: %s\n", str);
@@ -429,7 +429,7 @@ Functions
 
   When building natively this becomes a simple direct call, after ``SDL_Delay`` (you must include **SDL.h** for that).
 
-  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used.
+  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used. (Note that 0 means that ``setTimeout`` is still used, which basically means "run asynchronously as soon as possible".)
 
   :param em_arg_callback_func func: The C function to call asynchronously. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined argument to pass to the C function.
@@ -1311,10 +1311,55 @@ Functions
 
     :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
 
+  .. note:: this only works in fastcomp
+
 .. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
 
     Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
 
+  .. note:: this only works in fastcomp
+
 .. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
+
+  .. note:: this only works in fastcomp
+
+Memory scanning functions
+=========================
+
+These functions can help with conservative garbage collection, where roots are
+scanned for.
+
+Typedefs
+--------
+
+.. c:type:: em_scan_func
+
+  Function pointer type for use in scan callbacks, receiving two pointers, for
+  the beginning and end of a range of memory. You can then scan that range.
+
+  Defined as: ::
+
+    typedef void (*em_scan_func)(void*, void*)
+
+Functions
+---------
+
+.. c:function:: void emscripten_scan_stack(em_scan_func func)
+
+    Scan the C userspace stack, which means the stack managed by the compiled
+    code (as opposed to the wasm VM's internal stack, which is not directly
+    observable). This data is already in linear memory; this function just
+    gives you a simple way to know where it is.
+
+.. c:function:: void emscripten_scan_registers(em_scan_func func)
+
+    Scan "registers", by which we mean data that is not in memory. In wasm,
+    that means data stored in locals, including locals in functions higher up
+    the stack - the wasm VM has spilled them, but none of that is observable to
+    user code).
+
+    This function requires Asyncify - it relies on that option to spill the
+    local state all the way up the stack. As a result, it will add overhead
+    to your program.

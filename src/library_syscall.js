@@ -116,6 +116,9 @@ var SyscallsLibrary = {
       var node;
       var lookup = FS.lookupPath(path, { follow: true });
       node = lookup.node;
+      if (!node) {
+        return -{{{ cDefine('ENOENT') }}};
+      }
       var perms = '';
       if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
       if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
@@ -219,6 +222,64 @@ var SyscallsLibrary = {
     }
   },
 
+  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS',
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    '$FS',
+#endif
+  ],
+  _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
+    off <<= 12; // undo pgoffset
+    var ptr;
+    var allocated = false;
+
+    // addr argument must be page aligned if MAP_FIXED flag is set.
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+
+    // MAP_ANONYMOUS (aka MAP_ANON) isn't actually defined by POSIX spec,
+    // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
+    // In this case fd argument is ignored.
+    if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
+      ptr = _memalign(PAGE_SIZE, len);
+      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
+      _memset(ptr, 0, len);
+      allocated = true;
+    } else {
+      var info = FS.getStream(fd);
+      if (!info) return -{{{ cDefine('EBADF') }}};
+      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
+      ptr = res.ptr;
+      allocated = res.allocated;
+    }
+    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+    return ptr;
+  },
+
+  _emscripten_syscall_munmap__deps: ['$SYSCALLS',
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
+    '$FS',
+#endif
+  ],
+  _emscripten_syscall_munmap: function(addr, len) {
+    if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
+      return -{{{ cDefine('EINVAL') }}};
+    }
+    // TODO: support unmmap'ing parts of allocations
+    var info = SYSCALLS.mappings[addr];
+    if (!info) return 0;
+    if (len === info.len) {
+      var stream = FS.getStream(info.fd);
+      SYSCALLS.doMsync(addr, stream, len, info.flags);
+      FS.munmap(stream);
+      SYSCALLS.mappings[addr] = null;
+      if (info.allocated) {
+        _free(info.malloc);
+      }
+    }
+    return 0;
+  },
+
   __syscall1: function(which, varargs) { // exit
     var status = SYSCALLS.get();
     exit(status);
@@ -242,7 +303,7 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall5: function(which, varargs) { // open
-    var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
+    var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get(); // optional TODO
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
@@ -444,21 +505,10 @@ var SyscallsLibrary = {
     var path = SYSCALLS.getStr(), buf = SYSCALLS.get(), bufsize = SYSCALLS.get();
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
+  __syscall91__deps: ['_emscripten_syscall_munmap'],
   __syscall91: function(which, varargs) { // munmap
     var addr = SYSCALLS.get(), len = SYSCALLS.get();
-    // TODO: support unmmap'ing parts of allocations
-    var info = SYSCALLS.mappings[addr];
-    if (!info) return 0;
-    if (len === info.len) {
-      var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags)
-      FS.munmap(stream);
-      SYSCALLS.mappings[addr] = null;
-      if (info.allocated) {
-        _free(info.malloc);
-      }
-    }
-    return 0;
+    return __emscripten_syscall_munmap(addr, len);
   },
   __syscall94: function(which, varargs) { // fchmod
     var fd = SYSCALLS.get(), mode = SYSCALLS.get();
@@ -710,8 +760,29 @@ var SyscallsLibrary = {
       });
     });
 #else
+#if WASM_BACKEND && ASYNCIFY
+    return Asyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
+    if (stream.stream_ops && stream.stream_ops.fsync) {
+      return -stream.stream_ops.fsync(stream);
+    }
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif
+#endif // WASM_BACKEND && ASYNCIFY
+#endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
@@ -748,12 +819,16 @@ var SyscallsLibrary = {
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    // Can't handle 64-bit integers
-    if (!(offset_high == -1 && offset_low < 0) &&
-        !(offset_high == 0 && offset_low >= 0)) {
+    var HIGH_OFFSET = 0x100000000; // 2^32
+    // use an unsigned operator on low and shift high by 32-bits
+    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
+
+    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
       return -{{{ cDefine('EOVERFLOW') }}};
     }
-    var offset = offset_low;
+
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
@@ -858,39 +933,6 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  $flush_NO_FILESYSTEM: function() {
-    // flush anything remaining in the buffers during shutdown
-    var fflush = Module["_fflush"];
-    if (fflush) fflush(0);
-    var buffers = SYSCALLS.buffers;
-    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
-  },
-  __syscall146__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
-  __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
-#endif
-#endif
-  __syscall146: function(which, varargs) { // writev
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    return SYSCALLS.doWritev(stream, iov, iovcnt);
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    var ret = 0;
-    for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-      for (var j = 0; j < len; j++) {
-        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
-      }
-      ret += len;
-    }
-    return ret;
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
-  },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
@@ -968,25 +1010,10 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
+  __syscall192__deps: ['_emscripten_syscall_mmap2'],
   __syscall192: function(which, varargs) { // mmap2
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), prot = SYSCALLS.get(), flags = SYSCALLS.get(), fd = SYSCALLS.get(), off = SYSCALLS.get()
-    off <<= 12; // undo pgoffset
-    var ptr;
-    var allocated = false;
-    if (fd === -1) {
-      ptr = _memalign(PAGE_SIZE, len);
-      if (!ptr) return -{{{ cDefine('ENOMEM') }}};
-      _memset(ptr, 0, len);
-      allocated = true;
-    } else {
-      var info = FS.getStream(fd);
-      if (!info) return -{{{ cDefine('EBADF') }}};
-      var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
-      ptr = res.ptr;
-      allocated = res.allocated;
-    }
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
-    return ptr;
+    return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
   },
   __syscall193: function(which, varargs) { // truncate64
     var path = SYSCALLS.getStr(), zero = SYSCALLS.getZero(), length = SYSCALLS.get64();
@@ -1081,11 +1108,17 @@ var SyscallsLibrary = {
     if (!stream.getdents) {
       stream.getdents = FS.readdir(stream.path);
     }
+
+    var struct_size = {{{ C_STRUCTS.dirent.__size__ }}};
     var pos = 0;
-    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} <= count) {
+    var off = FS.llseek(stream, 0, {{{ cDefine('SEEK_CUR') }}});
+
+    var idx = Math.floor(off / struct_size);
+
+    while (idx < stream.getdents.length && pos + struct_size <= count) {
       var id;
       var type;
-      var name = stream.getdents.pop();
+      var name = stream.getdents[idx];
       if (name[0] === '.') {
         id = 1;
         type = 4; // DT_DIR
@@ -1098,12 +1131,14 @@ var SyscallsLibrary = {
                8;                             // DT_REG, regular file.
       }
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i64') }}};
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i64') }}};
+      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, '(idx + 1) * struct_size', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
       stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, 256);
-      pos += {{{ C_STRUCTS.dirent.__size__ }}};
+      pos += struct_size;
+      idx += 1;
     }
+    FS.llseek(stream, idx * struct_size, {{{ cDefine('SEEK_SET') }}});
     return pos;
   },
   __syscall221__deps: ['__setErrNo'],
@@ -1167,10 +1202,9 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall265: function(which, varargs) { // clock_nanosleep
-#if SYSCALL_DEBUG
-    err('warning: ignoring SYS_clock_nanosleep');
-#endif
+  __syscall252: function(which, varargs) { // exit_group
+    var status = SYSCALLS.get();
+    exit(status);
     return 0;
   },
   __syscall268: function(which, varargs) { // statfs64
@@ -1393,6 +1427,47 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+
+  // WASI (WebAssembly System Interface) call support
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  $flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers during shutdown
+    var fflush = Module["_fflush"];
+    if (fflush) fflush(0);
+    var buffers = SYSCALLS.buffers;
+    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
+  },
+  fd_write__deps: ['$flush_NO_FILESYSTEM'],
+#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
+  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+#endif
+#endif
+  fd_write: function(stream, iov, iovcnt, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    stream = FS.getStream(stream);
+    if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
+#else
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+    var num = 0;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      for (var j = 0; j < len; j++) {
+        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
+      }
+      num += len;
+    }
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
+  // Fallback for cases where the wasi_unstable.name prefixing fails,
+  // and we have the full name from C. This happens in fastcomp (which
+  // lacks the attribute to set the import module and base names) and
+  // in LTO mode (as bitcode does not preserve them).
+  __wasi_fd_write: 'fd_write',
 };
 
 if (SYSCALL_DEBUG) {
@@ -1748,17 +1823,29 @@ if (SYSCALL_DEBUG) {
   }
 }
 
+var WASI_SYSCALLS = set(['fd_write']);
+
 for (var x in SyscallsLibrary) {
+  var which = null; // if this is a musl syscall, its number
   var m = /^__syscall(\d+)$/.exec(x);
-  if (!m) continue;
-  var which = +m[1];
+  if (m) {
+    which = +m[1];
+  } else if (!(x in WASI_SYSCALLS)) {
+    continue;
+  }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
   t = t.toString();
   var pre = '', post = '';
-  pre += 'SYSCALLS.varargs = varargs;\n';
+  if (which) {
+    pre += 'SYSCALLS.varargs = varargs;\n';
+  }
 #if SYSCALL_DEBUG
-  pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  if (which) {
+    pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  } else {
+    pre += "err('syscall! " + x + "');\n";
+  }
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";

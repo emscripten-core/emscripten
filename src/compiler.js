@@ -168,6 +168,7 @@ if (settings_file) {
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
 IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
+INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
 
 DEAD_FUNCTIONS.forEach(function(dead) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(dead.substr(1));
@@ -186,7 +187,7 @@ load('modules.js');
 load('parseTools.js');
 load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
-Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
+Runtime.QUANTUM_SIZE = 4;
 
 // State computations
 

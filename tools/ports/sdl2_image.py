@@ -7,6 +7,7 @@ import os
 import shutil
 
 TAG = 'version_4'
+HASH = '30a7b04652239bccff3cb1fa7cd8ae602791b5f502a96df39585c13ebc4bb2b64ba1598c0d1f5382028d94e04a5ca02185ea06bf7f4b3520f6df4cc253f9dd24'
 
 
 def get(ports, settings, shared):
@@ -15,7 +16,7 @@ def get(ports, settings, shared):
 
   sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
   assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
-  ports.fetch_project('sdl2_image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG)
+  ports.fetch_project('sdl2_image', 'https://github.com/emscripten-ports/SDL2_image/archive/' + TAG + '.zip', 'SDL2_image-' + TAG, sha512hash=HASH)
 
   settings.SDL2_IMAGE_FORMATS.sort()
   formats = '-'.join(settings.SDL2_IMAGE_FORMATS)
@@ -43,6 +44,9 @@ def get(ports, settings, shared):
     if 'png' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-s', 'USE_LIBPNG=1']
 
+    if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+      defs += ['-s', 'USE_LIBJPEG=1']
+
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_image', src + '.o')
       commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
@@ -65,6 +69,8 @@ def process_dependencies(settings):
     settings.USE_SDL = 2
   if 'png' in settings.SDL2_IMAGE_FORMATS:
     settings.USE_LIBPNG = 1
+  if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+    settings.USE_LIBJPEG = 1
 
 
 def process_args(ports, args, settings, shared):

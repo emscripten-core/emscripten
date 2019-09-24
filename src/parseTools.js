@@ -1049,12 +1049,18 @@ function makeHEAPView(which, start, end) {
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
 }
 
-function makeDynCall(sig) {
+// When dynamically linking, some things like dynCalls may not exist in one module and
+// be provided by a linked module, so they must be accessed indirectly using Module
+function exportedAsmFunc(func) {
   if (!MAIN_MODULE && !SIDE_MODULE) {
-    return 'dynCall_' + sig;
+    return func;
   } else {
-    return "Module['dynCall_" + sig + "']";
+    return "Module['" + func + "']";
   }
+}
+
+function makeDynCall(sig) {
+  return exportedAsmFunc('dynCall_' + sig);
 }
 
 var TWO_TWENTY = Math.pow(2, 20);
@@ -1553,6 +1559,13 @@ function getQuoted(str) {
 
 function makeRetainedCompilerSettings() {
   var blacklist = set('STRUCT_INFO');
+  if (STRICT) {
+    for (var i in LEGACY_SETTINGS) {
+      var name = LEGACY_SETTINGS[i][0];
+      blacklist[name] = 0;
+    }
+  }
+
   var ret = {};
   for (var x in this) {
     try {
@@ -1581,8 +1594,62 @@ function modifyFunction(text, func) {
   var args = match[2];
   var rest = text.substr(match[0].length);
   var bodyStart = rest.indexOf('{');
-  assert(bodyStart > 0);
+  assert(bodyStart >= 0);
   var bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+}
+
+function runOnMainThread(text) {
+  if (USE_PTHREADS) {
+    return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+  } else {
+    return text;
+  }
+}
+
+function expectToReceiveOnModule(name) {
+  return name in INCOMING_MODULE_JS_API;
+}
+
+function makeRemovedModuleAPIAssert(moduleName, localName) {
+  if (!ASSERTIONS) return '';
+  if (!localName) localName = moduleName;
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+}
+
+// Make code to receive a value on the incoming Module object.
+function makeModuleReceive(localName, moduleName) {
+  if (!moduleName) moduleName = localName;
+  var ret = '';
+  if (expectToReceiveOnModule(moduleName)) {
+    // Usually the local we use is the same as the Module property name,
+    // but sometimes they must differ.
+    ret = "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
+  }
+  ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  return ret;
+}
+
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+  if (!moduleName) moduleName = localName;
+  var ret = 'var ' + localName;
+  if (!expectToReceiveOnModule(moduleName)) {
+    if (defaultValue) {
+      ret += ' = ' + defaultValue;
+    }
+    ret += ';';
+  } else {
+    if (defaultValue) {
+      ret += " = Module['" + moduleName + "'] || " + defaultValue + ";";
+    } else {
+      ret += ';' +
+             makeModuleReceive(localName, moduleName);
+      return ret;
+    }
+  }
+  if (!noAssert) {
+    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  }
+  return ret;
 }

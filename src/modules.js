@@ -65,8 +65,15 @@ var LibraryManager = {
       'library_path.js',
       'library_signals.js',
       'library_syscall.js',
-      'library_html5.js'
+      'library_html5.js',
+      'library_stack_trace.js'
     ];
+
+    if (!DISABLE_EXCEPTION_THROWING) {
+      libraries.push('library_exceptions.js');
+    } else {
+      libraries.push('library_exceptions_stub.js');
+    }
 
     if (!MINIMAL_RUNTIME) {
       libraries.push('library_browser.js');
@@ -81,8 +88,8 @@ var LibraryManager = {
         'library_pipefs.js',
       ]);
 
-      // Additional filesystem libraries (in strict mode, link to these explicitly via -lxxx.js)
-      if (!STRICT && !MINIMAL_RUNTIME) {
+      // Additional filesystem libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
+      if (AUTO_JS_LIBRARIES) {
         if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
           libraries = libraries.concat([
             'library_idbfs.js',
@@ -102,8 +109,8 @@ var LibraryManager = {
       }
     }
 
-    // Additional JS libraries (in strict mode, link to these explicitly via -lxxx.js)
-    if (!STRICT && !MINIMAL_RUNTIME) {
+    // Additional JS libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
+    if (AUTO_JS_LIBRARIES) {
       libraries = libraries.concat([
         'library_webgl.js',
         'library_openal.js',
@@ -130,10 +137,8 @@ var LibraryManager = {
       }
     }
 
-    // If there are any explicitly specified system JS libraries to link to, add those to link.
-    if (SYSTEM_JS_LIBRARIES) {
-      libraries = libraries.concat(SYSTEM_JS_LIBRARIES.split(','));
-    }
+    // Add any explicitly specified system JS libraries to link to, add those to link.
+    libraries = libraries.concat(SYSTEM_JS_LIBRARIES)
 
     if (LZ4) {
       libraries.push('library_lz4.js');
@@ -145,6 +150,10 @@ var LibraryManager = {
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
+    }
+
+    if (STANDALONE_WASM) {
+      libraries.push('library_wasi.js');
     }
 
     libraries = libraries.concat(additionalLibraries);
@@ -200,8 +209,8 @@ var LibraryManager = {
       if (typeof lib[x] === 'string') {
         var target = x;
         while (typeof lib[target] === 'string') {
-          // ignore code, aliases are just simple names
-          if (lib[target].search(/[({; ]/) >= 0) continue libloop;
+          // ignore code and variable assignments, aliases are just simple names
+          if (lib[target].search(/[=({; ]/) >= 0) continue libloop;
           // ignore trivial pass-throughs to Math.*
           if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
@@ -318,7 +327,8 @@ function isExportedByForceFilesystem(name) {
          name === 'FS_unlink' ||
          name === 'getMemory' ||
          name === 'addRunDependency' ||
-         name === 'removeRunDependency';
+         name === 'removeRunDependency' ||
+         name === 'calledRun';
 }
 
 // export parts of the JS runtime that the user asked for
@@ -354,9 +364,9 @@ function exportRuntime() {
         extra = '. Alternatively, forcing filesystem support (-s FORCE_FILESYSTEM=1) can export this for you';
       }
       if (!isNumber) {
-        return 'if (!Module["' + name + '"]) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
       } else {
-        return 'if (!Module["' + name + '"]) Object.defineProperty(Module, "' + name + '", { get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
       }
     }
     return '';
@@ -413,7 +423,6 @@ function exportRuntime() {
     'FS_unlink',
     'GL',
     'dynamicAlloc',
-    'warnOnce',
     'loadDynamicLibrary',
     'loadWebAssemblyModule',
     'getLEB',
@@ -435,10 +444,13 @@ function exportRuntime() {
     'printErr',
     'getTempRet0',
     'setTempRet0',
+    'callMain',
+    'abort',
   ];
 
   if (!MINIMAL_RUNTIME) {
     runtimeElements.push('Pointer_stringify');
+    runtimeElements.push('warnOnce');
   }
 
   if (MODULARIZE) {
@@ -472,6 +484,7 @@ function exportRuntime() {
     'ALLOC_STACK',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
+    'calledRun',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos
@@ -495,6 +508,7 @@ var PassManager = {
       Functions: Functions,
       EXPORTED_FUNCTIONS: EXPORTED_FUNCTIONS,
       STATIC_BUMP: STATIC_BUMP, // updated with info from JS
+      DYNAMICTOP_PTR: DYNAMICTOP_PTR,
       ATINITS: ATINITS.join('\n'),
       ATMAINS: ATMAINS.join('\n'),
       ATEXITS: ATEXITS.join('\n'),

@@ -7,6 +7,7 @@ import os
 import logging
 
 TAG = '1.7.5'
+HASH = 'c2c13fc97bb74f0f13092b07804f7087e948bce49793f48b62c2c24a5792523acc0002840bebf21829172bb2e7c3df9f9625250aec6c786a55489667dd04d6a0'
 
 
 def get(ports, settings, shared):
@@ -14,7 +15,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
-                      TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True)
+                      TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True, sha512hash=HASH)
 
   def create():
     logging.info('building port: harfbuzz')
@@ -38,7 +39,7 @@ def get(ports, settings, shared):
       '-DFREETYPE_LIBRARY=' + freetype_lib,
       '-DHB_HAVE_FREETYPE=ON'
     ])
-    shared.Building.make(['make', '-C' + dest_path, 'install'])
+    shared.Building.make(['make', '-j%d' % shared.Building.get_num_cores(), '-C' + dest_path, 'install'])
     return os.path.join(dest_path, 'libharfbuzz.a')
 
   return [shared.Cache.get('libharfbuzz.a', create, what='port')]

@@ -221,11 +221,23 @@ int eaccess(const char *, int);
 #define _POSIX_FSYNC            _POSIX_VERSION
 #define _POSIX_NO_TRUNC         1
 #define _POSIX_RAW_SOCKETS      _POSIX_VERSION
+
+#ifndef __EMSCRIPTEN__
 #define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
+#else
+#define _POSIX_REALTIME_SIGNALS -1
+#endif
+
 #define _POSIX_REGEXP           1
 #define _POSIX_SAVED_IDS        1
 #define _POSIX_SHELL            1
+
+#ifndef __EMSCRIPTEN__
 #define _POSIX_SPAWN            _POSIX_VERSION
+#else
+#define _POSIX_SPAWN            -1
+#endif
+
 #define _POSIX_VDISABLE         0
 
 #define _POSIX_THREADS          _POSIX_VERSION

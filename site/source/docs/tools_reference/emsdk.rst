@@ -90,29 +90,17 @@ Below are typical **.emscripten** files created by *emsdk*. Note the variable na
   # .emscripten file from Windows SDK
 
   import os
-  SPIDERMONKEY_ENGINE = ''
-  NODE_JS = 'node'
   LLVM_ROOT='C:/Program Files/Emscripten/clang/e1.21.0_64bit'
   NODE_JS='C:/Program Files/Emscripten/node/0.10.17_64bit/node.exe'
-  PYTHON='C:/Program Files/Emscripten/python/2.7.5.3_64bit/python.exe'
   JAVA='C:/Program Files/Emscripten/java/7.45_64bit/bin/java.exe'
-  V8_ENGINE = ''
-  TEMP_DIR = 'c:/users/hamis_~1/appdata/local/temp'
-  COMPILER_ENGINE = NODE_JS
-  JS_ENGINES = [NODE_JS]
 
 ::
 
   # .emscripten file from Linux SDK
 
   import os
-  SPIDERMONKEY_ENGINE = ''
   NODE_JS = 'nodejs'
   LLVM_ROOT='/home/ubuntu/emsdk_portable/clang/fastcomp/build_incoming_64/bin'
-  V8_ENGINE = ''
-  TEMP_DIR = '/tmp'
-  COMPILER_ENGINE = NODE_JS
-  JS_ENGINES = [NODE_JS]
 
 .. _emsdk_howto:
 
@@ -229,9 +217,6 @@ How do I install and activate old Emscripten SDKs and tools?
 
   # Activate required version.
   ./emsdk activate <name_of_tool>
-
-On Windows, you can directly install an old SDK version by using one of :ref:`these archived NSIS installers <archived-nsis-windows-sdk-releases>`.
-
 
 
 .. _emsdk-master-or-incoming-sdk:

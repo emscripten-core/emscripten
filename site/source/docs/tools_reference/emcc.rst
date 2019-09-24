@@ -42,43 +42,36 @@ Options that are modified or new in *emcc* are listed below:
 ``-O0``
   No optimizations (default). This is the recommended setting for starting to port a project, as it includes various assertions.
 
+  This and other optimization settings are meaningful both during compile and during link. During compile it affects LLVM optimizations, and during link it affects final optimization of the code in Binaryen as well as optimization of the JS. (For fast incremental builds ``-O0`` is best, while for release you should link with something higher.)
+
 .. _emcc-O1:
 
 ``-O1``
-  Simple optimizations. These include using **asm.js**, LLVM ``-O1`` optimizations, relooping, removing runtime assertions and C++ exception catching, and enabling ``-s ALIASING_FUNCTION_POINTERS=1``.  This is the recommended setting when you want a reasonably optimized build that is generated as quickly as possible (it builds much faster than ``-O2``).
-
-  .. note::
-
-    - For details on the effects of different optimization levels, see ``apply_opt_level()`` in `tools/shared.py <https://github.com/emscripten-core/emscripten/blob/master/tools/shared.py>`_ and also `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
-    - To re-enable C++ exception catching, use :ref:`-s DISABLE_EXCEPTION_CATCHING=0 <optimizing-code-exception-catching>`.
+  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this removes various runtime assertions in JS and also runs the Binaryen optimizer (that makes link slower, so even if you compiled with a higher optimization level, you may want to link with ``-O0`` for fast incremental builds).
 
 .. _emcc-O2:
 
 ``-O2``
-  Like ``-O1``, but with various JavaScript-level optimizations and LLVM ``-O3`` optimizations.
-
-  .. note:: This is a reasonable setting for a release build.
+  Like ``-O1``, but enables more optimizations. During link this will also enable various JavaScript optimizations.
 
   .. note:: These JavaScript optimizations can reduce code size by removing things that the compiler does not see being used, in particular, parts of the runtime may be stripped if they are not exported on the ``Module`` object. The compiler is aware of code in :ref:`--pre-js <emcc-pre-js>` and :ref:`--post-js <emcc-post-js>`, so you can safely use the runtime from there. Alternatively, you can use ``EXTRA_EXPORTED_RUNTIME_METHODS``, see `src/settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_.
 
 .. _emcc-O3:
 
 ``-O3``
-  Like ``-O2``, but with additional JavaScript optimizations that can take a significant amount of compilation time.
+  Like ``-O2``, but with additional optimizations that may take longer to run.
 
   .. note:: This is a good setting for a release build.
 
 .. _emcc-Os:
 
 ``-Os``
-  Like ``-O3``, but with extra optimizations that reduce code size at the expense of performance. This can affect both bitcode generation and JavaScript.
+  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both wasm and JavaScript.
 
 .. _emcc-Oz:
 
 ``-Oz``
-  Like ``-Os``, but reduces code size even further. This can affect both bitcode generation and JavaScript.
-
-  For JavaScript, this turns on some code size reduction optimizations that can take a significant amount of compilation time.
+  Like ``-Os``, but reduces code size even further, and may take longer to run. This can affect both wasm and JavaScript.
 
   .. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
@@ -206,7 +199,7 @@ Options that are modified or new in *emcc* are listed below:
 
   You normally don't need to specify this option, as ``-O`` with an optimization level will set a good value.
 
-  .. note:: Some options might override this flag (e.g. ``EMTERPRETIFY``, ``DEAD_FUNCTIONS``, ``OUTLINING_LIMIT``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
+  .. note:: Some options might override this flag (e.g. ``EMTERPRETIFY``, ``DEAD_FUNCTIONS``, ``SAFE_HEAP`` and ``SPLIT_MEMORY`` override the value with ``js-opts=1``), because they depend on the js-optimizer.
 
 .. _emcc-llvm-opts:
 
@@ -450,7 +443,7 @@ Options that are modified or new in *emcc* are listed below:
     - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.bc** : LLVM bitcode.
     - <name> **.o** : LLVM bitcode (same as .bc), unless in `WASM_OBJECT_FILES` mode, in which case it will contain a WebAssembly object.
-    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm").
+    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm"; this enables ``STANDALONE_WASM``).
 
   .. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file.
 
@@ -502,5 +495,4 @@ Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscript
   - AGGRESSIVE_VARIABLE_ELIMINATION=1
   - -s DISABLE_EXCEPTION_CATCHING=0.
   - INLINING_LIMIT=
-  - OUTLINING_LIMIT
 

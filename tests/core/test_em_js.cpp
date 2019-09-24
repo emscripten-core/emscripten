@@ -56,9 +56,9 @@ EM_JS(int, user_comma, (void), {
 
 EM_JS(const char*, return_utf8_str, (void), {
     var jsString = 'こんにちは';
-    var lengthBytes = lengthBytesUTF8(jsString);
+    var lengthBytes = lengthBytesUTF8(jsString)+1;
     var stringOnWasmHeap = _malloc(lengthBytes);
-    stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+    stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
     return stringOnWasmHeap;
 });
 
@@ -66,8 +66,12 @@ EM_JS(const char*, return_str, (void), {
   var jsString = 'hello from js';
   var lengthBytes = jsString.length+1;
   var stringOnWasmHeap = _malloc(lengthBytes);
-  stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+  stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
   return stringOnWasmHeap;
+});
+
+EM_JS(int, _prefixed, (void), {
+  return 1;
 });
 
 int main() {
@@ -89,6 +93,8 @@ int main() {
 
   printf("    return_str returned: %s\n", return_str());
   printf("    return_utf8_str returned: %s\n", return_utf8_str());
+
+  printf("    _prefixed: %d\n", _prefixed());
 
   printf("END\n");
   return 0;

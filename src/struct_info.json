@@ -868,6 +868,7 @@
         "defines": [
             "EOF", 
             "SEEK_END", 
+            "SEEK_CUR", 
             "SEEK_SET"
         ],
         "structs": {}
@@ -894,7 +895,11 @@
     {
         "file": "bits/mman.h",
         "defines": [
-            "MAP_PRIVATE"
+            "MAP_ANONYMOUS",
+            "MAP_FAILED",
+            "MAP_FIXED",
+            "MAP_PRIVATE",
+            "PROT_WRITE"
         ],
         "structs": {}
     },
@@ -1249,7 +1254,11 @@
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS",
 
             "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
-            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD"
+            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD",
+
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION",
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY",
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1503,6 +1512,9 @@
             "EM_PROXIED_SYSCALL",
             "EM_PROXIED_CREATE_CONTEXT",
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
+            "EM_PROXIED_JS_FUNCTION",
+            "EM_QUEUED_CALL_MAX_ARGS",
+            "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_THREAD_STATUS_NOTSTARTED",
             "EM_THREAD_STATUS_RUNNING",
             "EM_THREAD_STATUS_SLEEPING",
@@ -1516,7 +1528,13 @@
             "EM_FUNC_SIG_I",
             "EM_FUNC_SIG_II",
             "EM_FUNC_SIG_III",
-            "EM_FUNC_SIG_IIII"
+            "EM_FUNC_SIG_IIII",
+            "EM_FUNC_SIG_PARAM_I",
+            "EM_FUNC_SIG_PARAM_I64",
+            "EM_FUNC_SIG_PARAM_F",
+            "EM_FUNC_SIG_PARAM_D",
+            "EM_FUNC_SIG_PARAM_B",
+            "EM_FUNC_SIG_PARAM_F2I"
             ]
     },
     {
@@ -1561,6 +1579,7 @@
                 "onsuccess",
                 "onerror",
                 "onprogress",
+                "onreadystatechange",
                 "attributes",
                 "timeoutMSecs",
                 "withCredentials",

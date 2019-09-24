@@ -13,8 +13,149 @@ significant internal modifications and optimizations etc. generally deserve a
 mention. To examine the full set of changes between versions, visit the link to
 full changeset diff at the end of each section.
 
+See docs/process.md for how version tagging works.
+
+
 Current Trunk
 -------------
+ - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+   node as the compiler engine so just use a single `NODE_JS` option for that.
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
+ - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
+   that we want the wasm to be as standalone as possible. We may still emit JS in
+   that case, but the JS would just be a convenient way to run the wasm on the Web
+   or in Node.js.
+
+v.1.38.44: 09/11/2019
+---------------------
+ - Remove Binaryen from the ports system. This means that emscripten will
+   no longer automatically build Binaryen from source. Instead, either use
+   the emsdk (binaries are provided automatically, just like for LLVM), or
+   build it yourself and point `BINARYEN_ROOT` in .emscripten to it. See #9409
+
+v.1.38.43: 08/30/2019
+---------------------
+ - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
+   instead of `Module.noExitRuntime`.
+
+v.1.38.42: 08/19/2019
+----------------------
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+   and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
+   with multiple threads. (#9060, #9076)
+ - Remove `ERROR_ON_MISSING_LIBRARIES` setting (it's always on now)
+ - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
+   suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
+   will no longer work. This is done because the mechanism may result in
+   execution of arbitrary code via command line flags.
+
+v.1.38.41: 08/07/2019
+---------------------
+ - Remove fastcomp's implementation of Asyncify. This has been deprecated for
+   a long time, since we added Emterpreter-Async, and now we have a new Asyncify
+   implementation in the upstream wasm backend. It is recommended to upgrade to
+   the upstream backend and use Asyncify there if you need it. (If you do still
+   need the older version, you can use 1.38.40.)
+ - Drop ExitStatus from inheriting from Error(), as that could capture the whole
+   global scope, preventing temporary variables at page startup from being garbage
+   collected. (#9108)
+ - `__builtin_return_address` now requires `-s USE_OFFSET_CONVERTER=1` to work. (#9073)
+ - emrun now uses HTTP/1.1 instead of HTTP/1.0.
+ - `callMain` is no longer exported by default on Module, to allow better JS
+   minification. You must add it to `EXTRA_EXPORTED_RUNTIME_METHODS` if you want
+   to call it on Module. (In assertions builds, an error with an explanation is
+   shown.)
+ - Allow expressions with side effects as `EM_ASM`'s arguments and prohibit
+   non-arithmetic arguments (e.g. pointers, functions, arrays, objects). (#9054)
+ - `emcc` on Windows now uses native newline byte sequence to get a line to
+   print for parse error reporting. (#9088)
+ - Internal API update: one can now specialize embind's (un)marshalling for a
+   group of types via SFINAE, instead of a single type. (#9089)
+
+v.1.38.40: 07/24/2019
+---------------------
+ - LLVM backend pthread builds no longer use external memory initialization
+   files, replacing them with passive data segments.
+ - LLVM backend now supports thread local storage via the C extension `__thread`
+   and C11/C++11 keyword `thread_local`. (#8976)
+ - Internal API change: Move read, readAsync, readBinary, setWindowTitle from
+   the Module object to normal JS variables. If you use those internal APIs,
+   you must change Module.readAsync()/Module['readAsync']() to readAsync().
+   Note that read is also renamed to read_ (since "read" is an API call in
+   the SpiderMonkey shell). In builds with ASSERTIONS an error message is
+   shown about the API change. This change allows better JS minification
+   (the names read, readAsync etc. can be minified, and if the variables are
+   not used they can be removed entirely). Defining these APIs on Module
+   (which was never documented or intended, but happened to work) is also
+   no longer allowed (but you can override read_ etc. from JS).
+
+v1.38.39: 07/16/2019
+--------------------
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
+   - Currently, only supports one thread without dynamic linking.
+ - Rename Bysyncify (the name used during development) to Asyncify. This keeps the name consistent
+   with the old ASYNCIFY flag, no need for a new one, as they do basically the same thing.
+
+v1.38.38: 07/08/2019
+--------------------
+ - Add support for standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html). (#8711)
+
+v1.38.37: 06/26/2019
+--------------------
+ - Set ENV['LANG'] following the user's preferred language (HTTP Accept-Language / navigator.languages[0])
+ - `emscripten_run_script_string` now returns C `NULL` instead of the string `null`
+   or `undefined` when the result of the `eval` is JavaScript `null` or `undefined`.
+ - Add a new system for managing system libraries. (#8780)
+   This may require minor changes when performing certain operations:
+     - When using `embuilder.py` to build a specific library, the name may have
+       changed: for consistency, all library names are prefixed with lib now.
+     - `embuilder.py` now only builds the requested library, and not its dependencies
+       and certain system libraries that are always built. For example, running
+       `embuilder.py build libc` no longer builds `libcompiler_rt` if it hasn't be built.
+     - When using `EMCC_FORCE_STDLIBS` with a list of libraries, you must now use
+       the simplified names, for example, `libmalloc` and `libpthreads` instead of
+       `libdlmalloc` or `libpthreads_stub`. These names will link in the correct
+       version of the library: if the build is configured to use `emmalloc`, `libmalloc`
+       will mean `libemmalloc`, and if thread support is disabled, `libpthreads` will
+       mean `libpthreads_stub`. This allows you to say `libmalloc` or `libpthreads` without
+       worrying about which implementation is supposed to be used, and avoid duplicate
+       symbols if you used the wrong implementation.
+ - LLVM wasm backend pthreads fixes, see #8811, #8718
+
+v1.38.36: 06/15/2019
+--------------------
+
+v1.38.35: 06/13/2019
+--------------------
+ - Include some [waterfall fixes](https://github.com/WebAssembly/waterfall/pull/541)
+   for the emsdk builds on linux regarding libtinfo.
+ - NOTE: due to a CI failure, builds for mac and windows were not generated.
+
+v1.38.34: 06/01/2019
+--------------------
+ - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
+     - This allows `emcc -fsanitize=undefined` to work. (#8651)
+     - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
+
+v1.38.33: 05/23/2019
+--------------------
+ - First release to use the new chromium build infrastructure
+   https://groups.google.com/forum/#!msg/emscripten-discuss/WhDtqVyW_Ak/8DfDnfk0BgAJ
+ - Add `emscripten_return_address` which implements the functionality of
+   gcc/clang's `__builtin_return_address`. (#8617)
+
+v1.38.32: SKIPPED
+-----------------
+ - The transition from the old to the new CI occured around here. To avoid ambiguity while
+   both CIs were still generating builds, we just tagged a new one (1.38.33) on the new CI
+   and skipped 1.38.32.
+ - The transition also moves all builds and downloads away from the old mozilla-games
+   infrastructure to the new chromium ones. As a result all links to *mozilla-games* URLs
+   will not work (these were never documented, but could be seen from the internals of the
+   emsdk; the new emsdk uses the proper new URLs, so you can either use the sdk normally
+   or find the URLs from there).
 
 v1.38.31: 04/24/2019
 --------------------

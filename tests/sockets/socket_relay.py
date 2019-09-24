@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+from __future__ import print_function
+
 """Listens on 2 ports and relays between them.
 
 Listens to ports A and B. When someone connects to port A, and then
@@ -29,22 +31,22 @@ class Listener(threading.Thread):
     global ports
     port = ports[0]
     ports = ports[1:]
-    print 'listener binding to ', port
+    print('listener binding to ', port)
     s.bind(('127.0.0.1', port))
     s.listen(1)
-    print 'listener', port, 'waiting for connection'
+    print('listener', port, 'waiting for connection')
     conn, addr = s.accept()
     self.conn = conn
     while True:
       time.sleep(0.5)
-      print 'listener', port, 'waiting for data'
+      print('listener', port, 'waiting for data')
       data = conn.recv(20 * 1024)
       if not data:
         continue
       while not self.other.conn:
-        print 'listener', port, 'waiting for other connection in order to send data'
+        print('listener', port, 'waiting for other connection in order to send data')
         time.sleep(1)
-      print 'listener', port, 'sending data', len(data)
+      print('listener', port, 'sending data', len(data))
       self.other.conn.send(data)
 
 

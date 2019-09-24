@@ -7,6 +7,7 @@
 """Usage: creduce ./creduce_tester.py newfail1.c
 """
 
+from __future__ import print_function
 import os
 import sys
 from subprocess import Popen, PIPE
@@ -24,18 +25,18 @@ EMCC_ARGS = ['-O2', '-s', 'ASM_JS=1']
 filename = sys.argv[1]
 obj_filename = shared.unsuffixed(filename)
 js_filename = obj_filename + '.js'
-print 'testing file', filename
+print('testing file', filename)
 
 try:
-  print '2) Compile natively'
+  print('2) Compile natively')
   shared.run_process([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
-  print '3) Run natively'
+  print('3) Run natively')
   correct = jsrun.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
-except Exception, e:
-  print 'Failed or infinite looping in native, skipping', e
+except Exception as e:
+  print('Failed or infinite looping in native, skipping', e)
   sys.exit(1) # boring
 
-print '4) Compile JS-ly and compare'
+print('4) Compile JS-ly and compare')
 
 
 def try_js(args):
@@ -51,7 +52,7 @@ for args in [[]]:
   try:
     try_js(args)
     break
-  except Exception, e:
+  except Exception:
     pass
 else:
   sys.exit(0)

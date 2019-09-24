@@ -1204,7 +1204,17 @@ mergeInto(LibraryManager.library, {
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
-      // TODO if PROT is PROT_WRITE, make sure we have write access
+      // User requests writing to file (prot & PROT_WRITE != 0).
+      // Checking if we have permissions to write to the file unless
+      // MAP_PRIVATE flag is set. According to POSIX spec it is possible
+      // to write to file opened in read-only mode with MAP_PRIVATE flag,
+      // as all modifications will be visible only in the memory of
+      // the current process.
+      if ((prot & {{{ cDefine('PROT_WRITE') }}}) !== 0
+          && (flags & {{{ cDefine('MAP_PRIVATE')}}}) === 0
+          && (stream.flags & {{{ cDefine('O_ACCMODE') }}}) !== {{{ cDefine('O_RDWR')}}}) {
+        throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
+      }
       if ((stream.flags & {{{ cDefine('O_ACCMODE') }}}) === {{{ cDefine('O_WRONLY')}}}) {
         throw new FS.ErrnoError({{{ cDefine('EACCES') }}});
       }
@@ -1423,11 +1433,16 @@ mergeInto(LibraryManager.library, {
 #else
         this.message = 'FS error';
 #endif
-        // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
-        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#if ASSERTIONS && !MINIMAL_RUNTIME // TODO: Migrate demangling support to a JS library, and add deps to it here to enable demangle in MINIMAL_RUNTIME
-        if (this.stack) this.stack = demangleAll(this.stack);
-#endif
+
+#if ASSERTIONS && !MINIMAL_RUNTIME
+        // Try to get a maximally helpful stack trace. On Node.js, getting Error.stack
+        // now ensures it shows what we want.
+        if (this.stack) {
+          // Define the stack property for Node.js 4, which otherwise errors on the next line.
+          Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
+          this.stack = demangleAll(this.stack);
+        }
+#endif // ASSERTIONS
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;
@@ -1658,12 +1673,12 @@ mergeInto(LibraryManager.library, {
       var success = true;
       if (typeof XMLHttpRequest !== 'undefined') {
         throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
-      } else if (Module['read']) {
+      } else if (read_) {
         // Command-line.
         try {
           // WARNING: Can't read binary files in V8's d8 or tracemonkey's js, as
           //          read() will try to parse UTF8.
-          obj.contents = intArrayFromString(Module['read'](obj.url), true);
+          obj.contents = intArrayFromString(read_(obj.url), true);
           obj.usedBytes = obj.contents.length;
         } catch (e) {
           success = false;
@@ -1690,10 +1705,10 @@ mergeInto(LibraryManager.library, {
         var chunkOffset = idx % this.chunkSize;
         var chunkNum = (idx / this.chunkSize)|0;
         return this.getter(chunkNum)[chunkOffset];
-      }
+      };
       LazyUint8Array.prototype.setDataGetter = function LazyUint8Array_setDataGetter(getter) {
         this.getter = getter;
-      }
+      };
       LazyUint8Array.prototype.cacheLength = function LazyUint8Array_cacheLength() {
         // Find length
         var xhr = new XMLHttpRequest();
@@ -1760,7 +1775,7 @@ mergeInto(LibraryManager.library, {
         this._length = datalength;
         this._chunkSize = chunkSize;
         this.lengthKnown = true;
-      }
+      };
       if (typeof XMLHttpRequest !== 'undefined') {
         if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
         var lazyArray = new LazyUint8Array();

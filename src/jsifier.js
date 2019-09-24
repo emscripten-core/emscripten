@@ -46,6 +46,16 @@ var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
 // the current compilation unit.
 var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
 
+// Mangles the given C/JS side function name to assembly level function name (adds an underscore)
+function mangleCSymbolName(f) {
+  return f[0] == '$' ? f.substr(1) : '_' + f;
+}
+
+// Reverses C/JS name mangling: _foo -> foo, and foo -> $foo.
+function demangleCSymbolName(f) {
+  return f[0] == '_' ? f.substr(1) : '$' + f;
+}
+
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;
@@ -72,7 +82,7 @@ function JSify(data, functionsOnly) {
     }
     libFuncsToInclude.forEach(function(ident) {
       data.functionStubs.push({
-        ident: '_' + ident
+        ident: mangleCSymbolName(ident)
       });
     });
   }
@@ -87,27 +97,23 @@ function JSify(data, functionsOnly) {
 
     // name the function; overwrite if it's already named
     snippet = snippet.replace(/function(?:\s+([^(]+))?\s*\(/, 'function ' + finalName + '(');
-    if (LIBRARY_DEBUG && !LibraryManager.library[ident + '__asm']) {
-      snippet = modifyFunction(snippet, function(name, args, body) {
-        return 'function ' + name + '(' + args + ') {\n' +
-               'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
-                body +
-                '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
-      });
+    // Apply special js library debug modes
+    if (!LibraryManager.library[ident + '__asm']) {
+      // apply LIBRARY_DEBUG if relevant
+      if (LIBRARY_DEBUG) {
+        snippet = modifyFunction(snippet, function(name, args, body) {
+          return 'function ' + name + '(' + args + ') {\n' +
+                 'var ret = (function() { if (runtimeDebug) err("[library call:' + finalName + ': " + Array.prototype.slice.call(arguments).map(prettyPrint) + "]");\n' +
+                  body +
+                  '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
+        });
+      }
     }
     return snippet;
   }
 
   // functionStub
   function functionStubHandler(item) {
-    // special logic
-    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
-      var num = +item.ident.split('_').slice(-1)[0];
-      LibraryManager.library[item.ident.substr(1)] = function() {
-        return ___cxa_find_matching_catch.apply(null, arguments);
-      };
-    }
-
     function addFromLibrary(ident) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
@@ -120,12 +126,7 @@ function JSify(data, functionsOnly) {
         return '';
       }
 
-      // $ident's are special, we do not prefix them with a '_'.
-      if (ident[0] === '$') {
-        var finalName = ident.substr(1);
-      } else {
-        var finalName = '_' + ident;
-      }
+      var finalName = mangleCSymbolName(ident);
 
       // if the function was implemented in compiled code, we just need to export it so we can reach it from JS
       if (finalName in IMPLEMENTED_FUNCTIONS) {
@@ -166,7 +167,7 @@ function JSify(data, functionsOnly) {
             realIdent = realIdent.substr(2);
           }
 
-          var target = (SIDE_MODULE ? 'parent' : '') + "Module['_" + realIdent + "']";
+          var target = (SIDE_MODULE ? 'parent' : '') + "Module['" + mangleCSymbolName(realIdent) + "']";
           var assertion = '';
           if (ASSERTIONS) {
             var what = 'function';
@@ -202,18 +203,20 @@ function JSify(data, functionsOnly) {
       var isFunction = false;
 
       if (typeof snippet === 'string') {
-        var target = LibraryManager.library[snippet];
-        if (target) {
-          // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
-          // This avoid having duplicate functions with identical content.
-          redirectedIdent = snippet;
-          deps.push(snippet);
-          snippet = '_' + snippet;
-        }
-        // In asm, we need to know about library functions. If there is a target, though, then no
-        // need to consider this a library function - we will call directly to it anyhow
-        if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
-          Functions.libraryFunctions[finalName] = 1;
+        if (snippet[0] != '=') {
+          var target = LibraryManager.library[snippet];
+          if (target) {
+            // Redirection for aliases. We include the parent, and at runtime make ourselves equal to it.
+            // This avoid having duplicate functions with identical content.
+            redirectedIdent = snippet;
+            deps.push(snippet);
+            snippet = mangleCSymbolName(snippet);
+          }
+          // In asm, we need to know about library functions. If there is a target, though, then no
+          // need to consider this a library function - we will call directly to it anyhow
+          if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
+            Functions.libraryFunctions[finalName] = 1;
+          }
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
@@ -273,9 +276,18 @@ function JSify(data, functionsOnly) {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
       } else if (typeof snippet === 'string' && snippet.indexOf(';') == 0) {
+        // In JS libraries
+        //   foo: ';[code here verbatim]'
+        //  emits
+        //   'var foo;[code here verbatim];'
         contentText = 'var ' + finalName + snippet;
         if (snippet[snippet.length-1] != ';' && snippet[snippet.length-1] != '}') contentText += ';';
       } else {
+        // In JS libraries
+        //   foo: '=[value]'
+        //  emits
+        //   'var foo = [value];'
+        if (typeof snippet === 'string' && snippet[0] == '=') snippet = snippet.substr(1);
         contentText = 'var ' + finalName + '=' + snippet + ';';
       }
       var sig = LibraryManager.library[ident + '__sig'];
@@ -298,7 +310,7 @@ function JSify(data, functionsOnly) {
         // We set EXPORTED_FUNCTIONS here to tell emscripten.py to do that.
         deps.forEach(function(dep) {
           if (LibraryManager.library[dep + '__asm']) {
-            EXPORTED_FUNCTIONS['_' + dep] = 0;
+            EXPORTED_FUNCTIONS[mangleCSymbolName(dep)] = 0;
           }
         });
       }
@@ -306,7 +318,7 @@ function JSify(data, functionsOnly) {
     }
 
     itemsDict.functionStub.push(item);
-    var shortident = item.ident.substr(1);
+    var shortident = demangleCSymbolName(item.ident);
     // If this is not linkable, anything not in the library is definitely missing
     if (item.ident in DEAD_FUNCTIONS) {
       if (LibraryManager.library[shortident + '__asm']) {
@@ -397,7 +409,7 @@ function JSify(data, functionsOnly) {
         print('/* no memory initializer */'); // test purposes
       }
 
-      if (!SIDE_MODULE) {
+      if (!SIDE_MODULE && !WASM_BACKEND) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;');
           print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');

@@ -4,7 +4,21 @@
 Download and install
 ====================
 
-.. tip:: If you are :ref:`contributing <contributing>` to Emscripten you should :ref:`build Emscripten from source <installing-from-source>`.
+.. note:: You can also :ref:`build Emscripten from source <installing-from-source>` if you prefer that to downloading binaries using the emsdk.
+
+.. note:: There are additional ways to install Emscripten than the instructions
+    below, for example, using brew on MacOS, the package manager on your linux
+    distro, or a Docker image, etc. However, the emsdk is the only officially
+    supported way to use Emscripten that is supported by the Emscripten
+    project, and the only one that we constantly test
+    (`emsdk CI <https://github.com/emscripten-core/emsdk/blob/master/.circleci/config.yml>`_,
+    `Emscripten GitHub CI <https://github.com/emscripten-core/emscripten/blob/master/.circleci/config.yml>`_,
+    `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
+    don't officially support other ways of getting Emscripten, we definitely
+    appreciate the efforts by third parties to
+    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/incoming/docs/process.md#packaging-emscripten>`_
+    for users' convenience, and we'd like to help out, please get in touch if
+    you are such a packager!)
 
 .. _sdk-installation-instructions:
 
@@ -47,6 +61,43 @@ Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from Git
 
 If you change the location of the SDK (e.g. take it to another computer on an USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh`` commands.
 
+Emsdk install targets
+---------------------
+
+In the description above we asked the emsdk to install and activate ``latest``, which is the latest tagged release. That is often what you want.
+
+You can also install a specific version by specifying it, for example,
+
+  ::
+
+    ./emsdk install 1.38.45
+
+
+.. note:: When installing old versions from before the build infrastructure rewrite (anything before ``1.38.33``), you need to write something like ``./emsdk install sdk-1.38.20-64bit`` (add ``sdk-`` and ``-64bit``) as that was the naming convention at the time.
+
+You can also specify which backend you want to use, either ``fastcomp`` or ``upstream`` (without specifying the backend, the current default is used), for example,
+
+  ::
+
+    # Get a specific version using the upstream backend.
+    ./emsdk install latest-upstream
+
+    # Get a specific version using the fastcomp backend.
+    ./emsdk install 1.38.45-fastcomp
+
+
+There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/incoming/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
+
+  ::
+
+    # Get a tip-of-tree using the upstream backend.
+    ./emsdk install tot-upstream
+
+    # Get a tip-of-tree using the fastcomp backend.
+    ./emsdk install tot-fastcomp
+
+(In the above examples we installed the various targets; remember to also ``activate`` them as in the full example from earlier.)
+
 .. _platform-notes-installation_instructions-SDK:
 
 Platform-specific notes
@@ -73,15 +124,13 @@ These instructions explain how to install **all** the :ref:`required tools <tool
 
 #. Install *git*:
 
-  - `Allow installation of unsigned packages <https://www.my-private-network.co.uk/knowledge-base/apple-related-questions/osx-unsigned-apps.html>`_, or installing the git package won't succeed.
+  - `Make sure the OS allows installing git <https://support.apple.com/en-gb/HT202491>`_.
   - Install Xcode and the Xcode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
   - Download and install git directly from http://git-scm.com/.
 
 #. Install *cmake* if you do not have it yet:
 
   -  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
-
-#. Install *node.js* from http://nodejs.org/
 
   .. _getting-started-on-macos-install-python2:
 
@@ -90,15 +139,12 @@ Linux
 
 .. note:: *Emsdk* does not install any tools to the system, or otherwise interact with Linux package managers. All file changes are done inside the **emsdk/** directory.
 
-- *Python*, *node.js*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
+- *Python*, *CMake*, and *Java* are not provided by *emsdk*. The user is expected to install these beforehand with the *system package manager*:
 
   ::
 
     # Install Python
     sudo apt-get install python2.7
-
-    # Install node.js
-    sudo apt-get install nodejs
 
     # Install CMake (optional, only needed for tests and building Binaryen)
     sudo apt-get install cmake
@@ -108,7 +154,7 @@ Linux
 
 .. note:: You need Python 2.7.12 or newer because older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
-.. note:: Your system may provide Node.js as ``node`` instead of ``nodejs``. In that case, you may need to also update the ``NODE_JS`` attribute of your ``~/.emscripten`` file.
+.. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``~/.emscripten`` file to point to it.
 
 - *Git* is not installed automatically. Git is only needed if you want to use tools from one of the development branches **emscripten-incoming** or **emscripten-master**:
 
@@ -116,8 +162,6 @@ Linux
 
     # Install git
     sudo apt-get install git-core
-
-More detailed instructions on the toolchain are provided in: :ref:`building-emscripten-on-linux`.
 
 
 Verifying the installation
@@ -159,37 +203,3 @@ Uninstalling the Emscripten SDK
 If you want to remove the whole SDK, just delete the directory containing the SDK.
 
 It is also possible to :ref:`remove specific tools in the SDK using emsdk <emsdk-remove-tool-sdk>`.
-
-
-.. _archived-nsis-windows-sdk-releases:
-
-Archived releases
-=================
-
-You can always install old SDK and compiler toolchains using a *current SDK*. See :ref:`emsdk-install-old-tools` for more information.
-
-On Windows, you can also install one of the **old versions** via an offline NSIS installer. These NSIS installers are now deprecated, but still available for archived reference:
-
-- `emsdk-1.35.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.35.0-full-64bit.exe>`_
-- `emsdk-1.34.1-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.34.1-full-64bit.exe>`_ (first release based on Clang 3.7)
-- `emsdk-1.30.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.30.0-full-64bit.exe>`_ (first and last release based on Clang 3.5)
-- `emsdk-1.29.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.29.0-full-64bit.exe>`_ (first and last release based on Clang 3.4)
-- `emsdk-1.27.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.27.0-full-64bit.exe>`_
-- `emsdk-1.25.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.25.0-full-64bit.exe>`_
-- `emsdk-1.22.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.22.0-full-64bit.exe>`_
-- `emsdk-1.21.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.21.0-full-64bit.exe>`_
-- `emsdk-1.16.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.16.0-full-64bit.exe>`_ (first stable fastcomp release)
-- `emsdk-1.13.0-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.13.0-full-64bit.exe>`_ (a unstable first fastcomp release with Clang 3.3)
-- `emsdk-1.12.0-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.12.0-full-64bit.exe>`_ (the last non-fastcomp version with Clang 3.2)
-- `emsdk-1.12.0-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.12.0-full-32bit.exe>`_
-- `emsdk-1.8.2-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.8.2-full-64bit.exe>`_
-- `emsdk-1.8.2-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.8.2-full-32bit.exe>`_
-- `emsdk-1.7.8-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.7.8-full-64bit.exe>`_
-- `emsdk-1.7.8-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.7.8-full-32bit.exe>`_
-- `emsdk-1.5.6.2-full-64bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.5.6.2-full-64bit.exe>`_
-- `emsdk-1.5.6.2-full-32bit.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.5.6.2-full-32bit.exe>`_
-- `emsdk-1.5.6.1-full.exe <https://s3.amazonaws.com/mozilla-games/emscripten/releases/emsdk-1.5.6.1-full.exe)>`_ (32-bit, first emsdk release)
-
-
-A snapshot of all tagged Emscripten compiler releases (not full SDKs) can be found at `emscripten/releases <https://github.com/emscripten-core/emscripten/releases>`_.
-

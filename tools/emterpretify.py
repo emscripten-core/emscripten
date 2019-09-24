@@ -45,23 +45,23 @@ OUTPUT_FILE = None
 def handle_arg(arg):
   global ZERO, ASYNC, ASSERTIONS, PROFILING, FROUND, ADVISE, MEMORY_SAFE, OUTPUT_FILE
   if '=' in arg:
-    l, r = arg.split('=', 1)
-    if l == 'ZERO':
-      ZERO = int(r)
-    elif l == 'ASYNC':
-      ASYNC = int(r)
-    elif l == 'ASSERTIONS':
-      ASSERTIONS = int(r)
-    elif l == 'PROFILING':
-      PROFILING = int(r)
-    elif l == 'FROUND':
-      FROUND = int(r)
-    elif l == 'ADVISE':
-      ADVISE = int(r)
-    elif l == 'MEMORY_SAFE':
-      MEMORY_SAFE = int(r)
-    elif l == 'FILE':
-      OUTPUT_FILE = r[1:-1]
+    left, right = arg.split('=', 1)
+    if left == 'ZERO':
+      ZERO = int(right)
+    elif left == 'ASYNC':
+      ASYNC = int(right)
+    elif left == 'ASSERTIONS':
+      ASSERTIONS = int(right)
+    elif left == 'PROFILING':
+      PROFILING = int(right)
+    elif left == 'FROUND':
+      FROUND = int(right)
+    elif left == 'ADVISE':
+      ADVISE = int(right)
+    elif left == 'MEMORY_SAFE':
+      MEMORY_SAFE = int(right)
+    elif left == 'FILE':
+      OUTPUT_FILE = right[1:-1]
     return False
   return True
 
@@ -89,8 +89,9 @@ temp_files = config.get_temp_files()
 # emterpreted code in them. To avoid that, we blacklist SAFE_FT_MASK, which
 # should be blacklisted anyhow as it has no need for emterpretation.
 
-BLACKLIST = set(['_malloc', '_free', '_memcpy', '_memmove', '_memset',
-                 '_strlen', 'stackAlloc', 'setThrew', 'stackRestore',
+BLACKLIST = set(['_malloc', '_free', '_sbrk', '_emscripten_get_sbrk_ptr',
+                 '_memcpy', '_memmove', '_memset', '_strlen',
+                 'stackAlloc', 'setThrew', 'stackRestore',
                  'setTempRet0', 'getTempRet0', 'stackSave',
                  '_emscripten_autodebug_double',
                  '_emscripten_autodebug_float', '_emscripten_autodebug_i8',

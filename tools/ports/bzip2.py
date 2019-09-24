@@ -7,13 +7,14 @@ import os
 import shutil
 
 VERSION = '1.0.6'
+HASH = '00ace5438cfa0c577e5f578d8a808613187eff5217c35164ffe044fbafdfec9e98f4192c02a7d67e01e5a5ccced630583ad1003c37697219b0f147343a3fdd12'
 
 
 def get(ports, settings, shared):
   if settings.USE_BZIP2 != 1:
     return []
 
-  ports.fetch_project('bzip2', 'https://downloads.sourceforge.net/project/bzip2/bzip2-1.0.6.tar.gz', 'bzip2-1.0.6')
+  ports.fetch_project('bzip2', 'https://downloads.sourceforge.net/project/bzip2/bzip2-1.0.6.tar.gz', 'bzip2-1.0.6', sha512hash=HASH)
 
   def create():
     ports.clear_project_build('bzip2')

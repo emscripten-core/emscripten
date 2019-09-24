@@ -33,6 +33,18 @@ In addition to the ``-Ox`` options, there are separate compiler options that can
 
   -  The meanings of the *emcc* optimization flags (``-O1, -O2`` etc.) are similar to *gcc*, *clang*, and other compilers, but also different because optimizing asm.js and WebAssembly includes some additional types of optimizations. The mapping of the *emcc* levels to the LLVM bitcode optimization levels is documented in the reference.
 
+How Emscripten optimizes
+========================
+
+Compiling source files to object files works as you'd expect in a native build system that uses clang and LLVM. When linking object files to the final executable, Emscripten does additional optimizations as well depending on the optimization level:
+
+- For wasm, the Binaryen optimizer is run. Binaryen does both general-purpose optimizations to the wasm that LLVM does not, and also does some whole-program optimization. (Note that Binaryen's whole-program optimizations may do things like inlining, which can be surprising in some cases as LLVM IR attributes like ``noinline`` have been lost at this point.)
+- For asm.js, the Emscripten asm.js optimizer is run.
+- JavaScript is generated at this phase, and is optimized by Emscripten's JS optimizer. Optionally you can also run :ref:`the closure compiler <emcc-closure>`, which is highly recommended for code size.
+- Emscripten also optimizes the combined wasm+JS, by minifying imports and exports between them, and by running meta-dce which removes unused code in cycles that span the two worlds.
+
+To skip extra optimization work at link time, link with ``-O0`` (or no optimization level), which works regardless of how the source files were compiled and optimized. Linking in this way with ``-O0`` is useful for fast iteration builds, while final release builds may want something like ``-O3 --closure 1``.
+
 
 Advanced compiler settings
 ==========================
@@ -67,7 +79,6 @@ In addition to the above, the following tips can help to reduce code size:
 
 - Use :ref:`the closure compiler <emcc-closure>` on the non-compiled code: ``--closure 1``. This can hugely reduce the size of the support JavaScript code, and is highly recommended. However, if you add your own additional JavaScript code (in a ``--pre-js``, for example) then you need to make sure it uses `closure annotations properly <https://developers.google.com/closure/compiler/docs/api-tutorial3>`_.
 - `Floh's blogpost on this topic <http://floooh.github.io/2016/08/27/asmjs-diet.html>`_ is very helpful.
-- Use :ref:`llvm-lto <emcc-llvm-lto>` when compiling from bitcode to JavaScript: ``--llvm-lto 1``. This can break some code as the LTO code path is less tested.
 - Make sure to use gzip compression on your webserver, which all browsers now support.
 - You can move some of your code into the `Emterpreter <https://github.com/emscripten-core/emscripten/wiki/Emterpreter>`_, which will then run much slower (as it is interpreted), but it will transfer all that code into a smaller amount of data.
 
@@ -77,6 +88,20 @@ The following compiler settings can help (see ``src/settings.js`` for more detai
 - You can use the ``-s FILESYSTEM=0`` option to disable bundling of filesystem support code (the compiler should optimize it out if not used, but may not always succeed). This can be useful if you are building a pure computational library, for example.
 - The ``ENVIRONMENT`` flag lets you specify that the output will only run on the web, or only run in node.js, etc. This prevents the compiler from emitting code to support all possible runtime environments, saving ~2KB.
 - You can use ``ELIMINATE_DUPLICATE_FUNCTIONS`` to remove duplicate functions, which C++ templates often create. (This is already done by default for wasm, in ``-O1`` and above.)
+
+LTO
+===
+
+Link Time Optimization (LTO) lets the compiler do more optimizations, as it can inline across separate compilation units, and even with system libraries. The :ref:`main relevant flag <emcc-llvm-lto>` is ``--llvm-lto 1`` at link time.
+
+Separately from that flag, the linker must also receive LLVM bitcode files in order to run LTO on them. With fastcomp that is always the case; with the LLVM wasm backend, object files main contain either wasm or bitcode. The linker can handle a mix of the two, but can only do LTO on the bitcode files. You can control that with the following flags:
+
+- The ``-flto`` flag tells the compiler to emit bitcode in object files, but does *not* affect system libraries.
+- The ``-s WASM_OBJECT_FILES=0`` flag also tells the compiler to emit bitcode in object files (like ``-flto``), and also to emit bitcode in system libraries.
+
+Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all source files with ``-s WASM_OBJECT_FILES=0`` and link with ``-s WASM_OBJECT_FILES=0 --llvm-lto 1``.
+
+Note that older versions of LLVM had bugs in this area. With the older fastcomp backend LTO should be used carefully.
 
 Very large codebases
 ====================
@@ -108,35 +133,20 @@ You can also do this manually, as follows:
     };
     document.body.appendChild(script);
 
-.. _optimizing-code-outlining:
-
 Running by itself
 -----------------
 
 If you hit memory limits in browsers, it can help to run your project by itself, as opposed to inside a web page containing other content. If you open a new web page (as a new tab, or a new window) that contains just your project, then you have the best chance at avoiding memory fragmentation issues.
 
 
-Outlining
----------
-
-JavaScript engines will often compile very large functions slowly (relative to their size), and fail to optimize them effectively (or at all). One approach to this problem is to use "outlining": breaking them into smaller functions that can be compiled and optimized more effectively.
-
-Outlining increases overall code size, and can itself make some code less optimised. Despite this, outlining can sometimes improve both startup and runtime speed. For more information read `Outlining: a workaround for JITs and big functions <http://mozakai.blogspot.com/2013/08/outlining-workaround-for-jits-and-big.html>`_.
-
-The ``OUTLINING_LIMIT`` setting defines the function size at which Emscripten will try to break large functions into smaller ones. Search for this setting in `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_ for information on how to determine what functions may need to be outlined and how to choose an appropriate function size.
-
-.. note:: This setting is useful for asm.js, but generally not helpful for WebAssembly.
-
 .. _optimizing-code-aggressive-variable-elimination:
 
 Aggressive variable elimination
 -------------------------------
 
-Aggressive variable elimination attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
+Aggressive variable elimination is an asm.js feature (not relevant for wasm) that attempts to remove variables whenever possible, even at the cost of increasing code size by duplicating expressions. This can improve speed in cases where you have extremely large functions. For example it can make sqlite (which has a huge interpreter loop with thousands of lines in it) 7% faster.
 
 You can enable aggressive variable elimination with ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1``.
-
-.. note:: This setting is useful for asm.js, but generally not helpful for WebAssembly.
 
 .. note:: This setting can be harmful in some cases. Test before using it.
 
