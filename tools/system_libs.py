@@ -609,9 +609,7 @@ class libcompiler_rt(Library):
                   'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
                   'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
                   'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
-
-  def get_files(self):
-    return super(libcompiler_rt, self).get_files() + [shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c')]
+    src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
