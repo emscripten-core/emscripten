@@ -117,8 +117,9 @@ def also_with_noderawfs(func):
 def also_with_standalone_wasm(func):
   def decorated(self):
     func(self)
-    # verify the wasm runs in a wasm VM, without the JS, if we can.
-    if self.is_wasm_backend():
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
       func(self)
