@@ -1,5 +1,5 @@
 This folder contains the musl version of libc at `/musl`. The upstream version can be found at http://www.musl-libc.org/.
-Most of the source comes from musl 1.1.15. Some is from older versions, but I'm assuming that this is because these files haven't changed between versions.
+Most of the source comes from musl 1.1.15, with some exceptions listed below.
 
 Some changes have been made to the version that was taken from upstream, including:
 
