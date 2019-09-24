@@ -4349,10 +4349,9 @@ window.close = function() {
     self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
-  @no_wasm_backend("fetch API uses an asm.js based web worker to run synchronous XHRs and IDB operations")
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'WASM=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @requires_threads
