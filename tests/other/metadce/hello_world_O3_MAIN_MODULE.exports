@@ -64,6 +64,7 @@ __atomic_store_8
 __c_dot_utf8
 __c_dot_utf8_locale
 __c_locale
+__clzti2
 __cos
 __cosdf
 __cosl
@@ -128,6 +129,7 @@ __floatscan
 __floatsitf
 __floattidf
 __floattisf
+__floattitf
 __floatunditf
 __floatunsitf
 __floatuntidf
