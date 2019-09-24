@@ -46,14 +46,6 @@ var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
 // the current compilation unit.
 var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
 
-// In asm.js we can use a fetch worker, which is created from the main asm.js
-// code. That lets us do sync operations by blocking on the worker etc.
-// In the wasm backend we don't have a fetch worker implemented yet, however,
-// we can still do basic synchronous fetches in the same places: if we can
-// block on another thread then we aren't the main thread, and if we aren't
-// the main thread then synchronous xhrs are legitimate.
-var USE_FETCH_WORKER = FETCH && USE_PTHREADS && !WASM_BACKEND;
-
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
   return f[0] == '$' ? f.substr(1) : '_' + f;
