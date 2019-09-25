@@ -55,7 +55,7 @@ def make_command(filename, engine=None, args=[]):
     command_flags += ['run']
   if is_wasmer or is_wasmtime:
     # in a wasm runtime, run the wasm, not the js
-    filename = filename[:-3] + '.wasm'
+    filename = shared.unsuffixed(filename) + '.wasm'
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + command_flags + [filename] + shell_option_flags + flag_separator + args

@@ -474,7 +474,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           '/tmp/wasmer'
         ]
 
-        left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run))
+        left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
         left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
         if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
