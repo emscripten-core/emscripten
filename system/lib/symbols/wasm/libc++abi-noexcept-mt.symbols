@@ -18,6 +18,7 @@
 -------- T _ZN10__cxxabiv119__pointer_type_infoD0Ev
 -------- T _ZN10__cxxabiv119__pointer_type_infoD1Ev
 -------- T _ZN10__cxxabiv119__pointer_type_infoD2Ev
+-------- T _ZN10__cxxabiv119__setExceptionClassEP17_Unwind_Exceptiony
 -------- T _ZN10__cxxabiv120__free_with_fallbackEPv
 -------- T _ZN10__cxxabiv120__function_type_infoD0Ev
 -------- T _ZN10__cxxabiv120__function_type_infoD1Ev
@@ -449,17 +450,22 @@
 -------- T __cxa_bad_cast
 -------- T __cxa_bad_typeid
 -------- T __cxa_can_catch
+-------- T __cxa_current_primary_exception
+-------- T __cxa_decrement_exception_refcount
 -------- T __cxa_demangle
 -------- T __cxa_get_globals
 -------- T __cxa_get_globals_fast
 -------- T __cxa_guard_abort
 -------- T __cxa_guard_acquire
 -------- T __cxa_guard_release
+-------- T __cxa_increment_exception_refcount
 -------- T __cxa_is_pointer_type
 -------- D __cxa_new_handler
          U __cxa_pure_virtual
+-------- T __cxa_rethrow_primary_exception
 -------- D __cxa_terminate_handler
 -------- T __cxa_throw_bad_array_new_length
+-------- T __cxa_uncaught_exception
 -------- T __cxa_uncaught_exceptions
 -------- D __cxa_unexpected_handler
 -------- T __dynamic_cast

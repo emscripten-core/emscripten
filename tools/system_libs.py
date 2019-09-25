@@ -760,7 +760,7 @@ class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
       'private_typeinfo.cpp'
     ]
     if self.is_noexcept:
-      files += ['noexcept_stubs.cpp']
+      files += ['cxa_noexception.cpp']
     return [os.path.join('system', 'lib', 'libcxxabi', 'src', f) for f in files]
 
 
