@@ -43,6 +43,21 @@ commands:
             python3 ./embuilder.py build ALL
             python3 tests/runner.py test_hello_world
       - run:
+          name: embuilder (LTO)
+          command: |
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libc_rt_wasm struct_info libc-wasm --lto
+            python3 tests/runner.py test_hello_world
+      - run:
+          name: embuilder (PIC)
+          command: |
+            python3 ./embuilder.py build SYSTEM --pic
+            python3 tests/runner.py test_hello_world
+      - run:
+          name: embuilder (PIC+LTO)
+          command: |
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 tests/runner.py test_hello_world
+      - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
@@ -488,8 +503,84 @@ workflows:
     jobs:
       - flake8
       - build-docs
+      - build
+      - test-other:
+          requires:
+            - build
+      - test-browser-firefox:
+          requires:
+            - build
+      - test-browser-chrome:
+          requires:
+            - build
+      - test-ab:
+          requires:
+            - build
+      - test-c:
+          requires:
+            - build
+      - test-d:
+          requires:
+            - build
+      - test-e:
+          requires:
+            - build
+      - test-f:
+          requires:
+            - build
+      - test-ghi:
+          requires:
+            - build
+      - test-jklmno:
+          requires:
+            - build
+      - test-p:
+          requires:
+            - build
+      - test-qrst:
+          requires:
+            - build
+      - test-uvwxyz:
+          requires:
+            - build
+      - test-wasm0:
+          requires:
+            - build
+      - test-wasm2:
+          requires:
+            - build
+      - test-wasm3:
+          requires:
+            - build
+      - test-sanity:
+          requires:
+            - build
       - build-upstream-linux
       - test-upstream-wasm0:
           requires:
             - build-upstream-linux
-
+      - test-upstream-wasm2:
+          requires:
+            - build-upstream-linux
+      - test-upstream-wasm3:
+          requires:
+            - build-upstream-linux
+      - test-upstream-wasm2js1:
+          requires:
+            - build-upstream-linux
+      - test-upstream-other:
+          requires:
+            - build-upstream-linux
+      - test-upstream-browser-chrome:
+          requires:
+            - build-upstream-linux
+      - test-upstream-browser-firefox:
+          requires:
+            - build-upstream-linux
+      - build-upstream-mac
+      - test-upstream-other-mac:
+          requires:
+            - build-upstream-mac
+      - test-upstream-wasm0-mac:
+          requires:
+            - build-upstream-mac

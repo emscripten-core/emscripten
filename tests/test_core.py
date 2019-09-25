@@ -1387,7 +1387,6 @@ int main () {
 }
 ''', 'exception caught: std::bad_typeid')
 
-  @also_with_standalone_wasm
   def test_iostream_ctors(self):
     # iostream stuff must be globally constructed before user global
     # constructors, so iostream works in global constructors
