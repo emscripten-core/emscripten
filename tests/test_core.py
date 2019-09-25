@@ -286,6 +286,7 @@ class TestCoreBase(RunnerCore):
   def test_i64_umul(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
+  @also_with_standalone_wasm
   def test_i64_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 

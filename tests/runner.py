@@ -1148,10 +1148,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         js_engines = js_engines[:1]
     # In standalone mode, also add wasm vms as we should be able to run there too.
     if self.get_setting('STANDALONE_WASM'):
+      # TODO once standalone wasm support is more stable, apply use_all_engines
+      # like with js engines, but for now as we bring it up, test in all of them
       wasm_engines = shared.WASM_ENGINES
-      if len(wasm_engines) > 1 and not self.use_all_engines:
-        wasm_engines = wasm_engines[:1]
-      elif len(wasm_engines) == 0:
+      if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       js_engines += wasm_engines
     for engine in js_engines:
