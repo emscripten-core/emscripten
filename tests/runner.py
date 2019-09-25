@@ -920,8 +920,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     """
     proc = run_process(cmd, check=False, stderr=PIPE, **args)
     self.assertNotEqual(proc.returncode, 0)
-    # When we check for failure we user-visible error, not a traceback
-    self.assertNotContained('Traceback', proc.stderr)
+    # When we check for failure we expect a user-visible error, not a traceback.
+    # However, on windows a python traceback can happen randomly sometimes,
+    # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
+    if not WINDOWS or 'Access is denied' not in proc.stderr:
+      self.assertNotContained('Traceback', proc.stderr)
     return proc.stderr
 
   def setup_runtimelink_test(self):
