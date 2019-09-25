@@ -18,6 +18,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Rename libpthreads to libpthread to match its normal name on other platforms.
+   This change should be completely internal to emscripten.
  - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
    node as the compiler engine so just use a single `NODE_JS` option for that.
  - Module.abort is no longer exported by default. It can be exported in the normal

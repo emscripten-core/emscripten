@@ -1004,8 +1004,8 @@ class libhtml5(Library):
   src_glob = '*.c'
 
 
-class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
-  name = 'libpthreads'
+class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
+  name = 'libpthread'
   depends = ['libc']
   cflags = ['-O2']
 
@@ -1057,7 +1057,7 @@ class libpthreads(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       return [shared.path_from_root('system', 'lib', 'pthread', 'library_pthread_stub.c')]
 
   def get_base_name_prefix(self):
-    return 'libpthreads' if self.is_mt else 'libpthreads_stub'
+    return 'libpthread' if self.is_mt else 'libpthread_stub'
 
 
 class CompilerRTWasmLibrary(NoBCLibrary):
@@ -1227,7 +1227,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       for dep in value:
         shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name(dep))
 
-  always_include.add('libpthreads')
+  always_include.add('libpthread')
   if shared.Settings.MALLOC != 'none':
     always_include.add('libmalloc')
   if shared.Settings.WASM_BACKEND:
