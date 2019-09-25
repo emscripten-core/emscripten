@@ -744,14 +744,13 @@ class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
     return cflags
 
   def get_files(self):
-    files = [
+    filenames = [
       'abort_message.cpp',
       'cxa_aux_runtime.cpp',
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
       'cxa_exception_storage.cpp',
       'cxa_guard.cpp',
-      'cxa_handlers.cpp',
       'fallback_malloc.cpp',
       'stdlib_new_delete.cpp',
       'stdlib_exception.cpp',
@@ -760,8 +759,10 @@ class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
       'private_typeinfo.cpp'
     ]
     if self.is_noexcept:
-      files += ['cxa_noexception.cpp']
-    return [os.path.join('system', 'lib', 'libcxxabi', 'src', f) for f in files]
+      filenames += ['cxa_noexception.cpp']
+    return files_in_path(
+        path_components=['system', 'lib', 'libcxxabi', 'src'],
+        filenames=filenames)
 
 
 class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
