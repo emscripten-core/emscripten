@@ -460,6 +460,7 @@
          U __cxa_pure_virtual
 -------- D __cxa_terminate_handler
 -------- T __cxa_throw_bad_array_new_length
+-------- T __cxa_uncaught_exceptions
 -------- D __cxa_unexpected_handler
 -------- T __dynamic_cast
          U __stack_pointer
