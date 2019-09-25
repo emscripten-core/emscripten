@@ -1071,6 +1071,8 @@ g$__stdout_used
 g$__threwValue
 g$atanhi
 g$atanlo
+g$daylight
+g$environ
 g$h_errno
 g$optarg
 g$opterr
@@ -1079,6 +1081,8 @@ g$optopt
 g$stderr
 g$stdin
 g$stdout
+g$timezone
+g$tzname
 gai_strerror
 getTempRet0
 getaddrinfo
