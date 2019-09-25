@@ -18,6 +18,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v.1.38.46: 09/25/2019
+---------------------
+ - Rename libpthreads to libpthread to match its normal name on other platforms.
+   This change should be completely internal to emscripten.
  - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
    node as the compiler engine so just use a single `NODE_JS` option for that.
  - Module.abort is no longer exported by default. It can be exported in the normal
@@ -27,6 +32,9 @@ Current Trunk
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.
+
+v.1.38.45: 09/12/2019
+---------------------
 
 v.1.38.44: 09/11/2019
 ---------------------
