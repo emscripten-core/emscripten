@@ -14,7 +14,7 @@
 -------- T _ZN10__cxxabiv117__pbase_type_infoD0Ev
 -------- T _ZN10__cxxabiv117__pbase_type_infoD1Ev
 -------- T _ZN10__cxxabiv117__pbase_type_infoD2Ev
-         U _ZN10__cxxabiv119__getExceptionClassEPK17_Unwind_Exception
+-------- T _ZN10__cxxabiv119__getExceptionClassEPK17_Unwind_Exception
 -------- T _ZN10__cxxabiv119__pointer_type_infoD0Ev
 -------- T _ZN10__cxxabiv119__pointer_type_infoD1Ev
 -------- T _ZN10__cxxabiv119__pointer_type_infoD2Ev
@@ -25,7 +25,7 @@
 -------- T _ZN10__cxxabiv120__si_class_type_infoD0Ev
 -------- T _ZN10__cxxabiv120__si_class_type_infoD1Ev
 -------- T _ZN10__cxxabiv120__si_class_type_infoD2Ev
-         U _ZN10__cxxabiv121__isOurExceptionClassEPK17_Unwind_Exception
+-------- T _ZN10__cxxabiv121__isOurExceptionClassEPK17_Unwind_Exception
 -------- T _ZN10__cxxabiv121__vmi_class_type_infoD0Ev
 -------- T _ZN10__cxxabiv121__vmi_class_type_infoD1Ev
 -------- T _ZN10__cxxabiv121__vmi_class_type_infoD2Ev
@@ -132,10 +132,16 @@
 -------- T _ZNSt9type_infoD0Ev
 -------- T _ZNSt9type_infoD1Ev
 -------- T _ZNSt9type_infoD2Ev
+-------- T _ZSt10unexpectedv
+-------- T _ZSt11__terminatePFvvE
+-------- T _ZSt12__unexpectedPFvvE
+-------- T _ZSt13get_terminatev
 -------- T _ZSt13set_terminatePFvvE
+-------- T _ZSt14get_unexpectedv
 -------- T _ZSt14set_unexpectedPFvvE
-         U _ZSt15get_new_handlerv
-         U _ZSt9terminatev
+-------- T _ZSt15get_new_handlerv
+-------- T _ZSt15set_new_handlerPFvvE
+-------- T _ZSt9terminatev
 -------- D _ZTIDh
 -------- D _ZTIDi
 -------- D _ZTIDn
@@ -395,6 +401,7 @@
 -------- T __cxa_guard_acquire
 -------- T __cxa_guard_release
 -------- T __cxa_is_pointer_type
+-------- D __cxa_new_handler
          U __cxa_pure_virtual
 -------- D __cxa_terminate_handler
          U __cxa_throw
