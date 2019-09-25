@@ -445,6 +445,7 @@
 -------- T __cxa_bad_typeid
          U __cxa_begin_catch
 -------- T __cxa_can_catch
+-------- T __cxa_deleted_virtual
 -------- T __cxa_demangle
          U __cxa_end_catch
          U __cxa_find_matching_catch_2
@@ -456,7 +457,7 @@
 -------- T __cxa_guard_release
 -------- T __cxa_is_pointer_type
 -------- D __cxa_new_handler
-         U __cxa_pure_virtual
+-------- T __cxa_pure_virtual
 -------- D __cxa_terminate_handler
          U __cxa_throw
 -------- T __cxa_throw_bad_array_new_length

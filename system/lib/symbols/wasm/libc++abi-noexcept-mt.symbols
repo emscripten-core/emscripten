@@ -449,6 +449,7 @@
 -------- T __cxa_bad_cast
 -------- T __cxa_bad_typeid
 -------- T __cxa_can_catch
+-------- T __cxa_deleted_virtual
 -------- T __cxa_demangle
 -------- T __cxa_get_globals
 -------- T __cxa_get_globals_fast
@@ -457,7 +458,7 @@
 -------- T __cxa_guard_release
 -------- T __cxa_is_pointer_type
 -------- D __cxa_new_handler
-         U __cxa_pure_virtual
+-------- T __cxa_pure_virtual
 -------- D __cxa_terminate_handler
 -------- T __cxa_throw_bad_array_new_length
 -------- D __cxa_unexpected_handler
