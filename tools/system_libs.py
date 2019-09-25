@@ -699,6 +699,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    if shared.Settings.WASM_BACKEND:
+      # See libc_extras below
+      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
+
     return libc_files
 
   def get_depends(self):
@@ -724,9 +728,16 @@ class libc_wasm(MuslInternalLibrary):
 
 
 class libc_extras(MuslInternalLibrary):
+  """This library is separate from libc itself for fastcomp only so that so
+  that the contrcutor it contains can be DCE'd.  With the wasm backend libc
+  is a .a file so object file granularity applies."""
+
   name = 'libc-extras'
   src_dir = ['system', 'lib', 'libc']
   src_files = ['extras.c']
+
+  def can_build(self):
+    return not shared.Settings.WASM_BACKEND
 
 
 class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
