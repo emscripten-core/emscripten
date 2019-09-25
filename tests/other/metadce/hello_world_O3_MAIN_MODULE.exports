@@ -1132,6 +1132,9 @@ pselect
 pthread_barrier_destroy
 pthread_barrier_init
 pthread_barrier_wait
+pthread_cond_broadcast
+pthread_cond_signal
+pthread_cond_wait
 pthread_getspecific
 pthread_key_create
 pthread_key_delete
