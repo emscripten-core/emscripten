@@ -729,7 +729,7 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  contrcutor it contains can be DCE'd.  With the wasm backend libc is a .a file
+  constructor it contains can be DCE'd.  With the wasm backend libc is a .a file
   so object file granularity applies.
   """
 
