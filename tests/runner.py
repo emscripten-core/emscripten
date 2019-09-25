@@ -1151,6 +1151,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       wasm_engines = shared.WASM_ENGINES
       if len(wasm_engines) > 1 and not self.use_all_engines:
         wasm_engines = wasm_engines[:1]
+      elif len(wasm_engines) == 0:
+        logger.warning('no wasm engine was found to run the standalone part of this test')
       js_engines += wasm_engines
     for engine in js_engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
