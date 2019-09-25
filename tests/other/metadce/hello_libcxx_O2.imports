@@ -12,8 +12,6 @@ emscripten_resize_heap
 fd_write
 getenv
 memory
-pthread_cond_broadcast
-pthread_cond_wait
 setTempRet0
 strftime_l
 table

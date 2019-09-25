@@ -8139,7 +8139,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1609, [], [], 517336, None, 1497, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1606, [], [], 517336, None, 1500, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8159,7 +8159,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1594, [], [], 226403, None, 104, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1592, [], [], 226403, None, 107, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
