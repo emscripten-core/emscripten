@@ -34,7 +34,10 @@ if __name__ == '__main__':
 # Main run() function
 #
 def run():
-  args = substitute_response_files(sys.argv)
+  try:
+    args = substitute_response_files(sys.argv)
+  except IOError as e:
+    shared.exit_with_error(e)
   newargs = [shared.LLVM_AR] + args[1:]
 
   to_delete = []

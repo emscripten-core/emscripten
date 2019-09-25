@@ -152,6 +152,10 @@ var LibraryManager = {
       libraries.push('library_glemu.js');
     }
 
+    if (STANDALONE_WASM) {
+      libraries.push('library_wasi.js');
+    }
+
     libraries = libraries.concat(additionalLibraries);
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
@@ -362,7 +366,7 @@ function exportRuntime() {
       if (!isNumber) {
         return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Module["' + name + '"] = function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") };';
       } else {
-        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
+        return 'if (!Object.getOwnPropertyDescriptor(Module, "' + name + '")) Object.defineProperty(Module, "' + name + '", { configurable: true, get: function() { abort("\'' + name + '\' was not exported. add it to EXTRA_EXPORTED_RUNTIME_METHODS (see the FAQ)' + extra + '") } });';
       }
     }
     return '';

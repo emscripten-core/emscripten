@@ -69,8 +69,6 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    pthreadIdCounter: 2, // 0: invalid thread, 1: main JS UI thread, 2+: IDs for pthreads
-
     exitHandlers: null, // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING

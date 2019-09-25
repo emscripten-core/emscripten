@@ -30,9 +30,9 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LINUX, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
-from tools.shared import COMPILER_ENGINE, NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
+from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
@@ -196,15 +196,6 @@ class other(RunnerCore):
     finally:
       os.close(master)
       os.close(slave)
-
-  def expect_fail(self, cmd, **args):
-    """Run a subprocess and assert that it returns non-zero.
-
-    Return the stderr of the subprocess.
-    """
-    proc = run_process(cmd, check=False, stderr=PIPE, **args)
-    self.assertNotEqual(proc.returncode, 0)
-    return proc.stderr
 
   def test_emcc_v(self):
     for compiler in [EMCC, EMXX]:
@@ -1068,25 +1059,21 @@ int main() {
       self.assertContained("unknown suffix", proc.stderr)
 
   def test_multiply_defined_libsymbols(self):
-    lib = "int mult() { return 1; }"
     lib_name = 'libA.c'
-    create_test_file(lib_name, lib)
-    a2 = "void x() {}"
     a2_name = 'a2.c'
-    create_test_file(a2_name, a2)
-    b2 = "void y() {}"
     b2_name = 'b2.c'
-    create_test_file(b2_name, b2)
-    main = r'''
+    main_name = 'main.c'
+    create_test_file(lib_name, 'int mult() { return 1; }')
+    create_test_file(a2_name, 'void x() {}')
+    create_test_file(b2_name, 'void y() {}')
+    create_test_file(main_name, r'''
       #include <stdio.h>
       int mult();
       int main() {
         printf("result: %d\n", mult());
         return 0;
       }
-    '''
-    main_name = 'main.c'
-    create_test_file(main_name, main)
+    ''')
 
     Building.emcc(lib_name, output_filename='libA.so')
 
@@ -3586,27 +3573,18 @@ int main() {
   def test_oz_size(self):
     sizes = {}
     for name, args in [
-        ('0', ['-o', 'dlmalloc.o']),
-        ('1', ['-o', 'dlmalloc.o', '-O1']),
-        ('2', ['-o', 'dlmalloc.o', '-O2']),
-        ('s', ['-o', 'dlmalloc.o', '-Os']),
-        ('z', ['-o', 'dlmalloc.o', '-Oz']),
-        ('3', ['-o', 'dlmalloc.o', '-O3']),
-        ('0c', ['-c']),
-        ('1c', ['-c', '-O1']),
-        ('2c', ['-c', '-O2']),
-        ('sc', ['-c', '-Os']),
-        ('zc', ['-c', '-Oz']),
-        ('3c', ['-c', '-O3']),
+        ('0', []),
+        ('1', ['-O1']),
+        ('2', ['-O2']),
+        ('s', ['-Os']),
+        ('z', ['-Oz']),
+        ('3', ['-O3']),
       ]:
       print(name, args)
       self.clear()
-      run_process([PYTHON, EMCC, path_from_root('system', 'lib', 'dlmalloc.c')] + args)
+      run_process([PYTHON, EMCC, '-c', path_from_root('system', 'lib', 'dlmalloc.c')] + args)
       sizes[name] = os.path.getsize('dlmalloc.o')
     print(sizes)
-    # -c should not affect code size
-    for name in ['0', '1', '2', '3', 's', 'z']:
-      self.assertEqual(sizes[name], sizes[name + 'c'])
     opt_min = min(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
     opt_max = max(sizes['1'], sizes['2'], sizes['3'], sizes['s'], sizes['z'])
     # 'opt builds are all fairly close'
@@ -8309,16 +8287,23 @@ int main() {
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
     run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
 
-  def test_wasm_targets(self):
+  def test_wasm_target_and_STANDALONE_WASM(self):
+    # STANDALONE_WASM means we never minify imports and exports.
     for opts, potentially_expect_minified_exports_and_imports in (
-      ([], False),
-      (['-O2'], False),
-      (['-O3'], True),
-      (['-Os'], True),
+      ([],                               False),
+      (['-s', 'STANDALONE_WASM'],        False),
+      (['-O2'],                          False),
+      (['-O3'],                          True),
+      (['-O3', '-s', 'STANDALONE_WASM'], False),
+      (['-Os'],                          True),
     ):
+      if 'STANDALONE_WASM' in opts and not self.is_wasm_backend():
+        continue
+      # targeting .wasm (without .js) means we enable STANDALONE_WASM automatically, and don't minify imports/exports
       for target in ('out.js', 'out.wasm'):
         expect_minified_exports_and_imports = potentially_expect_minified_exports_and_imports and target.endswith('.js')
-        print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports)
+        standalone = target.endswith('.wasm') or 'STANDALONE_WASM' in opts
+        print(opts, potentially_expect_minified_exports_and_imports, target, ' => ', expect_minified_exports_and_imports, standalone)
 
         self.clear()
         run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', target] + opts)
@@ -8330,13 +8315,33 @@ int main() {
         exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
         imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
         exports_and_imports = exports + imports
-        print(exports)
-        print(imports)
+        print('  exports', exports)
+        print('  imports', imports)
         if expect_minified_exports_and_imports:
           assert 'a' in exports_and_imports
         else:
           assert 'a' not in exports_and_imports
-        assert 'memory' in exports_and_imports, 'some things are not minified anyhow'
+        assert 'memory' in exports_and_imports or 'fd_write' in exports_and_imports, 'some things are not minified anyhow'
+        # verify the wasm runs with the JS
+        if target.endswith('.js'):
+          self.assertContained('hello, world!', run_js('out.js'))
+        # verify the wasm runs in a wasm VM, without the JS
+        # TODO: more platforms than linux
+        if LINUX and standalone and self.is_wasm_backend():
+          WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
+          if os.path.isfile(WASMER):
+            print('  running in wasmer')
+            out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
+            self.assertContained('hello, world!', out)
+          else:
+            print('[WARNING - no wasmer]')
+          WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
+          if os.path.isfile(WASMTIME):
+            print('  running in wasmtime')
+            out = run_process([WASMTIME, 'out.wasm'], stdout=PIPE).stdout
+            self.assertContained('hello, world!', out)
+          else:
+            print('[WARNING - no wasmtime]')
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
@@ -8413,28 +8418,28 @@ int main() {
       else:
         self.assertContained('no native wasm support detected', out)
 
-  def test_check_engine(self):
-    compiler_engine = COMPILER_ENGINE
-    bogus_engine = ['/fake/inline4']
-    print(compiler_engine)
+  def test_jsrun(self):
+    print(NODE_JS)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
-    assert jsrun.check_engine(COMPILER_ENGINE)
+    self.assertTrue(jsrun.check_engine(NODE_JS))
     # Run it a second time (cache hit)
-    assert jsrun.check_engine(COMPILER_ENGINE)
+    self.assertTrue(jsrun.check_engine(NODE_JS))
+
     # Test that engine check fails
-    assert not jsrun.check_engine(bogus_engine)
-    assert not jsrun.check_engine(bogus_engine)
+    bogus_engine = ['/fake/inline4']
+    self.assertFalse(jsrun.check_engine(bogus_engine))
+    self.assertFalse(jsrun.check_engine(bogus_engine))
 
     # Test the other possible way (list vs string) to express an engine
-    if type(compiler_engine) is list:
-      engine2 = compiler_engine[0]
+    if type(NODE_JS) is list:
+      engine2 = NODE_JS[0]
     else:
-      engine2 = [compiler_engine]
-    assert jsrun.check_engine(engine2)
+      engine2 = [NODE_JS]
+    self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that run_js requires the engine
-    jsrun.run_js(path_from_root('src', 'hello_world.js'), compiler_engine)
+    jsrun.run_js(path_from_root('src', 'hello_world.js'), NODE_JS)
     caught_exit = 0
     try:
       jsrun.run_js(path_from_root('src', 'hello_world.js'), bogus_engine)
@@ -8948,13 +8953,16 @@ T6:(else) !ASSERTIONS""", output)
 
   @no_fastcomp('uses new ASYNCIFY')
   def test_asyncify_response_file(self):
+    return self.skipTest(' TODO remove the support for multiple binaryen versions warning output ("function name" vs "pattern" etc).')
     create_test_file('a.txt', r'''[
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
 ''')
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'ASYNCIFY=1', '-s', "ASYNCIFY_WHITELIST=@a.txt"], stdout=PIPE, stderr=PIPE)
     # we should parse the response file properly, and then issue a proper warning for the missing function
-    self.assertContained('Asyncify whitelist contained a non-existing function name: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)', proc.stderr)
+    self.assertContained(
+        'Asyncify whitelist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+        proc.stderr)
 
   # Sockets and networking
 
