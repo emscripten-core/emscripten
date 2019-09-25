@@ -754,9 +754,9 @@ var LibraryEmbind = {
         },
         'toWireType': function(destructors, value) {
             // assumes 4-byte alignment
-            var HEAP = getHeap();
             var length = value.length;
             var ptr = _malloc(4 + length * charSize);
+            var HEAP = getHeap();
             HEAPU32[ptr >> 2] = length;
             var start = (ptr + 4) >> shift;
             for (var i = 0; i < length; ++i) {
