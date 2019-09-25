@@ -69,6 +69,9 @@ _pow
 _powf
 _powl
 _printf
+_pthread_cond_broadcast
+_pthread_cond_signal
+_pthread_cond_wait
 _pthread_self
 _puts
 _rand
