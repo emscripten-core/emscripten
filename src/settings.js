@@ -1395,6 +1395,10 @@ var FETCH_DEBUG = 0;
 // If nonzero, enables emscripten_fetch API.
 var FETCH = 0;
 
+// Whether to use an asm.js fetch worker when using FETCH. Note that this is
+// only relevant for fastcomp, where we support asm.js.
+var USE_FETCH_WORKER = 1;
+
 // Internal: name of the file containing the Fetch *.fetch.js, if relevant
 // Do not set yourself.
 var FETCH_WORKER_FILE = '';
@@ -1635,9 +1639,6 @@ var MAIN_READS_PARAMS = 1;
 
 // The computed location of the pointer to the sbrk position.
 var DYNAMICTOP_PTR = -1;
-
-// Whether to use an asm.js fetch worker when using FETCH.
-var USE_FETCH_WORKER = 1;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
