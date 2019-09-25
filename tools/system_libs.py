@@ -728,9 +728,10 @@ class libc_wasm(MuslInternalLibrary):
 
 
 class libc_extras(MuslInternalLibrary):
-  """This library is separate from libc itself for fastcomp only so that so
-  that the contrcutor it contains can be DCE'd.  With the wasm backend libc
-  is a .a file so object file granularity applies."""
+  """This library is separate from libc itself for fastcomp only so that the
+  contrcutor it contains can be DCE'd.  With the wasm backend libc is a .a file
+  so object file granularity applies.
+  """
 
   name = 'libc-extras'
   src_dir = ['system', 'lib', 'libc']
