@@ -232,7 +232,6 @@ __atomic_is_lock_free
 __buildEnvironment
 __builtin_prefetch
 __clock_gettime
-__clzti2
 __cxa_allocate_exception
 __cxa_atexit
 __cxa_begin_catch
