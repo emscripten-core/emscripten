@@ -19,5 +19,3 @@ Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
    cxa_exception.cpp.
 
 3. Use arm-style ABI for __cxa_guard_acquire/__cxa_guard_release arguments
-
-4. Add noexcept_stubs.cpp.
