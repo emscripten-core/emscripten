@@ -29,8 +29,8 @@ commands:
             echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
-            test -f ~/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
-            test -f ~/.wasmer/bin/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
+            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
+            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
@@ -46,8 +46,6 @@ commands:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
-            echo "waka waka2"
-            ls -al ~/wasmtime
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -57,6 +55,7 @@ commands:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
+            - vms
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -414,14 +413,14 @@ jobs:
           name: get wasmer
           command: |
             curl https://get.wasmer.io -sSfL | sh
+            mkdir ~/vms
+            cp ~/.wasmer/bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
             wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
             tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/
-            echo "waka waka"
-            ls -al ~/wasmtime
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
       - build-upstream
   test-upstream-wasm0:
     executor: bionic
