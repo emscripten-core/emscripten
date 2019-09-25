@@ -1138,6 +1138,11 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
+# This library is used when STANDALONE_WASM is set. In that mode, we don't
+# want to depend on JS, and so this library contains implementations of
+# things that we'd normally do in JS. That includes some general things
+# as well as some additional musl components (that normally we reimplement
+# in JS as it's more efficient that way).
 class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
 
