@@ -17,7 +17,6 @@ _emscripten_resize_heap
 _getenv
 _llvm_stackrestore
 _llvm_stacksave
-_pthread_cond_wait
 _strftime_l
 abort
 memory

@@ -1446,9 +1446,7 @@ _pthread_cleanup_pop
 _pthread_cleanup_push
 _pthread_cond_destroy
 _pthread_cond_init
-_pthread_cond_signal
 _pthread_cond_timedwait
-_pthread_cond_wait
 _pthread_condattr_destroy
 _pthread_condattr_getclock
 _pthread_condattr_getpshared
