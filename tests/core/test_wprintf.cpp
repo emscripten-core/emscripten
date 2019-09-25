@@ -8,22 +8,36 @@
 #include <stdarg.h>
 #include <wchar.h>
 
+#define MAX_CHARS_SMALL 256
+#define MAX_CHARS_BIG 8096
+
 void PrintWide ( const wchar_t * format, ... )
 {
-  wchar_t buffer[256];
-  memset(buffer, 0, 256);
+  wchar_t buffer[MAX_CHARS_SMALL];
+  memset(buffer, 0, MAX_CHARS_SMALL);
   va_list args;
   va_start ( args, format );
   wprintf(L"format    starts with 0x%x\n", *(int*)format);
   wprintf(L"fmt    continues with 0x%x\n", *(((int*)format) + 1));
   wprintf(L"fmt    continues with 0x%x\n", *(((int*)format) + 2));
-  int r = vswprintf ( buffer, 256, format, args );
+  int r = vswprintf ( buffer, MAX_CHARS_SMALL-1, format, args );
   wprintf(L"vswprintf told us %d\n", r);
   wprintf(L"vswoutput st-rts with 0x%x\n", *(int*)buffer);
   wprintf(L"vsw    continues with 0x%x\n", *(((int*)buffer) + 1));
   wprintf(L"vsw    continues with 0x%x\n", *(((int*)buffer) + 2));
   wprintf(buffer);
   va_end ( args );
+}
+
+void PrintBigWide ( const wchar_t * format, ... )
+{
+  wchar_t buffer[MAX_CHARS_BIG] = { 0 };
+  va_list args;
+  va_start ( args, format );
+  int ret = vswprintf ( buffer, MAX_CHARS_BIG-1, format, args );
+  va_end ( args );
+  wprintf(L"PrintBigWide wrote %d wchars:\n", ret);
+  wprintf(buffer);
 }
 
 int main ()
@@ -45,7 +59,15 @@ int main ()
    PrintWide ( str, wcslen(str) );
    PrintWide ( str, wcslen(str) );
    PrintWide ( str, wcslen(str) );
-
+  
+  
+   wchar_t long_str[] = L"test string has %d wide characters.\n"
+     "Internally the variadic print functions use a 256 char buffer, so this is a string that's longer than 256 chars, "
+     "so in case this breaks we have a test case. As discovered in #9305 vswprintf had been broken for some time, "
+     "but was never picked up as the test strings were all shorter then 256 chars. So hopefully this long rambly string "
+     "will help guard against that bug being re-introduced.\n";
+   PrintBigWide ( long_str, wcslen(long_str) );
+  
    wprintf (L"Characters: %lc %lc \n", L'a', 65);
    wprintf (L"Decimals: %d %ld\n", 1977, 650000L);
    wprintf (L"Preceding with blanks: %10d \n", 1977);
