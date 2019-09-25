@@ -1143,12 +1143,17 @@ class libstandalonewasm(MuslInternalLibrary):
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-  src_files = ['standalone_wasm.c',
-               os.path.join('libc', 'musl', 'src', 'time', 'strftime.c'),
-               os.path.join('libc', 'musl', 'src', 'time', '__month_to_secs.c'),
-               os.path.join('libc', 'musl', 'src', 'time', '__tm_to_secs.c'),
-               os.path.join('libc', 'musl', 'src', 'time', '__tz.c'),
-               os.path.join('libc', 'musl', 'src', 'time', '__year_to_secs.c')]
+
+  def get_files(self):
+    base_files = ['standalone_wasm.c']
+    base_files = [os.path.join('system', 'lib', f) for f in base_files]
+    musl_files = ['strftime.c',
+                  '__month_to_secs.c',
+                  '__tm_to_secs.c',
+                  '__tz.c',
+                  '__year_to_secs.c']
+    musl_files = [os.path.join('system', 'lib', 'libc', 'musl', 'src', 'time', f) for f in musl_files]
+    return base_files + musl_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
