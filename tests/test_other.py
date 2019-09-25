@@ -8111,7 +8111,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 20, 33, None) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 18, 33, None) # noqa
 
   @parameterized({
     'normal': (['-O2'], 39, ['abort'], ['waka'], 186423, 25, 38, 541), # noqa
@@ -8139,7 +8139,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1609, [], [], 517336, None, 1497, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1606, [], [], 517336, None, 1500, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
