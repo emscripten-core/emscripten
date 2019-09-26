@@ -1,3 +1,4 @@
+ENV
 STACKTOP
 STACK_MAX
 _IMG_Init
@@ -240,7 +241,6 @@ ___atomic_fetch_xor_8
 ___atomic_is_lock_free
 ___atomic_load_8
 ___atomic_store_8
-___buildEnvironment
 ___builtin_prefetch
 ___clock_gettime
 ___cxa_allocate_exception
@@ -402,7 +402,11 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_emscripten_get_environ
+___wasi_environ_get
+___wasi_environ_sizes_get
 ___wasi_fd_write
+___wasi_proc_exit
 __addDays
 __arraySum
 __battery
@@ -574,7 +578,6 @@ _ceil
 _ceilf
 _ceill
 _chroot
-_clearenv
 _clock
 _clock_getcpuclockid
 _clock_getres
@@ -679,6 +682,7 @@ _emscripten_get_devicemotion_status
 _emscripten_get_deviceorientation_status
 _emscripten_get_element_css_size
 _emscripten_get_env
+_emscripten_get_environ
 _emscripten_get_fullscreen_status
 _emscripten_get_gamepad_status
 _emscripten_get_heap_size
@@ -1036,6 +1040,8 @@ _emscripten_worker_respond_provisionally
 _emscripten_yield
 _endprotoent
 _endpwent
+_environ_get
+_environ_sizes_get
 _execl
 _execle
 _execlp
@@ -1433,6 +1439,7 @@ _pathconf
 _pixelRGBA
 _posix_spawn
 _posix_spawnp
+_proc_exit
 _pthread_attr_destroy
 _pthread_attr_getdetachstate
 _pthread_attr_getstack
@@ -1497,7 +1504,6 @@ _sem_post
 _sem_trywait
 _sem_wait
 _setTempRet0
-_setenv
 _setgroups
 _setitimer
 _setprotoent
@@ -1530,7 +1536,6 @@ _timelocal
 _times
 _timespec_get
 _tzset
-_unsetenv
 _usleep
 _utime
 _utimes
