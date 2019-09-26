@@ -540,6 +540,8 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
+  cflags = ['-D_XOPEN_SOURCE=700']
+
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):

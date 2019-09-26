@@ -20,8 +20,7 @@ const char __gmt[] = "GMT";
 static int dst_off;
 static int r0[5], r1[5];
 
-// XXX EMSCRIPTEN: index conflicts with the function index(), rename to _index.
-static const unsigned char *zi, *trans, *_index, *types, *abbrevs, *abbrevs_end;
+static const unsigned char *zi, *trans, *index, *types, *abbrevs, *abbrevs_end;
 static size_t map_size;
 
 static char old_tz_buf[32];
@@ -184,8 +183,8 @@ static void do_tzset()
 		} else {
 			trans = zi+44;
 		}
-		_index = trans + (zi_read32(trans-12) << scale);
-		types = _index + zi_read32(trans-12);
+		index = trans + (zi_read32(trans-12) << scale);
+		types = index + zi_read32(trans-12);
 		abbrevs = types + 6*zi_read32(trans-8);
 		abbrevs_end = abbrevs + zi_read32(trans-4);
 		if (zi[map_size-1] == '\n') {
@@ -247,7 +246,7 @@ static size_t scan_trans(long long t, int local, size_t *alt)
 	uint64_t x;
 	int off = 0;
 
-	size_t a = 0, n = (_index-trans)>>scale, m;
+	size_t a = 0, n = (index-trans)>>scale, m;
 
 	if (!n) {
 		if (alt) *alt = 0;
@@ -260,7 +259,7 @@ static size_t scan_trans(long long t, int local, size_t *alt)
 		x = zi_read32(trans + (m<<scale));
 		if (scale == 3) x = x<<32 | zi_read32(trans + (m<<scale) + 4);
 		else x = (int32_t)x;
-		if (local) off = (int32_t)zi_read32(types + 6 * _index[m-1]);
+		if (local) off = (int32_t)zi_read32(types + 6 * index[m-1]);
 		if (t - off < (int64_t)x) {
 			n /= 2;
 		} else {
@@ -269,15 +268,15 @@ static size_t scan_trans(long long t, int local, size_t *alt)
 		}
 	}
 
-	/* First and last entry are special. First means to use lowest-_index
+	/* First and last entry are special. First means to use lowest-index
 	 * non-DST type. Last means to apply POSIX-style rule if available. */
-	n = (_index-trans)>>scale;
+	n = (index-trans)>>scale;
 	if (a == n-1) return -1;
 	if (a == 0) {
 		x = zi_read32(trans + (a<<scale));
 		if (scale == 3) x = x<<32 | zi_read32(trans + (a<<scale) + 4);
 		else x = (int32_t)x;
-		if (local) off = (int32_t)zi_read32(types + 6 * _index[a-1]);
+		if (local) off = (int32_t)zi_read32(types + 6 * index[a-1]);
 		if (t - off < (int64_t)x) {
 			for (a=0; a<(abbrevs-types)/6; a++) {
 				if (types[6*a+4] != types[4]) break;
@@ -295,15 +294,15 @@ static size_t scan_trans(long long t, int local, size_t *alt)
 
 	/* Try to find a neighboring opposite-DST-status rule. */
 	if (alt) {
-		if (a && types[6*_index[a-1]+4] != types[6*_index[a]+4])
-			*alt = _index[a-1];
-		else if (a+1<n && types[6*_index[a+1]+4] != types[6*_index[a]+4])
-			*alt = _index[a+1];
+		if (a && types[6*index[a-1]+4] != types[6*index[a]+4])
+			*alt = index[a-1];
+		else if (a+1<n && types[6*index[a+1]+4] != types[6*index[a]+4])
+			*alt = index[a+1];
 		else
-			*alt = _index[a];
+			*alt = index[a];
 	}
 
-	return _index[a];
+	return index[a];
 }
 
 static int days_in_month(int m, int is_leap)
