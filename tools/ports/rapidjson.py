@@ -16,7 +16,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('rapidjson', 'https://github.com/Tencent/rapidjson/archive/v' + TAG + '.zip',
-                      'rapidjson', sha512hash=HASH)
+                      'rapidjson-'+TAG, sha512hash=HASH)
   libname = ports.get_lib_name('librapidjson')
 
   def create():
@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     ports.clear_project_build('rapidjson')
 
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'rapidjson', 'include')
+    source_path_include = os.path.join(ports.get_dir(), 'rapidjson', 'rapidjson-' + TAG, 'include')
     dest_path_include = os.path.join(ports.get_build_dir(), 'rapidjson', 'include')
     shutil.copytree(source_path_include, dest_path_include)
 
