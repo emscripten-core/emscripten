@@ -630,7 +630,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # The extra files are included in libc for the wasm backend, but in a
   # separate libc_extras in fastcomp, see below.
   extras = \
-    shared.path_from_root('system', 'lib', 'libc', 'extras.c')) +
+    [shared.path_from_root('system', 'lib', 'libc', 'extras.c')] + \
     files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
         filenames=['getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c',
