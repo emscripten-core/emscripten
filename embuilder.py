@@ -40,6 +40,7 @@ USER_TASKS = [
     'libjpeg',
     'libpng',
     'ogg',
+    'rapidjson',
     'regal',
     'sdl2',
     'sdl2-mt',
@@ -243,6 +244,8 @@ def main():
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
+    elif what == 'rapidjson':
+      build_port('rapidjson', libname('librapidjson'), ['-s', 'USE_RAPIDJSON=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1
