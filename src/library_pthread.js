@@ -506,10 +506,13 @@ var LibraryPThread = {
         offscreenCanvases: threadParams.offscreenCanvases,
 #endif
       };
+console.log('parent ready to run pthread');
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
+console.log('  posting to run pthread');
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
+console.log('  postedded');
     };
     if (worker.loaded) {
       worker.runPthread();

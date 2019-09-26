@@ -119,6 +119,7 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   console.log('child gottt ' + [e, JSON.stringify(e), typeof e.data.urlOrBlob, e.data.urlOrBlob]);
   try {
+console.log('child command:', e.data.cmd);
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if !WASM_BACKEND
       // Initialize the thread-local field(s):
@@ -183,7 +184,9 @@ this.onmessage = function(e) {
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
+console.log('child loading scripts');
         importScripts(e.data.urlOrBlob);
+console.log('child loaded scripts');
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
         importScripts(objectUrl);
@@ -365,6 +368,7 @@ if (typeof require === 'function') {
   };
 
   function globalEval(x) {
+    global.require = require;
     eval.call(null, x);
   }
 
