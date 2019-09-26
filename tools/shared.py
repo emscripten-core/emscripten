@@ -2524,6 +2524,8 @@ class Building(object):
       })
     # fix wasi imports TODO: support wasm stable with an option?
     WASI_IMPORTS = set([
+      'environ_get',
+      'environ_sizes_get',
       'fd_write',
       'proc_exit',
     ])

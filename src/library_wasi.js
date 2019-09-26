@@ -21,35 +21,37 @@ mergeInto(LibraryManager.library, {
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' &&navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
       ENV['_'] = thisProgram;
-      _emscripten_get_environ.ENV = ENV;
+      var strings = [];
+      for (var key in ENV) {
+        strings.push(key + '=' + ENV[key]);
+      }
+      _emscripten_get_environ.strings = strings;
     }
-    return _emscripten_get_environ.ENV;
+    return _emscripten_get_environ.strings;
   },
 
   environ_sizes_get__deps: ['emscripten_get_environ'],
   environ_sizes_get: function(environ_count, environ_buf_size) {
-    var ENV = _emscripten_get_environ();
-    var count = 0;
+    var strings = _emscripten_get_environ();
+    {{{ makeSetValue('environ_count', 0, 'strings.length', 'i32') }}};
     var bufSize = 0;
-    for (var key in ENV) {
-      count++;
-      bufSize += key.length + 1 + ENV[key].length + 1;
-    }
-    {{{ makeSetValue('environ_count', 0, 'count', 'i32') }}};
+    strings.forEach(function(string) {
+      bufSize += string.length + 1;
+    });
     {{{ makeSetValue('environ_buf_size', 0, 'bufSize', 'i32') }}};
     return 0;
   },
 
   environ_get__deps: ['emscripten_get_environ'],
   environ_get: function(__environ, environ_buf) {
-    var ENV = _emscripten_get_environ();
-    var str = '';
-    var i = 0;
-    for (var key in ENV) {
-      {{{ makeSetValue('__environ', 'i * 4', 'environ_buf + str.length', 'i32') }}};
-      str += key + '=' + ENV[key] + String.fromCharCode(0);
-    }
-    writeAsciiToMemory(str, environ_buf, true /* don'tAddNull */);
+    var strings = _emscripten_get_environ();
+    var bufSize = 0;
+    strings.forEach(function(string, i) {
+      var ptr = environ_buf + bufSize;
+      {{{ makeSetValue('__environ', 'i * 4', 'ptr', 'i32') }}};
+      writeAsciiToMemory(string, ptr);
+      bufSize += string.length + 1;
+    });
     return 0;
   },
 });
