@@ -878,7 +878,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = newargs[i + 1] = ''
           if key == 'WASM_BACKEND=1':
             exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
-    newargs = [arg for arg in newargs if arg != '']
+    newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
     for s in settings_changes:
@@ -910,8 +910,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
     compile_only = has_dash_c or has_dash_S
 
-    if not compile_only:
-      newargs += shared.emsdk_ldflags(newargs)
+    link_to_object = final_suffix not in executable_endings
+
+    def add_link_flag(i, f):
+      # Filter out libraries that musl includes in libc itself, or which we
+      # otherwise provide implicitly.
+      if f in ('-lm', '-lrt', '-ldl', '-lpthread'):
+        return
+      if f.startswith('-l'):
+        libs.append((i, f[2:]))
+      if f.startswith('-L'):
+        lib_dirs.append(f[2:])
+
+      link_flags.append((i, f))
 
     # find input files this a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
@@ -978,25 +989,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
       elif arg.startswith('-L'):
-        lib_dirs.append(arg[2:])
+        add_link_flag(i, arg)
         newargs[i] = ''
-        link_flags.append((i, arg))
       elif arg.startswith('-l'):
-        libs.append((i, arg[2:]))
+        add_link_flag(i, arg)
         newargs[i] = ''
-        link_flags.append((i, arg))
       elif arg.startswith('-Wl,'):
         # Multiple comma separated link flags can be specified. Create fake
         # fractional indices for these: -Wl,a,b,c,d at index 4 becomes:
         # (4, a), (4.25, b), (4.5, c), (4.75, d)
         link_flags_to_add = arg.split(',')[1:]
         for flag_index, flag in enumerate(link_flags_to_add):
-          if flag.startswith('-l'):
-            libs.append((i, flag[2:]))
-          elif flag.startswith('-L'):
-            lib_dirs.append(flag[2:])
-          link_flags.append((i + float(flag_index) / len(link_flags_to_add), flag))
-
+          add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
         newargs[i] = ''
       elif arg == '-s':
         # -s and some other compiler flags are normally passed onto the linker
@@ -1004,7 +1008,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # link_flags.append((i, arg))
         newargs[i] = ''
 
-    newargs = [a for a in newargs if a != '']
+    newargs = [a for a in newargs if a]
 
     if '-fno-rtti' in newargs:
       shared.Settings.USE_RTTI = 0
@@ -1060,10 +1064,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if strict_cmdline:
       shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
-    if not shared.Settings.STRICT:
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      newargs += ['-DEMSCRIPTEN']
+    if options.separate_asm and final_suffix != '.html':
+      shared.WarningManager.warn('SEPARATE_ASM')
+
+    # Apply optimization level settings
+    shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
+
+    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
+    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
+    if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
+      shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
+
+    # Set ASM_JS default here so that we can override it from the command line.
+    shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
+
+    # Apply -s settings in newargs here (after optimization levels, so they can override them)
+    apply_settings(settings_changes)
+
+    shared.verify_settings()
+
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
 
     def filter_out_dynamic_libs(inputs):
       # If not compiling to JS, then we are compiling to an intermediate bitcode
@@ -1084,27 +1104,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if len(input_files) == 0:
       exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
-
-    newargs = shared.COMPILER_OPTS + shared.get_cflags(newargs) + newargs
-
-    if options.separate_asm and final_suffix != '.html':
-      shared.WarningManager.warn('SEPARATE_ASM')
-
-    # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
-
-    # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
-    # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
-    if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
-      shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-
-    # Set ASM_JS default here so that we can override it from the command line.
-    shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
-
-    # Apply -s settings in newargs here (after optimization levels, so they can override them)
-    apply_settings(settings_changes)
-
-    shared.verify_settings()
 
     # Note the exports the user requested
     shared.Building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -1179,6 +1178,38 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # such as WASM_OBJECT_FILES and SIDE_MODULE/MAIN_MODULE effect which cache
     # directory we use.
     shared.reconfigure_cache()
+
+    if not compile_only:
+      ldflags = shared.emsdk_ldflags(newargs)
+      for f in ldflags:
+        newargs.append(f)
+        add_link_flag(len(newargs), f)
+
+    if not shared.Settings.STRICT:
+      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
+      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
+      newargs += ['-DEMSCRIPTEN']
+
+    newargs = shared.COMPILER_OPTS + shared.get_cflags(newargs) + newargs
+
+    def is_supported_link_flag(f):
+      if f in SUPPORTED_LINKER_FLAGS:
+        return True
+      if using_lld:
+        # Add flags here to allow -Wl, options to be passed all the way through
+        # to the linker.
+        valid_prefixs = ('-l', '-L', '--trace-symbol', '--trace')
+        if any(f.startswith(prefix) for prefix in valid_prefixs):
+          return True
+      else:
+        # Silently ignore -l/-L flags when not using lld.  If using lld allow
+        # them to pass through the linker
+        if f.startswith('-l') or f.startswith('-L'):
+          return False
+      logger.warning('ignoring unsupported linker flag: `%s`', f)
+      return False
+
+    link_flags = [f for f in link_flags if is_supported_link_flag(f[1])]
 
     if shared.Settings.USE_PTHREADS:
       # These runtime methods are called from worker.js
@@ -1850,9 +1881,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.debug_level >= 3 and not shared.Settings.WASM:
         newargs.append('-fno-discard-value-names')
 
+      def is_link_flag(flag):
+        return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
+
+      compile_args = [a for a in newargs if a and not is_link_flag(a)]
+
       # Bitcode args generation code
       def get_clang_command(input_files):
-        args = [clang_compiler] + newargs + input_files
+        args = [clang_compiler] + compile_args + input_files
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
         # For fastcomp backend, no LLVM IR functions should ever be annotated
@@ -1990,35 +2026,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     consumed = process_libraries(libs, lib_dirs, temp_files)
     # Filter out libraries that are actually JS libs
     link_flags = [l for l in link_flags if l[0] not in consumed]
-    # Filter out libraries that musl includes in libc itself, or with we
-    # otherwise privide implicitly.
-    link_flags = [l for l in link_flags if l[1] not in ('-lm', '-lrt', '-ldl', '-lpthread')]
     temp_files = filter_out_dynamic_libs(temp_files)
-
-    link_to_object = final_suffix not in executable_endings
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
-    if using_lld:
-      # Filter out link flags that lld doesn't support.  bind_at_load is often
-      # passed on OSX because libtool/autoconf add this link flag.
-      def supported(f):
-        if any(f.startswith(p) for p in ('-bind_at_load', '-rpath')):
-          logger.warning('ignoring unsupported linker flag: `%s`', f)
-          return False
-        return True
-      link_flags = [f for f in link_flags if supported(f[1])]
-    else:
-      # Filter link flags, keeping only those that shared.Building.link knows
-      # how to deal with.  We currently can't handle flags with options (like
-      # -Wl,-rpath,/bin:/lib, where /bin:/lib is an option for the -rpath
-      # flag).
-      def supported(f):
-        if f in SUPPORTED_LINKER_FLAGS:
-          return True
-        if f.startswith('-l') or f.startswith('-L'):
-          return False
-        logger.warning('ignoring unsupported linker flag: `%s`', f)
-        return False
-      link_flags = [f for f in link_flags if supported(f[1])]
 
     linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
 
