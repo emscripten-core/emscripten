@@ -292,6 +292,9 @@ CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 JS_ENGINES = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
 
@@ -318,6 +321,9 @@ def parse_config_file():
     'CLOSURE_COMPILER',
     'JAVA',
     'JS_ENGINES',
+    'WASMER',
+    'WASMTIME',
+    'WASM_ENGINES',
     'COMPILER_OPTS',
     'FROZEN_CACHE',
   )
@@ -357,6 +363,7 @@ SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_EN
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
+WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 
 if EM_POPEN_WORKAROUND is None:
   EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
@@ -884,9 +891,6 @@ def apply_configuration():
 apply_configuration()
 
 # EM_CONFIG stuff
-if JS_ENGINES is None:
-  JS_ENGINES = [NODE_JS]
-
 if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 

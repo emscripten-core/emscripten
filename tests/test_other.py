@@ -30,7 +30,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LINUX, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
@@ -8325,23 +8325,6 @@ int main() {
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
-        # verify the wasm runs in a wasm VM, without the JS
-        # TODO: more platforms than linux
-        if LINUX and standalone and self.is_wasm_backend():
-          WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
-          if os.path.isfile(WASMER):
-            print('  running in wasmer')
-            out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
-            self.assertContained('hello, world!', out)
-          else:
-            print('[WARNING - no wasmer]')
-          WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
-          if os.path.isfile(WASMTIME):
-            print('  running in wasmtime')
-            out = run_process([WASMTIME, 'out.wasm'], stdout=PIPE).stdout
-            self.assertContained('hello, world!', out)
-          else:
-            print('[WARNING - no wasmtime]')
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
