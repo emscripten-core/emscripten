@@ -2361,7 +2361,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Generate the fetch.js worker script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.USE_FETCH_WORKER:
-          shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
+        shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
 
     # exit block 'memory initializer'
     log_time('memory initializer')
