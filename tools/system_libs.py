@@ -540,6 +540,24 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
+  # Without -fno-builtin, LLVM can optimize away or convert calls to library
+  # functions to something else based on assumptions that they behave exactly
+  # like the standard library. This can cause unexpected bugs when we use our
+  # custom standard library. The same for other libc/libm builds.
+  cflags = ['-std=gnu99', '-Os', '-fno-builtin', '-D_XOPEN_SOURCE=700']
+
+  # Hide several musl warnings that produce a lot of spam to unit test build
+  # server logs.
+  # TODO: When updating musl the next time, feel free to recheck which of their
+  # warnings might have been fixed, and which ones of these could be cleaned up.
+  cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
+             '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
+             '-Wno-dangling-else', '-Wno-unknown-pragmas',
+             '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
+             '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
+             '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
+             '-Wno-empty-body']
+
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
@@ -608,22 +626,6 @@ class libcompiler_rt(Library):
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libc'
   depends = ['libcompiler_rt']
-
-  # Without -fno-builtin, LLVM can optimize away or convert calls to library
-  # functions to something else based on assumptions that they behave exactly
-  # like the standard library. This can cause unexpected bugs when we use our
-  # custom standard library. The same for other libc/libm builds.
-  cflags = ['-Os', '-fno-builtin', '-D_XOPEN_SOURCE=700']
-
-  # Hide several musl warnings that produce a lot of spam to unit test build server logs.
-  # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
-  cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
-             '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
-             '-Wno-dangling-else', '-Wno-unknown-pragmas',
-             '-Wno-shift-op-parentheses', '-Wno-string-plus-int',
-             '-Wno-logical-op-parentheses', '-Wno-bitwise-op-parentheses',
-             '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
-             '-Wno-empty-body']
 
   def get_files(self):
     libc_files = []
@@ -710,7 +712,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
 
 class libc_wasm(MuslInternalLibrary):
   name = 'libc-wasm'
-  cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'libc', 'musl', 'src', 'math']
   src_files = ['cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
                'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
@@ -1021,7 +1022,6 @@ class libhtml5(Library):
 class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libpthread'
   depends = ['libc']
-  cflags = ['-O2']
 
   def get_files(self):
     if self.is_mt:
