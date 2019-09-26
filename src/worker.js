@@ -369,6 +369,7 @@ if (typeof require === 'function') {
 
   function globalEval(x) {
     global.require = require;
+    global.Module = Module;
     eval.call(null, x);
   }
 
