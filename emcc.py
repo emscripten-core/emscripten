@@ -2356,10 +2356,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
       # Generate the fetch.js worker script for multithreaded emscripten_fetch() support if targeting pthreads.
-      if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
-        if shared.Settings.WASM_BACKEND:
-          logger.warning('Some blocking calls to the fetch API do not currently work under WASM backend, like synchronous emscripten_fetch_wait (https://github.com/emscripten-core/emscripten/issues/7024)')
-        else:
+      if shared.Settings.USE_FETCH_WORKER:
           shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
 
     # exit block 'memory initializer'

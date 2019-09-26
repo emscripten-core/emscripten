@@ -1396,7 +1396,9 @@ var FETCH_DEBUG = 0;
 var FETCH = 0;
 
 // Whether to use an asm.js fetch worker when using FETCH. Note that this is
-// only relevant for fastcomp, where we support asm.js.
+// only relevant for fastcomp, where we support asm.js. As a result, some
+// synchronous fetch operations that depend on the fetch worker may not work
+// with the wasm backend, like waiting or IndexedDB.
 var USE_FETCH_WORKER = 1;
 
 // Internal: name of the file containing the Fetch *.fetch.js, if relevant
