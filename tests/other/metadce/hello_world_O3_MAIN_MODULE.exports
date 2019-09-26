@@ -98,6 +98,7 @@ __do_orphaned_stdio_locks
 __dso_handle
 __dup3
 __duplocale
+__emscripten_environ_constructor
 __emscripten_pthread_data_constructor
 __eqtf2
 __errno_location
@@ -388,6 +389,10 @@ _emscripten_atomic_fetch_and_or_u64
 _emscripten_atomic_fetch_and_sub_u64
 _emscripten_atomic_fetch_and_xor_u64
 _flushlbf
+_get_daylight
+_get_environ
+_get_timezone
+_get_tzname
 _ns_flagdata
 a64l
 aT
@@ -544,6 +549,7 @@ ctanhf
 ctanhl
 ctanl
 ctermid
+daylight
 dcgettext
 dcngettext
 dgettext
@@ -628,6 +634,7 @@ endhostent
 endmntent
 endnetent
 endservent
+environ
 erand48
 erf
 erfc
@@ -1382,6 +1389,7 @@ textdomain
 tgamma
 tgammaf
 tgammal
+timezone
 tmpfile
 tmpfile64
 tmpnam
@@ -1403,6 +1411,7 @@ truncf
 truncl
 ttyname
 ttyname_r
+tzname
 ualarm
 umask
 uname

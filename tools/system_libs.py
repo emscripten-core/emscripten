@@ -44,10 +44,6 @@ def get_cflags(force_object_files=False):
     flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
-  if shared.Settings.WASM_BACKEND:
-    # musl, compiler-rt, etc use ints in bool contexts in many places, like
-    #  (x << 10) ? y : z
-    flags += ['-Wno-int-in-bool-context']
   return flags
 
 
@@ -699,6 +695,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    if shared.Settings.WASM_BACKEND:
+      # See libc_extras below
+      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
+
     return libc_files
 
   def get_depends(self):
@@ -724,9 +724,17 @@ class libc_wasm(MuslInternalLibrary):
 
 
 class libc_extras(MuslInternalLibrary):
+  """This library is separate from libc itself for fastcomp only so that the
+  constructor it contains can be DCE'd.  With the wasm backend libc is a .a file
+  so object file granularity applies.
+  """
+
   name = 'libc-extras'
   src_dir = ['system', 'lib', 'libc']
   src_files = ['extras.c']
+
+  def can_build(self):
+    return not shared.Settings.WASM_BACKEND
 
 
 class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
@@ -743,22 +751,28 @@ class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     return cflags
 
-  src_dir = ['system', 'lib', 'libcxxabi', 'src']
-  src_files = [
-    'abort_message.cpp',
-    'cxa_aux_runtime.cpp',
-    'cxa_default_handlers.cpp',
-    'cxa_demangle.cpp',
-    'cxa_exception_storage.cpp',
-    'cxa_guard.cpp',
-    'cxa_handlers.cpp',
-    'fallback_malloc.cpp',
-    'stdlib_new_delete.cpp',
-    'stdlib_exception.cpp',
-    'stdlib_stdexcept.cpp',
-    'stdlib_typeinfo.cpp',
-    'private_typeinfo.cpp'
-  ]
+  def get_files(self):
+    filenames = [
+      'abort_message.cpp',
+      'cxa_aux_runtime.cpp',
+      'cxa_default_handlers.cpp',
+      'cxa_demangle.cpp',
+      'cxa_exception_storage.cpp',
+      'cxa_guard.cpp',
+      'cxa_handlers.cpp',
+      'cxa_virtual.cpp',
+      'fallback_malloc.cpp',
+      'stdlib_new_delete.cpp',
+      'stdlib_exception.cpp',
+      'stdlib_stdexcept.cpp',
+      'stdlib_typeinfo.cpp',
+      'private_typeinfo.cpp'
+    ]
+    if self.is_noexcept:
+      filenames += ['cxa_noexception.cpp']
+    return files_in_path(
+        path_components=['system', 'lib', 'libcxxabi', 'src'],
+        filenames=filenames)
 
 
 class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):

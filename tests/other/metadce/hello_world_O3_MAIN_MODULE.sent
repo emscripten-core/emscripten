@@ -253,7 +253,6 @@ __cxa_find_matching_catch_9
 __cxa_free_exception
 __cxa_get_exception_ptr
 __cxa_increment_exception_refcount
-__cxa_pure_virtual
 __cxa_rethrow
 __cxa_rethrow_primary_exception
 __cxa_thread_atexit
@@ -1072,6 +1071,8 @@ g$__stdout_used
 g$__threwValue
 g$atanhi
 g$atanlo
+g$daylight
+g$environ
 g$h_errno
 g$optarg
 g$opterr
@@ -1080,6 +1081,8 @@ g$optopt
 g$stderr
 g$stdin
 g$stdout
+g$timezone
+g$tzname
 gai_strerror
 getTempRet0
 getaddrinfo

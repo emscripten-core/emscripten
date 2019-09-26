@@ -1328,19 +1328,6 @@ LibraryManager.library = {
 #endif
 #endif
 
-#if MINIMAL_RUNTIME && !ASSERTIONS
-  __cxa_pure_virtual__sig: 'v',
-  __cxa_pure_virtual: 'abort',
-#else
-  __cxa_pure_virtual: function() {
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-
-    throw 'Pure virtual function called!';
-  },
-#endif
-
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },

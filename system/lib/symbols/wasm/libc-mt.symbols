@@ -7,6 +7,7 @@
 -------- W _IO_putc_unlocked
          U __addtf3
 -------- W __aio_close
+         U __buildEnvironment
 -------- D __c_dot_utf8
 -------- D __c_dot_utf8_locale
 -------- D __c_locale
@@ -38,6 +39,7 @@
 -------- T __dup3
 -------- T __duplocale
 -------- T __em_js__initPthreadsJS
+-------- T __emscripten_environ_constructor
 -------- T __emscripten_pthread_data_constructor
          U __eqtf2
 -------- T __errno_location
@@ -395,6 +397,10 @@
 -------- W __xstat64
          U _exit
 -------- T _flushlbf
+-------- T _get_daylight
+-------- T _get_environ
+-------- T _get_timezone
+-------- T _get_tzname
 -------- D _ns_flagdata
 -------- T a64l
 -------- T accept
@@ -537,6 +543,7 @@
 -------- T ctanhl
 -------- T ctanl
 -------- T ctermid
+-------- D daylight
 -------- T dcgettext
 -------- T dcngettext
 -------- T dgettext
@@ -562,6 +569,7 @@
 -------- T endmntent
 -------- W endnetent
 -------- T endservent
+-------- D environ
 -------- T erand48
 -------- T erf
 -------- T erfc
@@ -1277,6 +1285,7 @@
 -------- T tgammaf
 -------- T tgammal
          U time
+-------- D timezone
 -------- T tmpfile
 -------- W tmpfile64
 -------- T tmpnam
@@ -1298,6 +1307,7 @@
 -------- T truncl
 -------- T ttyname
 -------- T ttyname_r
+-------- D tzname
 -------- T ualarm
 -------- T umask
 -------- T uname
