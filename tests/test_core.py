@@ -112,6 +112,21 @@ def also_with_noderawfs(func):
   return decorated
 
 
+# Also run the test with -s STANDALONE. If we have wasm runtimes, also run in
+# them (regardless we also check that the js+wasm combo works in js vms).
+def also_with_standalone_wasm(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+      print('standalone')
+      self.set_setting('STANDALONE_WASM', 1)
+      func(self)
+
+  return decorated
+
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
@@ -228,6 +243,7 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
+  @also_with_standalone_wasm
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
@@ -270,6 +286,7 @@ class TestCoreBase(RunnerCore):
   def test_i64_umul(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
+  @also_with_standalone_wasm
   def test_i64_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 
@@ -2000,8 +2017,11 @@ int main(int argc, char **argv) {
   @no_emterpreter
   @is_slow_test
   def test_biggerswitch(self):
-    if self.is_wasm_backend() and not is_optimizing(self.emcc_args):
-      self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
+    if self.is_wasm_backend():
+      if not is_optimizing(self.emcc_args):
+        self.skipTest('nodejs takes >6GB to compile this if the wasm is not optimized, which OOMs, see https://github.com/emscripten-core/emscripten/issues/7928#issuecomment-458308453')
+      if '-Os' in self.emcc_args:
+        self.skipTest('hangs in recent upstream clang, see https://bugs.llvm.org/show_bug.cgi?id=43468')
     num_cases = 20000
     switch_case = run_process([PYTHON, path_from_root('tests', 'gen_large_switchcase.py'), str(num_cases)], stdout=PIPE, stderr=PIPE).stdout
     self.do_run(switch_case, '''58996: 589965899658996
@@ -2926,7 +2946,7 @@ Var: 42
       self.assertGreater(len(exports), 20)
       # wasm backend includes alias in NAMED_GLOBALS
       if self.is_wasm_backend():
-        self.assertLess(len(exports), 44)
+        self.assertLess(len(exports), 46)
       else:
         self.assertLess(len(exports), 30)
 

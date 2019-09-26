@@ -54,7 +54,7 @@
 -------- T __atomic_store_2
 -------- T __atomic_store_4
 -------- T __atomic_store_8
-         U __clzti2
+-------- T __clzti2
 -------- T __divdc3
 -------- T __divdi3
 -------- T __divmoddi4
@@ -81,6 +81,7 @@
 -------- T __floatsitf
 -------- T __floattidf
 -------- T __floattisf
+-------- T __floattitf
 -------- T __floatunditf
 -------- T __floatunsitf
 -------- T __floatuntidf

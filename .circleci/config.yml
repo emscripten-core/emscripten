@@ -28,6 +28,9 @@ commands:
             rm -Rf emscripten
             echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
+            echo "WASM_ENGINES = []" >> ~/.emscripten
+            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
+            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
@@ -42,7 +45,7 @@ commands:
       - run:
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libc_rt_wasm struct_info libc-wasm --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
@@ -52,7 +55,7 @@ commands:
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: freeze cache
@@ -67,6 +70,7 @@ commands:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
+            - vms
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -424,12 +428,14 @@ jobs:
           name: get wasmer
           command: |
             curl https://get.wasmer.io -sSfL | sh
+            mkdir ~/vms
+            cp ~/.wasmer/bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
             wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
             tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
       - build-upstream
   test-upstream-wasm0:
     executor: bionic

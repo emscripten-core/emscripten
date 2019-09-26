@@ -30,7 +30,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py other')
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LINUX, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
+from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, MACOS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
@@ -4737,7 +4737,7 @@ main()
     with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('fail! not enough stdlibs', fail=True)
 
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       test('force all the needed stdlibs, so this works even though we ignore the input file')
 
   def test_only_force_stdlibs_2(self):
@@ -4756,7 +4756,7 @@ int main()
   }
 }
 ''')
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc,libpthreads', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libmalloc,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       run_process([PYTHON, EMXX, 'src.cpp', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Caught exception: std::exception', run_js('a.out.js', stderr=PIPE))
 
@@ -8111,13 +8111,13 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 37, [], ['waka'], 226582, 20, 33, None) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582, 16, 33, None) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 39, ['abort'], ['waka'], 186423, 25, 38, 541), # noqa
+    'normal': (['-O2'], 37, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        39, ['abort'], ['waka'], 188310, 25, 39, 521), # noqa
+                        37, ['abort'], ['waka'], 188310, 23, 38, 521), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8139,7 +8139,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1610, [], [], 517336, None, 1495, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1609, [], [], 517336, None, 1509, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8159,7 +8159,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1594, [], [], 226403, None, 104, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1591, [], [], 226403, None, 107, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
@@ -8325,23 +8325,6 @@ int main() {
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
-        # verify the wasm runs in a wasm VM, without the JS
-        # TODO: more platforms than linux
-        if LINUX and standalone and self.is_wasm_backend():
-          WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
-          if os.path.isfile(WASMER):
-            print('  running in wasmer')
-            out = run_process([WASMER, 'run', 'out.wasm'], stdout=PIPE).stdout
-            self.assertContained('hello, world!', out)
-          else:
-            print('[WARNING - no wasmer]')
-          WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
-          if os.path.isfile(WASMTIME):
-            print('  running in wasmtime')
-            out = run_process([WASMTIME, 'out.wasm'], stdout=PIPE).stdout
-            self.assertContained('hello, world!', out)
-          else:
-            print('[WARNING - no wasmtime]')
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target

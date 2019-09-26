@@ -9,7 +9,6 @@ _malloc
 _memcpy
 _memmove
 _memset
-_pthread_cond_broadcast
 dynCall_ii
 dynCall_iidiiii
 dynCall_iii
