@@ -45,7 +45,7 @@ commands:
       - run:
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libc_rt_wasm struct_info libc-wasm --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
@@ -55,7 +55,7 @@ commands:
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthreads_stub libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: freeze cache

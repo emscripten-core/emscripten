@@ -232,7 +232,6 @@ __atomic_is_lock_free
 __buildEnvironment
 __builtin_prefetch
 __clock_gettime
-__clzti2
 __cxa_allocate_exception
 __cxa_atexit
 __cxa_begin_catch
@@ -254,7 +253,6 @@ __cxa_find_matching_catch_9
 __cxa_free_exception
 __cxa_get_exception_ptr
 __cxa_increment_exception_refcount
-__cxa_pure_virtual
 __cxa_rethrow
 __cxa_rethrow_primary_exception
 __cxa_thread_atexit
@@ -1073,6 +1071,8 @@ g$__stdout_used
 g$__threwValue
 g$atanhi
 g$atanlo
+g$daylight
+g$environ
 g$h_errno
 g$optarg
 g$opterr
@@ -1081,6 +1081,8 @@ g$optopt
 g$stderr
 g$stdin
 g$stdout
+g$timezone
+g$tzname
 gai_strerror
 getTempRet0
 getaddrinfo
@@ -1490,12 +1492,9 @@ pthread_attr_setstacksize
 pthread_cancel
 pthread_cleanup_pop
 pthread_cleanup_push
-pthread_cond_broadcast
 pthread_cond_destroy
 pthread_cond_init
-pthread_cond_signal
 pthread_cond_timedwait
-pthread_cond_wait
 pthread_condattr_destroy
 pthread_condattr_getclock
 pthread_condattr_getpshared
