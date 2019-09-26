@@ -9,6 +9,42 @@
 v128_t TESTFN i8x16_load(void *ptr) {
   return wasm_v128_load(ptr);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
+v128_t TESTFN v8x16_load_splat(void *ptr) {
+  return wasm_v8x16_load_splat(ptr);
+}
+v128_t TESTFN v16x8_load_splat(void *ptr) {
+  return wasm_v16x8_load_splat(ptr);
+}
+v128_t TESTFN v32x4_load_splat(void *ptr) {
+  return wasm_v32x4_load_splat(ptr);
+}
+v128_t TESTFN v64x2_load_splat(void *ptr) {
+  return wasm_v64x2_load_splat(ptr);
+}
+v128_t TESTFN i16x8_load8x8_s(void *ptr) {
+  return wasm_i16x8_load_8x8(ptr);
+}
+v128_t TESTFN i16x8_load8x8_u(void *ptr) {
+  return wasm_u16x8_load_8x8(ptr);
+}
+v128_t TESTFN i32x4_load16x4_s(void *ptr) {
+  return wasm_i32x4_load_16x4(ptr);
+}
+v128_t TESTFN i32x4_load16x4_u(void *ptr) {
+  return wasm_u32x4_load_16x4(ptr);
+}
+v128_t TESTFN i64x2_load32x2_s(void *ptr) {
+  return wasm_i64x2_load_32x2(ptr);
+}
+v128_t TESTFN i64x2_load32x2_u(void *ptr) {
+  return wasm_u64x2_load_32x2(ptr);
+}
+
+#endif // __wasm_unimplemented_simd128__
+
 void TESTFN i8x16_store(void *ptr, v128_t vec) {
   wasm_v128_store(ptr, vec);
 }
@@ -763,6 +799,51 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     expect_vec(i8x16_load(&vec),
                i8x16(7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7));
   }
+
+#ifdef __wasm_unimplemented_simd128__
+
+  {
+    char vec[8] = {0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0};
+    void *ptr = &vec;
+    expect_vec(
+      v8x16_load_splat(ptr),
+      i8x16(0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+            0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80)
+    );
+    expect_vec(
+      v16x8_load_splat(ptr),
+      i16x8(0x9080, 0x9080, 0x9080, 0x9080, 0x9080, 0x9080, 0x9080, 0x9080)
+    );
+    expect_vec(v32x4_load_splat(ptr), i32x4(0xb0a09080, 0xb0a09080, 0xb0a09080, 0xb0a09080));
+    expect_vec(v64x2_load_splat(ptr), i64x2(0xf0e0d0c0b0a09080, 0xf0e0d0c0b0a09080));
+    expect_vec(
+      i16x8_load8x8_s(ptr),
+      i16x8(0xff80, 0xff90, 0xffa0, 0xffb0, 0xffc0, 0xffd0, 0xffe0, 0xfff0)
+    );
+    expect_vec(
+      i16x8_load8x8_u(ptr),
+      i16x8(0x0080, 0x0090, 0x00a0, 0x00b0, 0x00c0, 0x00d0, 0x00e0, 0x00f0)
+    );
+    expect_vec(
+      i32x4_load16x4_s(ptr),
+      i32x4(0xffff9080, 0xffffb0a0, 0xffffd0c0, 0xfffff0e0)
+    );
+    expect_vec(
+      i32x4_load16x4_u(ptr),
+      i32x4(0x00009080, 0x0000b0a0, 0x0000d0c0, 0x0000f0e0)
+    );
+    expect_vec(
+      i64x2_load32x2_s(ptr),
+      i64x2(0xffffffffb0a09080, 0xfffffffff0e0d0c0)
+    );
+    expect_vec(
+      i64x2_load32x2_u(ptr),
+      i64x2(0x00000000b0a09080, 0x00000000f0e0d0c0)
+    );
+  }
+
+#endif // __wasm_unimplemented_simd128__
+
   expect_vec(i8x16_const(), u8x16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16));
   expect_vec(i16x8_const(), u16x8(1, 2, 3, 4, 5, 6, 7, 8));
   expect_vec(i32x4_const(), u32x4(1, 2, 3, 4));
