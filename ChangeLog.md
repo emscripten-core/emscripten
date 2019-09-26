@@ -18,11 +18,69 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v.1.38.46: 09/25/2019
+---------------------
+ - Rename libpthreads to libpthread to match its normal name on other platforms.
+   This change should be completely internal to emscripten.
+ - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+   node as the compiler engine so just use a single `NODE_JS` option for that.
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
+ - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
+   that we want the wasm to be as standalone as possible. We may still emit JS in
+   that case, but the JS would just be a convenient way to run the wasm on the Web
+   or in Node.js.
+
+v.1.38.45: 09/12/2019
+---------------------
+
+v.1.38.44: 09/11/2019
+---------------------
+ - Remove Binaryen from the ports system. This means that emscripten will
+   no longer automatically build Binaryen from source. Instead, either use
+   the emsdk (binaries are provided automatically, just like for LLVM), or
+   build it yourself and point `BINARYEN_ROOT` in .emscripten to it. See #9409
+
+v.1.38.43: 08/30/2019
+---------------------
+ - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
+   instead of `Module.noExitRuntime`.
+
+v.1.38.42: 08/19/2019
+----------------------
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+   and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
+   with multiple threads. (#9060, #9076)
+ - Remove `ERROR_ON_MISSING_LIBRARIES` setting (it's always on now)
+ - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
+   suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
+   will no longer work. This is done because the mechanism may result in
+   execution of arbitrary code via command line flags.
+
+v.1.38.41: 08/07/2019
+---------------------
  - Remove fastcomp's implementation of Asyncify. This has been deprecated for
    a long time, since we added Emterpreter-Async, and now we have a new Asyncify
    implementation in the upstream wasm backend. It is recommended to upgrade to
    the upstream backend and use Asyncify there if you need it. (If you do still
    need the older version, you can use 1.38.40.)
+ - Drop ExitStatus from inheriting from Error(), as that could capture the whole
+   global scope, preventing temporary variables at page startup from being garbage
+   collected. (#9108)
+ - `__builtin_return_address` now requires `-s USE_OFFSET_CONVERTER=1` to work. (#9073)
+ - emrun now uses HTTP/1.1 instead of HTTP/1.0.
+ - `callMain` is no longer exported by default on Module, to allow better JS
+   minification. You must add it to `EXTRA_EXPORTED_RUNTIME_METHODS` if you want
+   to call it on Module. (In assertions builds, an error with an explanation is
+   shown.)
+ - Allow expressions with side effects as `EM_ASM`'s arguments and prohibit
+   non-arithmetic arguments (e.g. pointers, functions, arrays, objects). (#9054)
+ - `emcc` on Windows now uses native newline byte sequence to get a line to
+   print for parse error reporting. (#9088)
+ - Internal API update: one can now specialize embind's (un)marshalling for a
+   group of types via SFINAE, instead of a single type. (#9089)
 
 v.1.38.40: 07/24/2019
 ---------------------

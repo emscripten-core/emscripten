@@ -5,17 +5,18 @@
 
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
-  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls', '$ERRNO_CODES'],
+  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls', '$ERRNO_CODES', 'emscripten_futex_wake'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
-    // Since creating a new Web Worker is so heavy (it must reload the whole compiled script page!), maintain a pool of such
-    // workers that have already parsed and loaded the scripts.
-    unusedWorkerPool: [],
-    // The currently executing pthreads.
+    // Contains all Workers that are idle/unused and not currently hosting an executing pthread.
+    // Unused Workers can either be pooled up before page startup, but also when a pthread quits, its hosting
+    // Worker is not terminated, but is returned to this pool as an optimization so that starting the next thread is faster.
+    unusedWorkers: [],
+    // Contains all Workers that are currently hosting an active pthread.
     runningWorkers: [],
     // Points to a pthread_t structure in the Emscripten main heap, allocated on demand if/when first needed.
     // mainThreadBlock: undefined,
@@ -54,8 +55,6 @@ var LibraryPThread = {
     },
     // Maps pthread_t to pthread info objects
     pthreads: {},
-    pthreadIdCounter: 2, // 0: invalid thread, 1: main JS UI thread, 2+: IDs for pthreads
-
     exitHandlers: null, // An array of C functions to run when this thread exits.
 
 #if PTHREADS_PROFILING
@@ -189,20 +188,24 @@ var LibraryPThread = {
         }
       }
       PThread.pthreads = {};
-      for (var t in PThread.unusedWorkerPool) {
-        var pthread = PThread.unusedWorkerPool[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
+
+      for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
+        var worker = PThread.unusedWorkers[i];
+#if ASSERTIONS
+        assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
+#endif
+        worker.terminate();
       }
-      PThread.unusedWorkerPool = [];
-      for (var t in PThread.runningWorkers) {
-        var pthread = PThread.runningWorkers[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
-        }
+      PThread.unusedWorkers = [];
+
+      for (var i = 0; i < PThread.runningWorkers.length; ++i) {
+        var worker = PThread.runningWorkers[i];
+        var pthread = worker.pthread;
+#if ASSERTIONS
+        assert(pthread); // This Worker should have a pthread it is executing
+#endif
+        PThread.freeThreadData(pthread);
+        worker.terminate();
       }
       PThread.runningWorkers = [];
     },
@@ -222,8 +225,8 @@ var LibraryPThread = {
     returnWorkerToPool: function(worker) {
       delete PThread.pthreads[worker.pthread.thread];
       //Note: worker is intentionally not terminated so the pool can dynamically grow.
-      PThread.unusedWorkerPool.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker.pthread), 1); // Not a running Worker anymore
+      PThread.unusedWorkers.push(worker);
+      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1); // Not a running Worker anymore
       PThread.freeThreadData(worker.pthread);
       worker.pthread = undefined; // Detach the worker from the pthread object, and return it to the worker pool as an unused worker.
     },
@@ -313,8 +316,13 @@ var LibraryPThread = {
               }
             } else if (d.cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
-              Module['noExitRuntime'] = false;
-              exit(d.returnCode);
+              noExitRuntime = false;
+              try {
+                exit(d.returnCode);
+              } catch (e) {
+                if (e instanceof ExitStatus) return;
+                throw e;
+              }
             } else if (d.cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
             } else if (d.cmd === 'objectTransfer') {
@@ -350,6 +358,12 @@ var LibraryPThread = {
 #if WASM
           wasmMemory: wasmMemory,
           wasmModule: wasmModule,
+#if LOAD_SOURCE_MAP
+          wasmSourceMap: wasmSourceMap,
+#endif
+#if USE_OFFSET_CONVERTER
+          wasmOffsetConverter: wasmOffsetConverter,
+#endif
 #else
           buffer: HEAPU8.buffer,
           asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
@@ -361,13 +375,13 @@ var LibraryPThread = {
           DYNAMICTOP_PTR: DYNAMICTOP_PTR,
           PthreadWorkerInit: PthreadWorkerInit
         });
-        PThread.unusedWorkerPool.push(worker);
+        PThread.unusedWorkers.push(worker);
       }
     },
 
     getNewWorker: function() {
-      if (PThread.unusedWorkerPool.length == 0) PThread.allocateUnusedWorkers(1);
-      if (PThread.unusedWorkerPool.length > 0) return PThread.unusedWorkerPool.pop();
+      if (PThread.unusedWorkers.length == 0) PThread.allocateUnusedWorkers(1);
+      if (PThread.unusedWorkers.length > 0) return PThread.unusedWorkers.pop();
       else return null;
     },
 
@@ -388,7 +402,7 @@ var LibraryPThread = {
     PThread.freeThreadData(pthread);
     // The worker was completely nuked (not just the pthread execution it was hosting), so remove it from running workers
     // but don't put it back to the pool.
-    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker.pthread), 1); // Not a running Worker anymore.
+    PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(pthread.worker), 1); // Not a running Worker anymore.
     pthread.worker.pthread = undefined;
   },
 
@@ -501,8 +515,8 @@ var LibraryPThread = {
     {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
   },
 
-  pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
-  pthread_create: function(pthread_ptr, attr, start_routine, arg) {
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
       return {{{ cDefine('EAGAIN') }}};
@@ -713,8 +727,8 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls'],
-  pthread_join: function(thread, status) {
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait'],
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
@@ -1083,7 +1097,7 @@ var LibraryPThread = {
 
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
-    if (!Module['noExitRuntime']) postMessage({ cmd: 'exitProcess', returnCode: returnCode });
+    if (!noExitRuntime) postMessage({ cmd: 'exitProcess', returnCode: returnCode });
     return returnCode;
   },
 
@@ -1146,40 +1160,38 @@ var LibraryPThread = {
     // all the args here.
     // We also pass 'sync' to C separately, since C needs to look at it.
     var numCallArgs = arguments.length - 2;
+#if ASSERTIONS
+    if (numCallArgs > {{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) throw 'emscripten_proxy_to_main_thread_js: Too many arguments ' + numCallArgs + ' to proxied function idx=' + index + ', maximum supported is ' + ({{{ cDefine('EM_QUEUED_JS_CALL_MAX_ARGS') }}}-1) + '!';
+#endif
     // Allocate a buffer, which will be copied by the C code.
     var stack = stackSave();
-    var buffer = stackAlloc(numCallArgs * 8);
+    // First passed parameter specifies the number of arguments to the function.
+    var args = stackAlloc(numCallArgs * 8);
+    var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
-      HEAPF64[(buffer >> 3) + i] = arguments[2 + i];
+      HEAPF64[b + i] = arguments[2 + i];
     }
-    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, buffer, sync);
+    var ret = _emscripten_run_in_main_runtime_thread_js(index, numCallArgs, args, sync);
     stackRestore(stack);
     return ret;
   },
 
-  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js'],
-  emscripten_receive_on_main_thread_js: function(index, numCallArgs, buffer) {
-    // Avoid garbage by reusing a single JS array for call arguments.
-    if (!_emscripten_receive_on_main_thread_js.callArgs) {
-      _emscripten_receive_on_main_thread_js.callArgs = [];
-    }
-    var callArgs = _emscripten_receive_on_main_thread_js.callArgs;
-    callArgs.length = numCallArgs;
+  emscripten_receive_on_main_thread_js_callArgs: '=[]',
+
+  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js', 'emscripten_receive_on_main_thread_js_callArgs'],
+  emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
+    _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
+    var b = args >> 3;
     for (var i = 0; i < numCallArgs; i++) {
-      callArgs[i] = HEAPF64[(buffer >> 3) + i];
+      _emscripten_receive_on_main_thread_js_callArgs[i] = HEAPF64[b + i];
     }
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
-    var func;
-    if (index > 0) {
-      func = proxiedFunctionTable[index];
-    } else {
-      func = ASM_CONSTS[-index - 1];
-    }
+    var func = index > 0 ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
 #if ASSERTIONS
     assert(func.length == numCallArgs);
 #endif
-    return func.apply(null, callArgs);
+    return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
 #if MODULARIZE

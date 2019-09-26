@@ -2,7 +2,7 @@
 <body>
 <canvas style='display:block; margin:auto;'></canvas>
 <script>
-  function b(url, cb) { // Downloads a binary file and outputs it in the specified callback
+  function b(url) { // Downloads a binary file and outputs it in the specified callback
     return new Promise((ok, err) => {
       var x = new XMLHttpRequest();
       x.open('GET', url, true);

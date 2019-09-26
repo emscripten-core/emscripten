@@ -103,6 +103,11 @@ extern struct ps_strings *__ps_strings;
 #define environ _environ
 #endif
 
+#if SANITIZER_EMSCRIPTEN
+#include <emscripten/threading.h>
+#include <math.h>
+#endif
+
 extern char **environ;
 
 #if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
@@ -429,7 +434,6 @@ uptr internal_rename(const char *oldpath, const char *newpath) {
 
 uptr internal_sched_yield() {
 #if SANITIZER_EMSCRIPTEN
-  Report("WARNING: sched_yield doesn't do anything on emscripten");
   return 0;
 #else
   return internal_syscall(SYSCALL(sched_yield));
@@ -682,8 +686,10 @@ void BlockingMutex::Lock() {
   while (atomic_exchange(m, MtxSleeping, memory_order_acquire) != MtxUnlocked) {
 #if SANITIZER_FREEBSD
     _umtx_op(m, UMTX_OP_WAIT_UINT, MtxSleeping, 0, 0);
-#elif SANITIZER_NETBSD || SANITIZER_EMSCRIPTEN
+#elif SANITIZER_NETBSD
     sched_yield(); /* No userspace futex-like synchronization */
+#elif SANITIZER_EMSCRIPTEN
+    emscripten_futex_wait(m, MtxSleeping, INFINITY);
 #else
     internal_syscall(SYSCALL(futex), (uptr)m, FUTEX_WAIT_PRIVATE, MtxSleeping,
                      0, 0, 0);
@@ -698,8 +704,10 @@ void BlockingMutex::Unlock() {
   if (v == MtxSleeping) {
 #if SANITIZER_FREEBSD
     _umtx_op(m, UMTX_OP_WAKE, 1, 0, 0);
-#elif SANITIZER_NETBSD || SANITIZER_EMSCRIPTEN
+#elif SANITIZER_NETBSD
                    /* No userspace futex-like synchronization */
+#elif SANITIZER_EMSCRIPTEN
+    emscripten_futex_wake(m, 1);
 #else
     internal_syscall(SYSCALL(futex), (uptr)m, FUTEX_WAKE_PRIVATE, 1, 0, 0, 0);
 #endif

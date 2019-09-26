@@ -10,6 +10,11 @@ function writeStackCookie() {
   HEAPU32[(STACK_MAX >> 2)-1] = 0x02135467;
   HEAPU32[(STACK_MAX >> 2)-2] = 0x89BACDFE;
 #endif
+#if !USE_ASAN
+  // Also test the global address 0 for integrity.
+  // We don't do this with ASan because ASan does its own checks for this.
+  HEAP32[0] = 0x63736d65; /* 'emsc' */
+#endif
 }
 
 function checkStackCookie() {
@@ -37,15 +42,3 @@ function abortStackOverflow(allocSize) {
 #endif
 
 #endif
-
-#if STACK_OVERFLOW_CHECK && !USE_ASAN
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-  HEAP32[0] = 0x63736d65; /* 'emsc' */
-#if USE_PTHREADS
-} else {
-  if (HEAP32[0] !== 0x63736d65) abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
-}
-#endif // USE_PTHREADS
-#endif // STACK_OVERFLOW_CHECK

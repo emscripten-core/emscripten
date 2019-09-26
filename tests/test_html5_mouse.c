@@ -175,6 +175,6 @@ int main()
 
   /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
      Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
-  EM_ASM(Module['noExitRuntime'] = true);
+  EM_ASM(noExitRuntime = true);
   return 0;
 }

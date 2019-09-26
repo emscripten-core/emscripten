@@ -194,8 +194,8 @@ var LibraryJSEvents = {
     },
 
     pageScrollPos: function() {
-      if (window.pageXOffset > 0 || window.pageYOffset > 0) {
-        return [window.pageXOffset, window.pageYOffset];
+      if (pageXOffset > 0 || pageYOffset > 0) {
+        return [pageXOffset, pageYOffset];
       }
       if (typeof document.documentElement.scrollLeft !== 'undefined' || typeof document.documentElement.scrollTop !== 'undefined') {
         return [document.documentElement.scrollLeft, document.documentElement.scrollTop];
@@ -227,8 +227,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.keyEvent) JSEvents.keyEvent = _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} );
 
-    var keyEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var keyEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var keyEventData = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenKeyboardEvent.__size__ }}} ) : JSEvents.keyEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
@@ -436,8 +436,8 @@ var LibraryJSEvents = {
     if (!JSEvents.mouseEvent) JSEvents.mouseEvent = _malloc( {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}} );
     target = __findEventTarget(target);
 
-    var mouseEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var mouseEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
       // TODO: Make this access thread safe, or this could update live while app is reading it.
       __fillMouseEventData(JSEvents.mouseEvent, e, target);
@@ -557,8 +557,8 @@ var LibraryJSEvents = {
     if (!JSEvents.wheelEvent) JSEvents.wheelEvent = _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} );
 
     // The DOM Level 3 events spec event 'wheel'
-    var wheelHandlerFunc = function(event) {
-      var e = event || window.event;
+    var wheelHandlerFunc = function(ev) {
+      var e = ev || event;
 #if USE_PTHREADS
       var wheelEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenWheelEvent.__size__ }}} ) : JSEvents.wheelEvent; // This allocated block is passed as satellite data to the proxied function call, so the call frees up the data block when done.
 #else
@@ -576,11 +576,11 @@ var LibraryJSEvents = {
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
     // The 'mousewheel' event as implemented in Safari 6.0.5
-    var mouseWheelHandlerFunc = function(event) {
-      var e = event || window.event;
+    var mouseWheelHandlerFunc = function(ev) {
+      var e = ev || event;
       __fillMouseEventData(JSEvents.wheelEvent, e, target);
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"] || 0', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-(e["wheelDeltaY"] ? e["wheelDeltaY"] : e["wheelDelta"]) /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */', 'double') }}};
+      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-(e["wheelDeltaY"] || e["wheelDelta"]) /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */', 'double') }}};
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
       var shouldCancel = {{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, JSEvents.wheelEvent, userData);
@@ -634,8 +634,8 @@ var LibraryJSEvents = {
 #else
 #endif
 
-    var uiEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var uiEventHandlerFunc = function(ev) {
+      var e = ev || event;
       if (e.target != target) {
         // Never take ui events such as scroll via a 'bubbled' route, but always from the direct element that
         // was targeted. Otherwise e.g. if app logs a message in response to a page scroll, the Emscripten log
@@ -653,10 +653,10 @@ var LibraryJSEvents = {
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'window.innerWidth', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'window.innerHeight', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'window.outerWidth', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'window.outerHeight', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'innerWidth', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'innerHeight', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'outerWidth', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'outerHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
 #if USE_PTHREADS
@@ -700,8 +700,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.focusEvent) JSEvents.focusEvent = _malloc( {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}} );
 
-    var focusEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var focusEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
@@ -780,8 +780,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.deviceOrientationEvent) JSEvents.deviceOrientationEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}} );
 
-    var deviceOrientationEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var deviceOrientationEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
       __fillDeviceOrientationEventData(JSEvents.deviceOrientationEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_deviceorientation_status()
 
@@ -857,8 +857,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.deviceMotionEvent) JSEvents.deviceMotionEvent = _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} );
 
-    var deviceMotionEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var deviceMotionEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
       __fillDeviceMotionEventData(JSEvents.deviceMotionEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_devicemotion_status()
 
@@ -920,7 +920,7 @@ var LibraryJSEvents = {
     }
 
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationIndex, '1 << orientation', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'window.orientation', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenOrientationChangeEvent.orientationAngle, 'orientation', 'i32') }}};
   },
 
   _registerOrientationChangeEventCallback__deps: ['$JSEvents', '_fillOrientationChangeEventData', '_findEventTarget'],
@@ -930,8 +930,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.orientationChangeEvent) JSEvents.orientationChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}} );
 
-    var orientationChangeEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var orientationChangeEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var orientationChangeEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}} ) : JSEvents.orientationChangeEvent;
@@ -976,7 +976,7 @@ var LibraryJSEvents = {
   emscripten_get_orientation_status__sig: 'ii',
   emscripten_get_orientation_status__deps: ['_fillOrientationChangeEventData', '_screenOrientation'],
   emscripten_get_orientation_status: function(orientationChangeEvent) {
-    if (!__screenOrientation() && typeof window.orientation === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!__screenOrientation() && typeof orientation === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __fillOrientationChangeEventData(orientationChangeEvent);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1054,8 +1054,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.fullscreenChangeEvent) JSEvents.fullscreenChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}} );
 
-    var fullscreenChangeEventhandlerFunc = function(event) {
-      var e = event || window.event;
+    var fullscreenChangeEventhandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var fullscreenChangeEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}} ) : JSEvents.fullscreenChangeEvent;
@@ -1145,8 +1145,8 @@ var LibraryJSEvents = {
   JSEvents_resizeCanvasForFullscreen__deps: ['_registerRestoreOldStyle', '_get_canvas_element_size', '_setLetterbox', '_set_canvas_element_size'],
   JSEvents_resizeCanvasForFullscreen: function(target, strategy) {
     var restoreOldStyle = __registerRestoreOldStyle(target);
-    var cssWidth = strategy.softFullscreen ? window.innerWidth : screen.width;
-    var cssHeight = strategy.softFullscreen ? window.innerHeight : screen.height;
+    var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
+    var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
     var rect = target.getBoundingClientRect();
     var windowedCssWidth = rect.right - rect.left;
     var windowedCssHeight = rect.bottom - rect.top;
@@ -1190,7 +1190,7 @@ var LibraryJSEvents = {
       target.style.imageRendering = 'pixelated';
     }
 
-    var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? window.devicePixelRatio : 1;
+    var dpiScale = (strategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}}) ? devicePixelRatio : 1;
     if (strategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}}) {
       var newWidth = (cssWidth * dpiScale)|0;
       var newHeight = (cssHeight * dpiScale)|0;
@@ -1323,12 +1323,13 @@ var LibraryJSEvents = {
 
   _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size'],
   _softFullscreenResizeWebGLRenderTarget: function() {
+    var dpr = devicePixelRatio;
     var inHiDPIFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}};
     var inAspectRatioFixedFullscreenMode = __currentFullscreenStrategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT') }}};
     var inPixelPerfectFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode != {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
     var inCenteredWithoutScalingFullscreenMode = __currentFullscreenStrategy.scaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_CENTER') }}};
-    var screenWidth = inHiDPIFullscreenMode ? Math.round(window.innerWidth*window.devicePixelRatio) : window.innerWidth;
-    var screenHeight = inHiDPIFullscreenMode ? Math.round(window.innerHeight*window.devicePixelRatio) : window.innerHeight;
+    var screenWidth = inHiDPIFullscreenMode ? Math.round(innerWidth*dpr) : innerWidth;
+    var screenHeight = inHiDPIFullscreenMode ? Math.round(innerHeight*dpr) : innerHeight;
     var w = screenWidth;
     var h = screenHeight;
     var canvas = __currentFullscreenStrategy.target;
@@ -1350,9 +1351,9 @@ var LibraryJSEvents = {
 
     // Back to CSS pixels.
     if (inHiDPIFullscreenMode) {
-      topMargin /= window.devicePixelRatio;
-      w /= window.devicePixelRatio;
-      h /= window.devicePixelRatio;
+      topMargin /= dpr;
+      w /= dpr;
+      h /= dpr;
       // Round to nearest 4 digits of precision.
       w = Math.round(w*1e4)/1e4;
       h = Math.round(h*1e4)/1e4;
@@ -1360,13 +1361,13 @@ var LibraryJSEvents = {
     }
 
     if (inCenteredWithoutScalingFullscreenMode) {
-      var t = (window.innerHeight - parseInt(canvas.style.height)) / 2;
-      var b = (window.innerWidth - parseInt(canvas.style.width)) / 2;
+      var t = (innerHeight - parseInt(canvas.style.height)) / 2;
+      var b = (innerWidth - parseInt(canvas.style.width)) / 2;
       __setLetterbox(canvas, t, b);
     } else {
       canvas.style.width = w + 'px';
       canvas.style.height = h + 'px';
-      var b = (window.innerWidth - w) / 2;
+      var b = (innerWidth - w) / 2;
       __setLetterbox(canvas, topMargin, b);
     }
 
@@ -1475,7 +1476,7 @@ var LibraryJSEvents = {
     function restoreWindowedState() {
       restoreOldStyle();
       __restoreHiddenElements(hiddenElements);
-      window.removeEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
+      removeEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
       if (strategy.canvasResizedCallback) {
 #if USE_PTHREADS
         if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1487,7 +1488,7 @@ var LibraryJSEvents = {
     }
     __restoreOldWindowedStyle = restoreWindowedState;
     __currentFullscreenStrategy = strategy;
-    window.addEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
+    addEventListener('resize', __softFullscreenResizeWebGLRenderTarget);
 
     // Inform the caller that the canvas size has changed.
     if (strategy.canvasResizedCallback) {
@@ -1562,8 +1563,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.pointerlockChangeEvent) JSEvents.pointerlockChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}} );
 
-    var pointerlockChangeEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var pointerlockChangeEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var pointerlockChangeEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}} ) : JSEvents.pointerlockChangeEvent;
@@ -1614,8 +1615,8 @@ var LibraryJSEvents = {
 
   _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '_specialEventTargets'],
   _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    var pointerlockErrorEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var pointerlockErrorEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
@@ -1776,8 +1777,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.visibilityChangeEvent) JSEvents.visibilityChangeEvent = _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} );
 
-    var visibilityChangeEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var visibilityChangeEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var visibilityChangeEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}} ) : JSEvents.visibilityChangeEvent;
@@ -1838,8 +1839,8 @@ var LibraryJSEvents = {
 
     target = __findEventTarget(target);
 
-    var touchEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var touchEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
       var touches = {};
       for(var i = 0; i < e.touches.length; ++i) {
@@ -1988,15 +1989,15 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.gamepadEvent) JSEvents.gamepadEvent = _malloc( {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}} );
 
-    var gamepadEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var gamepadEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var gamepadEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}} ) : JSEvents.gamepadEvent;
 #else
       var gamepadEvent = JSEvents.gamepadEvent;
 #endif
-      __fillGamepadEventData(gamepadEvent, e.gamepad);
+      __fillGamepadEventData(gamepadEvent, e["gamepad"]);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, gamepadEvent, userData);
@@ -2077,8 +2078,8 @@ var LibraryJSEvents = {
   
   _registerBeforeUnloadEventCallback__deps: ['$JSEvents', '_findEventTarget'],
   _registerBeforeUnloadEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
-    var beforeUnloadEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var beforeUnloadEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
       var confirmationMessage = {{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, 0, userData);
@@ -2108,7 +2109,7 @@ var LibraryJSEvents = {
   emscripten_set_beforeunload_callback_on_thread__sig: 'iii',
   emscripten_set_beforeunload_callback_on_thread__deps: ['_registerBeforeUnloadEventCallback'],
   emscripten_set_beforeunload_callback_on_thread: function(userData, callbackfunc, targetThread) {
-    if (typeof window.onbeforeunload === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (typeof onbeforeunload === 'undefined') return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     // beforeunload callback can only be registered on the main browser thread, because the page will go away immediately after returning from the handler,
     // and there is no time to start proxying it anywhere.
     if (targetThread !== {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD') }}}) return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_PARAM') }}};
@@ -2132,8 +2133,8 @@ var LibraryJSEvents = {
 #endif
     if (!JSEvents.batteryEvent) JSEvents.batteryEvent = _malloc( {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}} );
 
-    var batteryEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var batteryEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       var batteryEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}} ) : JSEvents.batteryEvent;
@@ -2189,6 +2190,9 @@ var LibraryJSEvents = {
 
   // Execute in calling thread without proxying needed.
   emscripten_webgl_init_context_attributes: function(attributes) {
+#if ASSERTIONS
+    assert(attributes);
+#endif
     var a = attributes >> 2;
     for(var i = 0; i < ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.__size__ }}}>>2); ++i) {
       HEAP32[a+i] = 0;
@@ -2227,6 +2231,9 @@ var LibraryJSEvents = {
   emscripten_webgl_do_create_context__deps: ['$GL', '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
+#if ASSERTIONS
+    assert(attributes);
+#endif
     var contextAttributes = {};
     var a = attributes >> 2;
     contextAttributes['alpha'] = !!HEAP32[a + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.alpha }}}>>2)];
@@ -2490,6 +2497,12 @@ var LibraryJSEvents = {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
     if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+
+    // Obtain function entry points to extension related functions.
+    if (extString == 'ANGLE_instanced_arrays') GL.acquireInstancedArraysExtension(GLctx);
+    else if (extString == 'OES_vertex_array_object') GL.acquireVertexArrayObjectExtension(GLctx);
+    else if (extString == 'WEBGL_draw_buffers') GL.acquireDrawBuffersExtension(GLctx);
+
     var ext = context.GLctx.getExtension(extString);
     return !!ext;
   },
@@ -2527,8 +2540,8 @@ var LibraryJSEvents = {
     if (!target) target = Module['canvas'];
 #endif
 
-    var webGlEventHandlerFunc = function(event) {
-      var e = event || window.event;
+    var webGlEventHandlerFunc = function(ev) {
+      var e = ev || event;
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, 0, userData);
@@ -2982,10 +2995,10 @@ var LibraryJSEvents = {
   emscripten_get_device_pixel_ratio__sig: 'd',
   emscripten_get_device_pixel_ratio: function() {
 #if WASM && ENVIRONMENT == 'web'
-    // Save a little bit of code space: all Wasm-capable browsers support window.devicePixelRatio.
-    return window.devicePixelRatio;
+    // Save a little bit of code space: all Wasm-capable browsers support devicePixelRatio.
+    return devicePixelRatio;
 #else
-    return window.devicePixelRatio || 1.0;
+    return devicePixelRatio || 1.0;
 #endif
   }
 };

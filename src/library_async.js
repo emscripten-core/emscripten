@@ -202,7 +202,7 @@ mergeInto(LibraryManager.library, {
     var _file = UTF8ToString(file);
     _file = PATH_FS.resolve(FS.cwd(), _file);
     Module['setAsync']();
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
     var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
       destinationDirectory,
@@ -277,7 +277,7 @@ mergeInto(LibraryManager.library, {
       Module['setAsyncState'](s);
     },
     handle: function(doAsyncOp, yieldDuring) {
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
@@ -561,13 +561,46 @@ mergeInto(LibraryManager.library, {
     // That includes the name of the function on the bottom
     // of the call stack, that we need to call to rewind.
     dataInfo: {},
-    // The return value from a synchronous call is stored here,
-    // so we can return it later after rewinding finishes.
-    returnValue: 0,
+    // The return value passed to wakeUp() in
+    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
+    // so we can return it later from the C function that called
+    // Asyncify.handleSleep() after rewinding finishes.
+    handleSleepReturnValue: 0,
     // We must track which wasm exports are called into and
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
     exportCallStack: [],
+    afterUnwind: null,
+    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+
+#if ASSERTIONS
+    instrumentWasmImports: function(imports) {
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}};
+      for (var x in imports) {
+        (function(x) {
+          var original = imports[x];
+          if (typeof original === 'function') {
+            imports[x] = function() {
+              var originalAsyncifyState = Asyncify.state;
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                // Only functions in the list of known relevant imports are allowed to change the state.
+                // Note that invoke_* functions are allowed to change the state if we do not ignore
+                // indirect calls.
+                if (Asyncify.state !== originalAsyncifyState &&
+                    ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
+                    !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
+                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                }
+              }
+            }
+          }
+        })(x);
+      }
+    },
+#endif
+
     instrumentWasmExports: function(exports) {
       var ret = {};
       for (var x in exports) {
@@ -591,12 +624,16 @@ mergeInto(LibraryManager.library, {
                 if (Asyncify.currData &&
                     Asyncify.state === Asyncify.State.Unwinding &&
                     Asyncify.exportCallStack.length === 0) {
-                  // We just finished unwinding for a sleep.
+                  // We just finished unwinding.
 #if ASYNCIFY_DEBUG
                   err('ASYNCIFY: stop unwind');
 #endif
                   Asyncify.state = Asyncify.State.Normal;
                   runAndAbortIfError(Module['_asyncify_stop_unwind']);
+                  if (Asyncify.afterUnwind) {
+                    Asyncify.afterUnwind();
+                    Asyncify.afterUnwind = null;
+                  }
                 }
               }
             };
@@ -607,6 +644,7 @@ mergeInto(LibraryManager.library, {
       }
       return ret;
     },
+
     allocateData: function() {
       // An asyncify data structure has two fields: the
       // current stack pos, and the max pos.
@@ -622,13 +660,15 @@ mergeInto(LibraryManager.library, {
       };
       return ptr;
     },
+
     freeData: function(ptr) {
       _free(ptr);
       Asyncify.dataInfo[ptr] = null;
     },
+
     handleSleep: function(startAsync) {
       if (ABORT) return;
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
 #if ASYNCIFY_DEBUG
       err('ASYNCIFY: handleSleep ' + Asyncify.state);
 #endif
@@ -639,12 +679,12 @@ mergeInto(LibraryManager.library, {
         // need to do anything.
         var reachedCallback = false;
         var reachedAfterCallback = false;
-        startAsync(function(returnValue) {
+        startAsync(function(handleSleepReturnValue) {
 #if ASSERTIONS
-          assert(!returnValue || typeof returnValue === 'number'); // old emterpretify API supported other stuff
+          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
-          Asyncify.returnValue = returnValue || 0;
+          Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
           reachedCallback = true;
           if (!reachedAfterCallback) {
             // We are happening synchronously, so no need for async.
@@ -662,12 +702,32 @@ mergeInto(LibraryManager.library, {
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start: ' + start);
 #endif
-          Module['asm'][start]();
+          var asyncWasmReturnValue = Module['asm'][start]();
+          if (!Asyncify.currData) {
+            // All asynchronous execution has finished.
+            // `asyncWasmReturnValue` now contains the final
+            // return value of the exported async WASM function.
+            //
+            // Note: `asyncWasmReturnValue` is distinct from
+            // `Asyncify.handleSleepReturnValue`.
+            // `Asyncify.handleSleepReturnValue` contains the return
+            // value of the last C function to have executed
+            // `Asyncify.handleSleep()`, where as `asyncWasmReturnValue`
+            // contains the return value of the exported WASM function
+            // that may have called C functions that
+            // call `Asyncify.handleSleep()`.
+            var asyncFinalizers = Asyncify.asyncFinalizers;
+            Asyncify.asyncFinalizers = [];
+            asyncFinalizers.forEach(function(func) {
+              func(asyncWasmReturnValue);
+            });
+          }
         });
         reachedAfterCallback = true;
         if (!reachedCallback) {
           // A true async operation was begun; start a sleep.
           Asyncify.state = Asyncify.State.Unwinding;
+          // TODO: reuse, don't alloc/free every sleep
           Asyncify.currData = Asyncify.allocateData();
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
@@ -689,9 +749,10 @@ mergeInto(LibraryManager.library, {
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
-      return Asyncify.returnValue;
+      return Asyncify.handleSleepReturnValue;
     }
   },
+
   emscripten_sleep: function(ms) {
     Asyncify.handleSleep(function(wakeUp) {
       Browser.safeSetTimeout(wakeUp, ms);
@@ -738,6 +799,17 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_scan_registers: function(func) {
+    Asyncify.handleSleep(function(wakeUp) {
+      // We must first unwind, so things are spilled to the stack. We
+      // can resume right after unwinding, no need for a timeout.
+      Asyncify.afterUnwind = function() {
+        {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
+        wakeUp();
+      };
+    });
+  },
+
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
@@ -756,6 +828,9 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_wget_data: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+  },
+  emscripten_scan_registers: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
 #endif // ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC

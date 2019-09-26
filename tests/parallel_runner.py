@@ -76,6 +76,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.processes = []
     self.result_queue = multiprocessing.Queue()
     self.dedicated_temp_dirs = [tempfile.mkdtemp() for x in range(num_cores())]
+    print('Using %s parallel test processes' % len(self.dedicated_temp_dirs))
     for temp_dir in self.dedicated_temp_dirs:
       p = multiprocessing.Process(target=g_testing_thread,
                                   args=(test_queue, self.result_queue, temp_dir))

@@ -51,7 +51,9 @@ The ``EMCC_DEBUG`` environment variable can be set to enable Emscripten's debug 
 
 With ``EMCC_DEBUG=1`` set, :ref:`emcc <emccdoc>` emits debug output and generates intermediate files for the compiler's various stages. ``EMCC_DEBUG=2`` additionally generates intermediate files for each JavaScript optimizer pass.
 
-The debug logs and intermediate files are output to **TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is by default **/tmp** (it is defined in the :ref:`.emscripten configuration file <compiler-configuration-file>`).
+The debug logs and intermediate files are output to
+**TEMP_DIR/emscripten_temp**, where ``TEMP_DIR`` is the OS default temporary
+directory (e.g. **/tmp** on UNIX).
 
 The debug logs can be analysed to profile and review the changes that were made in each step.
 

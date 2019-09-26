@@ -117,7 +117,7 @@ if EM_PROFILE_TOOLCHAIN:
       ToolchainProfiler.profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
       try:
         os.makedirs(ToolchainProfiler.profiler_logs_path)
-      except:
+      except OSError:
         pass
 
       if ToolchainProfiler.process_start_recorded:

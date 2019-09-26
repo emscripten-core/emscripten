@@ -25,6 +25,8 @@ var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer 
 var DYNAMICTOP_PTR = 0;
 var DYNAMIC_BASE = 0;
 
+var noExitRuntime;
+
 var PthreadWorkerInit = {};
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
@@ -71,6 +73,19 @@ function threadAlert() {
 var err = threadPrintErr;
 this.alert = threadAlert;
 
+// When using postMessage to send an object, it is processed by the structured clone algorithm.
+// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+function resetPrototype(constructor, attrs) {
+  var object = Object.create(constructor.prototype);
+  for (var key in attrs) {
+    if (attrs.hasOwnProperty(key)) {
+      object[key] = attrs[key];
+    }
+  }
+  return object;
+}
+
 #if WASM
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
@@ -78,6 +93,12 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
   var instance = new WebAssembly.Instance(wasmModule, info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
   wasmModule = null;
+#if LOAD_SOURCE_MAP
+  wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
+#endif
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = resetPrototype(WasmOffsetConverter, wasmOffsetData);
+#endif
   receiveInstance(instance); // The second 'module' parameter is intentionally null here, we don't need to keep a ref to the Module object from here.
   return instance.exports;
 };
@@ -85,6 +106,12 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
 
 var wasmModule;
 var wasmMemory;
+#if LOAD_SOURCE_MAP
+var wasmSourceMapData;
+#endif
+#if USE_OFFSET_CONVERTER
+var wasmOffsetData;
+#endif
 
 this.onmessage = function(e) {
   try {
@@ -113,6 +140,12 @@ this.onmessage = function(e) {
       // Module and memory were sent from main thread
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmModule') }}} = e.data.wasmModule;
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmMemory') }}} = e.data.wasmMemory;
+#if LOAD_SOURCE_MAP
+      wasmSourceMapData = e.data.wasmSourceMap;
+#endif
+#if USE_OFFSET_CONVERTER
+      wasmOffsetData = e.data.wasmOffsetConverter;
+#endif
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
 #else
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;
@@ -208,6 +241,9 @@ this.onmessage = function(e) {
 #if WASM_BACKEND
       Module['_emscripten_tls_init']();
 #endif
+#if SAFE_STACK
+      Module['___set_stack_limit'](STACK_MAX);
+#endif
 #if STACK_OVERFLOW_CHECK
       {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
 #endif
@@ -250,7 +286,7 @@ this.onmessage = function(e) {
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
       // (This is a no-op if explicit pthread_exit() had been called prior.)
-      if (!Module['noExitRuntime']) PThread.threadExit(result);
+      if (!noExitRuntime) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
         PThread.threadCancel();

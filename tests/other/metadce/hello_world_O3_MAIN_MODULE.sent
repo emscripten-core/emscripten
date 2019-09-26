@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 IMG_Init
 IMG_Load
 IMG_Load_RW
@@ -233,7 +232,6 @@ __atomic_is_lock_free
 __buildEnvironment
 __builtin_prefetch
 __clock_gettime
-__clzti2
 __cxa_allocate_exception
 __cxa_atexit
 __cxa_begin_catch
@@ -255,7 +253,6 @@ __cxa_find_matching_catch_9
 __cxa_free_exception
 __cxa_get_exception_ptr
 __cxa_increment_exception_refcount
-__cxa_pure_virtual
 __cxa_rethrow
 __cxa_rethrow_primary_exception
 __cxa_thread_atexit
@@ -269,6 +266,7 @@ __exception_decRef
 __execvpe
 __gcc_personality_v0
 __gxx_personality_v0
+__handle_stack_overflow
 __libc_current_sigrtmax
 __libc_current_sigrtmin
 __lock
@@ -297,7 +295,6 @@ __syscall140
 __syscall142
 __syscall144
 __syscall145
-__syscall146
 __syscall147
 __syscall148
 __syscall15
@@ -399,6 +396,7 @@ __syscall97
 __table_base
 __unlock
 __wait
+__wasi_fd_write
 _addDays
 _arraySum
 _battery
@@ -568,9 +566,6 @@ bitshift64Lshr
 bitshift64Shl
 boxColor
 boxRGBA
-brk
-ceil
-ceilf
 ceill
 chroot
 clearenv
@@ -582,6 +577,8 @@ clock_settime
 confstr
 ctime
 ctime_r
+demangle
+demangleAll
 difftime
 dladdr
 dlclose
@@ -693,6 +690,7 @@ emscripten_get_orientation_status
 emscripten_get_pointerlock_status
 emscripten_get_preloaded_image_data
 emscripten_get_preloaded_image_data_from_FILE
+emscripten_get_sbrk_ptr
 emscripten_get_stack_base
 emscripten_get_stack_top
 emscripten_get_visibility_status
@@ -929,6 +927,8 @@ emscripten_run_script
 emscripten_run_script_int
 emscripten_run_script_string
 emscripten_sample_gamepad_data
+emscripten_scan_registers
+emscripten_scan_stack
 emscripten_set_batterychargingchange_callback_on_thread
 emscripten_set_batterylevelchange_callback_on_thread
 emscripten_set_beforeunload_callback_on_thread
@@ -1042,22 +1042,18 @@ execv
 execve
 execvp
 exit
-fabs
-fabsf
 fabsl
+fd_write
 fexecve
 filledEllipseColor
 filledEllipseRGBA
 flock
-floor
-floorf
 floorl
 fork
 fp$__stdio_close$ii
 fp$__stdio_read$iiii
 fp$__stdio_seek$jiji
 fp$__stdio_write$iiii
-fp$__stdout_write$iiii
 fpathconf
 ftime
 g$__THREW__
@@ -1075,6 +1071,8 @@ g$__stdout_used
 g$__threwValue
 g$atanhi
 g$atanlo
+g$daylight
+g$environ
 g$h_errno
 g$optarg
 g$opterr
@@ -1083,6 +1081,8 @@ g$optopt
 g$stderr
 g$stdin
 g$stdout
+g$timezone
+g$tzname
 gai_strerror
 getTempRet0
 getaddrinfo
@@ -1394,6 +1394,7 @@ i64Add
 i64Subtract
 inet_addr
 invoke_X
+jsStackTrace
 kill
 killpg
 lineColor
@@ -1473,6 +1474,7 @@ localtime_r
 longjmp
 major
 makedev
+memory
 minor
 mktime
 nanosleep
@@ -1490,12 +1492,9 @@ pthread_attr_setstacksize
 pthread_cancel
 pthread_cleanup_pop
 pthread_cleanup_push
-pthread_cond_broadcast
 pthread_cond_destroy
 pthread_cond_init
-pthread_cond_signal
 pthread_cond_timedwait
-pthread_cond_wait
 pthread_condattr_destroy
 pthread_condattr_getclock
 pthread_condattr_getpshared
@@ -1539,13 +1538,11 @@ putenv
 raise
 rectangleColor
 rectangleRGBA
-rintf
 rotozoomSurface
 round
 roundf
 runAndAbortIfError
 saveSetjmp
-sbrk
 sched_yield
 sem_destroy
 sem_init
@@ -1569,9 +1566,8 @@ siglongjmp
 signal
 sigpending
 sigprocmask
-sqrt
-sqrtf
 sqrtl
+stackTrace
 stime
 strftime
 strftime_l
@@ -1580,6 +1576,7 @@ strptime
 strptime_l
 sysconf
 system
+table
 terminate
 testSetjmp
 time

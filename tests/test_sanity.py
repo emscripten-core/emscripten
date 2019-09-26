@@ -106,6 +106,9 @@ class sanity(RunnerCore):
   @classmethod
   def setUpClass(cls):
     super(sanity, cls).setUpClass()
+    # Unlike the other test suites we explicitly don't want to be skipping
+    # the sanity checks here
+    del os.environ['EMCC_SKIP_SANITY_CHECK']
     shutil.copyfile(CONFIG_FILE, CONFIG_FILE + '_backup')
 
     print()
@@ -190,7 +193,7 @@ class sanity(RunnerCore):
       self.assertContained('It contains our best guesses for the important paths, which are:', output)
       self.assertContained('LLVM_ROOT', output)
       self.assertContained('NODE_JS', output)
-      if platform.system() is not 'Windows':
+      if platform.system() != 'Windows':
         # os.chmod can't make files executable on Windows
         self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
         possible_nodes = [os.path.join(temp_bin, 'node')]
@@ -208,7 +211,7 @@ class sanity(RunnerCore):
       self.assertNotContained('}}}', config_file)
       self.assertContained('{{{', template_file)
       self.assertContained('}}}', template_file)
-      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'TEMP_DIR', 'COMPILER_ENGINE', 'JS_ENGINES']:
+      for content in ['EMSCRIPTEN_ROOT', 'LLVM_ROOT', 'NODE_JS', 'JS_ENGINES']:
         self.assertContained(content, config_file)
 
       # The guessed config should be ok
@@ -218,7 +221,7 @@ class sanity(RunnerCore):
       # self.assertContained('hello, world!', run_js('a.out.js'), output)
 
       # Second run, with bad EM_CONFIG
-      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; COMPILER_ENGINE=NODE_JS=SPIDERMONKEY_ENGINE=[]']:
+      for settings in ['blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]']:
         f = open(CONFIG_FILE, 'w')
         f.write(settings)
         f.close()
@@ -469,7 +472,7 @@ fi
       print(i)
       self.clear()
       output = self.do([EMCC, '-O' + str(i), '-s', '--llvm-lto', '0', path_from_root('tests', 'hello_libcxx.cpp'), '--save-bc', 'a.bc', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
-      print ('\n\n\n', output)
+      print('\n\n\n', output)
       assert (BUILDING_MESSAGE.replace('X', libname) in output) == (i == 0), 'Must only build the first time'
       self.assertContained('hello, world!', run_js('a.out.js'))
       self.assertExists(Cache.dirname)
@@ -626,8 +629,7 @@ fi
       assert not os.path.exists(PORTS_DIR)
 
       # Building a file that doesn't need ports should not trigger anything
-      # (avoid wasm to avoid the binaryen port)
-      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp'), '-s', 'WASM=0'])
+      output = self.do([EMCC, path_from_root('tests', 'hello_world_sdl.cpp')])
       assert RETRIEVING_MESSAGE not in output, output
       assert BUILDING_MESSAGE not in output
       print('no', output)
@@ -838,67 +840,13 @@ fi
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
     self.assertExists(os.path.join(root_cache, 'asmjs'))
 
-  def test_wasm_backend_builds(self):
-    # we can build a program using the wasm backend, rebuilding binaryen etc. as needed
+  def test_binaryen_root(self):
+    # with no binaryen root, an error is shown
     restore_and_set_up()
-
-    def check():
-      print(self.do([PYTHON, EMCC, '--clear-cache']))
-      print(self.do([PYTHON, EMCC, '--clear-ports']))
-      with env_modify({'EMCC_WASM_BACKEND': '1'}):
-        self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], '')
-
-    print('normally')
-    check()
-    print('with no BINARYEN_ROOT')
     open(CONFIG_FILE, 'a').write('''
 BINARYEN_ROOT = ''
     ''')
-    print(open(CONFIG_FILE).read())
-    check()
-
-  def test_binaryen(self):
-    import tools.ports.binaryen as binaryen
-    tag_file = Cache.get_path('binaryen_tag_' + binaryen.TAG + '.txt')
-
-    assert not os.environ.get('BINARYEN') # must not have binaryen env var set
-
-    # test with BINARYEN_ROOT in the config file, which is how developers usually
-    # have things set up. testing without it in the config file (which makes
-    # it get fetched from ports) is how the bots work, so it is tested there
-
-    def prep():
-      restore_and_set_up()
-      print('clearing ports...')
-      print(self.do([PYTHON, EMCC, '--clear-ports']))
-      wipe()
-      self.do([PYTHON, EMCC]) # first run stage
-      try_delete(tag_file)
-      config = open(CONFIG_FILE).read()
-      assert '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', ''))''' in config, config # setup created it to be ''
-      print('created config:')
-      print(config)
-      restore_and_set_up()
-      config = open(CONFIG_FILE).read()
-      config = config.replace('BINARYEN_ROOT', '''BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # ''')
-      print('modified config:')
-      print(config)
-      open(CONFIG_FILE, 'w').write(config)
-
-    print('build using embuilder')
-    prep()
-    run_process([PYTHON, EMBUILDER, 'build', 'binaryen'])
-    self.assertExists(tag_file)
-    run_process([PYTHON, EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-    print('see we show an error for emmake (we cannot build natively under emmake)')
-    prep()
-    try_delete('a.out.js')
-    out = self.do([PYTHON, path_from_root('emmake.py'), EMCC] + MINIMAL_HELLO_WORLD + ['-s', 'BINARYEN=1'])
-    assert not os.path.exists(tag_file)
-    assert not os.path.exists('a.out.js')
-    self.assertContained('For example, for binaryen, do "python embuilder.py build binaryen"', out)
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT must be set up in .emscripten')
 
   def test_embuilder_wasm_backend(self):
     if not Settings.WASM_BACKEND:

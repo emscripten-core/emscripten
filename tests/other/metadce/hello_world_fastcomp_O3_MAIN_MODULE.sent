@@ -1,4 +1,3 @@
-DYNAMICTOP_PTR
 STACKTOP
 STACK_MAX
 _IMG_Init
@@ -265,7 +264,6 @@ ___cxa_find_matching_catch_9
 ___cxa_free_exception
 ___cxa_get_exception_ptr
 ___cxa_increment_exception_refcount
-___cxa_pure_virtual
 ___cxa_rethrow
 ___cxa_rethrow_primary_exception
 ___cxa_thread_atexit
@@ -279,6 +277,7 @@ ___exception_decRef
 ___execvpe
 ___gcc_personality_v0
 ___gxx_personality_v0
+___handle_stack_overflow
 ___libc_current_sigrtmax
 ___libc_current_sigrtmin
 ___lock
@@ -303,7 +302,6 @@ ___syscall140
 ___syscall142
 ___syscall144
 ___syscall145
-___syscall146
 ___syscall147
 ___syscall148
 ___syscall15
@@ -404,6 +402,7 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_fd_write
 __addDays
 __arraySum
 __battery
@@ -437,6 +436,7 @@ __inet_pton4_raw
 __inet_pton6
 __inet_pton6_raw
 __isLeapYear
+__memory_base
 __polyfill_set_immediate
 __pthread_cleanup_pop
 __pthread_cleanup_push
@@ -466,6 +466,7 @@ __screenOrientation
 __setLetterbox
 __set_canvas_element_size
 __softFullscreenResizeWebGLRenderTarget
+__table_base
 __write_sockaddr
 _abort
 _abs
@@ -927,6 +928,8 @@ _emscripten_run_script
 _emscripten_run_script_int
 _emscripten_run_script_string
 _emscripten_sample_gamepad_data
+_emscripten_scan_registers
+_emscripten_scan_stack
 _emscripten_set_batterychargingchange_callback_on_thread
 _emscripten_set_batterylevelchange_callback_on_thread
 _emscripten_set_beforeunload_callback_on_thread
@@ -1043,6 +1046,7 @@ _exit
 _fabs
 _fabsf
 _fabsl
+_fd_write
 _fexecve
 _filledEllipseColor
 _filledEllipseRGBA
@@ -1441,9 +1445,7 @@ _pthread_cleanup_pop
 _pthread_cleanup_push
 _pthread_cond_destroy
 _pthread_cond_init
-_pthread_cond_signal
 _pthread_cond_timedwait
-_pthread_cond_wait
 _pthread_condattr_destroy
 _pthread_condattr_getclock
 _pthread_condattr_getpshared
@@ -1552,12 +1554,21 @@ _waitpid
 _zoomSurface
 abort
 abortOnCannotGrowMemory
+demangle
+demangleAll
 emscriptenWebGLGet
 emscriptenWebGLGetTexPixelData
 emscriptenWebGLGetUniform
 emscriptenWebGLGetVertexAttrib
 emscripten_realloc_buffer
 fb
+fp$___dn_expand$iiiiii
+fp$___stdio_close$ii
+fp$___stdio_exit$v
+fp$___stdio_read$iiii
+fp$___stdio_seek$iiiii
+fp$___stdio_write$iiii
+fp$___strdup$ii
 gb
 getTempRet0
 invoke_X
@@ -1570,7 +1581,11 @@ invoke_iiiiii
 invoke_v
 invoke_vi
 invoke_vii
+jsStackTrace
+memory
 runAndAbortIfError
 setTempRet0
+stackTrace
 stringToNewUTF8
+table
 tempDoublePtr

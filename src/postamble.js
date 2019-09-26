@@ -114,6 +114,8 @@ if (memoryInitializer) {
   Module['cyberdwarf'] = _cyberdwarf_Debugger(cyberDWARFFile);
 #endif
 
+var calledRun;
+
 #if MODULARIZE
 #if MODULARIZE_INSTANCE == 0
 // Modularize mode returns a function, which can be called to
@@ -125,7 +127,7 @@ if (memoryInitializer) {
 Module['then'] = function(func) {
   // We may already be ready to run code at this time. if
   // so, just queue a call to the callback.
-  if (Module['calledRun']) {
+  if (calledRun) {
     func(Module);
   } else {
     // we are not ready to call then() yet. we must call it
@@ -146,7 +148,6 @@ Module['then'] = function(func) {
 
 /**
  * @constructor
- * @extends {Error}
  * @this {ExitStatus}
  */
 function ExitStatus(status) {
@@ -154,22 +155,26 @@ function ExitStatus(status) {
   this.message = "Program terminated with exit(" + status + ")";
   this.status = status;
 }
-ExitStatus.prototype = new Error();
-ExitStatus.prototype.constructor = ExitStatus;
 
 var calledMain = false;
 
 dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
-  if (!Module['calledRun']) run();
-  if (!Module['calledRun']) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
+  if (!calledRun) run();
+  if (!calledRun) dependenciesFulfilled = runCaller; // try this again later, after new deps are fulfilled
 };
 
 #if HAS_MAIN
-Module['callMain'] = function callMain(args) {
+function callMain(args) {
 #if ASSERTIONS
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
+#endif
+
+#if MAIN_MODULE
+  // Main modules can't tell if they have main() at compile time, since it may
+  // arrive from a dynamic library.
+  if (!Module['_main']) return;
 #endif
 
 #if MAIN_READS_PARAMS
@@ -196,6 +201,10 @@ Module['callMain'] = function callMain(args) {
     var start = Date.now();
 #endif
 
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
+#endif
+
 #if PROXY_TO_PTHREAD
     // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
     // that will call the user's real main() for the application.
@@ -211,7 +220,7 @@ Module['callMain'] = function callMain(args) {
 #if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
-    if (!Module['noExitRuntime']) {
+    if (!noExitRuntime) {
 #endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
@@ -226,7 +235,7 @@ Module['callMain'] = function callMain(args) {
       return;
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
 #if EMTERPRETIFY_ASYNC
       // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
       Module['emtStackRestore'](initialEmtStackTop);
@@ -266,11 +275,15 @@ function run(args) {
   preRun();
 
   if (runDependencies > 0) return; // a preRun added a dependency, run will be called later
-  if (Module['calledRun']) return; // run may have just been called through dependencies being fulfilled just in this very frame
 
   function doRun() {
-    if (Module['calledRun']) return; // run may have just been called while the async setStatus time below was happening
+    // run may have just been called through dependencies being fulfilled just in this very frame,
+    // or while the async setStatus time below was happening
+    if (calledRun) return;
+    calledRun = true;
+#if 'calledRun' in EXPORTED_RUNTIME_METHODS_SET
     Module['calledRun'] = true;
+#endif
 
     if (ABORT) return;
 
@@ -283,7 +296,7 @@ function run(args) {
 #endif
 
 #if HAS_MAIN
-    if (Module['_main'] && shouldRunNow) Module['callMain'](args);
+    if (shouldRunNow) callMain(args);
 #else
 #if ASSERTIONS
     assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
@@ -293,6 +306,7 @@ function run(args) {
     postRun();
   }
 
+#if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
     setTimeout(function() {
@@ -301,7 +315,9 @@ function run(args) {
       }, 1);
       doRun();
     }, 1);
-  } else {
+  } else
+#endif
+  {
     doRun();
   }
 #if STACK_OVERFLOW_CHECK
@@ -374,11 +390,11 @@ function exit(status, implicit) {
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && Module['noExitRuntime'] && status === 0) {
+  if (implicit && noExitRuntime && status === 0) {
     return;
   }
 
-  if (Module['noExitRuntime']) {
+  if (noExitRuntime) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
@@ -399,50 +415,22 @@ function exit(status, implicit) {
 
     exitRuntime();
 
+#if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
+#endif
   }
 
   quit_(status, new ExitStatus(status));
 }
 
-var abortDecorators = [];
-
-function abort(what) {
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
-  }
-
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
-#endif
-  what += '';
-  out(what);
-  err(what);
-
-  ABORT = true;
-  EXITSTATUS = 1;
-
-#if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-#else
-  var extra = '';
-  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
-  if (abortDecorators) {
-    abortDecorators.forEach(function(decorator) {
-      output = decorator(output, what);
-    });
-  }
-  throw output;
-#endif // ASSERTIONS
-}
-Module['abort'] = abort;
-
+#if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {
   if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
   while (Module['preInit'].length > 0) {
     Module['preInit'].pop()();
   }
 }
+#endif
 
 #if HAS_MAIN
 // shouldRunNow refers to calling main(), not run().
@@ -451,16 +439,18 @@ var shouldRunNow = true;
 #else
 var shouldRunNow = false;
 #endif
-if (Module['noInitialRun']) {
-  shouldRunNow = false;
-}
+
+#if expectToReceiveOnModule('noInitialRun')
+if (Module['noInitialRun']) shouldRunNow = false;
+#endif
+
 #endif // HAS_MAIN
 
 #if EXIT_RUNTIME == 0
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
 #endif
-  Module["noExitRuntime"] = true;
+  noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS

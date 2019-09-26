@@ -232,7 +232,9 @@ var LibraryExceptions = {
 
   __cxa_call_unexpected: function(exception) {
     err('Unexpected exception thrown, this is not properly supported - aborting');
+#if !MINIMAL_RUNTIME
     ABORT = true;
+#endif
     throw exception;
   },
 
@@ -324,7 +326,7 @@ var LibraryExceptions = {
 // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
 // that variadically processes all of these functions using JS 'arguments' object.
 var maxExceptionArgs = 10; // arbitrary upper limit
-for(let n = 0; n < maxExceptionArgs; ++n) {
+for (var n = 0; n < maxExceptionArgs; ++n) {
   LibraryExceptions['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
   LibraryExceptions['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
 }

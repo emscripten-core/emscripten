@@ -46,7 +46,7 @@ def parseFiles():
         api_item = api_item.split('(')[0]
         try:
             api_item = api_item.split(' ')[1]
-        except:
+        except IndexError:
             pass
 
         # print lang

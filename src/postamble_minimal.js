@@ -4,6 +4,10 @@
 {{{ exportRuntime() }}}
 
 function run() {
+#if MEMORYPROFILER
+  emscriptenMemoryProfiler.onPreloadComplete();
+#endif
+
 #if PROXY_TO_PTHREAD
     // User requested the PROXY_TO_PTHREAD option, so call a stub main which pthread_create()s a new thread
     // that will call the user's real main() for the application.
@@ -41,18 +45,9 @@ function initRuntime(asm) {
 #if WASM
 
 // Initialize wasm (asynchronous)
-var env = asmLibraryArg;
-env['memory'] = wasmMemory;
-env['table'] = new WebAssembly.Table({ 'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}}
-#if !ALLOW_TABLE_GROWTH
-  , 'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}}
-#endif
-  , 'element': 'anyfunc' });
-env['__memory_base'] = STATIC_BASE;
-env['__table_base'] = 0;
 
 var imports = {
-  'env': env
+  'env': asmLibraryArg
 #if WASM_BACKEND == 0
   , 'global': {
     'NaN': NaN,
@@ -61,7 +56,11 @@ var imports = {
   'global.Math': Math,
   'asm2wasm': {
     'f64-rem': function(x, y) { return x % y; },
-    'debugger': function() { debugger; }
+    'debugger': function() {
+#if ASSERTIONS // Disable debugger; statement from being present in release builds to avoid Firefox deoptimizations, see https://bugzilla.mozilla.org/show_bug.cgi?id=1538375
+      debugger;
+#endif
+    }
   }
 #endif
 };

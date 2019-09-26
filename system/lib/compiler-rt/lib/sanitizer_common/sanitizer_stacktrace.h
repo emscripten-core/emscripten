@@ -64,6 +64,9 @@ struct StackTrace {
     return request_fast_unwind;
   }
 
+#if SANITIZER_EMSCRIPTEN
+  static bool snapshot_stack;
+#endif
   static uptr GetCurrentPc();
   static inline uptr GetPreviousInstructionPc(uptr pc);
   static uptr GetNextInstructionPc(uptr pc);
