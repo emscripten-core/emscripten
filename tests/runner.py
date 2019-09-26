@@ -270,10 +270,14 @@ non_core_test_modes = [
   'sockets',
   'interactive',
   'benchmark',
-  'asan',
-  'lsan',
-  'wasm2ss',
 ]
+
+if shared.Settings.WASM_BACKEND:
+  non_core_test_modes += [
+    'asan',
+    'lsan',
+    'wasm2ss',
+  ]
 
 test_index = 0
 

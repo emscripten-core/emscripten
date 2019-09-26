@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  */
 
-mergeInto(LibraryManager.library, {
+var WasiLibrary = {
   proc_exit__deps: ['exit'],
   proc_exit: function(code) {
     return _exit(code);
@@ -54,4 +54,16 @@ mergeInto(LibraryManager.library, {
     });
     return 0;
   },
-});
+};
+
+// In fastcomp, we don't have the clang intrinsic for wasi imports, so
+// instead of wasi_unstable.proc_exit we have __wasi_proc_exit. Add aliases
+// to make that work.
+if (!WASM_BACKEND) {
+  for (var x in WasiLibrary) {
+    if (x.indexOf('__deps') >= 0) continue;
+    WasiLibrary['__wasi_' + x] = x;
+  }
+}
+
+mergeInto(LibraryManager.library, WasiLibrary);
