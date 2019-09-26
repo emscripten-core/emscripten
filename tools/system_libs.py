@@ -613,7 +613,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # functions to something else based on assumptions that they behave exactly
   # like the standard library. This can cause unexpected bugs when we use our
   # custom standard library. The same for other libc/libm builds.
-  cflags = ['-Os', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin', '-D_XOPEN_SOURCE=700']
 
   # Hide several musl warnings that produce a lot of spam to unit test build server logs.
   # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
