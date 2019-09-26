@@ -1,5 +1,4 @@
 __cxa_atexit
-__cxa_pure_virtual
 __lock
 __map_file
 __setErrNo

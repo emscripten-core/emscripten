@@ -442,8 +442,12 @@
 -------- T __cxa_bad_cast
 -------- T __cxa_bad_typeid
 -------- T __cxa_can_catch
+<<<<<<< HEAD
 -------- T __cxa_current_primary_exception
 -------- T __cxa_decrement_exception_refcount
+=======
+-------- T __cxa_deleted_virtual
+>>>>>>> origin/incoming
 -------- T __cxa_demangle
 -------- T __cxa_get_globals
 -------- T __cxa_get_globals_fast
@@ -453,8 +457,12 @@
 -------- T __cxa_increment_exception_refcount
 -------- T __cxa_is_pointer_type
 -------- D __cxa_new_handler
+<<<<<<< HEAD
          U __cxa_pure_virtual
 -------- T __cxa_rethrow_primary_exception
+=======
+-------- T __cxa_pure_virtual
+>>>>>>> origin/incoming
 -------- D __cxa_terminate_handler
 -------- T __cxa_throw_bad_array_new_length
 -------- T __cxa_uncaught_exception

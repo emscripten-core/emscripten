@@ -752,6 +752,7 @@ class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
       'cxa_exception_storage.cpp',
       'cxa_guard.cpp',
       'cxa_handlers.cpp',
+      'cxa_virtual.cpp',
       'fallback_malloc.cpp',
       'stdlib_new_delete.cpp',
       'stdlib_exception.cpp',

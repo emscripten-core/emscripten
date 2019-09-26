@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 __cxa_pure_virtual
+=======
+__cxa_uncaught_exceptions
+>>>>>>> origin/incoming
 __lock
 __map_file
 __syscall140
