@@ -5,6 +5,7 @@ _IO_getc_unlocked
 _IO_putc
 _IO_putc_unlocked
 __THREW__
+___environ
 __addtf3
 __aio_close
 __ashldi3
@@ -100,6 +101,8 @@ __dup3
 __duplocale
 __emscripten_environ_constructor
 __emscripten_pthread_data_constructor
+__env_map
+__environ
 __eqtf2
 __errno_location
 __expo2
@@ -276,6 +279,7 @@ __procfdname
 __progname
 __progname_full
 __ptsname_r
+__putenv
 __rand48_step
 __randname
 __rem_pio2
@@ -388,9 +392,9 @@ _emscripten_atomic_fetch_and_and_u64
 _emscripten_atomic_fetch_and_or_u64
 _emscripten_atomic_fetch_and_sub_u64
 _emscripten_atomic_fetch_and_xor_u64
+_environ
 _flushlbf
 _get_daylight
-_get_environ
 _get_timezone
 _get_tzname
 _ns_flagdata
@@ -797,6 +801,7 @@ getdents
 getdents64
 getdomainname
 getegid
+getenv
 geteuid
 getgid
 getgroups
@@ -1161,6 +1166,7 @@ putc
 putc_unlocked
 putchar
 putchar_unlocked
+putenv
 puts
 putw
 putwc
@@ -1239,6 +1245,7 @@ setbuf
 setbuffer
 setdomainname
 setegid
+setenv
 seteuid
 setgid
 sethostent
@@ -1420,6 +1427,7 @@ ungetwc
 unlink
 unlinkat
 unlockpt
+unsetenv
 uselocale
 utimensat
 valloc

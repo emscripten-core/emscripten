@@ -8,8 +8,9 @@ __unlock
 abort
 emscripten_memcpy_big
 emscripten_resize_heap
+environ_get
+environ_sizes_get
 fd_write
-getenv
 memory
 setTempRet0
 strftime_l
