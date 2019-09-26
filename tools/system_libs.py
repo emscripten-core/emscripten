@@ -739,7 +739,7 @@ class libc_extras(MuslInternalLibrary):
     return not shared.Settings.WASM_BACKEND
 
 
-class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
+class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
