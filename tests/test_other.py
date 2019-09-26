@@ -9782,6 +9782,11 @@ Module.arguments has been replaced with plain arguments_
                        emcc_args=['-s', 'USE_BOOST_HEADERS=1'],
                        assert_returncode=0)
 
+  def test_rapidjson(self):
+    self.do_smart_test(path_from_root('tests', 'test_rapidjson.cpp'),
+                     emcc_args=['-s', 'USE_RAPIDJSON=1'],
+                     assert_returncode=0)
+
   @no_fastcomp('EM_ASM and setjmp works fine on fastcomp')
   def test_setjmp_em_asm(self):
     create_test_file('src.c', '''
