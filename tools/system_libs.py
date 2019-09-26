@@ -1154,12 +1154,29 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
-class libstandalonewasm(Library):
+# This library is used when STANDALONE_WASM is set. In that mode, we don't
+# want to depend on JS, and so this library contains implementations of
+# things that we'd normally do in JS. That includes some general things
+# as well as some additional musl components (that normally we reimplement
+# in JS as it's more efficient that way).
+class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-  src_files = ['standalone_wasm.c']
+
+  def get_files(self):
+    base_files = files_in_path(
+        path_components=['system', 'lib'],
+        filenames=['standalone_wasm.c'])
+    musl_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
+        filenames=['strftime.c',
+                   '__month_to_secs.c',
+                   '__tm_to_secs.c',
+                   '__tz.c',
+                   '__year_to_secs.c'])
+    return base_files + musl_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND

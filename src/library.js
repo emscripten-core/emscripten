@@ -2130,6 +2130,8 @@ LibraryManager.library = {
     return newDate;
   },
 
+  // Note: this is not used in STANDALONE_WASM mode, because it is more
+  //       compact to do it in JS.
   strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
