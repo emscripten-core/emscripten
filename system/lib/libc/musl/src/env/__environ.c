@@ -18,7 +18,7 @@ void __emscripten_environ_constructor(void) {
     __wasi_errno_t err = __wasi_environ_sizes_get(&environ_count,
                                                   &environ_buf_size);
     if (err != __WASI_ESUCCESS) {
-        return err;
+        return;
     }
 
     __environ = malloc(sizeof(char *) * (environ_count + 1));
@@ -28,7 +28,7 @@ void __emscripten_environ_constructor(void) {
     char *environ_buf = malloc(sizeof(char) * environ_buf_size);
     if (__environ == 0 || environ_buf == 0) {
         __environ = 0;
-        return __WASI_ENOMEM;
+        return;
     }
 
     // Ensure null termination.
