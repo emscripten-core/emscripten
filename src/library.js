@@ -1328,19 +1328,6 @@ LibraryManager.library = {
 #endif
 #endif
 
-#if MINIMAL_RUNTIME && !ASSERTIONS
-  __cxa_pure_virtual__sig: 'v',
-  __cxa_pure_virtual: 'abort',
-#else
-  __cxa_pure_virtual: function() {
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-
-    throw 'Pure virtual function called!';
-  },
-#endif
-
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
@@ -2143,6 +2130,8 @@ LibraryManager.library = {
     return newDate;
   },
 
+  // Note: this is not used in STANDALONE_WASM mode, because it is more
+  //       compact to do it in JS.
   strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);

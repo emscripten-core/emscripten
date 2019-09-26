@@ -181,7 +181,7 @@ const char *__strftime_fmt_1(char (*s)[100], size_t *l, int f, const struct tm *
 			*l = 0;
 			return "";
 		}
-		*l = snprintf(*s, sizeof *s, "%+.2d%.2d",
+		*l = snprintf(*s, sizeof *s, "%+.2ld%.2d", // XXX EMSCRIPTEN: %d => %ld
 			(tm->__tm_gmtoff)/3600,
 			abs(tm->__tm_gmtoff%3600)/60);
 		return *s;

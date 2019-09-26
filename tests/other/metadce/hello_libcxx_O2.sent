@@ -1,6 +1,4 @@
 __cxa_atexit
-__cxa_pure_virtual
-__cxa_uncaught_exceptions
 __lock
 __map_file
 __setErrNo
@@ -28,8 +26,6 @@ jsStackTrace
 memcpy
 memory
 memset
-pthread_cond_broadcast
-pthread_cond_wait
 setTempRet0
 stackTrace
 strftime

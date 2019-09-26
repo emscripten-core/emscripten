@@ -64,6 +64,7 @@ __atomic_store_8
 __c_dot_utf8
 __c_dot_utf8_locale
 __c_locale
+__clzti2
 __cos
 __cosdf
 __cosl
@@ -97,6 +98,7 @@ __do_orphaned_stdio_locks
 __dso_handle
 __dup3
 __duplocale
+__emscripten_environ_constructor
 __emscripten_pthread_data_constructor
 __eqtf2
 __errno_location
@@ -128,6 +130,7 @@ __floatscan
 __floatsitf
 __floattidf
 __floattisf
+__floattitf
 __floatunditf
 __floatunsitf
 __floatuntidf
@@ -386,6 +389,10 @@ _emscripten_atomic_fetch_and_or_u64
 _emscripten_atomic_fetch_and_sub_u64
 _emscripten_atomic_fetch_and_xor_u64
 _flushlbf
+_get_daylight
+_get_environ
+_get_timezone
+_get_tzname
 _ns_flagdata
 a64l
 aT
@@ -542,6 +549,7 @@ ctanhf
 ctanhl
 ctanl
 ctermid
+daylight
 dcgettext
 dcngettext
 dgettext
@@ -626,6 +634,7 @@ endhostent
 endmntent
 endnetent
 endservent
+environ
 erand48
 erf
 erfc
@@ -1130,6 +1139,9 @@ pselect
 pthread_barrier_destroy
 pthread_barrier_init
 pthread_barrier_wait
+pthread_cond_broadcast
+pthread_cond_signal
+pthread_cond_wait
 pthread_getspecific
 pthread_key_create
 pthread_key_delete
@@ -1377,6 +1389,7 @@ textdomain
 tgamma
 tgammaf
 tgammal
+timezone
 tmpfile
 tmpfile64
 tmpnam
@@ -1398,6 +1411,7 @@ truncf
 truncl
 ttyname
 ttyname_r
+tzname
 ualarm
 umask
 uname
