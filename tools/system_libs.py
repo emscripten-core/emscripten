@@ -739,23 +739,28 @@ class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
     return cflags
 
-  src_dir = ['system', 'lib', 'libcxxabi', 'src']
-  src_files = [
-    'abort_message.cpp',
-    'cxa_aux_runtime.cpp',
-    'cxa_default_handlers.cpp',
-    'cxa_demangle.cpp',
-    'cxa_exception_storage.cpp',
-    'cxa_guard.cpp',
-    'cxa_handlers.cpp',
-    'cxa_virtual.cpp',
-    'fallback_malloc.cpp',
-    'stdlib_new_delete.cpp',
-    'stdlib_exception.cpp',
-    'stdlib_stdexcept.cpp',
-    'stdlib_typeinfo.cpp',
-    'private_typeinfo.cpp'
-  ]
+  def get_files(self):
+    filenames = [
+      'abort_message.cpp',
+      'cxa_aux_runtime.cpp',
+      'cxa_default_handlers.cpp',
+      'cxa_demangle.cpp',
+      'cxa_exception_storage.cpp',
+      'cxa_guard.cpp',
+      'cxa_handlers.cpp',
+      'cxa_virtual.cpp',
+      'fallback_malloc.cpp',
+      'stdlib_new_delete.cpp',
+      'stdlib_exception.cpp',
+      'stdlib_stdexcept.cpp',
+      'stdlib_typeinfo.cpp',
+      'private_typeinfo.cpp'
+    ]
+    if self.is_noexcept:
+      filenames += ['cxa_noexception.cpp']
+    return files_in_path(
+        path_components=['system', 'lib', 'libcxxabi', 'src'],
+        filenames=filenames)
 
 
 class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
