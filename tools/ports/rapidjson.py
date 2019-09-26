@@ -16,7 +16,7 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('rapidjson', 'https://github.com/Tencent/rapidjson/archive/v' + TAG + '.zip',
-                      'rapidjson-'+TAG, sha512hash=HASH)
+                      'rapidjson-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('librapidjson')
 
   def create():
