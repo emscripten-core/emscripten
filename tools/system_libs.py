@@ -627,6 +627,15 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
              '-Wno-empty-body']
 
+  # The extra files are included in libc for the wasm backend, but in a
+  # separate libc_extras in fastcomp, see below.
+  extras = \
+    shared.path_from_root('system', 'lib', 'libc', 'extras.c')) +
+    files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+        filenames=['getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c',
+                   '__environ.c'])
+
   def get_files(self):
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
@@ -698,8 +707,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     if shared.Settings.WASM_BACKEND:
-      # See libc_extras below
-      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
+      libc_files += libc.extras
 
     return libc_files
 
@@ -727,17 +735,17 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructor it contains can be DCE'd.  With the wasm backend libc is a .a file
-  so object file granularity applies.
+  constructors it contains can be DCE'd.  With the wasm backend libc is a .a
+  file so object file granularity applies.
   """
 
   name = 'libc-extras'
-  src_dir = ['system', 'lib', 'libc']
-  src_files = ['extras.c']
 
   def can_build(self):
     return not shared.Settings.WASM_BACKEND
 
+  def get_files(self):
+    return libc.extras
 
 class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
   name = 'libc++abi'
