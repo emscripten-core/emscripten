@@ -44,10 +44,6 @@ def get_cflags(force_object_files=False):
     flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
-  if shared.Settings.WASM_BACKEND:
-    # musl, compiler-rt, etc use ints in bool contexts in many places, like
-    #  (x << 10) ? y : z
-    flags += ['-Wno-int-in-bool-context']
   return flags
 
 
