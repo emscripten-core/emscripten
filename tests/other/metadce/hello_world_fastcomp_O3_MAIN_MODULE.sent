@@ -1,4 +1,3 @@
-ENV
 STACKTOP
 STACK_MAX
 _IMG_Init
@@ -241,6 +240,7 @@ ___atomic_fetch_xor_8
 ___atomic_is_lock_free
 ___atomic_load_8
 ___atomic_store_8
+___buildEnvironment
 ___builtin_prefetch
 ___clock_gettime
 ___cxa_allocate_exception
@@ -578,6 +578,7 @@ _ceil
 _ceilf
 _ceill
 _chroot
+_clearenv
 _clock
 _clock_getcpuclockid
 _clock_getres
@@ -1504,6 +1505,7 @@ _sem_post
 _sem_trywait
 _sem_wait
 _setTempRet0
+_setenv
 _setgroups
 _setitimer
 _setprotoent
@@ -1536,6 +1538,7 @@ _timelocal
 _times
 _timespec_get
 _tzset
+_unsetenv
 _usleep
 _utime
 _utimes
