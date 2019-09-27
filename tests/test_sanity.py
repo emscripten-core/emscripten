@@ -850,9 +850,10 @@ BINARYEN_ROOT = ''
 
   def test_embuilder_force(self):
     restore_and_set_up()
-    root_cache = os.path.expanduser('~/.emscripten_cache')
     self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
+    # Second time it should not generate anything
     self.assertNotContained('generating system library', self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc']))
+    # Unless --force is specified
     self.assertContained('generating system library', self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--force']))
 
   def test_embuilder_wasm_backend(self):
