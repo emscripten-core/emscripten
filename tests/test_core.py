@@ -112,6 +112,21 @@ def also_with_noderawfs(func):
   return decorated
 
 
+# Also run the test with -s STANDALONE. If we have wasm runtimes, also run in
+# them (regardless we also check that the js+wasm combo works in js vms).
+def also_with_standalone_wasm(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+      print('standalone')
+      self.set_setting('STANDALONE_WASM', 1)
+      func(self)
+
+  return decorated
+
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
@@ -228,6 +243,7 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
+  @also_with_standalone_wasm
   def test_hello_world(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
@@ -270,6 +286,7 @@ class TestCoreBase(RunnerCore):
   def test_i64_umul(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_umul')
 
+  @also_with_standalone_wasm
   def test_i64_precise(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_precise')
 

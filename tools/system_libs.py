@@ -750,7 +750,7 @@ class libc_extras(MuslInternalLibrary):
   def get_files(self):
     return libc.extras
 
-class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
+class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']

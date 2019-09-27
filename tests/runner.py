@@ -472,12 +472,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
         # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
         # ignore some temp file names that we see on our CI infrastructure.
-        ignorable_files = [
+        ignorable_file_prefixes = [
           '/tmp/tmpaddon',
-          '/tmp/circleci-no-output-timeout'
+          '/tmp/circleci-no-output-timeout',
+          '/tmp/wasmer'
         ]
 
-        left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
+        left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
+        left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
         if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
@@ -1150,6 +1152,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         js_engines = [SPIDERMONKEY_ENGINE]
       else:
         js_engines = js_engines[:1]
+    # In standalone mode, also add wasm vms as we should be able to run there too.
+    if self.get_setting('STANDALONE_WASM'):
+      # TODO once standalone wasm support is more stable, apply use_all_engines
+      # like with js engines, but for now as we bring it up, test in all of them
+      wasm_engines = shared.WASM_ENGINES
+      if len(wasm_engines) == 0:
+        logger.warning('no wasm engine was found to run the standalone part of this test')
+      js_engines += wasm_engines
     for engine in js_engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
