@@ -721,8 +721,157 @@ LibraryManager.library = {
 #endif
   },
 
+  __buildEnvironment__deps: ['$ENV'],
+  __buildEnvironment: function(environ) {
+    // WARNING: Arbitrary limit!
+    var MAX_ENV_VALUES = 64;
+    var TOTAL_ENV_SIZE = 1024;
+
+    // Statically allocate memory for the environment.
+    var poolPtr;
+    var envPtr;
+    if (!___buildEnvironment.called) {
+      ___buildEnvironment.called = true;
+      // Set default values. Use string keys for Closure Compiler compatibility.
+      ENV['USER'] = ENV['LOGNAME'] = 'web_user';
+      ENV['PATH'] = '/';
+      ENV['PWD'] = '/';
+      ENV['HOME'] = '/home/web_user';
+      // Browser language detection #8751
+      ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
+      ENV['_'] = thisProgram;
+      // Allocate memory.
+#if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
+      poolPtr = getMemory(TOTAL_ENV_SIZE);
+      envPtr = getMemory(MAX_ENV_VALUES * {{{ Runtime.POINTER_SIZE }}});
+      {{{ makeSetValue('envPtr', '0', 'poolPtr', 'i8*') }}};
+      {{{ makeSetValue('environ', 0, 'envPtr', 'i8*') }}};
+#endif
+    } else {
+      envPtr = {{{ makeGetValue('environ', '0', 'i8**') }}};
+      poolPtr = {{{ makeGetValue('envPtr', '0', 'i8*') }}};
+    }
+
+    // Collect key=value lines.
+    var strings = [];
+    var totalSize = 0;
+    for (var key in ENV) {
+      if (typeof ENV[key] === 'string') {
+        var line = key + '=' + ENV[key];
+        strings.push(line);
+        totalSize += line.length;
+      }
+    }
+    if (totalSize > TOTAL_ENV_SIZE) {
+      throw new Error('Environment size exceeded TOTAL_ENV_SIZE!');
+    }
+
+    // Make new.
+    var ptrSize = {{{ Runtime.getNativeTypeSize('i8*') }}};
+    for (var i = 0; i < strings.length; i++) {
+      var line = strings[i];
+      writeAsciiToMemory(line, poolPtr);
+      {{{ makeSetValue('envPtr', 'i * ptrSize', 'poolPtr', 'i8*') }}};
+      poolPtr += line.length + 1;
+    }
+    {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
+  },
+  $ENV: {},
+  getenv__deps: ['$ENV'],
+  getenv__proxy: 'sync',
+  getenv__sig: 'ii',
+  getenv: function(name) {
+    // char *getenv(const char *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/getenv.html
+    if (name === 0) return 0;
+    name = UTF8ToString(name);
+    if (!ENV.hasOwnProperty(name)) return 0;
+
+    if (_getenv.ret) _free(_getenv.ret);
+    _getenv.ret = allocateUTF8(ENV[name]);
+    return _getenv.ret;
+  },
   // Alias for sanitizers which intercept getenv.
   emscripten_get_env: 'getenv',
+  clearenv__deps: ['$ENV', '__buildEnvironment'],
+  clearenv__proxy: 'sync',
+  clearenv__sig: 'i',
+  clearenv: function() {
+    // int clearenv (void);
+    // http://www.gnu.org/s/hello/manual/libc/Environment-Access.html#index-clearenv-3107
+    ENV = {};
+    ___buildEnvironment(__get_environ());
+    return 0;
+  },
+  setenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
+  setenv__proxy: 'sync',
+  setenv__sig: 'iiii',
+  setenv: function(envname, envval, overwrite) {
+    // int setenv(const char *envname, const char *envval, int overwrite);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/setenv.html
+    if (envname === 0) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    var name = UTF8ToString(envname);
+    var val = UTF8ToString(envval);
+    if (name === '' || name.indexOf('=') !== -1) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    if (ENV.hasOwnProperty(name) && !overwrite) return 0;
+    ENV[name] = val;
+    ___buildEnvironment(__get_environ());
+    return 0;
+  },
+  unsetenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
+  unsetenv__proxy: 'sync',
+  unsetenv__sig: 'ii',
+  unsetenv: function(name) {
+    // int unsetenv(const char *name);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/unsetenv.html
+    if (name === 0) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    name = UTF8ToString(name);
+    if (name === '' || name.indexOf('=') !== -1) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    if (ENV.hasOwnProperty(name)) {
+      delete ENV[name];
+      ___buildEnvironment(__get_environ());
+    }
+    return 0;
+  },
+  putenv__deps: ['$ENV', '__buildEnvironment', '__setErrNo'],
+  putenv__proxy: 'sync',
+  putenv__sig: 'ii',
+  putenv: function(string) {
+    // int putenv(char *string);
+    // http://pubs.opengroup.org/onlinepubs/009695399/functions/putenv.html
+    // WARNING: According to the standard (and the glibc implementation), the
+    //          string is taken by reference so future changes are reflected.
+    //          We copy it instead, possibly breaking some uses.
+    if (string === 0) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    string = UTF8ToString(string);
+    var splitPoint = string.indexOf('=')
+    if (string === '' || string.indexOf('=') === -1) {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    var name = string.slice(0, splitPoint);
+    var value = string.slice(splitPoint + 1);
+    if (!(name in ENV) || ENV[name] !== value) {
+      ENV[name] = value;
+      ___buildEnvironment(__get_environ());
+    }
+    return 0;
+  },
 
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
