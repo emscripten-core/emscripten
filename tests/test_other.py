@@ -8325,6 +8325,11 @@ int main() {
         # verify the wasm runs with the JS
         if target.endswith('.js'):
           self.assertContained('hello, world!', run_js('out.js'))
+        # verify a standalone wasm
+        if standalone:
+          for engine in shared.WASM_ENGINES:
+            print(engine)
+            self.assertContained('hello, world!', run_js('out.wasm', engine=engine))
 
   def test_wasm_targets_side_module(self):
     # side modules do allow a wasm target
