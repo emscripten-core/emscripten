@@ -56,10 +56,11 @@ var WasiLibrary = {
   },
 };
 
-// In fastcomp, we don't have the clang intrinsic for wasi imports, so
-// instead of wasi_unstable.proc_exit we have __wasi_proc_exit. Add aliases
-// to make that work.
-if (!WASM_BACKEND) {
+// Fallback for cases where the wasi_unstable.name prefixing fails,
+// and we have the full name from C. This happens in fastcomp (which
+// lacks the attribute to set the import module and base names) and
+// in LTO mode (as bitcode does not preserve them).
+if (!WASM_BACKEND || !WASM_OBJECT_FILES) {
   for (var x in WasiLibrary) {
     if (x.indexOf('__deps') >= 0) continue;
     WasiLibrary['__wasi_' + x] = x;
