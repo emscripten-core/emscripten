@@ -1327,17 +1327,17 @@ int f() {
       var Module = {
         onRuntimeInitialized: function() {
           _libfunc();
-          __get_environ();
+          __get_daylight();
         }
       };
     ''')
 
-    # __get_environ should not be linked by default, even with EXPORT_ALL
+    # __get_daylight should not be linked by default, even with EXPORT_ALL
     Building.emcc('lib.c', ['-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     err = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-    self.assertContained('__get_environ is not defined', err)
+    self.assertContained('__get_daylight is not defined', err)
 
-    Building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=['__get_environ']", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    Building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=['__get_daylight']", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', run_js('a.out.js'))
 
   def test_stdin(self):
