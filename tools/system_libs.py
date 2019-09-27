@@ -705,8 +705,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       # global constructor there for __environ, which would mean it is always
       # included.
       libc_files += files_in_path(
-            path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
-            filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+          filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     return libc_files
 
