@@ -16,12 +16,14 @@ abortOnCannotGrowMemory
 atexit
 demangle
 demangleAll
+emscripten_get_environ
 emscripten_get_heap_size
 emscripten_get_sbrk_ptr
 emscripten_memcpy_big
 emscripten_resize_heap
+environ_get
+environ_sizes_get
 fd_write
-getenv
 jsStackTrace
 memcpy
 memory

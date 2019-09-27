@@ -2946,7 +2946,7 @@ Var: 42
       self.assertGreater(len(exports), 20)
       # wasm backend includes alias in NAMED_GLOBALS
       if self.is_wasm_backend():
-        self.assertLess(len(exports), 46)
+        self.assertLess(len(exports), 55)
       else:
         self.assertLess(len(exports), 30)
 
@@ -5282,6 +5282,9 @@ main( int argv, char ** argc ) {
   def test_env(self):
     src = open(path_from_root('tests', 'env', 'src.c')).read()
     expected = open(path_from_root('tests', 'env', 'output.txt')).read()
+    if not self.is_wasm_backend():
+      # the fastcomp implementation is incorrect in one way
+      expected = expected.replace('after alteration: Qest5', 'after alteration: test5')
     self.do_run(src, [
       expected.replace('{{{ THIS_PROGRAM }}}', self.in_dir('src.cpp.o.js')).replace('\\', '/'), # node, can find itself properly
       expected.replace('{{{ THIS_PROGRAM }}}', './this.program') # spidermonkey, v8

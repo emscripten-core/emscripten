@@ -5,6 +5,7 @@
 -------- W _IO_getc_unlocked
 -------- W _IO_putc
 -------- W _IO_putc_unlocked
+-------- W ___environ
          U __addtf3
 -------- W __aio_close
          U __asan_alloca_poison
@@ -43,7 +44,6 @@
          U __asan_stack_malloc_8
          U __asan_unregister_globals
          U __asan_version_mismatch_check_v8
-         U __buildEnvironment
 -------- D __c_dot_utf8
 -------- D __c_dot_utf8_locale
 -------- D __c_locale
@@ -77,6 +77,8 @@
 -------- T __duplocale
 -------- T __emscripten_environ_constructor
 -------- T __emscripten_pthread_data_constructor
+-------- D __env_map
+-------- D __environ
          U __eqtf2
 -------- T __errno_location
 -------- T __expo2
@@ -230,6 +232,7 @@
 -------- D __progname
 -------- D __progname_full
 -------- T __ptsname_r
+-------- T __putenv
 -------- T __rand48_step
 -------- T __randname
 -------- T __rem_pio2
@@ -420,6 +423,8 @@
 -------- W __vm_wait
 -------- T __vsyslog
          U __wait
+         U __wasi_environ_get
+         U __wasi_environ_sizes_get
          U __wasi_fd_write
 -------- T __wcscoll_l
 -------- T __wcsxfrm_l
@@ -431,10 +436,10 @@
 -------- W __xpg_strerror_r
 -------- T __xstat
 -------- W __xstat64
+-------- W _environ
          U _exit
 -------- T _flushlbf
 -------- T _get_daylight
--------- T _get_environ
 -------- T _get_timezone
 -------- T _get_tzname
 -------- D _ns_flagdata
@@ -603,7 +608,7 @@
 -------- T endmntent
 -------- W endnetent
 -------- T endservent
--------- D environ
+-------- W environ
 -------- T erand48
 -------- T erf
 -------- T erfc
@@ -755,7 +760,7 @@
 -------- W getdents64
 -------- T getdomainname
 -------- T getegid
-         U getenv
+-------- T getenv
 -------- T geteuid
 -------- T getgid
 -------- T getgroups
@@ -1091,6 +1096,7 @@
 -------- T putc_unlocked
 -------- T putchar
 -------- T putchar_unlocked
+-------- T putenv
 -------- T puts
 -------- T putw
 -------- T putwc
@@ -1167,6 +1173,7 @@
 -------- T setbuffer
 -------- T setdomainname
 -------- T setegid
+-------- T setenv
 -------- T seteuid
 -------- T setgid
 -------- T sethostent
@@ -1348,6 +1355,7 @@
 -------- T unlink
 -------- T unlinkat
 -------- T unlockpt
+-------- T unsetenv
 -------- W uselocale
 -------- T utimensat
 -------- T vasprintf

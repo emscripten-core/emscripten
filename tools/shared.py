@@ -511,7 +511,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 11)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 12)
 
 
 def generate_sanity():
@@ -2528,6 +2528,8 @@ class Building(object):
       })
     # fix wasi imports TODO: support wasm stable with an option?
     WASI_IMPORTS = set([
+      'environ_get',
+      'environ_sizes_get',
       'fd_write',
       'proc_exit',
     ])

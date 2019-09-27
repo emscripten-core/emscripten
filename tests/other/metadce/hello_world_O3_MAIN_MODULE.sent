@@ -676,6 +676,7 @@ emscripten_get_devicemotion_status
 emscripten_get_deviceorientation_status
 emscripten_get_element_css_size
 emscripten_get_env
+emscripten_get_environ
 emscripten_get_fullscreen_status
 emscripten_get_gamepad_status
 emscripten_get_heap_size
@@ -1035,6 +1036,8 @@ emscripten_worker_respond_provisionally
 emscripten_yield
 endprotoent
 endpwent
+environ_get
+environ_sizes_get
 execl
 execle
 execlp
@@ -1060,6 +1063,8 @@ g$__THREW__
 g$__c_dot_utf8
 g$__c_dot_utf8_locale
 g$__c_locale
+g$__env_map
+g$__environ
 g$__optpos
 g$__optreset
 g$__pio2_hi
@@ -1072,7 +1077,6 @@ g$__threwValue
 g$atanhi
 g$atanlo
 g$daylight
-g$environ
 g$h_errno
 g$optarg
 g$opterr
@@ -1087,7 +1091,6 @@ gai_strerror
 getTempRet0
 getaddrinfo
 getdate
-getenv
 gethostbyaddr
 gethostbyname
 gethostbyname_r
@@ -1482,6 +1485,7 @@ pathconf
 pixelRGBA
 posix_spawn
 posix_spawnp
+proc_exit
 pthread_attr_destroy
 pthread_attr_getdetachstate
 pthread_attr_getstack
@@ -1534,7 +1538,6 @@ pthread_spin_init
 pthread_spin_lock
 pthread_spin_trylock
 pthread_spin_unlock
-putenv
 raise
 rectangleColor
 rectangleRGBA
@@ -1550,7 +1553,6 @@ sem_post
 sem_trywait
 sem_wait
 setTempRet0
-setenv
 setgroups
 setitimer
 setprotoent
@@ -1585,7 +1587,6 @@ timelocal
 times
 timespec_get
 tzset
-unsetenv
 usleep
 utime
 utimes

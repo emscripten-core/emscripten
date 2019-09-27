@@ -1327,17 +1327,17 @@ int f() {
       var Module = {
         onRuntimeInitialized: function() {
           _libfunc();
-          __get_environ();
+          __get_daylight();
         }
       };
     ''')
 
-    # __get_environ should not be linked by default, even with EXPORT_ALL
+    # __get_daylight should not be linked by default, even with EXPORT_ALL
     Building.emcc('lib.c', ['-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     err = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
-    self.assertContained('__get_environ is not defined', err)
+    self.assertContained('__get_daylight is not defined', err)
 
-    Building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=['__get_environ']", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
+    Building.emcc('lib.c', ['-s', "EXPORTED_FUNCTIONS=['__get_daylight']", '-s', 'EXPORT_ALL', '--pre-js', 'main.js'], output_filename='a.out.js')
     self.assertContained('libfunc\n', run_js('a.out.js'))
 
   def test_stdin(self):
@@ -8111,7 +8111,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 33, [], ['waka'], 226582, 16, 33, None) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 17, 33, None) # noqa
 
   @parameterized({
     'normal': (['-O2'], 37, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
@@ -8139,7 +8139,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1609, [], [], 517336, None, 1509, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1610, [], [], 517336, None, 1517, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8159,7 +8159,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1591, [], [], 226403, None, 107, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1599, [], [], 226403, None, 107, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
