@@ -30,7 +30,7 @@ long* _get_timezone() {
 // we use this constructor and stubs + getenv etc. in JS, because libc
 // is a .bc file and we don't want to have a global constructor there
 // for __environ, which would mean it is always included.
-#ifndef __asmjs__
+#ifdef __asmjs__
 
 char** environ;
 
