@@ -1,4 +1,3 @@
-ENV
 IMG_Init
 IMG_Load
 IMG_Load_RW
@@ -230,6 +229,7 @@ _ZSt9terminatev
 __assert_fail
 __assert_func
 __atomic_is_lock_free
+__buildEnvironment
 __builtin_prefetch
 __clock_gettime
 __cxa_allocate_exception
@@ -568,6 +568,7 @@ boxColor
 boxRGBA
 ceill
 chroot
+clearenv
 clock
 clock_getcpuclockid
 clock_getres
