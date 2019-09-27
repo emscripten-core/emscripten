@@ -2946,7 +2946,7 @@ Var: 42
       self.assertGreater(len(exports), 20)
       # wasm backend includes alias in NAMED_GLOBALS
       if self.is_wasm_backend():
-        self.assertLess(len(exports), 46)
+        self.assertLess(len(exports), 55)
       else:
         self.assertLess(len(exports), 30)
 
