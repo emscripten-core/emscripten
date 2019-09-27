@@ -518,13 +518,15 @@ function loadWebAssemblyModule(binary, flags) {
         };
       }
     };
+    var proxy = new Proxy(env, proxyHandler);
     var info = {
       global: {
         'NaN': NaN,
         'Infinity': Infinity,
       },
       'global.Math': Math,
-      env: new Proxy(env, proxyHandler),
+      env: proxy,
+      wasi_unstable: proxy,
       'asm2wasm': asm2wasmImports
     };
 #if ASSERTIONS

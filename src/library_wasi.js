@@ -62,6 +62,33 @@ var WasiLibrary = {
     });
     return 0;
   },
+
+  args_sizes_get: function(argc, argv_buf_size) {
+#if MAIN_READS_PARAMS
+    {{{ makeSetValue('argc', 0, 'mainArgs.length', 'i32') }}};
+    var bufSize = 0;
+    mainArgs.forEach(function(arg) {
+      bufSize += arg.length + 1;
+    });
+    {{{ makeSetValue('argv_buf_size', 0, 'bufSize', 'i32') }}};
+#else
+    {{{ makeSetValue('argc', 0, '0', 'i32') }}};
+#endif
+    return 0;
+  },
+
+  args_get: function(argv, argv_buf) {
+#if MAIN_READS_PARAMS
+    var bufSize = 0;
+    mainArgs.forEach(function(arg, i) {
+      var ptr = argv_buf + bufSize;
+      {{{ makeSetValue('argv', 'i * 4', 'ptr', 'i32') }}};
+      writeAsciiToMemory(arg, ptr);
+      bufSize += arg.length + 1;
+    });
+#endif
+    return 0;
+  },
 };
 
 // Fallback for cases where the wasi_unstable.name prefixing fails,

@@ -400,6 +400,8 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_args_get
+___wasi_args_sizes_get
 ___wasi_emscripten_get_environ
 ___wasi_environ_get
 ___wasi_environ_sizes_get
@@ -571,6 +573,8 @@ _alcOpenDevice
 _alcProcessContext
 _alcSuspendContext
 _arc4random
+_args_get
+_args_sizes_get
 _asctime
 _asctime_r
 _atexit
