@@ -627,12 +627,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
              '-Wno-visibility', '-Wno-pointer-sign', '-Wno-absolute-value',
              '-Wno-empty-body']
 
-  # The extra files are included in libc for the wasm backend, but in a
-  # separate libc_extras in fastcomp, see below.
-  extras = \
-    [shared.path_from_root('system', 'lib', 'libc', 'extras.c'),
-     shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'env', '__environ.c')]
-
   def get_files(self):
     libc_files = []
     musl_srcdir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src')
@@ -703,14 +697,15 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
-    # Include all the getenv stuff aside for the global constructor, which we
-    # leave for extras.
-    libc_files += files_in_path(
-          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
-          filenames=['getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
-
     if shared.Settings.WASM_BACKEND:
-      libc_files += libc.extras
+      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
+      # Include all the getenv stuff with the wasm backend. With fastcomp we
+      # still use JS because libc is a .bc file and we don't want to have a
+      # global constructor there for __environ, which would mean it is always
+      # included.
+      libc_files += files_in_path(
+            path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+            filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     return libc_files
 
@@ -738,17 +733,17 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructors it contains can be DCE'd.  With the wasm backend libc is a .a
+  constructor it contains can be DCE'd.  With the wasm backend libc it is a .a
   file so object file granularity applies.
   """
 
   name = 'libc-extras'
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['extras.c']
 
   def can_build(self):
     return not shared.Settings.WASM_BACKEND
 
-  def get_files(self):
-    return libc.extras
 
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'

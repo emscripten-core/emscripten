@@ -721,6 +721,10 @@ LibraryManager.library = {
 #endif
   },
 
+  // This implementation of environ/getenv/etc. is used for fastcomp, due
+  // to limitations in the system libraries (we can't easily add a global
+  // ctor to create the environment without it always being linked in with
+  // libc).
   __buildEnvironment__deps: ['$ENV'],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
