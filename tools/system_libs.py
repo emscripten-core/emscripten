@@ -698,6 +698,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
     if shared.Settings.WASM_BACKEND:
+      # See libc_extras below
       libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
       # Include all the getenv stuff with the wasm backend. With fastcomp we
       # still use JS because libc is a .bc file and we don't want to have a

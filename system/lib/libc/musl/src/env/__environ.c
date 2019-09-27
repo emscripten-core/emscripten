@@ -11,7 +11,7 @@ weak_alias(__environ, _environ);
 weak_alias(__environ, environ);
 
 #ifdef __EMSCRIPTEN__
-__attribute__((constructor(100)))
+__attribute__((constructor(100))) // construct this before user code
 void __emscripten_environ_constructor(void) {
     size_t environ_count;
     size_t environ_buf_size;
