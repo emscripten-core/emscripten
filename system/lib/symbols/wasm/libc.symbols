@@ -8,6 +8,7 @@
 -------- W ___environ
          U __addtf3
 -------- W __aio_close
+         U __buildEnvironment
 -------- D __c_dot_utf8
 -------- D __c_dot_utf8_locale
 -------- D __c_locale
@@ -403,6 +404,7 @@
          U _exit
 -------- T _flushlbf
 -------- T _get_daylight
+-------- T _get_environ
 -------- T _get_timezone
 -------- T _get_tzname
 -------- D _ns_flagdata
@@ -572,7 +574,7 @@
 -------- T endmntent
 -------- W endnetent
 -------- T endservent
--------- W environ
+-------- D environ
 -------- T erand48
 -------- T erf
 -------- T erfc
