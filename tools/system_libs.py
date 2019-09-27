@@ -630,11 +630,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # The extra files are included in libc for the wasm backend, but in a
   # separate libc_extras in fastcomp, see below.
   extras = \
-    [shared.path_from_root('system', 'lib', 'libc', 'extras.c')] + \
-    files_in_path(
-        path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
-        filenames=['getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c',
-                   '__environ.c'])
+    [shared.path_from_root('system', 'lib', 'libc', 'extras.c'),
+     shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'env', '__environ.c')]
 
   def get_files(self):
     libc_files = []
@@ -705,6 +702,12 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
               break
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
+
+    # Include all the getenv stuff aside for the global constructor, which we
+    # leave for extras.
+    libc_files += files_in_path(
+          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+          filenames=['getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     if shared.Settings.WASM_BACKEND:
       libc_files += libc.extras
