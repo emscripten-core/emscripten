@@ -2548,7 +2548,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     internal_name = fix_import_name(name)
     if internal_name in send_items_map:
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
-    send_items_map[internal_name] = name
+    if internal_name in metadata['declares'] or \
+       internal_name.startswith('emscripten_asm_const_') or \
+       internal_name.startswith('invoke_') or \
+       internal_name in metadata['emJsFuncs']:
+      # the wasm needs this
+      send_items_map[internal_name] = name
 
   add_standard_wasm_imports(send_items_map)
 
