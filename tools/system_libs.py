@@ -294,6 +294,9 @@ class Library(object):
     """
     return True
 
+  def erase(self):
+    shared.Cache.erase_file(self.get_filename())
+
   def get_path(self):
     """
     Gets the cached path of this library.
