@@ -383,11 +383,20 @@ v128_t TESTFN v128_and(v128_t x, v128_t y) {
   return wasm_v128_and(x, y);
 }
 v128_t TESTFN v128_or(v128_t x, v128_t y) {
-  return wasm_v128_or(x,y);
+  return wasm_v128_or(x, y);
 }
 v128_t TESTFN v128_xor(v128_t x, v128_t y) {
-  return wasm_v128_xor(x,y);
+  return wasm_v128_xor(x, y);
 }
+
+#ifdef __wasm_undefined_simd128__
+
+v128_t TESTFN v128_andnot(v128_t x, v128_t y) {
+  return wasm_v128_andnot(x, y);
+}
+
+#endif // __wasm_undefined_simd128__
+
 v128_t TESTFN v128_bitselect(v128_t x, v128_t y, v128_t cond) {
   return wasm_v128_bitselect(x, y, cond);
 }
@@ -1281,6 +1290,16 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     v128_xor((v128_t)i32x4(0, 0, -1, -1), (v128_t)i32x4(0, -1, 0, -1)),
     i32x4(0, -1, -1, 0)
   );
+
+#ifdef __wasm_undefined_simd128__
+
+  expect_vec(
+    v128_andnot((v128_t)i32x4(0, 0, -1, -1), (v128_t)i32x4(0, -1, 0, -1)),
+    i32x4(0, -1, -1, 0)
+  );
+
+#endif // __wasm_undefined_simd128__
+
   expect_vec(
     v128_bitselect(
       (v128_t)i32x4(0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA, 0xAAAAAAAA),
