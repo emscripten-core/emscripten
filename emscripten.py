@@ -2426,7 +2426,7 @@ def add_standard_wasm_imports(send_items_map):
   if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
-  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG:
+  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
     # wasm2js legalization of i64 support code may require these
     # autodebug may also need them
     send_items_map['setTempRet0'] = 'setTempRet0'
@@ -2515,6 +2515,7 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
+  # waka
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
@@ -2550,9 +2551,10 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
     if internal_name in metadata['declares'] or \
        internal_name.startswith('emscripten_asm_const_') or \
-       internal_name.startswith('invoke_') or \
-       internal_name in metadata['emJsFuncs']:
-      # the wasm needs this
+       internal_name in invoke_funcs or \
+       internal_name in metadata['emJsFuncs'] or \
+       internal_name in basic_funcs:
+      # the wasm needs this waka
       send_items_map[internal_name] = name
 
   add_standard_wasm_imports(send_items_map)
