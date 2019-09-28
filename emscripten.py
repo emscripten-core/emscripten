@@ -2523,7 +2523,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   em_asm_funcs = ['_emscripten_asm_const_' + sig for sig in em_asm_sigs]
   em_js_funcs = list(metadata['emJsFuncs'].keys())
   declared_items = ['_' + item for item in metadata['declares']]
-  send_items = basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items
+  send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     if g.startswith('Math_'):
