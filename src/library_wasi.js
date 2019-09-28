@@ -12,7 +12,7 @@ var WasiLibrary = {
   },
 
   emscripten_get_environ: function() {
-    if (!_emscripten_get_environ.ENV) {
+    if (!_emscripten_get_environ.strings) {
       var ENV = {};
       ENV['USER'] = ENV['LOGNAME'] = 'web_user';
       ENV['PATH'] = '/';

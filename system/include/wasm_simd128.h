@@ -585,6 +585,13 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_or(v128_t a, v128_t b) { r
 // v128_t wasm_v128_xor(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_xor(v128_t a, v128_t b) { return a ^ b; }
 
+#ifdef __wasm_unimplemented_simd128__
+
+// v128_t wasm_v128_andnot(v128_t a, v128_t b)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_andnot(v128_t a, v128_t b) { return a & ~b; }
+
+#endif // __wasm_unimplemented_simd128__
+
 // v128_t wasm_v128_bitselect(v128_t a, v128_t b, v128_t mask)
 // `a` is selected for each lane for which `mask` is nonzero.
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_bitselect(v128_t a, v128_t b, v128_t mask) {
