@@ -2427,8 +2427,7 @@ def add_standard_wasm_imports(send_items_map):
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
   if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
-    # wasm2js legalization of i64 support code may require these
-    # autodebug may also need them
+    # legalization of i64 support code may require these in some modes
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
@@ -2520,7 +2519,9 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     basic_funcs += ['segfault', 'alignfault']
 
   library_funcs = forwarded_json['Functions']['libraryFunctions'].keys()
-  em_asm_funcs = [func for func in library_funcs if func.startswith('_emscripten_asm_const')]
+  em_asm_sigs = [sigs for _, sigs, _ in metadata['asmConsts'].values()]
+  em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
+  em_asm_funcs = ['_emscripten_asm_const_' + sig for sig in em_asm_sigs]
   em_js_funcs = list(metadata['emJsFuncs'].keys())
   declared_items = ['_' + item for item in metadata['declares']]
   send_items = (basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
