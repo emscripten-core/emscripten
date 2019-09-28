@@ -2518,7 +2518,6 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  library_funcs = forwarded_json['Functions']['libraryFunctions'].keys()
   em_asm_sigs = [sigs for _, sigs, _ in metadata['asmConsts'].values()]
   em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
   em_asm_funcs = ['_emscripten_asm_const_' + sig for sig in em_asm_sigs]
