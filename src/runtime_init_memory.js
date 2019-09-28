@@ -77,10 +77,6 @@ updateGlobalBufferAndViews(buffer);
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
-
-// XXX for eval-ctors to be able to optimize mallocs at compile time, this must be applied to the wasm, not during startup.
-// XXX also necessary for standalone mode
-// add test that prints sbrk(0) != 0
 HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
 #if USE_PTHREADS
 }
