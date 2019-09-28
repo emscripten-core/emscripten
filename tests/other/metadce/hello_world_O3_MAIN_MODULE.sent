@@ -150,6 +150,7 @@ g$stdin
 g$stdout
 g$timezone
 g$tzname
+getTempRet0
 getnameinfo
 gmtime_r
 inet_addr
