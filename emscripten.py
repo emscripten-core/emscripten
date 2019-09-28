@@ -2515,21 +2515,15 @@ def add_standard_wasm_imports(send_items_map):
 
 
 def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
-  # waka
   basic_funcs = []
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  if not shared.Settings.RELOCATABLE:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-
-  implemented_functions = set(metadata['implementedFunctions'])
-  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
-  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
-
-  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
+  library_funcs = forwarded_json['Functions']['libraryFunctions'].keys()
+  em_asm_funcs = [func for func in library_funcs if func.startswith('_emscripten_asm_const')]
+  em_js_funcs = metadata['emJsFuncs'].keys()
+  declared_items = ['_' + item for item in metadata['declares']]
+  send_items = (basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     if g.startswith('Math_'):
@@ -2549,13 +2543,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
     internal_name = fix_import_name(name)
     if internal_name in send_items_map:
       exit_with_error('duplicate symbol in exports to wasm: %s', name)
-    if internal_name in metadata['declares'] or \
-       internal_name.startswith('emscripten_asm_const_') or \
-       internal_name in invoke_funcs or \
-       internal_name in metadata['emJsFuncs'] or \
-       internal_name in basic_funcs:
-      # the wasm needs this waka
-      send_items_map[internal_name] = name
+    send_items_map[internal_name] = name
 
   add_standard_wasm_imports(send_items_map)
 
