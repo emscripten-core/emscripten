@@ -2521,7 +2521,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
   library_funcs = forwarded_json['Functions']['libraryFunctions'].keys()
   em_asm_funcs = [func for func in library_funcs if func.startswith('_emscripten_asm_const')]
-  em_js_funcs = metadata['emJsFuncs'].keys()
+  em_js_funcs = list(metadata['emJsFuncs'].keys())
   declared_items = ['_' + item for item in metadata['declares']]
   send_items = (basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
