@@ -41,7 +41,6 @@
 #define ELOOP              __WASI_ELOOP
 #define ENOMSG             __WASI_ENOMSG
 #define EIDRM              __WASI_EIDRM
-#define EL2NSYNC           __WASI_EL2NSYNC
 #define ENOLINK            __WASI_ENOLINK
 #define EPROTO             __WASI_EPROTO
 #define EMULTIHOP          __WASI_EMULTIHOP
@@ -136,6 +135,7 @@
 #define EKEYREJECTED    153
 #define ERFKILL         154
 #define EHWPOISON       155
+#define EL2NSYNC        156
 
 // codes which musl defines as aliases
 
