@@ -5,17 +5,17 @@ result: /there!
 
 readlink(file)
 ret: -1
-errno: 22
+errno: 28
 result: /there!
 
 readlink(folder)
 ret: -1
-errno: 22
+errno: 28
 result: /there!
 
 symlink/overwrite
 ret: -1
-errno: 17
+errno: 20
 
 symlink/normal
 ret: 0

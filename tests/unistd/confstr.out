@@ -64,4 +64,4 @@ _CS_POSIX_V6_ILP32_OFFBIG_CFLAGS: -m32 -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=6
 errno: 0
 
 (invalid) ret: 0
-errno: 22
+errno: 28
