@@ -7807,6 +7807,7 @@ extern "C" {
           'allow': TRAP_OUTPUTS
         }[mode], assert_returncode=None)
 
+  @also_with_standalone_wasm
   def test_sbrk(self):
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 

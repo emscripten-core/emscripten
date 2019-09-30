@@ -1642,6 +1642,10 @@ var MAIN_READS_PARAMS = 1;
 // The computed location of the pointer to the sbrk position.
 var DYNAMICTOP_PTR = -1;
 
+// The computed initial value of the program break (the sbrk position), which
+// is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
+var DYNAMIC_BASE = -1;
+
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
