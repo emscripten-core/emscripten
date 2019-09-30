@@ -9795,7 +9795,7 @@ Module.arguments has been replaced with plain arguments_
     # error out when linking with these flags.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lm', '-ldl', '-lrt', '-lpthread'])
 
-  @no_fastcomp('lld specific')
+  @no_fastcomp('lld-specific')
   def test_supported_linker_flags(self):
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,waka'], stderr=PIPE).stderr
     self.assertContained('WARNING: ignoring unsupported linker flag: `waka', out)
