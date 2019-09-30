@@ -76,6 +76,7 @@ WASM_ENDINGS = ('.wasm', '.wast')
 SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
+    '--no-check-features',
     '--whole-archive', '--no-whole-archive',
     '-whole-archive', '-no-whole-archive')
 
