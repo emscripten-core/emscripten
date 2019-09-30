@@ -43,7 +43,8 @@ void basics() {
   stage("basics");
   stage("allocate 0");
   void* ptr = malloc(0);
-  assert(ptr == 0);
+  assert(ptr != 0);
+  free(ptr);
   stage("allocate 100");
   void* first = malloc(100);
   stage("free 100");
@@ -86,7 +87,9 @@ void blank_slate() {
   for (int i = 0; i < 3; i++) {
     emmalloc_blank_slate_from_orbit();
     void* two = malloc(0);
-    assert(two == ptr);
+    // emmalloc_blank_slate_from_orbit clears out the free list without freeing the blocks on it
+    // Effectively, memory is leaked and we do not expect the pointers to be the same
+    assert(two != ptr);
     free(two);
   }
 }
