@@ -42,7 +42,10 @@ if (typeof WebAssembly !== 'object') {
 
 var wasmMemory;
 
-// Potentially used for direct table calls.
+// In fastcomp asm.js, we don't need a wasm Table at all.
+// In the wasm backend, we polyfill the WebAssembly object,
+// so this creates a (non-native-wasm) table for us.
+#if WASM_BACKEND || WASM
 var wasmTable = new WebAssembly.Table({
   'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #if !ALLOW_TABLE_GROWTH
@@ -54,6 +57,7 @@ var wasmTable = new WebAssembly.Table({
 #endif // WASM_BACKEND
   'element': 'anyfunc'
 });
+#endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS
 // For sending to workers.
