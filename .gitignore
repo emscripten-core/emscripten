@@ -1,3 +1,8 @@
+# Config file
+.emscripten
+.emscripten_sanity
+.emscripten_sanity_wasm
+
 # vim/emacs temporary/backup files
 *~
 *.swp

@@ -28,7 +28,11 @@ v.1.38.47: 10/02/2019
    should rebuild them. See #9545.
  - Removed build option -s ONLY_MY_CODE as we now have much better solutions
    for that, like building to a wasm object file or using STANDALONE_WASM
-   etc. (see https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+   etc. (see
+   https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+ - Emscripten now supports the config file (.emscripten) being placed in the
+   emscriten directory rather that the current user's home directory.
+   See #9543
 
 v.1.38.46: 09/25/2019
 ---------------------

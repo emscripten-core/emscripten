@@ -231,13 +231,19 @@ This command will now exit. When you are done editing those paths, re-run it.
 ''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
 
 
-# Emscripten configuration is done through the --em-config command line option or
-# the EM_CONFIG environment variable. If the specified string value contains newline
-# or semicolon-separated definitions, then these definitions will be used to configure
-# Emscripten.  Otherwise, the string is understood to be a path to a settings
-# file that contains the required definitions.
+# Emscripten configuration is done through the --em-config command line option
+# or the EM_CONFIG environment variable. If the specified string value contains
+# newline or semicolon-separated definitions, then these definitions will be
+# used to configure Emscripten.  Otherwise, the string is understood to be a
+# path to a settings file that contains the required definitions.
+# The search order from the config file is as follows:
+# 1. Specified on the command line (--em-config)
+# 2. Specified via EM_CONFIG environment variable
+# 3. If emscripen-local .emescripten file is found, use that
+# 4. Fall back users home direcotry (~/.emscripten).
 
-try:
+embedded_config = path_from_root('.emscripten')
+if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
   # And now remove it from sys.argv
   skip = False
@@ -250,22 +256,25 @@ try:
     elif skip:
       skip = False
   sys.argv = newargs
-  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
-  # those child processes get the same configuration file by setting it to the currently active environment.
-  os.environ['EM_CONFIG'] = EM_CONFIG
-except Exception:
-  EM_CONFIG = os.environ.get('EM_CONFIG')
-
-if EM_CONFIG and not os.path.isfile(EM_CONFIG):
-  if EM_CONFIG.startswith('-'):
-    exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
-  if '=' not in EM_CONFIG:
-    exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
-  else:
-    EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
-
-if not EM_CONFIG:
+  if not os.path.isfile(EM_CONFIG):
+    if EM_CONFIG.startswith('-'):
+      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
+    if '=' not in EM_CONFIG:
+      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+    else:
+      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+elif 'EM_CONFIG' in os.environ:
+  EM_CONFIG = os.environ['EM_CONFIG']
+elif os.path.exists(embedded_config):
+  EM_CONFIG = embedded_config
+else:
   EM_CONFIG = '~/.emscripten'
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
 if '\n' in EM_CONFIG:
   CONFIG_FILE = None
   logger.debug('EM_CONFIG is specified inline without a file')
