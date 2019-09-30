@@ -59,7 +59,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_runner
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
@@ -1945,25 +1945,12 @@ def run_tests(options, suites):
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
-  parser.add_argument('-j', '--js-engine', help='Set JS_ENGINE_OVERRIDE')
   parser.add_argument('tests', nargs='*')
   return parser.parse_args()
 
 
 def main(args):
   options = parse_args(args)
-  if options.js_engine:
-    if options.js_engine == 'SPIDERMONKEY_ENGINE':
-      Building.JS_ENGINE_OVERRIDE = SPIDERMONKEY_ENGINE
-    elif options.js_engine == 'V8_ENGINE':
-      Building.JS_ENGINE_OVERRIDE = V8_ENGINE
-    elif options.js_engine == 'NODE_JS':
-      Building.JS_ENGINE_OVERRIDE = NODE_JS
-    else:
-      print('Unknown js engine override: ' + options.js_engine)
-      return 1
-    print("Overriding JS engine: " + Building.JS_ENGINE_OVERRIDE[0])
-
   check_js_engines()
 
   def prepend_default(arg):

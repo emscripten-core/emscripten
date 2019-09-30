@@ -1387,7 +1387,6 @@ def demangle_c_symbol_name(name):
 #  Building
 class Building(object):
   COMPILER = CLANG
-  JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
   # internal caches
