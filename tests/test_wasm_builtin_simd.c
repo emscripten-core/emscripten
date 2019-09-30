@@ -317,6 +317,9 @@ i8x16 TESTFN i8x16_or(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_xor(i8x16 x, i8x16 y) {
   return x ^ y;
 }
+i8x16 TESTFN i8x16_andnot(i8x16 x, i8x16 y) {
+  return x & ~y;
+}
 i8x16 TESTFN i8x16_bitselect(i8x16 x, i8x16 y, i8x16 cond) {
   return (i8x16)__builtin_wasm_bitselect((i32x4)x, (i32x4)y, (i32x4)cond);
 }
@@ -1053,6 +1056,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(
     i8x16_xor((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
     (i8x16)((i32x4){0, -1, -1, 0})
+  );
+  expect_vec(
+    i8x16_andnot((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
+    (i8x16)((i32x4){0, 0, -1, 0})
   );
   expect_vec(
     i8x16_bitselect(

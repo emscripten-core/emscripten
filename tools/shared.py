@@ -2553,6 +2553,7 @@ class Building(object):
       f.write(txt)
     # run wasm-metadce
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
+    cmd += Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g']
     out = run_process(cmd, stdout=PIPE).stdout
