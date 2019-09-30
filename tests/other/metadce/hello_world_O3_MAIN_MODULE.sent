@@ -14,7 +14,6 @@ __syscall125
 __syscall132
 __syscall133
 __syscall14
-__syscall140
 __syscall142
 __syscall144
 __syscall145
@@ -116,6 +115,7 @@ environ_get
 environ_sizes_get
 fabsl
 fd_close
+fd_seek
 fd_write
 fork
 fp$__stdio_close$ii

@@ -2531,6 +2531,7 @@ class Building(object):
       'environ_sizes_get',
       'fd_write',
       'fd_close',
+      'fd_seek',
       'proc_exit',
     ])
     for item in graph:

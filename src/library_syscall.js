@@ -806,29 +806,6 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
-  __syscall140: function(which, varargs) { // llseek
-    var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-
-    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return -{{{ cDefine('EOVERFLOW') }}};
-    }
-
-    FS.llseek(stream, offset, whence);
-    {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
-    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
-    return 0;
-  },
   __syscall142: function(which, varargs) { // newselect
     // readfds are supported,
     // writefds checks socket open status
@@ -1466,12 +1443,29 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
-  // Fallbacks for cases where the wasi_unstable.name prefixing fails,
-  // and we have the full name from C. This happens in fastcomp (which
-  // lacks the attribute to set the import module and base names) and
-  // in LTO mode (as bitcode does not preserve them).
-  __wasi_fd_write: 'fd_write',
-  __wasi_fd_close: 'fd_close',
+  fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var HIGH_OFFSET = 0x100000000; // 2^32
+    // use an unsigned operator on low and shift high by 32-bits
+    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
+
+    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
+      return -{{{ cDefine('EOVERFLOW') }}};
+    }
+
+    FS.llseek(stream, offset, whence);
+    {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
+    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
+    return 0;
+  },
 };
 
 if (SYSCALL_DEBUG) {
@@ -1830,7 +1824,19 @@ if (SYSCALL_DEBUG) {
 var WASI_SYSCALLS = set([
   'fd_write',
   'fd_close',
+  'fd_seek',
 ]);
+
+// Fallback for cases where the wasi_unstable.name prefixing fails,
+// and we have the full name from C. This happens in fastcomp (which
+// lacks the attribute to set the import module and base names) and
+// in LTO mode (as bitcode does not preserve them).
+
+if (!WASM_BACKEND || !WASM_OBJECT_FILES) {
+  for (var x in WASI_SYSCALLS) {
+    SyscallsLibrary['__wasi_' + x] = x;
+  }
+}
 
 for (var x in SyscallsLibrary) {
   var which = null; // if this is a musl syscall, its number
