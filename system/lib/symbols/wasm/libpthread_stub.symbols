@@ -53,8 +53,6 @@
 -------- T emscripten_is_main_runtime_thread
 -------- T emscripten_main_thread_process_queued_calls
 -------- T emscripten_num_logical_cores
-         U free
-         U malloc
 -------- T pthread_barrier_destroy
 -------- T pthread_barrier_init
 -------- T pthread_barrier_wait
