@@ -417,7 +417,7 @@ def inspect_code(headers, cpp_opts, structs, defines):
     # Run the compiled program.
     show('Calling generated program...')
     try:
-      info = shared.run_js(js_file[1]).splitlines()
+      info = shared.run_js(js_file[1], shared.NODE_JS).splitlines()
     except subprocess.CalledProcessError:
       sys.stderr.write('FAIL: Running the generated program failed!\n')
       sys.exit(1)
