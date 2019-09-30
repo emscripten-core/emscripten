@@ -8083,9 +8083,9 @@ int main() {
       self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],      15, [], ['waka'],  9211,  5, 12, 18), # noqa
-    'O1': (['-O1'], 13, [], ['waka'],  7886,  2, 11, 12), # noqa
-    'O2': (['-O2'], 13, [], ['waka'],  7871,  2, 11, 11), # noqa
+    'O0': ([],       6, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O1': (['-O1'],  4, [], ['waka'],  7886,  2, 11, 12), # noqa
+    'O2': (['-O2'],  4, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  2, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  2, [], [],          85,  0,  2,  2), # noqa
@@ -8111,7 +8111,7 @@ int main() {
   @no_fastcomp()
   def test_binaryen_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 35, [], ['waka'], 226582, 17, 33, None) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 19, [], ['waka'], 226582, 17, 33, None) # noqa
 
   @parameterized({
     'normal': (['-O2'], 37, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
@@ -8125,9 +8125,9 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      18, [], ['waka'], 22185,  8,  17, 56), # noqa
-    'O1': (['-O1'], 16, [], ['waka'], 10415,  6,  14, 30), # noqa
-    'O2': (['-O2'], 16, [], ['waka'], 10183,  6,  14, 24), # noqa
+    'O0': ([],       9, [], ['waka'], 22185,  8,  17, 56), # noqa
+    'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
+    'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  4, [], [],        1963,  4,   2, 12), # noqa
     'Oz': (['-Oz'],  4, [], [],        1929,  4,   1, 11), # noqa
@@ -8139,7 +8139,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1610, [], [], 517336, None, 1517, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  173, [], [], 517336, None, 1517, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
