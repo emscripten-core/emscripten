@@ -1265,6 +1265,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
+    if shared.Settings.FETCH:
+      # In asm.js+pthreads we can use a fetch worker, which is made from the main
+      # asm.js code. That lets us do sync operations by blocking on the worker etc.
+      # In the wasm backend we don't have a fetch worker implemented yet, however,
+      # we can still do basic synchronous fetches in the same places: if we can
+      # block on another thread then we aren't the main thread, and if we aren't
+      # the main thread then synchronous xhrs are legitimate.
+      if shared.Settings.USE_PTHREADS and not shared.Settings.WASM_BACKEND:
+        shared.Settings.USE_FETCH_WORKER = 1
+
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
       forced_stdlibs.append('libc++abi')
@@ -2358,11 +2368,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
       # Generate the fetch.js worker script for multithreaded emscripten_fetch() support if targeting pthreads.
-      if shared.Settings.FETCH and shared.Settings.USE_PTHREADS:
-        if shared.Settings.WASM_BACKEND:
-          logger.warning('Bug/TODO: Blocking calls to the fetch API do not currently work under WASM backend (https://github.com/emscripten-core/emscripten/issues/7024)')
-        else:
-          shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
+      if shared.Settings.USE_FETCH_WORKER:
+        shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
 
     # exit block 'memory initializer'
     log_time('memory initializer')
