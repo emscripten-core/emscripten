@@ -14,7 +14,6 @@ int close(int fd)
 {
 	fd = __aio_close(fd);
 #ifdef __EMSCRIPTEN__
-  // FIXME: musl and wasi return codes may differ aside from 0 == success
 	int r = __wasi_fd_close(fd);
 	if (r == __WASI_EINTR) r = __WASI_ESUCCESS;
 	return __wasi_syscall_ret(r);
