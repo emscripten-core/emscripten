@@ -208,8 +208,11 @@ int internal_mprotect(void *addr, uptr length, int prot) {
 #endif
 
 uptr internal_close(fd_t fd) {
-  // XXX EMSCRIPTEN: use wasi
+#ifdef __EMSCRIPTEN__
   return __wasi_fd_close(fd);
+#else
+  return internal_syscall(SYSCALL(close), fd);
+#endif
 }
 
 uptr internal_open(const char *filename, int flags) {
