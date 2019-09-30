@@ -106,6 +106,7 @@ extern struct ps_strings *__ps_strings;
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten/threading.h>
 #include <math.h>
+#include <wasi/wasi.h>
 #endif
 
 extern char **environ;
@@ -207,7 +208,8 @@ int internal_mprotect(void *addr, uptr length, int prot) {
 #endif
 
 uptr internal_close(fd_t fd) {
-  return internal_syscall(SYSCALL(close), fd);
+  // XXX EMSCRIPTEN: use wasi
+  return __wasi_fd_close(fd);
 }
 
 uptr internal_open(const char *filename, int flags) {

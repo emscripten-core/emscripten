@@ -193,8 +193,9 @@ var SyscallsLibrary = {
       return ret;
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    getStreamFromFD: function() {
-      var stream = FS.getStream(SYSCALLS.get());
+    getStreamFromFD: function(fd) {
+      if (!fd) fd = SYSCALLS.get();
+      var stream = FS.getStream(fd);
       if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
       err('    (stream: "' + stream.path + '")');
@@ -306,17 +307,6 @@ var SyscallsLibrary = {
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get(); // optional TODO
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
-  },
-  __syscall6: function(which, varargs) { // close
-    var stream = SYSCALLS.getStreamFromFD();
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    FS.close(stream);
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
-    return 0;
   },
   __syscall9: function(which, varargs) { // link
     var oldpath = SYSCALLS.get(), newpath = SYSCALLS.get();
@@ -1428,7 +1418,10 @@ var SyscallsLibrary = {
     return 0;
   },
 
-  // WASI (WebAssembly System Interface) call support
+  // WASI (WebAssembly System Interface) I/O support.
+  // This is the set of syscalls that use the FS etc. APIs. The rest is in
+  // library_wasi.js.
+
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
@@ -1443,10 +1436,9 @@ var SyscallsLibrary = {
   fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif
-  fd_write: function(stream, iov, iovcnt, pnum) {
+  fd_write: function(fd, iov, iovcnt, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    stream = FS.getStream(stream);
-    if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
+    var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doWritev(stream, iov, iovcnt);
 #else
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
@@ -1455,7 +1447,7 @@ var SyscallsLibrary = {
       var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
       var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
       for (var j = 0; j < len; j++) {
-        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
+        SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
       }
       num += len;
     }
@@ -1463,11 +1455,23 @@ var SyscallsLibrary = {
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
-  // Fallback for cases where the wasi_unstable.name prefixing fails,
+  fd_close: function(fd) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    FS.close(stream);
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
+    return 0;
+  },
+  // Fallbacks for cases where the wasi_unstable.name prefixing fails,
   // and we have the full name from C. This happens in fastcomp (which
   // lacks the attribute to set the import module and base names) and
   // in LTO mode (as bitcode does not preserve them).
   __wasi_fd_write: 'fd_write',
+  __wasi_fd_close: 'fd_close',
 };
 
 if (SYSCALL_DEBUG) {
@@ -1823,14 +1827,20 @@ if (SYSCALL_DEBUG) {
   }
 }
 
-var WASI_SYSCALLS = set(['fd_write']);
+var WASI_SYSCALLS = set([
+  'fd_write',
+  'fd_close',
+]);
 
 for (var x in SyscallsLibrary) {
   var which = null; // if this is a musl syscall, its number
   var m = /^__syscall(\d+)$/.exec(x);
+  var wasi = false;
   if (m) {
     which = +m[1];
-  } else if (!(x in WASI_SYSCALLS)) {
+  } else if (x in WASI_SYSCALLS) {
+    wasi = true;
+  } else {
     continue;
   }
   var t = SyscallsLibrary[x];
@@ -1864,8 +1874,13 @@ for (var x in SyscallsLibrary) {
   "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
   "  canWarn = false;\n";
 #endif
+  if (wasi) {
+    handler += "  return e.errno;\n";
+  } else {
+    // Musl syscalls are negated.
+    handler += "  return -e.errno;\n";
+  }
   handler +=
-  "  return -e.errno;\n" +
   "}\n";
   post = handler + post;
 

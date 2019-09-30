@@ -2530,6 +2530,7 @@ class Building(object):
       'environ_get',
       'environ_sizes_get',
       'fd_write',
+      'fd_close',
       'proc_exit',
     ])
     for item in graph:

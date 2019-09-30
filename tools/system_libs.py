@@ -543,8 +543,10 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
-  cflags = ['-D_XOPEN_SOURCE=700']
-
+  cflags = [
+    '-D_XOPEN_SOURCE=700',
+    '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
+  ]
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
@@ -710,6 +712,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       libc_files += files_in_path(
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+
+    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
     return libc_files
 
@@ -1020,6 +1024,11 @@ class libasmfs(CXXLibrary, MTLibrary):
 
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
+
+  def can_build(self):
+    # ASMFS is looking for a maintainer
+    # https://github.com/emscripten-core/emscripten/issues/9534
+    return False
 
 
 class libhtml5(Library):
