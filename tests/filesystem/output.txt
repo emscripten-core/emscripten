@@ -67,7 +67,7 @@
 /abc/noexist
   isRoot: false
   exists: false
-  error: 2
+  error: 44
   path: null
   name: noexist
   object.contents: null
@@ -133,7 +133,7 @@
 /abc/rootLink/noexist
   isRoot: false
   exists: false
-  error: 2
+  error: 44
   path: null
   name: noexist
   object.contents: null
@@ -144,7 +144,7 @@
 /abc/rootLink/abc/noexist
   isRoot: false
   exists: false
-  error: 2
+  error: 44
   path: null
   name: noexist
   object.contents: null
@@ -166,7 +166,7 @@
 /forbidden/test
   isRoot: false
   exists: false
-  error: 13
+  error: 2
   path: null
   name: test
   object.contents: null
@@ -177,7 +177,7 @@
 /forbidden/noexist
   isRoot: false
   exists: false
-  error: 13
+  error: 2
   path: null
   name: noexist
   object.contents: null
@@ -188,7 +188,7 @@
 /noexist1/noexist2
   isRoot: false
   exists: false
-  error: 2
+  error: 44
   path: null
   name: null
   object.contents: null
