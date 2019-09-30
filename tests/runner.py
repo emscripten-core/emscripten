@@ -59,7 +59,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_runner
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
