@@ -548,6 +548,7 @@ class MuslInternalLibrary(Library):
     '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
   ]
 
+
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
     self.is_asan = kwargs.pop('is_asan', False)
