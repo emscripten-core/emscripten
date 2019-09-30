@@ -23,7 +23,7 @@ Current Trunk
    This is an ABI change, which should not be noticeable from user code
    unless you use errno defines (like EAGAIN) *and* keep around binaries
    compiled with an older version that you link against. In that case, you
-   should rebuild them.
+   should rebuild them. See #9545.
 
 v.1.38.46: 09/25/2019
 ---------------------
