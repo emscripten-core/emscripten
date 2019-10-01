@@ -194,7 +194,8 @@ var SyscallsLibrary = {
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
     getStreamFromFD: function(fd) {
-      if (!fd) fd = SYSCALLS.get();
+      // TODO: when all syscalls use wasi, the parameter is always provided
+      if (fd === undefined) fd = SYSCALLS.get();
       var stream = FS.getStream(fd);
       if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
