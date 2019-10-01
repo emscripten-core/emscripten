@@ -285,10 +285,6 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run: python2 -m pip install --upgrade pip
-      - run: python3 -m pip install --upgrade pip
-      - run: python2 -m pip install flake8==3.7.8
-      - run: python3 -m pip install flake8==3.7.8
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-other:
