@@ -6,7 +6,10 @@ Pthreads support
 
 Emscripten has support for multithreading using SharedArrayBuffer in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API. This support is considered stable in Emscripten.
 
-.. note:: As of Sep 2019, some (but not all) browsers have disabled SharedArrayBuffer due to the Spectre set of vulnerabilities. Until it is restored you can still experiment with it if you flip a pref in those browsers.
+.. note:: As of Sep 2019, some (but not all) browsers have disabled
+          SharedArrayBuffer due to the Spectre set of vulnerabilities. Until it
+          is restored you can still experiment with it if you flip a pref in
+          those browsers.
 
 Compiling with pthreads enabled
 ===============================
@@ -18,6 +21,11 @@ By default, support for pthreads is not enabled. To enable code generation for p
 - Optionally, pass the linker flag ``-s PTHREAD_HINT_NUM_CORES=<integer>`` to choose what the function emscripten_num_logical_cores(); will return if navigator.hardwareConcurrency is not supported. If -1 is specified here, a popup dialog will be shown at startup to let the user specify the value that is returned here. This can be helpful in order to dynamically test how an application behaves with different values here.
 
 There should be no other changes required. In C/C++ code, the preprocessor check ``#ifdef __EMSCRIPTEN_PTHREADS__`` can be used to detect whether Emscripten is currently targeting pthreads.
+
+.. note:: It is not possible to build one binary that would be able to leverage
+    multithreading when available and fall back to single threaded when not. The
+    best you can do is two separate builds, one with and one
+    without threads, and pick between them at runtime.
 
 Additional flags
 ================
@@ -38,20 +46,7 @@ Special considerations
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
-- At runtime, you can ``#include <emscripten/threading.h>`` and use the ``emscripten_has_threading_support()`` function to
-  test whether the currently executing code was compiled with pthreads support
-  enabled. If this function returns true, then the currently executing code was
-  compiled with ``-s USE_PTHREADS=1`` (and the current browser supports
-  multithreading).
-
-  If code is compiled with ``-s USE_PTHREADS=1`` and the current browser does
-  not support multithreading, then an exception will be thrown at page load
-  time.  It is not possible to build one binary that would be able to leverage
-  multithreading when available and fall back to single threaded when not. For
-  such backwards compatibility, two separate builds must be done, one with ``-s
-  USE_PTHREADS=1`` and the other with ``-s USE_PTHREADS=0``.
-
-- When the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` is not specified and ``pthread_create()`` is called, the new thread will not actually start to run immediately, but you must yield execution back to the browser's main event loop first (in order for `new Worker` and the related events to happen). If you don't wait but synchronously expect it to be ready (like if you join on it, or if you look at memory where you expect it to write) things may not work. Using a pool allows things to work more like a native build.
+- When the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` is not specified and ``pthread_create()`` is called, the new thread will not actually start to run immediately, but you must yield execution back to the browser's main event loop first (in order for ``new Worker`` and the related events to happen). If you don't wait but synchronously expect it to be ready (like if you join on it, or if you look at memory where you expect it to write) things may not work. Using a pool allows things to work more like a native build.
 
 - Currently several of the functions in the C runtime, such as filesystem functions like ``fopen()``, ``fread()``, ``printf()``, ``fprintf()`` etc. are not multithreaded, but instead their execution is proxied over to the main application thread. Memory allocation via ``malloc()`` and ``free()`` is fully multithreaded though. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for more information and how to work around this until proxying is no longer needed in Emscripten.
 
