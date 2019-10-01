@@ -12,6 +12,7 @@ $___stdio_write
 $___towrite
 $___unlockfile
 $___vfprintf_internal
+$___wasi_syscall_ret
 $_emscripten_get_sbrk_ptr
 $_fflush
 $_fmt_fp

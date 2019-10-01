@@ -896,10 +896,6 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
     return 0;
   },
-  __syscall145: function(which, varargs) { // readv
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    return SYSCALLS.doReadv(stream, iov, iovcnt);
-  },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
@@ -1466,6 +1462,12 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+  fd_read: function(fd, iov, iovcnt, pnum) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var num = SYSCALLS.doReadv(stream, iov, iovcnt);
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
 };
 
 if (SYSCALL_DEBUG) {
@@ -1825,6 +1827,7 @@ var WASI_SYSCALLS = set([
   'fd_write',
   'fd_close',
   'fd_seek',
+  'fd_read',
 ]);
 
 // Fallback for cases where the wasi_unstable.name prefixing fails,

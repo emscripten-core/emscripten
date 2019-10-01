@@ -2,10 +2,10 @@ ___gxx_personality_v0
 ___lock
 ___map_file
 ___setErrNo
-___syscall145
 ___syscall91
 ___unlock
 ___wasi_fd_close
+___wasi_fd_read
 ___wasi_fd_seek
 ___wasi_fd_write
 __addDays
@@ -19,6 +19,7 @@ _emscripten_get_heap_size
 _emscripten_memcpy_big
 _emscripten_resize_heap
 _fd_close
+_fd_read
 _fd_seek
 _fd_write
 _getenv
