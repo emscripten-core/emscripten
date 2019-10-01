@@ -91,7 +91,6 @@ __syscall5
 __syscall51
 __syscall54
 __syscall57
-__syscall6
 __syscall60
 __syscall63
 __syscall64
@@ -116,6 +115,7 @@ emscripten_resize_heap
 environ_get
 environ_sizes_get
 fabsl
+fd_close
 fd_write
 fork
 fp$__stdio_close$ii

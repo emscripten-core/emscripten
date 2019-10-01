@@ -385,7 +385,6 @@ ___syscall5
 ___syscall51
 ___syscall54
 ___syscall57
-___syscall6
 ___syscall60
 ___syscall63
 ___syscall64
@@ -405,6 +404,7 @@ ___wait
 ___wasi_emscripten_get_environ
 ___wasi_environ_get
 ___wasi_environ_sizes_get
+___wasi_fd_close
 ___wasi_fd_write
 ___wasi_proc_exit
 __addDays
@@ -1053,6 +1053,7 @@ _exit
 _fabs
 _fabsf
 _fabsl
+_fd_close
 _fd_write
 _fexecve
 _filledEllipseColor
