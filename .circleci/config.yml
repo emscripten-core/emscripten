@@ -491,12 +491,6 @@ jobs:
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-upstream-wasm0-mac:
-    macos:
-      xcode: "9.0"
-    steps:
-      - run-tests-mac:
-          test_targets: "wasm0"
 
 workflows:
   build-test:
@@ -579,8 +573,5 @@ workflows:
             - build-upstream-linux
       - build-upstream-mac
       - test-upstream-other-mac:
-          requires:
-            - build-upstream-mac
-      - test-upstream-wasm0-mac:
           requires:
             - build-upstream-mac
