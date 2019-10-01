@@ -16,7 +16,7 @@ def get(ports, settings, shared):
     return []
 
   # get the port
-  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR)#, sha512hash=HASH)
+  ports.fetch_project('sdl2', 'https://github.com/emscripten-ports/SDL2/archive/' + TAG + '.zip', SUBDIR) # FIXME , sha512hash=HASH)
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
