@@ -4,6 +4,7 @@ $__fwritex
 $__overflow
 $__stdio_write
 $__towrite
+$__wasm_call_ctors
 $fwrite
 $main
 $memcpy
