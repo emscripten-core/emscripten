@@ -7,12 +7,7 @@ off_t lseek(int fd, off_t offset, int whence)
 #ifdef SYS__llseek
 	off_t result;
 #ifdef __EMSCRIPTEN__
-	__wasi_errno_t err = __wasi_fd_seek(fd, offset, whence, &result);
-  if (err != __WASI_ESUCCESS) {
-		__wasi_syscall_ret(err);
-		return -1;
-	}
-	return result;
+	return __wasi_syscall_ret(__wasi_fd_seek(fd, offset, whence, &result)) ? -1 : result;
 #else
 	return syscall(SYS__llseek, fd, offset>>32, offset, &result, whence) ? -1 : result;
 #endif // __EMSCRIPTEN__
