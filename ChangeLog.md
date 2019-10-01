@@ -24,6 +24,8 @@ Current Trunk
    unless you use errno defines (like EAGAIN) *and* keep around binaries
    compiled with an older version that you link against. In that case, you
    should rebuild them. See #9545.
+ - Redefine SEEK_* values in stdio to be consistent with wasi. See #X
+   (and for more background, #9545).
 
 v.1.38.46: 09/25/2019
 ---------------------
