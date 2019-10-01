@@ -6,10 +6,11 @@ Pthreads support
 
 Emscripten has support for multithreading using SharedArrayBuffer in browsers. That API allows sharing memory between the main thread and web workers as well as atomic operations for synchronization, which enables Emscripten to implement support for the Pthreads (POSIX threads) API. This support is considered stable in Emscripten.
 
-.. note:: As of Sep 2019, some (but not all) browsers have disabled
-          SharedArrayBuffer due to the Spectre set of vulnerabilities. Until it
-          is restored you can still experiment with it if you flip a pref in
-          those browsers.
+.. note:: As of Sep 2019, some browsers have disabled SharedArrayBuffer due to
+          the Spectre set of vulnerabilities. Until it is restored you can still
+          experiment with it if you flip a pref in those browsers. In other
+          browsers (like Chrome on desktop), SharedArrayBuffer is fully enabled
+          by default and you don't need to flip any flags.
 
 Compiling with pthreads enabled
 ===============================
