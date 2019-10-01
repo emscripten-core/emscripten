@@ -511,7 +511,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 13)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 14)
 
 
 def generate_sanity():
@@ -2530,6 +2530,7 @@ class Building(object):
       'environ_get',
       'environ_sizes_get',
       'fd_write',
+      'fd_close',
       'proc_exit',
     ])
     for item in graph:
