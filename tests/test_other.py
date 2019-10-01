@@ -2399,34 +2399,6 @@ int f() {
         output = run_js('a.out.js', stdout=PIPE, stderr=PIPE, full_output=True, engine=NODE_JS)
         assert "FAIL" not in output, output
 
-  @no_wasm_backend('cannot nativize a wasm object file (...yet?)')
-  @no_windows('test_llvm_nativizer does not work on Windows')
-  def test_llvm_nativizer(self):
-    if MACOS:
-      self.skipTest('test_llvm_nativizer does not work on macOS')
-    if Building.which('as') is None:
-      self.skipTest('no gnu as, cannot run nativizer')
-
-    # avoid impure_ptr problems etc.
-    create_test_file('somefile.binary', 'waka waka############################')
-    create_test_file('test.file', 'ay file..............,,,,,,,,,,,,,,')
-    create_test_file('stdin', 'inter-active')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'files.cpp'), '-c'])
-    run_process([PYTHON, path_from_root('tools', 'nativize_llvm.py'), 'files.o'])
-    proc = run_process([os.path.abspath('files.o.run')], stdin=open('stdin'), stdout=PIPE, stderr=PIPE)
-    self.assertContained('''\
-size: 37
-data: 119,97,107,97,32,119,97,107,97,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35,35
-loop: 119 97 107 97 32 119 97 107 97 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 35 ''' + '''
-input:inter-active
-texto
-$
-5 : 10,30,20,11,88
-other=ay file...
-seeked= file.
-''', proc.stdout)
-    self.assertContained('texte\n', proc.stderr)
-
   def test_emconfig(self):
     output = run_process([PYTHON, EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, LLVM_ROOT)
