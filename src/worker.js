@@ -131,7 +131,7 @@ this.onmessage = function(e) {
       // immediately at Wasm Module instantiation time. The values of these will not get used until pthread is actually running some code, so
       // we'll proceed to set up temporary invalid values for these fields for import purposes. Then whenever a pthread is launched at 'run' stage
       // below, these values are rewritten to establish proper stack area for the particular pthread.
-      {{{ makeAsmExportAccessInPthread('STACK_MAX') }}} = {{{ makeAsmExportAccessInPthread('STACKTOP') }}}  = 0x7FFFFFFF;
+      Module['STACK_MAX'] = Module['STACKTOP'] = 0x7FFFFFFF;
 
       // Module and memory were sent from main thread
       Module['wasmModule'] = e.data.wasmModule;
