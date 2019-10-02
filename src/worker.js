@@ -88,9 +88,9 @@ function resetPrototype(constructor, attrs) {
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  var instance = new WebAssembly.Instance(wasmModule, info);
+  var instance = new WebAssembly.Instance(Module['wasmModule'], info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
-  wasmModule = null;
+  Module['wasmModule'] = null;
 #if LOAD_SOURCE_MAP
   wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
 #endif
@@ -102,8 +102,6 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
 };
 #endif
 
-var wasmModule;
-var wasmMemory;
 #if LOAD_SOURCE_MAP
 var wasmSourceMapData;
 #endif
@@ -120,8 +118,8 @@ this.onmessage = function(e) {
 #endif
 
       // Initialize the global "process"-wide fields:
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
+      Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
+      Module['DYNAMICTOP_PTR'] = e.data.DYNAMICTOP_PTR;
 
 #if WASM
       // The Wasm module will have import fields for STACKTOP and STACK_MAX. At 'load' stage of Worker startup, we are just
@@ -136,17 +134,17 @@ this.onmessage = function(e) {
       {{{ makeAsmExportAccessInPthread('STACK_MAX') }}} = {{{ makeAsmExportAccessInPthread('STACKTOP') }}}  = 0x7FFFFFFF;
 
       // Module and memory were sent from main thread
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmModule') }}} = e.data.wasmModule;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmMemory') }}} = e.data.wasmMemory;
+      Module['wasmModule'] = e.data.wasmModule;
+      Module['wasmMemory'] = e.data.wasmMemory;
 #if LOAD_SOURCE_MAP
       wasmSourceMapData = e.data.wasmSourceMap;
 #endif
 #if USE_OFFSET_CONVERTER
       wasmOffsetData = e.data.wasmOffsetConverter;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = wasmMemory.buffer;
+      Module['buffer'] = Module['wasmMemory'].buffer;
 #else
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;
+      Module['buffer'] = e.data.buffer;
 
 #if SEPARATE_ASM
       // load the separated-out asm.js
@@ -211,9 +209,9 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = top;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = top;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = max;
+      Module['STACK_BASE'] = top;
+      Module['STACKTOP'] = top;
+      Module['STACK_MAX'] = max;
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
