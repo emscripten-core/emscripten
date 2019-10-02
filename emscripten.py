@@ -2374,12 +2374,11 @@ def create_asm_consts_wasm(forwarded_json, metadata):
         # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
         # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
         # ... over to the negative integers starting at -1.
-        preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { '
-          + proxy_debug_print(sync_proxy)
-          + 'return _emscripten_proxy_to_main_thread_js(-1 - code, '
-          + str(int(sync_proxy))
-          + ', code, sig_ptr, argbuf); }'
-        )
+        preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
+                     proxy_debug_print(sync_proxy) +
+                     'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
+                     str(int(sync_proxy)) +
+                     ', code, sig_ptr, argbuf); }')
 
     asm_const_funcs.append(r'''
 function %s(code, sig_ptr, argbuf) {%s
