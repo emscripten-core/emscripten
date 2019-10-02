@@ -24,6 +24,9 @@ Current Trunk
    unless you use errno defines (like EAGAIN) *and* keep around binaries
    compiled with an older version that you link against. In that case, you
    should rebuild them. See #9545.
+ - Removed build option -s ONLY_MY_CODE as we now have much better solutions
+   for that, like building to a wasm object file or using STANDALONE_WASM
+   etc. (see https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
 
 v.1.38.46: 09/25/2019
 ---------------------

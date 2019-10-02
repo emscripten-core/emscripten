@@ -157,10 +157,6 @@ var LibraryManager = {
     libraries = libraries.concat(additionalLibraries);
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
-    if (ONLY_MY_CODE) {
-      libraries.length = 0;
-      LibraryManager.library = {};
-    }
 
     // TODO: deduplicate libraries (not needed for correctness, but avoids unnecessary work)
 
@@ -289,7 +285,7 @@ var LibraryManager = {
   }
 };
 
-if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
+if (!BOOTSTRAPPING_STRUCT_INFO) {
   // Load struct and define information.
   var temp = JSON.parse(read(STRUCT_INFO));
   C_STRUCTS = temp.structs;
