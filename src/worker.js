@@ -27,8 +27,6 @@ var DYNAMIC_BASE = 0;
 
 var noExitRuntime;
 
-var PthreadWorkerInit = {};
-
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
 // subtle problems in emscripten_get_now() as this essentially would measure time from pthread_create(), meaning that the clocks between each threads
 // would be wildly out of sync. Therefore sync all pthreads to the clock on the main browser thread, so that different threads see a somewhat
@@ -164,7 +162,7 @@ this.onmessage = function(e) {
 
 #endif
 
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
+      Module['PthreadWorkerInit'] = e.data.PthreadWorkerInit;
       Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
 #if MODULARIZE && EXPORT_ES6

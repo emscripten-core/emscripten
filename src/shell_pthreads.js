@@ -6,9 +6,13 @@
 
 // ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
 var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
+var PthreadWorkerInit;
 if (!ENVIRONMENT_IS_PTHREAD) {
-  var PthreadWorkerInit = {}; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
+  PthreadWorkerInit = {}; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
+} else {
+  PthreadWorkerInit = Module['PthreadWorkerInit'];
 }
+
 #if MODULARIZE
 else {
   // Grab imports from the pthread to local scope.
