@@ -15,11 +15,6 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 #endif
 
-// Thread-local: Each thread has its own allocated stack space.
-var STACK_BASE = 0;
-var STACKTOP = 0;
-var STACK_MAX = 0;
-
 // These are system-wide memory area parameters that are set at main runtime startup in main thread, and stay constant throughout the application.
 var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
 var DYNAMICTOP_PTR = 0;
@@ -216,7 +211,7 @@ this.onmessage = function(e) {
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
-      assert(STACK_BASE != 0);
+      assert(Module['STACK_BASE'] != 0);
 #if WASM_BACKEND
       assert(max === e.data.stackBase);
       assert(top > max);
@@ -236,7 +231,7 @@ this.onmessage = function(e) {
       Module['_emscripten_tls_init']();
 #endif
 #if SAFE_STACK
-      Module['___set_stack_limit'](STACK_MAX);
+      Module['___set_stack_limit'](Module['STACK_MAX']);
 #endif
 #if STACK_OVERFLOW_CHECK
       Module['writeStackCookie']();
