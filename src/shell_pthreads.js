@@ -5,7 +5,7 @@
 #if USE_PTHREADS
 
 // ENVIRONMENT_IS_PTHREAD=true will have been preset in worker.js. Make it false in the main runtime thread.
-var ENVIRONMENT_IS_PTHREAD = Module.ENVIRONMENT_IS_PTHREAD || false;
+var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
 if (!ENVIRONMENT_IS_PTHREAD) {
   var PthreadWorkerInit = {}; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
 }

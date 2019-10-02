@@ -185,13 +185,11 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-#if MODULARIZE
-#if !MODULARIZE_INSTANCE
+#if MODULARIZE && !MODULARIZE_INSTANCE
       Module = {{{ EXPORT_NAME }}}(Module);
 #endif
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
-#endif
 
 #if !ASMFS
       if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
