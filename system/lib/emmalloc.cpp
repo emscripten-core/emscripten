@@ -802,9 +802,10 @@ static Region* newAllocation(size_t size) {
 // Internal mirror of public API.
 
 static void* emmalloc_malloc(size_t size) {
-  // malloc() spec defines malloc(0) => nullptr.
+  // for consistency with dlmalloc, for malloc(0), allocate a block of memory,
+  // though returning nullptr is permitted by the standard.
   if (size == 0)
-    return nullptr;
+    size = 1;
   // Look in the freelist first.
   Region* region = tryFromFreeList(size);
   if (!region) {
