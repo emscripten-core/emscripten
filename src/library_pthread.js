@@ -64,6 +64,13 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
 
+#if USE_CLOSURE_COMPILER
+      PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
+      PThread['setThreadStatus'] = PThread.setThreadStatus;
+      PThread['threadCancel'] = PThread.threadCancel;
+      PThread['threadExit'] = PThread.threadExit;
+#endif
+
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
       PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");

@@ -282,7 +282,7 @@ this.onmessage = function(e) {
       // (This is a no-op if explicit pthread_exit() had been called prior.)
       if (!noExitRuntime) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-      if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
+      if (threadInfoStruct) {
         PThread.threadCancel();
       }
     } else if (e.data.target === 'setimmediate') {
