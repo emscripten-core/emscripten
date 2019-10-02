@@ -1521,6 +1521,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
+    if target.endswith(WASM_ENDINGS):
+      # if the output is just a wasm file, it will normally be a standalone one,
+      # as there is no JS. an exception are side modules, as we can't tell at
+      # compile time whether JS will be involved or not - the main module may
+      # have JS, and the side module is expected to link against that.
+      # we also do not support standalone mode in fastcomp.
+      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+        shared.Settings.STANDALONE_WASM = 1
+      js_target = misc_temp_files.get(suffix='.js').name
+
     if shared.Settings.WASM:
       if shared.Settings.SINGLE_FILE:
         # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
@@ -1741,16 +1751,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-
-    if target.endswith(WASM_ENDINGS):
-      # if the output is just a wasm file, it will normally be a standalone one,
-      # as there is no JS. an exception are side modules, as we can't tell at
-      # compile time whether JS will be involved or not - the main module may
-      # have JS, and the side module is expected to link against that.
-      # we also do not support standalone mode in fastcomp.
-      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
-        shared.Settings.STANDALONE_WASM = 1
-      js_target = misc_temp_files.get(suffix='.js').name
 
     if shared.Settings.EVAL_CTORS:
       if not shared.Settings.WASM:
