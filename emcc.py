@@ -2989,6 +2989,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       # (we can't add this value when we placed post-emscripten in the proper position in the list of
       # passes because that was before the value was computed)
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
+      if shared.Settings.STANDALONE_WASM:
+        options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
