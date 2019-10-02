@@ -114,7 +114,7 @@ var wasmOffsetData;
 #endif
 
 this.onmessage = function(e) {
-  //try {
+  try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if !WASM_BACKEND
       // Initialize the thread-local field(s):
@@ -146,7 +146,7 @@ this.onmessage = function(e) {
 #if USE_OFFSET_CONVERTER
       wasmOffsetData = e.data.wasmOffsetConverter;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = Module['wasmMemory'].buffer;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = wasmMemory.buffer;
 #else
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;
 
@@ -301,9 +301,9 @@ this.onmessage = function(e) {
       err('worker.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
-  //} catch(e) {
-  //  console.error('worker.js onmessage() captured an uncaught exception: ' + e);
-  //  console.error(e.stack);
-  //  throw e;
- // }
+  } catch(e) {
+    console.error('worker.js onmessage() captured an uncaught exception: ' + e);
+    console.error(e.stack);
+    throw e;
+  }
 };
