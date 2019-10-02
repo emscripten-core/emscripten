@@ -1530,16 +1530,6 @@ function makeAsmExportAccessInPthread(variable) {
   }
 }
 
-// Generates access to a JS global scope variable in pthreads worker.js. In MODULARIZE mode the JS scope is not directly accessible, so all the relevant variables
-// are exported via Module. In non-MODULARIZE mode, we can directly access the variables in global scope.
-function makeAsmGlobalAccessInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return variable;
-  }
-}
-
 // Generates access to both global scope variable and exported Module variable, e.g. "Module['foo'] = foo" or just plain "foo" depending on if we are MODULARIZEing.
 // Used the be able to initialize both variables at the same time in scenarios where a variable exists in both global scope and in Module.
 function makeAsmExportAndGlobalAssignTargetInPthread(variable) {

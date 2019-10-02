@@ -3595,7 +3595,7 @@ window.close = function() {
   # Test that the emscripten_ atomics api functions work.
   @requires_threads
   def test_pthread_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--closure', '1', '-g1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-g1'])#, '--closure', '1', '-g1'])
 
   # Test 64-bit atomics.
   @requires_threads

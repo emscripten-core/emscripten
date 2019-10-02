@@ -68,6 +68,7 @@ var wasmModule;
 var threadInfoStruct = 0;
 var selfThreadId = 0;
 var __performance_now_clock_drift = 0;
+var tempDoublePtr = 0;
 #endif // USE_PTHREADS
 
 //========================================

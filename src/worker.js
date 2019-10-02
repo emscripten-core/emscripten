@@ -114,11 +114,11 @@ var wasmOffsetData;
 #endif
 
 this.onmessage = function(e) {
-  try {
+  //try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if !WASM_BACKEND
       // Initialize the thread-local field(s):
-      {{{ makeAsmGlobalAccessInPthread('tempDoublePtr') }}} = e.data.tempDoublePtr;
+      Module['tempDoublePtr'] = e.data.tempDoublePtr;
 #endif
 
       // Initialize the global "process"-wide fields:
@@ -146,7 +146,7 @@ this.onmessage = function(e) {
 #if USE_OFFSET_CONVERTER
       wasmOffsetData = e.data.wasmOffsetConverter;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
+      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = Module['wasmMemory'].buffer;
 #else
       {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;
 
@@ -203,7 +203,7 @@ this.onmessage = function(e) {
     } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
       __performance_now_clock_drift = performance.now() - e.data.time; // Sync up to the clock of the main thread.
       threadInfoStruct = e.data.threadInfoStruct;
-      {{{ makeAsmGlobalAccessInPthread('__register_pthread_ptr') }}}(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+      Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
@@ -245,11 +245,11 @@ this.onmessage = function(e) {
       Module['___set_stack_limit'](STACK_MAX);
 #endif
 #if STACK_OVERFLOW_CHECK
-      {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
+      Module['writeStackCookie']();
 #endif
 
       PThread.receiveObjectTransfer(e.data);
-      PThread.setThreadStatus({{{ makeAsmGlobalAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
+      PThread.setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -262,7 +262,7 @@ this.onmessage = function(e) {
         var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
-        {{{ makeAsmGlobalAccessInPthread('checkStackCookie') }}}();
+        Module['checkStackCookie']();
 #endif
 
       } catch(e) {
@@ -272,16 +272,16 @@ this.onmessage = function(e) {
         } else if (e === 'SimulateInfiniteLoop' || e === 'pthread_exit') {
           return;
         } else {
-          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof {{{ makeAsmGlobalAccessInPthread('ExitStatus') }}}) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof Module['ExitStatus']) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
-          if (typeof({{{ makeAsmGlobalAccessInPthread('_emscripten_futex_wake') }}}) !== "function") {
+          if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
             throw e;
           }
 #endif
-          {{{ makeAsmGlobalAccessInPthread('_emscripten_futex_wake') }}}(threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
-          if (!(e instanceof {{{ makeAsmGlobalAccessInPthread('ExitStatus') }}})) throw e;
+          Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
+          if (!(e instanceof Module['ExitStatus'])) throw e;
         }
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
@@ -295,15 +295,15 @@ this.onmessage = function(e) {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
       if (threadInfoStruct) { // If this thread is actually running?
-        {{{ makeAsmGlobalAccessInPthread('_emscripten_current_thread_process_queued_calls') }}}();
+        Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
-  } catch(e) {
-    console.error('worker.js onmessage() captured an uncaught exception: ' + e);
-    console.error(e.stack);
-    throw e;
-  }
+  //} catch(e) {
+  //  console.error('worker.js onmessage() captured an uncaught exception: ' + e);
+  //  console.error(e.stack);
+  //  throw e;
+ // }
 };
