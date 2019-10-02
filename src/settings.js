@@ -1298,6 +1298,9 @@ var PTHREAD_HINT_NUM_CORES = 4;
 // True when building with --threadprofiler
 var PTHREADS_PROFILING = 0;
 
+// See ...
+var ALLOW_PTHREAD_JOIN_ON_MAIN_THREAD = 0;
+
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 
