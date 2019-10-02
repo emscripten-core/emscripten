@@ -77,7 +77,9 @@ updateGlobalBufferAndViews(buffer);
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
+#if !STANDALONE_WASM // in standalone mode the value is in the wasm
 HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
+#endif // !STANDALONE_WASM
 #if USE_PTHREADS
 }
 #endif
