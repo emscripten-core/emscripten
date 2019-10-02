@@ -544,7 +544,7 @@ fi
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm-obj', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
     # Exactly one child process should have triggered libc build!
@@ -567,7 +567,7 @@ fi
     self.assertTrue(os.path.exists(cache_dir_name))
     # The cache directory must contain a built libc'
     if self.is_wasm_backend():
-      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm_o', 'libc.a')))
+      self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'wasm-obj', 'libc.a')))
     else:
       self.assertTrue(os.path.exists(os.path.join(cache_dir_name, 'asmjs', 'libc.bc')))
 
@@ -848,15 +848,23 @@ BINARYEN_ROOT = ''
     ''')
     self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT must be set up in .emscripten')
 
+  def test_embuilder_force(self):
+    restore_and_set_up()
+    self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
+    # Second time it should not generate anything
+    self.assertNotContained('generating system library', self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc']))
+    # Unless --force is specified
+    self.assertContained('generating system library', self.do([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--force']))
+
   def test_embuilder_wasm_backend(self):
     if not Settings.WASM_BACKEND:
       self.skipTest('wasm backend only')
     restore_and_set_up()
     root_cache = os.path.expanduser('~/.emscripten_cache')
-    # the --lto flag makes us build wasm_bc
+    # the --lto flag makes us build wasm-bc
     self.do([PYTHON, EMCC, '--clear-cache'])
-    run_process([PYTHON, EMBUILDER, 'build', 'emmalloc'])
-    self.assertExists(os.path.join(root_cache, 'wasm_o'))
+    run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc'])
+    self.assertExists(os.path.join(root_cache, 'wasm-obj'))
     self.do([PYTHON, EMCC, '--clear-cache'])
-    run_process([PYTHON, EMBUILDER, 'build', 'emmalloc', '--lto'])
-    self.assertExists(os.path.join(root_cache, 'wasm_bc'))
+    run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--lto'])
+    self.assertExists(os.path.join(root_cache, 'wasm-bc'))

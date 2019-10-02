@@ -2426,9 +2426,8 @@ def add_standard_wasm_imports(send_items_map):
   if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
-  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG:
-    # wasm2js legalization of i64 support code may require these
-    # autodebug may also need them
+  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
+    # legalization of i64 support code may require these in some modes
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
@@ -2519,16 +2518,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  if not shared.Settings.RELOCATABLE:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-
-  implemented_functions = set(metadata['implementedFunctions'])
-  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
-  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
-
-  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
+  em_asm_sigs = [sigs for _, sigs, _ in metadata['asmConsts'].values()]
+  em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
+  em_asm_funcs = ['_emscripten_asm_const_' + sig for sig in em_asm_sigs]
+  em_js_funcs = list(metadata['emJsFuncs'].keys())
+  declared_items = ['_' + item for item in metadata['declares']]
+  send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     if g.startswith('Math_'):

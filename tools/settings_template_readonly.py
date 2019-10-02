@@ -45,6 +45,13 @@ JAVA = 'java' # executable
 #
 # JS_ENGINES = [NODE_JS] # add V8_ENGINE or SPIDERMONKEY_ENGINE if you have them installed too.
 #
+# WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
+# WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
+#
+# Wasm engines to use in STANDALONE_WASM tests.
+#
+# WASM_ENGINES = [] # add WASMER or WASMTIME if you have them installed
+#
 # Other options
 #
 # FROZEN_CACHE = True # never clears the cache, and disallows building to the cache

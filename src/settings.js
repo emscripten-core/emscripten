@@ -1267,9 +1267,16 @@ var IN_TEST_HARNESS = 0;
 // If true, enables support for pthreads.
 var USE_PTHREADS = 0;
 
-// Specifies the number of web workers that are preallocated before runtime is
-// initialized. If 0, workers are created on demand.
+// PTHREAD_POOL_SIZE specifies the number of web workers that are created
+// before the main runtime is initialized. If 0, workers are created on
+// demand. If PTHREAD_POOL_DELAY_LOAD = 0, then the workers will be fully
+// loaded (available for use) prior to the main runtime being initialized. If
+// PTHREAD_POOL_DELAY_LOAD = 1, then the workers will only be created and
+// have their runtimes loaded on demand after the main runtime is initialized.
+// Note that this means that the workers cannot be joined from the main thread
+// unless PROXY_TO_PTHREAD is used.
 var PTHREAD_POOL_SIZE = 0;
+var PTHREAD_POOL_DELAY_LOAD = 0;
 
 // If not explicitly specified, this is the stack size to use for newly created
 // pthreads.  According to
@@ -1394,6 +1401,12 @@ var FETCH_DEBUG = 0;
 
 // If nonzero, enables emscripten_fetch API.
 var FETCH = 0;
+
+// Whether to use an asm.js fetch worker when using FETCH. Note that this is
+// only relevant for fastcomp, where we support asm.js. As a result, some
+// synchronous fetch operations that depend on the fetch worker may not work
+// with the wasm backend, like waiting or IndexedDB.
+var USE_FETCH_WORKER = 0;
 
 // Internal: name of the file containing the Fetch *.fetch.js, if relevant
 // Do not set yourself.

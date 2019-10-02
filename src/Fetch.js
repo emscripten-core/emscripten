@@ -42,7 +42,7 @@ var Fetch = {
   },
 #endif
 
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
   initFetchWorker: function() {
     var stackSize = 128*1024;
     var stack = allocate(stackSize>>2, "i32*", ALLOC_DYNAMIC);
@@ -51,7 +51,7 @@ var Fetch = {
 #endif
 
   staticInit: function() {
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
 #else
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined');
@@ -65,7 +65,7 @@ var Fetch = {
       Fetch.dbInstance = db;
 
       if (isMainThread) {
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
         Fetch.initFetchWorker();
 #endif
         removeRunDependency('library_fetch_init');
@@ -78,7 +78,7 @@ var Fetch = {
       Fetch.dbInstance = false;
 
       if (isMainThread) {
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
         Fetch.initFetchWorker();
 #endif
         removeRunDependency('library_fetch_init');
@@ -87,7 +87,7 @@ var Fetch = {
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
     if (isMainThread) {
 #if FETCH_SUPPORT_INDEXEDDB
       addRunDependency('library_fetch_init');
@@ -542,16 +542,6 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #endif
     __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress, reportReadyStateChange);
   };
-
-  // Should we try IndexedDB first?
-  var needsIndexedDbConnection = !fetchAttrReplace || requestMethod === 'EM_IDB_STORE' || requestMethod === 'EM_IDB_DELETE';
-  if (needsIndexedDbConnection && !Fetch.dbInstance) {
-#if FETCH_DEBUG
-    console.error('fetch: failed to read IndexedDB! Database is not open.');
-#endif
-    reportError(fetch, 0, 'IndexedDB is not open');
-    return 0; // todo: free
-  }
 
   if (requestMethod === 'EM_IDB_STORE') {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.

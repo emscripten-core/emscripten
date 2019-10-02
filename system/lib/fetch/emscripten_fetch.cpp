@@ -148,7 +148,13 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
 
 #undef STRDUP_OR_ABORT
 
-#if __EMSCRIPTEN_PTHREADS__
+// In asm.js we can use a fetch worker, which is created from the main asm.js
+// code. That lets us do sync operations by blocking on the worker etc.
+// In the wasm backend we don't have a fetch worker implemented yet, however,
+// we can still do basic synchronous fetches in the same places: if we can
+// block on another thread then we aren't the main thread, and if we aren't
+// the main thread then synchronous xhrs are legitimate.
+#if __EMSCRIPTEN_PTHREADS__ && !defined(__wasm__)
   const bool waitable = (fetch_attr->attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0;
   // Depending on the type of fetch, we can either perform it in the same Worker/thread than the
   // caller, or we might need to run it in a separate Worker. There is a dedicated fetch worker that
