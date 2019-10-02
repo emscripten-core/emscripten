@@ -634,9 +634,10 @@ def optimize_syscalls(declares, DEBUG):
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
     if set(syscalls).issubset(set([
-        '__syscall6', '__syscall54',
-        'fd_seek', '__wasi_fd_seek',
-        'fd_write', '__wasi_fd_write'])):
+      '__syscall6', '__syscall54',
+      'fd_seek', '__wasi_fd_seek',
+      'fd_write', '__wasi_fd_write'
+    ])):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
