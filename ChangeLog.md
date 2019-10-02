@@ -15,9 +15,11 @@ full changeset diff at the end of each section.
 
 See docs/process.md for how version tagging works.
 
-
 Current Trunk
 -------------
+
+v.1.38.47: 10/02/2019
+---------------------
  - Redefine errno values to be consistent with wasi. This will let us avoid
    needing to convert the values back and forth as we use more wasi APIs.
    This is an ABI change, which should not be noticeable from user code
