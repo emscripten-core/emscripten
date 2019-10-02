@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
   $PThread__deps: ['$PROCINFO', '_register_pthread_ptr',
                    'emscripten_main_thread_process_queued_calls',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '_kill_thread',
@@ -64,17 +64,20 @@ var LibraryPThread = {
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, PThread.mainThreadBlock); // Main thread ID.
       Atomics.store(HEAPU32, (PThread.mainThreadBlock + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
 
-#if USE_CLOSURE_COMPILER
-      PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
-      PThread['setThreadStatus'] = PThread.setThreadStatus;
-      PThread['threadCancel'] = PThread.threadCancel;
-      PThread['threadExit'] = PThread.threadExit;
-#endif
-
 #if PTHREADS_PROFILING
       PThread.createProfilerBlock(PThread.mainThreadBlock);
       PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");
       PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
+    },
+    initWorker: function() {
+#if USE_CLOSURE_COMPILER
+      // worker.js is not compiled together with us, and must access certain
+      // things.
+      PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
+      PThread['setThreadStatus'] = PThread.setThreadStatus;
+      PThread['threadCancel'] = PThread.threadCancel;
+      PThread['threadExit'] = PThread.threadExit;
 #endif
     },
     // Maps pthread_t to pthread info objects
