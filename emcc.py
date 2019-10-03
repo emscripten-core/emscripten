@@ -1272,8 +1272,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # we can still do basic synchronous fetches in the same places: if we can
       # block on another thread then we aren't the main thread, and if we aren't
       # the main thread then synchronous xhrs are legitimate.
-      if shared.Settings.USE_PTHREADS and not shared.Settings.WASM_BACKEND:
-        shared.Settings.USE_FETCH_WORKER = 1
+      if shared.Settings.USE_PTHREADS and shared.Settings.WASM_BACKEND and shared.Settings.USE_FETCH_WORKER:
+        logger.warning('USE_FETCH_WORKER is currently unsupported under WASM backend')
+        shared.Settings.USE_FETCH_WORKER = 0
 
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
