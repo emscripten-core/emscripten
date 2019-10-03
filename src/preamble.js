@@ -356,10 +356,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
@@ -373,6 +369,23 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+  // Pthread workers compute these in worker.js when they run, which is after
+  // this script loads in the worker initially. Set some fake values to
+  // catch bugs, then set the real values at load time.
+  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
+
+  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
+    STACK_BASE = stackBase;
+    STACKTOP = stackTop;
+    STACK_MAX = stackMax;
+  };
+
+  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
+  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
+  // TODO tempDoublePtr = Module['tempDoublePtr'];
+  // TODO wasmModule = Module['wasmModule'];
+  // TODO buffer = Module['buffer'];
 }
 #endif
 

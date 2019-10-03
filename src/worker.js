@@ -112,17 +112,6 @@ this.onmessage = function(e) {
       Module['DYNAMICTOP_PTR'] = e.data.DYNAMICTOP_PTR;
 
 #if WASM
-      // The Wasm module will have import fields for STACKTOP and STACK_MAX. At 'load' stage of Worker startup, we are just
-      // spawning this Web Worker to act as a host for future created pthreads, i.e. we do not have a pthread to start up here yet.
-      // (A single Worker can also host multiple pthreads throughout its lifetime, shutting down a pthread will not shut down its hosting Worker,
-      // but the Worker is reused for later spawned pthreads). The 'run' stage below will actually start running a pthread.
-      // The stack space for a pthread is allocated and deallocated when a pthread is actually run, not yet at Worker 'load' stage.
-      // However, the WebAssembly module we are loading up here has import fields for STACKTOP and STACK_MAX, which it needs to get filled in
-      // immediately at Wasm Module instantiation time. The values of these will not get used until pthread is actually running some code, so
-      // we'll proceed to set up temporary invalid values for these fields for import purposes. Then whenever a pthread is launched at 'run' stage
-      // below, these values are rewritten to establish proper stack area for the particular pthread.
-      Module['STACK_MAX'] = Module['STACKTOP'] = 0x7FFFFFFF;
-
       // Module and memory were sent from main thread
       Module['wasmModule'] = e.data.wasmModule;
       Module['wasmMemory'] = e.data.wasmMemory;
@@ -199,9 +188,7 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      Module['STACK_BASE'] = top;
-      Module['STACKTOP'] = top;
-      Module['STACK_MAX'] = max;
+      Module['applyStackValues'](top, top, max);
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
