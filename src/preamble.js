@@ -68,7 +68,9 @@ var wasmModule;
 var threadInfoStruct = 0;
 var selfThreadId = 0;
 var __performance_now_clock_drift = 0;
+#if WASM_BACKEND
 var tempDoublePtr = 0;
+#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -387,8 +389,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
   // TODO tempDoublePtr = Module['tempDoublePtr'];
-  // TODO wasmModule = Module['wasmModule'];
-  // TODO buffer = Module['buffer'];
 }
 #endif
 

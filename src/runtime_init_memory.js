@@ -3,6 +3,7 @@
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
   wasmMemory = Module['wasmMemory'];
+  buffer = Module['buffer'];
 } else {
 #endif // USE_PTHREADS
 #if WASM
