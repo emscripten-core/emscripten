@@ -1336,7 +1336,7 @@ class BrowserCore(RunnerCore):
   # happen, likely something is broken and it is best to abort the test
   # suite early, as otherwise we will wait for the timeout on every
   # single test (hundreds of minutes)
-  MAX_UNRESPONSIVE_TESTS = 100
+  MAX_UNRESPONSIVE_TESTS = 10
 
   unresponsive_tests = 0
 
@@ -1391,7 +1391,7 @@ class BrowserCore(RunnerCore):
   #                    synchronously, so we have a timeout, which can be hit if the VM
   #                    we run on stalls temporarily), so we let each test try more than
   #                    once by default
-  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=0):
+  def run_browser(self, html_file, message, expectedResult=None, timeout=None, tries_left=1):
     if not has_browser():
       return
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
