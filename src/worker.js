@@ -193,7 +193,7 @@ this.onmessage = function(e) {
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
-      assert(Module['STACK_BASE'] != 0);
+      assert(top != 0);
 #if WASM_BACKEND
       assert(max === e.data.stackBase);
       assert(top > max);
@@ -211,9 +211,6 @@ this.onmessage = function(e) {
 #endif
 #if WASM_BACKEND
       Module['_emscripten_tls_init']();
-#endif
-#if SAFE_STACK
-      Module['___set_stack_limit'](Module['STACK_MAX']);
 #endif
 #if STACK_OVERFLOW_CHECK
       Module['writeStackCookie']();

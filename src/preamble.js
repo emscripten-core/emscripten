@@ -379,6 +379,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
     STACK_BASE = stackBase;
     STACKTOP = stackTop;
     STACK_MAX = stackMax;
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
+#endif
   };
 
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
