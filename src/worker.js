@@ -15,11 +15,6 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 #endif
 
-// These are system-wide memory area parameters that are set at main runtime startup in main thread, and stay constant throughout the application.
-var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
-var DYNAMICTOP_PTR = 0;
-var DYNAMIC_BASE = 0;
-
 var noExitRuntime;
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
