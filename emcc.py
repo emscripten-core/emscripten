@@ -1265,15 +1265,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
-    if shared.Settings.FETCH:
-      # In asm.js+pthreads we can use a fetch worker, which is made from the main
-      # asm.js code. That lets us do sync operations by blocking on the worker etc.
-      # In the wasm backend we don't have a fetch worker implemented yet, however,
-      # we can still do basic synchronous fetches in the same places: if we can
-      # block on another thread then we aren't the main thread, and if we aren't
-      # the main thread then synchronous xhrs are legitimate.
-      if shared.Settings.USE_PTHREADS and not shared.Settings.WASM_BACKEND:
-        shared.Settings.USE_FETCH_WORKER = 1
+    if not shared.Settings.USE_PTHREADS or not shared.Settings.FETCH:
+      shared.Settings.USE_FETCH_WORKER = 0
+
+    # In asm.js+pthreads we can use a fetch worker, which is made from the main
+    # asm.js code. That lets us do sync operations by blocking on the worker etc.
+    # In the wasm backend we don't have a fetch worker implemented yet, however,
+    # we can still do basic synchronous fetches in the same places: if we can
+    # block on another thread then we aren't the main thread, and if we aren't
+    # the main thread then synchronous xhrs are legitimate.
+    if shared.Settings.FETCH and shared.Settings.WASM_BACKEND:
+      shared.Settings.USE_FETCH_WORKER = 0
 
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
