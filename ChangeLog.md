@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Pthread blocking on the main thread is now disallowed by default. To enable
+   it, you must set `ALLOW_BLOCKING_ON_MAIN_THREAD` (disallowing by default
+   makes it less likely new users of pthreads will hit surprising deadlocks
+   on the Web).
 
 v.1.38.47: 10/02/2019
 ---------------------

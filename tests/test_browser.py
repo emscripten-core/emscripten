@@ -1913,7 +1913,7 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   @requires_threads
   def test_gl_textures(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD']]:
       self.btest('gl_textures.cpp', '0', args=['-lGL'] + args)
 
   @requires_graphics_hardware
@@ -3595,12 +3595,12 @@ window.close = function() {
   # Test that the emscripten_ atomics api functions work.
   @requires_threads
   def test_pthread_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test 64-bit atomics.
   @requires_threads
   def test_pthread_64bit_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test 64-bit C++11 atomics.
   @requires_threads
@@ -3621,40 +3621,40 @@ window.close = function() {
           print(args)
           if self.is_wasm_backend() and '--separate-asm' in args or 'AGGRESSIVE_VARIABLE_ELIMINATION=1' in args:
             continue
-          self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+          self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_fetch_and_op.cpp'), expected='0', args=args + ['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # 64 bit version of the above test.
   @requires_threads
   def test_pthread_gcc_64bit_atomic_fetch_and_op(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_fetch_and_op.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'], also_asmjs=True)
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @requires_threads
   def test_pthread_gcc_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'], also_asmjs=True)
 
   # 64 bit version of the above test.
   @requires_threads
   def test_pthread_gcc_64bit_atomic_op_and_fetch(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'], also_asmjs=True)
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_64bit_atomic_op_and_fetch.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'], also_asmjs=True)
 
   # Tests the rest of the remaining GCC atomics after the two above tests.
   @requires_threads
   def test_pthread_gcc_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test the __sync_lock_test_and_set and __sync_lock_release primitives.
   @requires_threads
   def test_pthread_gcc_spinlock(self):
     for arg in [[], ['-DUSE_EMSCRIPTEN_INTRINSICS']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg, also_asmjs=True)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_gcc_spinlock.cpp'), expected='800', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'] + arg, also_asmjs=True)
 
   # Test that basic thread creation works.
   @requires_threads
   def test_pthread_create(self):
     def test(args):
       print(args)
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + args)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'] + args)
 
     test([])
     test(['-O3'])
@@ -3679,17 +3679,17 @@ window.close = function() {
   @requires_threads
   def test_pthread_create_pthread(self):
     for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'] + modularize)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_create_pthread.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'] + modularize)
 
   # Test another case of pthreads spawning pthreads, but this time the callers immediately join on the threads they created.
   @requires_threads
   def test_pthread_nested_spawns(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_nested_spawns.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that main thread can wait for a pthread to finish via pthread_join().
   @requires_threads
   def test_pthread_join(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_join.cpp'), expected='6765', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
@@ -3710,37 +3710,37 @@ window.close = function() {
   # Test that pthread cleanup stack (pthread_cleanup_push/_pop) works.
   @requires_threads
   def test_pthread_cleanup(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_cleanup.cpp'), expected='907640832', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Tests the pthread mutex api.
   @requires_threads
   def test_pthread_mutex(self):
     for arg in [[], ['-DSPINLOCK_TEST']]:
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'] + arg)
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_mutex.cpp'), expected='50', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'] + arg)
 
   @requires_threads
   def test_pthread_attr_getstack(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_attr_getstack.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that memory allocation is thread-safe.
   @requires_threads
   def test_pthread_malloc(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Stress test pthreads allocating memory that will call to sbrk(), and main thread has to free up the data.
   @requires_threads
   def test_pthread_malloc_free(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=256MB'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_malloc_free.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'TOTAL_MEMORY=256MB', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that the pthread_barrier API works ok.
   @requires_threads
   def test_pthread_barrier(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_barrier.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test the pthread_once() function.
   @requires_threads
   def test_pthread_once(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_once.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   @requires_threads
@@ -3762,13 +3762,13 @@ window.close = function() {
   # Test the pthread condition variable creation and waiting.
   @requires_threads
   def test_pthread_condition_variable(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_condition_variable.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that pthreads are able to do printf.
   @requires_threads
   def test_pthread_printf(self):
     def run(debug):
-       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'LIBRARY_DEBUG=%d' % debug])
+       self.btest(path_from_root('tests', 'pthread', 'test_pthread_printf.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'LIBRARY_DEBUG=%d' % debug, '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
     run(debug=True)
     run(debug=False)
@@ -3776,7 +3776,7 @@ window.close = function() {
   # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
   @requires_threads
   def test_pthread_iostream(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_iostream.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that the main thread is able to use pthread_set/getspecific.
   @requires_threads
@@ -3791,12 +3791,12 @@ window.close = function() {
   # Test that pthreads have access to filesystem.
   @requires_threads
   def test_pthread_file_io(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_file_io.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
   @requires_threads
   def test_pthread_supported(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8']]:
+    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD']]:
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_supported.cpp'), expected='0', args=['-O3'] + args)
 
   # Test that --separate-asm works with -s USE_PTHREADS=1.
@@ -3853,7 +3853,7 @@ window.close = function() {
   # Test that if the main thread is performing a futex wait while a pthread needs it to do a proxied operation (before that pthread would wake up the main thread), that it's not a deadlock.
   @requires_threads
   def test_pthread_proxying_in_futex_wait(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_proxying_in_futex_wait.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that sbrk() operates properly in multithreaded conditions
   @requires_threads
@@ -3862,7 +3862,7 @@ window.close = function() {
       print('aborting malloc=' + str(aborting_malloc))
       # With aborting malloc = 1, test allocating memory in threads
       # With aborting malloc = 0, allocate so much memory in threads that some of the allocations fail.
-      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'TOTAL_MEMORY=128MB'])
+      self.btest(path_from_root('tests', 'pthread', 'test_pthread_sbrk.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '--separate-asm', '-s', 'ABORTING_MALLOC=' + str(aborting_malloc), '-DABORTING_MALLOC=' + str(aborting_malloc), '-s', 'TOTAL_MEMORY=128MB', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that -s ABORTING_MALLOC=0 works in both pthreads and non-pthreads builds. (sbrk fails gracefully)
   @requires_threads
@@ -3874,12 +3874,12 @@ window.close = function() {
   # Test that the proxying operations of user code from pthreads to main thread work
   @requires_threads
   def test_pthread_run_on_main_thread(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test how a lot of back-to-back called proxying operations behave.
   @requires_threads
   def test_pthread_run_on_main_thread_flood(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread_flood.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_run_on_main_thread_flood.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test that it is possible to synchronously call a JavaScript function on the main thread and get a return value back.
   @requires_threads
@@ -3916,7 +3916,7 @@ window.close = function() {
 
   @requires_threads
   def test_pthread_utf8_funcs(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_utf8_funcs.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_utf8_funcs.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Test the emscripten_futex_wake(addr, INT_MAX); functionality to wake all waiters
   @requires_threads
@@ -4462,7 +4462,7 @@ window.close = function() {
   def test_pthread_locale(self):
     for args in [
         [],
-        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2'],
+        ['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'],
     ]:
       print("Testing with: ", args)
       self.btest('pthread/test_pthread_locale.c', expected='1', args=args)
@@ -4642,7 +4642,7 @@ window.close = function() {
   # Tests the functionality of the emscripten_thread_sleep() function.
   @requires_threads
   def test_emscripten_thread_sleep(self):
-    self.btest(path_from_root('tests', 'pthread', 'emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print"]'])
+    self.btest(path_from_root('tests', 'pthread', 'emscripten_thread_sleep.c'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["print"]', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
