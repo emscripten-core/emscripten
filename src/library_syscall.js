@@ -1834,7 +1834,7 @@ var WASI_SYSCALLS = set([
 // and we have the full name from C. This happens in fastcomp (which
 // lacks the attribute to set the import module and base names) and
 // in LTO mode (as bitcode does not preserve them).
-
+// https://bugs.llvm.org/show_bug.cgi?id=43211
 if (!WASM_BACKEND || !WASM_OBJECT_FILES) {
   for (var x in WASI_SYSCALLS) {
     SyscallsLibrary['__wasi_' + x] = x;
