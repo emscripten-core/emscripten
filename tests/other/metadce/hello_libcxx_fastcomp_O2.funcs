@@ -420,6 +420,7 @@ $___stdio_seek
 $___stdio_write
 $___strchrnul
 $___string_read
+$___syscall_ret
 $___toread
 $___towrite
 $___uflow

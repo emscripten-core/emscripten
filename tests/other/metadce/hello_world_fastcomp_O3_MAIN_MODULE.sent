@@ -298,6 +298,7 @@ ___syscall125
 ___syscall132
 ___syscall133
 ___syscall14
+___syscall140
 ___syscall142
 ___syscall144
 ___syscall145
@@ -405,7 +406,6 @@ ___wasi_environ_get
 ___wasi_environ_sizes_get
 ___wasi_fd_close
 ___wasi_fd_read
-___wasi_fd_seek
 ___wasi_fd_write
 ___wasi_proc_exit
 __addDays
@@ -1056,7 +1056,6 @@ _fabsf
 _fabsl
 _fd_close
 _fd_read
-_fd_seek
 _fd_write
 _fexecve
 _filledEllipseColor
