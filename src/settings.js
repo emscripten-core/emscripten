@@ -592,6 +592,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
+// Simple '*' wildcard matching is supported.
 var ASYNCIFY_BLACKLIST = [];
 
 // If the Asyncify whitelist is provided, then *only* the functions in the list
@@ -970,11 +971,6 @@ var SWAPPABLE_ASM_MODULE = 0;
 
 // see emcc --separate-asm
 var SEPARATE_ASM = 0;
-
-// This disables linking and other causes of adding extra code automatically,
-// and as a result, your output compiled code (in the .asm.js file, if you emit
-// with --separate-asm) will contain only the functions you provide.
-var ONLY_MY_CODE = 0;
 
 // JS library functions on this list are not converted to JS, and calls to them
 // are turned into abort()s. This is potentially useful for reducing code size.
@@ -1651,6 +1647,10 @@ var MAIN_READS_PARAMS = 1;
 
 // The computed location of the pointer to the sbrk position.
 var DYNAMICTOP_PTR = -1;
+
+// The computed initial value of the program break (the sbrk position), which
+// is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
+var DYNAMIC_BASE = -1;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:

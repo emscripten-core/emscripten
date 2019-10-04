@@ -1189,14 +1189,20 @@ class libstandalonewasm(MuslInternalLibrary):
     base_files = files_in_path(
         path_components=['system', 'lib'],
         filenames=['standalone_wasm.c'])
-    musl_files = files_in_path(
+    # It is more efficient to use JS methods for time, normally.
+    time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
         filenames=['strftime.c',
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
                    '__year_to_secs.c'])
-    return base_files + musl_files
+    # It is more efficient to use JS for __assert_fail, as it avoids always
+    # including fprintf etc.
+    exit_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
+        filenames=['assert.c'])
+    return base_files + time_files + exit_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
