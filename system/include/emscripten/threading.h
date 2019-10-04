@@ -372,6 +372,10 @@ struct thread_profiler_block
 	char name[32];
 };
 
+// Called when blocking on the main thread. This will error if main thread
+// blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
+void emscripten_block_on_main_thread(void);
+
 #ifdef __cplusplus
 }
 #endif

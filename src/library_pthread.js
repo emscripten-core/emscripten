@@ -790,7 +790,16 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait'],
+  emscripten_block_on_main_thread: function() {
+#if ASSERTIONS
+    assert(ENVIRONMENT_IS_WEB);
+#endif
+#if !ALLOW_BLOCKING_ON_MAIN_THREAD
+    abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
+#endif
+  },
+
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_block_on_main_thread'],
   {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
@@ -815,6 +824,11 @@ var LibraryPThread = {
       err('Attempted to join thread ' + thread + ', which was already detached!');
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
+
+    if (ENVIRONMENT_IS_WEB) {
+      _emscripten_block_on_main_thread();
+    }
+
     for (;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
       if (threadStatus == 1) { // Exited?
@@ -1090,9 +1104,6 @@ var LibraryPThread = {
       if (ret === 'ok') return 0;
       throw 'Atomics.wait returned an unexpected value ' + ret;
     } else {
-#if !ALLOW_BLOCKING_ON_MAIN_THREAD
-      abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
-#endif
       // Atomics.wait is not available in the main browser thread, so simulate it via busy spinning.
       var loadedVal = Atomics.load(HEAP32, addr >> 2);
       if (val != loadedVal) return -{{{ cDefine('EWOULDBLOCK') }}};

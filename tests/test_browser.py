@@ -3609,12 +3609,18 @@ window.close = function() {
       for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'])
 
+  @parameterized({
+    'join': ['join', True, True],
+    'wait': ['wait', True, False],
+  })
   @requires_threads
-  def test_pthread_main_thread_blocking(self):
-    # Test that without ALLOW_BLOCKING_ON_MAIN_THREAD we error on blocking on the main thread.
-    self.btest(path_from_root('tests', 'pthread', 'main_thread_blocking.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
-    # Of course everything works ok when we are on a pthread.
-    self.btest(path_from_root('tests', 'pthread', 'main_thread_blocking.cpp'), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PROXY_TO_PTHREAD'])
+  def test_pthread_main_thread_blocking(self, name, check_main, check_worker):
+    if check_main:
+      print('Test that without ALLOW_BLOCKING_ON_MAIN_THREAD we error on blocking on the main thread.')
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+    if check_worker:
+      print('Test that everything works ok when we are on a pthread.')
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PROXY_TO_PTHREAD'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
