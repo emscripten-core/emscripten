@@ -50,34 +50,52 @@ The Web API for atomics does not allow blocking on the main thread
 (specifically, ``Atomics.wait`` doesn't work there). Such blocking is
 necessary in APIs like ``pthread_join`` and anything that uses a futex wait
 under the hood, like ``usleep()``, ``emscripten_futex_wait()``, or
-``pthread_mutex_lock()``. Therefore by default all those don't work on the main
-browser thread.
+``pthread_mutex_lock()``. To make them work, we use a busy-wait on the main
+browser thread, which can make the browser tab unresponsive, and also wastes
+power. (On a pthread, this isn't a problem as it runs in a Web Worker, where
+we don't need to busy-wait.)
 
-Emscripten does have an option to allow blocking on the main browser thread::
+Busy-waiting on the main browser thread in general will work despite the
+downsides just mentioned, for things like waiting on a mutex.
+However, things like ``pthread_join`` and ``pthread_cond_wait``
+can block for long periods of time, and if that
+happens on the main browser thread, and while other threads expect it to
+respond, it can cause a surprising deadlock. That can happen because some APIs
+are proxied to the main browser thread because of Web limitations, and if the
+main thread blocks while a worker attempts to proxy to it, a deadlock can
+occur.
+
+In particular, DOM access is only possible on the main browser
+thread, and therefore things like filesystem operations (``fopen()``,
+etc.) or changing the HTML page's title, etc., are proxied over to the main
+browser thread. See
+`bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
+more information and how to try to work around this until this. To check which
+operations are proxied, you can look for the function's implementation in
+the JS library (``src/library_*``) and see if it is annotated with
+``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
+itself proxies certain things (like some GL operations), so there is no
+general way to be safe here (aside from not blocking on the main browser
+thread).
+
+The bottom line is that on the Web it is bad for the main browser thread to
+wait on anything else. Therefore by default Emscripten disallows
+``pthread_join`` and ``pthread_cond_wait`` on the main browser thread, and
+will throw an error (whose message will point to here).
+
+To avoid this problem, you can use ``PROXY_TO_PTHREAD``, which as
+mentioned earlier moves your ``main()`` function to a pthread, which leaves
+the main browser thread to focus only on receiving proxied events. This is
+recommended in general, but may take some porting work, if the application
+assumed ``main()`` was on the main browser thread.
+
+Alternatively, you can flip a flag to allow blocking on the main browser thread,
+using::
 
     -s ALLOW_BLOCKING_ON_MAIN_THREAD=1
 
-When doing so we try to make those
-blocking APIs work, but with serious downsides, so it is best to avoid
-main thread blocking where possible (consider using ``PROXY_TO_PTHREAD`` as
-mentioned earlier). The downsides include:
-
-- Some APIs are proxied to the main browser thread because of Web limitations. If
-  the main thread blocks while a worker attempts to proxy to it, a deadlock
-  can occur. In particular, DOM access is only possible on the main browser
-  thread, and therefore things like filesystem operations (``fopen()``,
-  etc.) or changing the HTML page's title, etc., are proxied over to the main
-  browser thread. See
-  `bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
-  more information and how to try to work around this until this. To check which
-  operations are proxied, you can look for the function's implementation in
-  the JS library (``src/library_*``) and see if it is annotated with
-  ``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
-  itself proxies certain things (like some GL operations), so there is no
-  general way to be safe here (aside from not blocking on the main browser
-  thread).
-- To simulate a blocking wait on the main thread, we are forced to busy-wait,
-  which is bad because it freezes the tab and also wastes power.
+This lets you avoid the error, but you have the risk of deadlocks and other
+problems as mentioned earlier.
 
 Special considerations
 ======================

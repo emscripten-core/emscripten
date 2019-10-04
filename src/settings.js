@@ -1294,13 +1294,11 @@ var PTHREAD_HINT_NUM_CORES = 4;
 // True when building with --threadprofiler
 var PTHREADS_PROFILING = 0;
 
-// By default we disallow running pthread_join and other blocking operations
+// By default we disallow running pthread_join and pthread_cond_wait
 // on the main thread, as doing so can cause deadlocks on the Web (and also
 // it works using a busy-wait which is expensive). See
 // https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread
 var ALLOW_BLOCKING_ON_MAIN_THREAD = 0;
-// XXX looks like the runtime has various futex_waits, some very short.
-// those are safe. should we only complain about pthread_join?
 
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
