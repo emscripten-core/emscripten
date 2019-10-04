@@ -115,6 +115,7 @@ environ_get
 environ_sizes_get
 fabsl
 fd_close
+fd_read
 fd_seek
 fd_write
 fork

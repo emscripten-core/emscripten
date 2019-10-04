@@ -2,10 +2,10 @@ Infinity
 NaN
 ___lock
 ___map_file
-___syscall145
 ___syscall91
 ___unlock
 ___wasi_fd_close
+___wasi_fd_read
 ___wasi_fd_seek
 ___wasi_fd_write
 __table_base

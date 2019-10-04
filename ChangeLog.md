@@ -45,6 +45,7 @@ v.1.38.46: 09/25/2019
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.
+ - ASYNCIFY_BLACKLIST and ASYNCIFY_WHITELIST now support simple '*' wildcard matching
 
 v.1.38.45: 09/12/2019
 ---------------------

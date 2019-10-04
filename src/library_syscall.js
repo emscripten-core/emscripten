@@ -194,7 +194,8 @@ var SyscallsLibrary = {
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
     getStreamFromFD: function(fd) {
-      if (!fd) fd = SYSCALLS.get();
+      // TODO: when all syscalls use wasi, can remove the next line
+      if (fd === undefined) fd = SYSCALLS.get();
       var stream = FS.getStream(fd);
       if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
@@ -896,10 +897,6 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
     return 0;
   },
-  __syscall145: function(which, varargs) { // readv
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    return SYSCALLS.doReadv(stream, iov, iovcnt);
-  },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
     var pid = SYSCALLS.get();
@@ -1443,6 +1440,12 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+  fd_read: function(fd, iov, iovcnt, pnum) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var num = SYSCALLS.doReadv(stream, iov, iovcnt);
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -1824,6 +1827,7 @@ if (SYSCALL_DEBUG) {
 var WASI_SYSCALLS = set([
   'fd_write',
   'fd_close',
+  'fd_read',
   'fd_seek',
 ]);
 
@@ -1831,7 +1835,7 @@ var WASI_SYSCALLS = set([
 // and we have the full name from C. This happens in fastcomp (which
 // lacks the attribute to set the import module and base names) and
 // in LTO mode (as bitcode does not preserve them).
-
+// https://bugs.llvm.org/show_bug.cgi?id=43211
 if (!WASM_BACKEND || !WASM_OBJECT_FILES) {
   for (var x in WASI_SYSCALLS) {
     SyscallsLibrary['__wasi_' + x] = x;

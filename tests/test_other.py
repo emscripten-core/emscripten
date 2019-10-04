@@ -8045,7 +8045,7 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 15, 28), # noqa
+    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 15, 29), # noqa
     'O1': (['-O1'], 16, ['abort'], ['waka'], 10450,  4, 11, 12), # noqa
     'O2': (['-O2'], 16, ['abort'], ['waka'], 10440,  4, 11, 12), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -8063,10 +8063,10 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 19, [], ['waka'], 226582, 17, 33, None) # noqa
 
   @parameterized({
-    'normal': (['-O2'], 39, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
+    'normal': (['-O2'], 40, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        39, ['abort'], ['waka'], 188310, 23, 38, 521), # noqa
+                        40, ['abort'], ['waka'], 188310, 23, 38, 521), # noqa
   })
   @no_wasm_backend()
   def test_binaryen_metadce_cxx_fastcomp(self, *args):
@@ -8074,8 +8074,8 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],       9, [], ['waka'], 22185,  8,  17, 56), # noqa
-    'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
+    'O0': ([],       9, [], ['waka'], 22185,  8,  17, 57), # noqa
+    'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 31), # noqa
     'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  4, [], [],        1963,  4,   2, 12), # noqa
@@ -8088,7 +8088,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  173, [], [], 517336, None, 1518, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1518, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8096,8 +8096,8 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      27, ['abort'], ['waka'], 42701,  18,   17, 55), # noqa
-    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,   9,   14, 31), # noqa
+    'O0': ([],      27, ['abort'], ['waka'], 42701,  18,   17, 56), # noqa
+    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,   9,   14, 32), # noqa
     'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,   9,   14, 27), # noqa
     'O3': (['-O3'],  7, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  7, [],        [],        2064,   6,    2, 15), # noqa
@@ -8108,7 +8108,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1601, [], [], 226403, None, 107, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1603, [], [], 226403, None, 107, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
