@@ -1,5 +1,6 @@
 __lock
 __map_file
+__syscall140
 __syscall91
 __unlock
 abort
@@ -9,7 +10,6 @@ environ_get
 environ_sizes_get
 fd_close
 fd_read
-fd_seek
 fd_write
 memory
 setTempRet0
