@@ -70,11 +70,11 @@ mergeInto(LibraryManager.library, {
         return VFS.llseek(stream, offset, whence);
       }
       var position = offset;
-      if (whence === {{{ cDefine('SEEK_CUR') }}}) {
+      if (whence === 1) {  // SEEK_CUR.
         position += stream.position;
-      } else if (whence === {{{ cDefine('SEEK_END') }}}) {
+      } else if (whence === 2) {  // SEEK_END.
         position += fs.fstatSync(stream.nfd).size;
-      } else if (whence !== {{{ cDefine('SEEK_SET') }}}) {
+      } else if (whence !== 0) {  // SEEK_SET.
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
 
