@@ -17,6 +17,7 @@ $__towrite
 $__trunctfdf2
 $__unlockfile
 $__vfprintf_internal
+$__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc

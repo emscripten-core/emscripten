@@ -9,6 +9,7 @@ $__overflow
 $__stdio_write
 $__towrite
 $__unlockfile
+$__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc

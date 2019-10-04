@@ -7,6 +7,7 @@ $___ofl_lock
 $___ofl_unlock
 $___stdio_write
 $___unlockfile
+$___wasi_syscall_ret
 $_add
 $_emscripten_get_sbrk_ptr
 $_fflush

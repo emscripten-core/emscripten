@@ -116,6 +116,7 @@ environ_get
 environ_sizes_get
 fabsl
 fd_close
+fd_read
 fd_write
 fork
 fp$__stdio_close$ii
