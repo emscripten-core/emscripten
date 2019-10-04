@@ -634,7 +634,7 @@ def optimize_syscalls(declares, DEBUG):
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
     if set(syscalls).issubset(set([
-      '__syscall6', '__syscall54',
+      '__syscall6', '__syscall54', '__syscall140',
       'fd_seek', '__wasi_fd_seek',
       'fd_write', '__wasi_fd_write'
     ])):
