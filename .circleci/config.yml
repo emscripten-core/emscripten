@@ -239,7 +239,8 @@ commands:
       - run:
           name: download chrome
           command: |
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # TODO: return to using beta once it stabilizes
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
           name: run tests
@@ -491,12 +492,6 @@ jobs:
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-upstream-wasm0-mac:
-    macos:
-      xcode: "9.0"
-    steps:
-      - run-tests-mac:
-          test_targets: "wasm0"
 
 workflows:
   build-test:
@@ -579,8 +574,5 @@ workflows:
             - build-upstream-linux
       - build-upstream-mac
       - test-upstream-other-mac:
-          requires:
-            - build-upstream-mac
-      - test-upstream-wasm0-mac:
           requires:
             - build-upstream-mac

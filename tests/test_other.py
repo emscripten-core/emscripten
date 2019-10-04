@@ -7139,30 +7139,6 @@ int main() {
       self.assertContained('nan\n', out)
       self.assertContained('0x7fc01234\n', out)
 
-  @no_wasm_backend('experimental mode we should probably remove; not in wasm backend for now')
-  def test_only_my_code(self):
-    run_process([PYTHON, EMCC, '-O1', path_from_root('tests', 'hello_world.c'), '--separate-asm', '-s', 'WASM=0'])
-    count = open('a.out.asm.js').read().count('function ')
-    self.assertGreater(count, 20) # libc brings in a bunch of stuff
-
-    def test(filename, opts, expected_funcs, expected_vars):
-      print(filename, opts)
-      run_process([PYTHON, EMCC, path_from_root('tests', filename), '--separate-asm', '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0', '-s', 'ONLY_MY_CODE=1', '-s', 'WASM=0'] + opts)
-      module = open('a.out.asm.js').read()
-      create_test_file('asm.js', 'var Module = {};\n' + module)
-      funcs = module.count('function ')
-      vars_ = module.count('var ')
-      self.assertEqual(funcs, expected_funcs)
-      self.assertEqual(vars_, expected_vars)
-      if SPIDERMONKEY_ENGINE in JS_ENGINES:
-        out = run_js('asm.js', engine=SPIDERMONKEY_ENGINE, stderr=STDOUT)
-        self.validate_asmjs(out)
-      else:
-        print('(skipping asm.js validation check)')
-
-    test('hello_123.c', ['-O1'], 1, 2)
-    test('fasta.cpp', ['-O3', '-g2'], 2, 3)
-
   @no_wasm_backend('tests our python linking logic')
   def test_link_response_file_does_not_force_absolute_paths(self):
     with_space = 'with space'
@@ -7320,6 +7296,7 @@ int main() {
       print(first, second, third)
       assert first < second and second < third, [first, second, third]
 
+  @no_wasm_backend('ctor evaller disabled, see https://github.com/emscripten-core/emscripten/issues/9527')
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
@@ -8061,7 +8038,7 @@ int main() {
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  2, [], [],          85,  0,  2,  2), # noqa
     'Os': (['-Os'],  2, [], [],          85,  0,  2,  2), # noqa
-    'Oz': (['-Oz'],  2, [], [],          54,  0,  1,  1), # noqa
+    'Oz': (['-Oz'],  2, [], [],          85,  0,  2,  2), # noqa
   })
   @no_fastcomp()
   def test_binaryen_metadce_minimal(self, *args):
@@ -8102,7 +8079,7 @@ int main() {
     'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  4, [], [],        1963,  4,   2, 12), # noqa
-    'Oz': (['-Oz'],  4, [], [],        1929,  4,   1, 11), # noqa
+    'Oz': (['-Oz'],  4, [], [],        1929,  4,   2, 12), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],

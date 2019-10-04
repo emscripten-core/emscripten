@@ -1170,7 +1170,10 @@ class SettingsManager(object):
         cls.attrs['ASSERTIONS'] = 0
         cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
-        cls.attrs['EVAL_CTORS'] = 1
+        # Ctor evalling in the wasm backend is disabled due to
+        # https://github.com/emscripten-core/emscripten/issues/9527
+        if not Settings.WASM_BACKEND:
+          cls.attrs['EVAL_CTORS'] = 1
 
     def keys(self):
       return self.attrs.keys()

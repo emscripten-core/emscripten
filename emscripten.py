@@ -804,6 +804,8 @@ def apply_memory(js):
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
+  shared.Settings.DYNAMIC_BASE = memory.dynamic_base
+
   return js
 
 
@@ -923,15 +925,14 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
   funcs = list(funcs) + global_initializer_funcs(metadata['initializers'])
 
-  if not shared.Settings.ONLY_MY_CODE:
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      funcs.append('_emscripten_replace_memory')
-    if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-      funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if shared.Settings.EMTERPRETIFY:
-      funcs += ['emterpret']
-      if shared.Settings.EMTERPRETIFY_ASYNC:
-        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
+  if shared.Settings.ALLOW_MEMORY_GROWTH:
+    funcs.append('_emscripten_replace_memory')
+  if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+  if shared.Settings.EMTERPRETIFY:
+    funcs += ['emterpret']
+    if shared.Settings.EMTERPRETIFY_ASYNC:
+      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
 
   return sorted(set(funcs))
 
@@ -1657,8 +1658,6 @@ def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-  if shared.Settings.ONLY_MY_CODE:
-    funcs = []
   return funcs
 
 
@@ -1847,9 +1846,6 @@ for (var named in NAMED_GLOBALS) {
 
 
 def create_runtime_funcs_asmjs(exports, metadata):
-  if shared.Settings.ONLY_MY_CODE:
-    return []
-
   if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
   else:
@@ -2712,7 +2708,7 @@ def run(infile, outfile, memfile, libraries):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
-  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
+  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     generated_struct_info_name = 'generated_struct_info.json'
 
     def generate_struct_info():
