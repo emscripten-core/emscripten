@@ -1299,6 +1299,8 @@ var PTHREADS_PROFILING = 0;
 // it works using a busy-wait which is expensive). See
 // https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread
 var ALLOW_BLOCKING_ON_MAIN_THREAD = 0;
+// XXX looks like the runtime has various futex_waits, some very short.
+// those are safe. should we only complain about pthread_join?
 
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
