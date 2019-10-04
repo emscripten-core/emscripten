@@ -178,7 +178,7 @@ def read_dwarf_entries(wasm, options):
     if not os.path.exists(options.dwarfdump):
       logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
-    process = Popen([options.dwarfdump, "-debug-info", "-debug-line", wasm], stdout=PIPE)
+    process = Popen([options.dwarfdump, "-debug-line", wasm], stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
