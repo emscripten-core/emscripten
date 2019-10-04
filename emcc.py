@@ -1271,7 +1271,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # we can still do basic synchronous fetches in the same places: if we can
     # block on another thread then we aren't the main thread, and if we aren't
     # the main thread then synchronous xhrs are legitimate.
-    if shared.Settings.FETCH and shared.Settings.WASM_BACKEND:
+    if (shared.Settings.FETCH and shared.Settings.WASM_BACKEND) or not shared.Settings.USE_PTHREADS:
       shared.Settings.USE_FETCH_WORKER = 0
 
     if shared.Settings.DEMANGLE_SUPPORT:
