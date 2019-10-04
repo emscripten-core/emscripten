@@ -1074,7 +1074,6 @@ var LibraryPThread = {
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
-ALLOW_BLOCKING_ON_MAIN_THREAD
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
 //    dump('futex_wait addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
     if (ENVIRONMENT_IS_WORKER) {
@@ -1091,6 +1090,9 @@ ALLOW_BLOCKING_ON_MAIN_THREAD
       if (ret === 'ok') return 0;
       throw 'Atomics.wait returned an unexpected value ' + ret;
     } else {
+#if !ALLOW_BLOCKING_ON_MAIN_THREAD
+      abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
+#endif
       // Atomics.wait is not available in the main browser thread, so simulate it via busy spinning.
       var loadedVal = Atomics.load(HEAP32, addr >> 2);
       if (val != loadedVal) return -{{{ cDefine('EWOULDBLOCK') }}};

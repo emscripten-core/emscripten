@@ -43,16 +43,48 @@ but is unrelated. That flag does not use pthreads or SharedArrayBuffer, and
 instead uses a plain Web Worker to run your main program (and postMessage to
 proxy messages back and forth).
 
+Blocking on the main browser thread
+===================================
+
+The Web API for atomics does not allow blocking on the main thread
+(specifically, ``Atomics.wait`` doesn't work there). Such blocking is
+necessary in APIs like ``pthread_join`` and anything that uses a futex wait
+under the hood, like ``usleep()``, ``emscripten_futex_wait()``, or
+``pthread_mutex_lock()``. Therefore by default all those don't work on the main
+browser thread.
+
+Emscripten does have an option to allow blocking on the main browser thread::
+
+    -s ALLOW_BLOCKING_ON_MAIN_THREAD=1
+
+When doing so we try to make those
+blocking APIs work, but with serious downsides, so it is best to avoid
+main thread blocking where possible (consider using ``PROXY_TO_PTHREAD`` as
+mentioned earlier). The downsides include:
+
+- Some APIs are proxied to the main browser thread because of Web limitations. If
+  the main thread blocks while a worker attempts to proxy to it, a deadlock
+  can occur. In particular, DOM access is only possible on the main browser
+  thread, and therefore things like filesystem operations (``fopen()``,
+  etc.) or changing the HTML page's title, etc., are proxied over to the main
+  browser thread. See
+  `bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
+  more information and how to try to work around this until this. To check which
+  operations are proxied, you can look for the function's implementation in
+  the JS library (``src/library_*``) and see if it is annotated with
+  ``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
+  itself proxies certain things (like some GL operations), so there is no
+  general way to be safe here (aside from not blocking on the main browser
+  thread).
+- To simulate a blocking wait on the main thread, we are forced to busy-wait,
+  which is bad because it freezes the tab and also wastes power.
+
 Special considerations
 ======================
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
 - When the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` is not specified and ``pthread_create()`` is called, the new thread will not start until control is yielded back to the browser's main event loop, because the web worker cannot be created while JS or wasm code is running. This is a violation of POSIX behavior and will break common code which creates a thread and immediately joins it or otherwise synchronously waits to observe an effect such as a memory write. Using a pool creates the web workers before main is called, allowing thread creation to be synchronous.
-
-- Browser DOM access is only possible on the main browser thread, and therefore things that may access the DOM, like filesystem operations (``fopen()``, etc.) or changing the HTML page's title, etc., are proxied over to the main browser thread. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for more information and how to work around this until this proxying is no longer needed in Emscripten. (To check which operations are proxied, you can look for the function's implementation in the JS library (``src/library_*``) and see if it is annotated with ``__proxy: 'sync'`` or ``__proxy: 'async'``.)
-
-- When doing a futex wait, e.g. ``usleep()``, ``emscripten_futex_wait()``, or ``pthread_mutex_lock()``, we use ``Atomics.wait`` on workers, which the browser should do pretty efficiently. But that is not available on the main thread, and so we busy-wait there. Busy-waiting is not recommended because it freezes the tab, and also wastes power.
 
 - The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`_, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
 
