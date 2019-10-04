@@ -592,6 +592,7 @@ var ASYNCIFY_STACK_SIZE = 4096;
 // changes which would mean a single list couldn't work for both -O0 and -O1
 // builds, etc.). You can inspect the wasm binary to look for the actual names,
 // either directly or using wasm-objdump or wasm-dis, etc.
+// Simple '*' wildcard matching is supported.
 var ASYNCIFY_BLACKLIST = [];
 
 // If the Asyncify whitelist is provided, then *only* the functions in the list
