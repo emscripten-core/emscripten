@@ -76,3 +76,18 @@ int emscripten_resize_heap(size_t size) {
   size_t result = __builtin_wasm_memory_grow(0, (size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE);
   return result != (size_t)-1;
 }
+
+// C++ ABI
+
+// Emscripten disables exception catching by default, but not throwing. That
+// allows users to see a clear error if a throw happens, and 99% of the
+// overhead is in the catching, so this is a reasonable tradeoff.
+// For now, in a standalone build just terminate. TODO nice error message
+void
+__cxa_throw(void* ptr, void* type, void* destructor) {
+  abort();
+}
+
+void* __cxa_allocate_exception(size_t thrown_size) {
+  abort();
+}
