@@ -385,7 +385,6 @@ ___syscall5
 ___syscall51
 ___syscall54
 ___syscall57
-___syscall6
 ___syscall60
 ___syscall63
 ___syscall64
@@ -402,7 +401,13 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_emscripten_get_environ
+___wasi_environ_get
+___wasi_environ_sizes_get
+___wasi_fd_close
+___wasi_fd_read
 ___wasi_fd_write
+___wasi_proc_exit
 __addDays
 __arraySum
 __battery
@@ -679,6 +684,7 @@ _emscripten_get_devicemotion_status
 _emscripten_get_deviceorientation_status
 _emscripten_get_element_css_size
 _emscripten_get_env
+_emscripten_get_environ
 _emscripten_get_fullscreen_status
 _emscripten_get_gamepad_status
 _emscripten_get_heap_size
@@ -1036,6 +1042,8 @@ _emscripten_worker_respond_provisionally
 _emscripten_yield
 _endprotoent
 _endpwent
+_environ_get
+_environ_sizes_get
 _execl
 _execle
 _execlp
@@ -1046,6 +1054,8 @@ _exit
 _fabs
 _fabsf
 _fabsl
+_fd_close
+_fd_read
 _fd_write
 _fexecve
 _filledEllipseColor
@@ -1433,6 +1443,7 @@ _pathconf
 _pixelRGBA
 _posix_spawn
 _posix_spawnp
+_proc_exit
 _pthread_attr_destroy
 _pthread_attr_getdetachstate
 _pthread_attr_getstack

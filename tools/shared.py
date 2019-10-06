@@ -292,6 +292,9 @@ CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
 JS_ENGINES = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
 
@@ -318,6 +321,9 @@ def parse_config_file():
     'CLOSURE_COMPILER',
     'JAVA',
     'JS_ENGINES',
+    'WASMER',
+    'WASMTIME',
+    'WASM_ENGINES',
     'COMPILER_OPTS',
     'FROZEN_CACHE',
   )
@@ -357,6 +363,7 @@ SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_EN
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
+WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 
 if EM_POPEN_WORKAROUND is None:
   EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
@@ -504,7 +511,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 10)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 15)
 
 
 def generate_sanity():
@@ -884,9 +891,6 @@ def apply_configuration():
 apply_configuration()
 
 # EM_CONFIG stuff
-if JS_ENGINES is None:
-  JS_ENGINES = [NODE_JS]
-
 if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
@@ -1166,7 +1170,10 @@ class SettingsManager(object):
         cls.attrs['ASSERTIONS'] = 0
         cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
-        cls.attrs['EVAL_CTORS'] = 1
+        # Ctor evalling in the wasm backend is disabled due to
+        # https://github.com/emscripten-core/emscripten/issues/9527
+        if not Settings.WASM_BACKEND:
+          cls.attrs['EVAL_CTORS'] = 1
 
     def keys(self):
       return self.attrs.keys()
@@ -1383,7 +1390,6 @@ def demangle_c_symbol_name(name):
 #  Building
 class Building(object):
   COMPILER = CLANG
-  JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
   # internal caches
@@ -2524,7 +2530,11 @@ class Building(object):
       })
     # fix wasi imports TODO: support wasm stable with an option?
     WASI_IMPORTS = set([
+      'environ_get',
+      'environ_sizes_get',
       'fd_write',
+      'fd_close',
+      'fd_read',
       'proc_exit',
     ])
     for item in graph:
@@ -2547,6 +2557,7 @@ class Building(object):
       f.write(txt)
     # run wasm-metadce
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
+    cmd += Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g']
     out = run_process(cmd, stdout=PIPE).stdout

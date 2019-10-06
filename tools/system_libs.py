@@ -294,6 +294,9 @@ class Library(object):
     """
     return True
 
+  def erase(self):
+    shared.Cache.erase_file(self.get_filename())
+
   def get_path(self):
     """
     Gets the cached path of this library.
@@ -540,6 +543,11 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
+  cflags = [
+    '-D_XOPEN_SOURCE=700',
+    '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
+  ]
+
 
 class AsanInstrumentedLibrary(Library):
   def __init__(self, **kwargs):
@@ -698,6 +706,15 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
       libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
+      # Include all the getenv stuff with the wasm backend. With fastcomp we
+      # still use JS because libc is a .bc file and we don't want to have a
+      # global constructor there for __environ, which would mean it is always
+      # included.
+      libc_files += files_in_path(
+          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+          filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+
+    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
     return libc_files
 
@@ -725,8 +742,8 @@ class libc_wasm(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructor it contains can be DCE'd.  With the wasm backend libc is a .a file
-  so object file granularity applies.
+  constructor it contains can be DCE'd.  With the wasm backend libc it is a .a
+  file so object file granularity applies.
   """
 
   name = 'libc-extras'
@@ -737,7 +754,7 @@ class libc_extras(MuslInternalLibrary):
     return not shared.Settings.WASM_BACKEND
 
 
-class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
+class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
@@ -1009,6 +1026,11 @@ class libasmfs(CXXLibrary, MTLibrary):
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
 
+  def can_build(self):
+    # ASMFS is looking for a maintainer
+    # https://github.com/emscripten-core/emscripten/issues/9534
+    return False
+
 
 class libhtml5(Library):
   name = 'libhtml5'
@@ -1152,12 +1174,35 @@ class libasan_rt_wasm(SanitizerLibrary):
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'asan']
 
 
-class libstandalonewasm(Library):
+# This library is used when STANDALONE_WASM is set. In that mode, we don't
+# want to depend on JS, and so this library contains implementations of
+# things that we'd normally do in JS. That includes some general things
+# as well as some additional musl components (that normally we reimplement
+# in JS as it's more efficient that way).
+class libstandalonewasm(MuslInternalLibrary):
   name = 'libstandalonewasm'
 
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-  src_files = ['standalone_wasm.c']
+
+  def get_files(self):
+    base_files = files_in_path(
+        path_components=['system', 'lib'],
+        filenames=['standalone_wasm.c'])
+    # It is more efficient to use JS methods for time, normally.
+    time_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
+        filenames=['strftime.c',
+                   '__month_to_secs.c',
+                   '__tm_to_secs.c',
+                   '__tz.c',
+                   '__year_to_secs.c'])
+    # It is more efficient to use JS for __assert_fail, as it avoids always
+    # including fprintf etc.
+    exit_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
+        filenames=['assert.c'])
+    return base_files + time_files + exit_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND

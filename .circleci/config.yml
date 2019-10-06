@@ -28,6 +28,9 @@ commands:
             rm -Rf emscripten
             echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
+            echo "WASM_ENGINES = []" >> ~/.emscripten
+            test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
+            test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
             cd -
             echo "final .emscripten:"
             cat ~/.emscripten
@@ -67,6 +70,7 @@ commands:
             - .emscripten_cache/
             - .emscripten_ports/
             - .emscripten
+            - vms
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -235,7 +239,8 @@ commands:
       - run:
           name: download chrome
           command: |
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            # TODO: return to using beta once it stabilizes
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
           name: run tests
@@ -424,12 +429,14 @@ jobs:
           name: get wasmer
           command: |
             curl https://get.wasmer.io -sSfL | sh
+            mkdir ~/vms
+            cp ~/.wasmer/bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
             wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
             tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/
+            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
       - build-upstream
   test-upstream-wasm0:
     executor: bionic
@@ -485,12 +492,6 @@ jobs:
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
-  test-upstream-wasm0-mac:
-    macos:
-      xcode: "9.0"
-    steps:
-      - run-tests-mac:
-          test_targets: "wasm0"
 
 workflows:
   build-test:
@@ -573,8 +574,5 @@ workflows:
             - build-upstream-linux
       - build-upstream-mac
       - test-upstream-other-mac:
-          requires:
-            - build-upstream-mac
-      - test-upstream-wasm0-mac:
           requires:
             - build-upstream-mac

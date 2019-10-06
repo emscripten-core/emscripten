@@ -628,10 +628,16 @@ def optimize_syscalls(declares, DEBUG):
     # without filesystem support, it doesn't matter what syscalls need
     shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
-    syscall_prefix = '__syscall'
-    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
-    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
-    if set(syscalls).issubset(set([6, 54, 140])): # close, ioctl, llseek
+    syscall_prefixes = ('__syscall', 'fd_', '__wasi_fd_')
+    syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
+    # check if the only filesystem syscalls are in: close, ioctl, llseek, write
+    # (without open, etc.. nothing substantial can be done, so we can disable
+    # extra filesystem support in that case)
+    if set(syscalls).issubset(set([
+      '__syscall6', '__syscall54', '__syscall140',
+      'fd_seek', '__wasi_fd_seek',
+      'fd_write', '__wasi_fd_write'
+    ])):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
@@ -798,6 +804,8 @@ def apply_memory(js):
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
 
+  shared.Settings.DYNAMIC_BASE = memory.dynamic_base
+
   return js
 
 
@@ -917,15 +925,14 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
   funcs = list(funcs) + global_initializer_funcs(metadata['initializers'])
 
-  if not shared.Settings.ONLY_MY_CODE:
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      funcs.append('_emscripten_replace_memory')
-    if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-      funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if shared.Settings.EMTERPRETIFY:
-      funcs += ['emterpret']
-      if shared.Settings.EMTERPRETIFY_ASYNC:
-        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
+  if shared.Settings.ALLOW_MEMORY_GROWTH:
+    funcs.append('_emscripten_replace_memory')
+  if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+  if shared.Settings.EMTERPRETIFY:
+    funcs += ['emterpret']
+    if shared.Settings.EMTERPRETIFY_ASYNC:
+      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
 
   return sorted(set(funcs))
 
@@ -1651,8 +1658,6 @@ def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-  if shared.Settings.ONLY_MY_CODE:
-    funcs = []
   return funcs
 
 
@@ -1841,9 +1846,6 @@ for (var named in NAMED_GLOBALS) {
 
 
 def create_runtime_funcs_asmjs(exports, metadata):
-  if shared.Settings.ONLY_MY_CODE:
-    return []
-
   if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
   else:
@@ -2426,9 +2428,8 @@ def add_standard_wasm_imports(send_items_map):
   if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
-  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG:
-    # wasm2js legalization of i64 support code may require these
-    # autodebug may also need them
+  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
+    # legalization of i64 support code may require these in some modes
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
@@ -2519,16 +2520,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  if not shared.Settings.RELOCATABLE:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-
-  implemented_functions = set(metadata['implementedFunctions'])
-  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
-  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
-
-  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
+  em_asm_sigs = [sigs for _, sigs, _ in metadata['asmConsts'].values()]
+  em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
+  em_asm_funcs = ['_emscripten_asm_const_' + sig for sig in em_asm_sigs]
+  em_js_funcs = list(metadata['emJsFuncs'].keys())
+  declared_items = ['_' + item for item in metadata['declares']]
+  send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     if g.startswith('Math_'):
@@ -2711,7 +2708,7 @@ def run(infile, outfile, memfile, libraries):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
-  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
+  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     generated_struct_info_name = 'generated_struct_info.json'
 
     def generate_struct_info():
