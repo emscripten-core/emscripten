@@ -3,7 +3,7 @@ version: 2.1
 executors:
   bionic:
     docker:
-      - image: haraldreingruber/emscripten-ci
+      - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
