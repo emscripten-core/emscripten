@@ -11,10 +11,6 @@ var WasiLibrary = {
     return _exit(code);
   },
 
-  // This object can be modified by the user during startup, which affects
-  // the initial values of the environment accessible by getenv.
-  $ENV: {},
-
   emscripten_get_environ__deps: ['$ENV'],
   emscripten_get_environ: function() {
     if (!_emscripten_get_environ.strings) {
