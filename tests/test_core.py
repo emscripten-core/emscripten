@@ -136,7 +136,7 @@ def also_with_impure_standalone_wasm(func):
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
     if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
-      print('standalone')
+      print('standalone (impure; no wasm runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
       wasm_engines = shared.WASM_ENGINES
       try:
