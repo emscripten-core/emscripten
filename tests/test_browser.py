@@ -3979,9 +3979,10 @@ window.close = function() {
   @requires_threads
   def test_main_thread_em_asm_blocking(self):
     create_test_file('page.html',
-      open(path_from_root('tests', 'browser', 'test_em_asm_blocking.html')).read())
-    create_test_file('wasm.cpp', self.with_report_result(
-      open(path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp')).read()))
+                     open(path_from_root('tests', 'browser', 'test_em_asm_blocking.html')).read())
+    create_test_file('wasm.cpp',
+                     self.with_report_result(
+                       open(path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp')).read()))
 
     self.compile_btest(['wasm.cpp', '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
     self.run_browser('page.html', '', '/report_result?8')
