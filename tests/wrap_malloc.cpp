@@ -33,7 +33,7 @@ void __attribute__((noinline)) free(void *ptr)
 
 }
 
-volatile void *out;
+void *out;
 
 int main()
 {
