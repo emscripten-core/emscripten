@@ -911,6 +911,7 @@ _emscripten_log_js
 _emscripten_longjmp
 _emscripten_main_browser_thread_id
 _emscripten_memcpy_big
+_emscripten_notify_memory_growth
 _emscripten_pause_main_loop
 _emscripten_pc_get_column
 _emscripten_pc_get_file
