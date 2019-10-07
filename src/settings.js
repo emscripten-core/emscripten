@@ -1402,7 +1402,8 @@ var FETCH = 0;
 // only relevant for fastcomp, where we support asm.js. As a result, some
 // synchronous fetch operations that depend on the fetch worker may not work
 // with the wasm backend, like waiting or IndexedDB.
-var USE_FETCH_WORKER = 0;
+// Currently will always be set to 0 on WASM backend.
+var USE_FETCH_WORKER = 1;
 
 // Internal: name of the file containing the Fetch *.fetch.js, if relevant
 // Do not set yourself.

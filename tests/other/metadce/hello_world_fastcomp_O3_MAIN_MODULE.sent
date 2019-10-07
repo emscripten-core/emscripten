@@ -405,6 +405,7 @@ ___wasi_emscripten_get_environ
 ___wasi_environ_get
 ___wasi_environ_sizes_get
 ___wasi_fd_close
+___wasi_fd_read
 ___wasi_fd_write
 ___wasi_proc_exit
 __addDays
@@ -1054,6 +1055,7 @@ _fabs
 _fabsf
 _fabsl
 _fd_close
+_fd_read
 _fd_write
 _fexecve
 _filledEllipseColor
