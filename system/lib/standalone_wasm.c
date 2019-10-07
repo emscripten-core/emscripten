@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <emscripten.h>
 #include <errno.h>
 #include <stdio.h>
@@ -70,9 +71,17 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
 
 static const int WASM_PAGE_SIZE = 65536;
 
-// Note that this does not support memory growth in JS because we don't update the JS
-// heaps. Wasm and wasi lack a good API for that.
+extern void emscripten_notify_memory_growth(size_t memory_index);
+
 int emscripten_resize_heap(size_t size) {
-  size_t result = __builtin_wasm_memory_grow(0, (size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE);
-  return result != (size_t)-1;
+  size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
+  assert(old_size < size);
+  ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
+  size_t result = __builtin_wasm_memory_grow(0, diff);
+  if (result != (size_t)-1) {
+    // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
+    emscripten_notify_memory_growth(0);
+    return 1;
+  }
+  return 0;
 }
