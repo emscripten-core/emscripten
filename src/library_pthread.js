@@ -8,7 +8,7 @@ var LibraryPThread = {
   $PThread__deps: ['$PROCINFO', '_register_pthread_ptr',
                    'emscripten_main_thread_process_queued_calls',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '_kill_thread',
-                   '_cancel_thread'],
+                   '_cancel_thread', '_cleanup_thread'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
