@@ -1818,8 +1818,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.SIMD:
         exit_with_error('STANDALONE_WASM does not support simd yet')
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        exit_with_error('STANDALONE_WASM does not support memory growth yet')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
