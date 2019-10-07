@@ -650,7 +650,6 @@ LibraryManager.library = {
 #if ASSERTIONS
     assert(memoryIndex == 0);
 #endif
-console.log("Gorw!");
     updateGlobalBufferAndViews(wasmMemory.buffer);
   },
 
