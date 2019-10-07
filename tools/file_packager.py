@@ -529,7 +529,7 @@ if has_preloaded:
     os.unlink(temp)
     use_data = '''
           var compressedData = %s;
-          compressedData.data = byteArray;
+          compressedData['data'] = byteArray;
           assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
           LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
           Module['removeRunDependency']('datafile_%s');
