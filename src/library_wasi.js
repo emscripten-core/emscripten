@@ -35,7 +35,7 @@ var WasiLibrary = {
       }
       var strings = [];
       for (var x in env) {
-        strings.push(x + '=' + x[key]);
+        strings.push(x + '=' + env[x]);
       }
       _emscripten_get_environ.strings = strings;
     }
