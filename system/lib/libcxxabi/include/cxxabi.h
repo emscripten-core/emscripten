@@ -33,6 +33,9 @@ class type_info; // forward declaration
 #endif
 }
 
+// XXX EMSCRIPTEN Wasm exception handling has not yet implemented support for
+// exception specification. This temporarily changes 'throw()` with 'noexcept'
+// to make wasm EH working in the interim.
 #ifdef __USING_WASM_EXCEPTIONS__
 #define NOTHROW noexcept
 #else
