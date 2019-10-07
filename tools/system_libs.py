@@ -1185,6 +1185,33 @@ class libstandalonewasm(MuslInternalLibrary):
   cflags = ['-Os']
   src_dir = ['system', 'lib']
 
+  def __init__(self, **kwargs):
+    self.is_mem_grow = kwargs.pop('is_mem_grow')
+    super(libstandalonewasm, self).__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super(libstandalonewasm, self).get_base_name()
+    if self.is_mem_grow:
+      name += '-mem_grow'
+    return name
+
+  def get_cflags(self):
+    cflags = super(libstandalonewasm, self).get_cflags()
+    if self.is_mem_grow:
+      cflags += ['-D__EMSCRIPTEN_MEMORY_GROWTH__=1']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libstandalonewasm, cls).vary_on() + ['is_mem_grow']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libstandalonewasm, cls).get_default_variation(
+      is_mem_grow=shared.Settings.ALLOW_MEMORY_GROWTH,
+      **kwargs
+    )
+
   def get_files(self):
     base_files = files_in_path(
         path_components=['system', 'lib'],
