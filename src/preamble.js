@@ -375,7 +375,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // Pthread workers compute these in worker.js when they run, which is after
   // this script loads in the worker initially. Set some fake values to
   // catch bugs, then set the real values at load time.
+#if ASSERTIONS || SAFE_STACK
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
+#endif
 
   Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
     STACK_BASE = stackBase;
