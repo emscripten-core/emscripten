@@ -7368,7 +7368,7 @@ mergeInto(LibraryManager.library, {
         printf("|%s|\n", getenv("hello"));
       }
     ''')
-    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js']);
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js'])
     self.assertContained('|world|', run_js('a.out.js'))
 
   def test_warn_no_filesystem(self):
