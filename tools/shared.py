@@ -891,6 +891,9 @@ def apply_configuration():
 apply_configuration()
 
 # EM_CONFIG stuff
+if not JS_ENGINES:
+  JS_ENGINES = [NODE_JS]
+
 if CLOSURE_COMPILER is None:
   CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
 
