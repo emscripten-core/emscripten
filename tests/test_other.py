@@ -9783,11 +9783,11 @@ Module.arguments has been replaced with plain arguments_
     # object extension.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'])
-    content1 = open('hello1.o', 'r').read()
-    content2 = open('hello2.o', 'r').read()
+    content1 = open('hello1.o', 'rb').read()
+    content2 = open('hello2.o', 'rb').read()
     self.assertEqual(content1, content2)
 
     # We allow support linking object files together into other object files
     run_process([PYTHON, EMCC, 'hello1.o', '-o', 'hello3.o'])
-    content3 = open('hello2.o', 'r').read()
+    content3 = open('hello2.o', 'rb').read()
     self.assertEqual(content1, content3)
