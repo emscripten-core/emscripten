@@ -31,7 +31,7 @@ v.1.38.47: 10/02/2019
    etc. (see
    https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
  - Emscripten now supports the config file (.emscripten) being placed in the
-   emscriten directory rather that the current user's home directory.
+   emscripten directory rather that the current user's home directory.
    See #9543
 
 v.1.38.46: 09/25/2019

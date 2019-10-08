@@ -239,8 +239,8 @@ This command will now exit. When you are done editing those paths, re-run it.
 # The search order from the config file is as follows:
 # 1. Specified on the command line (--em-config)
 # 2. Specified via EM_CONFIG environment variable
-# 3. If emscripen-local .emescripten file is found, use that
-# 4. Fall back users home direcotry (~/.emscripten).
+# 3. If emscripten-local .emscripten file is found, use that
+# 4. Fall back users home directory (~/.emscripten).
 
 embedded_config = path_from_root('.emscripten')
 if '--em-config' in sys.argv:
