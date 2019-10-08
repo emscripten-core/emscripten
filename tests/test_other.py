@@ -7321,7 +7321,7 @@ mergeInto(LibraryManager.library, {
         self.assertContained('ctorEval.js', err) # with a stack trace
       self.assertContained('ctor_evaller: not successful', err) # with logging
 
-  def test_override_environment(self):
+  def test_override_js_execution_environment(self):
     create_test_file('main.cpp', r'''
       #include <emscripten.h>
       int main() {
@@ -7353,6 +7353,23 @@ mergeInto(LibraryManager.library, {
         create_test_file('test.js', curr + src)
         seen = run_js('test.js', engine=engine, stderr=PIPE, full_output=True, assert_returncode=None)
         self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -s ENVIRONMENT=web or -s ENVIRONMENT=node', seen)
+
+  def test_override_c_environ(self):
+    create_test_file('pre.js', r'''
+      var Module = {
+        preRun: [function() { ENV.hello = 'world' }]
+      };
+    ''')
+    create_test_file('src.cpp', r'''
+      #include <stdlib.h>
+      #include <stdio.h>
+      extern char **environ;
+      int main() {
+        printf("|%s|\n", getenv("hello"));
+      }
+    ''')
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js'])
+    self.assertContained('|world|', run_js('a.out.js'))
 
   def test_warn_no_filesystem(self):
     WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
