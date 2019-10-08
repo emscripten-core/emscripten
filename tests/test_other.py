@@ -5894,6 +5894,11 @@ int main(void) {
   def test_emconfigure_js_o(self):
     # issue 2994
     for i in [0, 1, 2]:
+      if WINDOWS and i == 0:
+        # EMCONFIGURE_JS=0 means to compile to native, and when doing so it
+        # uses windows struct layout, which differs from linux/mac/wasm, which
+        # hits assertions in the wasi headers.
+        continue
       with env_modify({'EMCONFIGURE_JS': str(i)}):
         for f in ['hello_world.c', 'files.cpp']:
           print(i, f)
