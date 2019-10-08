@@ -928,7 +928,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       link_flags.append((i, f))
 
-    # find input files this a simple heuristic. we should really analyze
+    # find input files with a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
     # what is left contains no more |-x OPT| things
     for i in range(len(newargs)):
