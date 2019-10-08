@@ -3,6 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -32,12 +33,16 @@ void __attribute__((noinline)) free(void *ptr)
 
 }
 
+void *out;
+
 int main()
 {
 	for(int i = 0; i < 20; ++i)
 	{
 		void *ptr = malloc(1024 * 1024);
+		out = ptr; // make it look used
 		free(ptr);
 	}
+	assert(totalAllocated == 20);
 	printf("OK.\n");
 }

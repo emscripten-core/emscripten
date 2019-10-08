@@ -79,6 +79,10 @@ SUPPORTED_LINKER_FLAGS = (
     '--whole-archive', '--no-whole-archive',
     '-whole-archive', '-no-whole-archive')
 
+SUPPORTED_LLD_LINKER_FLAGS = (
+    '--no-check-features',)
+
+
 LIB_PREFIXES = ('', 'lib')
 
 DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
@@ -924,7 +928,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       link_flags.append((i, f))
 
-    # find input files this a simple heuristic. we should really analyze
+    # find input files with a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
     # what is left contains no more |-x OPT| things
     for i in range(len(newargs)):
@@ -1200,6 +1204,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # to the linker.
         valid_prefixs = ('-l', '-L', '--trace-symbol', '--trace')
         if any(f.startswith(prefix) for prefix in valid_prefixs):
+          return True
+        if f in SUPPORTED_LLD_LINKER_FLAGS:
           return True
       else:
         # Silently ignore -l/-L flags when not using lld.  If using lld allow
@@ -1523,6 +1529,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
+    if target.endswith(WASM_ENDINGS):
+      # if the output is just a wasm file, it will normally be a standalone one,
+      # as there is no JS. an exception are side modules, as we can't tell at
+      # compile time whether JS will be involved or not - the main module may
+      # have JS, and the side module is expected to link against that.
+      # we also do not support standalone mode in fastcomp.
+      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
+        shared.Settings.STANDALONE_WASM = 1
+      js_target = misc_temp_files.get(suffix='.js').name
+
     if shared.Settings.WASM:
       if shared.Settings.SINGLE_FILE:
         # placeholder strings for JS glue, to be replaced with subresource locations in do_binaryen
@@ -1743,16 +1759,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('wasm2js is only available in the upstream wasm backend path')
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
-
-    if target.endswith(WASM_ENDINGS):
-      # if the output is just a wasm file, it will normally be a standalone one,
-      # as there is no JS. an exception are side modules, as we can't tell at
-      # compile time whether JS will be involved or not - the main module may
-      # have JS, and the side module is expected to link against that.
-      # we also do not support standalone mode in fastcomp.
-      if shared.Settings.WASM_BACKEND and not shared.Settings.SIDE_MODULE:
-        shared.Settings.STANDALONE_WASM = 1
-      js_target = misc_temp_files.get(suffix='.js').name
 
     if shared.Settings.EVAL_CTORS:
       if not shared.Settings.WASM:
