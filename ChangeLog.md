@@ -17,6 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Add support for MAIN_THREAD_EM_ASM in wasm backend.
+ - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
+   This is useful for people who use FETCH, but don't perform any fetches on the
+   main thread.
+ - Add support for FETCH API in WASM backend. This doesn't support FETCH in the
+   main thread (`USE_FETCH_WORKER=0` is enforced)
 
 v.1.38.47: 10/02/2019
 ---------------------
