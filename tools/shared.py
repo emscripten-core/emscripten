@@ -345,16 +345,17 @@ def hint_config_file_location():
 
 
 def listify(x):
+  if x is None:
+    return []
   if type(x) is not list:
     return [x]
   return x
 
 
 def fix_js_engine(old, new):
-  if old is None:
-    return
-  global JS_ENGINES
-  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
+  if old is not None:
+    global JS_ENGINES
+    JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
   return new
 
 
