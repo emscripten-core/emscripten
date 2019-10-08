@@ -828,12 +828,12 @@ base align: 0, 0, 0, 0'''])
   def test_mallocstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
+  @no_asan('ASan does not support custom memory allocators')
   @parameterized({
     'normal': [],
     'debug': ['-DEMMALLOC_DEBUG'],
     'debug_log': ['-DEMMALLOC_DEBUG', '-DEMMALLOC_DEBUG_LOG', '-DRANDOM_ITERS=130'],
   })
-  @no_asan('ASan does not support custom memory allocators')
   def test_emmalloc(self, *args):
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
@@ -905,6 +905,7 @@ base align: 0, 0, 0, 0'''])
       '''
       self.do_run(src, 'sizeofs:6,8\n*C___: 0,6,12,20<24*\n*Carr: 0,6,12,20<24*\n*C__w: 0,6,12,20<24*\n*Cp1_: 4,6,12,20<24*\n*Cp2_: 0,6,12,20<24*\n*Cint: 0,8,12,20<24*\n*C4__: 0,8,12,20<24*\n*C4_2: 0,6,10,16<20*\n*C__z: 0,8,16,24<28*')
 
+  @also_with_standalone_wasm
   def test_assert(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_assert', assert_returncode=None)
 
@@ -7808,6 +7809,7 @@ extern "C" {
           'allow': TRAP_OUTPUTS
         }[mode], assert_returncode=None)
 
+  @also_with_standalone_wasm
   def test_sbrk(self):
     self.do_run(open(path_from_root('tests', 'sbrk_brk.cpp')).read(), 'OK.')
 
