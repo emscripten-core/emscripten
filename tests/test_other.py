@@ -957,10 +957,6 @@ f.close()
     run_process([PYTHON, EMCC, 'main.cpp', '-Wl,-L.', '-Wl,-lfoo'])
     run_process([PYTHON, EMCC, 'main.cpp', '-Wl,@linkflags.txt'])
 
-  def test_wl_linkflags_invalid(self):
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-Wl,-foo'], stderr=PIPE).stderr
-    self.assertContained('ignoring unsupported linker flag: `-foo`', err)
-
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
     create_test_file('main.cpp', '''
@@ -9747,6 +9743,13 @@ Module.arguments has been replaced with plain arguments_
     # don't actually exist in our standard library path.  Make sure we don't
     # error out when linking with these flags.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-lm', '-ldl', '-lrt', '-lpthread'])
+
+  @no_fastcomp('lld-specific')
+  def test_supported_linker_flags(self):
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,waka'], stderr=PIPE).stderr
+    self.assertContained('WARNING: ignoring unsupported linker flag: `waka', out)
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--no-check-features'], stderr=PIPE).stderr
+    self.assertNotContained('WARNING: ignoring unsupported linker flag', out)
 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.

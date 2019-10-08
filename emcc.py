@@ -79,6 +79,10 @@ SUPPORTED_LINKER_FLAGS = (
     '--whole-archive', '--no-whole-archive',
     '-whole-archive', '-no-whole-archive')
 
+SUPPORTED_LLD_LINKER_FLAGS = (
+    '--no-check-features',)
+
+
 LIB_PREFIXES = ('', 'lib')
 
 DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
@@ -1200,6 +1204,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # to the linker.
         valid_prefixs = ('-l', '-L', '--trace-symbol', '--trace')
         if any(f.startswith(prefix) for prefix in valid_prefixs):
+          return True
+        if f in SUPPORTED_LLD_LINKER_FLAGS:
           return True
       else:
         # Silently ignore -l/-L flags when not using lld.  If using lld allow
