@@ -994,6 +994,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       elif arg.startswith('-r'):
         link_to_object = True
         newargs[i] = ''
+      elif arg.startswith('-L'):
+        add_link_flag(i, arg)
+        newargs[i] = ''
       elif arg.startswith('-l'):
         add_link_flag(i, arg)
         newargs[i] = ''
