@@ -17,8 +17,6 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Redefine SEEK_* values in stdio to be consistent with wasi. See #9555
-   (and for more background, #9545).
 
 v.1.38.47: 10/02/2019
 ---------------------
