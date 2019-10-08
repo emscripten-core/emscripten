@@ -688,9 +688,9 @@ fi
       for filename, engine in jsengines:
         if type(engine) is list:
           engine = engine[0]
-        if engine == '':
-            print('WARNING: Not testing engine %s, not configured.' % (filename))
-            continue
+        if not engine:
+          print('WARNING: Not testing engine %s, not configured.' % (filename))
+          continue
 
         print(filename, engine)
 
