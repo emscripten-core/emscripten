@@ -957,10 +957,6 @@ f.close()
     run_process([PYTHON, EMCC, 'main.cpp', '-Wl,-L.', '-Wl,-lfoo'])
     run_process([PYTHON, EMCC, 'main.cpp', '-Wl,@linkflags.txt'])
 
-  def test_wl_linkflags_invalid(self):
-    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-Wl,-foo'], stderr=PIPE).stderr
-    self.assertContained('ignoring unsupported linker flag: `-foo`', err)
-
   def test_l_link(self):
     # Linking with -lLIBNAME and -L/DIRNAME should work, also should work with spaces
     create_test_file('main.cpp', '''
