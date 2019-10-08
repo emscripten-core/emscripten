@@ -15,9 +15,20 @@ full changeset diff at the end of each section.
 
 See docs/process.md for how version tagging works.
 
-
 Current Trunk
 -------------
+
+v.1.38.47: 10/02/2019
+---------------------
+ - Redefine errno values to be consistent with wasi. This will let us avoid
+   needing to convert the values back and forth as we use more wasi APIs.
+   This is an ABI change, which should not be noticeable from user code
+   unless you use errno defines (like EAGAIN) *and* keep around binaries
+   compiled with an older version that you link against. In that case, you
+   should rebuild them. See #9545.
+ - Removed build option -s ONLY_MY_CODE as we now have much better solutions
+   for that, like building to a wasm object file or using STANDALONE_WASM
+   etc. (see https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
 
 v.1.38.46: 09/25/2019
 ---------------------
@@ -32,6 +43,7 @@ v.1.38.46: 09/25/2019
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.
+ - ASYNCIFY_BLACKLIST and ASYNCIFY_WHITELIST now support simple '*' wildcard matching
 
 v.1.38.45: 09/12/2019
 ---------------------

@@ -29,6 +29,17 @@ void abort() {
   exit(1);
 }
 
+// mmap support is nonexistent. TODO: emulate simple mmaps using
+// stdio + malloc, which is slow but may help some things?
+
+int __map_file(int x, int y) {
+  return ENOSYS;
+}
+
+int __syscall91(int x, int y) { // munmap
+  return ENOSYS;
+}
+
 // Musl lock internals. As we assume wasi is single-threaded for now, these
 // are no-ops.
 
@@ -43,7 +54,7 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
   // can just split into smaller calls.
   // TODO optimize, maybe build our memcpy with a wasi variant, maybe have
   //      a SIMD variant, etc.
-  const int CHUNK = 8192;
+  const int CHUNK = 4096;
   unsigned char* d = (unsigned char*)dest;
   unsigned char* s = (unsigned char*)src;
   while (n > 0) {
@@ -64,4 +75,19 @@ static const int WASM_PAGE_SIZE = 65536;
 int emscripten_resize_heap(size_t size) {
   size_t result = __builtin_wasm_memory_grow(0, (size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE);
   return result != (size_t)-1;
+}
+
+// C++ ABI
+
+// Emscripten disables exception catching by default, but not throwing. That
+// allows users to see a clear error if a throw happens, and 99% of the
+// overhead is in the catching, so this is a reasonable tradeoff.
+// For now, in a standalone build just terminate. TODO nice error message
+void
+__cxa_throw(void* ptr, void* type, void* destructor) {
+  abort();
+}
+
+void* __cxa_allocate_exception(size_t thrown_size) {
+  abort();
 }

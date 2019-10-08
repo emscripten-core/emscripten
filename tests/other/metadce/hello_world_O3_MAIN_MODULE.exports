@@ -375,6 +375,7 @@ __uselocale
 __vfprintf_internal
 __vm_wait
 __vsyslog
+__wasi_syscall_ret
 __wasm_apply_relocs
 __wasm_call_ctors
 __wcscoll_l

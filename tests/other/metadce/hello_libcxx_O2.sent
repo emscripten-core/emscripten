@@ -2,8 +2,6 @@ __cxa_atexit
 __lock
 __map_file
 __syscall140
-__syscall145
-__syscall6
 __syscall91
 __unlock
 abort
@@ -12,6 +10,8 @@ emscripten_memcpy_big
 emscripten_resize_heap
 environ_get
 environ_sizes_get
+fd_close
+fd_read
 fd_write
 memory
 setTempRet0

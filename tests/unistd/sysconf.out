@@ -365,4 +365,4 @@ _SC_THREAD_DESTRUCTOR_ITERATIONS: 4
 errno: 0
 
 (invalid): -1
-errno: 22
+errno: 28

@@ -543,7 +543,10 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
-  cflags = ['-D_XOPEN_SOURCE=700']
+  cflags = [
+    '-D_XOPEN_SOURCE=700',
+    '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
+  ]
 
 
 class AsanInstrumentedLibrary(Library):
@@ -710,6 +713,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       libc_files += files_in_path(
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+
+    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
     return libc_files
 
@@ -1021,6 +1026,11 @@ class libasmfs(CXXLibrary, MTLibrary):
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
 
+  def can_build(self):
+    # ASMFS is looking for a maintainer
+    # https://github.com/emscripten-core/emscripten/issues/9534
+    return False
+
 
 class libhtml5(Library):
   name = 'libhtml5'
@@ -1179,14 +1189,20 @@ class libstandalonewasm(MuslInternalLibrary):
     base_files = files_in_path(
         path_components=['system', 'lib'],
         filenames=['standalone_wasm.c'])
-    musl_files = files_in_path(
+    # It is more efficient to use JS methods for time, normally.
+    time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
         filenames=['strftime.c',
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
                    '__year_to_secs.c'])
-    return base_files + musl_files
+    # It is more efficient to use JS for __assert_fail, as it avoids always
+    # including fprintf etc.
+    exit_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
+        filenames=['assert.c'])
+    return base_files + time_files + exit_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
