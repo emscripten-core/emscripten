@@ -472,7 +472,6 @@ Environment variables
 
   - ``EMMAKEN_JUST_CONFIGURE``
   - ``EMMAKEN_JUST_CONFIGURE_RECURSE``
-  - ``EMCONFIGURE_JS``
   - ``CONFIGURE_CC``
   - ``EMMAKEN_CXX``
   - ``EMMAKEN_CXX``
