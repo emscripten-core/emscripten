@@ -77,10 +77,16 @@ SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
     '--whole-archive', '--no-whole-archive',
-    '-whole-archive', '-no-whole-archive')
+    '-whole-archive', '-no-whole-archive'
+)
 
+SUPPORTED_LLD_LINKER_FLAG_PREFIXES = ('-l', '-L', '--trace-symbol', '-debug')
 SUPPORTED_LLD_LINKER_FLAGS = (
-    '--no-check-features',)
+   '--no-check-features',
+   '--trace',
+   '--no-threads',
+   '-mllvm'
+)
 
 
 LIB_PREFIXES = ('', 'lib')
@@ -1164,8 +1170,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if using_lld:
         # Add flags here to allow -Wl, options to be passed all the way through
         # to the linker.
-        valid_prefixs = ('-l', '-L', '--trace-symbol', '--trace')
-        if any(f.startswith(prefix) for prefix in valid_prefixs):
+        if any(f.startswith(prefix) for prefix in SUPPORTED_LLD_LINKER_FLAG_PREFIXES):
           return True
         if f in SUPPORTED_LLD_LINKER_FLAGS:
           return True
