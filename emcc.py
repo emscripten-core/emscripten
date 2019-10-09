@@ -626,19 +626,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # normal output including stderr so we write to a file
     debug_configure = 0
 
-    # Whether we fake configure tests using clang - the local, native compiler -
-    # or not. if not we generate JS and use node with a shebang
-    # Neither approach is perfect, you can try both, but may need to edit
-    # configure scripts in some cases
-    # By default we configure in js, which can break on local filesystem access,
-    # etc., but is otherwise accurate so we
-    # disable this if we think we have to. A value of '2' here will force JS
-    # checks in all cases. In summary:
-    # 0 - use native compilation for configure checks
-    # 1 - use js when we think it will work
-    # 2 - always use js for configure checks
-    use_js = int(os.environ.get('EMCONFIGURE_JS', '2'))
-
     if debug_configure:
       tempout = '/tmp/emscripten_temp/out'
       if not os.path.exists(tempout):
@@ -653,26 +640,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
         except IOError:
           pass
-      elif arg.endswith('.s'):
-        if debug_configure:
-          open(tempout, 'a').write('(compiling .s assembly, must use clang\n')
-        if use_js == 1:
-          use_js = 0
-      elif arg == '-E' or arg == '-M' or arg == '-MM':
-        if use_js == 1:
-          use_js = 0
-
-    if src:
-      if 'fopen' in src and '"w"' in src:
-        if use_js == 1:
-          use_js = 0 # we cannot write to files from js!
-        if debug_configure:
-          open(tempout, 'a').write('Forcing clang since uses fopen to write\n')
 
     # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
-    compiler = os.environ.get('CONFIGURE_CC')
-    if not compiler:
-      compiler = shared.EMXX if use_js else shared.CLANG_CPP
+    compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
     if 'CXXCompiler' not in ' '.join(args) and not use_cxx:
       compiler = shared.to_cc(compiler)
 
@@ -682,11 +652,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if skip_next:
           skip_next = False
           continue
-        if not use_js and arg == '-s' and is_minus_s_for_emcc(argv, idx):
-          # skip -s X=Y if not using js for configure
-          skip_next = True
-          continue
-        if use_js or arg != '--tracing':
+        if arg != '--tracing':
           yield arg
 
     if compiler in (shared.EMCC, shared.EMXX):
@@ -694,24 +660,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     else:
       compiler = [compiler]
     cmd = compiler + list(filter_emscripten_options(args))
-    if not use_js:
-      cmd += shared.emsdk_cflags() + ['-D__EMSCRIPTEN__']
-      # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-      # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-      if not shared.Settings.STRICT:
-        cmd += ['-DEMSCRIPTEN']
-    if use_js:
-      # configure tests want a more shell-like style, where we emit return codes on exit()
-      cmd += ['-s', 'NO_EXIT_RUNTIME=0']
-      # use node.js raw filesystem access, to behave just like a native executable
-      cmd += ['-s', 'NODERAWFS=1']
+    # configure tests want a more shell-like style, where we emit return codes on exit()
+    cmd += ['-s', 'NO_EXIT_RUNTIME=0']
+    # use node.js raw filesystem access, to behave just like a native executable
+    cmd += ['-s', 'NODERAWFS=1']
 
     logger.debug('just configuring: ' + ' '.join(cmd))
     if debug_configure:
       open(tempout, 'a').write('emcc, just configuring: ' + ' '.join(cmd) + '\n\n')
-
-    if not use_js:
-      return run_process(cmd, check=False).returncode
 
     only_object = '-c' in cmd
     for i in reversed(range(len(cmd) - 1)): # Last -o directive should take precedence, if multiple are specified

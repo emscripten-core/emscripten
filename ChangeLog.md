@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Remove EMCONFIGURE_JS. Since #6269 we have set it to "2" which means never
+   use native, always use JS.
 
 v.1.38.47: 10/02/2019
 ---------------------
