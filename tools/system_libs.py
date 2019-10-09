@@ -1192,7 +1192,7 @@ class libstandalonewasm(MuslInternalLibrary):
   def get_base_name(self):
     name = super(libstandalonewasm, self).get_base_name()
     if self.is_mem_grow:
-      name += '-mem_grow'
+      name += '-memgrow'
     return name
 
   def get_cflags(self):
