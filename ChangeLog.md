@@ -21,6 +21,8 @@ Current Trunk
  - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
    This is useful for people who use FETCH, but don't perform any synchronous fetches
    on the main thread. #9567
+ - Remove EMCONFIGURE_JS. Since #6269 we have set it to "2" which means never
+   use native, always use JS.
 
 v.1.38.47: 10/02/2019
 ---------------------
@@ -34,7 +36,11 @@ v.1.38.47: 10/02/2019
    should rebuild them. See #9545.
  - Removed build option -s ONLY_MY_CODE as we now have much better solutions
    for that, like building to a wasm object file or using STANDALONE_WASM
-   etc. (see https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+   etc. (see
+   https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+ - Emscripten now supports the config file (.emscripten) being placed in the
+   emscripten directory rather that the current user's home directory.
+   See #9543
 
 v.1.38.46: 09/25/2019
 ---------------------
