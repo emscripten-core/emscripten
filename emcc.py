@@ -3510,11 +3510,6 @@ def process_libraries(libs, lib_dirs, temp_files):
     logger.debug('looking for library "%s"', lib)
     suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
 
-    if shared.Settings.WASM_BACKEND:
-      # under the wasm .a files are found using the normal -l/-L flags to
-      # the linker.
-      suffixes = DYNAMICLIB_ENDINGS
-
     found = False
     for prefix in LIB_PREFIXES:
       for suff in suffixes:
