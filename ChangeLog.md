@@ -17,11 +17,17 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Add support for MAIN_THREAD_EM_ASM in wasm backend. #9560
+ - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
+   This is useful for people who use FETCH, but don't perform any synchronous fetches
+   on the main thread. #9567
  - Remove EMCONFIGURE_JS. Since #6269 we have set it to "2" which means never
    use native, always use JS.
 
 v.1.38.47: 10/02/2019
 ---------------------
+ - Add support for FETCH API in WASM backend. This doesn't support FETCH in the
+   main thread (`USE_FETCH_WORKER=0` is enforced). #9490
  - Redefine errno values to be consistent with wasi. This will let us avoid
    needing to convert the values back and forth as we use more wasi APIs.
    This is an ABI change, which should not be noticeable from user code
