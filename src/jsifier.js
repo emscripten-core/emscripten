@@ -114,6 +114,16 @@ function JSify(data, functionsOnly) {
 
   // functionStub
   function functionStubHandler(item) {
+    if (!DISABLE_EXCEPTION_THROWING) {
+    // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
+    // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
+    // that variadically processes all of these functions using JS 'arguments' object.
+      if (item.ident.startsWith('___cxa_find_matching_catch_')) {
+        var num = +item.ident.split('_').slice(-1)[0];
+        addCxaCatch(num);
+      }
+    }
+
     function addFromLibrary(ident) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
