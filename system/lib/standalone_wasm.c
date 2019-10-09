@@ -55,7 +55,7 @@ void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_
   // can just split into smaller calls.
   // TODO optimize, maybe build our memcpy with a wasi variant, maybe have
   //      a SIMD variant, etc.
-  const int CHUNK = 8192;
+  const int CHUNK = 4096;
   unsigned char* d = (unsigned char*)dest;
   unsigned char* s = (unsigned char*)src;
   while (n > 0) {
@@ -87,4 +87,19 @@ int emscripten_resize_heap(size_t size) {
   }
 #endif
   return 0;
+}
+
+// C++ ABI
+
+// Emscripten disables exception catching by default, but not throwing. That
+// allows users to see a clear error if a throw happens, and 99% of the
+// overhead is in the catching, so this is a reasonable tradeoff.
+// For now, in a standalone build just terminate. TODO nice error message
+void
+__cxa_throw(void* ptr, void* type, void* destructor) {
+  abort();
+}
+
+void* __cxa_allocate_exception(size_t thrown_size) {
+  abort();
 }

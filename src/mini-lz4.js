@@ -313,22 +313,22 @@ exports.compressPackage = function(data, verify) {
   }
   data = null; // XXX null out pack['data'] too?
   var compressedData = {
-    data: new Uint8Array(total + exports.CHUNK_SIZE*2), // store all the compressed data, plus room for two cached decompressed chunk, in one fast array
-    cachedOffset: total,
-    cachedIndexes: [-1, -1], // cache last two blocks, so that reading 1,2,3 + preloading another block won't trigger decompress thrashing
-    cachedChunks: [null, null],
-    offsets: [], // chunk# => start in compressed data
-    sizes: [],
-    successes: successes, // 1 if chunk is compressed
+    'data': new Uint8Array(total + exports.CHUNK_SIZE*2), // store all the compressed data, plus room for two cached decompressed chunk, in one fast array
+    'cachedOffset': total,
+    'cachedIndexes': [-1, -1], // cache last two blocks, so that reading 1,2,3 + preloading another block won't trigger decompress thrashing
+    'cachedChunks': [null, null],
+    'offsets': [], // chunk# => start in compressed data
+    'sizes': [],
+    'successes': successes, // 1 if chunk is compressed
   };
   offset = 0;
   for (var i = 0; i < compressedChunks.length; i++) {
-    compressedData.data.set(compressedChunks[i], offset);
-    compressedData.offsets[i] = offset;
-    compressedData.sizes[i] = compressedChunks[i].length
+    compressedData['data'].set(compressedChunks[i], offset);
+    compressedData['offsets'][i] = offset;
+    compressedData['sizes'][i] = compressedChunks[i].length
     offset += compressedChunks[i].length;
   }
-  console.log('compressed package into ' + [compressedData.data.length]);
+  console.log('compressed package into ' + [compressedData['data'].length]);
   assert(offset === total);
   return compressedData;
 };
