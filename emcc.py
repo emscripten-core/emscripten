@@ -1296,12 +1296,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       use_cxx = True
     shared.Settings.USE_CXX = use_cxx
 
-    if not compile_only:
-      ldflags = shared.emsdk_ldflags(newargs)
-      for f in ldflags:
-        newargs.append(f)
-        add_link_flag(len(newargs), f)
-
     if not shared.Settings.STRICT:
       # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
       # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
@@ -1312,9 +1306,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # TODO(sbc): Remove this emscripten-specific special case.
       diagnostics.warning('emcc', 'Assuming object file output in the absence of `-c`, based on output filename. Add with `-c` or `-r` to avoid this warning')
       link_to_object = True
-
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
-    link_flags = filter_link_flags(link_flags, using_lld)
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1406,8 +1397,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.USE_FETCH_WORKER = 0
 
     if shared.Settings.DEMANGLE_SUPPORT:
+      if not use_cxx:
+        exit_with_error('DEMANGLE_SUPPORT is not available in C mode (build with em++ or add `-x c++`)')
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
-      forced_stdlibs.append('libc++abi')
 
     if shared.Settings.FULL_ES3:
       shared.Settings.FULL_ES2 = 1
@@ -2245,13 +2237,26 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       logger.debug('stopping after compile phase')
       return 0
 
+    for f in get_ldflags(newargs, use_cxx):
+      add_link_flag(sys.maxsize, f)
+
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
+    link_flags = filter_link_flags(link_flags, using_lld)
+
     # Decide what we will link
     consumed = process_libraries(libs, lib_dirs, temp_files)
     # Filter out libraries that are actually JS libs
     link_flags = [l for l in link_flags if l[0] not in consumed]
     temp_files = filter_out_dynamic_libs(temp_files)
 
-    linker_inputs = [val for _, val in sorted(temp_files + link_flags)]
+    linker_inputs = sorted(temp_files + link_flags)
+    last_user_arg = 0
+    for i, flag in enumerate(linker_inputs):
+      if flag[0] == sys.maxsize:
+        break
+      last_user_arg += 1
+
+    linker_inputs = [val for _, val in linker_inputs]
 
     if link_to_object:
       with ToolchainProfiler.profile_block('linking to object file'):
@@ -2281,7 +2286,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         extra_files_to_link = system_libs.get_ports(shared.Settings)
         if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
           extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
-        linker_inputs += extra_files_to_link
+        linker_inputs = linker_inputs[:last_user_arg] + extra_files_to_link + linker_inputs[last_user_arg:]
 
     # exit block 'calculate system libraries'
     log_time('calculate system libraries')
@@ -2777,6 +2782,104 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     logger.debug('total time: %.2f seconds', (time.time() - start_time))
 
   return 0
+
+
+def get_ldflags(user_args, cxx):
+  if os.environ.get('EMMAKEN_NO_SDK'):
+    return []
+
+  library_paths = [
+      shared.path_from_root('system', 'local', 'lib'),
+      shared.path_from_root('system', 'lib'),
+      shared.Cache.dirname,
+  ]
+  ldflags = ['-L' + l for l in library_paths]
+
+  if '-nostdlib' in user_args or '-nodefaultlibs' in user_args or shared.Settings.SIDE_MODULE:
+    return ldflags
+
+  system_libs_map = system_libs.Library.get_usable_variations()
+
+  # Setting this in the environment will avoid checking dependencies and make
+  # building big projects a little faster 1 means include everything; otherwise
+  # it can be the name of a lib (libc++, etc.).
+  # You can provide 1 to include everything, or a comma-separated list with the
+  # ones you want
+  force = os.environ.get('EMCC_FORCE_STDLIBS')
+  force_include = set((force.split(',') if force else []))
+  if force_include:
+    logger.debug('forcing stdlibs: ' + str(force_include))
+
+  for lib in force_include:
+    if lib not in system_libs_map:
+      shared.exit_with_error('invalid forced library: %s', lib)
+
+  libs = []
+  if cxx:
+    libs.append('libc++')
+    if shared.Settings.EXCEPTION_HANDLING:
+      libs.append('libunwind')
+  if shared.Settings.JS_MATH:
+    libs.append('libjsmath')
+  libs.append('libc')
+  if not shared.Settings.WASM_BACKEND and not shared.Settings.MINIMAL_RUNTIME:
+    libs.append('libc-extras')
+  if shared.Settings.WASM:
+    libs.append('libc-wasm')
+  libs.append('libpthread')
+  if shared.Settings.MALLOC != 'none':
+    libs.append('libmalloc')
+  if shared.Settings.WASM_BACKEND:
+    libs.append('libcompiler_rt')
+    if shared.Settings.WASM:
+      libs.append('libc_rt_wasm')
+  if shared.Settings.STANDALONE_WASM:
+    libs.append('libstandalonewasm')
+
+  if shared.Settings.USE_LSAN:
+    libs.append('liblsan_rt_wasm')
+
+  if shared.Settings.USE_ASAN:
+    libs.append('libasan_rt_wasm')
+
+  if shared.Settings.UBSAN_RUNTIME == 1:
+    libs.append('libubsan_minimal_rt_wasm')
+  elif shared.Settings.UBSAN_RUNTIME == 2 or shared.Settings.USE_ASAN:
+    libs.append('libubsan_rt_wasm')
+
+  if shared.Settings.USE_ASAN or shared.Settings.USE_LSAN:
+    libs.append('liblsan_common_rt_wasm')
+
+  if shared.Settings.USE_ASAN or shared.Settings.UBSAN_RUNTIME or shared.Settings.USE_LSAN:
+    libs.append('libsanitizer_common_rt_wasm')
+    cxx = True
+
+  # libc++abi and libc++ *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
+  # exceptions, but since the string methods in the headers are *weakly* linked, then
+  # we might have exception-supporting versions of them from elsewhere, and if libc++abi
+  # is first then it would "win", breaking exception throwing from those string
+  # header methods. To avoid that, we link libc++abi last.
+  if cxx:
+    libs.append('libc++abi')
+
+  # Wrap libraries in --whole-archive, as needed.  We need to do this last
+  # since otherwise the abort sorting won't make sense.
+  in_group = False
+  for lib in libs:
+    path = system_libs_map[lib].get_path()
+    basename = os.path.basename(os.path.splitext(path)[0])
+    need_whole_archive = force == '1' or lib in force_include
+    if need_whole_archive and not in_group:
+      ldflags.append('--whole-archive')
+      in_group = True
+    if in_group and not need_whole_archive:
+      ldflags.append('--no-whole-archive')
+      in_group = False
+    ldflags.append('-l' + basename[3:])
+  if in_group:
+    ldflags.append('--no-whole-archive')
+
+  return ldflags
 
 
 def parse_args(newargs):

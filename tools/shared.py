@@ -865,28 +865,6 @@ def get_llvm_target():
   return LLVM_TARGET
 
 
-def emsdk_ldflags(user_args):
-  if os.environ.get('EMMAKEN_NO_SDK'):
-    return []
-
-  library_paths = [
-      path_from_root('system', 'local', 'lib'),
-      path_from_root('system', 'lib'),
-      Cache.dirname
-  ]
-  ldflags = ['-L' + l for l in library_paths]
-
-  if '-nostdlib' in user_args:
-    return ldflags
-
-  # TODO(sbc): Add system libraries here rather than conditionally including
-  # them via .symbols files.
-  libraries = []
-  ldflags += ['-l' + l for l in libraries]
-
-  return ldflags
-
-
 def emsdk_cflags():
   # Disable system C and C++ include directories, and add our own (using
   # -isystem so they are last, like system dirs, which allows projects to
