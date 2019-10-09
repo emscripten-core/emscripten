@@ -841,13 +841,15 @@ fi
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
     self.assertExists(os.path.join(root_cache, 'asmjs'))
 
-  def test_binaryen_root(self):
+  def test_required_config_settings(self):
     # with no binaryen root, an error is shown
     restore_and_set_up()
-    open(CONFIG_FILE, 'a').write('''
-BINARYEN_ROOT = ''
-    ''')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT must be set up in .emscripten')
+
+    open(CONFIG_FILE, 'a').write('\nBINARYEN_ROOT = ""\n')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % CONFIG_FILE)
+
+    open(CONFIG_FILE, 'a').write('\ndel BINARYEN_ROOT\n')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % CONFIG_FILE)
 
   def test_embuilder_force(self):
     restore_and_set_up()
