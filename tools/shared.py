@@ -310,6 +310,8 @@ FROZEN_CACHE = False
 
 def parse_config_file():
   """Parse the emscripten config file using python's exec"""
+  global JS_ENGINES, JAVA, CLOSURE_COMPILER
+
   config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   try:
@@ -341,6 +343,27 @@ def parse_config_file():
   for key in CONFIG_KEYS:
     if key in config:
       globals()[key] = config[key]
+
+  # Certain keys are mandatory
+  for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
+    if key not in config:
+      exit_with_error('%s is not defined in %s', key, hint_config_file_location())
+    if not globals()[key]:
+      exit_with_error('%s is set to empty value in %s', key, hint_config_file_location())
+
+  if not NODE_JS:
+    exit_with_error('NODE_JS is not defined in %s', hint_config_file_location())
+
+  # EM_CONFIG stuff
+  if not JS_ENGINES:
+    JS_ENGINES = [NODE_JS]
+
+  if CLOSURE_COMPILER is None:
+    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+
+  if JAVA is None:
+    logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
+    JAVA = 'java'
 
 
 # Returns a suggestion where current .emscripten config file might be located
@@ -898,17 +921,6 @@ def apply_configuration():
 
 
 apply_configuration()
-
-# EM_CONFIG stuff
-if not JS_ENGINES:
-  JS_ENGINES = [NODE_JS]
-
-if CLOSURE_COMPILER is None:
-  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
-
-if JAVA is None:
-  logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
-  JAVA = 'java'
 
 # Additional compiler options
 
@@ -2806,8 +2818,6 @@ class Building(object):
   @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    if not BINARYEN_ROOT:
-      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 
