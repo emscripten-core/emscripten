@@ -2361,7 +2361,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
 
   asm_const_funcs = []
   asm_const_funcs.append(r'''
-function _read_asm_const_args(sig_ptr, buf) {
+function readAsmConstArgs(sig_ptr, buf) {
   var args = [];
   var sig = AsciiToString(sig_ptr);
   function align_to(ptr, align) {
@@ -2404,7 +2404,7 @@ function _read_asm_const_args(sig_ptr, buf) {
 
     asm_const_funcs.append(r'''
 function %s(code, sig_ptr, argbuf) {%s
-  var args = _read_asm_const_args(sig_ptr, argbuf);
+  var args = readAsmConstArgs(sig_ptr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   return asm_consts, asm_const_funcs

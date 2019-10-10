@@ -1257,9 +1257,9 @@ var LibraryPThread = {
       // EM_ASM arguments are stored in their own buffer in memory, that we need
       // to unpack in order to call. The proxied arguments are the code index,
       // signature pointer, and vararg buffer pointer, in that order.
-      var sig_ptr = _emscripten_receive_on_main_thread_js_callArgs[1];
-      var vararg_ptr = _emscripten_receive_on_main_thread_js_callArgs[2];
-      var args = _read_asm_const_args(sig_ptr, vararg_ptr);
+      var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
+      var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
+      var args = readAsmConstArgs(sigPtr, varargPtr);
       return func.apply(null, args);
     }
 #endif
