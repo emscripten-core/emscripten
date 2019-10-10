@@ -2360,7 +2360,11 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
-  asm_const_funcs.append(r'''
+
+  if all_sigs:
+    # emit the signature-reading helper function only if we have any EM_ASM
+    # functions in the module
+    asm_const_funcs.append(r'''
 function readAsmConstArgs(sig_ptr, buf) {
   var args = [];
   var sig = AsciiToString(sig_ptr);
@@ -2382,6 +2386,7 @@ function readAsmConstArgs(sig_ptr, buf) {
   return args;
 }
 ''')
+
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
     forwarded_json['Functions']['libraryFunctions'][const_name] = 1
