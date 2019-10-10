@@ -2323,6 +2323,7 @@ class Building(object):
     cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
+    print_compiler_stage(cmd)
     check_call(cmd)
 
   @staticmethod
