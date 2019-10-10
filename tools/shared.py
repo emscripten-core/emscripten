@@ -2560,6 +2560,7 @@ class Building(object):
       'fd_close',
       'fd_read',
       'fd_seek',
+      'fd_fdstat_get',
       'proc_exit',
     ])
     for item in graph:
