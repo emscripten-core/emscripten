@@ -2360,6 +2360,28 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
+  asm_const_funcs.append(r'''
+function _read_asm_const_args(sig_ptr, buf) {
+  var args = [];
+  var sig = AsciiToString(sig_ptr);
+  function align_to(ptr, align) {
+    return (ptr+align-1) & ~(align-1);
+  }
+  for (var i = 0; i < sig.length; i++) {
+    var c = sig[i];
+    if (c == 'd' || c == 'f') {
+      buf = align_to(buf, 8);
+      args.push(HEAPF64[(buf >> 3)]);
+      buf += 8;
+    } else if (c == 'i') {
+      buf = align_to(buf, 4);
+      args.push(HEAP32[(buf >> 2)]);
+      buf += 4;
+    }
+  }
+  return args;
+}
+''')
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
     forwarded_json['Functions']['libraryFunctions'][const_name] = 1
@@ -2382,24 +2404,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
 
     asm_const_funcs.append(r'''
 function %s(code, sig_ptr, argbuf) {%s
-  var sig = AsciiToString(sig_ptr);
-  var args = [];
-  var align_to = function(ptr, align) {
-    return (ptr+align-1) & ~(align-1);
-  };
-  var buf = argbuf;
-  for (var i = 0; i < sig.length; i++) {
-    var c = sig[i];
-    if (c == 'd' || c == 'f') {
-      buf = align_to(buf, 8);
-      args.push(HEAPF64[(buf >> 3)]);
-      buf += 8;
-    } else if (c == 'i') {
-      buf = align_to(buf, 4);
-      args.push(HEAP32[(buf >> 2)]);
-      buf += 4;
-    }
-  }
+  var args = _read_asm_const_args(sig_ptr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   return asm_consts, asm_const_funcs
