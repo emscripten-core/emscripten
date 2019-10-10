@@ -404,6 +404,7 @@ ___wasi_emscripten_get_environ
 ___wasi_environ_get
 ___wasi_environ_sizes_get
 ___wasi_fd_close
+___wasi_fd_fdstat_get
 ___wasi_fd_read
 ___wasi_fd_seek
 ___wasi_fd_write
@@ -1056,6 +1057,7 @@ _fabs
 _fabsf
 _fabsl
 _fd_close
+_fd_fdstat_get
 _fd_read
 _fd_seek
 _fd_write
