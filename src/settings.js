@@ -557,8 +557,8 @@ var ASYNCIFY = 0;
 var ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
-  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118',
-  'emscripten_scan_registers'
+  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
+  'fd_sync', '__wasi_fd_sync', 'emscripten_scan_registers'
 ];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
