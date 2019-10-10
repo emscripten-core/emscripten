@@ -1729,11 +1729,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
-    if shared.Settings.EVAL_CTORS:
-      if not shared.Settings.WASM:
-        # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
-        # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
-        shared.Settings.RUNNING_JS_OPTS = 1
+    if shared.Settings.EVAL_CTORS and not shared.Settings.WASM:
+      # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
+      # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
+      shared.Settings.RUNNING_JS_OPTS = 1
 
     # memory growth does not work in dynamic linking, except for wasm
     if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
