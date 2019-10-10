@@ -29,6 +29,7 @@ commands:
             echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
+            echo "import os" >> ~/.emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
             cd -

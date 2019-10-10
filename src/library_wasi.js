@@ -11,19 +11,27 @@ var WasiLibrary = {
     return _exit(code);
   },
 
+  emscripten_get_environ__deps: ['$ENV'],
   emscripten_get_environ: function() {
     if (!_emscripten_get_environ.strings) {
-      var ENV = {};
-      ENV['USER'] = ENV['LOGNAME'] = 'web_user';
-      ENV['PATH'] = '/';
-      ENV['PWD'] = '/';
-      ENV['HOME'] = '/home/web_user';
-      // Browser language detection #8751
-      ENV['LANG'] = ((typeof navigator === 'object' &&navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = thisProgram;
+      // Default values.
+      var env = {
+        'USER': 'web_user',
+        'LOGNAME': 'web_user',
+        'PATH': '/',
+        'PWD': '/',
+        'HOME': '/home/web_user',
+        // Browser language detection #8751
+        'LANG': ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8',
+        '_': thisProgram
+      };
+      // Apply the user-provided values, if any.
+      for (var x in ENV) {
+        env[x] = ENV[x];
+      }
       var strings = [];
-      for (var key in ENV) {
-        strings.push(key + '=' + ENV[key]);
+      for (var x in env) {
+        strings.push(x + '=' + env[x]);
       }
       _emscripten_get_environ.strings = strings;
     }

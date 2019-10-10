@@ -1106,9 +1106,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     for engine in js_engines:
       assert type(engine) == list
     for engine in self.banned_js_engines:
-      assert type(engine) == list
-    js_engines = [engine for engine in js_engines if engine and engine[0] not in [banned[0] for banned in self.banned_js_engines if banned]]
-    return js_engines
+      assert type(engine) in (list, type(None))
+    banned = [b[0] for b in self.banned_js_engines if b]
+    return [engine for engine in js_engines if engine and engine[0] not in banned]
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':

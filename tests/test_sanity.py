@@ -36,9 +36,10 @@ def restore_and_set_up():
     # don't use the native optimizer from the emsdk - we want to test how it builds
     f.write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
     # make LLVM_ROOT sensitive to the LLVM env var, as we test that
-    f.write('\nLLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
+    f.write('import os\n')
+    f.write('LLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
     # unfreeze the cache, so we can test that
-    f.write('\nFROZEN_CACHE = False\n')
+    f.write('FROZEN_CACHE = False\n')
 
 
 # wipe the config and sanity files, creating a blank slate
@@ -687,9 +688,9 @@ fi
       for filename, engine in jsengines:
         if type(engine) is list:
           engine = engine[0]
-        if engine == '':
-            print('WARNING: Not testing engine %s, not configured.' % (filename))
-            continue
+        if not engine:
+          print('WARNING: Not testing engine %s, not configured.' % (filename))
+          continue
 
         print(filename, engine)
 
@@ -840,13 +841,15 @@ fi
     self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
     self.assertExists(os.path.join(root_cache, 'asmjs'))
 
-  def test_binaryen_root(self):
+  def test_required_config_settings(self):
     # with no binaryen root, an error is shown
     restore_and_set_up()
-    open(CONFIG_FILE, 'a').write('''
-BINARYEN_ROOT = ''
-    ''')
-    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT must be set up in .emscripten')
+
+    open(CONFIG_FILE, 'a').write('\nBINARYEN_ROOT = ""\n')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % CONFIG_FILE)
+
+    open(CONFIG_FILE, 'a').write('\ndel BINARYEN_ROOT\n')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'BINARYEN_ROOT is not defined in %s' % CONFIG_FILE)
 
   def test_embuilder_force(self):
     restore_and_set_up()
