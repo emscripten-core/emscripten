@@ -8689,6 +8689,13 @@ int main() {
     source_mapping_url_content = encode_leb(len('sourceMappingURL')) + b'sourceMappingURL' + encode_leb(len('dir/a.wasm.map')) + b'dir/a.wasm.map'
     self.assertIn(source_mapping_url_content, output)
 
+  def test_check_source_map_args(self):
+    # -g4 is needed for source maps; -g is not enough
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g'])
+    self.assertFalse(os.path.exists('a.out.wasm.map'))
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g4'])
+    self.assertTrue(os.path.exists('a.out.wasm.map'))
+
   @parameterized({
     'normal': [],
     'profiling': ['--profiling'] # -g4 --profiling should still emit a source map; see #8584
