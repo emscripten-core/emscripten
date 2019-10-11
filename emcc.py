@@ -768,10 +768,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
-  # Request LLVM debug info if we need it for source maps, or if the user
-  # requested it. Cyberdwarf also requires it.
   def need_llvm_debug_info(options):
-    return use_source_map(options) or options.requested_debug == '-g' or shared.Settings.CYBERDWARF
+    return options.requested_debug >= 3 or shared.Settings.CYBERDWARF
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
@@ -1776,7 +1774,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.CYBERDWARF:
-      newargs.append('-g')
       options.debug_level = max(options.debug_level, 2)
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
       options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
@@ -2119,7 +2116,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize, if asked to
         if not LEAVE_INPUTS_RAW:
           # remove LLVM debug if we are not asked for it
-          link_opts = [] if need_llvm_debug_info(options) else ['-strip-debug']
+          link_opts = []
+          if not need_llvm_debug_info(options):
+            link_opts += ['-strip-debug']
           if not shared.Settings.ASSERTIONS:
             link_opts += ['-disable-verify']
           else:
