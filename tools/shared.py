@@ -1897,7 +1897,8 @@ class Building(object):
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
       ]
-      if not Settings.STANDALONE_WASM or '_main' not in Settings.EXPORTED_FUNCTIONS:
+      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      if not use_start_function:
         cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
         cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)

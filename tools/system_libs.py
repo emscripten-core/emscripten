@@ -1380,6 +1380,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       if d not in shared.Settings.EXPORTED_FUNCTIONS:
         shared.Settings.EXPORTED_FUNCTIONS.append(d)
 
+  if shared.Settings.STANDALONE_WASM and '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+    add_library(system_libs_map['crt1'])
+
   # Go over libraries to figure out which we must include
   for lib in system_libs:
     if lib.name in already_included:
