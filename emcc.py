@@ -1685,7 +1685,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if shared.Settings.USE_PTHREADS:
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCIFY_IMPORTS:
-              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
+              passes += ['--pass-arg=asyncify-imports@%s' % ','.join([('env.' if i not in shared.Building.WASI_IMPORTS else 'wasi_unstable.') + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
 
             # shell escaping can be confusing; try to emit useful warnings
             def check_human_readable_list(items):
