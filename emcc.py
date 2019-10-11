@@ -1692,7 +1692,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                   return name
                 return 'env.' + name
 
-              shared.Settings.ASYNCIFY_IMPORTS = map(get_full_import_name, shared.Settings.ASYNCIFY_IMPORTS)
+              shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
 
               passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
 
