@@ -407,6 +407,7 @@ ___wasi_fd_close
 ___wasi_fd_fdstat_get
 ___wasi_fd_read
 ___wasi_fd_seek
+___wasi_fd_sync
 ___wasi_fd_write
 ___wasi_proc_exit
 __addDays
@@ -1060,6 +1061,7 @@ _fd_close
 _fd_fdstat_get
 _fd_read
 _fd_seek
+_fd_sync
 _fd_write
 _fexecve
 _filledEllipseColor
