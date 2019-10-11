@@ -1469,6 +1469,20 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+  fd_fdstat_get: function(fd, pbuf) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    // All character devices are terminals (other things a Linux system would
+    // assume is a character device, like the mouse, we have special APIs for).
+    var type = stream.tty ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} :
+               FS.isDir(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_DIRECTORY') }}} :
+               FS.isLink(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_SYMBOLIC_LINK') }}} :
+               {{{ cDefine('__WASI_FILETYPE_REGULAR_FILE') }}};
+    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, '?', 'i64') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, '?', 'i64') }}};
+    return 0;
+  },
 };
 
 if (SYSCALL_DEBUG) {
@@ -1829,6 +1843,7 @@ var WASI_SYSCALLS = set([
   'fd_close',
   'fd_read',
   'fd_seek',
+  'fd_fdstat_get',
 ]);
 
 // Fallback for cases where the wasi_unstable.name prefixing fails,

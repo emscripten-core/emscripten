@@ -127,6 +127,27 @@ def also_with_standalone_wasm(func):
   return decorated
 
 
+# Similar to also_with_standalone_wasm, but suitable for tests that cannot
+# run in a wasm VM yet, as they are not 100% standalone. We can still
+# run them with the JS code though.
+def also_with_impure_standalone_wasm(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+      print('standalone (impure; no wasm runtimes)')
+      self.set_setting('STANDALONE_WASM', 1)
+      wasm_engines = shared.WASM_ENGINES
+      try:
+        shared.WASM_ENGINES = []
+        func(self)
+      finally:
+        shared.WASM_ENGINES = wasm_engines
+
+  return decorated
+
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
@@ -1929,6 +1950,7 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0', '-s', 'ABORTING_MALLOC=0', '-s', 'SAFE_HEAP']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
+  @also_with_impure_standalone_wasm
   def test_memorygrowth_wasm_mem_max(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -6689,7 +6711,6 @@ return malloc(size);
 
   def test_tracing(self):
     self.emcc_args += ['--tracing']
-
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
   def test_eval_ctors(self):

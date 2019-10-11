@@ -404,6 +404,7 @@ ___wasi_emscripten_get_environ
 ___wasi_environ_get
 ___wasi_environ_sizes_get
 ___wasi_fd_close
+___wasi_fd_fdstat_get
 ___wasi_fd_read
 ___wasi_fd_seek
 ___wasi_fd_write
@@ -911,6 +912,7 @@ _emscripten_log_js
 _emscripten_longjmp
 _emscripten_main_browser_thread_id
 _emscripten_memcpy_big
+_emscripten_notify_memory_growth
 _emscripten_pause_main_loop
 _emscripten_pc_get_column
 _emscripten_pc_get_file
@@ -1055,6 +1057,7 @@ _fabs
 _fabsf
 _fabsl
 _fd_close
+_fd_fdstat_get
 _fd_read
 _fd_seek
 _fd_write

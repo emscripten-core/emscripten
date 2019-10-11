@@ -642,6 +642,17 @@ LibraryManager.library = {
 #endif // ALLOW_MEMORY_GROWTH
   },
 
+  // Called after wasm grows memory. At that time we need to update the views.
+  // Without this notification, we'd need to check the buffer in JS every time
+  // we return from any wasm, which adds overhead. See
+  // https://github.com/WebAssembly/WASI/issues/82
+  emscripten_notify_memory_growth: function(memoryIndex) {
+#if ASSERTIONS
+    assert(memoryIndex == 0);
+#endif
+    updateGlobalBufferAndViews(wasmMemory.buffer);
+  },
+
   system__deps: ['__setErrNo'],
   system: function(command) {
     // int system(const char *command);
