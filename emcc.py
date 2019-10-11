@@ -768,6 +768,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
+  # Request LLVM debug info if we need it for source maps, or if the user
+  # requested it. Cyberdwarf also requires it.
+  def need_llvm_debug_info(options):
+    return use_source_map(options) or options.requested_debug == '-g' or shared.Settings.CYBERDWARF
+
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -1848,9 +1853,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      # Request LLVM debug info if we need it for source maps, or if building
-      # source files to bitcode.
-      if use_source_map(options) or options.requested_debug == '-g':
+      if need_llvm_debug_info(options):
         newargs.append('-g')
 
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
@@ -2116,7 +2119,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize, if asked to
         if not LEAVE_INPUTS_RAW:
           # remove LLVM debug if we are not asked for it
-          link_opts = [] if options.debug_level >= 3 or shared.Settings.CYBERDWARF else ['-strip-debug']
+          link_opts = [] if need_llvm_debug_info(options) else ['-strip-debug']
           if not shared.Settings.ASSERTIONS:
             link_opts += ['-disable-verify']
           else:
