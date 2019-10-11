@@ -769,7 +769,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return '-O0' not in opts
 
   def need_llvm_debug_info(options):
-    return options.requested_debug >= 3 or shared.Settings.CYBERDWARF
+    return options.debug_level >= 3 or shared.Settings.CYBERDWARF
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
