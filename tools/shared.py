@@ -2570,7 +2570,7 @@ class Building(object):
       'proc_exit',
     ])
     for item in graph:
-      if 'import' in item and item['import'][1][1:] in Building.WASI_IMPORTS:
+      if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
         item['import'][0] = 'wasi_unstable'
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
