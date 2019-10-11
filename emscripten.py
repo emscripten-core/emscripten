@@ -2360,6 +2360,33 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
+
+  if all_sigs:
+    # emit the signature-reading helper function only if we have any EM_ASM
+    # functions in the module
+    asm_const_funcs.append(r'''
+function readAsmConstArgs(sig_ptr, buf) {
+  var args = [];
+  var sig = AsciiToString(sig_ptr);
+  function align_to(ptr, align) {
+    return (ptr+align-1) & ~(align-1);
+  }
+  for (var i = 0; i < sig.length; i++) {
+    var c = sig[i];
+    if (c == 'd' || c == 'f') {
+      buf = align_to(buf, 8);
+      args.push(HEAPF64[(buf >> 3)]);
+      buf += 8;
+    } else if (c == 'i') {
+      buf = align_to(buf, 4);
+      args.push(HEAP32[(buf >> 2)]);
+      buf += 4;
+    }
+  }
+  return args;
+}
+''')
+
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
     forwarded_json['Functions']['libraryFunctions'][const_name] = 1
@@ -2382,24 +2409,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
 
     asm_const_funcs.append(r'''
 function %s(code, sig_ptr, argbuf) {%s
-  var sig = AsciiToString(sig_ptr);
-  var args = [];
-  var align_to = function(ptr, align) {
-    return (ptr+align-1) & ~(align-1);
-  };
-  var buf = argbuf;
-  for (var i = 0; i < sig.length; i++) {
-    var c = sig[i];
-    if (c == 'd' || c == 'f') {
-      buf = align_to(buf, 8);
-      args.push(HEAPF64[(buf >> 3)]);
-      buf += 8;
-    } else if (c == 'i') {
-      buf = align_to(buf, 4);
-      args.push(HEAP32[(buf >> 2)]);
-      buf += 4;
-    }
-  }
+  var args = readAsmConstArgs(sig_ptr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   return asm_consts, asm_const_funcs
@@ -2471,6 +2481,14 @@ def add_standard_wasm_imports(send_items_map):
       console.log('get_f64 ' + [loc, index, value]);
       return value;
     }'''
+    send_items_map['get_anyref'] = '''function(loc, index, value) {
+      console.log('get_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_exnref'] = '''function(loc, index, value) {
+      console.log('get_exnref ' + [loc, index, value]);
+      return value;
+    }'''
     send_items_map['set_i32'] = '''function(loc, index, value) {
       console.log('set_i32 ' + [loc, index, value]);
       return value;
@@ -2486,6 +2504,14 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['set_f64'] = '''function(loc, index, value) {
       console.log('set_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_anyref'] = '''function(loc, index, value) {
+      console.log('set_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_exnref'] = '''function(loc, index, value) {
+      console.log('set_exnref ' + [loc, index, value]);
       return value;
     }'''
     send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
