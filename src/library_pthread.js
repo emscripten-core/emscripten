@@ -1259,8 +1259,8 @@ var LibraryPThread = {
       // signature pointer, and vararg buffer pointer, in that order.
       var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
       var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
-      var args = readAsmConstArgs(sigPtr, varargPtr);
-      return func.apply(null, args);
+      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
+      return func.apply(null, constArgs);
     }
 #endif
 #if ASSERTIONS
