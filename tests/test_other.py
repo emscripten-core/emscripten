@@ -8691,9 +8691,9 @@ int main() {
   def test_check_source_map_args(self):
     # -g4 is needed for source maps; -g is not enough
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g'])
-    self.assertFalse(os.path.exists('a.out.wasm.map'))
+    self.assertNotExists('a.out.wasm.map')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g4'])
-    self.assertTrue(os.path.exists('a.out.wasm.map'))
+    self.assertExists('a.out.wasm.map')
 
   @parameterized({
     'normal': [],
