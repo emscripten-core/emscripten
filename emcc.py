@@ -1685,7 +1685,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if shared.Settings.USE_PTHREADS:
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCIFY_IMPORTS:
-              passes += ['--pass-arg=asyncify-imports@%s' % ','.join([('env.' if i not in shared.Building.WASI_IMPORTS else 'wasi_unstable.') + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
+              # return the full import name, including module. The name may
+              # already have a module prefix; if not, we assume it is "env".
+              def get_full_import_name(name):
+                if '.' in name:
+                  return name
+                return 'env.' + name
+
+              shared.Settings.ASYNCIFY_IMPORTS = map(get_full_import_name, shared.Settings.ASYNCIFY_IMPORTS)
+
+              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
 
             # shell escaping can be confusing; try to emit useful warnings
             def check_human_readable_list(items):
