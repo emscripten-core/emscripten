@@ -2116,7 +2116,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize, if asked to
         if not LEAVE_INPUTS_RAW:
           # remove LLVM debug if we are not asked for it
-          link_opts = [] if options.debug_level >= 3 else ['-strip-debug']
+          link_opts = [] if options.debug_level >= 3 or shared.Settings.CYBERDWARF else ['-strip-debug']
           if not shared.Settings.ASSERTIONS:
             link_opts += ['-disable-verify']
           else:
