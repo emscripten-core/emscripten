@@ -2481,6 +2481,14 @@ def add_standard_wasm_imports(send_items_map):
       console.log('get_f64 ' + [loc, index, value]);
       return value;
     }'''
+    send_items_map['get_anyref'] = '''function(loc, index, value) {
+      console.log('get_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_exnref'] = '''function(loc, index, value) {
+      console.log('get_exnref ' + [loc, index, value]);
+      return value;
+    }'''
     send_items_map['set_i32'] = '''function(loc, index, value) {
       console.log('set_i32 ' + [loc, index, value]);
       return value;
@@ -2496,6 +2504,14 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['set_f64'] = '''function(loc, index, value) {
       console.log('set_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_anyref'] = '''function(loc, index, value) {
+      console.log('set_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_exnref'] = '''function(loc, index, value) {
+      console.log('set_exnref ' + [loc, index, value]);
       return value;
     }'''
     send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
