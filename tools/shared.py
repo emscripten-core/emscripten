@@ -1896,8 +1896,10 @@ class Building(object):
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
-        '--no-entry'
       ]
+      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      if not use_start_function:
+        cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
         cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
       elif not Settings.ALLOW_MEMORY_GROWTH:
@@ -2557,6 +2559,8 @@ class Building(object):
     WASI_IMPORTS = set([
       'environ_get',
       'environ_sizes_get',
+      'args_get',
+      'args_sizes_get',
       'fd_write',
       'fd_close',
       'fd_read',

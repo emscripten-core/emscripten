@@ -39,14 +39,14 @@ var WasiLibrary = {
   },
 
   environ_sizes_get__deps: ['emscripten_get_environ'],
-  environ_sizes_get: function(environ_count, environ_buf_size) {
+  environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = _emscripten_get_environ();
-    {{{ makeSetValue('environ_count', 0, 'strings.length', 'i32') }}};
+    {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
     var bufSize = 0;
     strings.forEach(function(string) {
       bufSize += string.length + 1;
     });
-    {{{ makeSetValue('environ_buf_size', 0, 'bufSize', 'i32') }}};
+    {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', 'i32') }}};
     return 0;
   },
 
@@ -60,6 +60,33 @@ var WasiLibrary = {
       writeAsciiToMemory(string, ptr);
       bufSize += string.length + 1;
     });
+    return 0;
+  },
+
+  args_sizes_get: function(pargc, pargv_buf_size) {
+#if MAIN_READS_PARAMS
+    {{{ makeSetValue('pargc', 0, 'mainArgs.length', 'i32') }}};
+    var bufSize = 0;
+    mainArgs.forEach(function(arg) {
+      bufSize += arg.length + 1;
+    });
+    {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', 'i32') }}};
+#else
+    {{{ makeSetValue('pargc', 0, '0', 'i32') }}};
+#endif
+    return 0;
+  },
+
+  args_get: function(argv, argv_buf) {
+#if MAIN_READS_PARAMS
+    var bufSize = 0;
+    mainArgs.forEach(function(arg, i) {
+      var ptr = argv_buf + bufSize;
+      {{{ makeSetValue('argv', 'i * 4', 'ptr', 'i32') }}};
+      writeAsciiToMemory(arg, ptr);
+      bufSize += arg.length + 1;
+    });
+#endif
     return 0;
   },
 };
