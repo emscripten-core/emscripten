@@ -543,7 +543,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 19)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 20)
 
 
 def generate_sanity():
@@ -1896,8 +1896,10 @@ class Building(object):
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
-        '--no-entry'
       ]
+      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      if not use_start_function:
+        cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
         cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
       elif not Settings.ALLOW_MEMORY_GROWTH:
@@ -2514,18 +2516,6 @@ class Building(object):
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
-  WASI_IMPORTS = set([
-    'environ_get',
-    'environ_sizes_get',
-    'fd_write',
-    'fd_close',
-    'fd_read',
-    'fd_seek',
-    'fd_fdstat_get',
-    'fd_sync',
-    'proc_exit',
-  ])
-
   # run binaryen's wasm-metadce to dce both js and wasm
   @staticmethod
   def metadce(js_file, wasm_file, minify_whitespace, debug_info):
@@ -2566,6 +2556,19 @@ class Building(object):
         'root': True
       })
     # fix wasi imports TODO: support wasm stable with an option?
+    WASI_IMPORTS = set([
+      'environ_get',
+      'environ_sizes_get',
+      'args_get',
+      'args_sizes_get',
+      'fd_write',
+      'fd_close',
+      'fd_read',
+      'fd_seek',
+      'fd_fdstat_get',
+      'fd_sync',
+      'proc_exit',
+    ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in Building.WASI_IMPORTS:
         item['import'][0] = 'wasi_unstable'
