@@ -196,9 +196,8 @@ var LibraryPThread = {
     terminateAllThreads: function() {
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
+        if (pthread && pthread.worker) {
+          PThread.returnWorkerToPool(pthread.worker);
         }
       }
       PThread.pthreads = {};
