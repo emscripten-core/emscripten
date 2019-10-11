@@ -1849,9 +1849,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return run_process([clang_compiler] + args, check=False).returncode
 
       # Request LLVM debug info if we need it for source maps, or if building
-      # source files to bitcode with -g (so we don't know if we'll need it at
-      # link time or not)
-      if use_source_map(options) or (options.requested_debug == '-g' and final_suffix in OBJECT_FILE_ENDINGS):
+      # source files to bitcode.
+      if use_source_map(options) or options.requested_debug == '-g':
         newargs.append('-g')
 
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
@@ -2117,7 +2116,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize, if asked to
         if not LEAVE_INPUTS_RAW:
           # remove LLVM debug if we are not asked for it
-          link_opts = [] if use_source_map(options) or shared.Settings.CYBERDWARF else ['-strip-debug']
+          link_opts = [] if options.debug_level >= 3 else ['-strip-debug']
           if not shared.Settings.ASSERTIONS:
             link_opts += ['-disable-verify']
           else:
