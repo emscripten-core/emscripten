@@ -5,7 +5,6 @@
  * found in the LICENSE file.
  */
 
-#include <assert.h>
 #include <emscripten.h>
 #include <errno.h>
 #include <stdio.h>
@@ -76,7 +75,7 @@ extern void emscripten_notify_memory_growth(size_t memory_index);
 int emscripten_resize_heap(size_t size) {
 #ifdef __EMSCRIPTEN_MEMORY_GROWTH__
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
-  assert(old_size < size);
+  if (old_size >= size) abort();
   ssize_t diff = (size - old_size + WASM_PAGE_SIZE - 1) / WASM_PAGE_SIZE;
   size_t result = __builtin_wasm_memory_grow(0, diff);
   if (result != (size_t)-1) {

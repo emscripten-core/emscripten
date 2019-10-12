@@ -1,0 +1,4 @@
+emscripten_notify_memory_growth
+memory
+proc_exit
+table
