@@ -1,2 +1,5 @@
+args_get
+args_sizes_get
 memory
+proc_exit
 table

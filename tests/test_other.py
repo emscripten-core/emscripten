@@ -8116,15 +8116,15 @@ int main() {
 
   @parameterized({
     'O3':                 (['-O3'],
-                           3, [], [], 6071,  2,  2,  4),         # noqa
+                           3, [], [], 6100,  2,  3,  5),         # noqa
     'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
-                           2, [], [], 6070,  0,  3,  4),         # noqa
+                           5, [], [], 6423,  3,  4,  5),         # noqa
     # Growth support code is in JS, no significant code increase in the wasm
     'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
-                           3, [], [], 6069,  2,  2,  4),         # noqa
+                           3, [], [], 6098,  2,  3,  5),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           4, [], [], 6279,  2,  3,  5),         # noqa
+                           6, [], [], 6581,  4,  4,  6),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, *args):

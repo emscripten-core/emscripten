@@ -1,3 +1,5 @@
+args_get
+args_sizes_get
 emscripten_notify_memory_growth
 memory
 proc_exit

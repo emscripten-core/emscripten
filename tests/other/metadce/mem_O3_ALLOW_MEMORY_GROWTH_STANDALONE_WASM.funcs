@@ -1,5 +1,6 @@
 $__wasm_call_ctors
-$allocate_buffer
+$_start
 $dlmalloc
 $emscripten_resize_heap
+$main
 $sbrk

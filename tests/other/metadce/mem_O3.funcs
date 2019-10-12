@@ -1,4 +1,5 @@
 $__wasm_call_ctors
-$allocate_buffer
 $dlmalloc
+$main
 $sbrk
+$stackAlloc
