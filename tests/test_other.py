@@ -8119,8 +8119,10 @@ int main() {
                            3, [], [], 6071,  2,  2,  4),         # noqa
     'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
                            2, [], [], 6070,  0,  3,  4),         # noqa
+    # Growth support code is in JS, no significant code increase in the wasm
     'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
                            3, [], [], 6069,  2,  2,  4),         # noqa
+    # Growth support code is in the wasm
     'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
                            4, [], [], 6279,  2,  3,  5),         # noqa
   })
