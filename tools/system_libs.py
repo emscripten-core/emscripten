@@ -1215,6 +1215,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
   def get_cflags(self):
     cflags = super(libstandalonewasm, self).get_cflags()
+    cflags += ['-DNDEBUG']
     if self.is_mem_grow:
       cflags += ['-D__EMSCRIPTEN_MEMORY_GROWTH__=1']
     return cflags

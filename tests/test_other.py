@@ -8125,7 +8125,7 @@ int main() {
                            3, [], [], 6098,  2,  3,  5),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           6, [], [], 6581,  4,  4,  6),         # noqa
+                           6, [], [], 6563,  4,  4,  6),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, *args):
