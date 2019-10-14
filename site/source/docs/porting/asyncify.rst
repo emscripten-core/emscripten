@@ -1,4 +1,4 @@
-.. Asyncify:
+.. _Asyncify:
 
 ========================
 Asyncify

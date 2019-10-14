@@ -106,6 +106,11 @@ the main browser thread to focus only on receiving proxied events. This is
 recommended in general, but may take some porting work, if the application
 assumed ``main()`` was on the main browser thread.
 
+Another option is to replace blocking calls with nonblocking ones. For example
+you can replace ``pthread_join`` with ``pthread_tryjoin_np``. This may require
+your application to be refactored to use asynchronous events, perhaps through
+:c:func:`emscripten_set_main_loop` or :ref:`Asyncify`.
+
 Alternatively, you can flip a flag to allow blocking on the main browser thread,
 using::
 
