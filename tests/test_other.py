@@ -8040,7 +8040,7 @@ int main() {
     'Oz': (['-Oz'],  2, [], [],          85,  0,  2,  2), # noqa
   })
   @no_fastcomp()
-  def test_binaryen_metadce_minimal(self, *args):
+  def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
@@ -8053,11 +8053,11 @@ int main() {
     'Oz': (['-Oz'],  4, [],        [],          55,  0,  1, 1), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_minimal_fastcomp(self, *args):
+  def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @no_fastcomp()
-  def test_binaryen_metadce_cxx(self):
+  def test_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 19, [], ['waka'], 226582, 17, 33, None) # noqa
 
@@ -8068,7 +8068,7 @@ int main() {
                         40, ['abort'], ['waka'], 188310, 23, 38, 521), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_cxx_fastcomp(self, *args):
+  def test_metadce_cxx_fastcomp(self, *args):
     # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
@@ -8091,7 +8091,7 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
-  def test_binaryen_metadce_hello(self, *args):
+  def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
@@ -8111,8 +8111,25 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_hello_fastcomp(self, *args):
+  def test_metadce_hello_fastcomp(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
+
+  @parameterized({
+    'O3':                 (['-O3'],
+                           3, [], [], 6100,  2,  3,  5),         # noqa
+    # argc/argv support code etc. is in the wasm
+    'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
+                           5, [], [], 6423,  3,  4,  5),         # noqa
+    # Growth support code is in JS, no significant change in the wasm
+    'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
+                           3, [], [], 6098,  2,  3,  5),         # noqa
+    # Growth support code is in the wasm
+    'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
+                           6, [], [], 6563,  4,  4,  6),         # noqa
+  })
+  @no_fastcomp()
+  def test_metadce_mem(self, *args):
+    self.run_metadce_test('mem.c', *args)
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
