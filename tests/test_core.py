@@ -4783,6 +4783,8 @@ Module = {
       print(fs)
       src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c')).read()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fgetc_unsigned(self):
@@ -5042,11 +5044,13 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
+    self.emcc_args += ['-s', 'NODEFS']
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.emcc_args += ['-s', 'NODEFS']
     src = open(path_from_root('tests', 'fs', 'test_nodefs_home.c')).read()
     self.do_run(src, 'success', js_engines=[NODE_JS])
 
@@ -5130,6 +5134,8 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'access.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
       self.do_run(src, expected, js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
     if not WINDOWS:
@@ -5180,6 +5186,8 @@ main( int argv, char ** argc ) {
       src = open(path_from_root('tests', 'unistd', 'truncate.c')).read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out')).read()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
@@ -5229,6 +5237,7 @@ main( int argv, char ** argc ) {
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
       # so skip testing those bits on that combination.
       if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
         if WINDOWS:
           self.emcc_args += ['-DNO_SYMLINK=1']
         if MACOS:
@@ -5256,6 +5265,8 @@ main( int argv, char ** argc ) {
         # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
         continue
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
@@ -5264,6 +5275,7 @@ main( int argv, char ** argc ) {
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
     self.clear()
+    self.emcc_args += ['-s', 'NODEFS']
     src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out')).read()
     self.do_run(src, expected, js_engines=[NODE_JS])
@@ -5282,6 +5294,8 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
@@ -5291,6 +5305,8 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'misc.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-s', 'NODEFS']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_posixtime(self):

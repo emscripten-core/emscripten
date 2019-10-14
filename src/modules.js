@@ -101,12 +101,11 @@ var LibraryManager = {
           if (PROXYFS) {
             libraries.push('library_proxyfs.js');
           }
-          if (SOCKFS) {
-            libraries.push('library_sockfs.js');
-          }
           if (WORKERFS) {
             libraries.push('library_workerfs.js');
           }
+          // ok to include it by default since it's only used if the syscall is used
+          libraries.push('library_sockfs.js');
         }
         if (ENVIRONMENT_MAY_BE_NODE && NODEFS) {
           libraries = libraries.concat([

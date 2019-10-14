@@ -388,7 +388,6 @@ assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle o
 {{{ makeRemovedFSAssert('MEMFS') }}}
 {{{ makeRemovedFSAssert('IDBFS') }}}
 {{{ makeRemovedFSAssert('PROXYFS') }}}
-{{{ makeRemovedFSAssert('SOCKFS') }}}
 {{{ makeRemovedFSAssert('WORKERFS') }}}
 {{{ makeRemovedFSAssert('NODEFS') }}}
 {{{ makeRemovedFSAssert('NODERAWFS') }}}

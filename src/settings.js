@@ -697,9 +697,6 @@ var WORKERFS = 0;
 // Enables support for the Proxy filesystem backend.
 var PROXYFS = 0;
 
-// Enables support for the WebSocket filesystem backend.
-var SOCKFS = 0;
-
 // Enables support for the IDBFS filesystem backend. This is a special
 // backend as it replaces all normal filesystem access with direct Node.js
 // operations, without the need to do `FS.mount()`, and this backend only

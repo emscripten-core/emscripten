@@ -3021,6 +3021,7 @@ myreade(){
                  '-o', 'proxyfs_test.js', 'proxyfs_test.c',
                  '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
                  '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                 '-s', 'PROXYFS',
                  '-s', 'WASM_ASYNC_COMPILATION=0',
                  '-s', 'MAIN_MODULE=1',
                  '-s', 'EXPORT_ALL=1'])
@@ -6826,7 +6827,7 @@ main(int argc, char **argv)
 }
 ''')
     create_test_file('TEST_NODEFS.txt', ' ')
-    run_process([PYTHON, EMCC, 'src.c'])
+    run_process([PYTHON, EMCC, 'src.c', '-s', 'NODEFS'])
     self.assertContained('Resolved: /working/TEST_NODEFS.txt', run_js('a.out.js'))
 
   def test_realpath_2(self):
