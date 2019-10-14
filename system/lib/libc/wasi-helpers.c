@@ -16,3 +16,13 @@ int __wasi_syscall_ret(__wasi_errno_t code) {
   errno = code;
   return -1;
 }
+
+int  __wasi_fd_is_valid(__wasi_fd_t fd) {
+  __wasi_fdstat_t statbuf;
+  int err = __wasi_fd_fdstat_get(fd, &statbuf);
+  if (err != __WASI_ESUCCESS) {
+    errno = err;
+    return 0;
+  }
+  return 1;
+}
