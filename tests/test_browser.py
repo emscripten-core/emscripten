@@ -206,7 +206,7 @@ If manually bisecting:
     # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
     src = 'src.cpp'
     create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
+    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def build_native_lzma(self):
@@ -3334,6 +3334,10 @@ window.close = function() {
   @no_fastcomp('wasm backend asyncify specific')
   def test_async_stack_overflow(self):
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
+
+  @no_fastcomp('wasm backend asyncify specific')
+  def test_async_bad_whitelist(self):
+    self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
 
   @requires_sync_compilation
   def test_modularize(self):

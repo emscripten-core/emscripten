@@ -310,6 +310,8 @@ FROZEN_CACHE = False
 
 def parse_config_file():
   """Parse the emscripten config file using python's exec"""
+  global JS_ENGINES, JAVA, CLOSURE_COMPILER
+
   config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   try:
@@ -341,6 +343,27 @@ def parse_config_file():
   for key in CONFIG_KEYS:
     if key in config:
       globals()[key] = config[key]
+
+  # Certain keys are mandatory
+  for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
+    if key not in config:
+      exit_with_error('%s is not defined in %s', key, hint_config_file_location())
+    if not globals()[key]:
+      exit_with_error('%s is set to empty value in %s', key, hint_config_file_location())
+
+  if not NODE_JS:
+    exit_with_error('NODE_JS is not defined in %s', hint_config_file_location())
+
+  # EM_CONFIG stuff
+  if not JS_ENGINES:
+    JS_ENGINES = [NODE_JS]
+
+  if CLOSURE_COMPILER is None:
+    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+
+  if JAVA is None:
+    logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
+    JAVA = 'java'
 
 
 # Returns a suggestion where current .emscripten config file might be located
@@ -520,7 +543,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 16)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 19)
 
 
 def generate_sanity():
@@ -898,17 +921,6 @@ def apply_configuration():
 
 
 apply_configuration()
-
-# EM_CONFIG stuff
-if not JS_ENGINES:
-  JS_ENGINES = [NODE_JS]
-
-if CLOSURE_COMPILER is None:
-  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
-
-if JAVA is None:
-  logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
-  JAVA = 'java'
 
 # Additional compiler options
 
@@ -1884,8 +1896,10 @@ class Building(object):
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
-        '--no-entry'
       ]
+      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      if not use_start_function:
+        cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
         cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
       elif not Settings.ALLOW_MEMORY_GROWTH:
@@ -2311,6 +2325,7 @@ class Building(object):
     cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
+    print_compiler_stage(cmd)
     check_call(cmd)
 
   @staticmethod
@@ -2544,10 +2559,14 @@ class Building(object):
     WASI_IMPORTS = set([
       'environ_get',
       'environ_sizes_get',
+      'args_get',
+      'args_sizes_get',
       'fd_write',
       'fd_close',
       'fd_read',
       'fd_seek',
+      'fd_fdstat_get',
+      'fd_sync',
       'proc_exit',
     ])
     for item in graph:
@@ -2806,8 +2825,6 @@ class Building(object):
   @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    if not BINARYEN_ROOT:
-      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 

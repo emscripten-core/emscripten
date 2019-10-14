@@ -77,10 +77,16 @@ SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
     '-(', '-)',
     '--whole-archive', '--no-whole-archive',
-    '-whole-archive', '-no-whole-archive')
+    '-whole-archive', '-no-whole-archive'
+)
 
+SUPPORTED_LLD_LINKER_FLAG_PREFIXES = ('-l', '-L', '--trace-symbol', '-debug')
 SUPPORTED_LLD_LINKER_FLAGS = (
-    '--no-check-features',)
+   '--no-check-features',
+   '--trace',
+   '--no-threads',
+   '-mllvm'
+)
 
 
 LIB_PREFIXES = ('', 'lib')
@@ -762,6 +768,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   def optimizing(opts):
     return '-O0' not in opts
 
+  def need_llvm_debug_info(options):
+    return options.debug_level >= 3 or shared.Settings.CYBERDWARF
+
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
 
@@ -867,6 +876,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
+    link_to_object = False
     executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
     compile_only = has_dash_c or has_dash_S
 
@@ -946,6 +956,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             has_source_inputs = True
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
+      elif arg.startswith('-r'):
+        link_to_object = True
+        newargs[i] = ''
       elif arg.startswith('-L'):
         add_link_flag(i, arg)
         newargs[i] = ''
@@ -1147,7 +1160,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       newargs += ['-DEMSCRIPTEN']
 
     newargs = shared.COMPILER_OPTS + shared.get_cflags(newargs) + newargs
-    link_to_object = final_suffix not in executable_endings
+    if not link_to_object and not compile_only and final_suffix not in executable_endings:
+      # TODO(sbc): Remove this emscripten-specific special case.
+      logger.warning('Assuming object file output in the absence of `-c`, based on output filename. Please add with `-c` or `-r` to avoid this warning')
+      link_to_object = True
 
     using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
 
@@ -1157,8 +1173,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if using_lld:
         # Add flags here to allow -Wl, options to be passed all the way through
         # to the linker.
-        valid_prefixs = ('-l', '-L', '--trace-symbol', '--trace')
-        if any(f.startswith(prefix) for prefix in valid_prefixs):
+        if any(f.startswith(prefix) for prefix in SUPPORTED_LLD_LINKER_FLAG_PREFIXES):
           return True
         if f in SUPPORTED_LLD_LINKER_FLAGS:
           return True
@@ -1657,6 +1672,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.ASYNCIFY:
             # TODO: allow whitelist as in asyncify
             passes += ['--asyncify']
+            if shared.Settings.ASSERTIONS:
+              passes += ['--pass-arg=asyncify-asserts']
             if shared.Settings.ASYNCIFY_IGNORE_INDIRECT:
               passes += ['--pass-arg=asyncify-ignore-indirect']
             else:
@@ -1671,7 +1688,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if shared.Settings.USE_PTHREADS:
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCIFY_IMPORTS:
-              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(['env.' + i for i in shared.Settings.ASYNCIFY_IMPORTS])]
+              # return the full import name, including module. The name may
+              # already have a module prefix; if not, we assume it is "env".
+              def get_full_import_name(name):
+                if '.' in name:
+                  return name
+                return 'env.' + name
+
+              shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
+
+              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
 
             # shell escaping can be confusing; try to emit useful warnings
             def check_human_readable_list(items):
@@ -1715,11 +1741,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if use_source_map(options):
         exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
 
-    if shared.Settings.EVAL_CTORS:
-      if not shared.Settings.WASM:
-        # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
-        # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
-        shared.Settings.RUNNING_JS_OPTS = 1
+    if shared.Settings.EVAL_CTORS and not shared.Settings.WASM:
+      # for asm.js: this option is not a js optimizer pass, but does run the js optimizer internally, so
+      # we need to generate proper code for that (for wasm, we run a binaryen tool for this)
+      shared.Settings.RUNNING_JS_OPTS = 1
 
     # memory growth does not work in dynamic linking, except for wasm
     if not shared.Settings.WASM and (shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE):
@@ -1758,7 +1783,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.CYBERDWARF:
-      newargs.append('-g')
       options.debug_level = max(options.debug_level, 2)
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
       options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
@@ -1779,8 +1803,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
       if shared.Settings.SIMD:
         exit_with_error('STANDALONE_WASM does not support simd yet')
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        exit_with_error('STANDALONE_WASM does not support memory growth yet')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
@@ -1837,13 +1859,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      # Request LLVM debug info if explicitly specified, or building bitcode with -g, or if building a source all the way to JS with -g
-      if use_source_map(options) or ((final_suffix not in JS_CONTAINING_ENDINGS or (has_source_inputs and final_suffix in JS_CONTAINING_ENDINGS)) and options.requested_debug == '-g'):
-        # do not save llvm debug info if js optimizer will wipe it out anyhow (but if source maps are used, keep it)
-        if use_source_map(options) or not (final_suffix in JS_CONTAINING_ENDINGS and options.js_opts):
-          newargs.append('-g') # preserve LLVM debug info
-          options.debug_level = 4
-          shared.Settings.DEBUG_LEVEL = 4
+      if need_llvm_debug_info(options):
+        newargs.append('-g')
 
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
       if options.debug_level >= 3 and not shared.Settings.WASM:
@@ -2108,7 +2125,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Optimize, if asked to
         if not LEAVE_INPUTS_RAW:
           # remove LLVM debug if we are not asked for it
-          link_opts = [] if use_source_map(options) or shared.Settings.CYBERDWARF else ['-strip-debug']
+          link_opts = []
+          if not need_llvm_debug_info(options):
+            link_opts += ['-strip-debug']
           if not shared.Settings.ASSERTIONS:
             link_opts += ['-disable-verify']
           else:

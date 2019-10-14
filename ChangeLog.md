@@ -17,11 +17,16 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Add support for MAIN_THREAD_EM_ASM in wasm backend. #9560
+ - `STANDALONE_WASM` mode now supports settings up argv vai wasi APIs.
+ - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
+
+v1.38.48: 10/11/2019
+--------------------
+ - Add support for `MAIN_THREAD_EM_ASM` in wasm backend. #9560
  - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
    This is useful for people who use FETCH, but don't perform any synchronous fetches
    on the main thread. #9567
- - Remove EMCONFIGURE_JS. Since #6269 we have set it to "2" which means never
+ - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
    use native, always use JS.
 
 v.1.38.47: 10/02/2019
@@ -34,8 +39,8 @@ v.1.38.47: 10/02/2019
    unless you use errno defines (like EAGAIN) *and* keep around binaries
    compiled with an older version that you link against. In that case, you
    should rebuild them. See #9545.
- - Removed build option -s ONLY_MY_CODE as we now have much better solutions
-   for that, like building to a wasm object file or using STANDALONE_WASM
+ - Removed build option `-s ONLY_MY_CODE` as we now have much better solutions
+   for that, like building to a wasm object file or using `STANDALONE_WASM`
    etc. (see
    https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
  - Emscripten now supports the config file (.emscripten) being placed in the
