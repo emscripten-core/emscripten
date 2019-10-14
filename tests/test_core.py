@@ -5045,13 +5045,13 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
-    self.emcc_args += ['-s', 'NODEFS']
+    self.set_setting('NODEFS', 1)
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
-    self.emcc_args += ['-s', 'NODEFS']
+    self.set_setting('NODEFS', 1)
     src = open(path_from_root('tests', 'fs', 'test_nodefs_home.c')).read()
     self.do_run(src, 'success', js_engines=[NODE_JS])
 
@@ -5275,8 +5275,8 @@ main( int argv, char ** argc ) {
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+    self.set_setting('NODEFS', 1)
     self.clear()
-    self.emcc_args += ['-s', 'NODEFS']
     src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out')).read()
     self.do_run(src, expected, js_engines=[NODE_JS])
