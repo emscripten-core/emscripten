@@ -107,10 +107,8 @@ var LibraryManager = {
           // ok to include it by default since it's only used if the syscall is used
           libraries.push('library_sockfs.js');
         }
-        if (ENVIRONMENT_MAY_BE_NODE && NODEFS) {
-          libraries = libraries.concat([
-            'library_nodefs.js',
-          ]);
+        if (ENVIRONMENT_MAY_BE_NODE && (NODEFS || NODERAWFS)) {
+          libraries.push('library_nodefs.js');
         }
         if (ENVIRONMENT_MAY_BE_NODE && NODERAWFS) {
           libraries.push('library_noderawfs.js')
