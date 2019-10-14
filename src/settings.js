@@ -681,9 +681,29 @@ var FILESYSTEM = 1;
 // some JS that does, you might need this.
 var FORCE_FILESYSTEM = 0;
 
-// This mode is intended for use with Node.js (and will throw if the build runs
-// in other engines).  The File System API will directly use Node.js API without
-// requiring `FS.mount()`.  The initial working directory will be same as
+// Enables support for the in-memory filesystem backend. This is the only
+// one that is enabled by default.
+var MEMFS = 1;
+
+// Enables support for the IDBFS filesystem backend.
+var IDBFS = 0;
+
+// Enables support for the Node.js filesystem backend.
+var NODEFS = 0;
+
+// Enables support for the Web Worker filesystem backend.
+var WORKERFS = 0;
+
+// Enables support for the Proxy filesystem backend.
+var PROXYFS = 0;
+
+// Enables support for the WebSocket filesystem backend.
+var SOCKFS = 0;
+
+// Enables support for the IDBFS filesystem backend. This is a special
+// backend as it replaces all normal filesystem access with direct Node.js
+// operations, without the need to do `FS.mount()`, and this backend only
+// works with Node.js. The initial working directory will be same as
 // process.cwd() instead of VFS root directory.  Because this mode directly uses
 // Node.js to access the real local filesystem on your OS, the code will not
 // necessarily be portable between OSes - it will be as portable as a Node.js

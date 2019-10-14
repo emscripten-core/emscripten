@@ -7782,16 +7782,48 @@ extern "C" {
 
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('IDBFS', 1)
+    self.set_setting('NODEFS', 1)
     create_test_file('pre.js', '''
       Module = {};
       Module['preRun'] = function() {
-          out(typeof FS.filesystems['MEMFS']);
-          out(typeof FS.filesystems['IDBFS']);
-          out(typeof FS.filesystems['NODEFS']);
+        out(typeof FS.filesystems['MEMFS']);
+        out(typeof FS.filesystems['IDBFS']);
+        out(typeof FS.filesystems['NODEFS']);
+        // Globals
+        console.log(typeof MEMFS);
+        console.log(typeof IDBFS);
+        console.log(typeof NODEFS);
       };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
+
+  def test_fs_dict_none(self):
+    # if IDBFS and NODEFS are not enabled, they are not present.
+    self.set_setting('FORCE_FILESYSTEM', 1)
+    create_test_file('pre.js', '''
+      Module = {};
+      Module['preRun'] = function() {
+        out(typeof FS.filesystems['MEMFS']);
+        out(typeof FS.filesystems['IDBFS']);
+        out(typeof FS.filesystems['NODEFS']);
+        // Globals
+        if (ASSERTIONS) {
+          console.log(typeof MEMFS);
+          console.log(IDBFS);
+          console.log(NODEFS);
+          FS.mkdir('/working1');
+          try {
+            FS.mount(IDBFS, {}, '/working1');
+          } catch (e) {
+            console.log('|' + e + '|');
+          }
+        }
+      };
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    self.do_run('int main() { return 0; }', 'object\nundefined\nundefined\nobject\nIDBFS is no longer included by default; build with -s IDBFS\nNODEFS is no longer included by default; build with -s NODEFS\n|IDBFS is no longer included by default; build with -s IDBFS|')
 
   @sync
   @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")

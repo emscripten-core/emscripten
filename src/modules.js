@@ -84,27 +84,36 @@ var LibraryManager = {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
         'library_fs.js',
-        'library_memfs.js',
         'library_tty.js',
-        'library_pipefs.js',
+        'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
       ]);
+
+      if (MEMFS) {
+        libraries.push('library_memfs.js');
+      }
 
       // Additional filesystem libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
       if (AUTO_JS_LIBRARIES) {
         if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
-          libraries = libraries.concat([
-            'library_idbfs.js',
-            'library_proxyfs.js',
-            'library_sockfs.js',
-            'library_workerfs.js',
-          ]);
+          if (IDBFS) {
+            libraries.push('library_idbfs.js');
+          }
+          if (PROXYFS) {
+            libraries.push('library_proxyfs.js');
+          }
+          if (SOCKFS) {
+            libraries.push('library_sockfs.js');
+          }
+          if (WORKERFS) {
+            libraries.push('library_workerfs.js');
+          }
         }
-        if (ENVIRONMENT_MAY_BE_NODE) {
+        if (ENVIRONMENT_MAY_BE_NODE && NODEFS) {
           libraries = libraries.concat([
             'library_nodefs.js',
           ]);
         }
-        if (NODERAWFS) {
+        if (ENVIRONMENT_MAY_BE_NODE && NODERAWFS) {
           libraries.push('library_noderawfs.js')
         }
       }

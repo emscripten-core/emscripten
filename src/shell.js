@@ -385,6 +385,13 @@ assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle o
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
 // TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
+{{{ makeRemovedFSAssert('MEMFS') }}}
+{{{ makeRemovedFSAssert('IDBFS') }}}
+{{{ makeRemovedFSAssert('PROXYFS') }}}
+{{{ makeRemovedFSAssert('SOCKFS') }}}
+{{{ makeRemovedFSAssert('WORKERFS') }}}
+{{{ makeRemovedFSAssert('NODEFS') }}}
+{{{ makeRemovedFSAssert('NODERAWFS') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
