@@ -721,7 +721,6 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
     libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
-    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'legacy', 'isastream.c'))
 
     return libc_files
 
