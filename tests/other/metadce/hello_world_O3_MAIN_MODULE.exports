@@ -896,6 +896,7 @@ isalnum_l
 isalpha
 isalpha_l
 isascii
+isastream
 isatty
 isblank
 isblank_l

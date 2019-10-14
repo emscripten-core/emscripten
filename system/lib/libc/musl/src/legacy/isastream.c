@@ -1,3 +1,6 @@
+#ifdef __EMSCRIPTEN__
+#include <errno.h>
+#endif
 #include <stropts.h>
 #include <fcntl.h>
 

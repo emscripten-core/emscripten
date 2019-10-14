@@ -1383,7 +1383,6 @@ _gnu_dev_major
 _gnu_dev_makedev
 _gnu_dev_minor
 _inet_addr
-_isastream
 _kill
 _killpg
 _lineColor
