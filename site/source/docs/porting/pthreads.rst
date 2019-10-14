@@ -43,8 +43,39 @@ but is unrelated. That flag does not use pthreads or SharedArrayBuffer, and
 instead uses a plain Web Worker to run your main program (and postMessage to
 proxy messages back and forth).
 
+Proxying
+========
+
+The Web allows certain operations to only happen from the main browser thread,
+like interacting with the DOM. As a result, various operations are proxied to
+the main browser thread if they are called on a background thread. See
+`bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
+more information and how to try to work around this until this. To check which
+operations are proxied, you can look for the function's implementation in
+the JS library (``src/library_*``) and see if it is annotated with
+``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
+itself proxies certain things (like some GL operations), so there is no
+general way to be safe here (aside from not blocking on the main browser
+thread).
+
+In addition, Emscripten currently has a simple model of file I/O only happening
+on the main application thread (as we support JS plugin filesystems, which
+cannot share memory), which is another set of operations that are proxied.
+
+Normally you don't need to worry about this proxying, as it is fully automatic,
+however see the section on blocking right after this one.
+
 Blocking on the main browser thread
 ===================================
+
+Note that in most cases the "main browser thread" is the same as the "main
+application thread". The main browser thread is literally the browser's main
+thread where DOM access is allowed, and the main application thread is the one
+on which you started up the application. If you started it on the main browser
+thread - by it being a normal HTML page - then the two are identical. However,
+you can also start a multithreaded application in a worker; in that case the
+main application thread is that worker, and there is no access to the main
+browser thread.
 
 The Web API for atomics does not allow blocking on the main thread
 (specifically, ``Atomics.wait`` doesn't work there). Such blocking is
@@ -56,27 +87,13 @@ power. (On a pthread, this isn't a problem as it runs in a Web Worker, where
 we don't need to busy-wait.)
 
 Busy-waiting on the main browser thread in general will work despite the
-downsides just mentioned, for things like waiting on a mutex.
+downsides just mentioned, for things like waiting on a lightly-contended mutex.
 However, things like ``pthread_join`` and ``pthread_cond_wait``
-can block for long periods of time, and if that
+are often intended to block for long periods of time, and if that
 happens on the main browser thread, and while other threads expect it to
-respond, it can cause a surprising deadlock. That can happen because some APIs
-are proxied to the main browser thread because of Web limitations, and if the
-main thread blocks while a worker attempts to proxy to it, a deadlock can
-occur.
-
-In particular, DOM access is only possible on the main browser
-thread, and therefore things like filesystem operations (``fopen()``,
-etc.) or changing the HTML page's title, etc., are proxied over to the main
-browser thread. See
-`bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
-more information and how to try to work around this until this. To check which
-operations are proxied, you can look for the function's implementation in
-the JS library (``src/library_*``) and see if it is annotated with
-``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
-itself proxies certain things (like some GL operations), so there is no
-general way to be safe here (aside from not blocking on the main browser
-thread).
+respond, it can cause a surprising deadlock. That can happen because of
+proxying, see the previous section. If the main thread blocks while a worker
+attempts to proxy to it, a deadlock can occur.
 
 The bottom line is that on the Web it is bad for the main browser thread to
 wait on anything else. Therefore by default Emscripten disallows
