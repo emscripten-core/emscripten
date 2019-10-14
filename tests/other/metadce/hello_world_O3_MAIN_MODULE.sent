@@ -156,6 +156,7 @@ getnameinfo
 gmtime_r
 inet_addr
 invoke_X
+isastream
 memory
 nanosleep
 pthread_cleanup_pop
