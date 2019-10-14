@@ -22,6 +22,13 @@ extern void __wasm_call_ctors(void) __attribute__((weak));
 extern int main(int argc, char** argv) __attribute__((weak));
 
 void _start(void) {
+  if (!main) {
+    if (__wasm_call_ctors) {
+      __wasm_call_ctors();
+    }
+    return;
+  }
+
   /* Fill in the arguments from WASI syscalls. */
   size_t argc;
   char **argv;
@@ -53,7 +60,7 @@ void _start(void) {
     __wasm_call_ctors();
   }
 
-  int r = main ? main(argc, argv) : 0;
+  int r = main(argc, argv);
 
   /* If main exited successfully, just return, otherwise call _Exit.
    * TODO(sbc): switch to _Exit */
