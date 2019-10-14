@@ -3622,6 +3622,9 @@ window.close = function() {
     if check_main:
       print('Test that without ALLOW_BLOCKING_ON_MAIN_THREAD we error on blocking on the main thread.')
       self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+      if name == 'join':
+        print('Test that tryjoin is fine')
+        self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-g', '-DTRY_JOIN'])
     if check_worker:
       print('Test that everything works ok when we are on a pthread.')
       self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PROXY_TO_PTHREAD'])

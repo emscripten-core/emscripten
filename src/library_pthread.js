@@ -798,8 +798,8 @@ var LibraryPThread = {
 #endif
   },
 
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_block_on_main_thread'],
-  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
+  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_block_on_main_thread'],
+  _emscripten_do_pthread_join: function(thread, status, block) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
       return ERRNO_CODES.ESRCH;
@@ -824,7 +824,7 @@ var LibraryPThread = {
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
 
-    if (ENVIRONMENT_IS_WEB) {
+    if (block && ENVIRONMENT_IS_WEB) {
       _emscripten_block_on_main_thread();
     }
 
@@ -839,6 +839,9 @@ var LibraryPThread = {
         else postMessage({ cmd: 'cleanupThread', thread: thread });
         return 0;
       }
+      if (!block) {
+        return ERRNO_CODES.EBUSY;
+      }
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
       //_pthread_testcancel();
       __pthread_testcancel_js();
@@ -847,6 +850,16 @@ var LibraryPThread = {
       if (!ENVIRONMENT_IS_PTHREAD) _emscripten_main_thread_process_queued_calls();
       _emscripten_futex_wait(thread + {{{ C_STRUCTS.pthread.threadStatus }}}, threadStatus, ENVIRONMENT_IS_PTHREAD ? 100 : 1);
     }
+  },
+
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join__deps: ['_emscripten_do_pthread_join'],
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function(thread, status) {
+    return __emscripten_do_pthread_join(thread, status, true);
+  },
+
+  pthread_tryjoin_np__deps: ['_emscripten_do_pthread_join'],
+  pthread_tryjoin_np: function(thread, status) {
+    return __emscripten_do_pthread_join(thread, status, false);
   },
 
   pthread_kill__deps: ['_kill_thread'],

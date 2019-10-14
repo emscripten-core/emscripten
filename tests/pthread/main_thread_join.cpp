@@ -8,6 +8,17 @@
 #include <pthread.h>
 #include <stdio.h>
 
+pthread_t thread;
+
+void loop() {
+  void* retval;
+  if (pthread_tryjoin_np(thread, &retval) == 0) {
+    emscripten_cancel_main_loop();
+#ifdef REPORT_RESULT
+    REPORT_RESULT(2);
+#endif
+  }
+}
 
 void *ThreadMain(void *arg)
 {
@@ -48,13 +59,18 @@ int main() {
     return 0;
   });
 
+  thread = CreateThread();
+#ifdef TRY_JOIN
+  emscripten_set_main_loop(loop, 0, 0);
+#else
   int status;
   // This should fail on the main thread.
   puts("trying to block...");
-  pthread_join(CreateThread(), (void**)&status);
+  pthread_join(thread, (void**)&status);
   puts("blocked ok.");
 #ifdef REPORT_RESULT
   REPORT_RESULT(1);
 #endif
+#endif // TRY_JOIN
 }
 
