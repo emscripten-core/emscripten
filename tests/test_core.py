@@ -5035,6 +5035,7 @@ main( int argv, char ** argc ) {
   @also_with_noderawfs
   @is_slow_test
   def test_fs_nodefs_rw(self, js_engines=[NODE_JS]):
+    self.set_setting('NODEFS', 1)
     self.set_setting('SYSCALL_DEBUG', 1)
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)

@@ -1655,7 +1655,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 }
 
 function makeRemovedFSAssert(fsName) {
-  if (!ASSERTIONS) return '';
+  if (!ASSERTIONS || this[fsName]) return '';
   return "var " + fsName + " = '" + fsName + " is no longer included by default; build with -s " + fsName + "';";
 }
 

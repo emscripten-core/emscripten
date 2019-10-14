@@ -5277,8 +5277,8 @@ main(const int argc, const char * const * const argv)
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertNotContained(FS_MARKER, open('a.out.js').read())
     print('yes fs, no fs:', yes_size, no_size)
-    # 100K of FS code is removed
-    self.assertGreater(yes_size - no_size, 100000)
+    # ~100K of FS code is removed
+    self.assertGreater(yes_size - no_size, 90000)
     self.assertLess(no_size, 360000)
 
   def test_no_filesystem_libcxx(self):
@@ -8227,7 +8227,7 @@ int main() {
     run_process(cmd)
 
     # build main module
-    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME=1']
+    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME=1', '-s', 'NODEFS']
     cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     run_process(cmd)
