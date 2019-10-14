@@ -16,13 +16,9 @@ void *ThreadMain(void *arg)
 
 pthread_t CreateThread()
 {
-  pthread_attr_t attr;
-  pthread_attr_init(&attr);
-  pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
   pthread_t ret;
-  int rc = pthread_create(&ret, &attr, ThreadMain, (void*)0);
+  int rc = pthread_create(&ret, NULL, ThreadMain, (void*)0);
   assert(rc == 0);
-  pthread_attr_destroy(&attr);
   return ret;
 }
 
