@@ -8119,13 +8119,13 @@ int main() {
                            3, [], [], 6100,  2,  3,  5),         # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
-                           5, [], [], 6423,  3,  4,  5),         # noqa
+                           3, [], [], 6423,  3,  4,  5),         # noqa
     # Growth support code is in JS, no significant change in the wasm
     'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
                            3, [], [], 6098,  2,  3,  5),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           6, [], [], 6563,  4,  4,  6),         # noqa
+                           4, [], [], 6563,  4,  4,  6),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, *args):
