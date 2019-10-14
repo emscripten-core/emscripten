@@ -206,7 +206,7 @@ If manually bisecting:
     # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
     src = 'src.cpp'
     create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
+    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def build_native_lzma(self):
@@ -3335,6 +3335,10 @@ window.close = function() {
   def test_async_stack_overflow(self):
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
 
+  @no_fastcomp('wasm backend asyncify specific')
+  def test_async_bad_whitelist(self):
+    self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
+
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
@@ -3982,14 +3986,23 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
-  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=[])
 
-  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   @requires_threads
   def test_main_thread_em_asm_signatures_pthreads(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
+
+  @requires_threads
+  def test_main_thread_em_asm_blocking(self):
+    create_test_file('page.html',
+                     open(path_from_root('tests', 'browser', 'test_em_asm_blocking.html')).read())
+    create_test_file('wasm.cpp',
+                     self.with_report_result(
+                       open(path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp')).read()))
+
+    self.compile_btest(['wasm.cpp', '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.run_browser('page.html', '', '/report_result?8')
 
   # test atomicrmw i64
   @no_wasm_backend('uses an asm.js .ll file')

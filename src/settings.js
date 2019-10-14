@@ -554,11 +554,14 @@ var ASYNCIFY = 0;
 
 // The imports which can do a sync operation. If you add more you will need to
 // add them to here.
+// If the names here do not include a "module." prefix, the module is assumed
+// to be "env".
 var ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
-  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay', '__syscall118',
-  'emscripten_scan_registers'
+  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
+  'emscripten_scan_registers',
+  'wasi_unstable.fd_sync', '__wasi_fd_sync',
 ];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.

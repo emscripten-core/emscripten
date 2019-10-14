@@ -196,9 +196,8 @@ var LibraryPThread = {
     terminateAllThreads: function() {
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
+        if (pthread && pthread.worker) {
+          PThread.returnWorkerToPool(pthread.worker);
         }
       }
       PThread.pthreads = {};
@@ -225,7 +224,7 @@ var LibraryPThread = {
         var worker = PThread.runningWorkers[i];
         var pthread = worker.pthread;
 #if ASSERTIONS
-        assert(pthread); // This Worker should have a pthread it is executing
+        assert(pthread, 'This Worker should have a pthread it is executing');
 #endif
         PThread.freeThreadData(pthread);
         worker.terminate();
@@ -1264,9 +1263,21 @@ var LibraryPThread = {
     }
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
-    var func = index > 0 ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+    var isEmAsmConst = index < 0;
+    var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+#if WASM_BACKEND
+    if (isEmAsmConst) {
+      // EM_ASM arguments are stored in their own buffer in memory, that we need
+      // to unpack in order to call. The proxied arguments are the code index,
+      // signature pointer, and vararg buffer pointer, in that order.
+      var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
+      var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
+      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
+      return func.apply(null, constArgs);
+    }
+#endif
 #if ASSERTIONS
-    assert(func.length == numCallArgs);
+    assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },

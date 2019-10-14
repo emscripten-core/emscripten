@@ -636,7 +636,8 @@ def optimize_syscalls(declares, DEBUG):
     if set(syscalls).issubset(set([
       '__syscall6', '__syscall54', '__syscall140',
       'fd_seek', '__wasi_fd_seek',
-      'fd_write', '__wasi_fd_write'
+      'fd_write', '__wasi_fd_write',
+      'fd_close', '__wasi_fd_close',
     ])):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
@@ -704,9 +705,7 @@ def update_settings_glue(metadata, DEBUG):
           proxied_function_signatures.add(sig + '_async')
     return list(proxied_function_signatures)
 
-  # Proxying EM_ASM calls is not yet implemented in Wasm backend
-  if not shared.Settings.WASM_BACKEND:
-    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
+  shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
@@ -2345,8 +2344,8 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0] * len(metadata['asmConsts'])
   all_sigs = []
   for k, v in metadata['asmConsts'].items():
-    const = asstr(v[0])
-    sigs = v[1]
+    const, sigs, call_types = v
+    const = asstr(const)
     const = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -2358,19 +2357,21 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') {' + const + '}'
     asm_consts[int(k)] = const
-    all_sigs += sigs
+    for sig, call_type in zip(sigs, call_types):
+      all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
-  for sig in set(all_sigs):
-    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+
+  if all_sigs:
+    # emit the signature-reading helper function only if we have any EM_ASM
+    # functions in the module
     asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
-  var sig = AsciiToString(sig_ptr);
+function readAsmConstArgs(sig_ptr, buf) {
   var args = [];
-  var align_to = function(ptr, align) {
+  var sig = AsciiToString(sig_ptr);
+  function align_to(ptr, align) {
     return (ptr+align-1) & ~(align-1);
-  };
-  var buf = argbuf;
+  }
   for (var i = 0; i < sig.length; i++) {
     var c = sig[i];
     if (c == 'd' || c == 'f') {
@@ -2383,8 +2384,35 @@ function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
       buf += 4;
     }
   }
+  return args;
+}
+''')
+
+  for sig, call_type in set(all_sigs):
+    const_name = '_emscripten_asm_const_' + call_type + sig
+    forwarded_json['Functions']['libraryFunctions'][const_name] = 1
+
+    preamble = ''
+    if shared.Settings.USE_PTHREADS:
+      sync_proxy = call_type == 'sync_on_main_thread_'
+      async_proxy = call_type == 'async_on_main_thread_'
+      proxied = sync_proxy or async_proxy
+      if proxied:
+        # In proxied function calls, positive integers 1, 2, 3, ... denote pointers
+        # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
+        # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
+        # ... over to the negative integers starting at -1.
+        preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
+                     proxy_debug_print(sync_proxy) +
+                     'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
+                     str(int(sync_proxy)) +
+                     ', code, sig_ptr, argbuf); }')
+
+    asm_const_funcs.append(r'''
+function %s(code, sig_ptr, argbuf) {%s
+  var args = readAsmConstArgs(sig_ptr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
-}''' % sig)
+}''' % (const_name, preamble))
   return asm_consts, asm_const_funcs
 
 
@@ -2408,15 +2436,18 @@ def create_em_js(forwarded_json, metadata):
 
 
 def add_standard_wasm_imports(send_items_map):
-  # memory was already allocated (so that js could use the buffer); import it
-  memory_import = 'wasmMemory'
-  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
-    # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-    # Module scope, so lookup via Module as well.
-    memory_import += " || Module['wasmMemory']"
-  send_items_map['memory'] = memory_import
+  # Normally we import these into the wasm (so that JS could use them even
+  # before the wasm loads), while in standalone mode we do not depend
+  # on JS to create them, but create them in the wasm and export them.
+  if not shared.Settings.STANDALONE_WASM:
+    memory_import = 'wasmMemory'
+    if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+      # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+      # Module scope, so lookup via Module as well.
+      memory_import += " || Module['wasmMemory']"
+    send_items_map['memory'] = memory_import
 
-  send_items_map['table'] = 'wasmTable'
+    send_items_map['table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base and only needed for
   # relocatable output.
@@ -2454,6 +2485,14 @@ def add_standard_wasm_imports(send_items_map):
       console.log('get_f64 ' + [loc, index, value]);
       return value;
     }'''
+    send_items_map['get_anyref'] = '''function(loc, index, value) {
+      console.log('get_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_exnref'] = '''function(loc, index, value) {
+      console.log('get_exnref ' + [loc, index, value]);
+      return value;
+    }'''
     send_items_map['set_i32'] = '''function(loc, index, value) {
       console.log('set_i32 ' + [loc, index, value]);
       return value;
@@ -2469,6 +2508,14 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['set_f64'] = '''function(loc, index, value) {
       console.log('set_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_anyref'] = '''function(loc, index, value) {
+      console.log('set_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_exnref'] = '''function(loc, index, value) {
+      console.log('set_exnref ' + [loc, index, value]);
       return value;
     }'''
     send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
@@ -2520,9 +2567,10 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  em_asm_sigs = [sigs for _, sigs, _ in metadata['asmConsts'].values()]
+  em_asm_sigs = [zip(sigs, call_types) for _, sigs, call_types in metadata['asmConsts'].values()]
+  # flatten em_asm_sigs
   em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
-  em_asm_funcs = ['_emscripten_asm_const_' + sig for sig in em_asm_sigs]
+  em_asm_funcs = ['_emscripten_asm_const_' + call_type + sig for sig, call_type in em_asm_sigs]
   em_js_funcs = list(metadata['emJsFuncs'].keys())
   declared_items = ['_' + item for item in metadata['declares']]
   send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)

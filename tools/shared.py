@@ -231,13 +231,19 @@ This command will now exit. When you are done editing those paths, re-run it.
 ''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
 
 
-# Emscripten configuration is done through the --em-config command line option or
-# the EM_CONFIG environment variable. If the specified string value contains newline
-# or semicolon-separated definitions, then these definitions will be used to configure
-# Emscripten.  Otherwise, the string is understood to be a path to a settings
-# file that contains the required definitions.
+# Emscripten configuration is done through the --em-config command line option
+# or the EM_CONFIG environment variable. If the specified string value contains
+# newline or semicolon-separated definitions, then these definitions will be
+# used to configure Emscripten.  Otherwise, the string is understood to be a
+# path to a settings file that contains the required definitions.
+# The search order from the config file is as follows:
+# 1. Specified on the command line (--em-config)
+# 2. Specified via EM_CONFIG environment variable
+# 3. If emscripten-local .emscripten file is found, use that
+# 4. Fall back users home directory (~/.emscripten).
 
-try:
+embedded_config = path_from_root('.emscripten')
+if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
   # And now remove it from sys.argv
   skip = False
@@ -250,22 +256,25 @@ try:
     elif skip:
       skip = False
   sys.argv = newargs
-  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
-  # those child processes get the same configuration file by setting it to the currently active environment.
-  os.environ['EM_CONFIG'] = EM_CONFIG
-except Exception:
-  EM_CONFIG = os.environ.get('EM_CONFIG')
-
-if EM_CONFIG and not os.path.isfile(EM_CONFIG):
-  if EM_CONFIG.startswith('-'):
-    exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
-  if '=' not in EM_CONFIG:
-    exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
-  else:
-    EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
-
-if not EM_CONFIG:
+  if not os.path.isfile(EM_CONFIG):
+    if EM_CONFIG.startswith('-'):
+      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
+    if '=' not in EM_CONFIG:
+      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+    else:
+      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+elif 'EM_CONFIG' in os.environ:
+  EM_CONFIG = os.environ['EM_CONFIG']
+elif os.path.exists(embedded_config):
+  EM_CONFIG = embedded_config
+else:
   EM_CONFIG = '~/.emscripten'
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
 if '\n' in EM_CONFIG:
   CONFIG_FILE = None
   logger.debug('EM_CONFIG is specified inline without a file')
@@ -301,6 +310,8 @@ FROZEN_CACHE = False
 
 def parse_config_file():
   """Parse the emscripten config file using python's exec"""
+  global JS_ENGINES, JAVA, CLOSURE_COMPILER
+
   config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   try:
@@ -332,6 +343,27 @@ def parse_config_file():
   for key in CONFIG_KEYS:
     if key in config:
       globals()[key] = config[key]
+
+  # Certain keys are mandatory
+  for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
+    if key not in config:
+      exit_with_error('%s is not defined in %s', key, hint_config_file_location())
+    if not globals()[key]:
+      exit_with_error('%s is set to empty value in %s', key, hint_config_file_location())
+
+  if not NODE_JS:
+    exit_with_error('NODE_JS is not defined in %s', hint_config_file_location())
+
+  # EM_CONFIG stuff
+  if not JS_ENGINES:
+    JS_ENGINES = [NODE_JS]
+
+  if CLOSURE_COMPILER is None:
+    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+
+  if JAVA is None:
+    logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
+    JAVA = 'java'
 
 
 # Returns a suggestion where current .emscripten config file might be located
@@ -511,7 +543,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 15)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 19)
 
 
 def generate_sanity():
@@ -889,14 +921,6 @@ def apply_configuration():
 
 
 apply_configuration()
-
-# EM_CONFIG stuff
-if CLOSURE_COMPILER is None:
-  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
-
-if JAVA is None:
-  logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
-  JAVA = 'java'
 
 # Additional compiler options
 
@@ -1872,8 +1896,10 @@ class Building(object):
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
-        '--no-entry'
       ]
+      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      if not use_start_function:
+        cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
         cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
       elif not Settings.ALLOW_MEMORY_GROWTH:
@@ -2299,6 +2325,7 @@ class Building(object):
     cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
+    print_compiler_stage(cmd)
     check_call(cmd)
 
   @staticmethod
@@ -2532,9 +2559,14 @@ class Building(object):
     WASI_IMPORTS = set([
       'environ_get',
       'environ_sizes_get',
+      'args_get',
+      'args_sizes_get',
       'fd_write',
       'fd_close',
       'fd_read',
+      'fd_seek',
+      'fd_fdstat_get',
+      'fd_sync',
       'proc_exit',
     ])
     for item in graph:
@@ -2793,8 +2825,6 @@ class Building(object):
   @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    if not BINARYEN_ROOT:
-      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 

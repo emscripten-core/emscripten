@@ -21,18 +21,35 @@ Current Trunk
    it, you must set `ALLOW_BLOCKING_ON_MAIN_THREAD` (disallowing by default
    makes it less likely new users of pthreads will hit surprising deadlocks
    on the Web).
+ - `STANDALONE_WASM` mode now supports settings up argv vai wasi APIs.
+ - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
+
+v1.38.48: 10/11/2019
+--------------------
+ - Add support for `MAIN_THREAD_EM_ASM` in wasm backend. #9560
+ - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
+   This is useful for people who use FETCH, but don't perform any synchronous fetches
+   on the main thread. #9567
+ - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
+   use native, always use JS.
 
 v.1.38.47: 10/02/2019
 ---------------------
+ - Add support for FETCH API in WASM backend. This doesn't support FETCH in the
+   main thread (`USE_FETCH_WORKER=0` is enforced). #9490
  - Redefine errno values to be consistent with wasi. This will let us avoid
    needing to convert the values back and forth as we use more wasi APIs.
    This is an ABI change, which should not be noticeable from user code
    unless you use errno defines (like EAGAIN) *and* keep around binaries
    compiled with an older version that you link against. In that case, you
    should rebuild them. See #9545.
- - Removed build option -s ONLY_MY_CODE as we now have much better solutions
-   for that, like building to a wasm object file or using STANDALONE_WASM
-   etc. (see https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+ - Removed build option `-s ONLY_MY_CODE` as we now have much better solutions
+   for that, like building to a wasm object file or using `STANDALONE_WASM`
+   etc. (see
+   https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+ - Emscripten now supports the config file (.emscripten) being placed in the
+   emscripten directory rather that the current user's home directory.
+   See #9543
 
 v.1.38.46: 09/25/2019
 ---------------------
