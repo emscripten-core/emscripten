@@ -2436,15 +2436,18 @@ def create_em_js(forwarded_json, metadata):
 
 
 def add_standard_wasm_imports(send_items_map):
-  # memory was already allocated (so that js could use the buffer); import it
-  memory_import = 'wasmMemory'
-  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
-    # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-    # Module scope, so lookup via Module as well.
-    memory_import += " || Module['wasmMemory']"
-  send_items_map['memory'] = memory_import
+  # Normally we import these into the wasm (so that JS could use them even
+  # before the wasm loads), while in standalone mode we do not depend
+  # on JS to create them, but create them in the wasm and export them.
+  if not shared.Settings.STANDALONE_WASM:
+    memory_import = 'wasmMemory'
+    if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+      # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+      # Module scope, so lookup via Module as well.
+      memory_import += " || Module['wasmMemory']"
+    send_items_map['memory'] = memory_import
 
-  send_items_map['table'] = 'wasmTable'
+    send_items_map['table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base and only needed for
   # relocatable output.
