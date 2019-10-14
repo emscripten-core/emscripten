@@ -8213,6 +8213,18 @@ extern "C" {
       }
     ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
+  @also_with_standalone_wasm
+  def test_undefined_main(self):
+    # By default in emscripten we allow main to be undefined.  Its used when
+    # building library code that has no main.
+    # TODO(sbc): Simplify the code by making this an opt-in feature.
+    # https://github.com/emscripten-core/emscripten/issues/9640
+    src = '''
+    #include <emscripten.h>
+    EMSCRIPTEN_KEEPALIVE void foo() {}
+    '''
+    self.build(src, self.get_dir(), 'test.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
