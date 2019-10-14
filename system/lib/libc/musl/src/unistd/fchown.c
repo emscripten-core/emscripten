@@ -12,7 +12,7 @@ int fchown(int fd, uid_t uid, gid_t gid)
 {
 	int ret = __syscall(SYS_fchown, fd, uid, gid);
 #if __EMSCRIPTEN__
-	if (ret != -EBADF || !isastream(fd))
+	if (ret != -EBADF || !__wasi_fd_is_valid(fd))
 		return __syscall_ret(ret);
 #else
 	if (ret != -EBADF || __syscall(SYS_fcntl, fd, F_GETFD) < 0)

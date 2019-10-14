@@ -13,7 +13,7 @@ int fstat(int fd, struct stat *st)
 {
 	int ret = __syscall(SYS_fstat, fd, st);
 #if __EMSCRIPTEN__
-	if (ret != -EBADF || !isastream(fd))
+	if (ret != -EBADF || !__wasi_fd_is_valid(fd))
 		return __syscall_ret(ret);
 #else
 	if (ret != -EBADF || __syscall(SYS_fcntl, fd, F_GETFD) < 0)

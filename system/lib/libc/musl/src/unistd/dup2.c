@@ -16,7 +16,7 @@ int dup2(int old, int new)
 #if __EMSCRIPTEN__
 		r = __syscall(SYS_fcntl, old, F_GETFD);
 #else
-		r = isastream(old);
+		r = __wasi_fd_is_valid(old);
 #endif
 		if (r >= 0) return old;
 	} else {
