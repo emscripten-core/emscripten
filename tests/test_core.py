@@ -7819,6 +7819,7 @@ extern "C" {
   def test_fs_dict_none(self):
     # if IDBFS and NODEFS are not enabled, they are not present.
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('ASSERTIONS', 1)
     create_test_file('pre.js', '''
       Module = {};
       Module['preRun'] = function() {
