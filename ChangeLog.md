@@ -17,8 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Only MEMFS is included by default, all others must be enabled via -s NODEFS
-   etc. See #?
+ - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
+   must be enabled via `-s NODEFS` etc. See #9645
  - `STANDALONE_WASM` mode now supports settings up argv vai wasi APIs.
  - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
 
