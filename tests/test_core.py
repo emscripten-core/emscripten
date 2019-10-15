@@ -8250,7 +8250,7 @@ def make_run(name, emcc_args, settings=None, env=None):
 
     # avoid various compiler warnings in our test output
     self.emcc_args += [
-      '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
+      '-Wno-dynamic-class-memaccess', '-Wno-format',
       '-Wno-format-extra-args', '-Wno-format-security',
       '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
       '-Wno-c++11-compat-deprecated-writable-strings',
