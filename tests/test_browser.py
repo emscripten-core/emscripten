@@ -123,6 +123,15 @@ def requires_threads(f):
   return decorated
 
 
+def requires_asmfs(f):
+  def decorated(self, *args, **kwargs):
+    # https://github.com/emscripten-core/emscripten/issues/9534
+    self.skipTest('ASMFS is looking for a maintainer')
+    return f(self, *args, **kwargs)
+
+  return decorated
+
+
 requires_graphics_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), "This test requires graphics hardware")
 requires_sound_hardware = unittest.skipIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), "This test requires sound hardware")
 requires_sync_compilation = unittest.skipIf(is_chrome(), "This test requires synchronous compilation, which does not work in Chrome (except for tiny wasms)")
@@ -197,7 +206,7 @@ If manually bisecting:
     # TODO: wasm support for source maps. emscripten_loadSourceMap looks at $HTML.map but it should be $NAME.wasm.map.
     src = 'src.cpp'
     create_test_file(src, self.with_report_result(open(path_from_root('tests', 'emscripten_log', 'emscripten_log.cpp')).read()))
-    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
+    self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
     self.run_browser('page.html', None, '/report_result?1')
 
   def build_native_lzma(self):
@@ -3311,16 +3320,24 @@ window.close = function() {
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
     'normal': (['-s', 'ASYNCIFY_IMPORTS=["sync_tunnel"]'],), # noqa
+    'response': (['-s', 'ASYNCIFY_IMPORTS=@filey.txt'],), # noqa
     'nothing': (['-DBAD'],), # noqa
     'empty_list': (['-DBAD', '-s', 'ASYNCIFY_IMPORTS=[]'],), # noqa
+    'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
   })
   @no_fastcomp('emterpretify never worked here')
   def test_async_returnvalue(self, args):
+    if '@' in str(args):
+      create_test_file('filey.txt', '["sync_tunnel"]')
     self.btest('browser/async_returnvalue.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_IGNORE_INDIRECT', '--js-library', path_from_root('tests', 'browser', 'async_returnvalue.js')] + args + ['-s', 'ASSERTIONS=1'])
 
   @no_fastcomp('wasm backend asyncify specific')
   def test_async_stack_overflow(self):
     self.btest('browser/async_stack_overflow.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_STACK_SIZE=4'])
+
+  @no_fastcomp('wasm backend asyncify specific')
+  def test_async_bad_whitelist(self):
+    self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
 
   @requires_sync_compilation
   def test_modularize(self):
@@ -3647,6 +3664,16 @@ window.close = function() {
     test(['-O3'])
     test(['-s', 'MODULARIZE_INSTANCE=1'])
 
+  # Test that preallocating worker threads work.
+  @requires_threads
+  def test_pthread_preallocates_workers(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_preallocates_workers.cpp'), expected='0', args=['-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=4', '-s', 'PTHREAD_POOL_DELAY_LOAD=1'])
+
+  # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
+  @requires_threads
+  def test_pthread_large_pthread_allocation(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_large_pthread_allocation.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=128MB', '-O3', '-s', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=50'], message='Check output from test to ensure that a regression in time it takes to allocate the threads has not occurred.')
+
   # Tests the -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
   def test_pthread_proxy_to_pthread(self):
@@ -3734,7 +3761,7 @@ window.close = function() {
   # Test thread-specific data (TLS).
   @requires_threads
   def test_pthread_thread_local_storage(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_thread_local_storage.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'ASSERTIONS=1'])
 
   # Test the pthread condition variable creation and waiting.
   @requires_threads
@@ -3946,14 +3973,23 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
-  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   def test_main_thread_em_asm_signatures(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=[])
 
-  @no_wasm_backend('MAIN_THREAD_EM_ASM() not yet implemented in Wasm backend')
   @requires_threads
   def test_main_thread_em_asm_signatures_pthreads(self):
     self.btest(path_from_root('tests', 'core', 'test_em_asm_signatures.cpp'), expected='121', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'ASSERTIONS=1'])
+
+  @requires_threads
+  def test_main_thread_em_asm_blocking(self):
+    create_test_file('page.html',
+                     open(path_from_root('tests', 'browser', 'test_em_asm_blocking.html')).read())
+    create_test_file('wasm.cpp',
+                     self.with_report_result(
+                       open(path_from_root('tests', 'browser', 'test_em_asm_blocking.cpp')).read()))
+
+    self.compile_btest(['wasm.cpp', '-O2', '-o', 'wasm.js', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD'])
+    self.run_browser('page.html', '', '/report_result?8')
 
   # test atomicrmw i64
   @no_wasm_backend('uses an asm.js .ll file')
@@ -4174,7 +4210,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 6098), 100)
+    self.assertLess(abs(size - 5651), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4249,8 +4285,13 @@ window.close = function() {
   @requires_threads
   @requires_offscreen_canvas
   def test_webgl_offscreen_canvas_in_proxied_pthread(self):
-    for args in [[], ['-DTEST_OFFSCREEN_CANVAS=1'], ['-DTEST_OFFSCREEN_CANVAS=2']]:
-      cmd = args + ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'OFFSCREEN_FRAMEBUFFER=1']
+    for asyncify in [0, 1]:
+      cmd = ['-s', 'USE_PTHREADS=1', '-s', 'OFFSCREENCANVAS_SUPPORT=1', '-lGL', '-s', 'GL_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1']
+      if asyncify:
+        if not self.is_wasm_backend():
+          continue
+        # given the synchronous render loop here, asyncify is needed to see intermediate frames and the gradual color change
+        cmd += ['-s', 'ASYNCIFY', '-DASYNCIFY']
       print(str(cmd))
       self.btest('gl_in_proxy_pthread.cpp', expected='1', args=cmd)
 
@@ -4340,10 +4381,10 @@ window.close = function() {
     self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests synchronous emscripten_fetch() usage from wasm pthread in fastcomp.
-  @no_wasm_backend("fetch API uses an asm.js based web worker to run synchronous XHRs and IDB operations")
+  @requires_threads
   def test_fetch_sync_xhr_in_wasm(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'WASM=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
   @requires_threads
@@ -4355,6 +4396,7 @@ window.close = function() {
                also_asmjs=True)
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
+  @no_wasm_backend("emscripten_fetch_wait uses an asm.js based web worker")
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
@@ -4369,6 +4411,7 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_hello_file(self):
     # Test basic file loading and the valid character set for files.
@@ -4376,44 +4419,54 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'dirrey', 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
     self.btest('asmfs/hello_file.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_read_file_twice(self):
     shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), 'hello_file.txt')
     self.btest('asmfs/read_file_twice.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_fopen_write(self):
     self.btest('asmfs/fopen_write.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_mkdir_create_unlink_rmdir(self):
     self.btest('cstdio/test_remove.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_dirent_test_readdir(self):
     self.btest('dirent/test_readdir.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_dirent_test_readdir_empty(self):
     self.btest('dirent/test_readdir_empty.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_close(self):
     self.btest('unistd/close.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_access(self):
     self.btest('unistd/access.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_unistd_unlink(self):
     # TODO: Once symlinks are supported, remove -DNO_SYMLINK=1
     self.btest('unistd/unlink.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-DNO_SYMLINK=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_test_fcntl_open(self):
     self.btest('fcntl/test_fcntl_open.c', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
+  @requires_asmfs
   @requires_threads
   def test_asmfs_relative_paths(self):
     self.btest('asmfs/relative_paths.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1'])

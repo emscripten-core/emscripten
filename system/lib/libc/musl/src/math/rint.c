@@ -11,6 +11,11 @@ static const double_t toint = 1/EPS;
 
 double rint(double x)
 {
+// XXX EMSCRIPTEN: on wasm backend, use the wasm instruction via clang builtin
+// See https://github.com/emscripten-core/emscripten/issues/9236
+#if __wasm__
+	return __builtin_rint(x);
+#else
 	union {double f; uint64_t i;} u = {x};
 	int e = u.i>>52 & 0x7ff;
 	int s = u.i>>63;
@@ -25,4 +30,5 @@ double rint(double x)
 	if (y == 0)
 		return s ? -0.0 : 0;
 	return y;
+#endif
 }

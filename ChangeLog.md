@@ -15,10 +15,74 @@ full changeset diff at the end of each section.
 
 See docs/process.md for how version tagging works.
 
-
 Current Trunk
 -------------
- - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
+ - `STANDALONE_WASM` mode now supports settings up argv vai wasi APIs.
+ - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
+
+v1.38.48: 10/11/2019
+--------------------
+ - Add support for `MAIN_THREAD_EM_ASM` in wasm backend. #9560
+ - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
+   This is useful for people who use FETCH, but don't perform any synchronous fetches
+   on the main thread. #9567
+ - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
+   use native, always use JS.
+
+v.1.38.47: 10/02/2019
+---------------------
+ - Add support for FETCH API in WASM backend. This doesn't support FETCH in the
+   main thread (`USE_FETCH_WORKER=0` is enforced). #9490
+ - Redefine errno values to be consistent with wasi. This will let us avoid
+   needing to convert the values back and forth as we use more wasi APIs.
+   This is an ABI change, which should not be noticeable from user code
+   unless you use errno defines (like EAGAIN) *and* keep around binaries
+   compiled with an older version that you link against. In that case, you
+   should rebuild them. See #9545.
+ - Removed build option `-s ONLY_MY_CODE` as we now have much better solutions
+   for that, like building to a wasm object file or using `STANDALONE_WASM`
+   etc. (see
+   https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+ - Emscripten now supports the config file (.emscripten) being placed in the
+   emscripten directory rather that the current user's home directory.
+   See #9543
+
+v.1.38.46: 09/25/2019
+---------------------
+ - Rename libpthreads to libpthread to match its normal name on other platforms.
+   This change should be completely internal to emscripten.
+ - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+   node as the compiler engine so just use a single `NODE_JS` option for that.
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
+ - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
+   that we want the wasm to be as standalone as possible. We may still emit JS in
+   that case, but the JS would just be a convenient way to run the wasm on the Web
+   or in Node.js.
+ - ASYNCIFY_BLACKLIST and ASYNCIFY_WHITELIST now support simple '*' wildcard matching
+
+v.1.38.45: 09/12/2019
+---------------------
+
+v.1.38.44: 09/11/2019
+---------------------
+ - Remove Binaryen from the ports system. This means that emscripten will
+   no longer automatically build Binaryen from source. Instead, either use
+   the emsdk (binaries are provided automatically, just like for LLVM), or
+   build it yourself and point `BINARYEN_ROOT` in .emscripten to it. See #9409
+
+v.1.38.43: 08/30/2019
+---------------------
+ - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
+   instead of `Module.noExitRuntime`.
+
+v.1.38.42: 08/19/2019
+----------------------
+ - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
+   and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
+   with multiple threads. (#9060, #9076)
+ - Remove `ERROR_ON_MISSING_LIBRARIES` setting (it's always on now)
  - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
    suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
    will no longer work. This is done because the mechanism may result in

@@ -158,6 +158,10 @@ function ExitStatus(status) {
 
 var calledMain = false;
 
+#if STANDALONE_WASM && MAIN_READS_PARAMS
+var mainArgs = undefined;
+#endif
+
 dependenciesFulfilled = function runCaller() {
   // If run has never been called, and we should call run (INVOKE_RUN is true, and Module.noInitialRun is not false)
   if (!calledRun) run();
@@ -171,13 +175,22 @@ function callMain(args) {
   assert(__ATPRERUN__.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
+#if STANDALONE_WASM
+  var entryFunction = Module['__start'];
+#else
+  var entryFunction = Module['_main'];
+#endif
+
 #if MAIN_MODULE
   // Main modules can't tell if they have main() at compile time, since it may
   // arrive from a dynamic library.
-  if (!Module['_main']) return;
+  if (!entryFunction) return;
 #endif
 
 #if MAIN_READS_PARAMS
+#if STANDALONE_WASM
+  mainArgs = [thisProgram].concat(args)
+#else
   args = args || [];
 
   var argc = args.length+1;
@@ -187,6 +200,7 @@ function callMain(args) {
     HEAP32[(argv >> 2) + i] = allocateUTF8OnStack(args[i - 1]);
   }
   HEAP32[(argv >> 2) + argc] = 0;
+#endif // STANDALONE_WASM
 #else
   var argc = 0;
   var argv = 0;
@@ -210,8 +224,15 @@ function callMain(args) {
     // that will call the user's real main() for the application.
     var ret = Module['_proxy_main'](argc, argv);
 #else
-    var ret = Module['_main'](argc, argv);
-#endif
+#if STANDALONE_WASM
+    entryFunction();
+    // _start (in crt1.c) will call exit() if main return non-zero.  So we know
+    // that if we get here main returned zero.
+    var ret = 0;
+#else
+    var ret = entryFunction(argc, argv);
+#endif // STANDALONE_WASM
+#endif // PROXY_TO_PTHREAD
 
 #if BENCHMARK
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
@@ -220,7 +241,7 @@ function callMain(args) {
 #if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
-    if (!Module['noExitRuntime']) {
+    if (!noExitRuntime) {
 #endif // EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we're not running an evented main loop, it's time to exit
       exit(ret, /* implicit = */ true);
@@ -235,7 +256,7 @@ function callMain(args) {
       return;
     } else if (e == 'SimulateInfiniteLoop') {
       // running an evented main loop, don't immediately exit
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
 #if EMTERPRETIFY_ASYNC
       // an infinite loop keeps the C stack around, but the emterpreter stack must be unwound - we do not want to restore the call stack at infinite loop
       Module['emtStackRestore'](initialEmtStackTop);
@@ -390,18 +411,18 @@ function exit(status, implicit) {
   // don't need to do anything here and can just leave. if the status is
   // non-zero, though, then we need to report it.
   // (we may have warned about this earlier, if a situation justifies doing so)
-  if (implicit && Module['noExitRuntime'] && status === 0) {
+  if (implicit && noExitRuntime && status === 0) {
     return;
   }
 
-  if (Module['noExitRuntime']) {
+  if (noExitRuntime) {
 #if ASSERTIONS
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if EXIT_RUNTIME == 0
-      err('exit(' + status + ') called, but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)');
+      err('program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)');
 #else
-      err('exit(' + status + ') called, but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+      err('program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
 #endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
@@ -415,43 +436,13 @@ function exit(status, implicit) {
 
     exitRuntime();
 
+#if expectToReceiveOnModule('onExit')
     if (Module['onExit']) Module['onExit'](status);
+#endif
   }
 
   quit_(status, new ExitStatus(status));
 }
-
-var abortDecorators = [];
-
-function abort(what) {
-  if (Module['onAbort']) {
-    Module['onAbort'](what);
-  }
-
-#if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
-#endif
-  what += '';
-  out(what);
-  err(what);
-
-  ABORT = true;
-  EXITSTATUS = 1;
-
-#if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
-#else
-  var extra = '';
-  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
-  if (abortDecorators) {
-    abortDecorators.forEach(function(decorator) {
-      output = decorator(output, what);
-    });
-  }
-  throw output;
-#endif // ASSERTIONS
-}
-Module['abort'] = abort;
 
 #if expectToReceiveOnModule('preInit')
 if (Module['preInit']) {
@@ -480,7 +471,7 @@ if (Module['noInitialRun']) shouldRunNow = false;
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
 #endif
-  Module["noExitRuntime"] = true;
+  noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS

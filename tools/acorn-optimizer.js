@@ -576,6 +576,14 @@ function emitDCEGraph(ast) {
       var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties.forEach(function(item) {
         var value = item.value;
+        if (value.type === 'Literal' || value.type === 'FunctionExpression') {
+          return; // if it's a numeric or function literal, nothing to do here
+        }
+        if (value.type === 'LogicalExpression') {
+          // We may have something like  wasmMemory || Module.wasmMemory  in pthreads code;
+          // use the left hand identifier.
+          value = value.left;
+        }
         assert(value.type === 'Identifier');
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });

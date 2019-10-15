@@ -22,10 +22,17 @@ def create_response_file(args, directory):
   """
   response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
 
+  # Backslashed need to be escaped in the response files.
   args = [p.replace('\\', '\\\\').replace('"', '\\"') for p in args]
-  contents = '"' + '" "'.join(args) + '"'
+  contents = ""
+
+  # Arguments containing spaces need to be quoted.
+  for arg in args:
+    if ' ' in arg:
+      arg = '"%s"' % arg
+    contents += arg + '\n'
   with os.fdopen(response_fd, 'w') as f:
-   f.write(contents)
+    f.write(contents)
   if DEBUG:
     logging.warning('Creating response file ' + response_filename + ': ' + contents)
 
@@ -46,7 +53,7 @@ def read_response_file(response_filename):
     response_filename = response_filename[1:]
 
   if not os.path.exists(response_filename):
-    raise Exception("Response file '%s' not found!" % response_filename)
+    raise IOError("response file not found: %s" % response_filename)
 
   with open(response_filename) as f:
     args = f.read()

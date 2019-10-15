@@ -26,7 +26,11 @@ FILE *fopen(const char *restrict filename, const char *restrict mode)
 	f = __fdopen(fd, mode);
 	if (f) return f;
 
+#ifdef __EMSCRIPTEN__
+	__wasi_fd_close(fd);
+#else
 	__syscall(SYS_close, fd);
+#endif
 	return 0;
 }
 

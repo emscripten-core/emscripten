@@ -1,13 +1,4 @@
-DYNAMICTOP_PTR
-__setErrNo
-abortOnCannotGrowMemory
-demangle
-demangleAll
-emscripten_get_heap_size
-emscripten_memcpy_big
+emscripten_get_sbrk_ptr
 emscripten_resize_heap
-jsStackTrace
-memcpy
-memset
-sbrk
-stackTrace
+memory
+table

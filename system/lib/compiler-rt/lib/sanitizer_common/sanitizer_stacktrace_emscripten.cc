@@ -26,13 +26,14 @@ extern "C" {
   u32 emscripten_stack_unwind_buffer(uptr pc, uptr *buffer, u32 depth);
 }
 
+bool StackTrace::snapshot_stack = true;
+
 uptr StackTrace::GetCurrentPc() {
-  return emscripten_stack_snapshot();
+  return snapshot_stack ? emscripten_stack_snapshot() : 0;
 }
 
 void BufferedStackTrace::FastUnwindStack(uptr pc, uptr bp, uptr stack_top,
                                          uptr stack_bottom, u32 max_depth) {
-  bool saw_pc = false;
   max_depth = Min(max_depth, kStackTraceMax);
   size = emscripten_stack_unwind_buffer(pc, trace_buffer, max_depth);
   trace_buffer[0] = pc;
