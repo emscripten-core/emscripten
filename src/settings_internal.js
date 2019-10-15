@@ -67,3 +67,6 @@ var DYNAMICTOP_PTR = -1;
 // The computed initial value of the program break (the sbrk position), which
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
+
+// -Werror was specified on the command line.
+var WARNINGS_ARE_ERRORS = 0;

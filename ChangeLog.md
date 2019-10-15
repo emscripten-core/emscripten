@@ -17,10 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - `-Werror` now also turns warnings in the python driver code into errors.
  - Internal settings have moved from `settings.js` to `settings_internal.js`.
    These are settings that are for internal use only and are not set-able from
    the command line.  If we misclassified any of these please open a bug.
- - `STANDALONE_WASM` mode now supports settings up argv vai wasi APIs.
+ - `STANDALONE_WASM` mode now supports settings up argv via wasi APIs.
  - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
 
 v1.38.48: 10/11/2019

@@ -9807,3 +9807,14 @@ Module.arguments has been replaced with plain arguments_
     create_test_file('empty.c', 'static int foo = 0;')
     run_process([PYTHON, EMCC, 'empty.c', '-la', '-L.'])
     self.assertContained('success', run_js('a.out.js'))
+
+  def test_werror_python(self):
+    create_test_file('not_object.bc', 'some text')
+    run_process([PYTHON, EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
+    cmd = [PYTHON, EMCC, 'hello.o', 'not_object.bc', '-o', 'a.o']
+    stderr = run_process(cmd, stderr=PIPE).stderr
+    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
+    # Same thing with -Werror should fail
+    stderr = self.expect_fail(cmd + ['-Werror'])
+    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
+    self.assertContained('ERROR: treating warnings as errors (-Werror)', stderr)

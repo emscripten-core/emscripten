@@ -56,6 +56,13 @@ def exit_with_error(msg, *args):
   sys.exit(1)
 
 
+# TODO(sbc): Convert all caller to WarningManager
+def warning(msg, *args):
+  logger.warning(str(msg), *args)
+  if Settings.WARNINGS_ARE_ERRORS:
+    exit_with_error('treating warnings as errors (-Werror)')
+
+
 # On Windows python suffers from a particularly nasty bug if python is spawning
 # new processes while python itself is spawned from some other non-console
 # process.
@@ -149,11 +156,11 @@ class Py2CompletedProcess:
     self.stderr = stderr
 
   def __repr__(self):
-    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
+    _repr = ['args=%s' % repr(self.args), 'returncode=%s' % self.returncode]
     if self.stdout is not None:
-      _repr += 'stdout=' + repr(self.stdout)
+      _repr.append('stdout=' + repr(self.stdout))
     if self.stderr is not None:
-      _repr += 'stderr=' + repr(self.stderr)
+      _repr.append('stderr=' + repr(self.stderr))
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
@@ -448,7 +455,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if expected in actual:
     return True
-  logger.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
+  warning('LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
   return False
 
 
@@ -503,10 +510,10 @@ def check_node_version():
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
-    logger.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
+    warning('node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
     return False
   except Exception as e:
-    logger.warning('cannot check node version: %s', e)
+    warning('cannot check node version: %s', e)
     return False
 
 
@@ -514,10 +521,10 @@ def check_closure_compiler():
   try:
     run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
   except Exception:
-    logger.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
+    warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
   if not os.path.exists(CLOSURE_COMPILER):
-    logger.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+    warning('Closure compiler (%s) does not exist, check the paths in %s', CLOSURE_COMPILER, EM_CONFIG)
     return False
   return True
 
@@ -565,7 +572,7 @@ def perform_sanify_checks():
   # Sanity check passed!
   with ToolchainProfiler.profile_block('sanity closure compiler'):
     if not check_closure_compiler():
-      logger.warning('closure compiler will not be available')
+      warning('closure compiler will not be available')
 
 
 def check_sanity(force=False):
@@ -606,9 +613,9 @@ def check_sanity(force=False):
 
     if reason:
       if FROZEN_CACHE:
-        logger.warning('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
+        logger.info('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
       else:
-        logger.warning('(Emscripten: %s, clearing cache)' % reason)
+        logger.info('(Emscripten: %s, clearing cache)' % reason)
         Cache.erase()
         # the check actually failed, so definitely write out the sanity file, to
         # avoid others later seeing failures too
@@ -883,10 +890,12 @@ class WarningManager(object):
 
   @staticmethod
   def warn(warning_type, message=None):
-    warning = WarningManager.warnings[warning_type]
-    if warning['enabled'] and not warning['printed']:
-      warning['printed'] = True
-      logger.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+    warning_info = WarningManager.warnings[warning_type]
+    if warning_info['enabled'] and not warning_info['printed']:
+      warning_info['printed'] = True
+      if message is None:
+        message = warning_info['message']
+      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
 
 class Configuration(object):
@@ -1316,13 +1325,14 @@ verify_settings()
 # are duplicate entries in the archive
 def warn_if_duplicate_entries(archive_contents, archive_filename):
   if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
+    msg = '%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
       if curr not in warned and curr in archive_contents[i + 1:]:
-        logger.warning('   duplicate: %s' % curr)
+        msg += '\n   duplicate: %s' % curr
         warned.add(curr)
+    warning(msg)
 
 
 # This function creates a temporary directory specified by the 'dir' field in
@@ -1953,11 +1963,11 @@ class Building(object):
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
       if not new_symbols.is_valid_for_nm():
-        logger.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        warning('object %s is not valid according to llvm-nm, cannot link', f)
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
+        warning('object %s is not a valid object file for emscripten, cannot link', f)
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2111,9 +2121,9 @@ class Building(object):
     except subprocess.CalledProcessError as e:
       for i in inputs:
         if not os.path.exists(i):
-          logger.warning('Note: Input file "' + i + '" did not exist.')
+          warning('Note: Input file "' + i + '" did not exist.')
         elif not Building.is_bitcode(i):
-          logger.warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
+          warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
       exit_with_error('Failed to run llvm optimizations: ' + e.output)
     if not out:
       shutil.move(filename + '.opt.bc', filename)
