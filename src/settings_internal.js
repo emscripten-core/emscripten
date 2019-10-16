@@ -16,9 +16,6 @@ var MODULE_EXPORTS = [];
 // testing only: Disables the blitOffscreenFramebuffer VAO path.
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
 
-// testing only: Forces memory growing to fail.
-var TEST_MEMORY_GROWTH_FAILS = 0;
-
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 

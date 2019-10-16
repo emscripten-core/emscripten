@@ -1534,6 +1534,9 @@ var SUPPORT_ERRNO = 1;
 // compilation of the source files so that indeed no exceptions are used).
 var DISABLE_EXCEPTION_THROWING = 0;
 
+// Internal (testing only): Forces memory growing to fail.
+var TEST_MEMORY_GROWTH_FAILS = 0;
+
 // Advanced: Customize this array to reduce the set of asm.js runtime variables
 // that are generated. This allows minifying extra bit of asm.js code from unused
 // runtime code, if you know some of these are not needed.
@@ -1561,15 +1564,15 @@ var USES_DYNAMIC_ALLOC = 1;
 // be beneficial.
 var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 
-// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
-// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
-// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
-
 // If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
 // If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
 // this to 0 to save a little bit of code size and performance when catching exceptions.
 var SUPPORT_LONGJMP = 1;
+
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
+// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
+// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 
 // Specifies whether the generated .html file is run through html-minifier. The set of
 // optimization passes run by html-minifier depends on debug and optimization levels. In
