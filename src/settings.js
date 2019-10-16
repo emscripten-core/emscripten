@@ -1523,6 +1523,17 @@ var WASM_TABLE_SIZE = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
+// Internal: Tracks whether Emscripten should link in exception throwing (C++ 'throw')
+// support library. This does not need to be set directly, but pass -fno-exceptions
+// to the build disable exceptions support. (This is basically -fno-exceptions, but
+// checked at final link time instead of individual .cpp file compile time)
+// If the program *does* contain throwing code (some source files were not compiled
+// with `-fno-exceptions`), and this flag is set at link time, then you will get
+// errors on undefined symbols, as the exception throwing code is not linked in. If
+// so you should either unset the option (if you do want exceptions) or fix the
+// compilation of the source files so that indeed no exceptions are used).
+var DISABLE_EXCEPTION_THROWING = 0;
+
 // Advanced: Customize this array to reduce the set of asm.js runtime variables
 // that are generated. This allows minifying extra bit of asm.js code from unused
 // runtime code, if you know some of these are not needed.
