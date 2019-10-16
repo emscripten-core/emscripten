@@ -23,6 +23,10 @@
 // (using makeStaticAlloc)
 
 LibraryManager.library = {
+#if !WASM_BACKEND
+  __dso_handle: '{{{ makeStaticAlloc(1) }}}',
+#endif
+
   $PROCINFO: {
     // permissions
     /*
