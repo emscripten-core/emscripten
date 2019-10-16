@@ -372,9 +372,11 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-  // Pthread workers compute these in worker.js when they run, which is after
-  // this script loads in the worker initially. Set some fake values to
-  // catch bugs, then set the real values at load time.
+
+  // At the 'load' stage of Worker startup, we are just loading this script
+  // but not ready to run yet. At 'run' we receive proper values for the stack
+  // etc. and can launch a pthread. Set some fake values there meanwhile to
+  // catch bugs, then set the real values in applyStackValues later.
 #if ASSERTIONS || SAFE_STACK
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
