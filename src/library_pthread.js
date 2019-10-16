@@ -342,8 +342,7 @@ var LibraryPThread = {
           'tempDoublePtr': tempDoublePtr,
 #endif
           'DYNAMIC_BASE': DYNAMIC_BASE,
-          'DYNAMICTOP_PTR': DYNAMICTOP_PTR,
-          'PthreadWorkerInit': PthreadWorkerInit
+          'DYNAMICTOP_PTR': DYNAMICTOP_PTR
         });
         PThread.unusedWorkers.push(worker);
       }
@@ -576,7 +575,7 @@ var LibraryPThread = {
   },
 
   _num_logical_cores__deps: ['emscripten_force_num_logical_cores'],
-  _num_logical_cores: '; if (ENVIRONMENT_IS_PTHREAD) __num_logical_cores = PthreadWorkerInit["__num_logical_cores"]; else { PthreadWorkerInit["__num_logical_cores"] = __num_logical_cores = {{{ makeStaticAlloc(4) }}}; HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}} + '; }',
+  _num_logical_cores: '{{{ makeStaticAlloc(4) }}}; HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}},
 
   emscripten_has_threading_support: function() {
     return typeof SharedArrayBuffer !== 'undefined';
@@ -1082,7 +1081,7 @@ var LibraryPThread = {
   },
 
   // Stores the memory address that the main thread is waiting on, if any.
-  _main_thread_futex_wait_address: '; if (ENVIRONMENT_IS_PTHREAD) __main_thread_futex_wait_address = PthreadWorkerInit["__main_thread_futex_wait_address"]; else PthreadWorkerInit["__main_thread_futex_wait_address"] = __main_thread_futex_wait_address = {{{ makeStaticAlloc(4) }}}',
+  _main_thread_futex_wait_address: '{{{ makeStaticAlloc(4) }}}',
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],

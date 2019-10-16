@@ -23,15 +23,6 @@
 // (using makeStaticAlloc)
 
 LibraryManager.library = {
-  // keep this low in memory, because we flatten arrays with them in them
-#if USE_PTHREADS
-  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit["__impure_ptr"]; else PthreadWorkerInit["__impure_ptr"] = {{{ makeStaticAlloc(4) }}}',
-  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit["___dso_handle"]; else PthreadWorkerInit["___dso_handle"] = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
-#else
-  _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
-  __dso_handle: '{{{ makeStaticAlloc(1) }}}',
-#endif
-
   $PROCINFO: {
     // permissions
     /*
@@ -1879,17 +1870,11 @@ LibraryManager.library = {
   },
 
   // Statically allocated time struct.
-#if USE_PTHREADS
-  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit["___tm_current"]; else PthreadWorkerInit["___tm_current"] = ___tm_current = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit["___tm_timezone"]; else PthreadWorkerInit["___tm_timezone"] = ___tm_timezone = {{{ makeStaticString("GMT") }}}',
-  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit["___tm_formatted"]; else PthreadWorkerInit["___tm_formatted"] = ___tm_formatted = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-#else
   __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: '{{{ makeStaticString("GMT") }}}',
   // Statically allocated time strings.
   __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-#endif
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
     _tzset();
@@ -3238,15 +3223,10 @@ LibraryManager.library = {
   // netinet/in.h
   // ==========================================================================
 
-#if USE_PTHREADS
-  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit["_in6addr_any"]; else PthreadWorkerInit["_in6addr_any"] = _in6addr_any = {{{ makeStaticAlloc(16) }}}',
-  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit["_in6addr_loopback"]; else PthreadWorkerInit["_in6addr_loopback"] = _in6addr_loopback = {{{ makeStaticAlloc(16) }}}',
-#else
   in6addr_any:
     '{{{ makeStaticAlloc(16) }}}',
   in6addr_loopback:
     '{{{ makeStaticAlloc(16) }}}',
-#endif
 
   // ==========================================================================
   // netdb.h

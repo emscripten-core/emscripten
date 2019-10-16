@@ -139,7 +139,6 @@ this.onmessage = function(e) {
 
 #endif
 
-      Module['PthreadWorkerInit'] = e.data.PthreadWorkerInit;
       Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
 #if MODULARIZE && EXPORT_ES6
