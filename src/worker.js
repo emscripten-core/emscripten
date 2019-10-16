@@ -15,19 +15,7 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 #endif
 
-// Thread-local: Each thread has its own allocated stack space.
-var STACK_BASE = 0;
-var STACKTOP = 0;
-var STACK_MAX = 0;
-
-// These are system-wide memory area parameters that are set at main runtime startup in main thread, and stay constant throughout the application.
-var buffer; // All pthreads share the same Emscripten HEAP as SharedArrayBuffer with the main execution thread.
-var DYNAMICTOP_PTR = 0;
-var DYNAMIC_BASE = 0;
-
 var noExitRuntime;
-
-var PthreadWorkerInit = {};
 
 // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
 // subtle problems in emscripten_get_now() as this essentially would measure time from pthread_create(), meaning that the clocks between each threads
@@ -90,9 +78,9 @@ function resetPrototype(constructor, attrs) {
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
-  var instance = new WebAssembly.Instance(wasmModule, info);
+  var instance = new WebAssembly.Instance(Module['wasmModule'], info);
   // We don't need the module anymore; new threads will be spawned from the main thread.
-  wasmModule = null;
+  Module['wasmModule'] = null;
 #if LOAD_SOURCE_MAP
   wasmSourceMap = resetPrototype(WasmSourceMap, wasmSourceMapData);
 #endif
@@ -104,8 +92,6 @@ Module['instantiateWasm'] = function(info, receiveInstance) {
 };
 #endif
 
-var wasmModule;
-var wasmMemory;
 #if LOAD_SOURCE_MAP
 var wasmSourceMapData;
 #endif
@@ -118,37 +104,26 @@ this.onmessage = function(e) {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if !WASM_BACKEND
       // Initialize the thread-local field(s):
-      {{{ makeAsmGlobalAccessInPthread('tempDoublePtr') }}} = e.data.tempDoublePtr;
+      Module['tempDoublePtr'] = e.data.tempDoublePtr;
 #endif
 
       // Initialize the global "process"-wide fields:
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMIC_BASE') }}} = e.data.DYNAMIC_BASE;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
+      Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
+      Module['DYNAMICTOP_PTR'] = e.data.DYNAMICTOP_PTR;
 
 #if WASM
-      // The Wasm module will have import fields for STACKTOP and STACK_MAX. At 'load' stage of Worker startup, we are just
-      // spawning this Web Worker to act as a host for future created pthreads, i.e. we do not have a pthread to start up here yet.
-      // (A single Worker can also host multiple pthreads throughout its lifetime, shutting down a pthread will not shut down its hosting Worker,
-      // but the Worker is reused for later spawned pthreads). The 'run' stage below will actually start running a pthread.
-      // The stack space for a pthread is allocated and deallocated when a pthread is actually run, not yet at Worker 'load' stage.
-      // However, the WebAssembly module we are loading up here has import fields for STACKTOP and STACK_MAX, which it needs to get filled in
-      // immediately at Wasm Module instantiation time. The values of these will not get used until pthread is actually running some code, so
-      // we'll proceed to set up temporary invalid values for these fields for import purposes. Then whenever a pthread is launched at 'run' stage
-      // below, these values are rewritten to establish proper stack area for the particular pthread.
-      {{{ makeAsmExportAccessInPthread('STACK_MAX') }}} = {{{ makeAsmExportAccessInPthread('STACKTOP') }}}  = 0x7FFFFFFF;
-
       // Module and memory were sent from main thread
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmModule') }}} = e.data.wasmModule;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('wasmMemory') }}} = e.data.wasmMemory;
+      Module['wasmModule'] = e.data.wasmModule;
+      Module['wasmMemory'] = e.data.wasmMemory;
 #if LOAD_SOURCE_MAP
       wasmSourceMapData = e.data.wasmSourceMap;
 #endif
 #if USE_OFFSET_CONVERTER
       wasmOffsetData = e.data.wasmOffsetConverter;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
+      Module['buffer'] = Module['wasmMemory'].buffer;
 #else
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('buffer') }}} = e.data.buffer;
+      Module['buffer'] = e.data.buffer;
 
 #if SEPARATE_ASM
       // load the separated-out asm.js
@@ -164,7 +139,7 @@ this.onmessage = function(e) {
 
 #endif
 
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('PthreadWorkerInit') }}} = e.data.PthreadWorkerInit;
+      Module['PthreadWorkerInit'] = e.data.PthreadWorkerInit;
       Module['ENVIRONMENT_IS_PTHREAD'] = true;
 
 #if MODULARIZE && EXPORT_ES6
@@ -185,13 +160,11 @@ this.onmessage = function(e) {
         importScripts(objectUrl);
         URL.revokeObjectURL(objectUrl);
       }
-#if MODULARIZE
-#if !MODULARIZE_INSTANCE
+#if MODULARIZE && !MODULARIZE_INSTANCE
       Module = {{{ EXPORT_NAME }}}(Module);
 #endif
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
-#endif
 
 #if !ASMFS
       if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
@@ -203,7 +176,7 @@ this.onmessage = function(e) {
     } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
       __performance_now_clock_drift = performance.now() - e.data.time; // Sync up to the clock of the main thread.
       threadInfoStruct = e.data.threadInfoStruct;
-      {{{ makeAsmGlobalAccessInPthread('__register_pthread_ptr') }}}(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+      Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
@@ -215,14 +188,12 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_BASE') }}} = top;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACKTOP') }}} = top;
-      {{{ makeAsmExportAndGlobalAssignTargetInPthread('STACK_MAX') }}} = max;
+      Module['applyStackValues'](top, top, max);
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
-      assert(STACK_BASE != 0);
+      assert(top != 0);
 #if WASM_BACKEND
       assert(max === e.data.stackBase);
       assert(top > max);
@@ -241,15 +212,12 @@ this.onmessage = function(e) {
 #if WASM_BACKEND
       Module['_emscripten_tls_init']();
 #endif
-#if SAFE_STACK
-      Module['___set_stack_limit'](STACK_MAX);
-#endif
 #if STACK_OVERFLOW_CHECK
-      {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
+      Module['writeStackCookie']();
 #endif
 
       PThread.receiveObjectTransfer(e.data);
-      PThread.setThreadStatus({{{ makeAsmGlobalAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
+      PThread.setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -262,7 +230,7 @@ this.onmessage = function(e) {
         var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
-        {{{ makeAsmGlobalAccessInPthread('checkStackCookie') }}}();
+        Module['checkStackCookie']();
 #endif
 
       } catch(e) {
@@ -272,30 +240,30 @@ this.onmessage = function(e) {
         } else if (e === 'SimulateInfiniteLoop' || e === 'pthread_exit') {
           return;
         } else {
-          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof {{{ makeAsmGlobalAccessInPthread('ExitStatus') }}}) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof Module['ExitStatus']) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
-          if (typeof({{{ makeAsmGlobalAccessInPthread('_emscripten_futex_wake') }}}) !== "function") {
+          if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
             throw e;
           }
 #endif
-          {{{ makeAsmGlobalAccessInPthread('_emscripten_futex_wake') }}}(threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
-          if (!(e instanceof {{{ makeAsmGlobalAccessInPthread('ExitStatus') }}})) throw e;
+          Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
+          if (!(e instanceof Module['ExitStatus'])) throw e;
         }
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
       // (This is a no-op if explicit pthread_exit() had been called prior.)
       if (!noExitRuntime) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
-      if (threadInfoStruct && PThread.thisThreadCancelState == 0/*PTHREAD_CANCEL_ENABLE*/) {
+      if (threadInfoStruct) {
         PThread.threadCancel();
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
     } else if (e.data.cmd === 'processThreadQueue') {
       if (threadInfoStruct) { // If this thread is actually running?
-        {{{ makeAsmGlobalAccessInPthread('_emscripten_current_thread_process_queued_calls') }}}();
+        Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);

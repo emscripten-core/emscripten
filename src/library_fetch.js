@@ -8,7 +8,7 @@
 var LibraryFetch = {
 #if USE_PTHREADS
   $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
-  fetch_work_queue: '; if (ENVIRONMENT_IS_PTHREAD) _fetch_work_queue = PthreadWorkerInit._fetch_work_queue; else PthreadWorkerInit._fetch_work_queue = _fetch_work_queue = {{{ makeStaticAlloc(12) }}}',
+  fetch_work_queue: '; if (ENVIRONMENT_IS_PTHREAD) _fetch_work_queue = PthreadWorkerInit["_fetch_work_queue"]; else PthreadWorkerInit["_fetch_work_queue"] = _fetch_work_queue = {{{ makeStaticAlloc(12) }}}',
 #else
   $Fetch__postset: 'Fetch.staticInit();',
   fetch_work_queue: '{{{ makeStaticAlloc(12) }}}',
