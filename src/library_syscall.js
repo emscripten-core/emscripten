@@ -729,52 +729,6 @@ var SyscallsLibrary = {
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
   },
-#if EMTERPRETIFY_ASYNC
-  __syscall118__deps: ['$EmterpreterAsync'],
-#endif
-  __syscall118: function(which, varargs) { // fsync
-    var stream = SYSCALLS.getStreamFromFD();
-#if EMTERPRETIFY_ASYNC
-    return EmterpreterAsync.handle(function(resume) {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        resume(function() { return 0 });
-        return;
-      }
-      mount.type.syncfs(mount, false, function(err) {
-        if (err) {
-          resume(function() { return -{{{ cDefine('EIO') }}} });
-          return;
-        }
-        resume(function() { return 0 });
-      });
-    });
-#else
-#if WASM_BACKEND && ASYNCIFY
-    return Asyncify.handleSleep(function(wakeUp) {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        wakeUp(0);
-        return;
-      }
-      mount.type.syncfs(mount, false, function(err) {
-        if (err) {
-          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
-          return;
-        }
-        wakeUp(0);
-      });
-    });
-#else
-    if (stream.stream_ops && stream.stream_ops.fsync) {
-      return -stream.stream_ops.fsync(stream);
-    }
-    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // WASM_BACKEND && ASYNCIFY
-#endif // EMTERPRETIFY_ASYNC
-  },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
@@ -805,29 +759,6 @@ var SyscallsLibrary = {
   __syscall133: function(which, varargs) { // fchdir
     var stream = SYSCALLS.getStreamFromFD();
     FS.chdir(stream.path);
-    return 0;
-  },
-  __syscall140: function(which, varargs) { // llseek
-    var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-
-    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return -{{{ cDefine('EOVERFLOW') }}};
-    }
-
-    FS.llseek(stream, offset, whence);
-    {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
-    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
     return 0;
   },
   __syscall142: function(which, varargs) { // newselect
@@ -1469,6 +1400,89 @@ var SyscallsLibrary = {
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
+  fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var HIGH_OFFSET = 0x100000000; // 2^32
+    // use an unsigned operator on low and shift high by 32-bits
+    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
+
+    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
+      return -{{{ cDefine('EOVERFLOW') }}};
+    }
+
+    FS.llseek(stream, offset, whence);
+    {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
+    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
+    return 0;
+  },
+  fd_fdstat_get: function(fd, pbuf) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    // All character devices are terminals (other things a Linux system would
+    // assume is a character device, like the mouse, we have special APIs for).
+    var type = stream.tty ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} :
+               FS.isDir(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_DIRECTORY') }}} :
+               FS.isLink(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_SYMBOLIC_LINK') }}} :
+               {{{ cDefine('__WASI_FILETYPE_REGULAR_FILE') }}};
+    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, '?', 'i64') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, '?', 'i64') }}};
+    return 0;
+  },
+#if EMTERPRETIFY_ASYNC
+  fd_sync__deps: ['$EmterpreterAsync'],
+#endif
+  fd_sync: function(fd) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+#if EMTERPRETIFY_ASYNC
+    return EmterpreterAsync.handle(function(resume) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        resume(function() { return 0 });
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          resume(function() { return {{{ cDefine('EIO') }}} });
+          return;
+        }
+        resume(function() { return 0 });
+      });
+    });
+#else
+#if WASM_BACKEND && ASYNCIFY
+    return Asyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return {{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
+    if (stream.stream_ops && stream.stream_ops.fsync) {
+      return -stream.stream_ops.fsync(stream);
+    }
+    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
+#endif // WASM_BACKEND && ASYNCIFY
+#endif // EMTERPRETIFY_ASYNC
+  },
 };
 
 if (SYSCALL_DEBUG) {
@@ -1828,6 +1842,9 @@ var WASI_SYSCALLS = set([
   'fd_write',
   'fd_close',
   'fd_read',
+  'fd_seek',
+  'fd_fdstat_get',
+  'fd_sync',
 ]);
 
 // Fallback for cases where the wasi_unstable.name prefixing fails,

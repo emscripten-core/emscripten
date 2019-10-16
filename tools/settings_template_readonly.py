@@ -15,7 +15,7 @@ import os
 EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN', '{{{ EMSCRIPTEN_ROOT }}}')) # directory
 
 LLVM_ROOT = os.path.expanduser(os.getenv('LLVM', '{{{ LLVM_ROOT }}}')) # directory
-BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # if not set, we will use it from ports
+BINARYEN_ROOT = os.path.expanduser(os.getenv('BINARYEN', '')) # directory
 
 # Add this if you have manually built the JS optimizer executable (in
 # Emscripten/tools/optimizer) and want to run it from a custom location.

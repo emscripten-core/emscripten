@@ -575,7 +575,9 @@ mergeInto(LibraryManager.library, {
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
-      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}};
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map(function(x) {
+        return x.split('.')[1];
+      });
       for (var x in imports) {
         (function(x) {
           var original = imports[x];
