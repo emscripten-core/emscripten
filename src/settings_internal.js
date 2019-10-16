@@ -13,9 +13,6 @@
 // An array of all symbols exported from asm.js/wasm module.
 var MODULE_EXPORTS = [];
 
-// testing only: Disables the blitOffscreenFramebuffer VAO path.
-var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
-
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 

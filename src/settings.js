@@ -1534,6 +1534,9 @@ var SUPPORT_ERRNO = 1;
 // compilation of the source files so that indeed no exceptions are used).
 var DISABLE_EXCEPTION_THROWING = 0;
 
+// Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
+var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
+
 // Internal (testing only): Forces memory growing to fail.
 var TEST_MEMORY_GROWTH_FAILS = 0;
 
