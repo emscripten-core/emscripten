@@ -411,6 +411,9 @@ def apply_settings(changes):
     key, value = change.split('=', 1)
     key, value = standardize_setting_change(key, value)
 
+    if key in shared.Settings.internal_settings:
+      exit_with_error('%s is an internal setting and cannot be set from command line', key)
+
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'MEMORY_GROWTH_STEP', 'GL_MAX_TEMP_BUFFER_SIZE',
                'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
@@ -422,9 +425,10 @@ def apply_settings(changes):
     else:
       value = value.replace('\\', '\\\\')
     try:
-      setattr(shared.Settings, key, parse_value(value))
+      value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+    setattr(shared.Settings, key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
       exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')

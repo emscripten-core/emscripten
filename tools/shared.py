@@ -1130,6 +1130,7 @@ class SettingsManager(object):
 
   class __impl(object):
     attrs = {}
+    internal_settings = set()
 
     def __init__(self):
       self.reset()
@@ -1142,6 +1143,12 @@ class SettingsManager(object):
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': cls.attrs})
+
+      settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      internal_attrs = {}
+      exec(settings, {'attrs': internal_attrs})
+      cls.attrs.update(internal_attrs)
 
       if 'EMCC_STRICT' in os.environ:
         cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
@@ -1167,6 +1174,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         cls.attrs['WASM_BACKEND'] = 1
+
+      cls.internal_settings = set(internal_attrs.keys())
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1227,13 +1236,13 @@ class SettingsManager(object):
         self.attrs[alt_name] = value
 
       if attr not in self.attrs:
-        logger.error('Assigning a non-existent settings attribute "%s"' % attr)
+        msg = "Attempt to set a non-existent setting: '%s'\n" % attr
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
-          logger.error(' - did you mean one of %s?' % suggestions)
-        logger.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
-        logger.error(' - (see src/settings.js for valid values)')
-        sys.exit(1)
+          msg += ' - did you mean one of %s?\n' % suggestions
+        msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
+        msg += ' - (see src/settings.js for valid values)'
+        exit_with_error(msg)
 
       self.attrs[attr] = value
 
