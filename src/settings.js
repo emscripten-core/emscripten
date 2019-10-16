@@ -1566,6 +1566,11 @@ var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
 // 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
 var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
 
+// If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
+// If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
+// this to 0 to save a little bit of code size and performance when catching exceptions.
+var SUPPORT_LONGJMP = 1;
+
 // Specifies whether the generated .html file is run through html-minifier. The set of
 // optimization passes run by html-minifier depends on debug and optimization levels. In
 // -g2 and higher, no minification is performed. In -g1, minification is done, but whitespace

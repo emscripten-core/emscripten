@@ -22,12 +22,6 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // stores the base name of the output file (-o TARGET_BASENAME.js)
 var TARGET_BASENAME = '';
 
-// If true, compiler supports setjmp() and longjmp(). If false, these APIs are
-// not available.  If you are using C++ exceptions, but do not need
-// setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
-// code size and performance when catching exceptions.
-var SUPPORT_LONGJMP = 1;
-
 // Indicates that the syscalls (which we see statically) indicate that they need
 // full filesystem support. Otherwise, when just a small subset are used, we can
 // get away without including the full filesystem - in particular, if open() is
