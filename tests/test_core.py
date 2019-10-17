@@ -5814,7 +5814,6 @@ return malloc(size);
 
   @needs_make('make')
   def test_lua(self):
-    print(self.emcc_args)
     self.emcc_args = ['-g1'] + self.emcc_args
     self.emcc_args.remove('-Werror')
 
