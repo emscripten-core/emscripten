@@ -533,6 +533,12 @@ jobs:
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+  test-upstream-wasm0-mac:
+    macos:
+      xcode: "9.0"
+    steps:
+      - run-tests-mac:
+          test_targets: "wasm0"
 
 workflows:
   build-test:
@@ -619,5 +625,13 @@ workflows:
       - build-upstream-windows
       - build-upstream-mac
       - test-upstream-other-mac:
+          requires:
+            - build-upstream-mac
+      - test-upstream-wasm0-mac:
+          # Limit mac testing the to incoming branch since it adds to much
+          # time and cost to run it on every incoming PR
+          filters:
+            branches:
+              only: incoming
           requires:
             - build-upstream-mac
