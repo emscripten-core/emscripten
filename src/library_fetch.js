@@ -6,7 +6,11 @@
 #include Fetch.js
 
 var LibraryFetch = {
+#if USE_PTHREADS
+  $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
+#else
   $Fetch__postset: 'Fetch.staticInit();',
+#endif
   fetch_work_queue: '{{{ makeStaticAlloc(12) }}}',
   $Fetch: Fetch,
   _emscripten_get_fetch_work_queue__deps: ['fetch_work_queue'],
