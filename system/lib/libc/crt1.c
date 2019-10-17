@@ -16,9 +16,19 @@
 #include <stdio.h>
 
 extern void __wasm_call_ctors(void) __attribute__((weak));
-extern int main(int argc, char** argv);
+
+// TODO(sbc): We shouldn't even link this file if there is no main:
+// https://github.com/emscripten-core/emscripten/issues/9640
+extern int main(int argc, char** argv) __attribute__((weak));
 
 void _start(void) {
+  if (!main) {
+    if (__wasm_call_ctors) {
+      __wasm_call_ctors();
+    }
+    return;
+  }
+
   /* Fill in the arguments from WASI syscalls. */
   size_t argc;
   char **argv;

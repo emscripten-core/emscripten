@@ -86,7 +86,9 @@ if (Module['ENVIRONMENT']) {
 }
 #endif
 
+#if USE_PTHREADS
 #include "shell_pthreads.js"
+#endif
 
 #if USE_PTHREADS && (!MODULARIZE || MODULARIZE_INSTANCE)
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there

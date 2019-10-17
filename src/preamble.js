@@ -62,6 +62,15 @@ var wasmTable = new WebAssembly.Table({
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
+// Only workers actually use these field, but we refer to them from
+// library_pthread (which exists on all threads) so this definition is useful
+// to avoid accessing the global scope.
+var threadInfoStruct = 0;
+var selfThreadId = 0;
+var __performance_now_clock_drift = 0;
+#if WASM_BACKEND
+var tempDoublePtr = 0;
+#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -349,10 +358,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
@@ -366,6 +371,28 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+
+  // At the 'load' stage of Worker startup, we are just loading this script
+  // but not ready to run yet. At 'run' we receive proper values for the stack
+  // etc. and can launch a pthread. Set some fake values there meanwhile to
+  // catch bugs, then set the real values in applyStackValues later.
+#if ASSERTIONS || SAFE_STACK
+  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
+#endif
+
+  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
+    STACK_BASE = stackBase;
+    STACKTOP = stackTop;
+    STACK_MAX = stackMax;
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
+#endif
+  };
+
+  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
+  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
+  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 
@@ -407,7 +434,7 @@ if (ENVIRONMENT_IS_WEB) {
 
 #if USE_PTHREADS
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
-  xhr = new XMLHttpRequest();
+  var xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
   xhr.send();
   setTimeout(function() { window.close() }, 2000);

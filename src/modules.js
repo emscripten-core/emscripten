@@ -446,17 +446,21 @@ function exportRuntime() {
     runtimeElements.push('warnOnce');
   }
 
-  if (MODULARIZE) {
-    // In MODULARIZE=1 mode, the following functions need to be exported out to Module for worker.js to access.
-    if (STACK_OVERFLOW_CHECK) {
-      runtimeElements.push('writeStackCookie');
-      runtimeElements.push('checkStackCookie');
-      runtimeElements.push('abortStackOverflow');
-    }
-    if (USE_PTHREADS) {
-      runtimeElements.push('PThread');
-      runtimeElements.push('ExitStatus');
-    }
+  if (STACK_OVERFLOW_CHECK) {
+    runtimeElements.push('writeStackCookie');
+    runtimeElements.push('checkStackCookie');
+    runtimeElements.push('abortStackOverflow');
+  }
+
+  if (USE_PTHREADS) {
+    // In pthreads mode, the following functions always need to be exported to
+    // Module for closure compiler, and also for MODULARIZE (so worker.js can
+    // access them).
+    ['PThread', 'ExitStatus', 'tempDoublePtr', 'wasmMemory', '_pthread_self',
+     'ExitStatus', 'tempDoublePtr'].forEach(function(x) {
+      EXPORTED_RUNTIME_METHODS_SET[x] = 1;
+      runtimeElements.push(x);
+    });
   }
 
   if (SUPPORT_BASE64_EMBEDDING) {

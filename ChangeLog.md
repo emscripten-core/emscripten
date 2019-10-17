@@ -21,6 +21,9 @@ Current Trunk
    it, you must set `ALLOW_BLOCKING_ON_MAIN_THREAD` (disallowing by default
    makes it less likely new users of pthreads will hit surprising deadlocks
    on the Web).
+ - Internal settings have moved from `settings.js` to `settings_internal.js`.
+   These are settings that are for internal use only and are not set-able from
+   the command line.  If we misclassified any of these please open a bug.
  - `STANDALONE_WASM` mode now supports settings up argv vai wasi APIs.
  - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
 
