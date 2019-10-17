@@ -886,9 +886,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     has_dash_c = '-c' in newargs
     has_dash_S = '-S' in newargs
+    has_dash_E = '-E' in newargs
     link_to_object = False
     executable_endings = JS_CONTAINING_ENDINGS + ('.wasm',)
-    compile_only = has_dash_c or has_dash_S
+    compile_only = has_dash_c or has_dash_S or has_dash_E
 
     def add_link_flag(i, f):
       # Filter out libraries that musl includes in libc itself, or which we
@@ -1008,7 +1009,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if len(input_files) > 1 and specified_target:
         exit_with_error('cannot specify -o with -c/-S and multiple source files')
 
-    if '-E' in newargs:
+    if has_dash_E:
       final_suffix = '.eout' # not bitcode, not js; but just result from preprocessing stage of the input file
     if '-M' in newargs or '-MM' in newargs:
       final_suffix = '.mout' # not bitcode, not js; but just dependency rule of the input file
@@ -1898,8 +1899,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         args = system_libs.process_args(args, shared.Settings)
         return args
 
-      # -E preprocessor-only support
-      if '-E' in newargs or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
+      # preprocessor-only (-E) support
+      if has_dash_E or '-M' in newargs or '-MM' in newargs or '-fsyntax-only' in newargs:
         input_files = [x[1] for x in input_files]
         cmd = get_clang_command(input_files)
         if specified_target:
@@ -1907,7 +1908,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # Do not compile, but just output the result from preprocessing stage or
         # output the dependency rule. Warning: clang and gcc behave differently
         # with -MF! (clang seems to not recognize it)
-        logger.debug(('just preprocessor ' if '-E' in newargs else 'just dependencies: ') + ' '.join(cmd))
+        logger.debug(('just preprocessor ' if has_dash_E else 'just dependencies: ') + ' '.join(cmd))
         return run_process(cmd, check=False).returncode
 
       def get_object_filename(input_file):
