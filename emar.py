@@ -67,9 +67,7 @@ def run():
         full_name = os.path.abspath(orig_name)
         dirname = os.path.dirname(full_name)
         basename = os.path.basename(full_name)
-        if basename not in contents:
-          contents.add(basename)
-          continue
+
         h = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
         parts = basename.split('.')
         parts[0] += '_' + h
