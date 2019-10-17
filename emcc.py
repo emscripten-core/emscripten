@@ -2768,8 +2768,10 @@ def parse_args(newargs):
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
+      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
       settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
     elif newargs[i] == '-fexceptions':
+      settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
       settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
