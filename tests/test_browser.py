@@ -1762,6 +1762,8 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glbook(self):
+    self.emcc_args.remove('-Werror')
+    self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
       os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
       os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),

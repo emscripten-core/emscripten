@@ -423,7 +423,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
-    self.emcc_args = []
+    self.emcc_args = ['-Werror']
     self.save_dir = EMTEST_SAVE_DIR
     self.save_JS = False
     self.env = {}

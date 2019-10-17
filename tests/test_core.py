@@ -5814,6 +5814,7 @@ return malloc(size);
 
   @needs_make('make')
   def test_lua(self):
+    print(self.emcc_args)
     self.emcc_args = ['-g1'] + self.emcc_args
     self.emcc_args.remove('-Werror')
 
@@ -8244,13 +8245,13 @@ def make_run(name, emcc_args, settings=None, env=None):
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
-    self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
 
+    self.emcc_args += emcc_args
     # avoid various compiler warnings in our test output
     self.emcc_args += [
-      '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
+      '-Wno-dynamic-class-memaccess', '-Wno-format',
       '-Wno-format-extra-args', '-Wno-format-security',
       '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
       '-Wno-c++11-compat-deprecated-writable-strings',
