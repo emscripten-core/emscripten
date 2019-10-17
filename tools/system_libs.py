@@ -1579,7 +1579,7 @@ class Ports(object):
 
     def retrieve():
       # retrieve from remote server
-      logger.warning('retrieving port: ' + name + ' from ' + url)
+      logger.info('retrieving port: ' + name + ' from ' + url)
       try:
         import requests
         response = requests.get(url)
@@ -1616,7 +1616,7 @@ class Ports(object):
       return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
-      logger.warning('unpacking port: ' + name)
+      logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
 
       # TODO: Someday when we are using Python 3, we might want to change the
