@@ -1762,6 +1762,8 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_glbook(self):
+    self.emcc_args.remove('-Werror')
+    self.emcc_args += ['-Wno-pointer-sign', '-Wno-int-conversion']
     programs = self.get_library('glbook', [
       os.path.join('Chapter_2', 'Hello_Triangle', 'CH02_HelloTriangle.bc'),
       os.path.join('Chapter_8', 'Simple_VertexShader', 'CH08_SimpleVertexShader.bc'),
@@ -3597,9 +3599,13 @@ window.close = function() {
     '''))
 
   # Test that the emscripten_ atomics api functions work.
+  @parameterized({
+    'normal': ([],),
+    'closure': (['--closure', '1'],),
+  })
   @requires_threads
-  def test_pthread_atomics(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+  def test_pthread_atomics(self, args=[]):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
   @requires_threads

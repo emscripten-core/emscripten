@@ -1551,8 +1551,7 @@ int f() {
 
     # Verify that archive contains basenames with hashes to avoid duplication
     text = run_process([PYTHON, EMAR, 't', 'liba.a'], stdout=PIPE).stdout
-    self.assertEqual(text.count('common.o'), 1)
-    self.assertContained('common_', text)
+    self.assertEqual(text.count('common_'), 2)
     for line in text.split('\n'):
       # should not have huge hash names
       self.assertLess(len(line), 20, line)
@@ -4932,7 +4931,7 @@ Size of file is: 32
   def test_emcc_s_typo(self):
     # with suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
-    self.assertContained('Assigning a non-existent settings attribute "DISABLE_EXCEPTION_CATCH"', stderr)
+    self.assertContained("Attempt to set a non-existent setting: 'DISABLE_EXCEPTION_CATCH'", stderr)
     self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
     # no suggestions
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
@@ -8040,7 +8039,7 @@ int main() {
     'Oz': (['-Oz'],  2, [], [],          85,  0,  2,  2), # noqa
   })
   @no_fastcomp()
-  def test_binaryen_metadce_minimal(self, *args):
+  def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
@@ -8053,11 +8052,11 @@ int main() {
     'Oz': (['-Oz'],  4, [],        [],          55,  0,  1, 1), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_minimal_fastcomp(self, *args):
+  def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @no_fastcomp()
-  def test_binaryen_metadce_cxx(self):
+  def test_metadce_cxx(self):
     # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 19, [], ['waka'], 226582, 17, 33, None) # noqa
 
@@ -8068,7 +8067,7 @@ int main() {
                         40, ['abort'], ['waka'], 188310, 23, 38, 521), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_cxx_fastcomp(self, *args):
+  def test_metadce_cxx_fastcomp(self, *args):
     # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
@@ -8087,11 +8086,11 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1518, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1519, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
-  def test_binaryen_metadce_hello(self, *args):
+  def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
@@ -8111,8 +8110,25 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
-  def test_binaryen_metadce_hello_fastcomp(self, *args):
+  def test_metadce_hello_fastcomp(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
+
+  @parameterized({
+    'O3':                 (['-O3'],
+                           3, [], [], 6100,  2,  3,  5),         # noqa
+    # argc/argv support code etc. is in the wasm
+    'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
+                           3, [], [], 6423,  3,  4,  5),         # noqa
+    # Growth support code is in JS, no significant change in the wasm
+    'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
+                           3, [], [], 6098,  2,  3,  5),         # noqa
+    # Growth support code is in the wasm
+    'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
+                           4, [], [], 6563,  4,  4,  6),         # noqa
+  })
+  @no_fastcomp()
+  def test_metadce_mem(self, *args):
+    self.run_metadce_test('mem.c', *args)
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -8410,7 +8426,7 @@ int main() {
     if self.is_wasm_backend():
       self.assertContained('wasm-ld: error: initial memory too small', err)
     else:
-      self.assertContained('Memory is not large enough for static data (134016) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
+      self.assertContained('Memory is not large enough for static data (134000) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
@@ -9071,7 +9087,7 @@ ok.
         char buffer[1000];
         sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
         const char *correct = "0.0.0.0:0";
-        printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
+        printf("got (expected) socket: %s (%s), size %lu (%lu)\n", buffer, correct, strlen(buffer), strlen(correct));
         assert(strlen(buffer) == strlen(correct));
         assert(strcmp(buffer, correct) == 0);
         puts("success.");
@@ -9656,6 +9672,35 @@ int main () {
       else:
         run_process(cmd)
 
+  @no_fastcomp('assumes wasm object files')
+  def test_f_exception(self):
+    create_test_file('src.cpp', r'''
+      #include <stdio.h>
+      int main () {
+        try {
+          throw 42;
+        } catch (int e) {
+          printf("CAUGHT: %d\n", e);
+        }
+        return 0;
+      }
+    ''')
+    for compile_flags, link_flags, expect_caught in [
+      # exceptions are off by default
+      ([], [], False),
+      # enabling exceptions at link and compile works
+      (['-fexceptions'], ['-fexceptions'], True),
+      # just compile isn't enough as the JS runtime lacks support
+      (['-fexceptions'], [], False),
+      # just link isn't enough as codegen didn't emit exceptions support
+      ([], ['-fexceptions'], False),
+    ]:
+      print(compile_flags, link_flags, expect_caught)
+      run_process([PYTHON, EMCC, 'src.cpp', '-c', '-o', 'src.o'] + compile_flags)
+      run_process([PYTHON, EMCC, 'src.o'] + link_flags)
+      result = run_js('a.out.js', assert_returncode=None, stderr=PIPE)
+      self.assertContainedIf('CAUGHT', result, expect_caught)
+
   def test_assertions_on_internal_api_changes(self):
     create_test_file('src.c', r'''
       #include <emscripten.h>
@@ -9790,3 +9835,14 @@ Module.arguments has been replaced with plain arguments_
     create_test_file('empty.c', 'static int foo = 0;')
     run_process([PYTHON, EMCC, 'empty.c', '-la', '-L.'])
     self.assertContained('success', run_js('a.out.js'))
+
+  def test_werror_python(self):
+    create_test_file('not_object.bc', 'some text')
+    run_process([PYTHON, EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
+    cmd = [PYTHON, EMCC, 'hello.o', 'not_object.bc', '-o', 'a.o']
+    stderr = run_process(cmd, stderr=PIPE).stderr
+    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
+    # Same thing with -Werror should fail
+    stderr = self.expect_fail(cmd + ['-Werror'])
+    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
+    self.assertContained('ERROR: treating warnings as errors (-Werror)', stderr)
