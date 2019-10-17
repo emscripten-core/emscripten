@@ -31,9 +31,11 @@ from tools import shared
 
 LLVM_SIZE = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-size')))
 
+
 def error(text):
   print(text, file=sys.stderr, flush=True)
   return 1
+
 
 def print_sizes(js_file):
   if not os.path.isfile(js_file):
@@ -65,7 +67,6 @@ def print_sizes(js_file):
 
   print('JS\t\t%s\t0' % js_size)
   print('Total\t\t%s' % total)
-
 
 
 if __name__ == '__main__':
