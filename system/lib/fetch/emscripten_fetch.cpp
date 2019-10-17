@@ -43,6 +43,7 @@ __emscripten_fetch_queue* _emscripten_get_fetch_queue() {
 
 int32_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 int32_t _emscripten_fetch_get_response_headers(int32_t fetchID, int32_t dst, int32_t dstSizeBytes);
+void _emscripten_fetch_free(unsigned int);
 }
 
 void emscripten_proxy_fetch(emscripten_fetch_t* fetch) {
@@ -147,7 +148,13 @@ emscripten_fetch_t* emscripten_fetch(emscripten_fetch_attr_t* fetch_attr, const 
 
 #undef STRDUP_OR_ABORT
 
-#if __EMSCRIPTEN_PTHREADS__
+// In asm.js we can use a fetch worker, which is created from the main asm.js
+// code. That lets us do sync operations by blocking on the worker etc.
+// In the wasm backend we don't have a fetch worker implemented yet, however,
+// we can still do basic synchronous fetches in the same places: if we can
+// block on another thread then we aren't the main thread, and if we aren't
+// the main thread then synchronous xhrs are legitimate.
+#if __EMSCRIPTEN_PTHREADS__ && !defined(__wasm__)
   const bool waitable = (fetch_attr->attributes & EMSCRIPTEN_FETCH_WAITABLE) != 0;
   // Depending on the type of fetch, we can either perform it in the same Worker/thread than the
   // caller, or we might need to run it in a separate Worker. There is a dedicated fetch worker that
@@ -300,7 +307,12 @@ void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
   }
 }
 
+void emscripten_fetch_free(unsigned int id) {
+  return _emscripten_fetch_free(id);
+}
+
 static void fetch_free(emscripten_fetch_t* fetch) {
+  emscripten_fetch_free(fetch->id);
   fetch->id = 0;
   free((void*)fetch->data);
   free((void*)fetch->url);

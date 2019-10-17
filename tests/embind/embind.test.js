@@ -1153,6 +1153,48 @@ module({
             c.delete();
         });
 
+        test("class properties can be std::function objects", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.function_val);
+            c.function_val = b;
+            assert.equal(b, c.function_val);
+            c.delete();
+        });
+
+        test("class properties can be read-only std::function objects", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.readonly_function_val);
+            var e = assert.throws(cm.BindingError, function() {
+                h.readonly_function_val = 10;
+            })
+            assert.equal('ValHolder.readonly_function_val is a read-only property', e.message);
+            h.delete();
+        });
+
+        test("class properties can be function objects (functor)", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.functor_val);
+            c.function_val = b;
+            assert.equal(b, c.functor_val);
+            c.delete();
+        });
+
+        test("class properties can be read-only function objects (functor)", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.readonly_functor_val);
+            var e = assert.throws(cm.BindingError, function() {
+                h.readonly_functor_val = 10;
+            })
+            assert.equal('ValHolder.readonly_functor_val is a read-only property', e.message);
+            h.delete();
+        });
+
         test("class properties can be read-only", function() {
             var a = {};
             var h = new cm.ValHolder(a);
@@ -1189,6 +1231,35 @@ module({
 
             var b = cm.ValHolder.makeValHolder("foo");
             assert.equal("foo", b.getVal());
+            b.delete();
+        });
+
+        test("function objects as class constructors", function() {
+            let a = new cm.ConstructFromStdFunction("foo", 10);
+            assert.equal("foo", a.getVal());
+            assert.equal(10, a.getA());
+
+            let b = new cm.ConstructFromFunctionObject("bar", 12);
+            assert.equal("bar", b.getVal());
+            assert.equal(12, b.getA());
+
+            a.delete();
+            b.delete();
+        });
+
+        test("function objects as class methods", function() {
+            let b = cm.ValHolder.makeValHolder("foo");
+
+            // get & set via std::function
+            assert.equal("foo", b.getValFunction());
+            b.setValFunction("bar");
+
+            // get & set via 'callable'
+            assert.equal("bar", b.getValFunctor());
+            b.setValFunctor("baz");
+
+            assert.equal("baz", b.getValFunction())
+
             b.delete();
         });
 

@@ -112,5 +112,5 @@ int main()
 
   printf("Please press the Enter key.\n");
 
-  EM_ASM(Module['noExitRuntime'] = true);
+  EM_ASM(noExitRuntime = true);
 }

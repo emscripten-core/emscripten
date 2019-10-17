@@ -42,7 +42,7 @@ var Fetch = {
   },
 #endif
 
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
   initFetchWorker: function() {
     var stackSize = 128*1024;
     var stack = allocate(stackSize>>2, "i32*", ALLOC_DYNAMIC);
@@ -51,7 +51,7 @@ var Fetch = {
 #endif
 
   staticInit: function() {
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
 #else
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined');
@@ -65,7 +65,7 @@ var Fetch = {
       Fetch.dbInstance = db;
 
       if (isMainThread) {
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
         Fetch.initFetchWorker();
 #endif
         removeRunDependency('library_fetch_init');
@@ -78,7 +78,7 @@ var Fetch = {
       Fetch.dbInstance = false;
 
       if (isMainThread) {
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
         Fetch.initFetchWorker();
 #endif
         removeRunDependency('library_fetch_init');
@@ -87,7 +87,7 @@ var Fetch = {
     Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
 #endif // ~FETCH_SUPPORT_INDEXEDDB
 
-#if USE_PTHREADS
+#if USE_FETCH_WORKER
     if (isMainThread) {
 #if FETCH_SUPPORT_INDEXEDDB
       addRunDependency('library_fetch_init');
@@ -325,7 +325,8 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
-  xhr.responseType = fetchAttrStreamData ? 'moz-chunked-arraybuffer' : 'arraybuffer';
+  assert(!fetchAttrStreamData, 'streaming uses moz-chunked-arraybuffer which is no longer supported; TODO: rewrite using fetch()');
+  xhr.responseType = 'arraybuffer';
 
   if (overriddenMimeType) {
 #if FETCH_DEBUG
@@ -395,10 +396,10 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
 #endif
       if (onerror) onerror(fetch, xhr, e);
     }
-  }
+  };
   xhr.onerror = function(e) {
     var status = xhr.status; // XXX TODO: Overwriting xhr.status doesn't work here, so don't override anywhere else either.
-    if (xhr.readyState == 4 && status == 0) status = 404; // If no error recorded, pretend it was 404 Not Found.
+    if (xhr.readyState === 4 && status === 0) status = 404; // If no error recorded, pretend it was 404 Not Found.
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" finished with error, readyState ' + xhr.readyState + ' and status ' + status);
 #endif
@@ -409,13 +410,13 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = status;
     if (onerror) onerror(fetch, xhr, e);
-  }
+  };
   xhr.ontimeout = function(e) {
 #if FETCH_DEBUG
     console.error('fetch: xhr of URL "' + xhr.url_ + '" / responseURL "' + xhr.responseURL + '" timed out, readyState ' + xhr.readyState + ' and status ' + xhr.status);
 #endif
     if (onerror) onerror(fetch, xhr, e);
-  }
+  };
   xhr.onprogress = function(e) {
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
     var ptr = 0;
@@ -437,14 +438,14 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
     if (onprogress) onprogress(fetch, xhr, e);
-  }
+  };
   xhr.onreadystatechange = function(e) {
     HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.readyState }}} >> 1] = xhr.readyState;
     if (xhr.readyState >= 2) {
       HEAPU16[fetch + {{{ C_STRUCTS.emscripten_fetch_t.status }}} >> 1] = xhr.status;
     }
     if (onreadystatechange) onreadystatechange(fetch, xhr, e);
-  }
+  };
 #if FETCH_DEBUG
   console.log('fetch: xhr.send(data=' + data + ')');
 #endif
@@ -459,7 +460,7 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
 }
 
 function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
-  if (typeof Module !== 'undefined') Module['noExitRuntime'] = true; // If we are the main Emscripten runtime, we should not be closing down.
+  if (typeof noExitRuntime !== 'undefined') noExitRuntime = true; // If we are the main Emscripten runtime, we should not be closing down.
 
   var fetch_attr = fetch + {{{ C_STRUCTS.emscripten_fetch_t.__attributes }}};
   var requestMethod = UTF8ToString(fetch_attr);
@@ -504,7 +505,7 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
 #endif
     if (onreadystatechange) {{{ makeDynCall('vi') }}}(onreadystatechange, fetch);
     else if (readystatechangecb) readystatechangecb(fetch);
-  }
+  };
 
   var performUncachedXhr = function(fetch, xhr, e) {
 #if FETCH_DEBUG
@@ -542,16 +543,6 @@ function emscripten_start_fetch(fetch, successcb, errorcb, progresscb, readystat
     __emscripten_fetch_xhr(fetch, cacheResultAndReportSuccess, reportError, reportProgress, reportReadyStateChange);
   };
 
-  // Should we try IndexedDB first?
-  var needsIndexedDbConnection = !fetchAttrReplace || requestMethod === 'EM_IDB_STORE' || requestMethod === 'EM_IDB_DELETE';
-  if (needsIndexedDbConnection && !Fetch.dbInstance) {
-#if FETCH_DEBUG
-    console.error('fetch: failed to read IndexedDB! Database is not open.');
-#endif
-    reportError(fetch, 0, 'IndexedDB is not open');
-    return 0; // todo: free
-  }
-
   if (requestMethod === 'EM_IDB_STORE') {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
     var ptr = HEAPU32[fetch_attr + {{{ C_STRUCTS.emscripten_fetch_attr_t.requestData }}} >> 2];
@@ -584,4 +575,13 @@ function _fetch_get_response_headers(id, dst, dstSizeBytes) {
     var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
     stringToUTF8(responseHeaders, dst, dstSizeBytes);
     return Math.min(lengthBytes, dstSizeBytes);
+}
+
+//Delete the xhr JS object, allowing it to be garbage collected.
+function _fetch_free(id) {
+  //Note: should just be [id], but indexes off by 1 (see: #8803)
+#if FETCH_DEBUG
+  console.log("fetch: Deleting id:" + (id-1) + " of " + Fetch.xhrs);
+#endif
+  delete Fetch.xhrs[id-1];
 }

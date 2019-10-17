@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -261,17 +262,16 @@ void emscripten_current_thread_process_queued_calls() {
   // nop
 }
 
-#define pthread_mutex_t unsigned
-#define pthread_mutexattr_t unsigned
-
 int pthread_mutex_init(
   pthread_mutex_t* __restrict mutex, const pthread_mutexattr_t* __restrict attr) {
   return 0;
 }
 
+#ifndef EMSCRIPTEN_ASAN_OVERRIDE
 int pthread_mutex_lock(pthread_mutex_t* mutex) { return 0; }
 
 int pthread_mutex_unlock(pthread_mutex_t* mutex) { return 0; }
+#endif
 
 int pthread_mutex_trylock(pthread_mutex_t* mutex) { return 0; }
 
@@ -286,9 +286,6 @@ int pthread_mutex_destroy(pthread_mutex_t* mutex) { return 0; }
 
 int pthread_mutex_consistent(pthread_mutex_t* mutex) { return 0; }
 
-#define pthread_barrier_t unsigned
-#define pthread_barrierattr_t unsigned
-
 int pthread_barrier_init(
   pthread_barrier_t* __restrict mutex, const pthread_barrierattr_t* __restrict attr, unsigned u) {
   return 0;
@@ -297,8 +294,6 @@ int pthread_barrier_init(
 int pthread_barrier_destroy(pthread_barrier_t* mutex) { return 0; }
 
 int pthread_barrier_wait(pthread_barrier_t* mutex) { return 0; }
-
-#define pthread_key_t uintptr_t
 
 /* magic value to track a validly constructed TLS slot */
 #define PTHREAD_TLS_MAGIC_ID 0x02468ACE
@@ -337,8 +332,6 @@ int pthread_setspecific(pthread_key_t key, const void* value) {
   return 0;
 }
 
-#define pthread_once_t int
-
 /*magic number to detect if we have not run yet*/
 #define PTHREAD_ONCE_MAGIC_ID 0x13579BDF
 
@@ -347,5 +340,17 @@ int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
     init_routine();
     *once_control = PTHREAD_ONCE_MAGIC_ID;
   }
+  return 0;
+}
+
+int pthread_cond_wait(pthread_cond_t *cond, pthread_mutex_t *mutex) {
+  return 0;
+}
+
+int pthread_cond_signal(pthread_cond_t *cond) {
+  return 0;
+}
+
+int pthread_cond_broadcast(pthread_cond_t *cond) {
   return 0;
 }

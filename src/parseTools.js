@@ -1519,37 +1519,6 @@ function addAtExit(code) {
   }
 }
 
-// Generates access to module exports variable in pthreads worker.js. Depending on whether main code is built with MODULARIZE
-// or not, asm module exports need to either be accessed via a local exports object obtained from instantiating the module (in src/worker.js), or via
-// the global Module exports object.
-function makeAsmExportAccessInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return EXPORT_NAME + "['" + variable + "']";
-  }
-}
-
-// Generates access to a JS global scope variable in pthreads worker.js. In MODULARIZE mode the JS scope is not directly accessible, so all the relevant variables
-// are exported via Module. In non-MODULARIZE mode, we can directly access the variables in global scope.
-function makeAsmGlobalAccessInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return variable;
-  }
-}
-
-// Generates access to both global scope variable and exported Module variable, e.g. "Module['foo'] = foo" or just plain "foo" depending on if we are MODULARIZEing.
-// Used the be able to initialize both variables at the same time in scenarios where a variable exists in both global scope and in Module.
-function makeAsmExportAndGlobalAssignTargetInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "'] = " + variable; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return variable;
-  }
-}
-
 // Some things, like the dynamic and stack bases, will be computed later and
 // applied. Return them as {{{ STR }}} for that replacing later.
 
@@ -1598,4 +1567,58 @@ function modifyFunction(text, func) {
   var bodyEnd = rest.lastIndexOf('}');
   assert(bodyEnd > 0);
   return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+}
+
+function runOnMainThread(text) {
+  if (USE_PTHREADS) {
+    return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+  } else {
+    return text;
+  }
+}
+
+function expectToReceiveOnModule(name) {
+  return name in INCOMING_MODULE_JS_API;
+}
+
+function makeRemovedModuleAPIAssert(moduleName, localName) {
+  if (!ASSERTIONS) return '';
+  if (!localName) localName = moduleName;
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+}
+
+// Make code to receive a value on the incoming Module object.
+function makeModuleReceive(localName, moduleName) {
+  if (!moduleName) moduleName = localName;
+  var ret = '';
+  if (expectToReceiveOnModule(moduleName)) {
+    // Usually the local we use is the same as the Module property name,
+    // but sometimes they must differ.
+    ret = "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
+  }
+  ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  return ret;
+}
+
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+  if (!moduleName) moduleName = localName;
+  var ret = 'var ' + localName;
+  if (!expectToReceiveOnModule(moduleName)) {
+    if (defaultValue) {
+      ret += ' = ' + defaultValue;
+    }
+    ret += ';';
+  } else {
+    if (defaultValue) {
+      ret += " = Module['" + moduleName + "'] || " + defaultValue + ";";
+    } else {
+      ret += ';' +
+             makeModuleReceive(localName, moduleName);
+      return ret;
+    }
+  }
+  if (!noAssert) {
+    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  }
+  return ret;
 }

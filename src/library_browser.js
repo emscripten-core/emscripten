@@ -518,7 +518,7 @@ var LibraryBrowser = {
       });
     },
     safeSetTimeout: function(func, timeout) {
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
       return setTimeout(function() {
         if (ABORT) return;
         if (Browser.allowAsyncCallbacks) {
@@ -529,7 +529,7 @@ var LibraryBrowser = {
       }, timeout);
     },
     safeSetInterval: function(func, timeout) {
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
       return setInterval(function() {
         if (ABORT) return;
         if (Browser.allowAsyncCallbacks) {
@@ -710,7 +710,7 @@ var LibraryBrowser = {
 
     asyncLoad: function(url, onload, onerror, noRunDep) {
       var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
-      Module['readAsync'](url, function(arrayBuffer) {
+      readAsync(url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
         if (dep) removeRunDependency(dep);
@@ -823,7 +823,7 @@ var LibraryBrowser = {
   emscripten_async_wget__proxy: 'sync',
   emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
@@ -876,7 +876,7 @@ var LibraryBrowser = {
   emscripten_async_wget2__proxy: 'sync',
   emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     var _url = UTF8ToString(url);
     var _file = UTF8ToString(file);
@@ -1019,7 +1019,7 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins__proxy: 'sync',
   emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     var _file = UTF8ToString(file);
     var data = FS.analyzePath(_file);
@@ -1042,7 +1042,7 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins_data__proxy: 'sync',
   emscripten_run_preload_plugins_data__sig: 'viiiiii',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     var _suffix = UTF8ToString(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
@@ -1068,7 +1068,7 @@ var LibraryBrowser = {
   // Callable from pthread, executes in pthread context.
   emscripten_async_run_script__deps: ['emscripten_run_script'],
   emscripten_async_run_script: function(script, millis) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     // TODO: cache these to avoid generating garbage
     Browser.safeSetTimeout(function() {
@@ -1087,7 +1087,7 @@ var LibraryBrowser = {
       return onerror ? onerror() : undefined;
     }
 #endif
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
     var script = document.createElement('script');
@@ -1172,7 +1172,7 @@ var LibraryBrowser = {
   emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
 #endif
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     assert(!Browser.mainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
 
@@ -1336,7 +1336,7 @@ var LibraryBrowser = {
 
   // Runs natively in pthread, no __proxy needed.
   emscripten_async_call: function(func, arg, millis) {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
 
     function wrapper() {
       getFuncWrapper(func, 'vi')(arg);
@@ -1351,7 +1351,7 @@ var LibraryBrowser = {
 
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
     throw 'SimulateInfiniteLoop';
   },
 
@@ -1363,7 +1363,7 @@ var LibraryBrowser = {
     warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
 #endif
 #endif
-    Module['noExitRuntime'] = false;
+    noExitRuntime = false;
     exit(status);
   },
 
@@ -1451,7 +1451,7 @@ var LibraryBrowser = {
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker__sig: 'viiiiii',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
-    Module['noExitRuntime'] = true; // should we only do this if there is a callback?
+    noExitRuntime = true; // should we only do this if there is a callback?
 
     funcName = UTF8ToString(funcName);
     var info = Browser.workers[id];

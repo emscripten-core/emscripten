@@ -178,7 +178,7 @@ def read_dwarf_entries(wasm, options):
     if not os.path.exists(options.dwarfdump):
       logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
-    process = Popen([options.dwarfdump, "-debug-info", "-debug-line", wasm], stdout=PIPE)
+    process = Popen([options.dwarfdump, '-debug-info', '-debug-line', '--recurse-depth=0', wasm], stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
@@ -275,7 +275,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
           with open(load_name, 'r') as infile:
             source_content = infile.read()
           sources_content.append(source_content)
-        except:
+        except IOError:
           print('Failed to read source: %s' % load_name)
           sources_content.append(None)
     else:

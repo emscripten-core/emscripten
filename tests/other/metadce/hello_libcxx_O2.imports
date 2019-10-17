@@ -1,0 +1,17 @@
+__lock
+__map_file
+__syscall91
+__unlock
+abort
+emscripten_memcpy_big
+emscripten_resize_heap
+environ_get
+environ_sizes_get
+fd_close
+fd_read
+fd_seek
+fd_write
+memory
+setTempRet0
+strftime_l
+table

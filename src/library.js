@@ -25,8 +25,8 @@
 LibraryManager.library = {
   // keep this low in memory, because we flatten arrays with them in them
 #if USE_PTHREADS
-  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = {{{ makeStaticAlloc(4) }}}',
-  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
+  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit["__impure_ptr"]; else PthreadWorkerInit["__impure_ptr"] = {{{ makeStaticAlloc(4) }}}',
+  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit["___dso_handle"]; else PthreadWorkerInit["___dso_handle"] = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
 #else
   _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
   __dso_handle: '{{{ makeStaticAlloc(1) }}}',
@@ -474,6 +474,12 @@ LibraryManager.library = {
     return HEAP8.length;
   },
 
+  emscripten_get_sbrk_ptr__asm: true,
+  emscripten_get_sbrk_ptr__sig: 'i',
+  emscripten_get_sbrk_ptr: function() {
+    return {{{ DYNAMICTOP_PTR }}};
+  },
+
 #if ABORTING_MALLOC
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
@@ -494,44 +500,27 @@ LibraryManager.library = {
   },
 #else
 
+  // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
+  // Returns 1 on success, or undefined if growing failed.
   $emscripten_realloc_buffer: function(size) {
-#if WASM
-    var PAGE_MULTIPLE = {{{ getPageSize() }}};
-    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
-    var oldSize = buffer.byteLength;
-    // native wasm support
-    // note that this is *not* threadsafe. multiple threads can call .grow(), and each
-    // presents a delta, so in theory we may over-allocate here (e.g. if two threads
-    // ask to grow from 256MB to 512MB, we get 2 requests to add +256MB, and may end
-    // up growing to 768MB (even though we may have been able to make do with 512MB).
-    // TODO: consider decreasing the step sizes in emscripten_resize_heap
     try {
-      var result = wasmMemory.grow((size - oldSize) / {{{ WASM_PAGE_SIZE }}}); // .grow() takes a delta compared to the previous size
-      if (result !== (-1 | 0)) {
-        // success in native wasm memory growth, get the buffer from the memory
-        buffer = wasmMemory.buffer;
-        return true;
-      } else {
-        return false;
-      }
+#if WASM
+      // round size grow request up to wasm page size (fixed 64KB per spec)
+      wasmMemory.grow((size - buffer.byteLength + 65535) >> 16); // .grow() takes a delta compared to the previous size
+      updateGlobalBufferAndViews(wasmMemory.buffer);
+#else // asm.js:
+      var newBuffer = new ArrayBuffer(size);
+      if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
+      new Int8Array(newBuffer).set(HEAP8);
+      _emscripten_replace_memory(newBuffer);
+      updateGlobalBufferAndViews(newBuffer);
+#endif
+      return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      console.error('emscripten_realloc_buffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+      console.error('emscripten_realloc_buffer: Attempted to grow heap from ' + buffer.byteLength  + ' bytes to ' + size + ' bytes, but got error: ' + e);
 #endif
-      return false;
     }
-#else // asm.js:
-    try {
-      var newBuffer = new ArrayBuffer(size);
-      if (newBuffer.byteLength != size) return false;
-      new Int8Array(newBuffer).set(HEAP8);
-    } catch(e) {
-      return false;
-    }
-    buffer = newBuffer;
-    Module['_emscripten_replace_memory'](newBuffer);
-    return true;
-#endif
   },
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
@@ -618,25 +607,28 @@ LibraryManager.library = {
     }
 #endif // WASM_MEM_MAX
 
+#if USE_ASAN
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
+    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
+    // This causes real memory to be corrupted.
+    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (newSize == oldSize) {
 #if ASSERTIONS
-    var start = Date.now();
+      err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
+#endif
+      return false;
+    }
 #endif
 
-    if (!emscripten_realloc_buffer(newSize)) {
+    var replacement = emscripten_realloc_buffer(newSize);
+    if (!replacement) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
 #endif
       return false;
     }
 
-#if USE_PTHREADS
-    // Updating the views here is not strictly necessary, since we instrument each load and store
-    // to do so, but doing it here is clean and may be more efficient (avoid surprising the JIT
-    // later by taking a never-taken branch).
-#endif
-    updateGlobalBufferViews();
-
-#if ASSERTIONS && !WASM
+#if ASSERTIONS && (!WASM || WASM2JS)
     err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
@@ -650,142 +642,16 @@ LibraryManager.library = {
 #endif // ALLOW_MEMORY_GROWTH
   },
 
-#if MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH
-
-// If USES_DYNAMIC_ALLOC is not defined, do not compile in sbrk() or brk(), so that user gets a linker error if they attempt
-// to call into malloc() that would sbrk().
-#if USES_DYNAMIC_ALLOC
-  // If building with minimal runtime in release mode, where malloc() failures are not expected to throw and memory growth
-  // is not allowed, use a really small stub for sbrk() and brk() that return failure.
-  sbrk__asm: true,
-  sbrk__sig: ['ii'],
-#if USES_DYNAMIC_ALLOC == 1
-  sbrk__deps: ['emscripten_get_heap_size'],
+  // Called after wasm grows memory. At that time we need to update the views.
+  // Without this notification, we'd need to check the buffer in JS every time
+  // we return from any wasm, which adds overhead. See
+  // https://github.com/WebAssembly/WASI/issues/82
+  emscripten_notify_memory_growth: function(memoryIndex) {
+#if ASSERTIONS
+    assert(memoryIndex == 0);
 #endif
-  sbrk: function(increment) {
-    increment = increment|0;
-    var oldDynamicTop = 0;
-    var newDynamicTop = 0;
-    oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-    newDynamicTop = oldDynamicTop + increment | 0;
-#if USES_DYNAMIC_ALLOC == 1
-    if ((newDynamicTop|0) > (_emscripten_get_heap_size()|0)) {
-      return -1;
-    }
-#endif
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop | 0;
-    return oldDynamicTop | 0;
+    updateGlobalBufferAndViews(wasmMemory.buffer);
   },
-  brk__asm: true,
-  brk__sig: ['ii'],
-#if USES_DYNAMIC_ALLOC == 1
-  brk__deps: ['emscripten_get_heap_size'],
-#endif
-  brk: function(newDynamicTop) {
-    newDynamicTop = newDynamicTop|0;
-#if USES_DYNAMIC_ALLOC == 1
-    if ((newDynamicTop|0) > (_emscripten_get_heap_size()|0)) {
-      return -1;
-    }
-#endif
-    HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop | 0;
-    return 0;
-  },
-#endif // USES_DYNAMIC_ALLOC
-
-#else
-  // Implement a Linux-like 'memory area' for our 'process'.
-  // Changes the size of the memory area by |bytes|; returns the
-  // address of the previous top ('break') of the memory area
-  // We control the "dynamic" memory - DYNAMIC_BASE to DYNAMICTOP
-  sbrk__asm: true,
-  sbrk__sig: ['ii'],
-  sbrk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
-#if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
-#endif
-  ],
-  sbrk: function(increment) {
-    increment = increment|0;
-    var oldDynamicTop = 0;
-    var oldDynamicTopOnChange = 0;
-    var newDynamicTop = 0;
-    var totalMemory = 0;
-    totalMemory = _emscripten_get_heap_size()|0;
-#if USE_PTHREADS
-    // Perform a compare-and-swap loop to update the new dynamic top value. This is because
-    // this function can be called simultaneously in multiple threads.
-    do {
-#endif
-
-#if !USE_PTHREADS
-      oldDynamicTop = HEAP32[DYNAMICTOP_PTR>>2]|0;
-#else
-      oldDynamicTop = Atomics_load(HEAP32, DYNAMICTOP_PTR>>2)|0;
-#endif
-      newDynamicTop = oldDynamicTop + increment | 0;
-
-      if (((increment|0) > 0 & (newDynamicTop|0) < (oldDynamicTop|0)) // Detect and fail if we would wrap around signed 32-bit int.
-        | (newDynamicTop|0) < 0) { // Also underflow, sbrk() should be able to be used to subtract.
-#if ABORTING_MALLOC
-        abortOnCannotGrowMemory(newDynamicTop|0)|0;
-#endif
-        ___setErrNo({{{ cDefine('ENOMEM') }}});
-        return -1;
-      }
-
-      if ((newDynamicTop|0) > (totalMemory|0)) {
-        if (_emscripten_resize_heap(newDynamicTop|0)|0) {
-          // We resized the heap. Start another loop iteration if we need to.
-#if USE_PTHREADS
-          totalMemory = _emscripten_get_heap_size()|0;
-          continue;
-#endif
-        } else {
-          // We failed to resize the heap.
-#if USE_PTHREADS
-          // Possibly another thread has grown memory meanwhile, if we race with them. If memory grew,
-          // start another loop iteration.
-          if ((_emscripten_get_heap_size()|0) > totalMemory) {
-            totalMemory = _emscripten_get_heap_size()|0;
-            continue;
-          }
-#endif
-          ___setErrNo({{{ cDefine('ENOMEM') }}});
-          return -1;
-        }
-      }
-
-#if !USE_PTHREADS
-      HEAP32[DYNAMICTOP_PTR>>2] = newDynamicTop|0;
-#else
-      // Attempt to update the dynamic top to new value. Another thread may have beat this thread to the update,
-      // in which case we will need to start over by iterating the loop body again.
-      oldDynamicTopOnChange = Atomics_compareExchange(HEAP32, DYNAMICTOP_PTR>>2, oldDynamicTop|0, newDynamicTop|0)|0;
-    } while((oldDynamicTopOnChange|0) != (oldDynamicTop|0));
-#endif
-
-    return oldDynamicTop|0;
-  },
-
-  brk__deps: ['sbrk'],
-  brk__asm: true,
-  brk__sig: ['ii'],
-  brk__deps: ['__setErrNo', 'emscripten_get_heap_size', 'emscripten_resize_heap'
-#if ABORTING_MALLOC
-  , '$abortOnCannotGrowMemory'
-#endif
-  ],
-  brk: function(newDynamicTop) {
-    newDynamicTop = newDynamicTop|0;
-    var diff = 0;
-    diff = newDynamicTop - (_sbrk(0) | 0) | 0;
-    if ((_sbrk(diff | 0) | 0) == -1) {
-      return -1;
-    }
-    return 0;
-  },
-#endif // ~ (MINIMAL_RUNTIME && !ASSERTIONS && !ALLOW_MEMORY_GROWTH)
 
   system__deps: ['__setErrNo'],
   system: function(command) {
@@ -862,10 +728,19 @@ LibraryManager.library = {
     // In MINIMAL_RUNTIME the module object does not exist, so its behavior to abort is to throw directly.
     throw 'abort';
 #else
-    Module['abort']();
+    abort();
 #endif
   },
 
+  // This object can be modified by the user during startup, which affects
+  // the initial values of the environment accessible by getenv. (This works
+  // in both fastcomp and upstream.
+  $ENV: {},
+
+  // This implementation of environ/getenv/etc. is used for fastcomp, due
+  // to limitations in the system libraries (we can't easily add a global
+  // ctor to create the environment without it always being linked in with
+  // libc).
   __buildEnvironment__deps: ['$ENV'],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
@@ -878,14 +753,14 @@ LibraryManager.library = {
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = ENV['LOGNAME'] = 'web_user';
+      ENV['USER'] = 'web_user';
+      ENV['LOGNAME'] = 'web_user';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
-      ENV['LANG'] = 'C.UTF-8';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = Module['thisProgram'];
+      ENV['_'] = thisProgram;
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -922,7 +797,6 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  $ENV: {},
   getenv__deps: ['$ENV'],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
@@ -1474,11 +1348,6 @@ LibraryManager.library = {
 #endif
 #endif
 
-  __cxa_pure_virtual: function() {
-    ABORT = true;
-    throw 'Pure virtual function called!';
-  },
-
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
@@ -1968,7 +1837,7 @@ LibraryManager.library = {
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(Module['thisProgram'] || './this.program'); // XXX leak
+    var fname = stringToNewUTF8(thisProgram || './this.program'); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -2011,9 +1880,9 @@ LibraryManager.library = {
 
   // Statically allocated time struct.
 #if USE_PTHREADS
-  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit.___tm_current; else PthreadWorkerInit.___tm_current = ___tm_current = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = {{{ makeStaticString("GMT") }}}',
-  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
+  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit["___tm_current"]; else PthreadWorkerInit["___tm_current"] = ___tm_current = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
+  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit["___tm_timezone"]; else PthreadWorkerInit["___tm_timezone"] = ___tm_timezone = {{{ makeStaticString("GMT") }}}',
+  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit["___tm_formatted"]; else PthreadWorkerInit["___tm_formatted"] = ___tm_formatted = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
 #else
   __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
@@ -2038,7 +1907,7 @@ LibraryManager.library = {
     var dst = {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'i32') }}};
     var guessedOffset = date.getTimezoneOffset();
     var start = new Date(date.getFullYear(), 0, 1);
-    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
     var winterOffset = start.getTimezoneOffset();
     var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
@@ -2126,7 +1995,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
     // Attention: DST is in December in South, and some regions don't have DST at all.
-    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
@@ -2205,8 +2074,9 @@ LibraryManager.library = {
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
     {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
-    var winter = new Date(2000, 0, 1);
-    var summer = new Date(2000, 6, 1);
+    var currentYear = new Date().getFullYear();
+    var winter = new Date(currentYear, 0, 1);
+    var summer = new Date(currentYear, 6, 1);
     {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     function extractZone(date) {
@@ -2280,6 +2150,8 @@ LibraryManager.library = {
     return newDate;
   },
 
+  // Note: this is not used in STANDALONE_WASM mode, because it is more
+  //       compact to do it in JS.
   strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
@@ -2348,16 +2220,16 @@ LibraryManager.library = {
         str = character[0]+str;
       }
       return str;
-    };
+    }
 
     function leadingNulls(value, digits) {
       return leadingSomething(value, digits, '0');
-    };
+    }
 
     function compareByDay(date1, date2) {
       function sgn(value) {
         return value < 0 ? -1 : (value > 0 ? 1 : 0);
-      };
+      }
 
       var compare;
       if ((compare = sgn(date1.getFullYear()-date2.getFullYear())) === 0) {
@@ -2366,7 +2238,7 @@ LibraryManager.library = {
         }
       }
       return compare;
-    };
+    }
 
     function getFirstWeekStartDate(janFourth) {
         switch (janFourth.getDay()) {
@@ -2385,7 +2257,7 @@ LibraryManager.library = {
           case 6: // Saturday
             return new Date(janFourth.getFullYear()-1, 11, 30);
         }
-    };
+    }
 
     function getWeekBasedYear(date) {
         var thisDate = __addDays(new Date(date.tm_year+1900, 0, 1), date.tm_yday);
@@ -2406,7 +2278,7 @@ LibraryManager.library = {
         } else {
           return thisDate.getFullYear()-1;
         }
-    };
+    }
 
     var EXPANSION_RULES_2 = {
       '%a': function(date) {
@@ -3367,8 +3239,8 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if USE_PTHREADS
-  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit._in6addr_any; else PthreadWorkerInit._in6addr_any = _in6addr_any = {{{ makeStaticAlloc(16) }}}',
-  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit._in6addr_loopback; else PthreadWorkerInit._in6addr_loopback = _in6addr_loopback = {{{ makeStaticAlloc(16) }}}',
+  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit["_in6addr_any"]; else PthreadWorkerInit["_in6addr_any"] = _in6addr_any = {{{ makeStaticAlloc(16) }}}',
+  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit["_in6addr_loopback"]; else PthreadWorkerInit["_in6addr_loopback"] = _in6addr_loopback = {{{ makeStaticAlloc(16) }}}',
 #else
   in6addr_any:
     '{{{ makeStaticAlloc(16) }}}',
@@ -3392,7 +3264,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons'],
+  _inet_pton6_raw__deps: ['htons', 'ntohs'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -3557,11 +3429,11 @@ LibraryManager.library = {
     return str;
   },
 
-  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw'],
+  _read_sockaddr__deps: ['$Sockets', '_inet_ntop4_raw', '_inet_ntop6_raw', 'ntohs'],
   _read_sockaddr: function (sa, salen) {
     // family / port offsets are common to both sockaddr_in and sockaddr_in6
     var family = {{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_family, 'i16') }}};
-    var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16') }}});
+    var port = _ntohs({{{ makeGetValue('sa', C_STRUCTS.sockaddr_in.sin_port, 'i16', undefined, true) }}});
     var addr;
 
     switch (family) {
@@ -4193,6 +4065,16 @@ LibraryManager.library = {
       );
   },
 
+#if MINIMAL_RUNTIME
+  $warnOnce: function(text) {
+    if (!warnOnce.shown) warnOnce.shown = {};
+    if (!warnOnce.shown[text]) {
+      warnOnce.shown[text] = 1;
+      err(text);
+    }
+  },
+#endif
+
   // Returns [parentFuncArguments, functionName, paramListName]
   _emscripten_traverse_stack: function(args) {
     if (!args || !args.callee || !args.callee.name) {
@@ -4223,7 +4105,11 @@ LibraryManager.library = {
     return [args, funcname, str];
   },
 
-  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack'],
+  emscripten_get_callstack_js__deps: ['_emscripten_traverse_stack', '$jsStackTrace', '$demangle'
+#if MINIMAL_RUNTIME
+    , '$warnOnce'
+#endif
+  ],
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4402,6 +4288,9 @@ LibraryManager.library = {
   // The exact return value depends in whether we are running WASM or JS, and whether
   // the engine supports offsets into WASM. See the function body for details.
   emscripten_generate_pc: function(frame) {
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_generate_pc (needed by __builtin_return_address) without -s USE_OFFSET_CONVERTER');
+#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
@@ -4411,8 +4300,7 @@ LibraryManager.library = {
       // other engines only give function index and offset in the function,
       // so we try using the offset converter. If that doesn't work,
       // we pack index and offset into a "return address"
-      return wasmOffsetConverter ? wasmOffsetConverter.convert(+match[1], +match[2]) :
-             (+match[1] << 16) + +match[2];
+      return wasmOffsetConverter.convert(+match[1], +match[2]);
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // if we are in js, we can use the js line number as the "return address"
       // this should work for wasm2js and fastcomp
@@ -4427,10 +4315,12 @@ LibraryManager.library = {
   // Returns a representation of a call site of the caller of this function, in a manner
   // similar to __builtin_return_address. If level is 0, we return the call site of the
   // caller of this function.
-  emscripten_return_address__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc'],
+  emscripten_return_address__deps: ['emscripten_generate_pc'],
   emscripten_return_address: function(level) {
-    var callstack = _emscripten_get_callstack_js(0).split('\n');
-
+    var callstack = new Error().stack.split('\n');
+    if (callstack[0] == 'Error') {
+      callstack.shift();
+    }
     // skip this function and the caller to get caller's return address
     return _emscripten_generate_pc(callstack[level + 2]);
   },
@@ -4469,8 +4359,7 @@ LibraryManager.library = {
   // JavaScript frames, so we have to rely on PC values. Therefore, we must be able to unwind from
   // a PC value that may no longer be on the execution stack, and so we are forced to cache the
   // entire call stack.
-  emscripten_stack_snapshot__deps: ['emscripten_get_callstack_js', 'emscripten_generate_pc',
-                                    '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
+  emscripten_stack_snapshot__deps: ['emscripten_generate_pc', '$UNWIND_CACHE', '_emscripten_save_in_unwind_cache'],
   emscripten_stack_snapshot: function () {
     var callstack = new Error().stack.split('\n');
     if (callstack[0] == 'Error') {
@@ -4524,18 +4413,26 @@ LibraryManager.library = {
   // Look up the function name from our stack frame cache with our PC representation.
   emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
   emscripten_pc_get_function: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return 0;
+#if !USE_OFFSET_CONVERTER
+    abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
+#endif
+    var name;
+    if (pc & 0x80000000) {
+      // If this is a JavaScript function, try looking it up in the unwind cache.
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return 0;
 
-    var name = null;
-    var match;
-    if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-      name = match[1];
-    } else if (match = /^(.+?)@/.exec(frame)) {
-      name = match[1];
+      var match;
+      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+        name = match[1];
+      } else if (match = /^(.+?)@/.exec(frame)) {
+        name = match[1];
+      } else {
+        return 0;
+      }
+    } else {
+      name = wasmOffsetConverter.getName(pc);
     }
-    if (!name) return 0;
-
     _emscripten_with_builtin_malloc(function () {
       if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
       _emscripten_pc_get_function.ret = allocateUTF8(name);
@@ -4545,8 +4442,6 @@ LibraryManager.library = {
 
   emscripten_pc_get_source_js__deps: ['$UNWIND_CACHE', 'emscripten_generate_pc'],
   emscripten_pc_get_source_js: function (pc) {
-    var frame = UNWIND_CACHE[pc];
-    if (!frame) return null;
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
     var match;
@@ -4561,6 +4456,8 @@ LibraryManager.library = {
 #endif
 
     if (!source) {
+      var frame = UNWIND_CACHE[pc];
+      if (!frame) return null;
       // Example: at callMain (a.out.js:6335:22)
       if (match = /\((.*):(\d+):(\d+)\)$/.exec(frame)) {
         source = {file: match[1], line: match[2], column: match[3]};
@@ -4753,6 +4650,16 @@ LibraryManager.library = {
     err('TODO: Unwind_DeleteException');
   },
 
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
+  },
+
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
@@ -4772,6 +4679,14 @@ LibraryManager.library = {
   },
   emscripten_autodebug_double: function(line, value) {
     out('AD:' + [line, value]);
+  },
+
+  // special runtime support
+
+  emscripten_scan_stack: function(func) {
+    var base = STACK_BASE; // TODO verify this is right on pthreads
+    var end = stackSave();
+    {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
   },
 
   // misc definitions to avoid unnecessary unresolved symbols from fastcomp
@@ -5129,6 +5044,9 @@ LibraryManager.library = {
   },
   // =======================================================================
 
+  __handle_stack_overflow: function() {
+    abort('stack overflow')
+  },
 };
 
 function autoAddDeps(object, name) {

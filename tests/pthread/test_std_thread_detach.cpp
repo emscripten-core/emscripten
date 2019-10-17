@@ -27,7 +27,7 @@ void EMSCRIPTEN_KEEPALIVE spawn_a_thread() {
 void EMSCRIPTEN_KEEPALIVE count_threads(int num_threads_spawned, int num_threads_spawned_extra) {
 	num_threads_spawned += num_threads_spawned_extra;
 	int num_workers = EM_ASM_INT({
-		return PThread.runningWorkers.length + PThread.unusedWorkerPool.length;
+		return PThread.runningWorkers.length + PThread.unusedWorkers.length;
 	});
 
 #ifdef REPORT_RESULT
@@ -65,7 +65,7 @@ int main(int argc, char** argv) {
 		
 		//Check if a worker is free every threads_to_spawn*100 ms, or until max_thread_check is exceeded
 		const SpawnMoreThreads = setInterval(() => {
-			if (PThread.unusedWorkerPool.length > 0) {	//Spawn a thread if a worker is available
+			if (PThread.unusedWorkers.length > 0) {	//Spawn a thread if a worker is available
 				_spawn_a_thread();
 				threads_to_spawn_extra++;
 			}

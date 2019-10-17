@@ -8,7 +8,7 @@
 var LibraryFetch = {
 #if USE_PTHREADS
   $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
-  fetch_work_queue: '; if (ENVIRONMENT_IS_PTHREAD) _fetch_work_queue = PthreadWorkerInit._fetch_work_queue; else PthreadWorkerInit._fetch_work_queue = _fetch_work_queue = {{{ makeStaticAlloc(12) }}}',
+  fetch_work_queue: '; if (ENVIRONMENT_IS_PTHREAD) _fetch_work_queue = PthreadWorkerInit["_fetch_work_queue"]; else PthreadWorkerInit["_fetch_work_queue"] = _fetch_work_queue = {{{ makeStaticAlloc(12) }}}',
 #else
   $Fetch__postset: 'Fetch.staticInit();',
   fetch_work_queue: '{{{ makeStaticAlloc(12) }}}',
@@ -20,6 +20,7 @@ var LibraryFetch = {
   },
   _emscripten_fetch_get_response_headers_length: _fetch_get_response_headers_length,
   _emscripten_fetch_get_response_headers: _fetch_get_response_headers,
+  _emscripten_fetch_free: _fetch_free,
 
 #if FETCH_SUPPORT_INDEXEDDB
   $__emscripten_fetch_delete_cached_data: __emscripten_fetch_delete_cached_data,

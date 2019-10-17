@@ -29,7 +29,7 @@ void thread_local_main_loop()
     emscripten_cancel_main_loop();
 #endif
 
-    EM_ASM(Module['noExitRuntime']=false);
+    EM_ASM(noExitRuntime=false);
     exit(0);
   }
   printf("%dx%d\n", w, h);
@@ -59,7 +59,7 @@ void *thread_main(void *arg)
   emscripten_set_main_loop(thread_local_main_loop, 1, 0);
 #endif
 
-  EM_ASM(Module['noExitRuntime']=true);
+  EM_ASM(noExitRuntime=true);
   return 0;
 }
 
@@ -106,7 +106,7 @@ int main()
   printf("Creating thread.\n");
   pthread_create(&thread, &attr, thread_main, NULL);
   pthread_detach(thread);
-  EM_ASM(Module['noExitRuntime']=true);
+  EM_ASM(noExitRuntime=true);
 
   // Wait for a while, then change the canvas size on the main thread.
   printf("Waiting for 5 seconds for good measure.\n");

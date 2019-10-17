@@ -134,9 +134,9 @@ var LibraryExceptions = {
     };
     ___exception_last = ptr;
     if (!("uncaught_exception" in __ZSt18uncaught_exceptionv)) {
-      __ZSt18uncaught_exceptionv.uncaught_exception = 1;
+      __ZSt18uncaught_exceptionv.uncaught_exceptions = 1;
     } else {
-      __ZSt18uncaught_exceptionv.uncaught_exception++;
+      __ZSt18uncaught_exceptionv.uncaught_exceptions++;
     }
     {{{ makeThrow('ptr') }}}
   },
@@ -150,7 +150,7 @@ var LibraryExceptions = {
     ptr = ___exception_deAdjust(ptr);
     if (!___exception_infos[ptr].rethrown) {
       // Only pop if the corresponding push was through rethrow_primary_exception
-      ___exception_caught.push(ptr)
+      ___exception_caught.push(ptr);
       ___exception_infos[ptr].rethrown = true;
     }
 #if EXCEPTION_DEBUG
@@ -184,7 +184,7 @@ var LibraryExceptions = {
     var info = ___exception_infos[ptr];
     if (info && !info.caught) {
       info.caught = true;
-      __ZSt18uncaught_exceptionv.uncaught_exception--;
+      __ZSt18uncaught_exceptionv.uncaught_exceptions--;
     }
     if (info) info.rethrown = false;
     ___exception_caught.push(ptr);
@@ -222,17 +222,19 @@ var LibraryExceptions = {
   },
 
   _ZSt18uncaught_exceptionv: function() { // std::uncaught_exception()
-    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+    return __ZSt18uncaught_exceptionv.uncaught_exceptions > 0;
   },
 
-  __cxa_uncaught_exception__deps: ['_ZSt18uncaught_exceptionv'],
-  __cxa_uncaught_exception: function() {
-    return !!__ZSt18uncaught_exceptionv.uncaught_exception;
+  __cxa_uncaught_exceptions__deps: ['_ZSt18uncaught_exceptionv'],
+  __cxa_uncaught_exceptions: function() {
+    return __ZSt18uncaught_exceptionv.uncaught_exceptions;
   },
 
   __cxa_call_unexpected: function(exception) {
     err('Unexpected exception thrown, this is not properly supported - aborting');
+#if !MINIMAL_RUNTIME
     ABORT = true;
+#endif
     throw exception;
   },
 
@@ -279,12 +281,16 @@ var LibraryExceptions = {
 
     var pointer = {{{ exportedAsmFunc('___cxa_is_pointer_type') }}}(throwntype);
     // can_catch receives a **, add indirection
-    if (!___cxa_find_matching_catch.buffer) ___cxa_find_matching_catch.buffer = _malloc(4);
 #if EXCEPTION_DEBUG
     out("can_catch on " + [thrown]);
 #endif
-    {{{ makeSetValue('___cxa_find_matching_catch.buffer', '0', 'thrown', '*') }}};
-    thrown = ___cxa_find_matching_catch.buffer;
+#if DISABLE_EXCEPTION_CATCHING == 1
+    var buffer = 0;
+#else
+    var buffer = {{{ makeStaticAlloc(4) }}};
+#endif
+    {{{ makeSetValue('buffer', '0', 'thrown', '*') }}};
+    thrown = buffer;
     // The different catch blocks are denoted by different types.
     // Due to inheritance, those types may not precisely match the
     // type of the thrown object. Find one which matches, and
@@ -320,7 +326,7 @@ var LibraryExceptions = {
 // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
 // that variadically processes all of these functions using JS 'arguments' object.
 var maxExceptionArgs = 10; // arbitrary upper limit
-for(let n = 0; n < maxExceptionArgs; ++n) {
+for (var n = 0; n < maxExceptionArgs; ++n) {
   LibraryExceptions['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
   LibraryExceptions['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
 }

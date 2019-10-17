@@ -12,3 +12,9 @@ int main(int argc, char **argv) {
   f();
   malloc(2048);
 }
+
+#ifdef DISABLE_CONTEXT
+const char *__lsan_default_options(void) {
+  return "malloc_context_size=0";
+}
+#endif

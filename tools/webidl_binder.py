@@ -286,6 +286,10 @@ def type_to_c(t, non_pointing=False):
       ret = 'int'
     elif t == 'UnsignedLong':
       ret = 'unsigned int'
+    elif t == 'LongLong':
+      ret = 'long long'
+    elif t == 'UnsignedLongLong':
+      ret = 'unsigned long long'
     elif t == 'Short':
       ret = 'short'
     elif t == 'UnsignedShort':
@@ -361,7 +365,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
     for i in range(max_args):
       a = all_args[i]
       if isinstance(a, WebIDL.IDLArgument):
-        print(("  arg%d" % i), a.identifier, a.type, a.optional)
+        print(' ', a.identifier.name, a.identifier, a.type, a.optional)
       else:
         print("  arg%d" % i)
 
@@ -382,7 +386,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
       call_prefix += '!!('
       call_postfix += ')'
 
-  args = ['arg%d' % i for i in range(max_args)]
+  args = [(all_args[i].identifier.name if isinstance(all_args[i], WebIDL.IDLArgument) else ('arg%d' % i)) for i in range(max_args)]
   if not constructor:
     body = '  var self = this.ptr;\n'
     pre_arg = ['self']

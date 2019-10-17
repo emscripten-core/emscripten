@@ -1,7 +1,12 @@
 // wasm2js.js - enough of a polyfill for the WebAssembly object so that we can load
 // wasm2js code that way.
 
-var WebAssembly = {
+// Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
+// mode, we can't use a "var" since it would prevent normal wasm from working.
+#if WASM2JS
+var
+#endif
+WebAssembly = {
   Memory: function(opts) {
     return {
       buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
@@ -68,5 +73,5 @@ var WebAssembly = {
 };
 
 // We don't need to actually download a wasm binary, mark it as present but empty.
-Module['wasmBinary'] = [];
+wasmBinary = [];
 

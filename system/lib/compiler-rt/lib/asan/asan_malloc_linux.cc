@@ -16,7 +16,8 @@
 
 #include "sanitizer_common/sanitizer_platform.h"
 #if SANITIZER_FREEBSD || SANITIZER_FUCHSIA || SANITIZER_LINUX || \
-    SANITIZER_NETBSD || SANITIZER_RTEMS || SANITIZER_SOLARIS
+    SANITIZER_NETBSD || SANITIZER_RTEMS || SANITIZER_SOLARIS || \
+    SANITIZER_EMSCRIPTEN
 
 #include "sanitizer_common/sanitizer_allocator_checks.h"
 #include "sanitizer_common/sanitizer_errno.h"

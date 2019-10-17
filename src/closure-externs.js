@@ -49,6 +49,18 @@ Math.clz32 = function() {};
 Math.trunc = function() {};
 
 /**
+ * Atomics
+ */
+
+var Atomics = {};
+Atomics.compareExchange = function() {};
+Atomics.exchange = function() {};
+Atomics.wait = function() {};
+Atomics.notify = function() {};
+Atomics.load = function() {};
+Atomics.store = function() {};
+
+/**
  * SIMD.js support (not in upstream closure yet).
  */
 var SIMD;
@@ -943,3 +955,14 @@ var wakaEnv;
  * @suppress {undefinedVars}
  */
 var wakaBuffer;
+
+
+// Browser externs on global window object.
+var pageXOffset;
+var pageYOffset;
+var innerWidth;
+var innerHeight;
+var outerWidth;
+var outerHeight;
+var event;
+var devicePixelRatio;

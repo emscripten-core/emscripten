@@ -9,13 +9,23 @@
 #include <emscripten.h>
 
 // A "sync" tunnel that adds 1.
+#if USE_EM_JS
+EM_JS(int, sync_tunnel, (int value), {
+  return Asyncify.handleSleep(function(wakeUp) {
+    setTimeout(function() {
+      wakeUp(value + 1);
+    }, 1);
+  });
+})
+#else
 extern "C" int sync_tunnel(int);
+#endif
 
 int main() {
 #ifdef BAD
   EM_ASM({
     window.onerror = function(e) {
-      var success = e.toString().indexOf("import sync_tunnel was not in BYSYNCIFY_IMPORTS, but changed the state") > 0;
+      var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
       if (success && !Module.reported) {
         Module.reported = true;
         console.log("reporting success");

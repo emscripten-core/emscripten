@@ -15,8 +15,10 @@ int open(const char *filename, int flags, ...)
 	}
 
 	int fd = __sys_open_cp(filename, flags, mode);
+#ifndef __EMSCRIPTEN__ // CLOEXEC makes no sense for a single process
 	if (fd>=0 && (flags & O_CLOEXEC))
 		__syscall(SYS_fcntl, fd, F_SETFD, FD_CLOEXEC);
+#endif
 
 	return __syscall_ret(fd);
 }

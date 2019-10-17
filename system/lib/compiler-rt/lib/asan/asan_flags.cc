@@ -23,6 +23,12 @@
 #include "ubsan/ubsan_flags.h"
 #include "ubsan/ubsan_platform.h"
 
+#if SANITIZER_EMSCRIPTEN
+extern "C" void emscripten_builtin_free(void *);
+#include <emscripten/em_asm.h>
+#endif
+
+
 namespace __asan {
 
 Flags asan_flags_dont_use_directly;  // use via flags().
@@ -59,7 +65,11 @@ void InitializeFlags() {
     CommonFlags cf;
     cf.CopyFrom(*common_flags());
     cf.detect_leaks = cf.detect_leaks && CAN_SANITIZE_LEAKS;
+#if !SANITIZER_EMSCRIPTEN
+    // getenv on emscripten uses malloc, which we can't when using LSan.
+    // You can't run external symbolizer executables anyway.
     cf.external_symbolizer_path = GetEnv("ASAN_SYMBOLIZER_PATH");
+#endif
     cf.malloc_context_size = kDefaultMallocContextSize;
     cf.intercept_tls_get_addr = true;
     cf.exitcode = 1;
@@ -120,6 +130,26 @@ void InitializeFlags() {
   lsan_parser.ParseString(lsan_default_options);
 #endif
 
+#if SANITIZER_EMSCRIPTEN
+  char *options;
+  // Override from Emscripten Module.
+#define MAKE_OPTION_LOAD(parser, name) \
+    options = (char*) EM_ASM_INT({ \
+      return _emscripten_with_builtin_malloc(function () { \
+        return allocateUTF8(Module[name] || 0); \
+      }); \
+    }); \
+    parser.ParseString(options); \
+    emscripten_builtin_free(options);
+
+  MAKE_OPTION_LOAD(asan_parser, 'ASAN_OPTIONS');
+#if CAN_SANITIZE_LEAKS
+  MAKE_OPTION_LOAD(lsan_parser, 'LSAN_OPTIONS');
+#endif
+#if CAN_SANITIZE_UB
+  MAKE_OPTION_LOAD(ubsan_parser, 'UBSAN_OPTIONS');
+#endif
+#else
   // Override from command line.
   asan_parser.ParseString(GetEnv("ASAN_OPTIONS"));
 #if CAN_SANITIZE_LEAKS
@@ -128,11 +158,17 @@ void InitializeFlags() {
 #if CAN_SANITIZE_UB
   ubsan_parser.ParseString(GetEnv("UBSAN_OPTIONS"));
 #endif
+#endif // SANITIZER_EMSCRIPTEN
 
   InitializeCommonFlags();
 
   // TODO(eugenis): dump all flags at verbosity>=2?
   if (Verbosity()) ReportUnrecognizedFlags();
+
+#if SANITIZER_EMSCRIPTEN
+  if (common_flags()->malloc_context_size <= 1)
+    StackTrace::snapshot_stack = false;
+#endif // SANITIZER_EMSCRIPTEN
 
   if (common_flags()->help) {
     // TODO(samsonov): print all of the flags (ASan, LSan, common).

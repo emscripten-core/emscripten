@@ -472,10 +472,11 @@ The type names in WebIDL are not identical to those in C++. This section shows t
   "``char``", "``byte``"
   "``char*``", "``DOMString`` (represents a JavaScript string)"
   "``unsigned char``", "``octet``"
-  "``unsigned short int``", "``unsigned short``"
+  "``int``", "``long``"
+  "``long``", "``long``"
   "``unsigned short``", "``unsigned short``"
   "``unsigned long``", "``unsigned long``"
-  "``int``", "``long``"
+  "``long long``", "``long long``"
   "``void``", "``void``"
   "``void*``", "``any`` or ``VoidPtr`` (see :ref:`webidl-binder-voidstar`)"
 

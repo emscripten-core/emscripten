@@ -366,10 +366,10 @@ def kill_browser_process():
       else:
         try:
           subprocess.call(['pkill', processname_killed_atexit])
-        except OSError as e:
+        except OSError:
           try:
             subprocess.call(['killall', processname_killed_atexit])
-          except OSError as e:
+          except OSError:
             loge('Both commands pkill and killall failed to clean up the spawned browser process. Perhaps neither of these utilities is available on your system?')
       delete_emrun_safe_firefox_profile()
     # Clear the process name to represent that the browser is now dead.
@@ -508,6 +508,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
   def send_head(self):
+    self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
@@ -566,7 +567,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
   def log_request(self, code):
     # Filter out 200 OK messages to remove noise.
-    if code is not 200:
+    if code != 200:
       SimpleHTTPRequestHandler.log_request(self, code)
 
   def log_message(self, format, *args):
@@ -576,6 +577,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       sys.stderr.write(msg)
 
   def do_POST(self):
+    self.protocol_version = 'HTTP/1.1'
     global page_exit_code, emrun_options, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)
@@ -586,7 +588,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       dump_out_directory = 'dump_out'
       try:
         os.mkdir(dump_out_directory)
-      except:
+      except OSError:
         pass
       filename = os.path.join(dump_out_directory, os.path.normpath(filename))
       open(filename, 'wb').write(data)
@@ -596,7 +598,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       system_info = json.loads(get_system_info(format_json=True))
       try:
         browser_info = json.loads(get_browser_info(browser_exe, format_json=True))
-      except:
+      except ValueError:
         browser_info = ''
       data = {'system': system_info, 'browser': browser_info}
       self.send_response(200)
@@ -628,7 +630,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
           i = data.index('^', 5)
           seq_num = int(data[5:i])
           data = data[i + 1:]
-        except:
+        except ValueError:
           pass
 
       is_exit = data.startswith('^exit^')
@@ -733,7 +735,7 @@ def win_get_gpu_info():
 
   try:
     import_win32api_modules()
-  except:
+  except Exception:
     return []
 
   for i in range(0, 16):
@@ -758,13 +760,13 @@ def win_get_gpu_info():
       try:
         driverVersion = winreg.QueryValueEx(hVideoCardReg, 'DriverVersion')[0]
         VideoCardDescription += ', driver version ' + driverVersion
-      except:
+      except WindowsError:
         pass
 
       try:
         driverDate = winreg.QueryValueEx(hVideoCardReg, 'DriverDate')[0]
         VideoCardDescription += ' (' + driverDate + ')'
-      except:
+      except WindowsError:
         pass
 
       VideoCardMemorySize = winreg.QueryValueEx(hVideoCardReg, 'HardwareInformation.MemorySize')[0]
@@ -829,7 +831,7 @@ def macos_get_gpu_info():
       memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
       gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
     return gpus
-  except:
+  except Exception:
     pass
 
 
@@ -939,7 +941,7 @@ def win_get_file_properties(fname):
       strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
     props['StringFileInfo'] = strInfo
-  except:
+  except Exception:
     pass
 
   return props
@@ -952,7 +954,7 @@ def get_computer_model():
         with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'r') as f:
           model = f.read()
           return model
-      except:
+      except IOError:
         pass
 
       try:
@@ -967,7 +969,7 @@ def get_computer_model():
         model = model.group(1).strip()
         open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w').write(model) # Cache the hardware model to disk
         return model
-      except:
+      except Exception:
         hwmodel = check_output(['sysctl', 'hw.model'])
         hwmodel = re.search('hw.model: (.*)', hwmodel).group(1).strip()
         return hwmodel
@@ -1004,7 +1006,7 @@ def get_os_version():
       version = ''
       try:
         version = ' ' + check_output(['wmic', 'os', 'get', 'version']).split('\n')[1].strip()
-      except:
+      except Exception:
         pass
       return productName[0] + version + bitness
     elif MACOS:
@@ -1012,7 +1014,7 @@ def get_os_version():
     elif LINUX:
       kernel_version = check_output(['uname', '-r']).strip()
       return ' '.join(platform.linux_distribution()) + ', linux kernel ' + kernel_version + ' ' + platform.architecture()[0] + bitness
-  except:
+  except Exception:
     return 'Unknown OS'
 
 
@@ -1035,7 +1037,7 @@ def get_system_memory():
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
     elif MACOS:
       return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
-  except:
+  except Exception:
     return -1
 
 
@@ -1290,7 +1292,7 @@ def get_system_info(format_json):
   else:
     try:
       unique_system_id = open(os.path.expanduser('~/.emrun.generated.guid'), 'r').read().strip()
-    except:
+    except Exception:
       import uuid
       unique_system_id = str(uuid.uuid4())
       try:

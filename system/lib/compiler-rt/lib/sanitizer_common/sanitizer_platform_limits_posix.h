@@ -1021,6 +1021,7 @@ struct __sanitizer_cookie_io_functions_t {
   // when it can not be determined without including any system headers.
   extern const unsigned IOCTL_NOT_PRESENT;
 
+#if !SANITIZER_EMSCRIPTEN
   extern unsigned IOCTL_FIOASYNC;
   extern unsigned IOCTL_FIOCLEX;
   extern unsigned IOCTL_FIOGETOWN;
@@ -1069,6 +1070,8 @@ struct __sanitizer_cookie_io_functions_t {
   extern unsigned IOCTL_SIOCGETSGCNT;
   extern unsigned IOCTL_SIOCGETVIFCNT;
 #endif
+#endif
+
 #if SANITIZER_LINUX
   extern unsigned IOCTL_EVIOCGABS;
   extern unsigned IOCTL_EVIOCGBIT;

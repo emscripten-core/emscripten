@@ -87,7 +87,7 @@ def uniq_compare(data1, data2):
 
 def list_bigfuncs(data):
     data = list(data.items())
-    data.sort(key=lambda (f, d): d[0])
+    data.sort(key=lambda f_d: f_d[1][0])
     print(''.join(['%6d lines (%6s) : %s' % (d[0], humanbytes(d[1]), f) for f, d in data]))
 
 

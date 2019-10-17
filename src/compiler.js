@@ -144,6 +144,7 @@ load('utility.js');
 // Load settings, can be overridden by commandline
 
 load('settings.js');
+load('settings_internal.js');
 
 var settings_file = arguments_[0];
 additionalLibraries = Array.prototype.slice.call(arguments_, 1);
@@ -168,6 +169,7 @@ if (settings_file) {
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
 IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
+INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
 
 DEAD_FUNCTIONS.forEach(function(dead) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(dead.substr(1));
