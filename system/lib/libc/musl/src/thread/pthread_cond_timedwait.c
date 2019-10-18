@@ -82,7 +82,7 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 
 #ifdef __EMSCRIPTEN__
 	if (pthread_self() == emscripten_main_browser_thread_id()) {
-		emscripten_block_on_main_thread();
+		emscripten_check_blocking_allowed();
 	}
 #endif
 

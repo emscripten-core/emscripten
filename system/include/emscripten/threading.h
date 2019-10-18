@@ -374,7 +374,7 @@ struct thread_profiler_block
 
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.
-void emscripten_block_on_main_thread(void);
+void emscripten_check_blocking_allowed(void);
 
 #ifdef __cplusplus
 }

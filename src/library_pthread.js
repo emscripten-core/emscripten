@@ -802,7 +802,7 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  emscripten_block_on_main_thread: function() {
+  emscripten_check_blocking_allowed: function() {
 #if ASSERTIONS
     assert(ENVIRONMENT_IS_WEB);
 #endif
@@ -811,7 +811,7 @@ var LibraryPThread = {
 #endif
   },
 
-  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_block_on_main_thread'],
+  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_check_blocking_allowed'],
   _emscripten_do_pthread_join: function(thread, status, block) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
@@ -838,7 +838,7 @@ var LibraryPThread = {
     }
 
     if (block && ENVIRONMENT_IS_WEB) {
-      _emscripten_block_on_main_thread();
+      _emscripten_check_blocking_allowed();
     }
 
     for (;;) {
