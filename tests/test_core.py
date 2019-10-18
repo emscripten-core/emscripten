@@ -108,6 +108,7 @@ def also_with_noderawfs(func):
   def decorated(self):
     orig_args = self.emcc_args[:]
     func(self)
+    print('noderawfs')
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
     func(self, js_engines=[NODE_JS])
   return decorated
