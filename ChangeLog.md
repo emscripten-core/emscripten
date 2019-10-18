@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - Add support for overriding `.emscripten` config variables using environment
+   variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
+   environment.
  - `-Werror` now also turns warnings in the python driver code into errors.
  - Internal settings have moved from `settings.js` to `settings_internal.js`.
    These are settings that are for internal use only and are not set-able from
@@ -32,8 +35,6 @@ v1.38.48: 10/11/2019
    perform any synchronous fetches on the main thread. #9567
  - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
    use native, always use JS.
- - Add support for override config variables using environment varaibles.  Any
-   config varaible `FOO` can be overridden by `EM_FOO` in the environment.
 
 v1.38.47: 10/02/2019
 --------------------

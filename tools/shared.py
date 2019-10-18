@@ -349,7 +349,7 @@ def parse_config_file():
     'FROZEN_CACHE',
   )
 
-  # Only popogate certain settings from the config file.
+  # Only propagate certain settings from the config file.
   for key in CONFIG_KEYS:
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
