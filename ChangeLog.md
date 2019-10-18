@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.0: 10/18/2019
+-------------------
  - Add support for overriding `.emscripten` config variables using environment
    variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
    environment.
