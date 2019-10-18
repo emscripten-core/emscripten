@@ -21,6 +21,14 @@ extern void __wasm_call_ctors(void) __attribute__((weak));
 // https://github.com/emscripten-core/emscripten/issues/9640
 extern int main(int argc, char** argv) __attribute__((weak));
 
+// Avoid using stack allocation for argument-passed values in _start(), as the
+// stack allocation for them can't be eliminated by Binaryen later, so if we
+// have no main we end up with a stack push and pop for no reason. Also, the
+// stack allocation here would last for the entire program anyhow, so it's
+// effectively static.
+static size_t argc;
+static size_t argv_buf_size;
+
 void _start(void) {
   if (!main) {
     if (__wasm_call_ctors) {
@@ -30,12 +38,10 @@ void _start(void) {
   }
 
   /* Fill in the arguments from WASI syscalls. */
-  size_t argc;
   char **argv;
   __wasi_errno_t err;
 
   /* Get the sizes of the arrays we'll have to create to copy in the args. */
-  size_t argv_buf_size;
   err = __wasi_args_sizes_get(&argc, &argv_buf_size);
   if (err != __WASI_ESUCCESS) {
     __wasi_proc_exit(EX_OSERR);
