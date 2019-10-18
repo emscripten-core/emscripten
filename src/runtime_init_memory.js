@@ -2,12 +2,8 @@
 // memory is created in the wasm, not in JS.)
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-#if MODULARIZE && WASM
-  // In pthreads mode the wasmMemory and others are received in an onmessage, and that
-  // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
-  // it to a local so it can be used normally.
   wasmMemory = Module['wasmMemory'];
-#endif
+  buffer = Module['buffer'];
 } else {
 #endif // USE_PTHREADS
 #if WASM

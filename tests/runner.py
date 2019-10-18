@@ -423,7 +423,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
-    self.emcc_args = []
+    self.emcc_args = ['-Werror']
     self.save_dir = EMTEST_SAVE_DIR
     self.save_JS = False
     self.env = {}
@@ -1198,6 +1198,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
     self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',

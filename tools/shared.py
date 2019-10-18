@@ -56,6 +56,13 @@ def exit_with_error(msg, *args):
   sys.exit(1)
 
 
+# TODO(sbc): Convert all caller to WarningManager
+def warning(msg, *args):
+  logger.warning(str(msg), *args)
+  if Settings.WARNINGS_ARE_ERRORS:
+    exit_with_error('treating warnings as errors (-Werror)')
+
+
 # On Windows python suffers from a particularly nasty bug if python is spawning
 # new processes while python itself is spawned from some other non-console
 # process.
@@ -149,11 +156,11 @@ class Py2CompletedProcess:
     self.stderr = stderr
 
   def __repr__(self):
-    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
+    _repr = ['args=%s' % repr(self.args), 'returncode=%s' % self.returncode]
     if self.stdout is not None:
-      _repr += 'stdout=' + repr(self.stdout)
+      _repr.append('stdout=' + repr(self.stdout))
     if self.stderr is not None:
-      _repr += 'stderr=' + repr(self.stderr)
+      _repr.append('stderr=' + repr(self.stderr))
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
@@ -195,7 +202,7 @@ def check_call(cmd, *args, **kw):
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().splitlines()
+  config_file = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
   config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
@@ -309,7 +316,10 @@ FROZEN_CACHE = False
 
 
 def parse_config_file():
-  """Parse the emscripten config file using python's exec"""
+  """Parse the emscripten config file using python's exec.
+
+  Also also EM_<KEY> environment variables to override specific config keys.
+  """
   global JS_ENGINES, JAVA, CLOSURE_COMPILER
 
   config = {}
@@ -322,7 +332,7 @@ def parse_config_file():
   CONFIG_KEYS = (
     'NODE_JS',
     'BINARYEN_ROOT',
-    'EM_POPEN_WORKAROUND',
+    'POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
     'EMSCRIPTEN_NATIVE_OPTIMIZER',
     'V8_ENGINE',
@@ -339,9 +349,13 @@ def parse_config_file():
     'FROZEN_CACHE',
   )
 
-  # Only popogate certain settings from the config file.
+  # Only propagate certain settings from the config file.
   for key in CONFIG_KEYS:
-    if key in config:
+    env_var = 'EM_' + key
+    env_value = os.environ.get(env_var)
+    if env_value is not None:
+      globals()[key] = env_value
+    elif key in config:
       globals()[key] = config[key]
 
   # Certain keys are mandatory
@@ -397,9 +411,6 @@ V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
 WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 
-if EM_POPEN_WORKAROUND is None:
-  EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
-
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
 # nb. This is by default disabled since it has the adverse effect of buffering
@@ -448,7 +459,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if expected in actual:
     return True
-  logger.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
+  warning('LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
   return False
 
 
@@ -503,10 +514,10 @@ def check_node_version():
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
-    logger.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
+    warning('node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
     return False
   except Exception as e:
-    logger.warning('cannot check node version: %s', e)
+    warning('cannot check node version: %s', e)
     return False
 
 
@@ -514,10 +525,10 @@ def check_closure_compiler():
   try:
     run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
   except Exception:
-    logger.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
+    warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
   if not os.path.exists(CLOSURE_COMPILER):
-    logger.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+    warning('Closure compiler (%s) does not exist, check the paths in %s', CLOSURE_COMPILER, EM_CONFIG)
     return False
   return True
 
@@ -565,7 +576,7 @@ def perform_sanify_checks():
   # Sanity check passed!
   with ToolchainProfiler.profile_block('sanity closure compiler'):
     if not check_closure_compiler():
-      logger.warning('closure compiler will not be available')
+      warning('closure compiler will not be available')
 
 
 def check_sanity(force=False):
@@ -606,9 +617,9 @@ def check_sanity(force=False):
 
     if reason:
       if FROZEN_CACHE:
-        logger.warning('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
+        logger.info('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
       else:
-        logger.warning('(Emscripten: %s, clearing cache)' % reason)
+        logger.info('(Emscripten: %s, clearing cache)' % reason)
         Cache.erase()
         # the check actually failed, so definitely write out the sanity file, to
         # avoid others later seeing failures too
@@ -883,10 +894,12 @@ class WarningManager(object):
 
   @staticmethod
   def warn(warning_type, message=None):
-    warning = WarningManager.warnings[warning_type]
-    if warning['enabled'] and not warning['printed']:
-      warning['printed'] = True
-      logger.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+    warning_info = WarningManager.warnings[warning_type]
+    if warning_info['enabled'] and not warning_info['printed']:
+      warning_info['printed'] = True
+      if message is None:
+        message = warning_info['message']
+      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
 
 class Configuration(object):
@@ -951,8 +964,11 @@ def check_vanilla():
       return has_wasm_target(targets) and not has_asm_js_target(targets)
 
     def get_vanilla_file():
+      logger.debug('regenerating vanilla file: %s' % LLVM_ROOT)
       saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
-      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT)
+      if os.path.exists(saved_file):
+        logger.debug('old: %s\n' % open(saved_file).read())
+      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
     is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
@@ -960,12 +976,12 @@ def check_vanilla():
       logger.debug('config file changed since we checked vanilla; re-checking')
       is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
     try:
-      contents = open(is_vanilla_file).read()
+      contents = open(is_vanilla_file).read().strip()
       middle = contents.index(':')
       is_vanilla = int(contents[:middle])
       llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
-        logger.debug('regenerating vanilla check since other llvm')
+        logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
         temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
         is_vanilla = check_vanilla()
     except Exception as e:
@@ -1130,6 +1146,7 @@ class SettingsManager(object):
 
   class __impl(object):
     attrs = {}
+    internal_settings = set()
 
     def __init__(self):
       self.reset()
@@ -1142,6 +1159,12 @@ class SettingsManager(object):
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': cls.attrs})
+
+      settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      internal_attrs = {}
+      exec(settings, {'attrs': internal_attrs})
+      cls.attrs.update(internal_attrs)
 
       if 'EMCC_STRICT' in os.environ:
         cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
@@ -1167,6 +1190,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         cls.attrs['WASM_BACKEND'] = 1
+
+      cls.internal_settings = set(internal_attrs.keys())
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1227,13 +1252,13 @@ class SettingsManager(object):
         self.attrs[alt_name] = value
 
       if attr not in self.attrs:
-        logger.error('Assigning a non-existent settings attribute "%s"' % attr)
+        msg = "Attempt to set a non-existent setting: '%s'\n" % attr
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
-          logger.error(' - did you mean one of %s?' % suggestions)
-        logger.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
-        logger.error(' - (see src/settings.js for valid values)')
-        sys.exit(1)
+          msg += ' - did you mean one of %s?\n' % suggestions
+        msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
+        msg += ' - (see src/settings.js for valid values)'
+        exit_with_error(msg)
 
       self.attrs[attr] = value
 
@@ -1307,13 +1332,14 @@ verify_settings()
 # are duplicate entries in the archive
 def warn_if_duplicate_entries(archive_contents, archive_filename):
   if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
+    msg = '%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
       if curr not in warned and curr in archive_contents[i + 1:]:
-        logger.warning('   duplicate: %s' % curr)
+        msg += '\n   duplicate: %s' % curr
         warned.add(curr)
+    warning(msg)
 
 
 # This function creates a temporary directory specified by the 'dir' field in
@@ -1944,11 +1970,11 @@ class Building(object):
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
       if not new_symbols.is_valid_for_nm():
-        logger.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        warning('object %s is not valid according to llvm-nm, cannot link', f)
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
+        warning('object %s is not a valid object file for emscripten, cannot link', f)
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2102,9 +2128,9 @@ class Building(object):
     except subprocess.CalledProcessError as e:
       for i in inputs:
         if not os.path.exists(i):
-          logger.warning('Note: Input file "' + i + '" did not exist.')
+          warning('Note: Input file "' + i + '" did not exist.')
         elif not Building.is_bitcode(i):
-          logger.warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
+          warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
       exit_with_error('Failed to run llvm optimizations: ' + e.output)
     if not out:
       shutil.move(filename + '.opt.bc', filename)

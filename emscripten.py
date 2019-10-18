@@ -210,7 +210,7 @@ def fixup_functions(funcs, metadata):
     # undercounts by one, but that is what we want
     table_sizes[k] = str(v.count(','))
     # if shared.Settings.ASSERTIONS >= 2 and table_sizes[k] == 0:
-    #   logger.warning('no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
+    #   shared.warning('no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
   funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
 
   # fix +float into float.0, if not running js opts
@@ -674,7 +674,7 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
-    logger.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    shared.WarningManager.warn('ALMOST_ASM', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     shared.Settings.ASM_JS = 2
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
@@ -686,7 +686,7 @@ def update_settings_glue(metadata, DEBUG):
   if metadata['simd']:
     shared.Settings.SIMD = 1
     if shared.Settings.ASM_JS != 2:
-      logger.warning('disabling asm.js validation due to use of SIMD')
+      shared.WarningManager.warn('ALMOST_ASM', 'disabling asm.js validation due to use of SIMD')
       shared.Settings.ASM_JS = 2
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
@@ -890,8 +890,9 @@ def report_missing_symbols(all_implemented, pre):
   if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
     return
 
-  # the initial list of missing functions are those we expected to export, but were not implemented in compiled code
-  missing = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - all_implemented)
+  # the initial list of missing functions are that the user explicitly exported
+  # but were not implemented in compiled code
+  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
 
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
@@ -903,7 +904,7 @@ def report_missing_symbols(all_implemented, pre):
     if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
       exit_with_error('undefined exported function: "%s"', requested)
     elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-      logger.warning('undefined exported function: "%s"', requested)
+      shared.warning('undefined exported function: "%s"', requested)
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
@@ -2288,7 +2289,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
                      '--dwarfdump=' + shared.LLVM_DWARFDUMP,
                      '-o',  base_source_map]
     if not shared.Settings.SOURCE_MAP_BASE:
-      logger.warn("Wasm source map won't be usable in a browser without --source-map-base")
+      logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
     shared.check_call(sourcemap_cmd)
     debug_copy(base_source_map, 'base_wasm.map')
 
