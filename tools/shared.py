@@ -1903,9 +1903,14 @@ class Building(object):
     if Settings.LINKABLE:
       cmd.append('--export-all')
 
+    # in standalone mode, crt1 will call the constructors from inside the wasm
+    if not Settings.STANDALONE_WASM:
+      cmd += [
+        '--export',
+        '__wasm_call_ctors',
+      ]
+
     cmd += [
-      '--export',
-      '__wasm_call_ctors',
       '--export',
       '__data_end'
     ]
