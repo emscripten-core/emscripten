@@ -21,6 +21,8 @@ Current Trunk
    it, you must set `ALLOW_BLOCKING_ON_MAIN_THREAD` (disallowing by default
    makes it less likely new users of pthreads will hit surprising deadlocks
    on the Web).
+ - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
+   but without blocking.
  - Add support for overriding `.emscripten` config variables using environment
    variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
    environment.
