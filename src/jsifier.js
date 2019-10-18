@@ -119,7 +119,8 @@ function JSify(data, functionsOnly) {
     // that variadically processes all of these functions using JS 'arguments' object.
     if (item.ident.startsWith('___cxa_find_matching_catch_')) {
       if (DISABLE_EXCEPTION_THROWING) {
-        return error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+        return;
       }
       var num = +item.ident.split('_').slice(-1)[0];
       addCxaCatch(num);
