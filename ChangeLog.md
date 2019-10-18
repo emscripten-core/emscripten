@@ -18,7 +18,8 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
  - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
-   must be enabled via `-s NODEFS` etc. See #9645
+   must be linked in explicitly, using `-lnodefs.js`, `-lidbfs.js`',
+   `-lworkerfs.js`, `-lproxyfs.js`. See #9645
 
 v1.39.0: 10/18/2019
 -------------------

@@ -684,22 +684,6 @@ var FILESYSTEM = 1;
 // some JS that does, you might need this.
 var FORCE_FILESYSTEM = 0;
 
-// Enables support for the in-memory filesystem backend. This is the only
-// one that is enabled by default.
-var MEMFS = 1;
-
-// Enables support for the IDBFS filesystem backend.
-var IDBFS = 0;
-
-// Enables support for the Node.js filesystem backend.
-var NODEFS = 0;
-
-// Enables support for the Web Worker filesystem backend.
-var WORKERFS = 0;
-
-// Enables support for the Proxy filesystem backend.
-var PROXYFS = 0;
-
 // Enables support for the IDBFS filesystem backend. This is a special
 // backend as it replaces all normal filesystem access with direct Node.js
 // operations, without the need to do `FS.mount()`, and this backend only
