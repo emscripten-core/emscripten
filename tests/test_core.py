@@ -7834,7 +7834,7 @@ extern "C" {
       };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run('int main() { return 0; }', 'object\nundefined\nundefined\nobject\nIDBFS is no longer included by default; build with -s IDBFS\nNODEFS is no longer included by default; build with -s NODEFS\n|IDBFS is no longer included by default; build with -s IDBFS|')
+    self.do_run('int main() { return 0; }', 'object\nundefined\nundefined\nobject\nIDBFS is no longer included by default; build with -lidbfs.js\nNODEFS is no longer included by default; build with -lnodefs.js\n|IDBFS is no longer included by default; build with -lidbfs.js|')
 
   @sync
   @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
