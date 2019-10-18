@@ -3,7 +3,11 @@
 
 # Note: If you put paths relative to the home directory, do not forget
 # os.path.expanduser
-
+#
+# Any config setting <KEY> in this file can be overridden by setting the
+# EM_<KEY> environment variable. For example, settings EM_LLVM_ROOT override
+# the setting in this file.
+#
 # Note: On Windows, remember to escape backslashes! I.e. LLVM='c:\llvm\'
 # is not valid, but LLVM='c:\\llvm\\' and LLVM='c:/llvm/'
 # are.
