@@ -27,16 +27,16 @@ Current Trunk
 v1.38.48: 10/11/2019
 --------------------
  - Add support for `MAIN_THREAD_EM_ASM` in wasm backend. #9560
- - Add ability to disable FETCH worker in Fastcomp backend via `USE_FETCH_WORKER=0`.
-   This is useful for people who use FETCH, but don't perform any synchronous fetches
-   on the main thread. #9567
+ - Add ability to disable FETCH worker in Fastcomp backend via
+   `USE_FETCH_WORKER=0`.  This is useful for people who use FETCH, but don't
+   perform any synchronous fetches on the main thread. #9567
  - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
    use native, always use JS.
  - Add support for override config variables using environment varaibles.  Any
    config varaible `FOO` can be overridden by `EM_FOO` in the environment.
 
-v.1.38.47: 10/02/2019
----------------------
+v1.38.47: 10/02/2019
+--------------------
  - Add support for FETCH API in WASM backend. This doesn't support FETCH in the
    main thread (`USE_FETCH_WORKER=0` is enforced). #9490
  - Redefine errno values to be consistent with wasi. This will let us avoid
@@ -53,8 +53,8 @@ v.1.38.47: 10/02/2019
    emscripten directory rather that the current user's home directory.
    See #9543
 
-v.1.38.46: 09/25/2019
----------------------
+v1.38.46: 09/25/2019
+--------------------
  - Rename libpthreads to libpthread to match its normal name on other platforms.
    This change should be completely internal to emscripten.
  - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
@@ -66,25 +66,25 @@ v.1.38.46: 09/25/2019
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.
- - ASYNCIFY_BLACKLIST and ASYNCIFY_WHITELIST now support simple '\*' wildcard matching
+ - `ASYNCIFY_BLACKLIST` and `ASYNCIFY_WHITELIST` now support simple '\*' wildcard matching
 
-v.1.38.45: 09/12/2019
----------------------
+v1.38.45: 09/12/2019
+--------------------
 
-v.1.38.44: 09/11/2019
----------------------
+v1.38.44: 09/11/2019
+--------------------
  - Remove Binaryen from the ports system. This means that emscripten will
    no longer automatically build Binaryen from source. Instead, either use
    the emsdk (binaries are provided automatically, just like for LLVM), or
    build it yourself and point `BINARYEN_ROOT` in .emscripten to it. See #9409
 
-v.1.38.43: 08/30/2019
+v1.38.43: 08/30/2019
 ---------------------
  - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
    instead of `Module.noExitRuntime`.
 
-v.1.38.42: 08/19/2019
-----------------------
+v1.38.42: 08/19/2019
+--------------------
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
    and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
    with multiple threads. (#9060, #9076)
@@ -94,8 +94,8 @@ v.1.38.42: 08/19/2019
    will no longer work. This is done because the mechanism may result in
    execution of arbitrary code via command line flags.
 
-v.1.38.41: 08/07/2019
----------------------
+v1.38.41: 08/07/2019
+--------------------
  - Remove fastcomp's implementation of Asyncify. This has been deprecated for
    a long time, since we added Emterpreter-Async, and now we have a new Asyncify
    implementation in the upstream wasm backend. It is recommended to upgrade to
@@ -117,8 +117,8 @@ v.1.38.41: 08/07/2019
  - Internal API update: one can now specialize embind's (un)marshalling for a
    group of types via SFINAE, instead of a single type. (#9089)
 
-v.1.38.40: 07/24/2019
----------------------
+v1.38.40: 07/24/2019
+--------------------
  - LLVM backend pthread builds no longer use external memory initialization
    files, replacing them with passive data segments.
  - LLVM backend now supports thread local storage via the C extension `__thread`
