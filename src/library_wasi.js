@@ -92,11 +92,9 @@ var WasiLibrary = {
 };
 
 // Fallback for cases where the wasi_unstable.name prefixing fails,
-// and we have the full name from C. This happens in fastcomp (which
-// lacks the attribute to set the import module and base names) and
-// in LTO mode (as bitcode does not preserve them).
-// https://bugs.llvm.org/show_bug.cgi?id=43211
-if (!WASM_BACKEND || !WASM_OBJECT_FILES) {
+// and we have the full name from C. This happens in fastcomp which
+// lacks the attribute to set the import module and base names.
+if (!WASM_BACKEND) {
   for (var x in WasiLibrary) {
     if (x.indexOf('__deps') >= 0) continue;
     WasiLibrary['__wasi_' + x] = x;

@@ -36,8 +36,7 @@ def restore_and_set_up():
     # don't use the native optimizer from the emsdk - we want to test how it builds
     f.write('\nEMSCRIPTEN_NATIVE_OPTIMIZER = ""\n')
     # make LLVM_ROOT sensitive to the LLVM env var, as we test that
-    f.write('import os\n')
-    f.write('LLVM_ROOT = os.path.expanduser(os.getenv("LLVM", "%s"))\n' % LLVM_ROOT)
+    f.write('LLVM_ROOT = "%s"\n' % LLVM_ROOT)
     # unfreeze the cache, so we can test that
     f.write('FROZEN_CACHE = False\n')
 
@@ -205,7 +204,7 @@ class sanity(RunnerCore):
       self.assertContained('This command will now exit. When you are done editing those paths, re-run it.', output)
       assert output.split()[-1].endswith('===='), 'We should have stopped: ' + output
       config_file = open(CONFIG_FILE).read()
-      template_file = open(path_from_root('tools', 'settings_template_readonly.py')).read()
+      template_file = open(path_from_root('tools', 'settings_template.py')).read()
       self.assertNotContained('~/.emscripten', config_file)
       self.assertContained('~/.emscripten', template_file)
       self.assertNotContained('{{{', config_file)
@@ -496,7 +495,7 @@ fi
     self.ensure_cache()
     make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
     make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
-    with env_modify({'LLVM': path_from_root('tests', 'fake', 'bin')}):
+    with env_modify({'EM_LLVM_ROOT': path_from_root('tests', 'fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
@@ -739,10 +738,11 @@ fi
     with env_modify({'EMCC_DEBUG': '1'}):
       # see that we test vanilla status, and just once
       TESTING = 'testing for asm.js target'
-      self.check_working(EMCC, TESTING)
+      print(self.check_working(EMCC, TESTING))
+
       for i in range(3):
         output = self.check_working(EMCC, 'check tells us to use')
-        assert TESTING not in output
+        self.assertNotContained(TESTING, output)
       # if env var tells us, do what it says
       with env_modify({'EMCC_WASM_BACKEND': '1'}):
         self.check_working(EMCC, 'EMCC_WASM_BACKEND tells us to use wasm backend')
@@ -790,10 +790,10 @@ fi
 
     # use LLVM env var to modify LLVM between vanilla checks
 
-    assert not os.environ.get('LLVM'), 'we need to modify LLVM env var for this'
+    assert not os.environ.get('EM_LLVM_ROOT'), 'we need to modify EM_LLVM_ROOT env var for this'
 
     f = open(CONFIG_FILE, 'a')
-    f.write('LLVM_ROOT = os.getenv("LLVM", "' + path_from_root('tests', 'fake1', 'bin') + '")\n')
+    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake1', 'bin') + '"\n')
     f.close()
 
     safe_ensure_dirs(path_from_root('tests', 'fake1', 'bin'))
@@ -812,7 +812,7 @@ fi
 
     with env_modify({'EMCC_DEBUG': '1'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'use asm.js backend')
-      with env_modify({'LLVM': path_from_root('tests', 'fake2', 'bin')}):
+      with env_modify({'EM_LLVM_ROOT': path_from_root('tests', 'fake2', 'bin')}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'regenerating vanilla check since other llvm')
 
     try_delete(CANONICAL_TEMP_DIR)

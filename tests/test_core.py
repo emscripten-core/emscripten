@@ -38,6 +38,7 @@ def asm_simd(f):
       self.skipTest('simd not supported in emterpreter yet')
     if self.is_wasm():
       self.skipTest('asm.js simd not compatible with wasm yet')
+    self.emcc_args.append('-Wno-almost-asm')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
   return decorated
@@ -206,7 +207,7 @@ class TestCoreBase(RunnerCore):
 
   # Use closure in some tests for some additional coverage
   def maybe_closure(self):
-    if '-O2' in self.emcc_args or '-Os' in self.emcc_args:
+    if '-g' not in self.emcc_args and ('-O2' in self.emcc_args or '-Os' in self.emcc_args):
       self.emcc_args += ['--closure', '1']
       return True
     return False
@@ -1778,6 +1779,7 @@ int main() {
     if self.is_wasm():
       self.skipTest('wasm requires a proper asm module')
 
+    self.emcc_args.append('-Wno-almost-asm')
     test_path = path_from_root('tests', 'core', 'test_inlinejs3')
     src, output = (test_path + s for s in ('.c', '.out'))
 
@@ -1881,7 +1883,6 @@ int main(int argc, char **argv) {
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     self.maybe_closure()
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
     # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
@@ -1891,7 +1892,7 @@ int main(int argc, char **argv) {
     fail = open('src.cpp.o.js').read()
 
     # Win with it
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH']
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
     win = open('src.cpp.o.js').read()
 
@@ -1918,31 +1919,22 @@ int main(int argc, char **argv) {
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=0'] # start with 0
+    # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
+    # since we then need to enlarge the heap(s).
+    src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
 
-    emcc_args = self.emcc_args[:]
+    # Fail without memory growth
+    self.do_run(src, 'OOM', assert_returncode=None)
+    fail = open('src.cpp.o.js').read()
 
-    def test():
-      self.emcc_args = emcc_args[:]
+    # Win with it
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+    win = open('src.cpp.o.js').read()
 
-      # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
-      # since we then need to enlarge the heap(s).
-      src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
-
-      # Fail without memory growth
-      self.do_run(src, 'OOM', assert_returncode=None)
-      fail = open('src.cpp.o.js').read()
-
-      # Win with it
-      self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
-      self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
-      win = open('src.cpp.o.js').read()
-
-      if '-O2' in self.emcc_args and not self.is_wasm():
-        # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
-        assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
-
-    test()
+    if '-O2' in self.emcc_args and not self.is_wasm():
+      # Make sure ALLOW_MEMORY_GROWTH generates different code (should be less optimized)
+      assert len(fail) < len(win), 'failing code - without memory growth on - is more optimized, and smaller' + str([len(fail), len(win)])
 
   def test_memorygrowth_3(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -1977,7 +1969,7 @@ int main(int argc, char **argv) {
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TEST_MEMORY_GROWTH_FAILS=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @no_asmjs()
@@ -4677,7 +4669,7 @@ Pass: 0.000012 0.000012''')
       self.emcc_args = [x for x in self.emcc_args if x != '-g'] # ensure we test --closure 1 --memory-init-file 1 (-g would disable closure)
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
-      self.emcc_args += ['--closure', '2'] # Use closure 2 here for some additional coverage
+      self.emcc_args += ['--closure', '2', '-Wno-almost-asm'] # Use closure 2 here for some additional coverage
 
     self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1', '--pre-js', 'pre.js']
 
@@ -5036,9 +5028,10 @@ main( int argv, char ** argc ) {
     self.set_setting('SYSCALL_DEBUG', 1)
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
-    print('closure')
-    self.emcc_args += ['--closure', '1']
-    self.do_run(src, 'success', force_c=True, js_engines=js_engines)
+    if '-g' not in self.emcc_args:
+      print('closure')
+      self.emcc_args += ['--closure', '1']
+      self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   @also_with_noderawfs
   def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
@@ -5821,8 +5814,8 @@ return malloc(size);
 
   @needs_make('make')
   def test_lua(self):
-    if self.emcc_args:
-      self.emcc_args = ['-g1'] + self.emcc_args
+    self.emcc_args = ['-g1'] + self.emcc_args
+    self.emcc_args.remove('-Werror')
 
     total_memory = self.get_setting('TOTAL_MEMORY')
 
@@ -6145,6 +6138,7 @@ return malloc(size);
     # and then remove this line?
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
     self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
+    self.emcc_args.remove('-Werror')
 
     emcc_args = self.emcc_args
 
@@ -6376,7 +6370,7 @@ return malloc(size);
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
     self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
 
-    if '-O2' in self.emcc_args or self.is_emterpreter():
+    if '-O2' in self.emcc_args and '-g' not in self.emcc_args or self.is_emterpreter():
       print('with closure')
       self.emcc_args += ['--closure', '1']
       self.do_run_in_out_file_test('tests', 'core', 'test_ccall')
@@ -6515,10 +6509,8 @@ return malloc(size);
   def test_linker_response_file(self):
     objfile = 'response_file.o'
     run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.cpp'), '-o', objfile] + self.get_emcc_args())
-    # This should expand into -Wl,--export=foo which will then be ignored
-    # by emscripten, except when using the wasm backend (lld) in which case it
-    # should pass the original flag to the linker.
-    response_data = objfile + ' --export=foo'
+    # This should expand into -Wl,--start-group <objfile> -Wl,--end-group
+    response_data = '--start-group ' + objfile + ' --end-group'
     create_test_file('rsp_file', response_data.replace('\\', '\\\\'))
     run_process([PYTHON, EMCC, "-Wl,@rsp_file", '-o', 'response_file.o.js'] + self.get_emcc_args())
     self.do_run('response_file.o.js', 'hello, world', no_build=True)
@@ -6594,7 +6586,7 @@ return malloc(size);
     print('basics')
     self.do_run_in_out_file_test('tests', 'interop', 'test_add_function')
 
-    if not self.is_wasm_backend():
+    if '-g' not in self.emcc_args and not self.is_wasm_backend():
       print('with --closure')
       old = list(self.emcc_args)
       self.emcc_args += ['--closure', '1']
@@ -7028,7 +7020,7 @@ err = err = function(){};
 ''')
       self.emcc_args += ['-s', 'EXPORTED_FUNCTIONS=["_malloc"]', '--post-js', 'glue.js', '--post-js', 'export.js']
       if allow_memory_growth:
-        self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1']
+        self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH', '-Wno-almost-asm']
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.h'), 'test.h')
       shutil.copyfile(path_from_root('tests', 'webidl', 'test.cpp'), 'test.cpp')
       src = open('test.cpp').read()
@@ -8252,13 +8244,13 @@ def make_run(name, emcc_args, settings=None, env=None):
 
     os.chdir(self.get_dir()) # Ensure the directory exists and go there
 
-    self.emcc_args = emcc_args[:]
     for k, v in settings.items():
       self.set_setting(k, v)
 
+    self.emcc_args += emcc_args
     # avoid various compiler warnings in our test output
     self.emcc_args += [
-      '-Werror', '-Wno-dynamic-class-memaccess', '-Wno-format',
+      '-Wno-dynamic-class-memaccess', '-Wno-format',
       '-Wno-format-extra-args', '-Wno-format-security',
       '-Wno-pointer-bool-conversion', '-Wno-unused-volatile-lvalue',
       '-Wno-c++11-compat-deprecated-writable-strings',
@@ -8310,7 +8302,7 @@ simd2 = make_run('simd2', emcc_args=['-O2', '-msimd128'])
 bulkmem2 = make_run('bulkmem2', emcc_args=['-O2', '-mbulk-memory'])
 
 # asm.js
-asm2f = make_run('asm2f', emcc_args=['-Oz'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
+asm2f = make_run('asm2f', emcc_args=['-Oz', '-Wno-almost-asm'], settings={'PRECISE_F32': 1, 'ALLOW_MEMORY_GROWTH': 1, 'WASM': 0})
 asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_NATIVE_OPTIMIZER': '0'})
 
 # wasm
