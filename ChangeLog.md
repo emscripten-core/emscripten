@@ -32,6 +32,8 @@ v1.38.48: 10/11/2019
    on the main thread. #9567
  - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
    use native, always use JS.
+ - Add support for override config variables using environment varaibles.  Any
+   config varaible `FOO` can be overridden by `EM_FOO` in the environment.
 
 v.1.38.47: 10/02/2019
 ---------------------
@@ -64,7 +66,7 @@ v.1.38.46: 09/25/2019
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
    or in Node.js.
- - ASYNCIFY_BLACKLIST and ASYNCIFY_WHITELIST now support simple '*' wildcard matching
+ - ASYNCIFY_BLACKLIST and ASYNCIFY_WHITELIST now support simple '\*' wildcard matching
 
 v.1.38.45: 09/12/2019
 ---------------------
@@ -123,21 +125,22 @@ v.1.38.40: 07/24/2019
    and C11/C++11 keyword `thread_local`. (#8976)
  - Internal API change: Move read, readAsync, readBinary, setWindowTitle from
    the Module object to normal JS variables. If you use those internal APIs,
-   you must change Module.readAsync()/Module['readAsync']() to readAsync().
-   Note that read is also renamed to read_ (since "read" is an API call in
+   you must change `Module.readAsync()/Module['readAsync']()` to `readAsync()`.
+   Note that read is also renamed to `read_` (since "`read`" is an API call in
    the SpiderMonkey shell). In builds with ASSERTIONS an error message is
    shown about the API change. This change allows better JS minification
    (the names read, readAsync etc. can be minified, and if the variables are
    not used they can be removed entirely). Defining these APIs on Module
    (which was never documented or intended, but happened to work) is also
-   no longer allowed (but you can override read_ etc. from JS).
+   no longer allowed (but you can override `read_` etc. from JS).
 
 v1.38.39: 07/16/2019
 --------------------
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
    - Currently, only supports one thread without dynamic linking.
- - Rename Bysyncify (the name used during development) to Asyncify. This keeps the name consistent
-   with the old ASYNCIFY flag, no need for a new one, as they do basically the same thing.
+ - Rename Bysyncify (the name used during development) to Asyncify. This keeps
+   the name consistent with the old ASYNCIFY flag, no need for a new one, as
+   they do basically the same thing.
 
 v1.38.38: 07/08/2019
 --------------------
@@ -177,8 +180,8 @@ v1.38.35: 06/13/2019
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
-     - This allows `emcc -fsanitize=undefined` to work. (#8651)
-     - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
+    - This allows `emcc -fsanitize=undefined` to work. (#8651)
+    - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
 
 v1.38.33: 05/23/2019
 --------------------
@@ -189,21 +192,21 @@ v1.38.33: 05/23/2019
 
 v1.38.32: SKIPPED
 -----------------
- - The transition from the old to the new CI occured around here. To avoid ambiguity while
-   both CIs were still generating builds, we just tagged a new one (1.38.33) on the new CI
-   and skipped 1.38.32.
- - The transition also moves all builds and downloads away from the old mozilla-games
-   infrastructure to the new chromium ones. As a result all links to *mozilla-games* URLs
-   will not work (these were never documented, but could be seen from the internals of the
-   emsdk; the new emsdk uses the proper new URLs, so you can either use the sdk normally
-   or find the URLs from there).
+ - The transition from the old to the new CI occured around here. To avoid
+   ambiguity while both CIs were still generating builds, we just tagged a new
+   one (1.38.33) on the new CI and skipped 1.38.32.
+ - The transition also moves all builds and downloads away from the old
+   mozilla-games infrastructure to the new chromium ones. As a result all links
+   to *mozilla-games* URLs will not work (these were never documented, but could
+   be seen from the internals of the emsdk; the new emsdk uses the proper new
+   URLs, so you can either use the sdk normally or find the URLs from there).
 
 v1.38.31: 04/24/2019
 --------------------
- - Change ino_t/off_t to 64-bits. (#8467)
+ - Change `ino_t/off_t` to 64-bits. (#8467)
  - Add port for bzip2 library (`libbz2.a`). (#8349)
  - Add port for libjpeg library. (#8361)
- - Enable ERROR_ON_MISSING_LIBRARIES by by default (#8461)
+ - Enable `ERROR_ON_MISSING_LIBRARIES` by by default (#8461)
 
 v1.38.30: 03/21/2019
 --------------------
@@ -216,7 +219,7 @@ v1.38.29: 03/11/2019
 
 v1.38.28: 02/22/2019
 --------------------
- - Option -s EMTERPRETIFY_WHITELIST now accepts shell-style wildcards;
+ - Option `-s EMTERPRETIFY_WHITELIST` now accepts shell-style wildcards;
    this allows matching static functions with conflicting names that
    the linker distinguishes by appending a random suffix.
  - Normalize mouse wheel delta in `library_browser.js`. This changes the scroll
@@ -224,9 +227,9 @@ v1.38.28: 02/22/2019
 
 v1.38.27: 02/10/2019
 --------------------
- - Change how EMCC_LOCAL_PORTS works, to be more usable. See #7963
+ - Change how `EMCC_LOCAL_PORTS` works, to be more usable. See #7963
  - Remove deprecated Pointer_stringify (use UTF8ToString instead). See #8011
- - Added a new option -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 that
+ - Added a new option `-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1` that
    changes the lookup semantics of DOM elements in html5.h event handler
    callback and WebGL context creation. New behavior is to use CSS selector
    strings to look up DOM elements over the old behavior, which was somewhat
@@ -245,7 +248,7 @@ v1.38.26: 02/04/2019
 v1.38.25: 01/18/2019
 --------------------
  - Move kripken/emscripten,emscripten-fastcomp,emscripten-fastcomp-clang to
-   emscripten-core/*
+   emscripten-core/\*
 
 v1.38.24: 01/17/2019
 --------------------
@@ -261,7 +264,7 @@ v1.38.22: 01/08/2019
 --------------------
  - Add Regal port. See #7674
  - System libraries have been renamed to include the `lib` prefix.  If you use
-   EMCC_FORCE_STDLIBS or EMCC_ONLY_FORCED_STDLIBS to select system libraries
+   `EMCC_FORCE_STDLIBS` or `EMCC_ONLY_FORCED_STDLIBS` to select system libraries
    you may need to add the `lib` prefix.
  - Rename `pthread-main.js` to `NAME.worker.js`, where `NAME` is the main
    name of your application, that is, if you emit `program.js` then you'll get
