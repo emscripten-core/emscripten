@@ -2547,14 +2547,7 @@ done.
     self.assertNotExists('a.out.js')
     self.assertNotExists('a.out')
     # Test explicitly that the output contains a line typically written by the preprocessor.
-    # Clang outputs on Windows lines like "#line 1", on Unix '# 1 '.
-    # TODO: This is one more of those platform-specific discrepancies,
-    # investigate more if this ever becomes an issue, ideally we would have emcc
-    # output identical data on all platforms.
-    if WINDOWS:
-      self.assertContained('#line 1 ', out)
-    else:
-      self.assertContained('# 1 ', out)
+    self.assertContained('# 1 ', out)
     self.assertContained('hello_world.c"', out)
     self.assertContained('printf("hello, world!', out)
 
