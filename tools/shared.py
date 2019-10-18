@@ -1905,15 +1905,10 @@ class Building(object):
 
     # in standalone mode, crt1 will call the constructors from inside the wasm
     if not Settings.STANDALONE_WASM:
-      cmd += [
-        '--export',
-        '__wasm_call_ctors',
-      ]
+      cmd += ['--export', '__wasm_call_ctors']
 
-    cmd += [
-      '--export',
-      '__data_end'
-    ]
+    cmd += ['--export', '__data_end']
+
     for export in Settings.EXPORTED_FUNCTIONS:
       cmd += ['--export', export[1:]] # Strip the leading underscore
 
