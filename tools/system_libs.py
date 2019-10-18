@@ -748,6 +748,7 @@ class libc_wasm(MuslInternalLibrary):
 
 class crt1(MuslInternalLibrary):
   name = 'crt1'
+  cflags = ['-O2']
   src_dir = ['system', 'lib', 'libc']
   src_files = ['crt1.c']
 
