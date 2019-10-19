@@ -684,7 +684,7 @@ var FILESYSTEM = 1;
 // some JS that does, you might need this.
 var FORCE_FILESYSTEM = 0;
 
-// Enables support for the IDBFS filesystem backend. This is a special
+// Enables support for the NODERAWFS filesystem backend. This is a special
 // backend as it replaces all normal filesystem access with direct Node.js
 // operations, without the need to do `FS.mount()`, and this backend only
 // works with Node.js. The initial working directory will be same as
