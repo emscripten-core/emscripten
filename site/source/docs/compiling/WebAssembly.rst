@@ -40,20 +40,19 @@ There are some differences you may notice between the two backends, if you upgra
 
 * ``WASM=0`` behaves differently in the two backends. In fastcomp we emit asm.js, while in upstream we emit JS (since not all wasm constructs can be expressed in asm.js). Also, the JS support implements the same external ``WebAssembly.*`` API, so in particular startup will be async just like wasm by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even though ``WASM=0``).
 
-* The wasm backend uses wasm object files by default. That means that do codegen
-  at the compile step, which makes the link step much faster - like a normal
-  native compiler. For comparison, in fastcomp the compile step emits LLVM IR
-  in object files.
+* The wasm backend uses wasm object files by default. That means that it does
+  codegen at the compile step, which makes the link step much faster - like a
+  normal native compiler. For comparison, in fastcomp the compile step emits
+  LLVM IR in object files.
 
   * You normally wouldn't notice this, but some compiler flags affect codegen,
     like ``DISABLE_EXCEPTION_CATCHING``. Such flags must be passed during
-    codegen. The simple and safe thing is to pass ``-s`` flags that affect
-    codegen at both compile and link time (you can also just pass all ``-s``
-    flags at both times).
+    codegen. The simple and safe thing is to pass all ``-s`` flags at both
+    compile and link time.
 
   * You can disable wasm object files with ``-s WASM_OBJECT_FILES=0``, which
-    will make the wasm backend behave more like fastcomp. Note that both
-    fastcomp and the wasm backend without wasm object files will not run the
+    will make the wasm backend behave more like fastcomp. Neither
+    fastcomp nor the wasm backend without wasm object files will run the
     LLVM optimization passes by default, even if using LLVM IR in object files;
     for that you must pass ``--llvm-lto 1``.
 
