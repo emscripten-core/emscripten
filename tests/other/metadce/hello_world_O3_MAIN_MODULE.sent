@@ -6,7 +6,6 @@ __stack_pointer
 __syscall10
 __syscall102
 __syscall114
-__syscall118
 __syscall12
 __syscall121
 __syscall122
@@ -16,7 +15,6 @@ __syscall133
 __syscall14
 __syscall142
 __syscall144
-__syscall145
 __syscall147
 __syscall148
 __syscall15
@@ -118,6 +116,7 @@ fd_close
 fd_fdstat_get
 fd_read
 fd_seek
+fd_sync
 fd_write
 fork
 fp$__stdio_close$ii

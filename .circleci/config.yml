@@ -3,7 +3,7 @@ version: 2.1
 executors:
   bionic:
     docker:
-      - image: buildpack-deps:bionic
+      - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
@@ -84,12 +84,6 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            # openjdk-9 is also available, but hits #7232
-            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
-      - run:
           name: run tests
           command: |
             python3 tests/runner.py << parameters.test_targets >>
@@ -122,15 +116,6 @@ commands:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
-            # preseed packages so that apt-get won't prompt for user input
-            echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
-            echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
-            apt-get install -q -y dbus-x11 firefox menu openbox ttf-mscorefonts-installer xinit xserver-xorg xserver-xorg-video-dummy
       - run:
           name: download firefox
           command: |
@@ -230,18 +215,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            # install chromium-browser in order to ensure we have most of the
-            # dependecies for chrome.
-            EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
-            apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
-      - run:
           name: download chrome
           command: |
-            # TODO: return to using beta once it stabilizes
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
           name: run tests
@@ -263,11 +239,6 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake
       - run:
           name: install emsdk
           command: |
@@ -309,25 +280,11 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run:
-          name: install sphinx
-          command: |
-            apt-get update -q
-            DEBIAN_FRONTEND=noninteractive apt-get install -q -y sphinx-common
       - run: make -C site html
   flake8:
     executor: bionic
     steps:
       - checkout
-      - run:
-          name: install pip
-          command: |
-            apt-get update -q
-            apt-get install -q -y python-pip python3-pip
-      - run: python2 -m pip install --upgrade pip
-      - run: python3 -m pip install --upgrade pip
-      - run: python2 -m pip install flake8==3.7.8
-      - run: python3 -m pip install flake8==3.7.8
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-other:
@@ -420,11 +377,6 @@ jobs:
   build-upstream-linux:
     executor: bionic
     steps:
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake
       - checkout
       - run:
           name: get wasmer

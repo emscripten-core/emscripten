@@ -251,16 +251,6 @@ ___cxa_current_primary_exception
 ___cxa_decrement_exception_refcount
 ___cxa_end_catch
 ___cxa_find_matching_catch
-___cxa_find_matching_catch_0
-___cxa_find_matching_catch_1
-___cxa_find_matching_catch_2
-___cxa_find_matching_catch_3
-___cxa_find_matching_catch_4
-___cxa_find_matching_catch_5
-___cxa_find_matching_catch_6
-___cxa_find_matching_catch_7
-___cxa_find_matching_catch_8
-___cxa_find_matching_catch_9
 ___cxa_free_exception
 ___cxa_get_exception_ptr
 ___cxa_increment_exception_refcount
@@ -290,7 +280,6 @@ ___syscall10
 ___syscall102
 ___syscall104
 ___syscall114
-___syscall118
 ___syscall12
 ___syscall121
 ___syscall122
@@ -300,7 +289,6 @@ ___syscall133
 ___syscall14
 ___syscall142
 ___syscall144
-___syscall145
 ___syscall147
 ___syscall148
 ___syscall15
@@ -400,6 +388,8 @@ ___syscall96
 ___syscall97
 ___unlock
 ___wait
+___wasi_args_get
+___wasi_args_sizes_get
 ___wasi_emscripten_get_environ
 ___wasi_environ_get
 ___wasi_environ_sizes_get
@@ -407,6 +397,7 @@ ___wasi_fd_close
 ___wasi_fd_fdstat_get
 ___wasi_fd_read
 ___wasi_fd_seek
+___wasi_fd_sync
 ___wasi_fd_write
 ___wasi_proc_exit
 __addDays
@@ -571,6 +562,8 @@ _alcOpenDevice
 _alcProcessContext
 _alcSuspendContext
 _arc4random
+_args_get
+_args_sizes_get
 _asctime
 _asctime_r
 _atexit
@@ -1060,6 +1053,7 @@ _fd_close
 _fd_fdstat_get
 _fd_read
 _fd_seek
+_fd_sync
 _fd_write
 _fexecve
 _filledEllipseColor
