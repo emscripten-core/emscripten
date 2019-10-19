@@ -1037,11 +1037,20 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name[0] === '.') {
+      if (name === '.') { // XXX name[0]?
         id = 1;
         type = 4; // DT_DIR
       } else {
-        var child = FS.lookupNode(stream.node, name);
+        try {
+          var child = FS.lookupNode(stream, name);
+        } catch (e) {
+          if (!(e instanceof FS.ErrnoError) || e.errno !== {{{ cDefine('EACCES') }}}) {
+            throw e;
+          }
+          // Access denied; skip it in the directory listing.
+          idx++;
+          continue;
+        }
         id = child.id;
         type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
                FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.

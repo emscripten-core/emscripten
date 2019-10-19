@@ -25,6 +25,11 @@ mergeInto(LibraryManager.library, {
         "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
         "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
       };
+#if ASSERTIONS
+      // The 0 define must match on both sides, as otherwise we would not
+      // know to add it.
+      assert(NODEFS.flagsForNodeMap["0"] === 0);
+#endif
     },
     bufferFrom: function (arrayBuffer) {
       // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
@@ -78,10 +83,11 @@ mergeInto(LibraryManager.library, {
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
     flagsForNode: function(flags) {
-      flags &= ~0x200000 /*O_PATH*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x800 /*O_NONBLOCK*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x8000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      flags &= ~0x80000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
+      flags &= ~{{{ cDefine('O_PATH') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefine('O_NONBLOCK') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefine('O_LARGEFILE') }}}; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~{{{ cDefine('O_CLOEXEC') }}}; // Some applications may pass it; it makes no sense for a single process.
+      flags &= ~{{{ cDefine('O_DIRECTORY') }}}; // Node.js doesn't need this passed in, it errors.
       var newFlags = 0;
       for (var k in NODEFS.flagsForNodeMap) {
         if (flags & k) {
@@ -89,7 +95,6 @@ mergeInto(LibraryManager.library, {
           flags ^= k;
         }
       }
-
       if (!flags) {
         return newFlags;
       } else {

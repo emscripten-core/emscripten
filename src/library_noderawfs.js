@@ -35,7 +35,7 @@ mergeInto(LibraryManager.library, {
     symlink: function() { fs.symlinkSync.apply(void 0, arguments); },
     rename: function() { fs.renameSync.apply(void 0, arguments); },
     rmdir: function() { fs.rmdirSync.apply(void 0, arguments); },
-    readdir: function() { fs.readdirSync.apply(void 0, arguments); },
+    readdir: function() { return fs.readdirSync.apply(void 0, arguments); },
     unlink: function() { fs.unlinkSync.apply(void 0, arguments); },
     readlink: function() { return fs.readlinkSync.apply(void 0, arguments); },
     stat: function() { return fs.statSync.apply(void 0, arguments); },
