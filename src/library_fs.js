@@ -540,6 +540,13 @@ mergeInto(LibraryManager.library, {
       });
     },
     mount: function(type, opts, mountpoint) {
+#if ASSERTIONS
+      if (typeof type === 'string') {
+        // The filesystem was not included, and instead we have an error
+        // message stored in the variable.
+        throw type;
+      }
+#endif
       var root = mountpoint === '/';
       var pseudo = !mountpoint;
       var node;

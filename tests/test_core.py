@@ -108,6 +108,7 @@ def also_with_noderawfs(func):
   def decorated(self):
     orig_args = self.emcc_args[:]
     func(self)
+    print('noderawfs')
     self.emcc_args = orig_args + ['-s', 'NODERAWFS=1', '-DNODERAWFS']
     func(self, js_engines=[NODE_JS])
   return decorated
@@ -4775,6 +4776,8 @@ Module = {
       print(fs)
       src = open(path_from_root('tests', 'stdio', 'test_fgetc_ungetc.c')).read()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run(src, 'success', force_c=True, js_engines=[NODE_JS])
 
   def test_fgetc_unsigned(self):
@@ -5025,6 +5028,7 @@ main( int argv, char ** argc ) {
   @also_with_noderawfs
   @is_slow_test
   def test_fs_nodefs_rw(self, js_engines=[NODE_JS]):
+    self.emcc_args += ['-lnodefs.js']
     self.set_setting('SYSCALL_DEBUG', 1)
     src = open(path_from_root('tests', 'fs', 'test_nodefs_rw.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
@@ -5035,11 +5039,13 @@ main( int argv, char ** argc ) {
 
   @also_with_noderawfs
   def test_fs_nodefs_cloexec(self, js_engines=[NODE_JS]):
+    self.emcc_args += ['-lnodefs.js']
     src = open(path_from_root('tests', 'fs', 'test_nodefs_cloexec.c')).read()
     self.do_run(src, 'success', force_c=True, js_engines=js_engines)
 
   def test_fs_nodefs_home(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.emcc_args += ['-lnodefs.js']
     src = open(path_from_root('tests', 'fs', 'test_nodefs_home.c')).read()
     self.do_run(src, 'success', js_engines=[NODE_JS])
 
@@ -5123,6 +5129,8 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'access.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
     if not WINDOWS:
@@ -5173,6 +5181,8 @@ main( int argv, char ** argc ) {
       src = open(path_from_root('tests', 'unistd', 'truncate.c')).read()
       expected = open(path_from_root('tests', 'unistd', 'truncate.out')).read()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows("Windows throws EPERM rather than EACCES or EINVAL")
@@ -5222,6 +5232,7 @@ main( int argv, char ** argc ) {
       # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
       # so skip testing those bits on that combination.
       if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
         if WINDOWS:
           self.emcc_args += ['-DNO_SYMLINK=1']
         if MACOS:
@@ -5249,6 +5260,8 @@ main( int argv, char ** argc ) {
         # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
         continue
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
@@ -5256,6 +5269,7 @@ main( int argv, char ** argc ) {
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
+    self.emcc_args += ['-lnodefs.js']
     self.clear()
     src = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'symlink_on_nodefs.out')).read()
@@ -5275,6 +5289,8 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
@@ -5284,6 +5300,8 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'misc.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
   def test_posixtime(self):
@@ -7774,16 +7792,57 @@ extern "C" {
 
   def test_fs_dict(self):
     self.set_setting('FORCE_FILESYSTEM', 1)
+    self.emcc_args += ['-lidbfs.js']
+    self.emcc_args += ['-lnodefs.js']
     create_test_file('pre.js', '''
       Module = {};
       Module['preRun'] = function() {
-          out(typeof FS.filesystems['MEMFS']);
-          out(typeof FS.filesystems['IDBFS']);
-          out(typeof FS.filesystems['NODEFS']);
+        out(typeof FS.filesystems['MEMFS']);
+        out(typeof FS.filesystems['IDBFS']);
+        out(typeof FS.filesystems['NODEFS']);
+        // Globals
+        console.log(typeof MEMFS);
+        console.log(typeof IDBFS);
+        console.log(typeof NODEFS);
       };
     ''')
     self.emcc_args += ['--pre-js', 'pre.js']
-    self.do_run('int main() { return 0; }', 'object\nobject\nobject')
+    self.do_run('int main() { return 0; }', 'object\nobject\nobject\nobject\nobject\nobject')
+
+  def test_fs_dict_none(self):
+    # if IDBFS and NODEFS are not enabled, they are not present.
+    self.set_setting('FORCE_FILESYSTEM', 1)
+    self.set_setting('ASSERTIONS', 1)
+    create_test_file('pre.js', '''
+      Module = {};
+      Module['preRun'] = function() {
+        out(typeof FS.filesystems['MEMFS']);
+        out(typeof FS.filesystems['IDBFS']);
+        out(typeof FS.filesystems['NODEFS']);
+        // Globals
+        if (ASSERTIONS) {
+          console.log(typeof MEMFS);
+          console.log(IDBFS);
+          console.log(NODEFS);
+          FS.mkdir('/working1');
+          try {
+            FS.mount(IDBFS, {}, '/working1');
+          } catch (e) {
+            console.log('|' + e + '|');
+          }
+        }
+      };
+    ''')
+    self.emcc_args += ['--pre-js', 'pre.js']
+    expected = '''\
+object
+undefined
+undefined
+object
+IDBFS is no longer included by default; build with -lidbfs.js
+NODEFS is no longer included by default; build with -lnodefs.js
+|IDBFS is no longer included by default; build with -lidbfs.js|'''
+    self.do_run('int main() { return 0; }', expected)
 
   @sync
   @no_wasm_backend("https://github.com/emscripten-core/emscripten/issues/9039")
