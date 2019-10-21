@@ -19,7 +19,7 @@ Open a terminal in the directory in which you installed Emscripten (on Windows o
 
   ./emcc -v
 
-.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**.
+.. note:: On Windows, invoke the tool with **emcc** instead of **./emcc**.
 
 For example, the following output reports an installation where Java is missing::
   :emphasize-lines: 6

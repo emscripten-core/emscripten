@@ -86,27 +86,16 @@ var LibraryManager = {
         'library_fs.js',
         'library_memfs.js',
         'library_tty.js',
-        'library_pipefs.js',
+        'library_pipefs.js', // ok to include it by default since it's only used if the syscall is used
+        'library_sockfs.js', // ok to include it by default since it's only used if the syscall is used
       ]);
 
-      // Additional filesystem libraries (without AUTO_JS_LIBRARIES, link to these explicitly via -lxxx.js)
-      if (AUTO_JS_LIBRARIES) {
-        if (ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER) {
-          libraries = libraries.concat([
-            'library_idbfs.js',
-            'library_proxyfs.js',
-            'library_sockfs.js',
-            'library_workerfs.js',
-          ]);
+      if (NODERAWFS) {
+        // NODERAWFS requires NODEFS
+        if (SYSTEM_JS_LIBRARIES.indexOf('library_nodefs.js') < 0) {
+          libraries.push('library_nodefs.js');
         }
-        if (ENVIRONMENT_MAY_BE_NODE) {
-          libraries = libraries.concat([
-            'library_nodefs.js',
-          ]);
-        }
-        if (NODERAWFS) {
-          libraries.push('library_noderawfs.js')
-        }
+        libraries.push('library_noderawfs.js');
       }
     }
 

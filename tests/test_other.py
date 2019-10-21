@@ -3017,6 +3017,7 @@ myreade(){
                  '-o', 'proxyfs_test.js', 'proxyfs_test.c',
                  '--embed-file', 'proxyfs_embed.txt', '--pre-js', 'proxyfs_pre.js',
                  '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ccall", "cwrap"]',
+                 '-lproxyfs.js',
                  '-s', 'WASM_ASYNC_COMPILATION=0',
                  '-s', 'MAIN_MODULE=1',
                  '-s', 'EXPORT_ALL=1'])
@@ -5272,8 +5273,8 @@ main(const int argc, const char * const * const argv)
     self.assertContained('hello, world!', run_js('a.out.js'))
     self.assertNotContained(FS_MARKER, open('a.out.js').read())
     print('yes fs, no fs:', yes_size, no_size)
-    # 100K of FS code is removed
-    self.assertGreater(yes_size - no_size, 100000)
+    # ~100K of FS code is removed
+    self.assertGreater(yes_size - no_size, 90000)
     self.assertLess(no_size, 360000)
 
   def test_no_filesystem_libcxx(self):
@@ -6822,7 +6823,7 @@ main(int argc, char **argv)
 }
 ''')
     create_test_file('TEST_NODEFS.txt', ' ')
-    run_process([PYTHON, EMCC, 'src.c'])
+    run_process([PYTHON, EMCC, 'src.c', '-lnodefs.js'])
     self.assertContained('Resolved: /working/TEST_NODEFS.txt', run_js('a.out.js'))
 
   def test_realpath_2(self):
@@ -8103,7 +8104,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1610, [], [], 226403, None, 107, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1600, [], [], 226403, None, 107, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
@@ -8115,13 +8116,13 @@ int main() {
                            3, [], [], 6100,  2,  3,  5),         # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
-                           3, [], [], 6423,  3,  4,  5),         # noqa
+                           3, [], [], 6309,  3,  3,  4),         # noqa
     # Growth support code is in JS, no significant change in the wasm
     'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
                            3, [], [], 6098,  2,  3,  5),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           4, [], [], 6563,  4,  4,  6),         # noqa
+                           4, [], [], 6449,  4,  3,  5),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, *args):
@@ -8222,7 +8223,7 @@ int main() {
     run_process(cmd)
 
     # build main module
-    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME=1']
+    args = ['-s', 'EXPORTED_FUNCTIONS=["_main", "_foo"]', '-s', 'MAIN_MODULE=2', '-s', 'EXIT_RUNTIME=1', '-lnodefs.js']
     cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'alias', 'main.c'), '-o', 'main.js'] + args
     print(' '.join(cmd))
     run_process(cmd)

@@ -23,6 +23,12 @@ Current Trunk
    on the Web).
  - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
    but without blocking.
+ - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
+   must be linked in explicitly, using `-lnodefs.js`, `-lidbfs.js`',
+   `-lworkerfs.js`, `-lproxyfs.js`. See #9645
+
+v1.39.0: 10/18/2019
+-------------------
  - Add support for overriding `.emscripten` config variables using environment
    variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
    environment.
