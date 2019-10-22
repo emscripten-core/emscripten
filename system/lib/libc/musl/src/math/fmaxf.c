@@ -6,7 +6,8 @@ float fmaxf(float x, float y)
 		return y;
 	if (isnan(y))
 		return x;
-#ifdef __EMSCRIPTEN__
+// XXX EMSCRIPTEN: use wasm builtins for code size
+#ifdef __wasm__
 	return __builtin_wasm_max_f32(x, y);
 #else
 	/* handle signed zeroes, see C99 Annex F.9.9.2 */
