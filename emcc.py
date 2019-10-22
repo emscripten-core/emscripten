@@ -2693,7 +2693,7 @@ def parse_args(newargs):
       newargs[i + 1] = ''
     elif newargs[i].startswith('--js-library'):
       check_bad_eq(newargs[i])
-      shared.Settings.SYSTEM_JS_LIBRARIES.append(newargs[i + 1])
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(os.path.abspath(newargs[i + 1]))
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i] == '--remove-duplicates':
