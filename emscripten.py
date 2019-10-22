@@ -2366,6 +2366,9 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   if all_sigs:
     # emit the signature-reading helper function only if we have any EM_ASM
     # functions in the module
+    check = ''
+    if shared.Settings.ASSERTIONS:
+      check = ' else abort("unexpected char in asm const signature " + ch);'
     asm_const_funcs.append(r'''
 // Avoid creating a new array
 var _readAsmConstArgsArray = [];
@@ -2384,12 +2387,10 @@ function readAsmConstArgs(sigPtr, buf) {
       buf = alignMemory(buf, 4);
       args.push(HEAP32[(buf >> 2)]);
       buf += 4;
-    } else {
-      abort();
-    }
+    }%s
   }
 }
-''')
+''' % check)
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
