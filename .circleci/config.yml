@@ -121,7 +121,7 @@ commands:
           command: |
             # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
             # which requires very latest nightly as of Jul 13 2019
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -130,6 +130,7 @@ commands:
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
+            user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
             EOF
       - run:
           name: configure openbox
