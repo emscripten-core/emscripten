@@ -241,7 +241,6 @@ class EmccOptions(object):
     self.ignore_dynamic_linking = False
     self.shell_path = shared.path_from_root('src', 'shell.html')
     self.source_map_base = ''
-    self.js_libraries = []
     self.emrun = False
     self.cpu_profiler = False
     self.thread_profiler = False
@@ -465,11 +464,11 @@ def find_output_arg(args):
   return specified_target, outargs
 
 
-def do_emscripten(infile, memfile, js_libraries):
+def do_emscripten(infile, memfile):
   # Run Emscripten
   outfile = infile + '.o.js'
   with ToolchainProfiler.profile_block('emscripten.py'):
-    emscripten.run(infile, outfile, memfile, js_libraries)
+    emscripten.run(infile, outfile, memfile)
 
   # Detect compilation crashes and errors
   assert os.path.exists(outfile), 'Emscripten failed to generate .js'
@@ -1243,12 +1242,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.FILESYSTEM = 0
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
-      options.js_libraries.append(shared.path_from_root('src', 'library_asmfs.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_asmfs.js'))
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
       forced_stdlibs.append('libfetch')
       next_arg_index += 1
-      options.js_libraries.append(shared.path_from_root('src', 'library_fetch.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_fetch.js'))
       if shared.Settings.USE_PTHREADS:
         shared.Settings.FETCH_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.fetch.js'
 
@@ -1362,7 +1361,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           logging.warning('USE_PTHREADS + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
       # UTF8Decoder.decode doesn't work with a view of a SharedArrayBuffer
       shared.Settings.TEXTDECODER = 0
-      options.js_libraries.append(shared.path_from_root('src', 'library_pthread.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_pthread.js'))
       newargs.append('-D__EMSCRIPTEN_PTHREADS__=1')
       if shared.Settings.WASM_BACKEND:
         newargs += ['-pthread']
@@ -1376,7 +1375,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # set location of worker.js
       shared.Settings.PTHREAD_WORKER_FILE = unsuffixed(os.path.basename(target)) + '.worker.js'
     else:
-      options.js_libraries.append(shared.path_from_root('src', 'library_pthread_stub.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_pthread_stub.js'))
 
     if shared.Settings.FORCE_FILESYSTEM and not shared.Settings.MINIMAL_RUNTIME:
       # when the filesystem is forced, we export by default methods that filesystem usage
@@ -1799,8 +1798,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.CYBERDWARF:
       options.debug_level = max(options.debug_level, 2)
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
-      options.js_libraries.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
-      options.js_libraries.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
 
     if options.tracing:
       if shared.Settings.ALLOW_MEMORY_GROWTH:
@@ -2208,9 +2207,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     with ToolchainProfiler.profile_block('emscript'):
       # Emscripten
       logger.debug('LLVM => JS')
-      js_libraries = None
-      if options.js_libraries:
-        js_libraries = [os.path.abspath(lib) for lib in options.js_libraries]
       if options.memory_init_file:
         shared.Settings.MEM_INIT_METHOD = 1
       else:
@@ -2219,7 +2215,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = do_emscripten(final, target + '.mem', js_libraries)
+      final = do_emscripten(final, target + '.mem')
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
@@ -2639,7 +2635,7 @@ def parse_args(newargs):
       newargs[i] = ''
       newargs.append('-D__EMSCRIPTEN_TRACING__=1')
       settings_changes.append("EMSCRIPTEN_TRACING=1")
-      options.js_libraries.append(shared.path_from_root('src', 'library_trace.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_trace.js'))
     elif newargs[i] == '--emit-symbol-map':
       options.emit_symbol_map = True
       shared.Settings.EMIT_SYMBOL_MAP = 1
@@ -2647,8 +2643,8 @@ def parse_args(newargs):
     elif newargs[i] == '--bind':
       shared.Settings.EMBIND = 1
       newargs[i] = ''
-      options.js_libraries.append(shared.path_from_root('src', 'embind', 'emval.js'))
-      options.js_libraries.append(shared.path_from_root('src', 'embind', 'embind.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
       if options.default_cxx_std:
         # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
         options.default_cxx_std = '-std=c++11'
@@ -2697,7 +2693,7 @@ def parse_args(newargs):
       newargs[i + 1] = ''
     elif newargs[i].startswith('--js-library'):
       check_bad_eq(newargs[i])
-      options.js_libraries.append(newargs[i + 1])
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i] == '--remove-duplicates':
@@ -3527,7 +3523,7 @@ def process_libraries(libs, lib_dirs, temp_files):
         libraries += jslibs
         consumed.append(i)
 
-  shared.Settings.SYSTEM_JS_LIBRARIES = libraries
+  shared.Settings.SYSTEM_JS_LIBRARIES += libraries
   return consumed
 
 
