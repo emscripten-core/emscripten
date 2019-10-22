@@ -2366,28 +2366,31 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   if all_sigs:
     # emit the signature-reading helper function only if we have any EM_ASM
     # functions in the module
+    check = ''
+    if shared.Settings.ASSERTIONS:
+      check = ' else abort("unexpected char in asm const signature " + ch);'
     asm_const_funcs.append(r'''
-function readAsmConstArgs(sig_ptr, buf) {
-  var args = [];
-  var sig = AsciiToString(sig_ptr);
-  function align_to(ptr, align) {
-    return (ptr+align-1) & ~(align-1);
-  }
-  for (var i = 0; i < sig.length; i++) {
-    var c = sig[i];
-    if (c == 'd' || c == 'f') {
-      buf = align_to(buf, 8);
+// Avoid creating a new array
+var _readAsmConstArgsArray = [];
+
+function readAsmConstArgs(sigPtr, buf) {
+  var args = _readAsmConstArgsArray;
+  args.length = 0;
+  while (1) {
+    var ch = HEAPU8[sigPtr++];
+    if (!ch) return args;
+    if (ch === 'd'.charCodeAt(0) || ch === 'f'.charCodeAt(0)) {
+      buf = alignMemory(buf, 8);
       args.push(HEAPF64[(buf >> 3)]);
       buf += 8;
-    } else if (c == 'i') {
-      buf = align_to(buf, 4);
+    } else if (ch === 'i'.charCodeAt(0)) {
+      buf = alignMemory(buf, 4);
       args.push(HEAP32[(buf >> 2)]);
       buf += 4;
-    }
+    }%s
   }
-  return args;
 }
-''')
+''' % check)
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
@@ -2407,11 +2410,11 @@ function readAsmConstArgs(sig_ptr, buf) {
                      proxy_debug_print(sync_proxy) +
                      'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
                      str(int(sync_proxy)) +
-                     ', code, sig_ptr, argbuf); }')
+                     ', code, sigPtr, argbuf); }')
 
     asm_const_funcs.append(r'''
-function %s(code, sig_ptr, argbuf) {%s
-  var args = readAsmConstArgs(sig_ptr, argbuf);
+function %s(code, sigPtr, argbuf) {%s
+  var args = readAsmConstArgs(sigPtr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   return asm_consts, asm_const_funcs
