@@ -6556,6 +6556,7 @@ main(int argc,char** argv)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
 
+  @no_fastcomp
   def test_main_module_without_exceptions_message(self):
     # A side module that needs exceptions needs a main module with that
     # support enabled; show a clear message in that case.
