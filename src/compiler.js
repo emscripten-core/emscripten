@@ -144,6 +144,7 @@ load('utility.js');
 // Load settings, can be overridden by commandline
 
 load('settings.js');
+load('settings_internal.js');
 
 var settings_file = arguments_[0];
 additionalLibraries = Array.prototype.slice.call(arguments_, 1);

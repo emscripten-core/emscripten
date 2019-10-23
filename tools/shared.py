@@ -56,6 +56,13 @@ def exit_with_error(msg, *args):
   sys.exit(1)
 
 
+# TODO(sbc): Convert all caller to WarningManager
+def warning(msg, *args):
+  logger.warning(str(msg), *args)
+  if Settings.WARNINGS_ARE_ERRORS:
+    exit_with_error('treating warnings as errors (-Werror)')
+
+
 # On Windows python suffers from a particularly nasty bug if python is spawning
 # new processes while python itself is spawned from some other non-console
 # process.
@@ -149,11 +156,11 @@ class Py2CompletedProcess:
     self.stderr = stderr
 
   def __repr__(self):
-    _repr = ['args=%s, returncode=%s' % (self.args, self.returncode)]
+    _repr = ['args=%s' % repr(self.args), 'returncode=%s' % self.returncode]
     if self.stdout is not None:
-      _repr += 'stdout=' + repr(self.stdout)
+      _repr.append('stdout=' + repr(self.stdout))
     if self.stderr is not None:
-      _repr += 'stderr=' + repr(self.stderr)
+      _repr.append('stderr=' + repr(self.stderr))
     return 'CompletedProcess(%s)' % ', '.join(_repr)
 
   def check_returncode(self):
@@ -195,7 +202,7 @@ def check_call(cmd, *args, **kw):
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
-  config_file = open(path_from_root('tools', 'settings_template_readonly.py')).read().splitlines()
+  config_file = open(path_from_root('tools', 'settings_template.py')).read().splitlines()
   config_file = config_file[3:] # remove the initial comment
   config_file = '\n'.join(config_file)
   # autodetect some default paths
@@ -231,13 +238,19 @@ This command will now exit. When you are done editing those paths, re-run it.
 ''' % (path, abspath, llvm_root, node, __rootpath__), file=sys.stderr)
 
 
-# Emscripten configuration is done through the --em-config command line option or
-# the EM_CONFIG environment variable. If the specified string value contains newline
-# or semicolon-separated definitions, then these definitions will be used to configure
-# Emscripten.  Otherwise, the string is understood to be a path to a settings
-# file that contains the required definitions.
+# Emscripten configuration is done through the --em-config command line option
+# or the EM_CONFIG environment variable. If the specified string value contains
+# newline or semicolon-separated definitions, then these definitions will be
+# used to configure Emscripten.  Otherwise, the string is understood to be a
+# path to a settings file that contains the required definitions.
+# The search order from the config file is as follows:
+# 1. Specified on the command line (--em-config)
+# 2. Specified via EM_CONFIG environment variable
+# 3. If emscripten-local .emscripten file is found, use that
+# 4. Fall back users home directory (~/.emscripten).
 
-try:
+embedded_config = path_from_root('.emscripten')
+if '--em-config' in sys.argv:
   EM_CONFIG = sys.argv[sys.argv.index('--em-config') + 1]
   # And now remove it from sys.argv
   skip = False
@@ -250,22 +263,25 @@ try:
     elif skip:
       skip = False
   sys.argv = newargs
-  # Emscripten compiler spawns other processes, which can reimport shared.py, so make sure that
-  # those child processes get the same configuration file by setting it to the currently active environment.
-  os.environ['EM_CONFIG'] = EM_CONFIG
-except Exception:
-  EM_CONFIG = os.environ.get('EM_CONFIG')
-
-if EM_CONFIG and not os.path.isfile(EM_CONFIG):
-  if EM_CONFIG.startswith('-'):
-    exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
-  if '=' not in EM_CONFIG:
-    exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
-  else:
-    EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
-
-if not EM_CONFIG:
+  if not os.path.isfile(EM_CONFIG):
+    if EM_CONFIG.startswith('-'):
+      exit_with_error('Passed --em-config without an argument. Usage: --em-config /path/to/.emscripten or --em-config LLVM_ROOT=/path;...')
+    if '=' not in EM_CONFIG:
+      exit_with_error('File ' + EM_CONFIG + ' passed to --em-config does not exist!')
+    else:
+      EM_CONFIG = EM_CONFIG.replace(';', '\n') + '\n'
+elif 'EM_CONFIG' in os.environ:
+  EM_CONFIG = os.environ['EM_CONFIG']
+elif os.path.exists(embedded_config):
+  EM_CONFIG = embedded_config
+else:
   EM_CONFIG = '~/.emscripten'
+
+# Emscripten compiler spawns other processes, which can reimport shared.py, so
+# make sure that those child processes get the same configuration file by
+# setting it to the currently active environment.
+os.environ['EM_CONFIG'] = EM_CONFIG
+
 if '\n' in EM_CONFIG:
   CONFIG_FILE = None
   logger.debug('EM_CONFIG is specified inline without a file')
@@ -286,20 +302,26 @@ EM_POPEN_WORKAROUND = None
 SPIDERMONKEY_ENGINE = None
 V8_ENGINE = None
 LLVM_ROOT = None
-COMPILER_ENGINE = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
 EMSCRIPTEN_NATIVE_OPTIMIZER = None
 JAVA = None
-JS_ENGINE = None
 JS_ENGINES = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES = []
 COMPILER_OPTS = []
 FROZEN_CACHE = False
 
 
 def parse_config_file():
-  """Parse the emscripten config file using python's exec"""
+  """Parse the emscripten config file using python's exec.
+
+  Also also EM_<KEY> environment variables to override specific config keys.
+  """
+  global JS_ENGINES, JAVA, CLOSURE_COMPILER
+
   config = {}
   config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
   try:
@@ -310,26 +332,52 @@ def parse_config_file():
   CONFIG_KEYS = (
     'NODE_JS',
     'BINARYEN_ROOT',
-    'EM_POPEN_WORKAROUND',
+    'POPEN_WORKAROUND',
     'SPIDERMONKEY_ENGINE',
     'EMSCRIPTEN_NATIVE_OPTIMIZER',
     'V8_ENGINE',
     'LLVM_ROOT',
-    'COMPILER_ENGINE',
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
     'JAVA',
-    'JS_ENGINE',
     'JS_ENGINES',
+    'WASMER',
+    'WASMTIME',
+    'WASM_ENGINES',
     'COMPILER_OPTS',
     'FROZEN_CACHE',
   )
 
-  # Only popogate certain settings from the config file.
+  # Only propagate certain settings from the config file.
   for key in CONFIG_KEYS:
-    if key in config:
+    env_var = 'EM_' + key
+    env_value = os.environ.get(env_var)
+    if env_value is not None:
+      globals()[key] = env_value
+    elif key in config:
       globals()[key] = config[key]
+
+  # Certain keys are mandatory
+  for key in ('LLVM_ROOT', 'NODE_JS', 'BINARYEN_ROOT'):
+    if key not in config:
+      exit_with_error('%s is not defined in %s', key, hint_config_file_location())
+    if not globals()[key]:
+      exit_with_error('%s is set to empty value in %s', key, hint_config_file_location())
+
+  if not NODE_JS:
+    exit_with_error('NODE_JS is not defined in %s', hint_config_file_location())
+
+  # EM_CONFIG stuff
+  if not JS_ENGINES:
+    JS_ENGINES = [NODE_JS]
+
+  if CLOSURE_COMPILER is None:
+    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+
+  if JAVA is None:
+    logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
+    JAVA = 'java'
 
 
 # Returns a suggestion where current .emscripten config file might be located
@@ -360,11 +408,8 @@ parse_config_file()
 SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
 NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
 V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-COMPILER_ENGINE = listify(COMPILER_ENGINE)
 JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
-
-if EM_POPEN_WORKAROUND is None:
-  EM_POPEN_WORKAROUND = os.environ.get('EM_POPEN_WORKAROUND')
+WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
 
 # Install our replacement Popen handler if we are running on Windows to avoid
 # python spawn process function.
@@ -414,7 +459,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if expected in actual:
     return True
-  logger.warning('LLVM version appears incorrect (seeing "%s", expected "%s")' % (actual, expected))
+  warning('LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
   return False
 
 
@@ -469,10 +514,10 @@ def check_node_version():
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
-    logger.warning('node version appears too old (seeing "%s", expected "%s")' % (actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION)))))
+    warning('node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
     return False
   except Exception as e:
-    logger.warning('cannot check node version: %s', e)
+    warning('cannot check node version: %s', e)
     return False
 
 
@@ -480,10 +525,10 @@ def check_closure_compiler():
   try:
     run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
   except Exception:
-    logger.warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
+    warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
     return False
   if not os.path.exists(CLOSURE_COMPILER):
-    logger.warning('Closure compiler (%s) does not exist, check the paths in %s' % (CLOSURE_COMPILER, EM_CONFIG))
+    warning('Closure compiler (%s) does not exist, check the paths in %s', CLOSURE_COMPILER, EM_CONFIG)
     return False
   return True
 
@@ -500,7 +545,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # NB: major version 0 implies no compatibility
 # NB: when changing the metadata format, we should only append new fields, not
 #     reorder, modify, or remove existing ones.
-(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 2)
+(EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR) = (0, 3)
 # For the JS/WASM ABI, specifies the minimum ABI version required of
 # the WASM runtime implementation by the generated WASM binary. It follows
 # semver and changes whenever C types change size/signedness or
@@ -509,7 +554,7 @@ EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = pa
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 6)
+(EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR) = (0, 19)
 
 
 def generate_sanity():
@@ -520,8 +565,8 @@ def perform_sanify_checks():
   logger.info('(Emscripten: Running sanity checks)')
 
   with ToolchainProfiler.profile_block('sanity compiler_engine'):
-    if not jsrun.check_engine(COMPILER_ENGINE):
-      exit_with_error('The JavaScript shell used for compiling (%s) does not seem to work, check the paths in %s', COMPILER_ENGINE, EM_CONFIG)
+    if not jsrun.check_engine(NODE_JS):
+      exit_with_error('The configured node executable (%s) does not seem to work, check the paths in %s', NODE_JS, EM_CONFIG)
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
@@ -531,7 +576,7 @@ def perform_sanify_checks():
   # Sanity check passed!
   with ToolchainProfiler.profile_block('sanity closure compiler'):
     if not check_closure_compiler():
-      logger.warning('closure compiler will not be available')
+      warning('closure compiler will not be available')
 
 
 def check_sanity(force=False):
@@ -572,9 +617,9 @@ def check_sanity(force=False):
 
     if reason:
       if FROZEN_CACHE:
-        logger.warning('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
+        logger.info('(Emscripten: %s, cache may need to be cleared, but FROZEN_CACHE is set)' % reason)
       else:
-        logger.warning('(Emscripten: %s, clearing cache)' % reason)
+        logger.info('(Emscripten: %s, clearing cache)' % reason)
         Cache.erase()
         # the check actually failed, so definitely write out the sanity file, to
         # avoid others later seeing failures too
@@ -849,10 +894,12 @@ class WarningManager(object):
 
   @staticmethod
   def warn(warning_type, message=None):
-    warning = WarningManager.warnings[warning_type]
-    if warning['enabled'] and not warning['printed']:
-      warning['printed'] = True
-      logger.warning((message or warning['message']) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+    warning_info = WarningManager.warnings[warning_type]
+    if warning_info['enabled'] and not warning_info['printed']:
+      warning_info['printed'] = True
+      if message is None:
+        message = warning_info['message']
+      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
 
 class Configuration(object):
@@ -888,20 +935,6 @@ def apply_configuration():
 
 apply_configuration()
 
-# EM_CONFIG stuff
-if JS_ENGINES is None:
-  if JS_ENGINE is None:
-    raise 'ERROR: %s does not seem to have JS_ENGINES or JS_ENGINE set up' % EM_CONFIG
-  else:
-    JS_ENGINES = [JS_ENGINE]
-
-if CLOSURE_COMPILER is None:
-  CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
-
-if JAVA is None:
-  logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
-  JAVA = 'java'
-
 # Additional compiler options
 
 # Target choice.
@@ -931,8 +964,11 @@ def check_vanilla():
       return has_wasm_target(targets) and not has_asm_js_target(targets)
 
     def get_vanilla_file():
+      logger.debug('regenerating vanilla file: %s' % LLVM_ROOT)
       saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
-      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT)
+      if os.path.exists(saved_file):
+        logger.debug('old: %s\n' % open(saved_file).read())
+      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
     is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
@@ -940,12 +976,12 @@ def check_vanilla():
       logger.debug('config file changed since we checked vanilla; re-checking')
       is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
     try:
-      contents = open(is_vanilla_file).read()
+      contents = open(is_vanilla_file).read().strip()
       middle = contents.index(':')
       is_vanilla = int(contents[:middle])
       llvm_used = contents[middle + 1:]
       if llvm_used != LLVM_ROOT:
-        logger.debug('regenerating vanilla check since other llvm')
+        logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
         temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
         is_vanilla = check_vanilla()
     except Exception as e:
@@ -1110,6 +1146,7 @@ class SettingsManager(object):
 
   class __impl(object):
     attrs = {}
+    internal_settings = set()
 
     def __init__(self):
       self.reset()
@@ -1122,6 +1159,12 @@ class SettingsManager(object):
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
       exec(settings, {'attrs': cls.attrs})
+
+      settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
+      settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      internal_attrs = {}
+      exec(settings, {'attrs': internal_attrs})
+      cls.attrs.update(internal_attrs)
 
       if 'EMCC_STRICT' in os.environ:
         cls.attrs['STRICT'] = int(os.environ.get('EMCC_STRICT'))
@@ -1147,6 +1190,8 @@ class SettingsManager(object):
 
       if get_llvm_target() == WASM_TARGET:
         cls.attrs['WASM_BACKEND'] = 1
+
+      cls.internal_settings = set(internal_attrs.keys())
 
     # Transforms the Settings information into emcc-compatible args (-s X=Y, etc.). Basically
     # the reverse of load_settings, except for -Ox which is relevant there but not here
@@ -1174,7 +1219,10 @@ class SettingsManager(object):
         cls.attrs['ASSERTIONS'] = 0
         cls.attrs['ALIASING_FUNCTION_POINTERS'] = 1
       if shrink_level >= 2:
-        cls.attrs['EVAL_CTORS'] = 1
+        # Ctor evalling in the wasm backend is disabled due to
+        # https://github.com/emscripten-core/emscripten/issues/9527
+        if not Settings.WASM_BACKEND:
+          cls.attrs['EVAL_CTORS'] = 1
 
     def keys(self):
       return self.attrs.keys()
@@ -1204,13 +1252,13 @@ class SettingsManager(object):
         self.attrs[alt_name] = value
 
       if attr not in self.attrs:
-        logger.error('Assigning a non-existent settings attribute "%s"' % attr)
+        msg = "Attempt to set a non-existent setting: '%s'\n" % attr
         suggestions = ', '.join(difflib.get_close_matches(attr, list(self.attrs.keys())))
         if suggestions:
-          logger.error(' - did you mean one of %s?' % suggestions)
-        logger.error(" - perhaps a typo in emcc's  -s X=Y  notation?")
-        logger.error(' - (see src/settings.js for valid values)')
-        sys.exit(1)
+          msg += ' - did you mean one of %s?\n' % suggestions
+        msg += " - perhaps a typo in emcc's  -s X=Y  notation?\n"
+        msg += ' - (see src/settings.js for valid values)'
+        exit_with_error(msg)
 
       self.attrs[attr] = value
 
@@ -1284,13 +1332,14 @@ verify_settings()
 # are duplicate entries in the archive
 def warn_if_duplicate_entries(archive_contents, archive_filename):
   if len(archive_contents) != len(set(archive_contents)):
-    logger.warning('%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename)
+    msg = '%s: archive file contains duplicate entries. This is not supported by emscripten. Only the last member with a given name will be linked in which can result in undefined symbols. You should either rename your source files, or use `emar` to create you archives which works around this issue.' % archive_filename
     warned = set()
     for i in range(len(archive_contents)):
       curr = archive_contents[i]
       if curr not in warned and curr in archive_contents[i + 1:]:
-        logger.warning('   duplicate: %s' % curr)
+        msg += '\n   duplicate: %s' % curr
         warned.add(curr)
+    warning(msg)
 
 
 # This function creates a temporary directory specified by the 'dir' field in
@@ -1391,7 +1440,6 @@ def demangle_c_symbol_name(name):
 #  Building
 class Building(object):
   COMPILER = CLANG
-  JS_ENGINE_OVERRIDE = None # Used to pass the JS engine override from runner.py -> test_benchmark.py
   multiprocessing_pool = None
 
   # internal caches
@@ -1803,13 +1851,13 @@ class Building(object):
 
   @staticmethod
   def link_lld(args, target, opts=[], lto_level=0):
+    if not os.path.exists(WASM_LD):
+      exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
     # runs lld to link things.
     # lld doesn't currently support --start-group/--end-group since the
     # semantics are more like the windows linker where there is no need for
     # grouping.
     args = [a for a in args if a not in ('--start-group', '--end-group')]
-    if not os.path.exists(WASM_LD) or run_process([WASM_LD, '--version'], stdout=PIPE, stderr=PIPE, check=False).returncode != 0:
-      exit_with_error('linker binary not found in LLVM direcotry: %s', WASM_LD)
 
     # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
     # include all archive contents.
@@ -1822,10 +1870,15 @@ class Building(object):
         '-o',
         target,
         '--allow-undefined',
-        '--import-memory',
-        '--import-table',
         '--lto-O%d' % lto_level,
     ] + args
+
+    # wasi does not import the memory (but for JS it is efficient to do so,
+    # as it allows us to set up memory, preload files, etc. even before the
+    # wasm module arrives)
+    if not Settings.STANDALONE_WASM:
+      cmd.append('--import-memory')
+      cmd.append('--import-table')
 
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
@@ -1850,12 +1903,12 @@ class Building(object):
     if Settings.LINKABLE:
       cmd.append('--export-all')
 
-    cmd += [
-      '--export',
-      '__wasm_call_ctors',
-      '--export',
-      '__data_end'
-    ]
+    # in standalone mode, crt1 will call the constructors from inside the wasm
+    if not Settings.STANDALONE_WASM:
+      cmd += ['--export', '__wasm_call_ctors']
+
+    cmd += ['--export', '__data_end']
+
     for export in Settings.EXPORTED_FUNCTIONS:
       cmd += ['--export', export[1:]] # Strip the leading underscore
 
@@ -1869,8 +1922,10 @@ class Building(object):
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
-        '--no-entry'
       ]
+      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      if not use_start_function:
+        cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
         cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
       elif not Settings.ALLOW_MEMORY_GROWTH:
@@ -1915,11 +1970,11 @@ class Building(object):
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
       if not new_symbols.is_valid_for_nm():
-        logger.warning('object %s is not valid according to llvm-nm, cannot link' % (f))
+        warning('object %s is not valid according to llvm-nm, cannot link', f)
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        logger.warning('object %s is not a valid object file for emscripten, cannot link' % (f))
+        warning('object %s is not a valid object file for emscripten, cannot link', f)
         return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
@@ -2073,9 +2128,9 @@ class Building(object):
     except subprocess.CalledProcessError as e:
       for i in inputs:
         if not os.path.exists(i):
-          logger.warning('Note: Input file "' + i + '" did not exist.')
+          warning('Note: Input file "' + i + '" did not exist.')
         elif not Building.is_bitcode(i):
-          logger.warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
+          warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
       exit_with_error('Failed to run llvm optimizations: ' + e.output)
     if not out:
       shutil.move(filename + '.opt.bc', filename)
@@ -2253,7 +2308,10 @@ class Building(object):
   @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
     from . import js_optimizer
-    ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    try:
+      ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
+    except subprocess.CalledProcessError as e:
+      exit_with_error("'%s' failed (%d)", ' '.join(e.cmd), e.returncode)
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
@@ -2293,6 +2351,7 @@ class Building(object):
     cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
+    print_compiler_stage(cmd)
     check_call(cmd)
 
   @staticmethod
@@ -2449,7 +2508,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emitting_js):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2475,11 +2534,11 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.acorn_optimizer(js_file, passes)
-        # also minify the names used between js and wasm, if we emitting JS (then the JS knows how to load the minified names)
+        # Also minify the names used between js and wasm, if we are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if Settings.EMITTING_JS and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.ASYNCIFY_LAZY_LOAD_CODE:
+        if not Settings.STANDALONE_WASM and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.SIDE_MODULE and emitting_js and not Settings.ASYNCIFY_LAZY_LOAD_CODE:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
@@ -2514,8 +2573,28 @@ class Building(object):
           export = '_' + export
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
+    # in standalone wasm, always export the memory
+    if Settings.STANDALONE_WASM:
+      graph.append({
+        'export': 'memory',
+        'name': 'emcc$export$memory',
+        'reaches': [],
+        'root': True
+      })
     # fix wasi imports TODO: support wasm stable with an option?
-    WASI_IMPORTS = set(['fd_write'])
+    WASI_IMPORTS = set([
+      'environ_get',
+      'environ_sizes_get',
+      'args_get',
+      'args_sizes_get',
+      'fd_write',
+      'fd_close',
+      'fd_read',
+      'fd_seek',
+      'fd_fdstat_get',
+      'fd_sync',
+      'proc_exit',
+    ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
         item['import'][0] = 'wasi_unstable'
@@ -2536,6 +2615,7 @@ class Building(object):
       f.write(txt)
     # run wasm-metadce
     cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
+    cmd += Building.get_binaryen_feature_flags()
     if debug_info:
       cmd += ['-g']
     out = run_process(cmd, stdout=PIPE).stdout
@@ -2771,8 +2851,6 @@ class Building(object):
   @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    if not BINARYEN_ROOT:
-      exit_with_error('BINARYEN_ROOT must be set up in .emscripten')
     return os.path.join(BINARYEN_ROOT, 'bin')
 
 
@@ -3078,7 +3156,8 @@ class WebAssembly(object):
       WebAssembly.lebify(global_base) +
       WebAssembly.lebify(dynamic_base) +
       WebAssembly.lebify(dynamictop_ptr) +
-      WebAssembly.lebify(tempdouble_ptr)
+      WebAssembly.lebify(tempdouble_ptr) +
+      WebAssembly.lebify(int(Settings.STANDALONE_WASM))
 
       # NB: more data can be appended here as long as you increase
       #     the EMSCRIPTEN_METADATA_MINOR

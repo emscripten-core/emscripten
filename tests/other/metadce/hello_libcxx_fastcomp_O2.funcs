@@ -1,4 +1,6 @@
 $__ZL8is_equalPKSt9type_infoS1_b
+$__ZN10__cxxabiv116__shim_type_infoD2Ev
+$__ZN10__cxxabiv117__class_type_infoD0Ev
 $__ZNK10__cxxabiv117__class_type_info16search_above_dstEPNS_19__dynamic_cast_infoEPKvS4_ib
 $__ZNK10__cxxabiv117__class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib
 $__ZNK10__cxxabiv117__class_type_info24process_found_base_classEPNS_19__dynamic_cast_infoEPvi
@@ -347,8 +349,6 @@ $__ZNSt3__26vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lm28EEEE8__appendEm
 $__ZNSt3__26vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lm28EEEEC2Em
 $__ZNSt3__27codecvtIwc11__mbstate_tED0Ev
 $__ZNSt3__27codecvtIwc11__mbstate_tED2Ev
-$__ZNSt3__27collateIcED0Ev
-$__ZNSt3__27collateIcED2Ev
 $__ZNSt3__28ios_base16__call_callbacksENS0_5eventE
 $__ZNSt3__28ios_base4InitC2Ev
 $__ZNSt3__28ios_base4initEPv
@@ -420,12 +420,12 @@ $___stdio_seek
 $___stdio_write
 $___strchrnul
 $___string_read
-$___syscall_ret
 $___toread
 $___towrite
 $___uflow
 $___uselocale
 $___vfprintf_internal
+$___wasi_syscall_ret
 $_arg_n
 $_copysignl
 $_decfloat

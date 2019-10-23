@@ -23,12 +23,7 @@
 // (using makeStaticAlloc)
 
 LibraryManager.library = {
-  // keep this low in memory, because we flatten arrays with them in them
-#if USE_PTHREADS
-  _impure_ptr: '; if (ENVIRONMENT_IS_PTHREAD) __impure_ptr = PthreadWorkerInit.__impure_ptr; else PthreadWorkerInit.__impure_ptr __impure_ptr = {{{ makeStaticAlloc(4) }}}',
-  __dso_handle: '; if (ENVIRONMENT_IS_PTHREAD) ___dso_handle = PthreadWorkerInit.___dso_handle; else PthreadWorkerInit.___dso_handle = ___dso_handle = {{{ makeStaticAlloc(4) }}}',
-#else
-  _impure_ptr: '{{{ makeStaticAlloc(1) }}}',
+#if !WASM_BACKEND
   __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
 
@@ -642,6 +637,17 @@ LibraryManager.library = {
 #endif // ALLOW_MEMORY_GROWTH
   },
 
+  // Called after wasm grows memory. At that time we need to update the views.
+  // Without this notification, we'd need to check the buffer in JS every time
+  // we return from any wasm, which adds overhead. See
+  // https://github.com/WebAssembly/WASI/issues/82
+  emscripten_notify_memory_growth: function(memoryIndex) {
+#if ASSERTIONS
+    assert(memoryIndex == 0);
+#endif
+    updateGlobalBufferAndViews(wasmMemory.buffer);
+  },
+
   system__deps: ['__setErrNo'],
   system: function(command) {
     // int system(const char *command);
@@ -721,6 +727,15 @@ LibraryManager.library = {
 #endif
   },
 
+  // This object can be modified by the user during startup, which affects
+  // the initial values of the environment accessible by getenv. (This works
+  // in both fastcomp and upstream.
+  $ENV: {},
+
+  // This implementation of environ/getenv/etc. is used for fastcomp, due
+  // to limitations in the system libraries (we can't easily add a global
+  // ctor to create the environment without it always being linked in with
+  // libc).
   __buildEnvironment__deps: ['$ENV'],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
@@ -733,7 +748,8 @@ LibraryManager.library = {
     if (!___buildEnvironment.called) {
       ___buildEnvironment.called = true;
       // Set default values. Use string keys for Closure Compiler compatibility.
-      ENV['USER'] = ENV['LOGNAME'] = 'web_user';
+      ENV['USER'] = 'web_user';
+      ENV['LOGNAME'] = 'web_user';
       ENV['PATH'] = '/';
       ENV['PWD'] = '/';
       ENV['HOME'] = '/home/web_user';
@@ -776,7 +792,6 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  $ENV: {},
   getenv__deps: ['$ENV'],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
@@ -1328,19 +1343,6 @@ LibraryManager.library = {
 #endif
 #endif
 
-#if MINIMAL_RUNTIME && !ASSERTIONS
-  __cxa_pure_virtual__sig: 'v',
-  __cxa_pure_virtual: 'abort',
-#else
-  __cxa_pure_virtual: function() {
-#if !MINIMAL_RUNTIME
-    ABORT = true;
-#endif
-
-    throw 'Pure virtual function called!';
-  },
-#endif
-
   llvm_flt_rounds: function() {
     return -1; // 'indeterminable' for FLT_ROUNDS
   },
@@ -1872,17 +1874,11 @@ LibraryManager.library = {
   },
 
   // Statically allocated time struct.
-#if USE_PTHREADS
-  __tm_current: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_current = PthreadWorkerInit.___tm_current; else PthreadWorkerInit.___tm_current = ___tm_current = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-  __tm_timezone: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_timezone = PthreadWorkerInit.___tm_timezone; else PthreadWorkerInit.___tm_timezone = ___tm_timezone = {{{ makeStaticString("GMT") }}}',
-  __tm_formatted: '; if (ENVIRONMENT_IS_PTHREAD) ___tm_formatted = PthreadWorkerInit.___tm_formatted; else PthreadWorkerInit.___tm_formatted = ___tm_formatted = {{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-#else
   __tm_current: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   // Statically allocated copy of the string "GMT" for gmtime() to point to
   __tm_timezone: '{{{ makeStaticString("GMT") }}}',
   // Statically allocated time strings.
   __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
-#endif
   mktime__deps: ['tzset'],
   mktime: function(tmPtr) {
     _tzset();
@@ -1900,7 +1896,7 @@ LibraryManager.library = {
     var dst = {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'i32') }}};
     var guessedOffset = date.getTimezoneOffset();
     var start = new Date(date.getFullYear(), 0, 1);
-    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
     var winterOffset = start.getTimezoneOffset();
     var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
@@ -1988,7 +1984,7 @@ LibraryManager.library = {
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_gmtoff, '-(date.getTimezoneOffset() * 60)', 'i32') }}};
 
     // Attention: DST is in December in South, and some regions don't have DST at all.
-    var summerOffset = new Date(2000, 6, 1).getTimezoneOffset();
+    var summerOffset = new Date(date.getFullYear(), 6, 1).getTimezoneOffset();
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
@@ -2067,8 +2063,9 @@ LibraryManager.library = {
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
     {{{ makeSetValue('__get_timezone()', '0', '(new Date()).getTimezoneOffset() * 60', 'i32') }}};
 
-    var winter = new Date(2000, 0, 1);
-    var summer = new Date(2000, 6, 1);
+    var currentYear = new Date().getFullYear();
+    var winter = new Date(currentYear, 0, 1);
+    var summer = new Date(currentYear, 6, 1);
     {{{ makeSetValue('__get_daylight()', '0', 'Number(winter.getTimezoneOffset() != summer.getTimezoneOffset())', 'i32') }}};
 
     function extractZone(date) {
@@ -2142,6 +2139,8 @@ LibraryManager.library = {
     return newDate;
   },
 
+  // Note: this is not used in STANDALONE_WASM mode, because it is more
+  //       compact to do it in JS.
   strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
@@ -3228,15 +3227,10 @@ LibraryManager.library = {
   // netinet/in.h
   // ==========================================================================
 
-#if USE_PTHREADS
-  in6addr_any: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_any = PthreadWorkerInit._in6addr_any; else PthreadWorkerInit._in6addr_any = _in6addr_any = {{{ makeStaticAlloc(16) }}}',
-  in6addr_loopback: '; if (ENVIRONMENT_IS_PTHREAD) _in6addr_loopback = PthreadWorkerInit._in6addr_loopback; else PthreadWorkerInit._in6addr_loopback = _in6addr_loopback = {{{ makeStaticAlloc(16) }}}',
-#else
   in6addr_any:
     '{{{ makeStaticAlloc(16) }}}',
   in6addr_loopback:
     '{{{ makeStaticAlloc(16) }}}',
-#endif
 
   // ==========================================================================
   // netdb.h

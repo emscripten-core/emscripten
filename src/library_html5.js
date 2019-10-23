@@ -2289,7 +2289,7 @@ var LibraryJSEvents = {
     }
 
 #if OFFSCREENCANVAS_SUPPORT
-    canvas = canvas.offscreenCanvas;
+    if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
 
 #if GL_DEBUG
     if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) console.log('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + targetStr + '"');

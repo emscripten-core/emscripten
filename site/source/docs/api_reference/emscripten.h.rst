@@ -1374,3 +1374,20 @@ Functions
     not happen at all.
 
   .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
+
+ABI functions
+=============
+
+The following functions are not declared in ``emscripten.h``, but are used
+internally in our system libraries. You may care about them if you replace the
+Emscripten runtime JS code, or run Emscripten binaries in your own runtime.
+
+
+.. c:function:: void emscripten_notify_memory_growth(i32 index)
+
+    Called when memory has grown. In a JS runtime, this is used to know when
+    to update the JS views on the wasm memory, which otherwise we would need
+    to constantly check for after any wasm code runs. See
+    `this wasi discussion <https://github.com/WebAssembly/WASI/issues/82>`_.
+
+    :param i32 index: Which memory has grown.

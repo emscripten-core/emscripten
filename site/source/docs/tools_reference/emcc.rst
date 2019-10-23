@@ -398,6 +398,8 @@ Options that are modified or new in *emcc* are listed below:
 ``-Wwarn-absolute-paths``
   Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
 
+.. _proxy-to-worker:
+
 ``--proxy-to-worker``
   Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
 
@@ -443,7 +445,7 @@ Options that are modified or new in *emcc* are listed below:
     - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
     - <name> **.bc** : LLVM bitcode.
     - <name> **.o** : LLVM bitcode (same as .bc), unless in `WASM_OBJECT_FILES` mode, in which case it will contain a WebAssembly object.
-    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm").
+    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone wasm"; this enables ``STANDALONE_WASM``).
 
   .. note:: If ``--memory-init-file`` is used, a **.mem** file will be created in addition to the generated **.js** and/or **.html** file.
 
@@ -470,7 +472,6 @@ Environment variables
 
   - ``EMMAKEN_JUST_CONFIGURE``
   - ``EMMAKEN_JUST_CONFIGURE_RECURSE``
-  - ``EMCONFIGURE_JS``
   - ``CONFIGURE_CC``
   - ``EMMAKEN_CXX``
   - ``EMMAKEN_CXX``

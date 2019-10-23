@@ -56,6 +56,7 @@ USER_TASKS = [
 
 temp_files = shared.configuration.get_temp_files()
 logger = logging.getLogger('embuilder')
+force = False
 
 
 def print_help():
@@ -83,8 +84,9 @@ Issuing 'embuilder.py build ALL' causes each task to be built.
 
 Flags:
 
-  --lto  Build bitcode files, for LTO with the LLVM wasm backend
-  --pic  Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
+  --force  Force rebuild of target (by removing it first)
+  --lto    Build bitcode files, for LTO with the LLVM wasm backend
+  --pic    Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -108,6 +110,10 @@ def build(src, result_libs, args=[]):
   cpp = os.path.join(temp_dir, 'src.cpp')
   open(cpp, 'w').write(src)
   temp_js = os.path.join(temp_dir, 'out.js')
+  if force:
+    for lib in result_libs:
+      shared.Cache.erase_file(lib)
+
   try:
     shared.Building.emcc(cpp, args, output_filename=temp_js)
   except subprocess.CalledProcessError as e:
@@ -123,6 +129,8 @@ def build_port(port_name, lib_name, params):
 
 
 def main():
+  global force
+
   if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
     print_help()
     return 0
@@ -150,6 +158,8 @@ def main():
         shared.Settings.WASM_OBJECT_FILES = 0
       elif arg == 'pic':
         shared.Settings.RELOCATABLE = 1
+      elif arg == 'force':
+        force = True
       # Reconfigure the cache dir to reflect the change
       shared.reconfigure_cache()
 
@@ -192,6 +202,8 @@ def main():
     logger.info('building and verifying ' + what)
     if what in SYSTEM_LIBRARIES:
       library = SYSTEM_LIBRARIES[what]
+      if force:
+        library.erase()
       library.get_path()
     elif what == 'struct_info':
       build(C_BARE, ['generated_struct_info.json'])

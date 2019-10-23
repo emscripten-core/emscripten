@@ -32,10 +32,11 @@ binaryen_bin = sys.argv[6]
 debug_info = int(sys.argv[7])
 extra_args = sys.argv[8:]
 
-wasm = not not binaryen_bin
+wasm = bool(binaryen_bin)
 
 assert global_base > 0
 
+logger = logging.getLogger('ctor_evaller')
 config = shared.Configuration()
 
 # helpers
@@ -272,7 +273,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     except Exception as e:
       if 'Timed out' not in str(e):
         raise
-      logging.debug('ctors timed out\n')
+      logger.debug('ctors timed out\n')
       return (0, 0, 0, 0)
     if shared.WINDOWS:
       time.sleep(0.5) # On Windows, there is some kind of race condition with Popen output stream related functions, where file handles are still in use a short period after the process has finished.
@@ -283,7 +284,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
     if proc.returncode != 0:
       # TODO(sbc): This should never happen under normal circumstances.
       # switch to exit_with_error once we fix https://github.com/emscripten-core/emscripten/issues/7463
-      logging.debug('unexpected error while trying to eval ctors:\n' + out_result + '\n' + err_result)
+      logger.debug('unexpected error while trying to eval ctors:\n' + out_result + '\n' + err_result)
       return (0, 0, 0, 0)
 
   # out contains the new mem init and other info
@@ -291,7 +292,7 @@ console.log(JSON.stringify([numSuccessful, Array.prototype.slice.call(heap.subar
   mem_init = bytes(bytearray(mem_init_raw))
   total_ctors = len(all_ctors)
   if num_successful < total_ctors:
-    logging.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + err_result + '========')
+    logger.debug('not all ctors could be evalled, something was used that was not safe (and therefore was not defined, and caused an error):\n========\n' + err_result + '========')
   # Remove the evalled ctors, add a new one for atexits if needed, and write that out
   if len(ctors) == total_ctors and len(atexits) == 0:
     new_ctors = ''
@@ -312,19 +313,19 @@ def eval_ctors_wasm(js, wasm_file, num):
   cmd += extra_args
   if debug_info:
     cmd += ['-g']
-  logging.debug('wasm ctor cmd: ' + str(cmd))
+  logger.debug('wasm ctor cmd: ' + str(cmd))
   proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
   try:
     err = jsrun.timeout_run(proc, timeout=10, full_output=True, throw_on_failure=False)
   except Exception as e:
     if 'Timed out' not in str(e):
       raise
-    logging.debug('ctors timed out\n')
+    logger.debug('ctors timed out\n')
     return 0, js
   if proc.returncode != 0:
     shared.exit_with_error('unexpected error while trying to eval ctors:\n' + err)
   num_successful = err.count('success on')
-  logging.debug(err)
+  logger.debug(err)
   if len(ctors) == num_successful:
     new_ctors = ''
   else:
@@ -341,16 +342,16 @@ def main():
   js = open(js_file).read()
   ctors_start, ctors_end = find_ctors(js)
   if ctors_start < 0:
-    logging.debug('ctor_evaller: no ctors')
+    logger.debug('ctor_evaller: no ctors')
     sys.exit(0)
 
   ctors_text = js[ctors_start:ctors_end]
   if ctors_text.count('(') == 1:
-    logging.debug('ctor_evaller: push, but no ctors')
+    logger.debug('ctor_evaller: push, but no ctors')
     sys.exit(0)
 
   num_ctors = ctors_text.count('function()')
-  logging.debug('ctor_evaller: %d ctors, from |%s|' % (num_ctors, ctors_text))
+  logger.debug('ctor_evaller: %d ctors, from |%s|' % (num_ctors, ctors_text))
 
   if not wasm:
     # js path
@@ -362,18 +363,18 @@ def main():
 
     # find how many ctors we can remove, by bisection (if there are hundreds, running them sequentially is silly slow)
 
-    logging.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
+    logger.debug('ctor_evaller: trying to eval %d global constructors' % num_ctors)
     num_successful, new_js, new_mem_init, removed = eval_ctors_js(js, mem_init, num_ctors)
     if num_successful == 0:
-      logging.debug('ctor_evaller: not successful')
+      logger.debug('ctor_evaller: not successful')
       sys.exit(0)
 
-    logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+    logger.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
     if num_successful == num_ctors:
       js = new_js
       mem_init = new_mem_init
     else:
-      logging.debug('ctor_evaller: final execution')
+      logger.debug('ctor_evaller: final execution')
       check, js, mem_init, removed = eval_ctors_js(js, mem_init, num_successful)
       assert check == num_successful
     open(js_file, 'w').write(js)
@@ -381,7 +382,7 @@ def main():
 
     # Dead function elimination can help us
 
-    logging.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
+    logger.debug('ctor_evaller: eliminate no longer needed functions after ctor elimination')
     # find exports
     asm = get_asm(open(js_file).read())
     exports_start = asm.find('return {')
@@ -404,12 +405,12 @@ def main():
   else:
     # wasm path
     wasm_file = binary_file
-    logging.debug('ctor_evaller (wasm): trying to eval %d global constructors' % num_ctors)
+    logger.debug('ctor_evaller (wasm): trying to eval %d global constructors' % num_ctors)
     num_successful, new_js = eval_ctors_wasm(js, wasm_file, num_ctors)
     if num_successful == 0:
-      logging.debug('ctor_evaller: not successful')
+      logger.debug('ctor_evaller: not successful')
       sys.exit(0)
-    logging.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
+    logger.debug('ctor_evaller: we managed to remove %d ctors' % num_successful)
     open(js_file, 'w').write(new_js)
 
 

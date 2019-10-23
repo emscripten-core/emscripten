@@ -1,6 +1,6 @@
 List:
-LOGNAME=web_user
 USER=web_user
+LOGNAME=web_user
 PATH=/
 PWD=/
 HOME=/home/web_user
@@ -19,12 +19,11 @@ getenv(SET_VALUE): test3
 getenv(SET_VALUE2): test4
 putenv(PUT_VALUE) ret: 0
 getenv(PUT_VALUE): test5
-getenv(PUT_VALUE) after alteration: test5
+getenv(PUT_VALUE) after alteration: Qest5
 unsetenv(PUT_VALUE) ret: 0
 getenv(PUT_VALUE) after unsetenv: (null)
 setenv(0) ret: -1
 setenv('') ret: -1
 setenv(X=Y) ret: -1
-unsetenv(0) ret: -1
 unsetenv('') ret: -1
 unsetenv(X=Y) ret: -1

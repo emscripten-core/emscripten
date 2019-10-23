@@ -1,13 +1,12 @@
 Infinity
 NaN
-___cxa_uncaught_exceptions
 ___lock
 ___map_file
-___syscall140
-___syscall145
-___syscall6
 ___syscall91
 ___unlock
+___wasi_fd_close
+___wasi_fd_read
+___wasi_fd_seek
 ___wasi_fd_write
 __table_base
 _abort
@@ -17,7 +16,6 @@ _emscripten_resize_heap
 _getenv
 _llvm_stackrestore
 _llvm_stacksave
-_pthread_cond_wait
 _strftime_l
 abort
 memory

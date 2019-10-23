@@ -50,6 +50,106 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_load(const void* __mem) {
   return ((const struct __wasm_v128_load_struct*)__mem)->__v;
 }
 
+#ifdef __wasm_unimplemented_simd128__
+
+// v128_t wasm_v8x16_load_splat(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v8x16_load_splat(const void* __mem) {
+  struct __wasm_v8x16_load_splat_struct {
+    char __v;
+  } __attribute__((__packed__, __may_alias__));
+  char v = ((const struct __wasm_v8x16_load_splat_struct*)__mem)->__v;
+  return (v128_t)(__i8x16){v, v, v, v, v, v, v, v, v, v, v, v, v, v, v, v};
+}
+
+// v128_t wasm_v16x8_load_splat(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v16x8_load_splat(const void* __mem) {
+  struct __wasm_v16x8_load_splat_struct {
+    short __v;
+  } __attribute__((__packed__, __may_alias__));
+  short v = ((const struct __wasm_v16x8_load_splat_struct*)__mem)->__v;
+  return (v128_t)(__i16x8){v, v, v, v, v, v, v, v};
+}
+
+// v128_t wasm_v32x4_load_splat(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v32x4_load_splat(const void* __mem) {
+  struct __wasm_v32x4_load_splat_struct {
+    int __v;
+  } __attribute__((__packed__, __may_alias__));
+  int v = ((const struct __wasm_v32x4_load_splat_struct*)__mem)->__v;
+  return (v128_t)(__i32x4){v, v, v, v};
+}
+
+// v128_t wasm_v64x2_load_splat(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v64x2_load_splat(const void* __mem) {
+  struct __wasm_v64x2_load_splat_struct {
+    long long __v;
+  } __attribute__((__packed__, __may_alias__));
+  long long v = ((const struct __wasm_v64x2_load_splat_struct*)__mem)->__v;
+  return (v128_t)(__i64x2){v, v};
+}
+
+// v128_t wasm_i16x8_load_8x8(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_load_8x8(const void* __mem) {
+  typedef signed char __i8x8 __attribute__((__vector_size__(8), __aligned__(8)));
+  struct __wasm_i16x8_load_8x8_struct {
+    __i8x8 __v;
+  } __attribute__((__packed__, __may_alias__));
+  __i8x8 v = ((const struct __wasm_i16x8_load_8x8_struct*)__mem)->__v;
+  return (v128_t)__builtin_convertvector(v, __i16x8);
+}
+
+// v128_t wasm_i16x8_load_8x8(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_u16x8_load_8x8(const void* __mem) {
+  typedef unsigned char __u8x8 __attribute__((__vector_size__(8), __aligned__(8)));
+  struct __wasm_u16x8_load_8x8_struct {
+    __u8x8 __v;
+  } __attribute__((__packed__, __may_alias__));
+  __u8x8 v = ((const struct __wasm_u16x8_load_8x8_struct*)__mem)->__v;
+  return (v128_t)__builtin_convertvector(v, __u16x8);
+}
+
+// v128_t wasm_i32x4_load_16x4(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_load_16x4(const void* __mem) {
+  typedef short __i16x4 __attribute__((__vector_size__(8), __aligned__(8)));
+  struct __wasm_i32x4_load_16x4_struct {
+    __i16x4 __v;
+  } __attribute__((__packed__, __may_alias__));
+  __i16x4 v = ((const struct __wasm_i32x4_load_16x4_struct*)__mem)->__v;
+  return (v128_t)__builtin_convertvector(v, __i32x4);
+}
+
+// v128_t wasm_i32x4_load_16x4(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_u32x4_load_16x4(const void* __mem) {
+  typedef unsigned short __u16x4 __attribute__((__vector_size__(8), __aligned__(8)));
+  struct __wasm_u32x4_load_16x4_struct {
+    __u16x4 __v;
+  } __attribute__((__packed__, __may_alias__));
+  __u16x4 v = ((const struct __wasm_u32x4_load_16x4_struct*)__mem)->__v;
+  return (v128_t)__builtin_convertvector(v, __u32x4);
+}
+
+// v128_t wasm_i64x2_load_16x4(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i64x2_load_32x2(const void* __mem) {
+  typedef int __i32x2 __attribute__((__vector_size__(8), __aligned__(8)));
+  struct __wasm_i64x2_load_32x2_struct {
+    __i32x2 __v;
+  } __attribute__((__packed__, __may_alias__));
+  __i32x2 v = ((const struct __wasm_i64x2_load_32x2_struct*)__mem)->__v;
+  return (v128_t)__builtin_convertvector(v, __i64x2);
+}
+
+// v128_t wasm_i64x2_load_16x4(void* mem)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_u64x2_load_32x2(const void* __mem) {
+  typedef unsigned int __u32x2 __attribute__((__vector_size__(8), __aligned__(8)));
+  struct __wasm_u64x2_load_32x2_struct {
+    __u32x2 __v;
+  } __attribute__((__packed__, __may_alias__));
+  __u32x2 v = ((const struct __wasm_u64x2_load_32x2_struct*)__mem)->__v;
+  return (v128_t)__builtin_convertvector(v, __u64x2);
+}
+
+#endif // __wasm_unimplemented_simd128__
+
 // wasm_v128_store(void* mem, v128 a)
 static __inline__ void __DEFAULT_FN_ATTRS wasm_v128_store(void* __mem, v128_t __a) {
   // UB-free unaligned access copied from xmmintrin.h
@@ -485,6 +585,13 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_or(v128_t a, v128_t b) { r
 // v128_t wasm_v128_xor(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_xor(v128_t a, v128_t b) { return a ^ b; }
 
+#ifdef __wasm_unimplemented_simd128__
+
+// v128_t wasm_v128_andnot(v128_t a, v128_t b)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_andnot(v128_t a, v128_t b) { return a & ~b; }
+
+#endif // __wasm_unimplemented_simd128__
+
 // v128_t wasm_v128_bitselect(v128_t a, v128_t b, v128_t mask)
 // `a` is selected for each lane for which `mask` is nonzero.
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_bitselect(v128_t a, v128_t b, v128_t mask) {
@@ -877,6 +984,11 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_f64x2_convert_u64x2(v128_t a) {
   a, b, c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14, c15)                      \
   ((v128_t)(__builtin_shufflevector((__u8x16)(a), (__u8x16)(b), c0, c1, c2, c3, c4, c5, c6, c7,    \
     c8, c9, c10, c11, c12, c13, c14, c15)))
+
+// v128_t wasm_v8x16_swizzle(v128_t a, v128_t b)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v8x16_swizzle(v128_t a, v128_t b) {
+  return (v128_t)__builtin_wasm_swizzle_v8x16((__i8x16)a, (__i8x16)b);
+}
 
 // v128_t wasm_i8x16_narrow_i16x8(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_narrow_i16x8(v128_t a, v128_t b) {

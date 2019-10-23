@@ -42,7 +42,10 @@ if (typeof WebAssembly !== 'object') {
 
 var wasmMemory;
 
-// Potentially used for direct table calls.
+// In fastcomp asm.js, we don't need a wasm Table at all.
+// In the wasm backend, we polyfill the WebAssembly object,
+// so this creates a (non-native-wasm) table for us.
+#if WASM_BACKEND || WASM
 var wasmTable = new WebAssembly.Table({
   'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #if !ALLOW_TABLE_GROWTH
@@ -54,10 +57,20 @@ var wasmTable = new WebAssembly.Table({
 #endif // WASM_BACKEND
   'element': 'anyfunc'
 });
+#endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
+// Only workers actually use these field, but we refer to them from
+// library_pthread (which exists on all threads) so this definition is useful
+// to avoid accessing the global scope.
+var threadInfoStruct = 0;
+var selfThreadId = 0;
+var __performance_now_clock_drift = 0;
+#if WASM_BACKEND
+var tempDoublePtr = 0;
+#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -345,10 +358,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
@@ -362,6 +371,28 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+
+  // At the 'load' stage of Worker startup, we are just loading this script
+  // but not ready to run yet. At 'run' we receive proper values for the stack
+  // etc. and can launch a pthread. Set some fake values there meanwhile to
+  // catch bugs, then set the real values in applyStackValues later.
+#if ASSERTIONS || SAFE_STACK
+  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
+#endif
+
+  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
+    STACK_BASE = stackBase;
+    STACKTOP = stackTop;
+    STACK_MAX = stackMax;
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
+#endif
+  };
+
+  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
+  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
+  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 
@@ -403,7 +434,7 @@ if (ENVIRONMENT_IS_WEB) {
 
 #if USE_PTHREADS
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
-  xhr = new XMLHttpRequest();
+  var xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
   xhr.send();
   setTimeout(function() { window.close() }, 2000);
@@ -413,87 +444,15 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #include "runtime_sab_polyfill.js"
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-#if MODULARIZE && WASM
-  // In pthreads mode the wasmMemory and others are received in an onmessage, and that
-  // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
-  // it to a local so it can be used normally.
-  wasmMemory = Module['wasmMemory'];
-#endif
-} else {
-#endif // USE_PTHREADS
-#if WASM
-
-#if expectToReceiveOnModule('wasmMemory')
-  if (Module['wasmMemory']) {
-    wasmMemory = Module['wasmMemory'];
-  } else
-#endif
-  {
-    wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
-#if ALLOW_MEMORY_GROWTH
-#if WASM_MEM_MAX != -1
-      ,
-      'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE
-#endif
-#else
-      ,
-      'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
-#endif // ALLOW_MEMORY_GROWTH
-#if USE_PTHREADS
-      ,
-      'shared': true
-#endif
-    });
-#if USE_PTHREADS
-    assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-#endif
-  }
-
-#else // WASM
-
-  if (Module['buffer']) {
-    buffer = Module['buffer'];
-  }
-#ifdef USE_PTHREADS
-  else if (typeof SharedArrayBuffer !== 'undefined') {
-    buffer = new SharedArrayBuffer(INITIAL_TOTAL_MEMORY);
-  }
-#endif
-  else {
-    buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
-  }
-#endif // WASM
-#if USE_PTHREADS
-}
-#endif
-
-#if WASM
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
-}
-#endif
-
-// If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically provide the memory length with Module['TOTAL_MEMORY'].
-INITIAL_TOTAL_MEMORY = buffer.byteLength;
-#ifdef ASSERTIONS && WASM
-assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#ifdef ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
-assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
-#endif
-#endif
-updateGlobalBufferAndViews(buffer);
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
-#if USE_PTHREADS
-}
-#endif
+// In standalone mode, the wasm creates the memory, and the user can't provide it.
+#if STANDALONE_WASM
+#if ASSERTIONS
+assert(!Module['wasmMemory']);
+#endif // ASSERTIONS
+#else // !STANDALONE_WASM
+// In non-standalone/normal mode, we create the memory here.
+#include "runtime_init_memory.js"
+#endif // !STANDALONE_WASM
 
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
@@ -865,7 +824,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 });
 #endif
 
-#if PTHREAD_POOL_SIZE > 0
+#if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_DELAY_LOAD != 1
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
@@ -989,6 +948,16 @@ function createWasm() {
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
+#if STANDALONE_WASM
+    // In pure wasm mode the memory is created in the wasm (not imported), and
+    // then exported.
+    // TODO: do not create a Memory earlier in JS
+    wasmMemory = exports['memory'];
+    updateGlobalBufferAndViews(wasmMemory.buffer);
+#if ASSERTIONS
+    writeStackCookie();
+#endif
+#endif
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;

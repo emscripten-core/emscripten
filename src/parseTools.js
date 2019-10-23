@@ -1519,37 +1519,6 @@ function addAtExit(code) {
   }
 }
 
-// Generates access to module exports variable in pthreads worker.js. Depending on whether main code is built with MODULARIZE
-// or not, asm module exports need to either be accessed via a local exports object obtained from instantiating the module (in src/worker.js), or via
-// the global Module exports object.
-function makeAsmExportAccessInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return EXPORT_NAME + "['" + variable + "']";
-  }
-}
-
-// Generates access to a JS global scope variable in pthreads worker.js. In MODULARIZE mode the JS scope is not directly accessible, so all the relevant variables
-// are exported via Module. In non-MODULARIZE mode, we can directly access the variables in global scope.
-function makeAsmGlobalAccessInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return variable;
-  }
-}
-
-// Generates access to both global scope variable and exported Module variable, e.g. "Module['foo'] = foo" or just plain "foo" depending on if we are MODULARIZEing.
-// Used the be able to initialize both variables at the same time in scenarios where a variable exists in both global scope and in Module.
-function makeAsmExportAndGlobalAssignTargetInPthread(variable) {
-  if (MODULARIZE) {
-    return "Module['" + variable + "'] = " + variable; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return variable;
-  }
-}
-
 // Some things, like the dynamic and stack bases, will be computed later and
 // applied. Return them as {{{ STR }}} for that replacing later.
 
@@ -1615,7 +1584,7 @@ function expectToReceiveOnModule(name) {
 function makeRemovedModuleAPIAssert(moduleName, localName) {
   if (!ASSERTIONS) return '';
   if (!localName) localName = moduleName;
-  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
 }
 
 // Make code to receive a value on the incoming Module object.
@@ -1652,4 +1621,11 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
     ret += makeRemovedModuleAPIAssert(moduleName, localName);
   }
   return ret;
+}
+
+function makeRemovedFSAssert(fsName) {
+  if (!ASSERTIONS) return;
+  var lower = fsName.toLowerCase();
+  if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
+  return "var " + fsName + " = '" + fsName + " is no longer included by default; build with -l" + lower + ".js';";
 }
