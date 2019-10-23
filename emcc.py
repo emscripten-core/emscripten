@@ -3076,7 +3076,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     cmd = get_binaryen_command(debug=intermediate_debug_info)
     cmd += [wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
     cmd += ['--remove-memory']
-    cmd += ['--post-asyncify-never-unwind']
+    cmd += ['--mod-asyncify-never-unwind']
     if options.opt_level > 0:
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     shared.print_compiler_stage(cmd)
@@ -3088,7 +3088,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # TODO: source maps etc.
     cmd = get_binaryen_command(debug=intermediate_debug_info)
     cmd += [wasm_binary_target, '-o', wasm_binary_target]
-    cmd += ['--post-asyncify-always-and-only-unwind']
+    cmd += ['--mod-asyncify-always-and-only-unwind']
     if options.opt_level > 0:
       cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
     shared.print_compiler_stage(cmd)
