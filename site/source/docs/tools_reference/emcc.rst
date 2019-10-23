@@ -111,8 +111,8 @@ Options that are modified or new in *emcc* are listed below:
 ``-g``
   Preserve debug information.
 
-  - When compiling to object files, this is the same as in *Clang* and *gcc* (it adds debug information to the object files).
-  - This is equivalent to :ref:`-g3 <emcc-g3>`.
+  - When compiling to object files, this is the same as in *Clang* and *gcc*, it adds debug information to the object files.
+  - When linking, this is equivalent to :ref:`-g3 <emcc-g3>` (preserve JS whitespace and compiled function names).
 
 .. _emcc-gN:
 
@@ -127,12 +127,12 @@ Options that are modified or new in *emcc* are listed below:
     -
       .. _emcc-g1:
 
-      ``-g1``: Preserve whitespace in JavaScript. (No effect on compiled code.)
+      ``-g1``: When linking, preserve whitespace in JavaScript.
 
     -
       .. _emcc-g2:
 
-      ``-g2``: Preserve function names in compiled code.
+      ``-g2``: When linking, preserve function names in compiled code.
 
     -
       .. _emcc-g3:
