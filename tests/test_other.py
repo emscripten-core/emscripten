@@ -6488,11 +6488,11 @@ main()
     self.assertContained('Ok', out)
 
   def test_dlopen_rtld_global(self):
-    # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
-    #       before the module providing a global it needs is. in asm.js we use JS
-    #       to create a redirection function. In wasm we just have wasm, so we
-    #       need to introspect the wasm module. Browsers may add that eventually,
-    #       or we could ship a little library that does it.
+    # This test checks RTLD_GLOBAL where a module is loaded
+    # before the module providing a global it needs is. in asm.js we use JS
+    # to create a redirection function. In wasm we just have wasm, so we
+    # need to introspect the wasm module. Browsers may add that eventually,
+    # or we could ship a little library that does it.
     create_test_file('hello1.c', r'''
 #include <stdio.h>
 
@@ -6555,6 +6555,49 @@ main(int argc,char** argv)
     self.assertContained('Hello2', out)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
+
+  def test_main_module_without_exceptions_message(self):
+    # A side module that needs exceptions needs a main module with that
+    # support enabled; show a clear message in that case.
+    create_test_file('side.cpp', r'''
+      #include <exception>
+      #include <stdio.h>
+
+      extern "C" void test_throw() {
+        try {
+          throw 42;
+        } catch(int x) {
+          printf("catch %d.\n", x);
+          return;
+        }
+        puts("bad location");
+      }
+    ''')
+    create_test_file('main.cpp', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <dlfcn.h>
+
+      typedef void (*voidf)();
+
+      int main() {
+        void* h = dlopen ("libside.wasm", RTLD_NOW|RTLD_GLOBAL);
+        assert(h);
+        voidf f = (voidf)dlsym(h, "test_throw");
+        assert(f);
+        f();
+        return 0;
+      }
+      ''')
+    run_process([PYTHON, EMCC, '-o', 'libside.wasm', 'side.cpp', '-s', 'SIDE_MODULE=1'])
+    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
+      run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1', '-s', 'EXPORT_ALL',
+                   '--embed-file', 'libside.wasm'])
+    out = run_js('a.out.js', assert_returncode=None, stderr=STDOUT)
+    self.assertContained('Exception catching is disabled, this exception cannot be caught.', out)
+    self.assertContained('note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support', out)
 
   def test_debug_asmLastOpts(self):
     create_test_file('src.c', r'''
