@@ -2910,8 +2910,8 @@ def separate_asm_js(final, asm_target):
   shared.check_call([shared.PYTHON, shared.path_from_root('tools', 'separate_asm.py'), final, asm_target, final, shared.Settings.SEPARATE_ASM_MODULE_NAME])
 
 
-def get_binaryen_command(tool='wasm-opt', args=[], debug=False):
-  cmd = [os.path.join(shared.Building.get_binaryen_bin(), tool)]
+def get_wasm_opt_command(debug=False):
+  cmd = [os.path.join(shared.Building.get_binaryen_bin(), 'wasm-opt')]
   cmd += shared.Building.get_binaryen_feature_flags()
   if debug:
     cmd += ['-g'] # preserve the debug info
@@ -3008,7 +3008,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
-    cmd = get_binaryen_command(debug=intermediate_debug_info)
+    cmd = get_wasm_opt_command(debug=intermediate_debug_info)
     cmd += [wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
     if use_source_map(options):
       cmd += ['--input-source-map=' + wasm_source_map_target]
@@ -3073,7 +3073,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code
-    cmd = get_binaryen_command(debug=intermediate_debug_info)
+    cmd = get_wasm_opt_command(debug=intermediate_debug_info)
     cmd += [wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
     cmd += ['--remove-memory']
     cmd += ['--mod-asyncify-never-unwind']
@@ -3086,7 +3086,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # a lot of code
     # TODO: support other asyncify stuff, imports that don't always unwind?
     # TODO: source maps etc.
-    cmd = get_binaryen_command(debug=intermediate_debug_info)
+    cmd = get_wasm_opt_command(debug=intermediate_debug_info)
     cmd += [wasm_binary_target, '-o', wasm_binary_target]
     cmd += ['--mod-asyncify-always-and-only-unwind']
     if options.opt_level > 0:
