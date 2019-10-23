@@ -21,6 +21,20 @@
   TEST(name, NAN, 0.5) \
   TEST_ABS(name, 0.0, -0.0)
 
+// when calling via a function pointer, the LLVM optimizer isn't involved, and
+// the libc implementation does handle negative zero as you'd expect
+#define PTR_TESTS(name, ptr) \
+  puts("ptr " #name); \
+  ptr = &name; \
+  TEST(ptr, 0.33, 0.5) \
+  TEST(ptr, NAN, 0.5) \
+  TEST(ptr, 0.0, -0.0)
+
+// make it look like these are externally modifiable so the optimizer doesn't
+// trivially remove the function pointer
+double (*funcd)(double, double);
+float (*funcf)(float, float);
+
 int main(int argc, char **argv) {
   float x = 1.234, y = 3.5, q = 0.00000001;
   y *= 3;
@@ -31,6 +45,11 @@ int main(int argc, char **argv) {
   TESTS(fmax);
   TESTS(fminf);
   TESTS(fmaxf);
+
+  PTR_TESTS(fmin, funcd);
+  PTR_TESTS(fmax, funcd);
+  PTR_TESTS(fminf, funcf);
+  PTR_TESTS(fmaxf, funcf);
 
   printf("small: %.10f\n", argc * 0.000001);
 
