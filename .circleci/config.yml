@@ -119,9 +119,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
-            # which requires very latest nightly as of Jul 13 2019
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -190,8 +188,11 @@ commands:
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
             EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1" # looks broken in ff nightly
+            # OffscreenCanvas support is not yet done in Firefox.
+            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # Disable threads as dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled is not yet present on dev edition.
+            EMTEST_LACKS_THREAD_SUPPORT: "1"
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
