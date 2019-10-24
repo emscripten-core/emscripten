@@ -119,9 +119,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
-            # which requires very latest nightly as of Jul 13 2019
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -192,6 +190,7 @@ commands:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1" # looks broken in ff nightly
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            EMTEST_LACKS_THREAD_SUPPORT: "1" # wait for dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled to be present on dev edition
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
