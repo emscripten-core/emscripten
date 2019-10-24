@@ -18,8 +18,6 @@ void *ThreadMain(void *arg)
 	return 0;
 }
 
-int numThreadsToCreate = 1000;
-
 int main()
 {
   if (!emscripten_has_threading_support())

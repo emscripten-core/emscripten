@@ -4547,6 +4547,21 @@ window.close = function() {
     run(['-s', 'ASSERTIONS=1'])
     run(['-s', 'PROXY_TO_PTHREAD=1'])
 
+  # Tests error reporting on the main thread for a pthread error using
+  # Module.onPthreadError.
+  @requires_threads
+  def test_pthread_error(self):
+    create_test_file('pre.js', '''
+      Module.onPthreadError = function(message, filename, lineno, colno) {
+        Module._pthread_error(allocateUTF8OnStack([message, filename, lineno, colno].join(' ')));
+        assert(message === 'Uncaught pthread FAIL');
+        assert(filename.indexOf('test.worker.js') >= 0);
+        assert(lineno > 0);
+        assert(colno > 0);
+      };
+    ''')
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_error.cpp'), expected='1', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '--pre-js', 'pre.js'])
+
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
   def test_load_js_from_blob_with_pthreads(self):

@@ -130,6 +130,13 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Called when something is printed to standard error (stderr)
 
+.. js:attribute:: Module.onPthreadError
+
+  If set, this function is called when a pthread has an uncaught error. The
+  pthread proxies the relevant info to the main thread, where it can handle
+  things in a central location. The function is called with 4 arguments,
+  ``(message, filename, lineno, colno)``, all copied from the error object
+  received on the worker.
 
 Other methods
 =============

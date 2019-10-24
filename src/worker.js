@@ -23,8 +23,6 @@ var noExitRuntime;
 // coherent clock across each of them (+/- 0.1msecs in testing)
 var __performance_now_clock_drift = 0;
 
-// Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
-// Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
 
 // These modes need to assign to these variables because of how scoping works in them.
@@ -43,10 +41,8 @@ function assert(condition, text) {
 // before that happens.
 this.addEventListener('error', function(e) {
   if (e.message.indexOf('SimulateInfiniteLoop') != -1) return e.preventDefault();
-
-  var errorSource = ' in ' + e.filename + ':' + e.lineno + ':' + e.colno;
-  console.error('Pthread ' + selfThreadId + ' uncaught exception' + (e.filename || e.lineno || e.colno ? errorSource : "") + ': ' + e.message + '. Error object:');
-  console.error(e.error);
+  // Update the main thread, where central error reporting can be done.
+  postMessage({cmd: 'error', message: e.message, filename: e.filename, lineno: e.lineno, colno: e.colno});
 });
 
 function threadPrintErr() {

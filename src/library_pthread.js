@@ -403,6 +403,8 @@ var LibraryPThread = {
               err('Thread ' + d['threadId'] + ': ' + d['text']);
             } else if (cmd === 'alert') {
               alert('Thread ' + d['threadId'] + ': ' + d['text']);
+            } else if (cmd === 'error') {
+              if (Module['onPthreadError']) Module['onPthreadError'](d['message'], d['filename'], d['lineno'], d['colno']);
             } else if (cmd === 'exit') {
               var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
               if (detached) {
