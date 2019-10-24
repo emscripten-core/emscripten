@@ -6592,13 +6592,22 @@ main(int argc,char** argv)
         return 0;
       }
       ''')
-    run_process([PYTHON, EMCC, '-o', 'libside.wasm', 'side.cpp', '-s', 'SIDE_MODULE=1'])
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
-      run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1', '-s', 'EXPORT_ALL',
-                   '--embed-file', 'libside.wasm'])
+    run_process([PYTHON, EMCC, '-o', 'libside.wasm', 'side.cpp', '-s', 'SIDE_MODULE=1', '-fexceptions'])
+
+    def build_main(args):
+      print(args)
+      with env_modify({'EMCC_FORCE_STDLIBS': 'libc++abi'}):
+        run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1', '-s', 'EXPORT_ALL',
+                     '--embed-file', 'libside.wasm'] + args)
+
+    build_main([])
     out = run_js('a.out.js', assert_returncode=None, stderr=STDOUT)
     self.assertContained('Exception catching is disabled, this exception cannot be caught.', out)
     self.assertContained('note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support', out)
+
+    build_main(['-fexceptions'])
+    out = run_js('a.out.js')
+    self.assertContained('catch 42', out)
 
   def test_debug_asmLastOpts(self):
     create_test_file('src.c', r'''
