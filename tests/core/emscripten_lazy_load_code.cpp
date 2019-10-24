@@ -4,15 +4,23 @@
 
 extern "C" {
 
+EM_JS(void, log_started, (), {
+  out("foo_start");
+})
+
+EM_JS(void, log_ended, (), {
+  out("foo_end");
+})
+
 void foo_start(int n) {
-  puts("foo_start");
+  log_started();
   // prevent inlining
   if (n > 10000) foo_start(n - 1);
   if (n > 15000) foo_start(n - 3);
 }
 
 void foo_end(int n) {
-  puts("foo_end");
+  log_ended();
   // prevent inlining
   if (n > 20000) foo_end(n - 2);
   if (n > 30000) foo_end(n - 5);
@@ -31,4 +39,5 @@ int main(int argc, char** argv) {
   }
 #endif
   foo_end(x); // this can be elided in the first download, only needed after we lazily load the second
+  printf("all done, %d", x); // only when we reach here do we need stdio linked in
 }

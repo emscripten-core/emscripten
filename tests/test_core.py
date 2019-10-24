@@ -7724,8 +7724,14 @@ extern "C" {
       self.emcc_args += ['-DCONDITIONAL']
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
 
-    print('first wasm size', os.path.getsize('src.cpp.o.wasm'))
-    print('second wasm size', os.path.getsize('src.cpp.o.wasm.lazy.wasm'))
+    first_size = os.path.getsize('src.cpp.o.wasm')
+    second_size = os.path.getsize('src.cpp.o.wasm.lazy.wasm')
+    print('first wasm size', first_size)
+    print('second wasm size', second_size)
+    if not conditional and is_optimizing(self.emcc_args):
+      # If the call to lazy-load is unconditional, then the optimizer can dce
+      # out quite a lot.
+      self.assertLess(first_size, 0.75 * second_size)
 
     with open('src.cpp.o.wasm', 'rb') as f:
       with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
@@ -7764,7 +7770,6 @@ extern "C" {
     # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
     # verify that by changing the first wasm to throw in that function
     found_foo_end = break_wasm('src.cpp.o.wasm')
-    print('found $foo_end?', found_foo_end, 'unconditional?', not conditional, 'optimizing?', is_optimizing(self.emcc_args))
     if not conditional and is_optimizing(self.emcc_args):
       self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
     verify_working()
