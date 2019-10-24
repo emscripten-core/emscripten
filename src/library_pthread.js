@@ -4,14 +4,22 @@
 // found in the LICENSE file.
 
 var LibraryPThread = {
-  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock();',
-  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr', 'emscripten_main_thread_process_queued_calls', '$ERRNO_CODES', 'emscripten_futex_wake'],
+  $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
+  $PThread__deps: ['$PROCINFO', '_register_pthread_ptr',
+                   'emscripten_main_thread_process_queued_calls',
+                   '$ERRNO_CODES', 'emscripten_futex_wake', '_kill_thread',
+                   '_cancel_thread', '_cleanup_thread'],
   $PThread: {
     MAIN_THREAD_ID: 1, // A special constant that identifies the main JS thread ID.
     mainThreadInfo: {
       schedPolicy: 0/*SCHED_OTHER*/,
       schedPrio: 0
     },
+    // Workers that have been created but uninitialized. These have already been
+    // parsed, but the wasm file has not yet been loaded, making it
+    // distinct from the unusedWorkers below. These workers will be created before
+    // loading wasm on the main thread.
+    preallocatedWorkers: [],
     // Contains all Workers that are idle/unused and not currently hosting an executing pthread.
     // Unused Workers can either be pooled up before page startup, but also when a pthread quits, its hosting
     // Worker is not terminated, but is returned to this pool as an optimization so that starting the next thread is faster.
@@ -28,6 +36,15 @@ var LibraryPThread = {
     },
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return undefined;
+
+#if PTHREAD_POOL_SIZE > 0
+      var requestedPoolSize = {{{ PTHREAD_POOL_SIZE }}};
+#if PTHREADS_DEBUG
+      out('Preallocating ' + requestedPoolSize + ' workers.');
+#endif
+      PThread.preallocatedWorkers = PThread.createNewWorkers(requestedPoolSize);
+#endif
+
       PThread.mainThreadBlock = {{{ makeStaticAlloc(C_STRUCTS.pthread.__size__) }}};
 
       for (var i = 0; i < {{{ C_STRUCTS.pthread.__size__ }}}/4; ++i) HEAPU32[PThread.mainThreadBlock/4+i] = 0;
@@ -51,6 +68,16 @@ var LibraryPThread = {
       PThread.createProfilerBlock(PThread.mainThreadBlock);
       PThread.setThreadName(PThread.mainThreadBlock, "Browser main thread");
       PThread.setThreadStatus(PThread.mainThreadBlock, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
+#endif
+    },
+    initWorker: function() {
+#if USE_CLOSURE_COMPILER
+      // worker.js is not compiled together with us, and must access certain
+      // things.
+      PThread['receiveObjectTransfer'] = PThread.receiveObjectTransfer;
+      PThread['setThreadStatus'] = PThread.setThreadStatus;
+      PThread['threadCancel'] = PThread.threadCancel;
+      PThread['threadExit'] = PThread.threadExit;
 #endif
     },
     // Maps pthread_t to pthread info objects
@@ -164,7 +191,7 @@ var LibraryPThread = {
         if (ENVIRONMENT_IS_PTHREAD) {
           // Note: in theory we would like to return any offscreen canvases back to the main thread,
           // but if we ever fetched a rendering context for them that would not be valid, so we don't try.
-          postMessage({ cmd: 'exit' });
+          postMessage({ 'cmd': 'exit' });
         }
       }
     },
@@ -176,18 +203,26 @@ var LibraryPThread = {
       _emscripten_futex_wake(threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}}, {{{ cDefine('INT_MAX') }}}); // wake all threads
       threadInfoStruct = selfThreadId = 0; // Not hosting a pthread anymore in this worker, reset the info structures to null.
       __register_pthread_ptr(0, 0, 0); // Unregister the thread block also inside the asm.js scope.
-      postMessage({ cmd: 'cancelDone' });
+      postMessage({ 'cmd': 'cancelDone' });
     },
 
     terminateAllThreads: function() {
       for (var t in PThread.pthreads) {
         var pthread = PThread.pthreads[t];
-        if (pthread) {
-          PThread.freeThreadData(pthread);
-          if (pthread.worker) pthread.worker.terminate();
+        if (pthread && pthread.worker) {
+          PThread.returnWorkerToPool(pthread.worker);
         }
       }
       PThread.pthreads = {};
+
+      for (var i = 0; i < PThread.preallocatedWorkers.length; ++i) {
+        var worker = PThread.preallocatedWorkers[i];
+#if ASSERTIONS
+        assert(!worker.pthread); // This Worker should not be hosting a pthread at this time.
+#endif
+        worker.terminate();
+      }
+      PThread.preallocatedWorkers = [];
 
       for (var i = 0; i < PThread.unusedWorkers.length; ++i) {
         var worker = PThread.unusedWorkers[i];
@@ -202,7 +237,7 @@ var LibraryPThread = {
         var worker = PThread.runningWorkers[i];
         var pthread = worker.pthread;
 #if ASSERTIONS
-        assert(pthread); // This Worker should have a pthread it is executing
+        assert(pthread, 'This Worker should have a pthread it is executing');
 #endif
         PThread.freeThreadData(pthread);
         worker.terminate();
@@ -250,49 +285,108 @@ var LibraryPThread = {
     allocateUnusedWorkers: function(numWorkers, onFinishedLoading) {
       if (typeof SharedArrayBuffer === 'undefined') return; // No multithreading support, no-op.
 #if PTHREADS_DEBUG
-      out('Preallocating ' + numWorkers + ' workers for a pthread spawn pool.');
+      out('Allocating ' + numWorkers + ' workers for a pthread spawn pool.');
 #endif
 
-      var numWorkersLoaded = 0;
-      var pthreadMainJs = "{{{ PTHREAD_WORKER_FILE }}}";
-      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
-      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
-      // to the main html file is loaded.
-      pthreadMainJs = locateFile(pthreadMainJs);
+      var workers = [];
 
+      var numWorkersToCreate = numWorkers;
+      if (PThread.preallocatedWorkers.length > 0) {
+        var workersUsed = Math.min(PThread.preallocatedWorkers.length, numWorkers);
+#if PTHREADS_DEBUG
+        out('Using ' + workersUsed + ' preallocated workers');
+#endif
+        workers = workers.concat(PThread.preallocatedWorkers.splice(0, workersUsed));
+        numWorkersToCreate -= workersUsed;
+      }
+      if (numWorkersToCreate > 0) {
+        workers = workers.concat(PThread.createNewWorkers(numWorkersToCreate));
+      }
+
+      // Add the listeners.
+      PThread.attachListenerToWorkers(workers, onFinishedLoading);
+
+      // Load the wasm module into the worker.
       for (var i = 0; i < numWorkers; ++i) {
-        var worker = new Worker(pthreadMainJs);
+        var worker = workers[i];
 
+#if !WASM_BACKEND
+        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
+        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
+        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
+#endif
+
+        // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
+        worker.postMessage({
+          'cmd': 'load',
+          // If the application main .js file was loaded from a Blob, then it is not possible
+          // to access the URL of the current script that could be passed to a Web Worker so that
+          // it could load up the same file. In that case, developer must either deliver the Blob
+          // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
+          // independently load up the same main application file.
+          'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
+#if WASM
+          'wasmMemory': wasmMemory,
+          'wasmModule': wasmModule,
+#if LOAD_SOURCE_MAP
+          'wasmSourceMap': wasmSourceMap,
+#endif
+#if USE_OFFSET_CONVERTER
+          'wasmOffsetConverter': wasmOffsetConverter,
+#endif
+#else
+          'buffer': HEAPU8.buffer,
+          'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
+#endif
+#if !WASM_BACKEND
+          'tempDoublePtr': tempDoublePtr,
+#endif
+          'DYNAMIC_BASE': DYNAMIC_BASE,
+          'DYNAMICTOP_PTR': DYNAMICTOP_PTR
+        });
+        PThread.unusedWorkers.push(worker);
+      }
+    },
+
+    // Attaches the listeners to the given workers. If onFinishedLoading is provided,
+    // will call that function when all workers have been loaded. It is assumed that no worker
+    // is yet loaded.
+    attachListenerToWorkers: function(workers, onFinishedLoading) {
+      var numWorkersLoaded = 0;
+      var numWorkers = workers.length;
+      for (var i = 0; i < numWorkers; ++i) {
+        var worker = workers[i];
         (function(worker) {
           worker.onmessage = function(e) {
-            var d = e.data;
+            var d = e['data'];
+            var cmd = d['cmd'];
             // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
             if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
 
             // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
-            if (d.targetThread && d.targetThread != _pthread_self()) {
+            if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
               var thread = PThread.pthreads[d.targetThread];
               if (thread) {
-                thread.worker.postMessage(e.data, d.transferList);
+                thread.worker.postMessage(e.data, d['transferList']);
               } else {
-                console.error('Internal error! Worker sent a message "' + d.cmd + '" to target pthread ' + d.targetThread + ', but that thread no longer exists!');
+                console.error('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
               }
               PThread.currentProxiedOperationCallerThread = undefined;
               return;
             }
 
-            if (d.cmd === 'processQueuedMainThreadWork') {
+            if (cmd === 'processQueuedMainThreadWork') {
               // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
               _emscripten_main_thread_process_queued_calls();
-            } else if (d.cmd === 'spawnThread') {
+            } else if (cmd === 'spawnThread') {
               __spawn_thread(e.data);
-            } else if (d.cmd === 'cleanupThread') {
-              __cleanup_thread(d.thread);
-            } else if (d.cmd === 'killThread') {
-              __kill_thread(d.thread);
-            } else if (d.cmd === 'cancelThread') {
-              __cancel_thread(d.thread);
-            } else if (d.cmd === 'loaded') {
+            } else if (cmd === 'cleanupThread') {
+              __cleanup_thread(d['thread']);
+            } else if (cmd === 'killThread') {
+              __kill_thread(d['thread']);
+            } else if (cmd === 'cancelThread') {
+              __cancel_thread(d['thread']);
+            } else if (cmd === 'loaded') {
               worker.loaded = true;
               // If this Worker is already pending to start running a thread, launch the thread now
               if (worker.runPthread) {
@@ -303,34 +397,34 @@ var LibraryPThread = {
               if (numWorkersLoaded === numWorkers && onFinishedLoading) {
                 onFinishedLoading();
               }
-            } else if (d.cmd === 'print') {
-              out('Thread ' + d.threadId + ': ' + d.text);
-            } else if (d.cmd === 'printErr') {
-              err('Thread ' + d.threadId + ': ' + d.text);
-            } else if (d.cmd === 'alert') {
-              alert('Thread ' + d.threadId + ': ' + d.text);
-            } else if (d.cmd === 'exit') {
+            } else if (cmd === 'print') {
+              out('Thread ' + d['threadId'] + ': ' + d['text']);
+            } else if (cmd === 'printErr') {
+              err('Thread ' + d['threadId'] + ': ' + d['text']);
+            } else if (cmd === 'alert') {
+              alert('Thread ' + d['threadId'] + ': ' + d['text']);
+            } else if (cmd === 'exit') {
               var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
               if (detached) {
                 PThread.returnWorkerToPool(worker);
               }
-            } else if (d.cmd === 'exitProcess') {
+            } else if (cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
               noExitRuntime = false;
               try {
-                exit(d.returnCode);
+                exit(d['returnCode']);
               } catch (e) {
                 if (e instanceof ExitStatus) return;
                 throw e;
               }
-            } else if (d.cmd === 'cancelDone') {
+            } else if (cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
-            } else if (d.cmd === 'objectTransfer') {
+            } else if (cmd === 'objectTransfer') {
               PThread.receiveObjectTransfer(e.data);
             } else if (e.data.target === 'setimmediate') {
               worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
             } else {
-              err("worker sent an unknown command " + d.cmd);
+              err("worker sent an unknown command " + cmd);
             }
             PThread.currentProxiedOperationCallerThread = undefined;
           };
@@ -356,44 +450,25 @@ var LibraryPThread = {
             // note: adding onerror seems to only hurt on node.js
           }
         }(worker));
+      }  // for each worker
+    },
 
-#if !WASM_BACKEND
-        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
-        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
-        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
+    createNewWorkers: function(numWorkers) {
+      // Creates new workers with the discovered pthread worker file.
+      if (typeof SharedArrayBuffer === 'undefined') return []; // No multithreading support, no-op.
+#if PTHREADS_DEBUG
+      out('Creating ' + numWorkers + ' workers.');
 #endif
-
-        // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
-        worker.postMessage({
-          cmd: 'load',
-          // If the application main .js file was loaded from a Blob, then it is not possible
-          // to access the URL of the current script that could be passed to a Web Worker so that
-          // it could load up the same file. In that case, developer must either deliver the Blob
-          // object in Module['mainScriptUrlOrBlob'], or a URL to it, so that pthread Workers can
-          // independently load up the same main application file.
-          urlOrBlob: Module['mainScriptUrlOrBlob'] || _scriptDir,
-#if WASM
-          wasmMemory: wasmMemory,
-          wasmModule: wasmModule,
-#if LOAD_SOURCE_MAP
-          wasmSourceMap: wasmSourceMap,
-#endif
-#if USE_OFFSET_CONVERTER
-          wasmOffsetConverter: wasmOffsetConverter,
-#endif
-#else
-          buffer: HEAPU8.buffer,
-          asmJsUrlOrBlob: Module["asmJsUrlOrBlob"],
-#endif
-#if !WASM_BACKEND
-          tempDoublePtr: tempDoublePtr,
-#endif
-          DYNAMIC_BASE: DYNAMIC_BASE,
-          DYNAMICTOP_PTR: DYNAMICTOP_PTR,
-          PthreadWorkerInit: PthreadWorkerInit
-        });
-        PThread.unusedWorkers.push(worker);
+      var pthreadMainJs = "{{{ PTHREAD_WORKER_FILE }}}";
+      // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
+      // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
+      // to the main html file is loaded.
+      pthreadMainJs = locateFile(pthreadMainJs);
+      var newWorkers = [];
+      for (var i = 0; i < numWorkers; ++i) {
+        newWorkers.push(new Worker(pthreadMainJs));
       }
+      return newWorkers;
     },
 
     getNewWorker: function() {
@@ -438,7 +513,7 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_PTHREAD) throw 'Internal Error! _cancel_thread() can only ever be called from main application thread!';
     if (!pthread_ptr) throw 'Internal Error! Null pthread_ptr in _cancel_thread!';
     var pthread = PThread.pthreads[pthread_ptr];
-    pthread.worker.postMessage({ cmd: 'cancel' });
+    pthread.worker.postMessage({ 'cmd': 'cancel' });
   },
 
   _spawn_thread: function(threadParams) {
@@ -493,17 +568,17 @@ var LibraryPThread = {
 
     worker.pthread = pthread;
     var msg = {
-        cmd: 'run',
-        start_routine: threadParams.startRoutine,
-        arg: threadParams.arg,
-        threadInfoStruct: threadParams.pthread_ptr,
-        selfThreadId: threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
-        parentThreadId: threadParams.parent_pthread_ptr,
-        stackBase: threadParams.stackBase,
-        stackSize: threadParams.stackSize,
+        'cmd': 'run',
+        'start_routine': threadParams.startRoutine,
+        'arg': threadParams.arg,
+        'threadInfoStruct': threadParams.pthread_ptr,
+        'selfThreadId': threadParams.pthread_ptr, // TODO: Remove this since thread ID is now the same as the thread address.
+        'parentThreadId': threadParams.parent_pthread_ptr,
+        'stackBase': threadParams.stackBase,
+        'stackSize': threadParams.stackSize,
 #if OFFSCREENCANVAS_SUPPORT
-        moduleCanvasId: threadParams.moduleCanvasId,
-        offscreenCanvases: threadParams.offscreenCanvases,
+        'moduleCanvasId': threadParams.moduleCanvasId,
+        'offscreenCanvases': threadParams.offscreenCanvases,
 #endif
       };
 console.log('parent ready to run pthread');
@@ -521,7 +596,7 @@ console.log('  postedded');
   },
 
   _num_logical_cores__deps: ['emscripten_force_num_logical_cores'],
-  _num_logical_cores: '; if (ENVIRONMENT_IS_PTHREAD) __num_logical_cores = PthreadWorkerInit.__num_logical_cores; else { PthreadWorkerInit.__num_logical_cores = __num_logical_cores = {{{ makeStaticAlloc(4) }}}; HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}} + '; }',
+  _num_logical_cores: '{{{ makeStaticAlloc(4) }}}; HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}},
 
   emscripten_has_threading_support: function() {
     return typeof SharedArrayBuffer !== 'undefined';
@@ -781,7 +856,7 @@ console.log('  postedded');
         Atomics.store(HEAPU32, (thread + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, 1); // Mark the thread as detached.
 
         if (!ENVIRONMENT_IS_PTHREAD) __cleanup_thread(thread);
-        else postMessage({ cmd: 'cleanupThread', thread: thread });
+        else postMessage({ 'cmd': 'cleanupThread', 'thread': thread });
         return 0;
       }
       // TODO HACK! Replace the _js variant with just _pthread_testcancel:
@@ -813,7 +888,7 @@ console.log('  postedded');
     }
     if (signal != 0) {
       if (!ENVIRONMENT_IS_PTHREAD) __kill_thread(thread);
-      else postMessage({ cmd: 'killThread', thread: thread});
+      else postMessage({ 'cmd': 'killThread', 'thread': thread});
     }
     return 0;
   },
@@ -835,7 +910,7 @@ console.log('  postedded');
     }
     Atomics.compareExchange(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0, 2); // Signal the thread that it needs to cancel itself.
     if (!ENVIRONMENT_IS_PTHREAD) __cancel_thread(thread);
-    else postMessage({ cmd: 'cancelThread', thread: thread});
+    else postMessage({ 'cmd': 'cancelThread', 'thread': thread});
     return 0;
   },
 
@@ -1027,7 +1102,7 @@ console.log('  postedded');
   },
 
   // Stores the memory address that the main thread is waiting on, if any.
-  _main_thread_futex_wait_address: '; if (ENVIRONMENT_IS_PTHREAD) __main_thread_futex_wait_address = PthreadWorkerInit.__main_thread_futex_wait_address; else PthreadWorkerInit.__main_thread_futex_wait_address = __main_thread_futex_wait_address = {{{ makeStaticAlloc(4) }}}',
+  _main_thread_futex_wait_address: '{{{ makeStaticAlloc(4) }}}',
 
   // Returns 0 on success, or one of the values -ETIMEDOUT, -EWOULDBLOCK or -EINVAL on error.
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
@@ -1118,7 +1193,7 @@ console.log('  postedded');
 
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
-    if (!noExitRuntime) postMessage({ cmd: 'exitProcess', returnCode: returnCode });
+    if (!noExitRuntime) postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
     return returnCode;
   },
 
@@ -1208,9 +1283,21 @@ console.log('  postedded');
     }
     // Proxied JS library funcs are encoded as positive values, and
     // EM_ASMs as negative values (see include_asm_consts)
-    var func = index > 0 ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+    var isEmAsmConst = index < 0;
+    var func = !isEmAsmConst ? proxiedFunctionTable[index] : ASM_CONSTS[-index - 1];
+#if WASM_BACKEND
+    if (isEmAsmConst) {
+      // EM_ASM arguments are stored in their own buffer in memory, that we need
+      // to unpack in order to call. The proxied arguments are the code index,
+      // signature pointer, and vararg buffer pointer, in that order.
+      var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
+      var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
+      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
+      return func.apply(null, constArgs);
+    }
+#endif
 #if ASSERTIONS
-    assert(func.length == numCallArgs);
+    assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },

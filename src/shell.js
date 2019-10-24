@@ -86,7 +86,9 @@ if (Module['ENVIRONMENT']) {
 }
 #endif
 
+#if USE_PTHREADS
 #include "shell_pthreads.js"
+#endif
 
 #if USE_PTHREADS && (!MODULARIZE || MODULARIZE_INSTANCE)
 // In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
@@ -327,6 +329,10 @@ assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle o
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}
 // TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
+{{{ makeRemovedFSAssert('IDBFS') }}}
+{{{ makeRemovedFSAssert('PROXYFS') }}}
+{{{ makeRemovedFSAssert('WORKERFS') }}}
+{{{ makeRemovedFSAssert('NODEFS') }}}
 
 #if USE_PTHREADS
 assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');

@@ -14,10 +14,48 @@ typedef unsigned long long u64x2 __attribute((vector_size(16)));
 typedef float f32x4 __attribute((vector_size(16)));
 typedef double f64x2 __attribute((vector_size(16)));
 
+typedef char i8x8 __attribute((vector_size(8)));
+typedef unsigned char u8x8 __attribute((vector_size(8)));
+typedef short i16x4 __attribute((vector_size(8)));
+typedef unsigned short u16x4 __attribute((vector_size(8)));
+typedef int i32x2 __attribute((vector_size(8)));
+typedef unsigned int u32x2 __attribute((vector_size(8)));
+
 #define TESTFN EMSCRIPTEN_KEEPALIVE __attribute__((noinline))
 
 i8x16 TESTFN i8x16_load(i8x16 *ptr) {
   return *ptr;
+}
+i8x16 TESTFN v8x16_load_splat(int8_t *ptr) {
+  return (i8x16){*ptr, *ptr, *ptr, *ptr, *ptr, *ptr, *ptr, *ptr,
+                 *ptr, *ptr, *ptr, *ptr, *ptr, *ptr, *ptr, *ptr};
+}
+i16x8 TESTFN v16x8_load_splat(int16_t *ptr) {
+  return (i16x8){*ptr, *ptr, *ptr, *ptr, *ptr, *ptr, *ptr, *ptr};
+}
+i32x4 TESTFN v32x4_load_splat(int32_t *ptr) {
+  return (i32x4){*ptr, *ptr, *ptr, *ptr};
+}
+i64x2 TESTFN v64x2_load_splat(int64_t *ptr) {
+  return (i64x2){*ptr, *ptr};
+}
+i16x8 TESTFN i16x8_load8x8_s(i8x8 *ptr) {
+  return __builtin_convertvector(*ptr, i16x8);
+}
+i16x8 TESTFN i16x8_load8x8_u(i8x8 *ptr) {
+  return (i16x8)__builtin_convertvector(*(u8x8*)ptr, u16x8);
+}
+i32x4 TESTFN i32x4_load16x4_s(i16x4 *ptr) {
+  return __builtin_convertvector(*ptr, i32x4);
+}
+i32x4 TESTFN i32x4_load16x4_u(i16x4 *ptr) {
+  return (i32x4)__builtin_convertvector(*(u16x4*)ptr, u32x4);
+}
+i64x2 TESTFN i64x2_load32x2_s(i32x2 *ptr) {
+  return __builtin_convertvector(*ptr, i64x2);
+}
+i64x2 TESTFN i64x2_load32x2_u(i32x2 *ptr) {
+  return (i64x2) __builtin_convertvector(*(u32x2*)ptr, u64x2);
 }
 void TESTFN i8x16_store(i8x16 *ptr, i8x16 vec) {
   *ptr = vec;
@@ -31,6 +69,11 @@ i8x16 TESTFN i8x16_shuffle_interleave_bytes(i8x16 x, i8x16 y) {
 i32x4 TESTFN i32x4_shuffle_reverse(i32x4 vec) {
   return __builtin_shufflevector(vec, vec, 3, 2, 1, 0);
 }
+#ifdef __wasm_unimplemented_simd128__
+i8x16 TESTFN v8x16_swizzle(i8x16 x, i8x16 y) {
+  return __builtin_wasm_swizzle_v8x16(x, y);
+}
+#endif // __wasm_unimplemented_simd128__
 i8x16 TESTFN i8x16_splat(int32_t x) {
   return (i8x16) {x, x, x, x, x, x, x, x, x, x, x, x, x, x, x, x};
 }
@@ -278,6 +321,9 @@ i8x16 TESTFN i8x16_or(i8x16 x, i8x16 y) {
 }
 i8x16 TESTFN i8x16_xor(i8x16 x, i8x16 y) {
   return x ^ y;
+}
+i8x16 TESTFN i8x16_andnot(i8x16 x, i8x16 y) {
+  return x & ~y;
 }
 i8x16 TESTFN i8x16_bitselect(i8x16 x, i8x16 y, i8x16 cond) {
   return (i8x16)__builtin_wasm_bitselect((i32x4)x, (i32x4)y, (i32x4)cond);
@@ -556,9 +602,9 @@ static int failures = 0;
                               char: "%d",               \
                               unsigned char: "%d",      \
                               short: "%d",              \
-                              int64_t: "%ld",           \
                               int32_t: "%d",            \
                               uint32_t: "%d",           \
+                              int64_t: "%ld",           \
                               float: "%f",              \
                               double: "%f"              \
   )
@@ -633,6 +679,44 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     expect_vec(i8x16_load(&vec),
               ((i8x16){7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}));
   }
+  {
+    i8x8 vec = {0x80, 0x90, 0xa0, 0xb0, 0xc0, 0xd0, 0xe0, 0xf0};
+    expect_vec(
+      v8x16_load_splat((int8_t*)&vec),
+      ((i8x16){0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
+               0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80})
+    );
+    expect_vec(
+      v16x8_load_splat((int16_t*)&vec),
+      ((i16x8){0x9080, 0x9080, 0x9080, 0x9080, 0x9080, 0x9080, 0x9080, 0x9080})
+    );
+    expect_vec(v32x4_load_splat((int32_t*)&vec), ((i32x4){0xb0a09080, 0xb0a09080, 0xb0a09080, 0xb0a09080}));
+    expect_vec(v64x2_load_splat((int64_t*)&vec), ((i64x2){0xf0e0d0c0b0a09080, 0xf0e0d0c0b0a09080}));
+    expect_vec(
+      i16x8_load8x8_s(&vec),
+      ((i16x8){0xff80, 0xff90, 0xffa0, 0xffb0, 0xffc0, 0xffd0, 0xffe0, 0xfff0})
+    );
+    expect_vec(
+      i16x8_load8x8_u(&vec),
+      ((i16x8){0x0080, 0x0090, 0x00a0, 0x00b0, 0x00c0, 0x00d0, 0x00e0, 0x00f0})
+    );
+    expect_vec(
+      i32x4_load16x4_s((i16x4*)&vec),
+      ((i32x4){0xffff9080, 0xffffb0a0, 0xffffd0c0, 0xfffff0e0})
+    );
+    expect_vec(
+      i32x4_load16x4_u((i16x4*)&vec),
+      ((i32x4){0x00009080, 0x0000b0a0, 0x0000d0c0, 0x0000f0e0})
+    );
+    expect_vec(
+      i64x2_load32x2_s((i32x2*)&vec),
+      ((i64x2){0xffffffffb0a09080, 0xfffffffff0e0d0c0})
+    );
+    expect_vec(
+      i64x2_load32x2_u((i32x2*)&vec),
+      ((i64x2){0x00000000b0a09080, 0x00000000f0e0d0c0})
+    );
+  }
   expect_vec(i32x4_const(), ((i32x4){1, 2, 3, 4}));
   expect_vec(
     i8x16_shuffle_interleave_bytes(
@@ -642,6 +726,17 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ((i8x16){1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16})
   );
   expect_vec(i32x4_shuffle_reverse((i32x4){1, 2, 3, 4}), ((i32x4){4, 3, 2, 1}));
+#ifdef  __wasm_unimplemented_simd128__
+  expect_vec(
+    v8x16_swizzle(
+      (i8x16){0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+              0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff},
+      (i8x16){0, 4, 8, 12, 16, 255, 129, 128, 127, 17, 15, 13, 12, 8, 4, 0}
+    ),
+    ((i8x16){0xf0, 0xf4, 0xf8, 0xfc, 0x00, 0x00, 0x00, 0x00,
+             0x00, 0x00, 0xff, 0xfd, 0xfc, 0xf8, 0xf4, 0xf0})
+  );
+#endif // __wasm_unimplemented_simd128__
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), ((i8x16){5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5}));
@@ -977,6 +1072,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   expect_vec(
     i8x16_xor((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
     (i8x16)((i32x4){0, -1, -1, 0})
+  );
+  expect_vec(
+    i8x16_andnot((i8x16)(i32x4){0, 0, -1, -1}, (i8x16)(i32x4){0, -1, 0, -1}),
+    (i8x16)((i32x4){0, 0, -1, 0})
   );
   expect_vec(
     i8x16_bitselect(

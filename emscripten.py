@@ -62,7 +62,7 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
+def emscript_fastcomp(infile, outfile, memfile, compiler_engine,
                       temp_files, DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
@@ -93,7 +93,7 @@ def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG)
+      glue, forwarded_data = compiler_glue(metadata, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
@@ -210,7 +210,7 @@ def fixup_functions(funcs, metadata):
     # undercounts by one, but that is what we want
     table_sizes[k] = str(v.count(','))
     # if shared.Settings.ASSERTIONS >= 2 and table_sizes[k] == 0:
-    #   logger.warning('no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
+    #   shared.warning('no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
   funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
 
   # fix +float into float.0, if not running js opts
@@ -230,7 +230,7 @@ def fixup_functions(funcs, metadata):
   return funcs
 
 
-def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
+def compiler_glue(metadata, compiler_engine, temp_files, DEBUG):
   if DEBUG:
     logger.debug('emscript: js compiler glue')
     t = time.time()
@@ -243,7 +243,7 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
 
-  glue, forwarded_data = compile_settings(compiler_engine, libraries, temp_files)
+  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
 
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -628,10 +628,17 @@ def optimize_syscalls(declares, DEBUG):
     # without filesystem support, it doesn't matter what syscalls need
     shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
-    syscall_prefix = '__syscall'
-    syscall_numbers = [d[len(syscall_prefix):] for d in declares if d.startswith(syscall_prefix)]
-    syscalls = [int(s) for s in syscall_numbers if is_int(s)]
-    if set(syscalls).issubset(set([6, 54, 140])): # close, ioctl, llseek
+    syscall_prefixes = ('__syscall', 'fd_', '__wasi_fd_')
+    syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
+    # check if the only filesystem syscalls are in: close, ioctl, llseek, write
+    # (without open, etc.. nothing substantial can be done, so we can disable
+    # extra filesystem support in that case)
+    if set(syscalls).issubset(set([
+      '__syscall6', '__syscall54', '__syscall140',
+      'fd_seek', '__wasi_fd_seek',
+      'fd_write', '__wasi_fd_write',
+      'fd_close', '__wasi_fd_close',
+    ])):
       if DEBUG:
         logger.debug('very limited syscalls (%s) so disabling full filesystem support', ', '.join(str(s) for s in syscalls))
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
@@ -667,7 +674,7 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
-    logger.warning('disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    shared.WarningManager.warn('ALMOST_ASM', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     shared.Settings.ASM_JS = 2
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
@@ -679,7 +686,7 @@ def update_settings_glue(metadata, DEBUG):
   if metadata['simd']:
     shared.Settings.SIMD = 1
     if shared.Settings.ASM_JS != 2:
-      logger.warning('disabling asm.js validation due to use of SIMD')
+      shared.WarningManager.warn('ALMOST_ASM', 'disabling asm.js validation due to use of SIMD')
       shared.Settings.ASM_JS = 2
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
@@ -698,9 +705,7 @@ def update_settings_glue(metadata, DEBUG):
           proxied_function_signatures.add(sig + '_async')
     return list(proxied_function_signatures)
 
-  # Proxying EM_ASM calls is not yet implemented in Wasm backend
-  if not shared.Settings.WASM_BACKEND:
-    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
+  shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
@@ -740,7 +745,7 @@ def apply_forwarded_data(forwarded_data):
   StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
-def compile_settings(compiler_engine, libraries, temp_files):
+def compile_settings(compiler_engine, temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
@@ -750,7 +755,7 @@ def compile_settings(compiler_engine, libraries, temp_files):
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
     out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), compiler_engine,
-                            [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                            [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
@@ -797,6 +802,8 @@ def apply_memory(js):
   js = js.replace('{{{ DYNAMIC_BASE }}}', str(memory.dynamic_base))
 
   logger.debug('global_base: %d stack_base: %d, stack_max: %d, dynamic_base: %d, static bump: %d', memory.global_base, memory.stack_base, memory.stack_max, memory.dynamic_base, memory.static_bump)
+
+  shared.Settings.DYNAMIC_BASE = memory.dynamic_base
 
   return js
 
@@ -883,8 +890,9 @@ def report_missing_symbols(all_implemented, pre):
   if not shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS and not shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
     return
 
-  # the initial list of missing functions are those we expected to export, but were not implemented in compiled code
-  missing = list(set(shared.Settings.ORIGINAL_EXPORTED_FUNCTIONS) - all_implemented)
+  # the initial list of missing functions are that the user explicitly exported
+  # but were not implemented in compiled code
+  missing = list(set(shared.Settings.USER_EXPORTED_FUNCTIONS) - all_implemented)
 
   for requested in missing:
     if ('function ' + asstr(requested)) in pre:
@@ -896,7 +904,7 @@ def report_missing_symbols(all_implemented, pre):
     if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
       exit_with_error('undefined exported function: "%s"', requested)
     elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-      logger.warning('undefined exported function: "%s"', requested)
+      shared.warning('undefined exported function: "%s"', requested)
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
@@ -917,15 +925,14 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
 
   funcs = list(funcs) + global_initializer_funcs(metadata['initializers'])
 
-  if not shared.Settings.ONLY_MY_CODE:
-    if shared.Settings.ALLOW_MEMORY_GROWTH:
-      funcs.append('_emscripten_replace_memory')
-    if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-      funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-    if shared.Settings.EMTERPRETIFY:
-      funcs += ['emterpret']
-      if shared.Settings.EMTERPRETIFY_ASYNC:
-        funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
+  if shared.Settings.ALLOW_MEMORY_GROWTH:
+    funcs.append('_emscripten_replace_memory')
+  if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+  if shared.Settings.EMTERPRETIFY:
+    funcs += ['emterpret']
+    if shared.Settings.EMTERPRETIFY_ASYNC:
+      funcs += ['setAsyncState', 'emtStackSave', 'emtStackRestore', 'getEmtStackMax', 'setEmtStackMax']
 
   return sorted(set(funcs))
 
@@ -1651,8 +1658,6 @@ def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
-  if shared.Settings.ONLY_MY_CODE:
-    funcs = []
   return funcs
 
 
@@ -1841,9 +1846,6 @@ for (var named in NAMED_GLOBALS) {
 
 
 def create_runtime_funcs_asmjs(exports, metadata):
-  if shared.Settings.ONLY_MY_CODE:
-    return []
-
   if shared.Settings.ASSERTIONS or shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     stack_check = '  if ((STACKTOP|0) >= (STACK_MAX|0)) abortStackOverflow(size|0);\n'
   else:
@@ -2161,7 +2163,7 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
+def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
                           temp_files, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
@@ -2180,7 +2182,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   if DEBUG:
     t = time.time()
-  glue, forwarded_data = compile_settings(compiler_engine, libraries, temp_files)
+  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -2287,7 +2289,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
                      '--dwarfdump=' + shared.LLVM_DWARFDUMP,
                      '-o',  base_source_map]
     if not shared.Settings.SOURCE_MAP_BASE:
-      logger.warn("Wasm source map won't be usable in a browser without --source-map-base")
+      logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
     shared.check_call(sourcemap_cmd)
     debug_copy(base_source_map, 'base_wasm.map')
 
@@ -2343,8 +2345,8 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   asm_consts = [0] * len(metadata['asmConsts'])
   all_sigs = []
   for k, v in metadata['asmConsts'].items():
-    const = asstr(v[0])
-    sigs = v[1]
+    const, sigs, call_types = v
+    const = asstr(const)
     const = trim_asm_const_body(const)
     args = []
     max_arity = 16
@@ -2356,33 +2358,65 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       args.append('$' + str(i))
     const = 'function(' + ', '.join(args) + ') {' + const + '}'
     asm_consts[int(k)] = const
-    all_sigs += sigs
+    for sig, call_type in zip(sigs, call_types):
+      all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
-  for sig in set(all_sigs):
-    forwarded_json['Functions']['libraryFunctions']['_emscripten_asm_const_' + sig] = 1
+
+  if all_sigs:
+    # emit the signature-reading helper function only if we have any EM_ASM
+    # functions in the module
+    check = ''
+    if shared.Settings.ASSERTIONS:
+      check = ' else abort("unexpected char in asm const signature " + ch);'
     asm_const_funcs.append(r'''
-function _emscripten_asm_const_%s(code, sig_ptr, argbuf) {
-  var sig = AsciiToString(sig_ptr);
-  var args = [];
-  var align_to = function(ptr, align) {
-    return (ptr+align-1) & ~(align-1);
-  };
-  var buf = argbuf;
-  for (var i = 0; i < sig.length; i++) {
-    var c = sig[i];
-    if (c == 'd' || c == 'f') {
-      buf = align_to(buf, 8);
+// Avoid creating a new array
+var _readAsmConstArgsArray = [];
+
+function readAsmConstArgs(sigPtr, buf) {
+  var args = _readAsmConstArgsArray;
+  args.length = 0;
+  while (1) {
+    var ch = HEAPU8[sigPtr++];
+    if (!ch) return args;
+    if (ch === 'd'.charCodeAt(0) || ch === 'f'.charCodeAt(0)) {
+      buf = alignMemory(buf, 8);
       args.push(HEAPF64[(buf >> 3)]);
       buf += 8;
-    } else if (c == 'i') {
-      buf = align_to(buf, 4);
+    } else if (ch === 'i'.charCodeAt(0)) {
+      buf = alignMemory(buf, 4);
       args.push(HEAP32[(buf >> 2)]);
       buf += 4;
-    }
+    }%s
   }
+}
+''' % check)
+
+  for sig, call_type in set(all_sigs):
+    const_name = '_emscripten_asm_const_' + call_type + sig
+    forwarded_json['Functions']['libraryFunctions'][const_name] = 1
+
+    preamble = ''
+    if shared.Settings.USE_PTHREADS:
+      sync_proxy = call_type == 'sync_on_main_thread_'
+      async_proxy = call_type == 'async_on_main_thread_'
+      proxied = sync_proxy or async_proxy
+      if proxied:
+        # In proxied function calls, positive integers 1, 2, 3, ... denote pointers
+        # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
+        # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
+        # ... over to the negative integers starting at -1.
+        preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
+                     proxy_debug_print(sync_proxy) +
+                     'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
+                     str(int(sync_proxy)) +
+                     ', code, sigPtr, argbuf); }')
+
+    asm_const_funcs.append(r'''
+function %s(code, sigPtr, argbuf) {%s
+  var args = readAsmConstArgs(sigPtr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
-}''' % sig)
+}''' % (const_name, preamble))
   return asm_consts, asm_const_funcs
 
 
@@ -2406,15 +2440,18 @@ def create_em_js(forwarded_json, metadata):
 
 
 def add_standard_wasm_imports(send_items_map):
-  # memory was already allocated (so that js could use the buffer); import it
-  memory_import = 'wasmMemory'
-  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
-    # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-    # Module scope, so lookup via Module as well.
-    memory_import += " || Module['wasmMemory']"
-  send_items_map['memory'] = memory_import
+  # Normally we import these into the wasm (so that JS could use them even
+  # before the wasm loads), while in standalone mode we do not depend
+  # on JS to create them, but create them in the wasm and export them.
+  if not shared.Settings.STANDALONE_WASM:
+    memory_import = 'wasmMemory'
+    if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+      # Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
+      # Module scope, so lookup via Module as well.
+      memory_import += " || Module['wasmMemory']"
+    send_items_map['memory'] = memory_import
 
-  send_items_map['table'] = 'wasmTable'
+    send_items_map['table'] = 'wasmTable'
 
   # With the wasm backend __memory_base and __table_base and only needed for
   # relocatable output.
@@ -2426,9 +2463,8 @@ def add_standard_wasm_imports(send_items_map):
   if shared.Settings.RELOCATABLE and shared.Settings.WASM_BACKEND: # FIXME
     send_items_map['__stack_pointer'] = 'STACK_BASE'
 
-  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG:
-    # wasm2js legalization of i64 support code may require these
-    # autodebug may also need them
+  if shared.Settings.MAYBE_WASM2JS or shared.Settings.AUTODEBUG or shared.Settings.LINKABLE:
+    # legalization of i64 support code may require these in some modes
     send_items_map['setTempRet0'] = 'setTempRet0'
     send_items_map['getTempRet0'] = 'getTempRet0'
 
@@ -2453,6 +2489,14 @@ def add_standard_wasm_imports(send_items_map):
       console.log('get_f64 ' + [loc, index, value]);
       return value;
     }'''
+    send_items_map['get_anyref'] = '''function(loc, index, value) {
+      console.log('get_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['get_exnref'] = '''function(loc, index, value) {
+      console.log('get_exnref ' + [loc, index, value]);
+      return value;
+    }'''
     send_items_map['set_i32'] = '''function(loc, index, value) {
       console.log('set_i32 ' + [loc, index, value]);
       return value;
@@ -2468,6 +2512,14 @@ def add_standard_wasm_imports(send_items_map):
     }'''
     send_items_map['set_f64'] = '''function(loc, index, value) {
       console.log('set_f64 ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_anyref'] = '''function(loc, index, value) {
+      console.log('set_anyref ' + [loc, index, value]);
+      return value;
+    }'''
+    send_items_map['set_exnref'] = '''function(loc, index, value) {
+      console.log('set_exnref ' + [loc, index, value]);
       return value;
     }'''
     send_items_map['load_ptr'] = '''function(loc, bytes, offset, ptr) {
@@ -2519,16 +2571,13 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   if shared.Settings.SAFE_HEAP:
     basic_funcs += ['segfault', 'alignfault']
 
-  if not shared.Settings.RELOCATABLE:
-    global_vars = metadata['externs']
-  else:
-    global_vars = [] # linkable code accesses globals through function calls
-
-  implemented_functions = set(metadata['implementedFunctions'])
-  library_funcs = set(k for k, v in forwarded_json['Functions']['libraryFunctions'].items() if v != 2)
-  global_funcs = list(library_funcs.difference(set(global_vars)).difference(implemented_functions))
-
-  send_items = (basic_funcs + invoke_funcs + global_funcs + global_vars)
+  em_asm_sigs = [zip(sigs, call_types) for _, sigs, call_types in metadata['asmConsts'].values()]
+  # flatten em_asm_sigs
+  em_asm_sigs = [sig for sigs in em_asm_sigs for sig in sigs]
+  em_asm_funcs = ['_emscripten_asm_const_' + call_type + sig for sig, call_type in em_asm_sigs]
+  em_js_funcs = list(metadata['emJsFuncs'].keys())
+  declared_items = ['_' + item for item in metadata['declares']]
+  send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
   def fix_import_name(g):
     if g.startswith('Math_'):
@@ -2707,11 +2756,11 @@ def normalize_line_endings(text):
   return text
 
 
-def run(infile, outfile, memfile, libraries):
+def run(infile, outfile, memfile):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
-  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and not shared.Settings.ONLY_MY_CODE:
+  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     generated_struct_info_name = 'generated_struct_info.json'
 
     def generate_struct_info():
@@ -2727,5 +2776,5 @@ def run(infile, outfile, memfile, libraries):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, memfile, libraries, shared.NODE_JS, temp_files, shared.DEBUG)
+      infile, outfile_obj, memfile, shared.NODE_JS, temp_files, shared.DEBUG)
   )

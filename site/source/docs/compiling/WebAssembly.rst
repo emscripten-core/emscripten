@@ -37,7 +37,25 @@ To use fastcomp, just use the emsdk normally to get ``latest``. For the upstream
 There are some differences you may notice between the two backends, if you upgrade from fastcomp to upstream:
 
 * The wasm backend is strict about linking files with different features sets - for example, if one file was built with atomics but another was not, it will error at link time. This prevents possible bugs, but may mean you need to make some build system fixes.
+
 * ``WASM=0`` behaves differently in the two backends. In fastcomp we emit asm.js, while in upstream we emit JS (since not all wasm constructs can be expressed in asm.js). Also, the JS support implements the same external ``WebAssembly.*`` API, so in particular startup will be async just like wasm by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even though ``WASM=0``).
+
+* The wasm backend uses wasm object files by default. That means that it does
+  codegen at the compile step, which makes the link step much faster - like a
+  normal native compiler. For comparison, in fastcomp the compile step emits
+  LLVM IR in object files.
+
+  * You normally wouldn't notice this, but some compiler flags affect codegen,
+    like ``DISABLE_EXCEPTION_CATCHING``. Such flags must be passed during
+    codegen. The simple and safe thing is to pass all ``-s`` flags at both
+    compile and link time.
+
+  * You can disable wasm object files with ``-s WASM_OBJECT_FILES=0``, which
+    will make the wasm backend behave more like fastcomp. Neither
+    fastcomp nor the wasm backend without wasm object files will run the
+    LLVM optimization passes by default, even if using LLVM IR in object files;
+    for that you must pass ``--llvm-lto 1``.
+
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
 Binaryen codegen options

@@ -71,9 +71,13 @@ def run_commands(commands):
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
-  if libname.endswith('.bc'):
-    shared.Building.link_to_object(inputs, libname)
-  elif libname.endswith('.a'):
+  suffix = os.path.splitext(libname)[1]
+  if suffix in ('.bc', '.o'):
+    if len(inputs) == 1:
+      shutil.copyfile(inputs[0], libname)
+    else:
+      shared.Building.link_to_object(inputs, libname)
+  elif suffix == '.a':
     shared.Building.emar('cr', libname, inputs)
   else:
     raise Exception('unknown suffix ' + libname)
@@ -294,6 +298,9 @@ class Library(object):
     """
     return True
 
+  def erase(self):
+    shared.Cache.erase_file(self.get_filename())
+
   def get_path(self):
     """
     Gets the cached path of this library.
@@ -339,9 +346,9 @@ class Library(object):
 
   def build(self):
     """Builds the library and returns the path to the file."""
-    lib_filename = self.in_temp(self.get_filename())
-    create_lib(lib_filename, self.build_objects())
-    return lib_filename
+    out_filename = self.in_temp(self.get_filename())
+    create_lib(out_filename, self.build_objects())
+    return out_filename
 
   @classmethod
   def _inherit_list(cls, attr):
@@ -540,7 +547,10 @@ class MuslInternalLibrary(Library):
     ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
-  cflags = ['-D_XOPEN_SOURCE=700']
+  cflags = [
+    '-D_XOPEN_SOURCE=700',
+    '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
+  ]
 
 
 class AsanInstrumentedLibrary(Library):
@@ -617,8 +627,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # custom standard library. The same for other libc/libm builds.
   cflags = ['-Os', '-fno-builtin']
 
-  # Hide several musl warnings that produce a lot of spam to unit test build server logs.
-  # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
+  # Hide several musl warnings that produce a lot of spam to unit test build
+  # server logs.  TODO: When updating musl the next time, feel free to recheck
+  # which of their warnings might have been fixed, and which ones of these could
+  # be cleaned up.
   cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
              '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
              '-Wno-dangling-else', '-Wno-unknown-pragmas',
@@ -700,6 +712,15 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
       libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
+      # Include all the getenv stuff with the wasm backend. With fastcomp we
+      # still use JS because libc is a .bc file and we don't want to have a
+      # global constructor there for __environ, which would mean it is always
+      # included.
+      libc_files += files_in_path(
+          path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
+          filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+
+    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
     return libc_files
 
@@ -725,10 +746,23 @@ class libc_wasm(MuslInternalLibrary):
     return shared.Settings.WASM
 
 
+class crt1(MuslInternalLibrary):
+  name = 'crt1'
+  cflags = ['-O2']
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['crt1.c']
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return shared.Settings.STANDALONE_WASM
+
+
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructor it contains can be DCE'd.  With the wasm backend libc is a .a file
-  so object file granularity applies.
+  constructor it contains can be DCE'd.  With the wasm backend libc it is a .a
+  file so object file granularity applies.
   """
 
   name = 'libc-extras'
@@ -739,7 +773,7 @@ class libc_extras(MuslInternalLibrary):
     return not shared.Settings.WASM_BACKEND
 
 
-class libcxxabi(CXXLibrary, MTLibrary, NoExceptLibrary):
+class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
@@ -1011,6 +1045,11 @@ class libasmfs(CXXLibrary, MTLibrary):
   def get_files(self):
     return [shared.path_from_root('system', 'lib', 'fetch', 'asmfs.cpp')]
 
+  def can_build(self):
+    # ASMFS is looking for a maintainer
+    # https://github.com/emscripten-core/emscripten/issues/9534
+    return False
+
 
 class libhtml5(Library):
   name = 'libhtml5'
@@ -1165,18 +1204,52 @@ class libstandalonewasm(MuslInternalLibrary):
   cflags = ['-Os']
   src_dir = ['system', 'lib']
 
+  def __init__(self, **kwargs):
+    self.is_mem_grow = kwargs.pop('is_mem_grow')
+    super(libstandalonewasm, self).__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super(libstandalonewasm, self).get_base_name()
+    if self.is_mem_grow:
+      name += '-memgrow'
+    return name
+
+  def get_cflags(self):
+    cflags = super(libstandalonewasm, self).get_cflags()
+    cflags += ['-DNDEBUG']
+    if self.is_mem_grow:
+      cflags += ['-D__EMSCRIPTEN_MEMORY_GROWTH__=1']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libstandalonewasm, cls).vary_on() + ['is_mem_grow']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libstandalonewasm, cls).get_default_variation(
+      is_mem_grow=shared.Settings.ALLOW_MEMORY_GROWTH,
+      **kwargs
+    )
+
   def get_files(self):
     base_files = files_in_path(
         path_components=['system', 'lib'],
         filenames=['standalone_wasm.c'])
-    musl_files = files_in_path(
+    # It is more efficient to use JS methods for time, normally.
+    time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
         filenames=['strftime.c',
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
                    '__year_to_secs.c'])
-    return base_files + musl_files
+    # It is more efficient to use JS for __assert_fail, as it avoids always
+    # including fprintf etc.
+    exit_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
+        filenames=['assert.c'])
+    return base_files + time_files + exit_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
@@ -1308,6 +1381,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       d = '_' + d
       if d not in shared.Settings.EXPORTED_FUNCTIONS:
         shared.Settings.EXPORTED_FUNCTIONS.append(d)
+
+  if shared.Settings.STANDALONE_WASM and '_main' in shared.Settings.EXPORTED_FUNCTIONS:
+    add_library(system_libs_map['crt1'])
 
   # Go over libraries to figure out which we must include
   for lib in system_libs:
@@ -1504,7 +1580,7 @@ class Ports(object):
 
     def retrieve():
       # retrieve from remote server
-      logger.warning('retrieving port: ' + name + ' from ' + url)
+      logger.info('retrieving port: ' + name + ' from ' + url)
       try:
         import requests
         response = requests.get(url)
@@ -1541,7 +1617,7 @@ class Ports(object):
       return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
-      logger.warning('unpacking port: ' + name)
+      logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
 
       # TODO: Someday when we are using Python 3, we might want to change the
