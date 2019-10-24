@@ -1721,15 +1721,16 @@ keydown(100);keyup(100); // trigger the end
       time.sleep(2)
 
   @requires_graphics_hardware
-  def test_glgears(self):
-    def test(args):
-      self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
-                 args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
-    # test normally
-    test([])
+  def test_glgears(self, extra_args=[]):
+    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
+               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + extra_args)
+
+  @requires_graphics_hardware
+  @requires_threads
+  def test_glgears_pthreads(self, extra_args=[]):
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
-    test(['-s', 'USE_PTHREADS=1'])
+    self.test_glgears(['-s', 'USE_PTHREADS=1'])
 
   @requires_graphics_hardware
   def test_glgears_long(self):
@@ -3975,6 +3976,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
 
   @no_fastcomp('ASan is only supported on WASM backend')
+  @requires_threads
   def test_pthread_asan_use_after_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
