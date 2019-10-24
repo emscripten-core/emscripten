@@ -7719,6 +7719,7 @@ extern "C" {
     self.set_setting('ASYNCIFY', 1)
     self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
     self.set_setting('ASYNCIFY_IGNORE_INDIRECT', 1)
+    self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
     if conditional:
       self.emcc_args += ['-DCONDITIONAL']
@@ -7730,8 +7731,8 @@ extern "C" {
     print('second wasm size', second_size)
     if not conditional and is_optimizing(self.emcc_args):
       # If the call to lazy-load is unconditional, then the optimizer can dce
-      # out quite a lot.
-      self.assertLess(first_size, 0.75 * second_size)
+      # out more than half
+      self.assertLess(first_size, 0.5 * second_size)
 
     with open('src.cpp.o.wasm', 'rb') as f:
       with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
