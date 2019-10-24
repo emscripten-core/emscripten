@@ -2633,7 +2633,7 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def lazy_load_code(wasm_binary_target, options, debug):
+  def asyncify_lazy_load_code(wasm_binary_target, options, debug):
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code

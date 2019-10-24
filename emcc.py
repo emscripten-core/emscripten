@@ -3062,7 +3062,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
     if not shared.Settings.ASYNCIFY:
       exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
-    shared.Building.lazy_load_code(wasm_binary_target, options, debug=intermediate_debug_info)
+    shared.Building.asyncify_lazy_load_code(wasm_binary_target, options, debug=intermediate_debug_info)
 
   def run_closure_compiler(final):
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
