@@ -15,11 +15,11 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
 
 import websockify
-from runner import BrowserCore, no_windows, chdir, flaky
+from runner import BrowserCore, no_windows, chdir
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
 
-node_ws_module_installed = False
+npm_checked = False
 
 NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm.cmd' if WINDOWS else 'npm')
 
@@ -30,13 +30,13 @@ def clean_processes(processes):
       # ask nicely (to try and catch the children)
       try:
         p.terminate() # SIGTERM
-      except:
+      except OSError:
         pass
       time.sleep(1)
       # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
       try:
         p.kill() # SIGKILL
-      except:
+      except OSError:
         pass
 
 
@@ -74,7 +74,7 @@ class WebsockifyServerHarness(object):
         proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
         proxy_sock.close()
         break
-      except:
+      except IOError:
         time.sleep(1)
     else:
       clean_processes(self.processes)
@@ -102,15 +102,11 @@ class CompiledServerHarness(object):
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
     # the ws module is installed
-    child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
-    global node_ws_module_installed
-    # Attempt to automatically install ws module for Node.js.
-    if child.returncode != 0 and not node_ws_module_installed:
-      node_ws_module_installed = True
-      run_process([NPM, 'install', path_from_root('tests', 'sockets', 'ws')], cwd=os.path.dirname(EMCC))
-      # Did installation succeed?
+    global npm_checked
+    if not npm_checked:
       child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
-    assert child.returncode == 0, 'ws module for Node.js not installed, and automatic installation failed! Please run \'npm install\' from %s' % shared.__rootpath__
+      assert child.returncode == 0, '"ws" node module not found.  you may need to run npm install'
+      npm_checked = True
 
     # compile the server
     proc = run_process([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
@@ -131,8 +127,8 @@ class sockets(BrowserCore):
   emcc_args = []
 
   @classmethod
-  def setUpClass(self):
-    super(sockets, self).setUpClass()
+  def setUpClass(cls):
+    super(sockets, cls).setUpClass()
     print()
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()
@@ -196,7 +192,7 @@ class sockets(BrowserCore):
     # generate a large string literal to use as our message
     message = ''
     for i in range(256 * 256 * 2):
-        message += str(unichr(ord('a') + (i % 26)))
+        message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')
@@ -215,7 +211,6 @@ class sockets(BrowserCore):
       with harness:
         self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
-  @flaky
   @no_windows('This test is Unix-specific.')
   def test_sockets_partial(self):
     for harness in [
@@ -225,7 +220,6 @@ class sockets(BrowserCore):
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_partial_client.c'), expected='165', args=['-DSOCKK=%d' % harness.listen_port])
 
-  @flaky
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_down(self):
     for harness in [
@@ -235,7 +229,6 @@ class sockets(BrowserCore):
       with harness:
         self.btest(os.path.join('sockets', 'test_sockets_select_server_down_client.c'), expected='266', args=['-DSOCKK=%d' % harness.listen_port])
 
-  @flaky
   @no_windows('This test is Unix-specific.')
   def test_sockets_select_server_closes_connection_rw(self):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
@@ -250,9 +243,9 @@ class sockets(BrowserCore):
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
-    shared.try_delete(self.in_dir('enet'))
-    shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
-    with chdir(self.in_dir('enet')):
+    shared.try_delete('enet')
+    shutil.copytree(path_from_root('tests', 'enet'), 'enet')
+    with chdir('enet'):
       run_process([PYTHON, path_from_root('emconfigure'), './configure'])
       run_process([PYTHON, path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
@@ -268,10 +261,10 @@ class sockets(BrowserCore):
   # somewhat work, but those have been removed). However, with WebRTC it
   # should be able to resurect this test.
   # def test_enet_in_browser(self):
-  #   shared.try_delete(self.in_dir('enet'))
-  #   shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
+  #   shared.try_delete('enet')
+  #   shutil.copytree(path_from_root('tests', 'enet'), 'enet')
   #   pwd = os.getcwd()
-  #   os.chdir(self.in_dir('enet'))
+  #   os.chdir('enet')
   #   run_process([PYTHON, path_from_root('emconfigure'), './configure'])
   #   run_process([PYTHON, path_from_root('emmake'), 'make'])
   #   enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]

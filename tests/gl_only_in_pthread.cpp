@@ -27,7 +27,7 @@ void *ThreadMain(void *arg)
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = EM_TRUE;
-  ctx = emscripten_webgl_create_context(0, &attr);
+  ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
   double color = 0;
@@ -90,7 +90,15 @@ void PollThreadExit(void *)
 
 int main()
 {
-  EM_ASM(Module['noExitRuntime'] = true;);
+  if (!emscripten_supports_offscreencanvas())
+  {
+    printf("Current browser does not support OffscreenCanvas. Skipping this test.\n");
+#ifdef REPORT_RESULT
+    REPORT_RESULT(0);
+#endif
+    return 0;
+  }
+  EM_ASM(noExitRuntime = true;);
   CreateThread();
   emscripten_async_call(PollThreadExit, 0, 100);
   return 0;

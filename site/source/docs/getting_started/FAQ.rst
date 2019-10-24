@@ -15,11 +15,11 @@ See the :ref:`Emscripten Tutorial <Tutorial>` and :ref:`emcc <emccdoc>`.
 Why do I get multiple errors building basic code and the tests?
 ===============================================================
 
-All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on the **master** branch, so if these are failing it is likely that there is some problem with your environment.
+All the tests in the :ref:`Emscripten test suite <emscripten-test-suite>` are known to build and pass on our test infrastructure, so if you see failures locally it is likely that there is some problem with your environment. (Rarely, there may be temporary breakage, but never on a tagged release version.)
 
-First call ``./emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
+First call ``emcc -v``, which runs basic sanity checks and prints out useful environment information. If that doesn't help, follow the instructions in :ref:`verifying-the-emscripten-environment`.
 
-You might also want to go through the :ref:`Tutorial` again, as this is updated as Emscripten changes.
+You might also want to go through the :ref:`Tutorial` again, as it is updated as Emscripten changes.
 
 
 I tried something: why doesn’t it work?
@@ -44,31 +44,16 @@ Why is code compilation slow?
 
 Emscripten makes some trade-offs that make the generated code faster and smaller, at the cost of longer compilation times. For example, we build parts of the standard library along with your code, which enables some additional optimizations, but takes a little longer to compile.
 
-.. note:: You can determine what compilation steps take longest by compiling with ``EMCC_DEBUG=1`` in the environment and then reviewing the debug logs (by default in ``/tmp/emscripten_temp``). Note that compiling in debug mode takes longer than normal, because we print out a lot of intermediate steps to disk.
+.. note:: You can determine what compilation steps take longest by compiling with ``EMCC_DEBUG=1`` in the environment and then reviewing the debug logs (by default in ``/tmp/emscripten_temp``). Note that compiling in debug mode takes longer than normal, because we print out a lot of intermediate steps to disk, so it's useful for debugging but not for actual compiling.
 
 The main tips for improving build time are:
 
-- Create fully optimized builds less frequently — use ``-O0`` during frequent development iterations (or don't specify an optimization level).
-
-  - Compiling with higher levels of optimization can in some cases be noticeably slower: ``-O2`` is slower than ``-O1``, which is in turn slower than ``-O0``.
-  - Compiling with ``-O3`` is **especially** slow — this can be mitigated by also enabling ``-s AGGRESSIVE_VARIABLE_ELIMINATION=1`` (removing variables makes the ``-O3`` regalloc easier).
-
-- Compile without :ref:`line number debug information <emcc-g>` (use ``-O1`` or ``-g0`` instead of ``-g``):
-
-  - Currently builds with line-number debug information are slow (see issue `#216 <https://github.com/kripken/emscripten/issues/216>`_). Stripping the debug information significantly improves compile times.
+- Use ``-O0`` for fast iteration builds. You can still compile with higher optimization levels, but specifying ``-O0`` during link will make the link step much faster.
 
 - Compile on a machine with more cores:
 
-  - Emscripten can run some passes in parallel (specifically, the JavaScript optimisations). Increasing the number of cores results in an almost linear improvement.
-  - Emscripten will automatically use more cores if they are available. You can control how many cores are used  with ``EMCC_CORES=N`` (this is useful if you have many cores but relatively less memory).
-
-- Make sure that the native optimizer is being used, which greatly speeds up optimized builds as of 1.28.2. ``EMCC_DEBUG=1`` output should not report errors about the native optimizer failing to build or not being used because of a previous failed build (if it previously failed, do ``emcc --clear-cache`` then compile your file again, and the optimizer will be automatically rebuilt).
-
-- When you have multiple bitcode files as inputs, put the largest file first (LLVM linking links the second and later ones into the first, so less copying is done on the first input to the linker).
-
-- Having fewer bitcode files can be faster, so you might want to link files into larger files in parallel in your build system (you might already do this if you have logical libraries), and then the final command has fewer things to operate on.
-
-- You don't need to link into a single bitcode file yourself, you can call the final ``emcc`` command that emits JS with a list of files. ``emcc`` can then defer linking and avoid an intermediary step, if possible (this optimization is disabled by LTO and by `EMCC_DEBUG=2`).
+  - For compiling your source files, use a parallel build system (for example, in ``make`` you can do something like ``make -j8`` to run using 8 cores).
+  - For the link step, Emscripten can run some optimizations in parallel (specifically, Binaryen optimizations for wasm, and our JavaScript optimizations). Increasing the number of cores results in an almost linear improvement. Emscripten will automatically use more cores if they are available, but you can control that with ``EMCC_CORES=N`` in the environment (which is useful if you have many cores but relatively less memory).
 
 
 Why does my code run slowly?
@@ -85,7 +70,6 @@ Why is my compiled code big?
 Make sure you build with ``-O3`` or ``-Os`` so code is fully optimized and minified. You should use the closure compiler, gzip compression on your webserver, etc., see the :ref:`section on code size in Optimizing code <optimizing-code-size>`.
 
 
-
 Why does compiling code that works on another machine gives me errors?
 ======================================================================
 
@@ -100,10 +84,24 @@ Make sure that you are running an :ref:`optimized build <Optimizing-Code>` (smal
 Network latency is also a possible factor in startup time. Consider putting the file loading code in a separate script element from the generated code so that the browser can start the network download in parallel to starting up the codebase (run the :ref:`file packager <packaging-files>` and put file loading code in one script element, and the generated codebase in a later script element).
 
 
+Why does my program stall in "Downloading..." or "Preparing..."?
+================================================================
+
+This can happen when loading the page using a ``file://`` URL. That works in some browsers (like Firefox) but not in others (like Chrome). Instead, it's best to use a webserver (like Python's dev server, ``python -m SimpleHTTPServer``).
+
+Otherwise, to debug this, look for an error reported on the page itself, or in the browser devtools (web console and network tab), or in your webserver's logging.
+
+
 What is "No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead" or "no native wasm support detected"?
 ===============================================================================================================================
 
 Those errors indicate that WebAssembly support is not present in the VM you are trying to run the code in. Compile with ``-s WASM=0`` to disable WebAssembly (and emit asm.js instead) if you want your code to run in such environments (all modern browsers support WebAssembly, but in some cases you may want to reach 100% of browsers, including legacy ones).
+
+
+Why do I get ``error while loading shared libraries: libtinfo.so.5``?
+=====================================================================
+
+LLVM and clang link libtinfo dynamically. On some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, you can do something like ``apt-get install libtinfo5`` on Debian or Ubuntu, or on Fedora something like ``dnf install ncurses-compat-libs``.
 
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
@@ -174,10 +172,11 @@ Another option is to implement needed C APIs as JavaScript libraries (see ``--js
 What are my options for audio playback?
 =======================================
 
-Emscripten has partial support for SDL (1, not 2) audio, and OpenAL.
+Emscripten has partial support for SDL1 and 2 audio, and OpenAL.
 
-To use SDL audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it that way alongside SDL1, SDL2, or another library for platform integration.
+To use SDL1 audio, include it as ``#include <SDL/SDL_mixer.h>``. You can use it that way alongside SDL1, SDL2, or another library for platform integration.
 
+To use SDL2 audio, include it as ``#include <SDL2/SDL_mixer.h>`` and use `-s USE_SDL_MIXER=2`. Format support is currently limited to OGG and WAV.
 
 How can my compiled program access files?
 =========================================
@@ -275,9 +274,9 @@ Why do functions in my C/C++ source code vanish when I compile to JavaScript, an
 
 Emscripten does dead code elimination of functions that are not called from the compiled code. While this does minimize code size, it can remove functions that you plan to call yourself (outside of the compiled code).
 
-To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/kripken/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
+To make sure a C function remains available to be called from normal JavaScript, it must be added to the `EXPORTED_FUNCTIONS <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/settings.js#L388>`_ using the *emcc* command line. For example, to prevent functions ``my_func()`` and ``main()`` from being removed/renamed, run *emcc* with: ::
 
-  ./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
+  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']"  ...
 
 .. note::
 
@@ -343,13 +342,13 @@ The ``Module`` object will contain exported methods. For something to appear the
 
  ::
 
-  ./emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
+  emcc -s "EXPORTED_FUNCTIONS=['_main', '_my_func']" ...
 
 would export a C method ``my_func`` (in addition to ``main``, in this example). And
 
  ::
 
-  ./emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
+  emcc -s "EXTRA_EXPORTED_RUNTIME_METHODS=['ccall']" ...
 
 will export ``ccall``. In both cases you can then access the exported function on the ``Module`` object.
 
@@ -385,20 +384,20 @@ That may occur when running something like
 ::
 
   # this fails on most Linuxes
-  ./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
+  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']
 
   # this fails on macOS
-  ./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
+  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS="['addOnPostRun']"
 
 You may need to quote things like this:
 
 ::
 
   # this works in the shell on most Linuxes and on macOS
-  ./emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
+  emcc a.c -s "EXTRA_EXPORTED_RUNTIME_METHODS=['addOnPostRun']"
 
   # or you may need something like this in a Makefile
-  ./emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
+  emcc a.c -s EXTRA_EXPORTED_RUNTIME_METHODS=\"['addOnPostRun']\"
 
 The proper syntax depends on the OS and shell you are in, and if you are writing in a Makefile, etc.
 
@@ -419,8 +418,8 @@ In the long term we hope to upgrade our internal JS parser. Meanwhile, you can m
 
 See also
 
- * https://github.com/kripken/emscripten/issues/6000
- * https://github.com/kripken/emscripten/issues/5700
+ * https://github.com/emscripten-core/emscripten/issues/6000
+ * https://github.com/emscripten-core/emscripten/issues/5700
 
 Why does running LLVM bitcode generated by emcc through **lli** break with errors about ``impure_ptr``?
 =======================================================================================================

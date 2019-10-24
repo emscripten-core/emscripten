@@ -24,7 +24,12 @@ REDISTRIBUTION OF THIS SOFTWARE.
 
 #include "SDL/SDL.h"
 #include "SDL/SDL_image.h"
+
+#ifndef USE_REGAL
 #include "SDL/SDL_opengl.h"
+#else
+#include "GL/Regal.h"
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -46,6 +51,10 @@ int main(int argc, char *argv[])
         printf("Unable to set video mode: %s\n", SDL_GetError());
         return 1;
     }
+
+#if USE_REGAL
+    RegalMakeCurrent((void*)1);
+#endif
 
     // Set the OpenGL state after creating the context with SDL_SetVideoMode
 
@@ -129,6 +138,15 @@ int main(int argc, char *argv[])
         glTexCoord2f( 1, 0.5 ); glVertex3f( 600, 10, 0 );
         glTexCoord2f( 1, 1   ); glVertex3f( 630, 200, 0 );
         glTexCoord2f( 0.5, 1 ); glVertex3f( 310, 250, 0 );
+    glEnd();
+
+    // test calls to glVertex4f
+    // Result should be equivalent as to glVertex3f( x/w, y/w, z/w )
+    glBegin( GL_QUADS );
+        glTexCoord2i( 0, 0 ); glVertex4f( 300, 300, 0, 2 ); // Square will be at (150,150) (150,250) (250,250) (250,150)
+        glTexCoord2i( 1, 0 ); glVertex4f( 300, 500, 0, 2 );
+        glTexCoord2i( 1, 1 ); glVertex4f( 500, 500, 0, 2 );
+        glTexCoord2i( 0, 1 ); glVertex4f( 500, 300, 0, 2 );
     glEnd();
 
     glBegin( GL_TRIANGLE_STRIP );

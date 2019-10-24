@@ -13,7 +13,7 @@ mergeInto(LibraryManager.library, {
     createNode: function(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
         // no supported
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
       }
       if (!MEMFS.ops_table) {
         MEMFS.ops_table = {
@@ -113,33 +113,18 @@ mergeInto(LibraryManager.library, {
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
     expandFileStorage: function(node, newCapacity) {
-#if !MEMFS_APPEND_TO_TYPED_ARRAYS
-      // If we are asked to expand the size of a file that already exists, revert to using a standard JS array to store the file
-      // instead of a typed array. This makes resizing the array more flexible because we can just .push() elements at the back to
-      // increase the size.
-      if (node.contents && node.contents.subarray && newCapacity > node.contents.length) {
-        node.contents = MEMFS.getFileDataAsRegularArray(node);
-        node.usedBytes = node.contents.length; // We might be writing to a lazy-loaded file which had overridden this property, so force-reset it.
-      }
-#endif
-
-      if (!node.contents || node.contents.subarray) { // Keep using a typed array if creating a new storage, or if old one was a typed array as well.
-        var prevCapacity = node.contents ? node.contents.length : 0;
-        if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
-        // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
-        // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
-        // avoid overshooting the allocation cap by a very large margin.
-        var CAPACITY_DOUBLING_MAX = 1024 * 1024;
-        newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
-        if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
-        var oldContents = node.contents;
-        node.contents = new Uint8Array(newCapacity); // Allocate new storage.
-        if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
-        return;
-      }
-      // Not using a typed array to back the file storage. Use a standard JS array instead.
-      if (!node.contents && newCapacity > 0) node.contents = [];
-      while (node.contents.length < newCapacity) node.contents.push(0);
+      var prevCapacity = node.contents ? node.contents.length : 0;
+      if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
+      // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
+      // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
+      // avoid overshooting the allocation cap by a very large margin.
+      var CAPACITY_DOUBLING_MAX = 1024 * 1024;
+      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
+      if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
+      var oldContents = node.contents;
+      node.contents = new Uint8Array(newCapacity); // Allocate new storage.
+      if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0); // Copy old data over to the new storage.
+      return;
     },
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
@@ -207,7 +192,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        throw FS.genericErrors[ERRNO_CODES.ENOENT];
+        throw FS.genericErrors[{{{ cDefine('ENOENT') }}}];
       },
       mknod: function(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
@@ -222,7 +207,7 @@ mergeInto(LibraryManager.library, {
           }
           if (new_node) {
             for (var i in new_node.contents) {
-              throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+              throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
             }
           }
         }
@@ -238,12 +223,12 @@ mergeInto(LibraryManager.library, {
       rmdir: function(parent, name) {
         var node = FS.lookupNode(parent, name);
         for (var i in node.contents) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENOTEMPTY);
+          throw new FS.ErrnoError({{{ cDefine('ENOTEMPTY') }}});
         }
         delete parent.contents[name];
       },
       readdir: function(node) {
-        var entries = ['.', '..']
+        var entries = ['.', '..'];
         for (var key in node.contents) {
           if (!node.contents.hasOwnProperty(key)) {
             continue;
@@ -259,7 +244,7 @@ mergeInto(LibraryManager.library, {
       },
       readlink: function(node) {
         if (!FS.isLink(node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return node.link;
       },
@@ -269,7 +254,9 @@ mergeInto(LibraryManager.library, {
         var contents = stream.node.contents;
         if (position >= stream.node.usedBytes) return 0;
         var size = Math.min(stream.node.usedBytes - position, length);
+#if ASSERTIONS
         assert(size >= 0);
+#endif
         if (size > 8 && contents.subarray) { // non-trivial, and typed array
           buffer.set(contents.subarray(position, position + size), offset);
         } else {
@@ -337,15 +324,15 @@ mergeInto(LibraryManager.library, {
 
       llseek: function(stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
         }
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
         return position;
       },
@@ -355,7 +342,7 @@ mergeInto(LibraryManager.library, {
       },
       mmap: function(stream, buffer, offset, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
         var ptr;
         var allocated;
@@ -377,17 +364,20 @@ mergeInto(LibraryManager.library, {
             }
           }
           allocated = true;
+          // malloc() can lead to growing the heap. If targeting the heap, we need to
+          // re-acquire the heap buffer object in case growth had occurred.
+          var fromHeap = (buffer.buffer == HEAP8.buffer);
           ptr = _malloc(length);
           if (!ptr) {
-            throw new FS.ErrnoError(ERRNO_CODES.ENOMEM);
+            throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
-          buffer.set(contents, ptr);
+          (fromHeap ? HEAP8 : buffer).set(contents, ptr);
         }
         return { ptr: ptr, allocated: allocated };
       },
       msync: function(stream, buffer, offset, length, mmapFlags) {
         if (!FS.isFile(stream.node.mode)) {
-          throw new FS.ErrnoError(ERRNO_CODES.ENODEV);
+          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
         if (mmapFlags & {{{ cDefine('MAP_PRIVATE') }}}) {
           // MAP_PRIVATE calls need not to be synced back to underlying fs

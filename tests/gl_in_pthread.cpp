@@ -35,7 +35,7 @@ void *ThreadMain(void *arg)
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
   attr.explicitSwapControl = EM_TRUE;
-  ctx = emscripten_webgl_create_context(0, &attr);
+  ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
 
   double color = 0;
@@ -110,7 +110,7 @@ void *mymain(void*)
 int main()
 {
 #ifdef TEST_CHAINED_WEBGL_CONTEXT_PASSING
-  EM_ASM(Module['noExitRuntime'] = true;);
+  EM_ASM(noExitRuntime = true;);
   pthread_attr_t attr;
   pthread_attr_init(&attr);
 #ifndef TRANSFER_TO_CHAINED_THREAD_FROM_MAIN_THREAD

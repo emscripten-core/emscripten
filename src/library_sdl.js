@@ -11,7 +11,7 @@
 // Notes:
 //  SDL_VIDEORESIZE: This is sent when the canvas is resized. Note that the user
 //                   cannot manually do so, so this is only sent when the
-//                   program manually resizes it (emscripten_set_canvas_size
+//                   program manually resizes it (emscripten_set_canvas_element_size
 //                   or otherwise).
 
 var LibrarySDL = {
@@ -1052,10 +1052,8 @@ var LibrarySDL = {
 #if ASSERTIONS
       assert(tempCtx, 'TTF_Init must have been called');
 #endif
-      tempCtx.save();
       tempCtx.font = fontString;
       var ret = tempCtx.measureText(text).width | 0;
-      tempCtx.restore();
       return ret;
     },
 
@@ -1718,9 +1716,9 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if EMTERPRETIFY_ASYNC == 0
+#if EMTERPRETIFY_ASYNC == 0 && !(WASM_BACKEND && ASYNCIFY)
   SDL_Delay: function(delay) {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting.');
+    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
@@ -1735,10 +1733,10 @@ var LibrarySDL = {
   SDL_WM_SetCaption__proxy: 'sync',
   SDL_WM_SetCaption__sig: 'vii',
   SDL_WM_SetCaption: function(title, icon) {
-    if (title && typeof Module['setWindowTitle'] !== 'undefined') {
-      Module['setWindowTitle'](Pointer_stringify(title));
+    if (title && typeof setWindowTitle !== 'undefined') {
+      setWindowTitle(UTF8ToString(title));
     }
-    icon = icon && Pointer_stringify(icon);
+    icon = icon && UTF8ToString(icon);
   },
 
   SDL_EnableKeyRepeat: function(delay, interval) {
@@ -2208,8 +2206,7 @@ var LibrarySDL = {
   SDL_WM_ToggleFullScreen__proxy: 'sync',
   SDL_WM_ToggleFullScreen__sig: 'ii',
   SDL_WM_ToggleFullScreen: function(surf) {
-    if (Browser.isFullscreen) {
-      Module['canvas'].exitFullscreen();
+    if (Browser.exitFullscreen()) {
       return 1;
     } else {
       if (!SDL.canRequestFullscreen) {
@@ -2226,7 +2223,7 @@ var LibrarySDL = {
     return flags; // We support JPG, PNG, TIF because browsers do
   },
 
-  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW'],
+  IMG_Load_RW__deps: ['SDL_LockSurface', 'SDL_FreeRW', '$PATH_FS'],
   IMG_Load_RW__proxy: 'sync',
   IMG_Load_RW__sig: 'iii',
   IMG_Load_RW: function(rwopsID, freeSrc) {
@@ -2243,9 +2240,9 @@ var LibrarySDL = {
         }
       }
       var callStbImage = function(func, params) {
-        var x = Module['_malloc']({{{ QUANTUM_SIZE }}});
-        var y = Module['_malloc']({{{ QUANTUM_SIZE }}});
-        var comp = Module['_malloc']({{{ QUANTUM_SIZE }}});
+        var x = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
+        var y = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
+        var comp = Module['_malloc']({{{ Runtime.QUANTUM_SIZE }}});
         addCleanup(function() {
           Module['_free'](x);
           Module['_free'](y);
@@ -2281,7 +2278,7 @@ var LibrarySDL = {
       }
 
       if (!raw) {
-        filename = PATH.resolve(filename);
+        filename = PATH_FS.resolve(filename);
         var raw = Module["preloadedImages"][filename];
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
@@ -2483,7 +2480,7 @@ var LibrarySDL = {
           if (secsUntilNextPlayStart >= SDL.audio.bufferingDelay + SDL.audio.bufferDurationSecs*SDL.audio.numSimultaneouslyQueuedBuffers) return;
 
           // Ask SDL audio data from the user code.
-          Module['dynCall_viii'](SDL.audio.callback, SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
+          {{{ makeDynCall('viii') }}}(SDL.audio.callback, SDL.audio.userdata, SDL.audio.buffer, SDL.audio.bufferSize);
           // And queue it to be played after the currently playing audio stream.
           SDL.audio.pushAudio(SDL.audio.buffer, SDL.audio.bufferSize);
         }
@@ -2740,6 +2737,7 @@ var LibrarySDL = {
     return 1;
   },
 
+  Mix_LoadWAV_RW__deps: ['$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
@@ -2775,7 +2773,7 @@ var LibrarySDL = {
     var bytes;
 
     if (rwops.filename !== undefined) {
-      filename = PATH.resolve(rwops.filename);
+      filename = PATH_FS.resolve(rwops.filename);
       var raw = Module["preloadedAudios"][filename];
       if (!raw) {
         if (raw === null) err('Trying to reuse preloaded audio, but freePreloadedMediaOnUse is set!');
@@ -2818,13 +2816,12 @@ var LibrarySDL = {
       // after loading. Therefore prepare an array of callback handlers to run when this audio decoding is complete, which
       // will then start the playback (with some delay).
       webAudio.onDecodeComplete = []; // While this member array exists, decoding hasn't finished yet.
-      function onDecodeComplete(data) {
+      var onDecodeComplete = function(data) {
         webAudio.decodedBuffer = data;
         // Call all handlers that were waiting for this decode to finish, and clear the handler list.
         webAudio.onDecodeComplete.forEach(function(e) { e(); });
         webAudio.onDecodeComplete = undefined; // Don't allow more callback handlers since audio has finished decoding.
-      }
-
+      };
       SDL.audioContext['decodeAudioData'](arrayBuffer, onDecodeComplete);
     } else if (audio === undefined && bytes) {
       // Here, we didn't find a preloaded audio but we either were passed a filepath for
@@ -3064,7 +3061,7 @@ var LibrarySDL = {
     }
     SDL.music.audio = null;
     if (SDL.hookMusicFinished) {
-      Module['dynCall_v'](SDL.hookMusicFinished);
+      {{{ makeDynCall('v') }}}(SDL.hookMusicFinished);
     }
     return 0;
   },
@@ -3158,15 +3155,23 @@ var LibrarySDL = {
   TTF_Init__proxy: 'sync',
   TTF_Init__sig: 'i',
   TTF_Init: function() {
-    var canvas = document.createElement('canvas');
-    SDL.ttfContext = canvas.getContext('2d');
+    // OffscreenCanvas 2D is faster than Canvas for text operations, so we use
+    // it if it's available.
+    try {
+      var offscreenCanvas = new OffscreenCanvas(0, 0);
+      SDL.ttfContext = offscreenCanvas.getContext('2d');
+    } catch (ex) {
+      var canvas = document.createElement('canvas');
+      SDL.ttfContext = canvas.getContext('2d');
+    }
+
     return 0;
   },
 
   TTF_OpenFont__proxy: 'sync',
   TTF_OpenFont__sig: 'iii',
   TTF_OpenFont: function(filename, size) {
-    filename = PATH.normalize(Pointer_stringify(filename));
+    filename = PATH.normalize(UTF8ToString(filename));
     var id = SDL.fonts.length;
     SDL.fonts.push({
       name: filename, // but we don't actually do anything with it..
@@ -3185,7 +3190,7 @@ var LibrarySDL = {
   TTF_RenderText_Solid__sig: 'iiii',
   TTF_RenderText_Solid: function(font, text, color) {
     // XXX the font and color are ignored
-    text = Pointer_stringify(text) || ' '; // if given an empty string, still return a valid surface
+    text = UTF8ToString(text) || ' '; // if given an empty string, still return a valid surface
     var fontData = SDL.fonts[font];
     var w = SDL.estimateTextWidth(fontData, text);
     var h = fontData.size;
@@ -3214,7 +3219,7 @@ var LibrarySDL = {
   TTF_SizeText: function(font, text, w, h) {
     var fontData = SDL.fonts[font];
     if (w) {
-      {{{ makeSetValue('w', '0', 'SDL.estimateTextWidth(fontData, Pointer_stringify(text))', 'i32') }}};
+      {{{ makeSetValue('w', '0', 'SDL.estimateTextWidth(fontData, UTF8ToString(text))', 'i32') }}};
     }
     if (h) {
       {{{ makeSetValue('h', '0', 'fontData.size', 'i32') }}};
@@ -3468,7 +3473,7 @@ var LibrarySDL = {
   SDL_SetWindowTitle__proxy: 'sync',
   SDL_SetWindowTitle__sig: 'vii',
   SDL_SetWindowTitle: function(window, title) {
-    if (title) document.title = Pointer_stringify(title);
+    if (title) document.title = UTF8ToString(title);
   },
 
   SDL_GetWindowSize__proxy: 'sync',
@@ -3650,7 +3655,7 @@ var LibrarySDL = {
   SDL_RWFromFile__sig: 'iii',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
-    var name = Pointer_stringify(_name)
+    var name = UTF8ToString(_name)
     SDL.rwops.push({ filename: name, mimetype: Browser.getMimetype(name) });
     return id;
   },
@@ -3684,7 +3689,7 @@ var LibrarySDL = {
   SDL_AddTimer__sig: 'iiii',
   SDL_AddTimer: function(interval, callback, param) {
     return window.setTimeout(function() {
-      Module['dynCall_iii'](callback, interval, param);
+      {{{ makeDynCall('iii') }}}(callback, interval, param);
     }, interval);
   },
   SDL_RemoveTimer__proxy: 'sync',

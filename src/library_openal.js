@@ -544,7 +544,7 @@ var LibraryOpenAL = {
         var lUpY = listener.up[1];
         var lUpZ = listener.up[2];
 
-        function inverseMagnitude(x, y, z) {
+        var inverseMagnitude = function(x, y, z) {
           var length = Math.sqrt(x * x + y * y + z * z);
 
           if (length < Number.EPSILON) {
@@ -552,7 +552,7 @@ var LibraryOpenAL = {
           }
 
           return 1.0 / length;
-        }
+        };
 
         // Normalize the Back vector
         var invMag = inverseMagnitude(lBackX, lBackY, lBackZ);
@@ -561,7 +561,7 @@ var LibraryOpenAL = {
         lBackZ *= invMag;
 
         // ...and the Up vector
-        var invMag = inverseMagnitude(lUpX, lUpY, lUpZ);
+        invMag = inverseMagnitude(lUpX, lUpY, lUpZ);
         lUpX *= invMag;
         lUpY *= invMag;
         lUpZ *= invMag;
@@ -572,15 +572,15 @@ var LibraryOpenAL = {
         var lRightZ = (lUpX * lBackY - lUpY * lBackX);
 
         // Back and Up might not be exactly perpendicular, so the cross product also needs normalization
-        var invMag = inverseMagnitude(lRightX, lRightY, lRightZ);
+        invMag = inverseMagnitude(lRightX, lRightY, lRightZ);
         lRightX *= invMag;
         lRightY *= invMag;
         lRightZ *= invMag;
 
         // Recompute Up from the now orthonormal Right and Back vectors so we have a fully orthonormal basis
-        var lUpX = (lBackY * lRightZ - lBackZ * lRightY);
-        var lUpY = (lBackZ * lRightX - lBackX * lRightZ);
-        var lUpZ = (lBackX * lRightY - lBackY * lRightX);
+        lUpX = (lBackY * lRightZ - lBackZ * lRightY);
+        lUpY = (lBackZ * lRightX - lBackX * lRightZ);
+        lUpZ = (lBackX * lRightY - lBackY * lRightX);
 
         var oldX = dirX;
         var oldY = dirY;
@@ -591,9 +591,9 @@ var LibraryOpenAL = {
         dirY = oldX * lRightY + oldY * lUpY + oldZ * lBackY;
         dirZ = oldX * lRightZ + oldY * lUpZ + oldZ * lBackZ;
 
-        var oldX = posX;
-        var oldY = posY;
-        var oldZ = posZ;
+        oldX = posX;
+        oldY = posY;
+        oldZ = posZ;
 
         // ...and to the source position
         posX = oldX * lRightX + oldY * lUpX + oldZ * lBackX;
@@ -716,13 +716,16 @@ var LibraryOpenAL = {
         AL.setSourceState(src, 0x1011 /* AL_INITIAL */);
       }
 
-      src.bufsProcessed = 0;
-      while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
-        offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
-        src.bufsProcessed++;
+      if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
+        src.bufsProcessed = 0;
+        while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
+          offset -= src.bufQueue[src.bufsProcessed].audiobuf.duration;
+          src.bufsProcessed++;
+        }
+
+        src.bufOffset = offset;
       }
 
-      src.bufOffset = offset;
       if (playing) {
         AL.setSourceState(src, 0x1012 /* AL_PLAYING */);
       }
@@ -1611,7 +1614,7 @@ var LibraryOpenAL = {
 
     // NULL is a valid device name here (resolves to default);
     if (pDeviceName !== 0) {
-      resolvedDeviceName = Pointer_stringify(pDeviceName);
+      resolvedDeviceName = UTF8ToString(pDeviceName);
       if (resolvedDeviceName !== AL.CAPTURE_DEVICE_NAME) {
 #if OPENAL_DEBUG
         console.error('alcCaptureOpenDevice() with invalid device name \''+resolvedDeviceName+'\'');
@@ -2017,9 +2020,9 @@ var LibraryOpenAL = {
       // https://github.com/jpernst/emscripten/issues/2#issuecomment-312729735
       // if you're curious about why.
 
-      function lerp(from, to, progress) {
+      var lerp = function(from, to, progress) {
         return (1 - progress) * from + progress * to;
-      }
+      };
 
       for (var i = 0, frame_i = 0; frame_i < requestedFrameCount; ++frame_i) {
 
@@ -2051,7 +2054,7 @@ var LibraryOpenAL = {
   alcOpenDevice__sig: 'ii',
   alcOpenDevice: function(pDeviceName) {
     if (pDeviceName) {
-      var name = Pointer_stringify(pDeviceName);
+      var name = UTF8ToString(pDeviceName);
       if (name !== AL.DEVICE_NAME) {
         return 0;
       }
@@ -2069,7 +2072,7 @@ var LibraryOpenAL = {
   alcCloseDevice__proxy: 'sync',
   alcCloseDevice__sig: 'ii',
   alcCloseDevice: function(deviceId) {
-    if (!deviceId in AL.deviceRefCounts || AL.deviceRefCounts[deviceId] > 0) {
+    if (!(deviceId in AL.deviceRefCounts) || AL.deviceRefCounts[deviceId] > 0) {
       return 0 /* ALC_FALSE */;
     }
 
@@ -2081,7 +2084,7 @@ var LibraryOpenAL = {
   alcCreateContext__proxy: 'sync',
   alcCreateContext__sig: 'iii',
   alcCreateContext: function(deviceId, pAttrList) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcCreateContext() called with an invalid device');
 #endif
@@ -2303,7 +2306,7 @@ var LibraryOpenAL = {
   alcIsExtensionPresent__proxy: 'sync',
   alcIsExtensionPresent__sig: 'iii',
   alcIsExtensionPresent: function(deviceId, pExtName) {
-    name = Pointer_stringify(pExtName);
+    var name = UTF8ToString(pExtName);
 
     return AL.ALC_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2339,7 +2342,7 @@ var LibraryOpenAL = {
       AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
       return 0; /* ALC_NONE */
     }
-    name = Pointer_stringify(pEnumName);
+    name = UTF8ToString(pEnumName);
     // See alGetEnumValue(), but basically behave the same as OpenAL-Soft
     switch(name) {
     case 'ALC_NO_ERROR': return 0;
@@ -2921,7 +2924,7 @@ var LibraryOpenAL = {
   alIsExtensionPresent__proxy: 'sync',
   alIsExtensionPresent__sig: 'ii',
   alIsExtensionPresent: function(pExtName) {
-    name = Pointer_stringify(pExtName);
+    name = UTF8ToString(pExtName);
 
     return AL.AL_EXTENSIONS[name] ? 1 : 0;
   },
@@ -2963,7 +2966,7 @@ var LibraryOpenAL = {
       AL.currentCtx.err = 0xA003 /* AL_INVALID_VALUE */;
       return 0 /* AL_NONE */;
     }
-    name = Pointer_stringify(pEnumName);
+    name = UTF8ToString(pEnumName);
 
     switch(name) {
     // Spec doesn't clearly state that alGetEnumValue() is required to
@@ -3103,7 +3106,7 @@ var LibraryOpenAL = {
       break;
     case 0xB004 /* AL_EXTENSIONS */:
       ret = '';
-      for (ext in AL.AL_EXTENSIONS) {
+      for (var ext in AL.AL_EXTENSIONS) {
         ret = ret.concat(ext);
         ret = ret.concat(' ');
       }

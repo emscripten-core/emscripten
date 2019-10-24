@@ -81,7 +81,7 @@ import fnmatch
 import json
 
 if len(sys.argv) == 1:
-  print('''Usage: file_packager.py TARGET [--preload A...] [--embed B...] [--exclude C...] [--no-closure]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--no-heap-copy] [--separate-metadata]
+  print('''Usage: file_packager.py TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--no-heap-copy] [--separate-metadata] [--lz4] [--use-preload-plugins]
 See the source for more details.''')
   sys.exit(0)
 
@@ -529,7 +529,7 @@ if has_preloaded:
     os.unlink(temp)
     use_data = '''
           var compressedData = %s;
-          compressedData.data = byteArray;
+          compressedData['data'] = byteArray;
           assert(typeof LZ4 === 'object', 'LZ4 not present - was your app build with  -s LZ4=1  ?');
           LZ4.loadPackage({ 'metadata': metadata, 'compressedData': compressedData });
           Module['removeRunDependency']('datafile_%s');
@@ -806,10 +806,8 @@ if has_preloaded:
             function(useCached, metadata) {
               Module.preloadResults[PACKAGE_NAME] = {fromCache: useCached};
               if (useCached) {
-                console.info('loading ' + PACKAGE_NAME + ' from cache');
                 fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
               } else {
-                console.info('loading ' + PACKAGE_NAME + ' from remote');
                 fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
                   function(packageData) {
                     cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,

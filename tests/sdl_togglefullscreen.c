@@ -74,8 +74,8 @@ static void render() {
   SDL_RenderClear(renderer);
   SDL_RenderPresent(renderer);
 #else
-  int width, height, isfs;
-  emscripten_get_canvas_size(&width, &height, &isfs);
+  int width, height;
+  emscripten_get_canvas_element_size("#canvas", &width, &height);
   SDL_Rect rect = { 0, 0, width, height };
   SDL_FillRect(screen, &rect, 0xff00ffff);
 #endif

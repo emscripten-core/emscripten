@@ -10,6 +10,6 @@ function dynCall(sig) {
 }
 // not exported, not used, so it should not succeed in keeping dynCall_* alive
 
-Module.asmLibraryArg = {
+var asmLibraryArg = {
 };
 

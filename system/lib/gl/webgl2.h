@@ -75,8 +75,8 @@ GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstanced (GLenum mode, GLs
 GL_APICALL GLsync GL_APIENTRY emscripten_glFenceSync (GLenum condition, GLbitfield flags);
 GL_APICALL GLboolean GL_APIENTRY emscripten_glIsSync (GLsync sync);
 GL_APICALL void GL_APIENTRY emscripten_glDeleteSync (GLsync sync);
-GL_APICALL GLenum GL_APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
-GL_APICALL void GL_APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
+GL_APICALL GLenum GL_APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint timeoutLo, GLuint timeoutHi);
+GL_APICALL void GL_APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint timeoutLo, GLuint timeoutHi);
 GL_APICALL void GL_APIENTRY emscripten_glGetInteger64v (GLenum pname, GLint64 *data);
 GL_APICALL void GL_APIENTRY emscripten_glGetSynciv (GLsync sync, GLenum pname, GLsizei bufSize, GLsizei *length, GLint *values);
 GL_APICALL void GL_APIENTRY emscripten_glGetInteger64i_v (GLenum target, GLuint index, GLint64 *data);
@@ -106,3 +106,23 @@ GL_APICALL void GL_APIENTRY emscripten_glInvalidateSubFramebuffer (GLenum target
 GL_APICALL void GL_APIENTRY emscripten_glTexStorage2D (GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height);
 GL_APICALL void GL_APIENTRY emscripten_glTexStorage3D (GLenum target, GLsizei levels, GLenum internalformat, GLsizei width, GLsizei height, GLsizei depth);
 GL_APICALL void GL_APIENTRY emscripten_glGetInternalformativ (GLenum target, GLenum internalformat, GLenum pname, GLsizei bufSize, GLint *params);
+
+// Extensions:
+GL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorNV(GLuint index, GLuint divisor);
+GL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorEXT(GLuint index, GLuint divisor);
+GL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorARB(GLuint index, GLuint divisor);
+GL_APICALL void GL_APIENTRY emscripten_glVertexAttribDivisorANGLE(GLuint index, GLuint divisor);
+GL_APICALL void GL_APIENTRY emscripten_glDrawArraysInstancedNV(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawArraysInstancedEXT(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawArraysInstancedARB(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawArraysInstancedANGLE(GLenum mode, GLint first, GLsizei count, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstancedNV(GLenum mode, GLsizei count, GLenum type, GLintptr indices, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstancedEXT(GLenum mode, GLsizei count, GLenum type, GLintptr indices, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstancedARB(GLenum mode, GLsizei count, GLenum type, GLintptr indices, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstancedANGLE(GLenum mode, GLsizei count, GLenum type, GLintptr indices, GLsizei instancecount);
+GL_APICALL void GL_APIENTRY emscripten_glBindVertexArrayOES(GLuint array);
+GL_APICALL void GL_APIENTRY emscripten_glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays);
+GL_APICALL void GL_APIENTRY emscripten_glGenVertexArraysOES(GLsizei n, GLuint *arrays);
+GL_APICALL GLboolean GL_APIENTRY emscripten_glIsVertexArrayOES(GLuint array);
+GL_APICALL void GL_APIENTRY emscripten_glDrawBuffersEXT(GLsizei n, const GLenum *bufs);
+GL_APICALL void GL_APIENTRY emscripten_glDrawBuffersWEBGL(GLsizei n, const GLenum *bufs);

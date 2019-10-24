@@ -228,6 +228,10 @@ module std [system] {
     header "atomic"
     export *
   }
+  module bit {
+    header "bit"
+    export *
+  }
   module bitset {
     header "bitset"
     export string
@@ -235,12 +239,20 @@ module std [system] {
     export *
   }
   // No submodule for cassert. It fundamentally needs repeated, textual inclusion.
+  module charconv {
+    header "charconv"
+    export *
+  }
   module chrono {
     header "chrono"
     export *
   }
   module codecvt {
     header "codecvt"
+    export *
+  }
+  module compare {
+    header "compare"
     export *
   }
   module complex {
@@ -258,6 +270,10 @@ module std [system] {
   }
   module exception {
     header "exception"
+    export *
+  }
+  module filesystem {
+    header "filesystem"
     export *
   }
   module forward_list {
@@ -470,10 +486,15 @@ module std [system] {
     export initializer_list
     export *
   }
+  module version {
+    header "version"
+    export *
+  }
 
   // FIXME: These should be private.
   module __bit_reference { header "__bit_reference" export * }
   module __debug { header "__debug" export * }
+  module __errc { header "__errc" export * }
   module __functional_base { header "__functional_base" export * }
   module __hash_table { header "__hash_table" export * }
   module __locale { header "__locale" export * }
@@ -485,20 +506,13 @@ module std [system] {
   module __tree { header "__tree" export * }
   module __tuple { header "__tuple" export * }
   module __undef_macros { header "__undef_macros" export * }
+  module __node_handle { header "__node_handle" export * }
 
   module experimental {
     requires cplusplus11
 
     module algorithm {
       header "experimental/algorithm"
-      export *
-    }
-    module any {
-      header "experimental/any"
-      export *
-    }
-    module chrono {
-      header "experimental/chrono"
       export *
     }
      module coroutine {
@@ -508,10 +522,6 @@ module std [system] {
     }
     module deque {
       header "experimental/deque"
-      export *
-    }
-    module dynarray {
-      header "experimental/dynarray"
       export *
     }
     module filesystem {
@@ -542,44 +552,28 @@ module std [system] {
       header "experimental/memory_resource"
       export *
     }
-    module numeric {
-      header "experimental/numeric"
-      export *
-    }
-    module optional {
-      header "experimental/optional"
-      export *
-    }
     module propagate_const {
       header "experimental/propagate_const"
-      export *
-    }
-    module ratio {
-      header "experimental/ratio"
       export *
     }
     module regex {
       header "experimental/regex"
       export *
     }
+    module simd {
+      header "experimental/simd"
+      export *
+    }
     module set {
       header "experimental/set"
       export *
     }
+    module span {
+      header "span"
+      export *
+    }
     module string {
       header "experimental/string"
-      export *
-    }
-    module string_view {
-      header "experimental/string_view"
-      export *
-    }
-    module system_error {
-      header "experimental/system_error"
-      export *
-    }
-    module tuple {
-      header "experimental/tuple"
       export *
     }
     module type_traits {

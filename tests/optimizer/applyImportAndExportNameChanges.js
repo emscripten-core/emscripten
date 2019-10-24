@@ -1,5 +1,5 @@
 var name;
-Module.asmLibraryArg = {
+var asmLibraryArg = {
   'save1': 1,
   'number': 33,
   "__syscall6": ___syscall6,

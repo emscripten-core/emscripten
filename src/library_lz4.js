@@ -5,7 +5,7 @@
 
 #if LZ4
 mergeInto(LibraryManager.library, {
-  $LZ4__deps: ['$FS'],
+  $LZ4__deps: ['$FS', '$ERRNO_CODES'],
   $LZ4: {
     DIR_MODE: {{{ cDefine('S_IFDIR') }}} | 511 /* 0777 */,
     FILE_MODE: {{{ cDefine('S_IFREG') }}} | 511 /* 0777 */,
@@ -23,12 +23,12 @@ mergeInto(LibraryManager.library, {
       LZ4.init();
       var compressedData = pack['compressedData'];
       if (!compressedData) compressedData = LZ4.codec.compressPackage(pack['data']);
-      assert(compressedData.cachedIndexes.length === compressedData.cachedChunks.length);
-      for (var i = 0; i < compressedData.cachedIndexes.length; i++) {
-        compressedData.cachedIndexes[i] = -1;
-        compressedData.cachedChunks[i] = compressedData.data.subarray(compressedData.cachedOffset + i*LZ4.CHUNK_SIZE,
-                                                                      compressedData.cachedOffset + (i+1)*LZ4.CHUNK_SIZE);
-        assert(compressedData.cachedChunks[i].length === LZ4.CHUNK_SIZE);
+      assert(compressedData['cachedIndexes'].length === compressedData['cachedChunks'].length);
+      for (var i = 0; i < compressedData['cachedIndexes'].length; i++) {
+        compressedData['cachedIndexes'][i] = -1;
+        compressedData['cachedChunks'][i] = compressedData['data'].subarray(compressedData['cachedOffset'] + i*LZ4.CHUNK_SIZE,
+                                                                      compressedData['cachedOffset'] + (i+1)*LZ4.CHUNK_SIZE);
+        assert(compressedData['cachedChunks'][i].length === LZ4.CHUNK_SIZE);
       }
       pack['metadata'].files.forEach(function(file) {
         var dir = PATH.dirname(file.filename);
@@ -125,32 +125,32 @@ mergeInto(LibraryManager.library, {
           var desired = length - written;
           //console.log('current read: ' + ['start', start, 'desired', desired]);
           var chunkIndex = Math.floor(start / LZ4.CHUNK_SIZE);
-          var compressedStart = compressedData.offsets[chunkIndex];
-          var compressedSize = compressedData.sizes[chunkIndex];
+          var compressedStart = compressedData['offsets'][chunkIndex];
+          var compressedSize = compressedData['sizes'][chunkIndex];
           var currChunk;
-          if (compressedData.successes[chunkIndex]) {
-            var found = compressedData.cachedIndexes.indexOf(chunkIndex);
+          if (compressedData['successes'][chunkIndex]) {
+            var found = compressedData['cachedIndexes'].indexOf(chunkIndex);
             if (found >= 0) {
-              currChunk = compressedData.cachedChunks[found];
+              currChunk = compressedData['cachedChunks'][found];
             } else {
               // decompress the chunk
-              compressedData.cachedIndexes.pop();
-              compressedData.cachedIndexes.unshift(chunkIndex);
-              currChunk = compressedData.cachedChunks.pop();
-              compressedData.cachedChunks.unshift(currChunk);
-              if (compressedData.debug) {
+              compressedData['cachedIndexes'].pop();
+              compressedData['cachedIndexes'].unshift(chunkIndex);
+              currChunk = compressedData['cachedChunks'].pop();
+              compressedData['cachedChunks'].unshift(currChunk);
+              if (compressedData['debug']) {
                 console.log('decompressing chunk ' + chunkIndex);
                 Module['decompressedChunks'] = (Module['decompressedChunks'] || 0) + 1;
               }
-              var compressed = compressedData.data.subarray(compressedStart, compressedStart + compressedSize);
+              var compressed = compressedData['data'].subarray(compressedStart, compressedStart + compressedSize);
               //var t = Date.now();
               var originalSize = LZ4.codec.uncompress(compressed, currChunk);
               //console.log('decompress time: ' + (Date.now() - t));
-              if (chunkIndex < compressedData.successes.length-1) assert(originalSize === LZ4.CHUNK_SIZE); // all but the last chunk must be full-size
+              if (chunkIndex < compressedData['successes'].length-1) assert(originalSize === LZ4.CHUNK_SIZE); // all but the last chunk must be full-size
             }
           } else {
             // uncompressed
-            currChunk = compressedData.data.subarray(compressedStart, compressedStart + LZ4.CHUNK_SIZE);
+            currChunk = compressedData['data'].subarray(compressedStart, compressedStart + LZ4.CHUNK_SIZE);
           }
           var startInChunk = start % LZ4.CHUNK_SIZE;
           var endInChunk = Math.min(startInChunk + desired, LZ4.CHUNK_SIZE);
@@ -165,9 +165,9 @@ mergeInto(LibraryManager.library, {
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.size;
           }

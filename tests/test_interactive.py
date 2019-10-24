@@ -16,21 +16,21 @@ from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
 
 class interactive(BrowserCore):
   @classmethod
-  def setUpClass(self):
-    super(interactive, self).setUpClass()
-    self.browser_timeout = 60
+  def setUpClass(cls):
+    super(interactive, cls).setUpClass()
+    cls.browser_timeout = 60
     print()
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()
 
   def test_html5_fullscreen(self):
-    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
+    self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
 
   def test_html5_mouse(self):
-    self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
+    self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
 
   def test_html5_pointerlockerror(self):
-    self.btest(path_from_root('tests', 'test_html5_pointerlockerror.c'), expected='0')
+    self.btest(path_from_root('tests', 'test_html5_pointerlockerror.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
 
   def test_sdl_mousewheel(self):
     self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), expected='0')
@@ -97,6 +97,20 @@ class interactive(BrowserCore):
 
     # use closure to check for a possible bug with closure minifying away newer Audio() attributes
     Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio_beep.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl2_mixer(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
+    open(os.path.join(self.get_dir(), 'sdl2_mixer.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer.c')).read()))
+
+    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432', '--preload-file', 'sound.ogg', '-o', 'page.html']).communicate()
+    self.run_browser('page.html', '', '/report_result?1')
+
+  def test_sdl2_mixer_wav(self):
+    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'sound.wav'))
+    open(os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), 'w').write(self.with_report_result(open(path_from_root('tests', 'sdl2_mixer_wav.c')).read()))
+
+    Popen([PYTHON, EMCC, '-O2', '--minify', '0', os.path.join(self.get_dir(), 'sdl2_mixer_wav.c'), '-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'TOTAL_MEMORY=33554432', '--preload-file', 'sound.wav', '-o', 'page.html']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
   def zzztest_sdl2_audio_beeps(self):
@@ -191,13 +205,13 @@ class interactive(BrowserCore):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])
 
   def test_threadprofiler(self):
-    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS=1', '-DTEST_THREAD_PROFILING=1', '-msse', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])
+    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS=1', '-DTEST_THREAD_PROFILING=1', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])
 
   # Test that event backproxying works.
   def test_html5_callbacks_on_calling_thread(self):
     # TODO: Make this automatic by injecting mouse event in e.g. shell html file.
     for args in [[], ['-DTEST_SYNC_BLOCKING_LOOP=1']]:
-      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+      self.btest('html5_callbacks_on_calling_thread.c', expected='1', args=args + ['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test that it is possible to register HTML5 event callbacks on either main browser thread, or application main thread,
   # and that the application can manually proxy the event from main browser thread to the application main thread, to

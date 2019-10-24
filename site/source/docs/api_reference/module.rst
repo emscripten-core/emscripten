@@ -33,7 +33,7 @@ When generating only JavaScript (as opposed to HTML), no ``Module`` object is cr
 
 .. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``-pre-js`` file.
 
-When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
+When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
 
   .. code-block:: javascript
 
@@ -50,6 +50,18 @@ The following ``Module`` attributes affect code execution. Set them to customize
 .. js:attribute:: Module.arguments
 
   The commandline arguments. The value of ``arguments`` contains the values returned if compiled code checks ``argc`` and ``argv``.
+
+.. js:attribute:: Module.buffer
+
+  Allows you to provide your own ``ArrayBuffer`` or ``SharedArrayBuffer`` to use as the memory.
+
+  .. note:: This is only supported if ``-s WASM=0``. See ``Module.wasmMemory`` for WebAssembly support.
+
+.. js:attribute:: Module.wasmMemory
+
+  Allows you to provide your own ``WebAssembly.Memory`` to use as the memory. The properites used to initialize the memory should match the compiler options.
+
+  For example, if you set ``TOTAL_MEMORY`` to 8MB without memory growth, then the ``wasmMemory`` you provide (if any) should have both the ``'initial'`` and ``'maximum'`` set to 128 (due to WASM page sizes being 64KB).
 
 .. js:attribute:: Module.locateFile
 
@@ -71,6 +83,14 @@ The following ``Module`` attributes affect code execution. Set them to customize
 .. js:attribute:: Module.logReadFiles
 
   If set, stderr will log when any file is read.
+
+.. js:attribute:: Module.printWithColors
+
+  Controls whether Emscripten runtime libraries try to print with colors. Currently, this only affects sanitizers.
+
+  If unset, colors will be enabled if printing to a terminal with ``node``.
+
+  If set to ``true``, colors will always be used if possible. If set to ``false``, colors will never be used.
 
 .. js:attribute:: Module.onAbort
 
@@ -134,5 +154,5 @@ Other methods
 
 .. js:function:: Module.onCustomMessage
 
-  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyWorker.js>`_).
 

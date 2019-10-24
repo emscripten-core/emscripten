@@ -162,7 +162,7 @@ module({
         });
 
         test("setting and getting property on unrelated class throws error", function() {
-            var className = cm['NO_DYNAMIC_EXECUTION'] ? '' : 'HasTwoBases';
+            var className = cm['DYNAMIC_EXECUTION'] ? 'HasTwoBases' : '';
             var a = new cm.HasTwoBases;
             var e = assert.throws(cm.BindingError, function() {
                 Object.getOwnPropertyDescriptor(cm.HeldBySmartPtr.prototype, 'i').set.call(a, 10);
@@ -440,6 +440,12 @@ module({
         test("can pass Uint8Array to std::basic_string<unsigned char>", function() {
             var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(new Uint8Array([65, 66, 67, 68]));
             assert.equal('ABCD', e);
+        });
+
+        test("can pass long string to std::basic_string<unsigned char>", function() {
+            var s = 'this string is long enough to exceed the short string optimization';
+            var e = cm.emval_test_take_and_return_std_basic_string_unsigned_char(s);
+            assert.equal(s, e);
         });
 
         test("can pass Uint8ClampedArray to std::basic_string<unsigned char>", function() {
@@ -1147,6 +1153,48 @@ module({
             c.delete();
         });
 
+        test("class properties can be std::function objects", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.function_val);
+            c.function_val = b;
+            assert.equal(b, c.function_val);
+            c.delete();
+        });
+
+        test("class properties can be read-only std::function objects", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.readonly_function_val);
+            var e = assert.throws(cm.BindingError, function() {
+                h.readonly_function_val = 10;
+            })
+            assert.equal('ValHolder.readonly_function_val is a read-only property', e.message);
+            h.delete();
+        });
+
+        test("class properties can be function objects (functor)", function() {
+            var a = {};
+            var b = {foo: 'foo'};
+            var c = new cm.ValHolder(a);
+            assert.equal(a, c.functor_val);
+            c.function_val = b;
+            assert.equal(b, c.functor_val);
+            c.delete();
+        });
+
+        test("class properties can be read-only function objects (functor)", function() {
+            var a = {};
+            var h = new cm.ValHolder(a);
+            assert.equal(a, h.readonly_functor_val);
+            var e = assert.throws(cm.BindingError, function() {
+                h.readonly_functor_val = 10;
+            })
+            assert.equal('ValHolder.readonly_functor_val is a read-only property', e.message);
+            h.delete();
+        });
+
         test("class properties can be read-only", function() {
             var a = {};
             var h = new cm.ValHolder(a);
@@ -1183,6 +1231,35 @@ module({
 
             var b = cm.ValHolder.makeValHolder("foo");
             assert.equal("foo", b.getVal());
+            b.delete();
+        });
+
+        test("function objects as class constructors", function() {
+            let a = new cm.ConstructFromStdFunction("foo", 10);
+            assert.equal("foo", a.getVal());
+            assert.equal(10, a.getA());
+
+            let b = new cm.ConstructFromFunctionObject("bar", 12);
+            assert.equal("bar", b.getVal());
+            assert.equal(12, b.getA());
+
+            a.delete();
+            b.delete();
+        });
+
+        test("function objects as class methods", function() {
+            let b = cm.ValHolder.makeValHolder("foo");
+
+            // get & set via std::function
+            assert.equal("foo", b.getValFunction());
+            b.setValFunction("bar");
+
+            // get & set via 'callable'
+            assert.equal("bar", b.getValFunctor());
+            b.setValFunctor("baz");
+
+            assert.equal("baz", b.getValFunction())
+
             b.delete();
         });
 
@@ -1598,7 +1675,7 @@ module({
 
         test("smart pointer object has correct constructor name", function() {
             var e = new cm.HeldBySmartPtr(10, "foo");
-            var expectedName = cm['NO_DYNAMIC_EXECUTION'] ? "" : "HeldBySmartPtr";
+            var expectedName = cm['DYNAMIC_EXECUTION'] ? "HeldBySmartPtr" : "";
             assert.equal(expectedName, e.constructor.name);
             e.delete();
         });
@@ -2342,7 +2419,7 @@ module({
     });
 
     BaseFixture.extend("function names", function() {
-        if (cm['NO_DYNAMIC_EXECUTION']) {
+        if (!cm['DYNAMIC_EXECUTION']) {
           assert.equal('', cm.ValHolder.name);
           assert.equal('', cm.ValHolder.prototype.setVal.name);
           assert.equal('', cm.ValHolder.makeConst.name);

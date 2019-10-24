@@ -8,7 +8,7 @@
 // Two experiments in async support: ASYNCIFY, and EMTERPRETIFY_ASYNC
 
 mergeInto(LibraryManager.library, {
-#if ASYNCIFY
+#if !WASM_BACKEND && ASYNCIFY
 /*
  * The layout of normal and async stack frames
  *
@@ -98,7 +98,7 @@ mergeInto(LibraryManager.library, {
     //  just undo a recent emscripten_alloc_async_context
     ctx = ctx|0;
 #if ASSERTIONS
-    assert((((___async_cur_frame + 8)|0) == (ctx|0))|0);
+    if ((((___async_cur_frame + 8)|0) != (ctx|0))|0) abort();
 #endif
     stackRestore(___async_cur_frame | 0);
     ___async_cur_frame = {{{ makeGetValueAsm('___async_cur_frame', 0, 'i32') }}};
@@ -196,13 +196,13 @@ mergeInto(LibraryManager.library, {
     ___async = 1;
   },
 
-  emscripten_wget__deps: ['emscripten_async_resume', '$PATH', '$Browser'],
+  emscripten_wget__deps: ['emscripten_async_resume', '$PATH_FS', '$Browser'],
   emscripten_wget: function(url, file) {
-    var _url = Pointer_stringify(url);
-    var _file = Pointer_stringify(file);
-    _file = PATH.resolve(FS.cwd(), _file);
+    var _url = UTF8ToString(url);
+    var _file = UTF8ToString(file);
+    _file = PATH_FS.resolve(FS.cwd(), _file);
     Module['setAsync']();
-    Module['noExitRuntime'] = true;
+    noExitRuntime = true;
     var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
       destinationDirectory,
@@ -219,7 +219,7 @@ mergeInto(LibraryManager.library, {
     );
   },
 
-#else // ASYNCIFY
+#else // !WASM_BACKEND && ASYNCIFY
 
 #if EMTERPRETIFY_ASYNC
 
@@ -277,7 +277,7 @@ mergeInto(LibraryManager.library, {
       Module['setAsyncState'](s);
     },
     handle: function(doAsyncOp, yieldDuring) {
-      Module['noExitRuntime'] = true;
+      noExitRuntime = true;
       if (EmterpreterAsync.state === 0) {
         // save the stack we want to resume. this lets other code run in between
         // XXX this assumes that this stack top never ever leak! exceptions might violate that
@@ -406,12 +406,12 @@ mergeInto(LibraryManager.library, {
     }, true);
   },
 
-  emscripten_wget__deps: ['$EmterpreterAsync', '$PATH', '$FS', '$Browser'],
+  emscripten_wget__deps: ['$EmterpreterAsync', '$PATH_FS', '$FS', '$Browser'],
   emscripten_wget: function(url, file) {
     EmterpreterAsync.handle(function(resume) {
-      var _url = Pointer_stringify(url);
-      var _file = Pointer_stringify(file);
-      _file = PATH.resolve(FS.cwd(), _file);
+      var _url = UTF8ToString(url);
+      var _file = UTF8ToString(file);
+      _file = PATH_FS.resolve(FS.cwd(), _file);
       var destinationDirectory = PATH.dirname(_file);
       FS.createPreloadedFile(
         destinationDirectory,
@@ -432,7 +432,7 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data__deps: ['$EmterpreterAsync', '$Browser'],
   emscripten_wget_data: function(url, pbuffer, pnum, perror) {
     EmterpreterAsync.handle(function(resume) {
-      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
+      Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
         resume(function() {
           // can only allocate the buffer after the resume, not during an asyncing
           var buffer = _malloc(byteArray.length); // must be freed by caller!
@@ -546,6 +546,273 @@ mergeInto(LibraryManager.library, {
 
 #else // EMTERPRETIFY_ASYNC
 
+#if WASM_BACKEND && ASYNCIFY
+  $Asyncify__deps: ['$Browser', '$runAndAbortIfError'],
+  $Asyncify: {
+    State: {
+      Normal: 0,
+      Unwinding: 1,
+      Rewinding: 2
+    },
+    state: 0,
+    StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
+    currData: null,
+    // A map from data pointers to extra info about the data.
+    // That includes the name of the function on the bottom
+    // of the call stack, that we need to call to rewind.
+    dataInfo: {},
+    // The return value passed to wakeUp() in
+    // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
+    // so we can return it later from the C function that called
+    // Asyncify.handleSleep() after rewinding finishes.
+    handleSleepReturnValue: 0,
+    // We must track which wasm exports are called into and
+    // exited, so that we know where the call stack began,
+    // which is where we must call to rewind it.
+    exportCallStack: [],
+    afterUnwind: null,
+    asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+
+#if ASSERTIONS
+    instrumentWasmImports: function(imports) {
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map(function(x) {
+        return x.split('.')[1];
+      });
+      for (var x in imports) {
+        (function(x) {
+          var original = imports[x];
+          if (typeof original === 'function') {
+            imports[x] = function() {
+              var originalAsyncifyState = Asyncify.state;
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                // Only functions in the list of known relevant imports are allowed to change the state.
+                // Note that invoke_* functions are allowed to change the state if we do not ignore
+                // indirect calls.
+                if (Asyncify.state !== originalAsyncifyState &&
+                    ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
+                    !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
+                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                }
+              }
+            }
+          }
+        })(x);
+      }
+    },
+#endif
+
+    instrumentWasmExports: function(exports) {
+      var ret = {};
+      for (var x in exports) {
+        (function(x) {
+          var original = exports[x];
+          if (typeof original === 'function') {
+            ret[x] = function() {
+              Asyncify.exportCallStack.push(x);
+#if ASYNCIFY_DEBUG >= 2
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', x);
+#endif
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                if (ABORT) return;
+                var y = Asyncify.exportCallStack.pop(x);
+                assert(y === x);
+#if ASYNCIFY_DEBUG >= 2
+                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
+#endif
+                if (Asyncify.currData &&
+                    Asyncify.state === Asyncify.State.Unwinding &&
+                    Asyncify.exportCallStack.length === 0) {
+                  // We just finished unwinding.
+#if ASYNCIFY_DEBUG
+                  err('ASYNCIFY: stop unwind');
+#endif
+                  Asyncify.state = Asyncify.State.Normal;
+                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
+                  if (Asyncify.afterUnwind) {
+                    Asyncify.afterUnwind();
+                    Asyncify.afterUnwind = null;
+                  }
+                }
+              }
+            };
+          } else {
+            ret[x] = original;
+          }
+        })(x);
+      }
+      return ret;
+    },
+
+    allocateData: function() {
+      // An asyncify data structure has two fields: the
+      // current stack pos, and the max pos.
+      var ptr = _malloc(Asyncify.StackSize + 8);
+      HEAP32[ptr >> 2] = ptr + 8;
+      HEAP32[ptr + 4 >> 2] = ptr + 8 + Asyncify.StackSize;
+      var bottomOfCallStack = Asyncify.exportCallStack[0];
+#if ASYNCIFY_DEBUG >= 2
+      err('ASYNCIFY: allocateData, bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+#endif
+      Asyncify.dataInfo[ptr] = {
+        bottomOfCallStack: bottomOfCallStack
+      };
+      return ptr;
+    },
+
+    freeData: function(ptr) {
+      _free(ptr);
+      Asyncify.dataInfo[ptr] = null;
+    },
+
+    handleSleep: function(startAsync) {
+      if (ABORT) return;
+      noExitRuntime = true;
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY: handleSleep ' + Asyncify.state);
+#endif
+      if (Asyncify.state === Asyncify.State.Normal) {
+        // Prepare to sleep. Call startAsync, and see what happens:
+        // if the code decided to call our callback synchronously,
+        // then no async operation was in fact begun, and we don't
+        // need to do anything.
+        var reachedCallback = false;
+        var reachedAfterCallback = false;
+        startAsync(function(handleSleepReturnValue) {
+#if ASSERTIONS
+          assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number'); // old emterpretify API supported other stuff
+#endif
+          if (ABORT) return;
+          Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
+          reachedCallback = true;
+          if (!reachedAfterCallback) {
+            // We are happening synchronously, so no need for async.
+            return;
+          }
+#if ASYNCIFY_DEBUG
+          err('ASYNCIFY: start rewind ' + Asyncify.currData);
+#endif
+          Asyncify.state = Asyncify.State.Rewinding;
+          runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.resume();
+          }
+          var start = Asyncify.dataInfo[Asyncify.currData].bottomOfCallStack;
+#if ASYNCIFY_DEBUG
+          err('ASYNCIFY: start: ' + start);
+#endif
+          var asyncWasmReturnValue = Module['asm'][start]();
+          if (!Asyncify.currData) {
+            // All asynchronous execution has finished.
+            // `asyncWasmReturnValue` now contains the final
+            // return value of the exported async WASM function.
+            //
+            // Note: `asyncWasmReturnValue` is distinct from
+            // `Asyncify.handleSleepReturnValue`.
+            // `Asyncify.handleSleepReturnValue` contains the return
+            // value of the last C function to have executed
+            // `Asyncify.handleSleep()`, where as `asyncWasmReturnValue`
+            // contains the return value of the exported WASM function
+            // that may have called C functions that
+            // call `Asyncify.handleSleep()`.
+            var asyncFinalizers = Asyncify.asyncFinalizers;
+            Asyncify.asyncFinalizers = [];
+            asyncFinalizers.forEach(function(func) {
+              func(asyncWasmReturnValue);
+            });
+          }
+        });
+        reachedAfterCallback = true;
+        if (!reachedCallback) {
+          // A true async operation was begun; start a sleep.
+          Asyncify.state = Asyncify.State.Unwinding;
+          // TODO: reuse, don't alloc/free every sleep
+          Asyncify.currData = Asyncify.allocateData();
+#if ASYNCIFY_DEBUG
+          err('ASYNCIFY: start unwind ' + Asyncify.currData);
+#endif
+          runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
+          if (Browser.mainLoop.func) {
+            Browser.mainLoop.pause();
+          }
+        }
+      } else if (Asyncify.state === Asyncify.State.Rewinding) {
+        // Stop a resume.
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY: stop rewind');
+#endif
+        Asyncify.state = Asyncify.State.Normal;
+        runAndAbortIfError(Module['_asyncify_stop_rewind']);
+        Asyncify.freeData(Asyncify.currData);
+        Asyncify.currData = null;
+      } else {
+        abort('invalid state: ' + Asyncify.state);
+      }
+      return Asyncify.handleSleepReturnValue;
+    }
+  },
+
+  emscripten_sleep: function(ms) {
+    Asyncify.handleSleep(function(wakeUp) {
+      Browser.safeSetTimeout(wakeUp, ms);
+    });
+  },
+
+  emscripten_wget__deps: ['$PATH_FS', '$FS'],
+  emscripten_wget: function(url, file) {
+    Asyncify.handleSleep(function(wakeUp) {
+      var _url = UTF8ToString(url);
+      var _file = UTF8ToString(file);
+      _file = PATH_FS.resolve(FS.cwd(), _file);
+      var destinationDirectory = PATH.dirname(_file);
+      FS.createPreloadedFile(
+        destinationDirectory,
+        PATH.basename(_file),
+        _url, true, true,
+        wakeUp,
+        wakeUp,
+        undefined, // dontCreateFile
+        undefined, // canOwn
+        function() { // preFinish
+          // if the destination directory does not yet exist, create it
+          FS.mkdirTree(destinationDirectory);
+        }
+      );
+    });
+  },
+
+  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
+    Asyncify.handleSleep(function(wakeUp) {
+      Browser.asyncLoad(UTF8ToString(url), function(byteArray) {
+        // can only allocate the buffer after the wakeUp, not during an asyncing
+        var buffer = _malloc(byteArray.length); // must be freed by caller!
+        HEAPU8.set(byteArray, buffer);
+        {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
+        {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
+        {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
+        wakeUp();
+      }, function() {
+        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
+        wakeUp();
+      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
+    });
+  },
+
+  emscripten_scan_registers: function(func) {
+    Asyncify.handleSleep(function(wakeUp) {
+      // We must first unwind, so things are spilled to the stack. We
+      // can resume right after unwinding, no need for a timeout.
+      Asyncify.afterUnwind = function() {
+        {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
+        wakeUp();
+      };
+    });
+  },
+
+#else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
   },
@@ -564,6 +831,10 @@ mergeInto(LibraryManager.library, {
   emscripten_wget_data: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
   },
+  emscripten_scan_registers: function(url, file) {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
+  },
+#endif // ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
 #endif // ASYNCIFY
 });
@@ -571,3 +842,7 @@ mergeInto(LibraryManager.library, {
 if (EMTERPRETIFY_ASYNC && !EMTERPRETIFY) {
   error('You must enable EMTERPRETIFY to use EMTERPRETIFY_ASYNC');
 }
+if (WASM_BACKEND && ASYNCIFY) {
+  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push('$Asyncify');
+}
+

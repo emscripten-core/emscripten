@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_threading_h__
-#define __emscripten_threading_h__
+#pragma once
 
 #include <inttypes.h>
 #include <pthread.h>
@@ -34,7 +33,7 @@ void emscripten_force_num_logical_cores(int cores);
 uint8_t emscripten_atomic_exchange_u8(void/*uint8_t*/ *addr, uint8_t newVal);
 uint16_t emscripten_atomic_exchange_u16(void/*uint16_t*/ *addr, uint16_t newVal);
 uint32_t emscripten_atomic_exchange_u32(void/*uint32_t*/ *addr, uint32_t newVal);
-uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
+uint64_t emscripten_atomic_exchange_u64(void/*uint64_t*/ *addr, uint64_t newVal); // In asm.js/asm2wasm this is emulated with locks, very slow!
 
 // CAS returns the *old* value that was in the memory location before the operation took place.
 // That is, if the return value when calling this function equals to 'oldVal', then the operation succeeded,
@@ -87,7 +86,10 @@ uint16_t emscripten_atomic_xor_u16(void/*uint16_t*/ *addr, uint16_t val);
 uint32_t emscripten_atomic_xor_u32(void/*uint32_t*/ *addr, uint32_t val);
 uint64_t emscripten_atomic_xor_u64(void/*uint64_t*/ *addr, uint64_t val); // In Wasm, this is a native instruction. In asm.js this is emulated with locks, very slow!
 
+// If the given memory address contains value val, puts the calling thread to sleep waiting for that address to be notified.
 int emscripten_futex_wait(volatile void/*uint32_t*/ *addr, uint32_t val, double maxWaitMilliseconds);
+
+// Wakes the given number of threads waiting on a location. Pass count == INT_MAX to wake all waiters on that location.
 int emscripten_futex_wake(volatile void/*uint32_t*/ *addr, int count);
 
 typedef union em_variant_val
@@ -100,13 +102,17 @@ typedef union em_variant_val
   char *cp;
 } em_variant_val;
 
+// Proxied C/C++ functions support at most this many arguments. Dispatch is static/strongly typed by signature.
 #define EM_QUEUED_CALL_MAX_ARGS 11
+// Proxied JS function can support a few more arguments than proxied C/C++ functions, because the dispatch
+// is variadic and signature independent.
+#define EM_QUEUED_JS_CALL_MAX_ARGS 20
 typedef struct em_queued_call
 {
   int functionEnum;
   void *functionPtr;
   int operationDone;
-  em_variant_val args[EM_QUEUED_CALL_MAX_ARGS];
+  em_variant_val args[EM_QUEUED_JS_CALL_MAX_ARGS];
   em_variant_val returnValue;
 
   // An optional pointer to a secondary data block that should be free()d when this queued call is freed.
@@ -191,6 +197,10 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_FUNC_SIG_PARAM_D   0x3U
 #define EM_FUNC_SIG_SET_PARAM(i, type) ((EM_FUNC_SIGNATURE)(type) << (2*i))
 
+// Extra types used in WebGL glGet*() calls (not used in proxying)
+#define EM_FUNC_SIG_PARAM_B   0x4U
+#define EM_FUNC_SIG_PARAM_F2I 0x5U
+
 // In total, the above encoding scheme gives the following 32-bit structure for the proxied function signatures (highest -> lowest bit order):
 // RRRiiiiSbbaa99887766554433221100
 // where RRR is return type
@@ -199,8 +209,11 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 // 00-bb encode the type of up to 12 function parameters
 
 #define EM_FUNC_SIG_V     (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
+#define EM_FUNC_SIG_D     (EM_FUNC_SIG_RETURN_VALUE_D | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
 #define EM_FUNC_SIG_VI    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VF    (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_FI    (EM_FUNC_SIG_RETURN_VALUE_F | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_DI    (EM_FUNC_SIG_RETURN_VALUE_D | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VII   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VIF   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F))
 #define EM_FUNC_SIG_VFF   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F))
@@ -212,6 +225,7 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_FUNC_SIG_VIIFI (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VIFFF (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F))
 #define EM_FUNC_SIG_VFFFF (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F))
+#define EM_FUNC_SIG_IIFFF (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F))
 #define EM_FUNC_SIG_VIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(5) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VIFFFF (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(5) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_F) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_F))
 #define EM_FUNC_SIG_VIIIIII (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(6) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(4, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(5, EM_FUNC_SIG_PARAM_I))
@@ -241,6 +255,7 @@ typedef int (*em_func_iiiiiiiiii)(int, int, int, int, int, int, int, int, int);
 #define EM_PROXIED_SYSCALL (EM_PROXIED_FUNC_SPECIAL(1) | EM_FUNC_SIG_III)
 #define EM_PROXIED_CREATE_CONTEXT (EM_PROXIED_FUNC_SPECIAL(2) | EM_FUNC_SIG_III)
 #define EM_PROXIED_RESIZE_OFFSCREENCANVAS (EM_PROXIED_FUNC_SPECIAL(3) | EM_FUNC_SIG_IIII)
+#define EM_PROXIED_JS_FUNCTION (EM_PROXIED_FUNC_SPECIAL(4) | EM_FUNC_SIG_D)
 
 // Runs the given function synchronously on the main Emscripten runtime thread.
 // If this thread is the main thread, the operation is immediately performed, and the result is returned.
@@ -286,7 +301,7 @@ int emscripten_is_main_runtime_thread(void);
 // Returns 1 if the current thread is the main browser thread.
 int emscripten_is_main_browser_thread(void);
 
-// A temporary workaround to issue https://github.com/kripken/emscripten/issues/3495:
+// A temporary workaround to issue https://github.com/emscripten-core/emscripten/issues/3495:
 // Call this in the body of all lock-free atomic (cas) loops that the main thread might enter
 // which don't otherwise call to any pthread api calls (mutexes) or C runtime functions
 // that are considered cancellation points.
@@ -359,6 +374,4 @@ struct thread_profiler_block
 
 #ifdef __cplusplus
 }
-#endif
-
 #endif

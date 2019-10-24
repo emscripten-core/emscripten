@@ -4,7 +4,7 @@
 emscripten.h
 ============
 
-This page documents the public C++ APIs provided by `emscripten.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
+This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
 
 Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API.
 
@@ -113,7 +113,7 @@ Defines
       // units, but Emscripten C strings operate as UTF-8.
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
 
@@ -182,7 +182,7 @@ Defines
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
       var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
       var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
     printf("UTF8 string says: %s\n", str);
@@ -314,7 +314,7 @@ Functions
 
   The JavaScript environment will call that function at a specified number of frames per second. If called on the main browser thread, setting 0 or a negative value as the ``fps`` will use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up properly with the browser and monitor. If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.
 
-  If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in `glutMainLoop <https://github.com/kripken/emscripten/blob/1.29.12/system/include/GL/freeglut_std.h#L400>`_ in `GLUT <http://www.opengl.org/resources/libraries/glut/>`_). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
+  If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in `glutMainLoop <https://github.com/emscripten-core/emscripten/blob/1.29.12/system/include/GL/freeglut_std.h#L400>`_ in `GLUT <http://www.opengl.org/resources/libraries/glut/>`_). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
 
   This function can be called in a pthread, in which case the callback loop will be set up to be called in the context of the calling thread. In order for the loop to work, the calling thread must regularly "yield back" to the browser by exiting from its pthread main function, since the callback will be able to execute only when the calling thread is not executing any other code. This means that running a synchronously blocking main loop is not compatible with the emscripten_set_main_loop() function.
 
@@ -429,7 +429,7 @@ Functions
 
   When building natively this becomes a simple direct call, after ``SDL_Delay`` (you must include **SDL.h** for that).
 
-  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used.
+  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used. (Note that 0 means that ``setTimeout`` is still used, which basically means "run asynchronously as soon as possible".)
 
   :param em_arg_callback_func func: The C function to call asynchronously. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined argument to pass to the C function.
@@ -463,23 +463,6 @@ Functions
   Hide the OS mouse cursor over the canvas.
 
   Note that SDL’s ``SDL_ShowCursor`` command shows and hides the SDL cursor, not the OS one. This command is useful to hide the OS cursor if your app draws its own cursor.
-
-
-.. c:function:: void emscripten_set_canvas_size(int width, int height)
-
-  Resizes the pixel width and height of the ``<canvas>`` element on the Emscripten web page.
-
-  :param int width: New pixel width of canvas element.
-  :param int height: New pixel height of canvas element.
-
-
-.. c:function:: void emscripten_get_canvas_size(int * width, int * height, int * isFullscreen)
-
-  Gets the current pixel width and height of the ``<canvas>`` element as well as whether the canvas is fullscreen or not.
-
-  :param int* width: Pixel width of canvas element.
-  :param int* height: New pixel height of canvas element.
-  :param int* isFullscreen: If True (``*int > 0``), ``<canvas>`` is full screen.
 
 
 .. c:function:: double emscripten_get_now(void)
@@ -1225,7 +1208,7 @@ Typedefs
 
   Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` found an unaligned operation.
 
-  For usage examples see `tests/core/test_set_align.c <https://github.com/kripken/emscripten/blob/master/tests/core/test_set_align.c>`_.
+  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_set_align.c>`_.
 
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
@@ -1233,7 +1216,7 @@ Typedefs
 Emterpreter-Async functions
 ===========================
 
-Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_ for more details.
+Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/emscripten-core/emscripten/wiki/Emterpreter>`_ for more details.
 
 Sleeping
 --------
@@ -1306,7 +1289,7 @@ IndexedDB
 Asyncify functions
 ==================
 
-Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/kripken/emscripten/wiki/Asyncify>`_ for more details.
+Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/emscripten-core/emscripten/wiki/Asyncify>`_ for more details.
 
 Typedefs
 --------
@@ -1328,10 +1311,72 @@ Functions
 
     :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
 
+  .. note:: this only works in fastcomp
+
 .. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
 
     Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
 
+  .. note:: this only works in fastcomp
+
 .. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
+
+  .. note:: this only works in fastcomp
+
+Memory scanning functions
+=========================
+
+These functions can help with conservative garbage collection, where roots are
+scanned for.
+
+Typedefs
+--------
+
+.. c:type:: em_scan_func
+
+  Function pointer type for use in scan callbacks, receiving two pointers, for
+  the beginning and end of a range of memory. You can then scan that range.
+
+  Defined as: ::
+
+    typedef void (*em_scan_func)(void*, void*)
+
+Functions
+---------
+
+.. c:function:: void emscripten_scan_stack(em_scan_func func)
+
+    Scan the C userspace stack, which means the stack managed by the compiled
+    code (as opposed to the wasm VM's internal stack, which is not directly
+    observable). This data is already in linear memory; this function just
+    gives you a simple way to know where it is.
+
+.. c:function:: void emscripten_scan_registers(em_scan_func func)
+
+    Scan "registers", by which we mean data that is not in memory. In wasm,
+    that means data stored in locals, including locals in functions higher up
+    the stack - the wasm VM has spilled them, but none of that is observable to
+    user code).
+
+    This function requires Asyncify - it relies on that option to spill the
+    local state all the way up the stack. As a result, it will add overhead
+    to your program.
+
+ABI functions
+=============
+
+The following functions are not declared in ``emscripten.h``, but are used
+internally in our system libraries. You may care about them if you replace the
+Emscripten runtime JS code, or run Emscripten binaries in your own runtime.
+
+
+.. c:function:: void emscripten_notify_memory_growth(i32 index)
+
+    Called when memory has grown. In a JS runtime, this is used to know when
+    to update the JS views on the wasm memory, which otherwise we would need
+    to constantly check for after any wasm code runs. See
+    `this wasi discussion <https://github.com/WebAssembly/WASI/issues/82>`_.
+
+    :param i32 index: Which memory has grown.

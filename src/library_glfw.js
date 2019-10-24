@@ -356,11 +356,11 @@ var LibraryGLFW = {
       if (charCode == 0 || (charCode >= 0x00 && charCode <= 0x1F)) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vii'](GLFW.active.charFunc, charCode, 1);
+      {{{ makeDynCall('vii') }}}(GLFW.active.charFunc, charCode, 1);
 #endif
 
 #if USE_GLFW == 3
-      Module['dynCall_vii'](GLFW.active.charFunc, GLFW.active.id, charCode);
+      {{{ makeDynCall('vii') }}}(GLFW.active.charFunc, GLFW.active.id, charCode);
 #endif
     },
 
@@ -378,12 +378,12 @@ var LibraryGLFW = {
       if (!GLFW.active.keyFunc) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vii'](GLFW.active.keyFunc, key, status);
+      {{{ makeDynCall('vii') }}}(GLFW.active.keyFunc, key, status);
 #endif
 
 #if USE_GLFW == 3
       if (repeat) status = 2; // GLFW_REPEAT
-      Module['dynCall_viiiii'](GLFW.active.keyFunc, GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
+      {{{ makeDynCall('viiiii') }}}(GLFW.active.keyFunc, GLFW.active.id, key, keyCode, status, GLFW.getModBits(GLFW.active));
 #endif
     },
 
@@ -428,11 +428,11 @@ var LibraryGLFW = {
       if (event.target != Module["canvas"] || !GLFW.active.cursorPosFunc) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vii'](GLFW.active.cursorPosFunc, Browser.mouseX, Browser.mouseY);
+      {{{ makeDynCall('vii') }}}(GLFW.active.cursorPosFunc, Browser.mouseX, Browser.mouseY);
 #endif
 
 #if USE_GLFW == 3
-      Module['dynCall_vidd'](GLFW.active.cursorPosFunc, GLFW.active.id, Browser.mouseX, Browser.mouseY);
+      {{{ makeDynCall('vidd') }}}(GLFW.active.cursorPosFunc, GLFW.active.id, Browser.mouseX, Browser.mouseY);
 #endif
     },
 
@@ -456,7 +456,7 @@ var LibraryGLFW = {
       if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
 
 #if USE_GLFW == 3
-      Module['dynCall_vii'](GLFW.active.cursorEnterFunc, GLFW.active.id, 1);
+      {{{ makeDynCall('vii') }}}(GLFW.active.cursorEnterFunc, GLFW.active.id, 1);
 #endif
     },
 
@@ -466,7 +466,7 @@ var LibraryGLFW = {
       if (event.target != Module["canvas"] || !GLFW.active.cursorEnterFunc) return;
 
 #if USE_GLFW == 3
-      Module['dynCall_vii'](GLFW.active.cursorEnterFunc, GLFW.active.id, 0);
+      {{{ makeDynCall('vii') }}}(GLFW.active.cursorEnterFunc, GLFW.active.id, 0);
 #endif
     },
 
@@ -491,11 +491,11 @@ var LibraryGLFW = {
       if (!GLFW.active.mouseButtonFunc) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vii'](GLFW.active.mouseButtonFunc, eventButton, status);
+      {{{ makeDynCall('vii') }}}(GLFW.active.mouseButtonFunc, eventButton, status);
 #endif
 
 #if USE_GLFW == 3
-      Module['dynCall_viiii'](GLFW.active.mouseButtonFunc, GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
+      {{{ makeDynCall('viiii') }}}(GLFW.active.mouseButtonFunc, GLFW.active.id, eventButton, status, GLFW.getModBits(GLFW.active));
 #endif
     },
 
@@ -518,7 +518,7 @@ var LibraryGLFW = {
       if (!GLFW.active || !GLFW.active.scrollFunc || event.target != Module['canvas']) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vi'](GLFW.active.scrollFunc, GLFW.wheelPos);
+      {{{ makeDynCall('vi') }}}(GLFW.active.scrollFunc, GLFW.wheelPos);
 #endif
 
 #if USE_GLFW == 3
@@ -532,7 +532,7 @@ var LibraryGLFW = {
         sy = event.deltaY;
       }
 
-      Module['dynCall_vidd'](GLFW.active.scrollFunc, GLFW.active.id, sx, sy);
+      {{{ makeDynCall('vidd') }}}(GLFW.active.scrollFunc, GLFW.active.id, sx, sy);
 #endif
 
       event.preventDefault();
@@ -587,11 +587,11 @@ var LibraryGLFW = {
       if (!GLFW.active.windowSizeFunc) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vii'](GLFW.active.windowSizeFunc, GLFW.active.width, GLFW.active.height);
+      {{{ makeDynCall('vii') }}}(GLFW.active.windowSizeFunc, GLFW.active.width, GLFW.active.height);
 #endif
 
 #if USE_GLFW == 3
-      Module['dynCall_viii'](GLFW.active.windowSizeFunc, GLFW.active.id, GLFW.active.width, GLFW.active.height);
+      {{{ makeDynCall('viii') }}}(GLFW.active.windowSizeFunc, GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
     },
 
@@ -601,7 +601,7 @@ var LibraryGLFW = {
       if (!GLFW.active.framebufferSizeFunc) return;
 
 #if USE_GLFW == 3
-      Module['dynCall_viii'](GLFW.active.framebufferSizeFunc, GLFW.active.id, GLFW.active.width, GLFW.active.height);
+      {{{ makeDynCall('viii') }}}(GLFW.active.framebufferSizeFunc, GLFW.active.id, GLFW.active.width, GLFW.active.height);
 #endif
     },
 
@@ -622,12 +622,7 @@ var LibraryGLFW = {
     },
 
     exitFullscreen: function() {
-      var CFS = document['exitFullscreen'] ||
-                document['cancelFullScreen'] ||
-                document['mozCancelFullScreen'] ||
-                document['webkitCancelFullScreen'] ||
-          (function() {});
-      CFS.apply(document, []);
+      Browser.exitFullscreen();
     },
 
     cancelFullScreen: function() {
@@ -648,7 +643,7 @@ var LibraryGLFW = {
       var win = GLFW.WindowFromId(winid);
       if (!win) return;
 
-      win.title = Pointer_stringify(title);
+      win.title = UTF8ToString(title);
       if (GLFW.active.id == win.id) {
         document.title = win.title;
       }
@@ -684,7 +679,7 @@ var LibraryGLFW = {
               };
 
               if (GLFW.joystickFunc) {
-                Module['dynCall_vii'](GLFW.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
+                {{{ makeDynCall('vii') }}}(GLFW.joystickFunc, joy, 0x00040001); // GLFW_CONNECTED
               }
             }
 
@@ -702,7 +697,7 @@ var LibraryGLFW = {
               console.log('glfw joystick disconnected',joy);
 
               if (GLFW.joystickFunc) {
-                Module['dynCall_vii'](GLFW.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
+                {{{ makeDynCall('vii') }}}(GLFW.joystickFunc, joy, 0x00040002); // GLFW_DISCONNECTED
               }
 
               _free(GLFW.joys[joy].id);
@@ -718,38 +713,50 @@ var LibraryGLFW = {
 
     setKeyCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.keyFunc;
       win.keyFunc = cbfun;
+      return prevcbfun;
     },
 
     setCharCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.charFunc;
       win.charFunc = cbfun;
+      return prevcbfun;
     },
 
     setMouseButtonCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.mouseButtonFunc;
       win.mouseButtonFunc = cbfun;
+      return prevcbfun;
     },
 
     setCursorPosCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.cursorPosFunc;
       win.cursorPosFunc = cbfun;
+      return prevcbfun;
     },
 
     setScrollCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.scrollFunc;
       win.scrollFunc = cbfun;
+      return prevcbfun;
     },
 
     setDropCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.dropFunc;
       win.dropFunc = cbfun;
+      return prevcbfun;
     },
 
     onDrop: function(event) {
@@ -758,6 +765,7 @@ var LibraryGLFW = {
 
       event.preventDefault();
 
+#if '$FS' in addedLibraryItems
       var filenames = allocate(new Array(event.dataTransfer.files.length*4), 'i8*', ALLOC_NORMAL);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
@@ -780,7 +788,7 @@ var LibraryGLFW = {
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data));
           if (++written === count) {
-            Module['dynCall_viii'](GLFW.active.dropFunc, GLFW.active.id, count, filenames);
+            {{{ makeDynCall('viii') }}}(GLFW.active.dropFunc, GLFW.active.id, count, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
@@ -799,6 +807,8 @@ var LibraryGLFW = {
         save(event.dataTransfer.files[i]);
       }
 
+#endif // '$FS' in addedLibraryItems
+
       return false;
     },
 
@@ -811,7 +821,8 @@ var LibraryGLFW = {
 
     setWindowSizeCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.windowSizeFunc;
       win.windowSizeFunc = cbfun;
      
 #if USE_GLFW == 2
@@ -819,21 +830,27 @@ var LibraryGLFW = {
       // callback function is set, it will be called with the current window size before this
       // function returns.
       // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
-      if (!win.windowSizeFunc) return;
-      Module['dynCall_vii'](win.windowSizeFunc, win.width, win.height);
+      if (!win.windowSizeFunc) return null;
+      {{{ makeDynCall('vii') }}}(win.windowSizeFunc, win.width, win.height);
 #endif
+
+      return prevcbfun;
     },
 
     setWindowCloseCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.windowCloseFunc;
       win.windowCloseFunc = cbfun;
+      return prevcbfun;
     },
 
     setWindowRefreshCallback: function(winid, cbfun) {
       var win = GLFW.WindowFromId(winid);
-      if (!win) return;
+      if (!win) return null;
+      var prevcbfun = win.windowRefreshFunc;
       win.windowRefreshFunc = cbfun;
+      return prevcbfun;
     },
 
     onClickRequestPointerLock: function(e) {
@@ -966,11 +983,11 @@ var LibraryGLFW = {
       if (!win.windowSizeFunc) return;
 
 #if USE_GLFW == 2
-      Module['dynCall_vii'](win.windowSizeFunc, width, height);
+      {{{ makeDynCall('vii') }}}(win.windowSizeFunc, width, height);
 #endif
 
 #if USE_GLFW == 3
-      Module['dynCall_viii'](win.windowSizeFunc, win.id, width, height);
+      {{{ makeDynCall('viii') }}}(win.windowSizeFunc, win.id, width, height);
 #endif
     },
 
@@ -1030,7 +1047,7 @@ var LibraryGLFW = {
 
 #if USE_GLFW == 3
       if (win.windowCloseFunc)
-        Module['dynCall_vi'](win.windowCloseFunc, win.id);
+        {{{ makeDynCall('vi') }}}(win.windowCloseFunc, win.id);
 #endif
 
       GLFW.windows[win.id - 1] = null;
@@ -1167,9 +1184,10 @@ var LibraryGLFW = {
     GLFW.initialTime = GLFW.getTime() - time;
   },
 
+  glfwExtensionSupported__deps: ['glGetString'],
   glfwExtensionSupported: function(extension) {
     if (!GLFW.extensions) {
-      GLFW.extensions = Pointer_stringify(_glGetString(0x1F03)).split(' ');
+      GLFW.extensions = UTF8ToString(_glGetString(0x1F03)).split(' ');
     }
 
     if (GLFW.extensions.indexOf(extension) != -1) return 1;
@@ -1200,7 +1218,9 @@ var LibraryGLFW = {
   },
 
   glfwSetErrorCallback: function(cbfun) {
+    var prevcbfun = GLFW.errorFunc;
     GLFW.errorFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwWaitEventsTimeout: function(timeout) {},
@@ -1241,7 +1261,9 @@ var LibraryGLFW = {
   },
 
   glfwSetMonitorCallback: function(cbfun) {
+    var prevcbfun = GLFW.monitorFunc;
     GLFW.monitorFunc = cbfun;
+    return prevcbfun;
   },
 
   // TODO: implement
@@ -1364,32 +1386,38 @@ var LibraryGLFW = {
 
   glfwSetWindowPosCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.windowPosFunc;
     win.windowPosFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetWindowSizeCallback: function(winid, cbfun) {
-    GLFW.setWindowSizeCallback(winid, cbfun);
+    return GLFW.setWindowSizeCallback(winid, cbfun);
   },
 
   glfwSetWindowCloseCallback: function(winid, cbfun) {
-    GLFW.setWindowCloseCallback(winid, cbfun);
+    return GLFW.setWindowCloseCallback(winid, cbfun);
   },
 
   glfwSetWindowRefreshCallback: function(winid, cbfun) {
-    GLFW.setWindowRefreshCallback(winid, cbfun);
+    return GLFW.setWindowRefreshCallback(winid, cbfun);
   },
 
   glfwSetWindowFocusCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.windowFocusFunc;
     win.windowFocusFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetWindowIconifyCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.windowIconifyFunc;
     win.windowIconifyFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetWindowIcon: function(winid, count, images) {},
@@ -1416,8 +1444,10 @@ var LibraryGLFW = {
 
   glfwSetFramebufferSizeCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.framebufferSizeFunc;
     win.framebufferSizeFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwGetInputMode: function(winid, mode) {
@@ -1461,31 +1491,33 @@ var LibraryGLFW = {
   },
 
   glfwSetKeyCallback: function(winid, cbfun) {
-    GLFW.setKeyCallback(winid, cbfun);
+    return GLFW.setKeyCallback(winid, cbfun);
   },
 
   glfwSetCharCallback: function(winid, cbfun) {
-    GLFW.setCharCallback(winid, cbfun);
+    return GLFW.setCharCallback(winid, cbfun);
   },
 
   glfwSetCharModsCallback: function(winid, cbfun) { throw "glfwSetCharModsCallback not implemented."; },
 
   glfwSetMouseButtonCallback: function(winid, cbfun) {
-    GLFW.setMouseButtonCallback(winid, cbfun);
+    return GLFW.setMouseButtonCallback(winid, cbfun);
   },
 
   glfwSetCursorPosCallback: function(winid, cbfun) {
-    GLFW.setCursorPosCallback(winid, cbfun);
+    return GLFW.setCursorPosCallback(winid, cbfun);
   },
 
   glfwSetCursorEnterCallback: function(winid, cbfun) {
     var win = GLFW.WindowFromId(winid);
-    if (!win) return;
+    if (!win) return null;
+    var prevcbfun = win.cursorEnterFunc;
     win.cursorEnterFunc = cbfun;
+    return prevcbfun;
   },
 
   glfwSetScrollCallback: function(winid, cbfun) {
-    GLFW.setScrollCallback(winid, cbfun);
+    return GLFW.setScrollCallback(winid, cbfun);
   },
 
   glfwVulkanSupported: function() {
@@ -1493,7 +1525,7 @@ var LibraryGLFW = {
   },
 
   glfwSetDropCallback: function(winid, cbfun) {
-    GLFW.setDropCallback(winid, cbfun);
+    return GLFW.setDropCallback(winid, cbfun);
   },
 
   glfwGetTimerValue: function() { throw "glfwGetTimerValue is not implemented."; },

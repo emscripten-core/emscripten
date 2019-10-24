@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_events_h__
-#define __emscripten_events_h__
+#pragma once
 
 #ifdef __cplusplus
 #if !defined(__DEFINED_pthread_t)
@@ -88,6 +87,11 @@ extern "C" {
 #define EMSCRIPTEN_RESULT_NO_DATA             -7
 #define EMSCRIPTEN_RESULT_TIMED_OUT           -8
 
+#define EMSCRIPTEN_EVENT_TARGET_INVALID        0
+#define EMSCRIPTEN_EVENT_TARGET_DOCUMENT       ((const char*)1)
+#define EMSCRIPTEN_EVENT_TARGET_WINDOW         ((const char*)2)
+#define EMSCRIPTEN_EVENT_TARGET_SCREEN         ((const char*)3)
+
 #define EM_BOOL int
 #define EM_TRUE 1
 #define EM_FALSE 0
@@ -141,6 +145,7 @@ typedef struct EmscriptenMouseEvent {
   long movementY;
   long targetX;
   long targetY;
+  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
   long canvasX;
   long canvasY;
   long padding;
@@ -218,6 +223,10 @@ extern EMSCRIPTEN_RESULT emscripten_set_deviceorientation_callback_on_thread(voi
 
 extern EMSCRIPTEN_RESULT emscripten_get_deviceorientation_status(EmscriptenDeviceOrientationEvent *orientationState);
 
+#define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION                   0x01
+#define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY 0x02
+#define EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE                  0x04
+
 typedef struct EmscriptenDeviceMotionEvent {
   double timestamp;
   double accelerationX;
@@ -229,6 +238,7 @@ typedef struct EmscriptenDeviceMotionEvent {
   double rotationRateAlpha;
   double rotationRateBeta;
   double rotationRateGamma;
+  int supportedFields;
 } EmscriptenDeviceMotionEvent;
 
 
@@ -356,6 +366,7 @@ typedef struct EmscriptenTouchPoint
   EM_BOOL onTarget;
   long targetX;
   long targetY;
+  // canvasX and canvasY are deprecated - there no longer exists a Module['canvas'] object, so canvasX/Y are no longer reported (register a listener on canvas directly to get canvas coordinates, or translate manually)
   long canvasX;
   long canvasY;
 } EmscriptenTouchPoint;
@@ -395,6 +406,7 @@ typedef EM_BOOL (*em_gamepad_callback_func)(int eventType, const EmscriptenGamep
 extern EMSCRIPTEN_RESULT emscripten_set_gamepadconnected_callback_on_thread(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback, pthread_t targetThread);
 extern EMSCRIPTEN_RESULT emscripten_set_gamepaddisconnected_callback_on_thread(void *userData, EM_BOOL useCapture, em_gamepad_callback_func callback, pthread_t targetThread);
 
+extern EMSCRIPTEN_RESULT emscripten_sample_gamepad_data(void);
 extern int emscripten_get_num_gamepads(void);
 extern EMSCRIPTEN_RESULT emscripten_get_gamepad_status(int index, EmscriptenGamepadEvent *gamepadState);
 
@@ -425,6 +437,11 @@ typedef int EMSCRIPTEN_WEBGL_CONTEXT_PROXY_MODE;
 #define EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK 1
 #define EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS   2
 
+typedef int EM_WEBGL_POWER_PREFERENCE;
+#define EM_WEBGL_POWER_PREFERENCE_DEFAULT 0
+#define EM_WEBGL_POWER_PREFERENCE_LOW_POWER 1
+#define EM_WEBGL_POWER_PREFERENCE_HIGH_PERFORMANCE 2
+
 typedef struct EmscriptenWebGLContextAttributes {
   EM_BOOL alpha;
   EM_BOOL depth;
@@ -432,7 +449,10 @@ typedef struct EmscriptenWebGLContextAttributes {
   EM_BOOL antialias;
   EM_BOOL premultipliedAlpha;
   EM_BOOL preserveDrawingBuffer;
-  EM_BOOL preferLowPowerToHighPerformance;
+  union {
+    EM_BOOL preferLowPowerToHighPerformance; // DEPRECATED: do not access. (though aliases to same set of values as EM_WEBGL_POWER_PREFERENCE (false:EM_WEBGL_POWER_PREFERENCE_DEFAULT, true:EM_WEBGL_POWER_PREFERENCE_LOW_POWER) for backwards compatibility)
+    EM_WEBGL_POWER_PREFERENCE powerPreference;
+  };
   EM_BOOL failIfMajorPerformanceCaveat;
 
   int majorVersion;
@@ -454,6 +474,8 @@ extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height);
 
+extern EMSCRIPTEN_RESULT emscripten_webgl_get_context_attributes(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, EmscriptenWebGLContextAttributes *outAttributes);
+
 extern EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
 extern EM_BOOL emscripten_webgl_enable_extension(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, const char *extension);
@@ -462,11 +484,24 @@ typedef EM_BOOL (*em_webgl_context_callback)(int eventType, const void *reserved
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback_on_thread(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback, pthread_t targetThread);
 
-extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
+extern EM_BOOL emscripten_is_webgl_context_lost(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
 
 extern EM_BOOL emscripten_supports_offscreencanvas(void);
+
+// Returns function pointers to WebGL 1 functions. Please avoid using this function ever - all WebGL1/GLES2 functions, even those for WebGL1 extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl1_get_proc_address(const char *name);
+
+// Returns function pointers to WebGL 2 functions. Please avoid using this function ever - all WebGL2/GLES3 functions, even those for WebGL2 extensions, are available to user code via static linking. Calling GL functions
+// via function pointers obtained here is slow, and using this function can greatly increase resulting compiled program size. This functionality is available only for easier program code porting purposes, but be aware
+// that calling this is causing a noticeable performance and compiled code size hit.
+extern void *emscripten_webgl2_get_proc_address(const char *name);
+
+// Combines emscripten_webgl1_get_proc_address() and emscripten_webgl2_get_proc_address() to return function pointers to both WebGL1 and WebGL2 functions. Same drawbacks apply.
+extern void *emscripten_webgl_get_proc_address(const char *name);
 
 extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
 extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);
@@ -517,8 +552,31 @@ extern void emscripten_html5_remove_all_event_listeners(void);
 #define emscripten_set_webglcontextlost_callback(target, userData, useCapture, callback)      emscripten_set_webglcontextlost_callback_on_thread(     (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 #define emscripten_set_webglcontextrestored_callback(target, userData, useCapture, callback)  emscripten_set_webglcontextrestored_callback_on_thread( (target), (userData), (useCapture), (callback), EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD)
 
+extern long emscripten_set_timeout(void (*cb)(void *userData), double msecs, void *userData);
+extern void emscripten_clear_timeout(long setTimeoutId);
+extern void emscripten_set_timeout_loop(EM_BOOL (*cb)(double time, void *userData), double intervalMsecs, void *userData);
+
+extern long emscripten_request_animation_frame(EM_BOOL (*cb)(double time, void *userData), void *userData);
+extern void emscripten_cancel_animation_frame(long requestAnimationFrameId);
+extern void emscripten_request_animation_frame_loop(EM_BOOL (*cb)(double time, void *userData), void *userData);
+
+extern long emscripten_set_immediate(void (*cb)(void *userData), void *userData);
+extern void emscripten_clear_immediate(long setImmediateId);
+extern void emscripten_set_immediate_loop(EM_BOOL (*cb)(void *userData), void *userData);
+
+extern long emscripten_set_interval(void (*cb)(void *userData), double intervalMsecs, void *userData);
+extern void emscripten_clear_interval(long setIntervalId);
+
+extern double emscripten_date_now(void);
+extern double emscripten_performance_now(void);
+
+extern void emscripten_console_log(const char *utf8String);
+extern void emscripten_console_warn(const char *utf8String);
+extern void emscripten_console_error(const char *utf8String);
+
+extern void emscripten_throw_number(double number);
+extern void emscripten_throw_string(const char *utf8String);
+
 #ifdef __cplusplus
 } // ~extern "C"
-#endif
-
 #endif

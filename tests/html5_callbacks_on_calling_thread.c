@@ -41,7 +41,7 @@ void *threadMain(void *arg)
 {
   registeringThreadId = pthread_self();
 
-  EMSCRIPTEN_RESULT ret = emscripten_set_mousemove_callback(0, (void*)0x42, 1, mouse_callback);
+  EMSCRIPTEN_RESULT ret = emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, (void*)0x42, 1, mouse_callback);
   assert(ret == EMSCRIPTEN_RESULT_SUCCESS);
 
   printf("Please move the mouse cursor.\n");
@@ -53,7 +53,7 @@ void *threadMain(void *arg)
     emscripten_current_thread_process_queued_calls();
   }
 #else
-  EM_ASM(Module['noExitRuntime'] = true);
+  EM_ASM(noExitRuntime = true);
 #endif
   return 0;
 }
@@ -66,5 +66,5 @@ int main()
   int rc = pthread_create(&thread, NULL, threadMain, 0);
   assert(rc == 0);
 
-  EM_ASM(Module['noExitRuntime'] = true);
+  EM_ASM(noExitRuntime = true);
 }

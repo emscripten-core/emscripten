@@ -803,7 +803,7 @@ public:
     // construct/destroy:
     _LIBCPP_INLINE_VISIBILITY
     valarray() : __begin_(0), __end_(0) {}
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     explicit valarray(size_t __n);
     _LIBCPP_INLINE_VISIBILITY
     valarray(const value_type& __x, size_t __n);
@@ -818,7 +818,7 @@ public:
     valarray(const gslice_array<value_type>& __ga);
     valarray(const mask_array<value_type>& __ma);
     valarray(const indirect_array<value_type>& __ia);
-    inline _LIBCPP_EXTERN_TEMPLATE_INLINE_VISIBILITY
+    inline _LIBCPP_HIDE_FROM_ABI_AFTER_V1
     ~valarray();
 
     // assignment:
@@ -1053,6 +1053,10 @@ private:
     friend
     const _Up*
     end(const valarray<_Up>& __v);
+
+    _LIBCPP_INLINE_VISIBILITY
+    void __clear(size_t __capacity);
+    valarray& __assign_range(const value_type* __f, const value_type* __l);
 };
 
 _LIBCPP_EXTERN_TEMPLATE(_LIBCPP_FUNC_VIS valarray<size_t>::valarray(size_t))
@@ -2735,7 +2739,8 @@ __val_expr<_ValExpr>::operator valarray<__val_expr::result_type>() const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<result_type*>(_VSTD::__allocate(__n * sizeof(result_type)));
+                static_cast<result_type*>(
+                    _VSTD::__libcpp_allocate(__n * sizeof(result_type), _LIBCPP_ALIGNOF(result_type)));
         for (size_t __i = 0; __i != __n; ++__r.__end_, ++__i)
             ::new (__r.__end_) result_type(__expr_[__i]);
     }
@@ -2750,7 +2755,25 @@ valarray<_Tp>::valarray(size_t __n)
     : __begin_(0),
       __end_(0)
 {
-    resize(__n);
+    if (__n)
+    {
+        __begin_ = __end_ = static_cast<value_type*>(
+            _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
+#ifndef _LIBCPP_NO_EXCEPTIONS
+        try
+        {
+#endif  // _LIBCPP_NO_EXCEPTIONS
+            for (size_t __n_left = __n; __n_left; --__n_left, ++__end_)
+                ::new (__end_) value_type();
+#ifndef _LIBCPP_NO_EXCEPTIONS
+        }
+        catch (...)
+        {
+            __clear(__n);
+            throw;
+        }
+#endif  // _LIBCPP_NO_EXCEPTIONS
+    }
 }
 
 template <class _Tp>
@@ -2769,18 +2792,19 @@ valarray<_Tp>::valarray(const value_type* __p, size_t __n)
 {
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+            _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
 #endif  // _LIBCPP_NO_EXCEPTIONS
-            for (; __n; ++__end_, ++__p, --__n)
+            for (size_t __n_left = __n; __n_left; ++__end_, ++__p, --__n_left)
                 ::new (__end_) value_type(*__p);
 #ifndef _LIBCPP_NO_EXCEPTIONS
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2794,7 +2818,8 @@ valarray<_Tp>::valarray(const valarray& __v)
 {
     if (__v.size())
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__v.size() * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+            _VSTD::__libcpp_allocate(__v.size() * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
@@ -2805,7 +2830,7 @@ valarray<_Tp>::valarray(const valarray& __v)
         }
         catch (...)
         {
-            resize(0);
+            __clear(__v.size());
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2828,21 +2853,23 @@ valarray<_Tp>::valarray(initializer_list<value_type> __il)
     : __begin_(0),
       __end_(0)
 {
-    size_t __n = __il.size();
+    const size_t __n = __il.size();
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+_VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
 #endif  // _LIBCPP_NO_EXCEPTIONS
-            for (const value_type* __p = __il.begin(); __n; ++__end_, ++__p, --__n)
+            size_t __n_left = __n;
+            for (const value_type* __p = __il.begin(); __n_left; ++__end_, ++__p, --__n_left)
                 ::new (__end_) value_type(*__p);
 #ifndef _LIBCPP_NO_EXCEPTIONS
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2856,21 +2883,23 @@ valarray<_Tp>::valarray(const slice_array<value_type>& __sa)
     : __begin_(0),
       __end_(0)
 {
-    size_t __n = __sa.__size_;
+    const size_t __n = __sa.__size_;
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+          _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
 #endif  // _LIBCPP_NO_EXCEPTIONS
-            for (const value_type* __p = __sa.__vp_; __n; ++__end_, __p += __sa.__stride_, --__n)
+            size_t __n_left = __n;
+            for (const value_type* __p = __sa.__vp_; __n_left; ++__end_, __p += __sa.__stride_, --__n_left)
                 ::new (__end_) value_type(*__p);
 #ifndef _LIBCPP_NO_EXCEPTIONS
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2882,10 +2911,11 @@ valarray<_Tp>::valarray(const gslice_array<value_type>& __ga)
     : __begin_(0),
       __end_(0)
 {
-    size_t __n = __ga.__1d_.size();
+    const size_t __n = __ga.__1d_.size();
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
@@ -2899,7 +2929,7 @@ valarray<_Tp>::valarray(const gslice_array<value_type>& __ga)
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2911,10 +2941,11 @@ valarray<_Tp>::valarray(const mask_array<value_type>& __ma)
     : __begin_(0),
       __end_(0)
 {
-    size_t __n = __ma.__1d_.size();
+    const size_t __n = __ma.__1d_.size();
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
@@ -2928,7 +2959,7 @@ valarray<_Tp>::valarray(const mask_array<value_type>& __ma)
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2940,10 +2971,11 @@ valarray<_Tp>::valarray(const indirect_array<value_type>& __ia)
     : __begin_(0),
       __end_(0)
 {
-    size_t __n = __ia.__1d_.size();
+    const size_t __n = __ia.__1d_.size();
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
@@ -2957,7 +2989,7 @@ valarray<_Tp>::valarray(const indirect_array<value_type>& __ia)
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -2968,7 +3000,25 @@ template <class _Tp>
 inline
 valarray<_Tp>::~valarray()
 {
-    resize(0);
+    __clear(size());
+}
+
+template <class _Tp>
+valarray<_Tp>&
+valarray<_Tp>::__assign_range(const value_type* __f, const value_type* __l)
+{
+    size_t __n = __l - __f;
+    if (size() != __n)
+    {
+        __clear(size());
+        __begin_ = static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
+        __end_ = __begin_ + __n;
+        _VSTD::uninitialized_copy(__f, __l, __begin_);
+    } else {
+        _VSTD::copy(__f, __l, __begin_);
+    }
+    return *this;
 }
 
 template <class _Tp>
@@ -2976,11 +3026,7 @@ valarray<_Tp>&
 valarray<_Tp>::operator=(const valarray& __v)
 {
     if (this != &__v)
-    {
-        if (size() != __v.size())
-            resize(__v.size());
-        _VSTD::copy(__v.__begin_, __v.__end_, __begin_);
-    }
+        return __assign_range(__v.__begin_, __v.__end_);
     return *this;
 }
 
@@ -2991,7 +3037,7 @@ inline
 valarray<_Tp>&
 valarray<_Tp>::operator=(valarray&& __v) _NOEXCEPT
 {
-    resize(0);
+    __clear(size());
     __begin_ = __v.__begin_;
     __end_ = __v.__end_;
     __v.__begin_ = nullptr;
@@ -3004,10 +3050,7 @@ inline
 valarray<_Tp>&
 valarray<_Tp>::operator=(initializer_list<value_type> __il)
 {
-    if (size() != __il.size())
-        resize(__il.size());
-    _VSTD::copy(__il.begin(), __il.end(), __begin_);
-    return *this;
+    return __assign_range(__il.begin(), __il.end());
 }
 
 #endif  // _LIBCPP_CXX03_LANG
@@ -3224,7 +3267,8 @@ valarray<_Tp>::operator+() const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         for (const value_type* __p = __begin_; __n; ++__r.__end_, ++__p, --__n)
             ::new (__r.__end_) value_type(+*__p);
     }
@@ -3241,7 +3285,8 @@ valarray<_Tp>::operator-() const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         for (const value_type* __p = __begin_; __n; ++__r.__end_, ++__p, --__n)
             ::new (__r.__end_) value_type(-*__p);
     }
@@ -3258,7 +3303,8 @@ valarray<_Tp>::operator~() const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         for (const value_type* __p = __begin_; __n; ++__r.__end_, ++__p, --__n)
             ::new (__r.__end_) value_type(~*__p);
     }
@@ -3275,7 +3321,7 @@ valarray<_Tp>::operator!() const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<bool*>(_VSTD::__allocate(__n * sizeof(bool)));
+                static_cast<bool*>(_VSTD::__libcpp_allocate(__n * sizeof(bool), _LIBCPP_ALIGNOF(bool)));
         for (const value_type* __p = __begin_; __n; ++__r.__end_, ++__p, --__n)
             ::new (__r.__end_) bool(!*__p);
     }
@@ -3595,7 +3641,8 @@ valarray<_Tp>::shift(int __i) const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         const value_type* __sb;
         value_type* __tb;
         value_type* __te;
@@ -3633,7 +3680,8 @@ valarray<_Tp>::cshift(int __i) const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         __i %= static_cast<int>(__n);
         const value_type* __m = __i >= 0 ? __begin_ + __i : __end_ + __i;
         for (const value_type* __s = __m; __s != __end_; ++__r.__end_, ++__s)
@@ -3654,7 +3702,8 @@ valarray<_Tp>::apply(value_type __f(value_type)) const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         for (const value_type* __p = __begin_; __n; ++__r.__end_, ++__p, --__n)
             ::new (__r.__end_) value_type(__f(*__p));
     }
@@ -3671,7 +3720,8 @@ valarray<_Tp>::apply(value_type __f(const value_type&)) const
     {
         __r.__begin_ =
             __r.__end_ =
-                static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+                static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
         for (const value_type* __p = __begin_; __n; ++__r.__end_, ++__p, --__n)
             ::new (__r.__end_) value_type(__f(*__p));
     }
@@ -3679,30 +3729,38 @@ valarray<_Tp>::apply(value_type __f(const value_type&)) const
 }
 
 template <class _Tp>
+inline
+void valarray<_Tp>::__clear(size_t __capacity)
+{
+  if (__begin_ != nullptr)
+  {
+    while (__end_ != __begin_)
+      (--__end_)->~value_type();
+    _VSTD::__libcpp_deallocate(__begin_, __capacity * sizeof(value_type), _LIBCPP_ALIGNOF(value_type));
+    __begin_ = __end_ = nullptr;
+  }
+}
+
+template <class _Tp>
 void
 valarray<_Tp>::resize(size_t __n, value_type __x)
 {
-    if (__begin_ != nullptr)
-    {
-        while (__end_ != __begin_)
-            (--__end_)->~value_type();
-        _VSTD::__libcpp_deallocate(__begin_);
-        __begin_ = __end_ = nullptr;
-    }
+    __clear(size());
     if (__n)
     {
-        __begin_ = __end_ = static_cast<value_type*>(_VSTD::__allocate(__n * sizeof(value_type)));
+        __begin_ = __end_ = static_cast<value_type*>(
+           _VSTD::__libcpp_allocate(__n * sizeof(value_type), _LIBCPP_ALIGNOF(value_type)));
 #ifndef _LIBCPP_NO_EXCEPTIONS
         try
         {
 #endif  // _LIBCPP_NO_EXCEPTIONS
-            for (; __n; --__n, ++__end_)
+            for (size_t __n_left = __n; __n_left; --__n_left, ++__end_)
                 ::new (__end_) value_type(__x);
 #ifndef _LIBCPP_NO_EXCEPTIONS
         }
         catch (...)
         {
-            resize(0);
+            __clear(__n);
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS

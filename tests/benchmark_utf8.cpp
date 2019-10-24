@@ -60,7 +60,7 @@ int main() {
     // FF Nightly: Already on small strings of 64 bytes in length, TextDecoder trumps in performance.
     char *str = randomString(8);
     t += test(str);
-    free(str);
+    delete [] str;
   }
   double t3 = emscripten_get_now();
   printf("OK. Time: %f (%f).\n", t, t3-t2);

@@ -1,0 +1,129 @@
+{
+  "_from": "html-minifier",
+  "_id": "html-minifier@3.5.21",
+  "_inBundle": false,
+  "_integrity": "sha512-LKUKwuJDhxNa3uf/LPR/KVjm/l3rBqtYeCOAekvG8F1vItxMUpueGd94i/asDDr8/1u7InxzFA5EeGjhhG5mMA==",
+  "_location": "/html-minifier",
+  "_phantomChildren": {},
+  "_requested": {
+    "type": "tag",
+    "registry": true,
+    "raw": "html-minifier",
+    "name": "html-minifier",
+    "escapedName": "html-minifier",
+    "rawSpec": "",
+    "saveSpec": null,
+    "fetchSpec": "latest"
+  },
+  "_requiredBy": [
+    "#USER"
+  ],
+  "_resolved": "https://registry.npmjs.org/html-minifier/-/html-minifier-3.5.21.tgz",
+  "_shasum": "d0040e054730e354db008463593194015212d20c",
+  "_spec": "html-minifier",
+  "_where": "C:\\code\\emsdk\\emscripten\\incoming",
+  "author": {
+    "name": "Juriy \"kangax\" Zaytsev"
+  },
+  "benchmarkDependencies": {
+    "brotli": "1.3.x",
+    "chalk": "2.4.x",
+    "cli-table": "0.3.x",
+    "lzma": "2.3.x",
+    "minimize": "2.2.x",
+    "progress": "2.0.x"
+  },
+  "bin": {
+    "html-minifier": "./cli.js"
+  },
+  "bugs": {
+    "url": "https://github.com/kangax/html-minifier/issues"
+  },
+  "bundleDependencies": false,
+  "contributors": [
+    {
+      "name": "Gilmore Davidson",
+      "url": "https://github.com/gilmoreorless"
+    },
+    {
+      "name": "Hugo Wetterberg",
+      "email": "hugo@wetterberg.nu"
+    },
+    {
+      "name": "Zoltan Frombach",
+      "email": "tssajo@gmail.com"
+    }
+  ],
+  "dependencies": {
+    "camel-case": "3.0.x",
+    "clean-css": "4.2.x",
+    "commander": "2.17.x",
+    "he": "1.2.x",
+    "param-case": "2.1.x",
+    "relateurl": "0.2.x",
+    "uglify-js": "3.4.x"
+  },
+  "deprecated": false,
+  "description": "Highly configurable, well-tested, JavaScript-based HTML minifier.",
+  "devDependencies": {
+    "grunt": "1.0.x",
+    "grunt-browserify": "5.3.x",
+    "grunt-contrib-uglify": "3.4.x",
+    "gruntify-eslint": "4.0.x",
+    "phantomjs-prebuilt": "2.1.x",
+    "qunit": "2.x"
+  },
+  "engines": {
+    "node": ">=4"
+  },
+  "files": [
+    "src/*.js",
+    "cli.js",
+    "sample-cli-config-file.conf"
+  ],
+  "homepage": "https://kangax.github.io/html-minifier/",
+  "keywords": [
+    "cli",
+    "compress",
+    "compressor",
+    "css",
+    "html",
+    "htmlmin",
+    "javascript",
+    "min",
+    "minification",
+    "minifier",
+    "minify",
+    "optimize",
+    "optimizer",
+    "pack",
+    "packer",
+    "parse",
+    "parser",
+    "uglifier",
+    "uglify"
+  ],
+  "license": "MIT",
+  "main": "src/htmlminifier.js",
+  "maintainers": [
+    {
+      "name": "Alex Lam",
+      "email": "alexlamsl@gmail.com"
+    },
+    {
+      "name": "Juriy Zaytsev",
+      "email": "kangax@gmail.com",
+      "url": "http://perfectionkills.com/"
+    }
+  ],
+  "name": "html-minifier",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kangax/html-minifier.git"
+  },
+  "scripts": {
+    "dist": "grunt dist",
+    "test": "grunt test"
+  },
+  "version": "3.5.21"
+}

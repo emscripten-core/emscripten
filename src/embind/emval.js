@@ -151,7 +151,7 @@ var LibraryEmVal = {
         var obj = new constructor(arg0, arg1, arg2);
         return __emval_register(obj);
     } */
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argsList = new Array(argCount + 1);
     return function(constructor, argTypes, args) {
       argsList[0] = constructor;
@@ -202,13 +202,16 @@ var LibraryEmVal = {
     return newer(handle, argTypes, args);
   },
 
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
   $emval_get_global: function() {
+    if (typeof globalThis === 'object') {
+      return globalThis;
+    }
     function testGlobal(obj) {
       obj['$$$embind_global$$$'] = obj;
       var success = typeof $$$embind_global$$$ === 'object' && obj['$$$embind_global$$$'] === obj;
       if (!success) {
-	delete obj['$$$embind_global$$$'];
+        delete obj['$$$embind_global$$$'];
       }
       return success;
     }
@@ -227,7 +230,14 @@ var LibraryEmVal = {
   },
 #else
   // appease jshint (technically this code uses eval)
-  $emval_get_global: function() { return (function(){return Function;})()('return this')(); },
+  $emval_get_global: function() {
+    if (typeof globalThis === 'object') {
+      return globalThis;
+    }
+    return (function(){
+      return Function;
+    })()('return this')();
+  },
 #endif
   _emval_get_global__deps: ['_emval_register', '$getStringOrSymbol', '$emval_get_global'],
   _emval_get_global: function(name) {
@@ -354,7 +364,7 @@ var LibraryEmVal = {
     var types = __emval_lookupTypes(argCount, argTypes);
 
     var retType = types[0];
-#if NO_DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION == 0
     var argN = new Array(argCount - 1);
     var invokerFunction = function(handle, name, destructors, args) {
       var offset = 0;
@@ -445,6 +455,18 @@ var LibraryEmVal = {
     return object instanceof constructor;
   },
   
+  _emval_is_number__deps: ['$requireHandle'],
+  _emval_is_number: function(handle) {
+    handle = requireHandle(handle);
+    return typeof handle === 'number';
+  },
+
+  _emval_is_string__deps: ['$requireHandle'],
+  _emval_is_string: function(handle) {
+    handle = requireHandle(handle);
+    return typeof handle === 'string';
+  },
+
   _emval_in__deps: ['$requireHandle'],
   _emval_in: function(item, object) {
     item = requireHandle(item);

@@ -1,0 +1,73 @@
+<!doctype html><html lang="en-us"><head><meta charset="utf-8"></head>
+<body>
+<canvas style='display:block; margin:auto;'></canvas>
+<script>
+  function b(url) { // Downloads a binary file and outputs it in the specified callback
+    return new Promise((ok, err) => {
+      var x = new XMLHttpRequest();
+      x.open('GET', url, true);
+      x.responseType = 'arraybuffer';
+      x.onload = () => { ok(x.response); }
+      x.send(null);
+    });
+  }
+
+  function s(url) { // Downloads a script file and adds it to DOM
+    return new Promise((ok, err) => {
+      var s = document.createElement('script');
+      s.src = url;
+      s.onload = () => {
+#if MODULARIZE
+        var c = {{{ EXPORT_NAME }}};
+        delete {{{ EXPORT_NAME }}};
+        ok(c);
+#else
+        ok();
+#endif
+      };
+      document.body.appendChild(s);
+    });
+  }
+
+#if MODULARIZE
+#if WASM
+  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), b('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+    r[0]({ wasm: r[1] });
+  });
+#else
+#if MEM_INIT_METHOD == 1
+  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+    r[0]({ asm: r[1], mem: r[2] });
+  });
+#else
+  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
+    r[0]({ asm: r[1] });
+  });
+#endif // MEM_INIT_METHOD
+#endif // WASM
+#else // MODULARIZE
+  var Module = {};
+#if WASM
+  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), b('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+    Module.wasm = r[1];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    s(url).then(() => { URL.revokeObjectURL(url) });
+  });
+#else
+#if MEM_INIT_METHOD == 1
+  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+    Module.mem = r[2];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    s(url).then(() => { URL.revokeObjectURL(url) });
+  });
+#else
+  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    s(url).then(() => { URL.revokeObjectURL(url) });
+  });
+#endif // MEM_INIT_METHOD
+#endif // WASM
+#endif // MODULARIZE
+</script>
+</body>
+</html>

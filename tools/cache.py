@@ -5,14 +5,16 @@
 
 from __future__ import print_function
 from .toolchain_profiler import ToolchainProfiler
-import os.path, sys, shutil, time, logging
+import os
+import shutil
+import logging
 from . import tempfiles, filelock
 
-logger = logging.getLogger('emscripten')
+logger = logging.getLogger('cache')
+
 
 # Permanent cache for dlmalloc and stdlibc++
 class Cache(object):
-
   # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct access to
   # the Emscripten cache without having to obtain an interprocess lock for it. Generally this
   # is false, and this is used in the case that Emscripten process recursively calls to itself
@@ -25,6 +27,8 @@ class Cache(object):
     # figure out the root directory for all caching
     if dirname is None:
       dirname = os.environ.get('EM_CACHE')
+      if dirname:
+        dirname = os.path.normpath(dirname)
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
     self.root_dirname = dirname
@@ -39,19 +43,25 @@ class Cache(object):
 
     # if relevant, use a subdir of the cache
     if use_subdir:
-      if not shared.Settings.WASM_BACKEND:
-        dirname = os.path.join(dirname, 'asmjs')
-      elif shared.Settings.WASM_OBJECT_FILES:
-        dirname = os.path.join(dirname, 'wasm_o')
+      if shared.Settings.WASM_BACKEND:
+        subdir = 'wasm'
+        if shared.Settings.WASM_OBJECT_FILES:
+          subdir += '-obj'
+        else:
+          subdir += '-bc'
+        if shared.Settings.RELOCATABLE:
+          subdir += '-pic'
       else:
-        dirname = os.path.join(dirname, 'wasm_bc')
+        subdir = 'asmjs'
+      dirname = os.path.join(dirname, subdir)
+
     self.dirname = dirname
     self.debug = 'EM_CACHE_DEBUG' in os.environ
     self.acquired_count = 0
 
   def acquire_cache_lock(self):
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      logger.debug('Cache: PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      logger.debug('PID %s acquiring multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
       try:
         self.filelock.acquire(60)
       except filelock.Timeout:
@@ -62,17 +72,19 @@ class Cache(object):
 
       self.prev_EM_EXCLUSIVE_CACHE_ACCESS = os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS')
       os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = '1'
-      logger.debug('Cache: done')
+      logger.debug('done')
     self.acquired_count += 1
 
   def release_cache_lock(self):
     self.acquired_count -= 1
     assert self.acquired_count >= 0, "Called release more times than acquire"
     if not self.EM_EXCLUSIVE_CACHE_ACCESS and self.acquired_count == 0:
-      if self.prev_EM_EXCLUSIVE_CACHE_ACCESS: os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
-      else: del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
+      if self.prev_EM_EXCLUSIVE_CACHE_ACCESS:
+        os.environ['EM_EXCLUSIVE_CACHE_ACCESS'] = self.prev_EM_EXCLUSIVE_CACHE_ACCESS
+      else:
+        del os.environ['EM_EXCLUSIVE_CACHE_ACCESS']
       self.filelock.release()
-      logger.debug('Cache: PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
+      logger.debug('PID %s released multiprocess file lock to Emscripten cache at %s' % (str(os.getpid()), self.dirname))
 
   def ensure(self):
     self.acquire_cache_lock()
@@ -83,10 +95,6 @@ class Cache(object):
 
   def erase(self):
     tempfiles.try_delete(self.root_dirname)
-    try:
-      open(self.dirname + '__last_clear', 'w').write('last clear: ' + time.asctime() + '\n')
-    except Exception as e:
-      print('failed to save last clear time: ', e, file=sys.stderr)
     self.filelock = None
     tempfiles.try_delete(self.filelock_name)
     self.filelock = filelock.FileLock(self.filelock_name)
@@ -94,30 +102,44 @@ class Cache(object):
   def get_path(self, shortname):
     return os.path.join(self.dirname, shortname)
 
+  def erase_file(self, shortname):
+    name = os.path.join(self.dirname, shortname)
+    if os.path.exists(name):
+      logging.info('Cache: deleting cached file: %s', name)
+      tempfiles.try_delete(name)
+
   # Request a cached file. If it isn't in the cache, it will be created with
   # the given creator function
-  def get(self, shortname, creator, extension='.bc', what=None, force=False):
-    if not shortname.endswith(extension): shortname += extension
+  def get(self, shortname, creator, what=None, force=False):
     cachename = os.path.abspath(os.path.join(self.dirname, shortname))
 
     self.acquire_cache_lock()
     try:
       if os.path.exists(cachename) and not force:
         return cachename
+      # it doesn't exist yet, create it
+      if shared.FROZEN_CACHE:
+        # it's ok to build small .txt marker files like "vanilla"
+        if not shortname.endswith('.txt'):
+          raise Exception('FROZEN_CACHE disallows building system libs: %s' % shortname)
       if what is None:
-        if shortname.endswith(('.bc', '.so', '.a')): what = 'system library'
-        else: what = 'system asset'
+        if shortname.endswith(('.bc', '.so', '.a')):
+          what = 'system library'
+        else:
+          what = 'system asset'
       message = 'generating ' + what + ': ' + shortname + '... (this will be cached in "' + cachename + '" for subsequent builds)'
       logger.info(message)
       self.ensure()
       temp = creator()
-      if temp != cachename:
+      if os.path.normcase(temp) != os.path.normcase(cachename):
+        shared.safe_ensure_dirs(os.path.dirname(cachename))
         shutil.copyfile(temp, cachename)
       logger.info(' - ok')
     finally:
       self.release_cache_lock()
 
     return cachename
+
 
 # Given a set of functions of form (ident, text), and a preferred chunk size,
 # generates a set of chunks for parallel processing and caching.
@@ -140,7 +162,8 @@ def chunkify(funcs, chunk_size, DEBUG=False):
     if curr:
       chunks.append(curr)
       curr = None
-    return [''.join([func[1] for func in chunk]) for chunk in chunks] # remove function names
+    return [''.join(func[1] for func in chunk) for chunk in chunks] # remove function names
+
 
 try:
   from . import shared

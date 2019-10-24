@@ -15,6 +15,8 @@ void Sleep(double msecs)
 
 void *thread_main(void *arg)
 {
+	EM_ASM(Module.print('hello from thread!'));
+
 	Sleep(1);
 	Sleep(10);
 	Sleep(100);
@@ -37,5 +39,5 @@ int main()
 	Sleep(5000);
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
-	EM_ASM(Module['noExitRuntime']=true);
+	EM_ASM(noExitRuntime=true);
 }
