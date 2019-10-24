@@ -2682,7 +2682,7 @@ class Building(object):
   @staticmethod
   def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
     logger.debug('wasm2js')
-    cmd = Buliding.get_binaryen_command('wasm2js', ['--emscripten', wasm_file], debug_info)
+    cmd = Building.get_binaryen_command('wasm2js', ['--emscripten', wasm_file], debug_info)
     if opt_level > 0:
       cmd += ['-O']
     if symbols_file:
