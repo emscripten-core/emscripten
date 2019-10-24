@@ -188,9 +188,11 @@ commands:
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
             EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1" # looks broken in ff nightly
+            # OffscreenCanvas support is not yet done in Firefox.
+            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            EMTEST_LACKS_THREAD_SUPPORT: "1" # wait for dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled to be present on dev edition
+            # Disable threads as dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled is not yet present on dev edition.
+            EMTEST_LACKS_THREAD_SUPPORT: "1"
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
