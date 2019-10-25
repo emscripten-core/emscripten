@@ -3201,7 +3201,7 @@ var LibrarySDL = {
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
-    // use bottom alligment, because it works
+    // use bottom alignment, because it works
     // same in all browsers, more info here:
     // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
     surfData.ctx.textBaseline = 'bottom';
