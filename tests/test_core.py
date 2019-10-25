@@ -7736,7 +7736,7 @@ extern "C" {
 
     with open('src.cpp.o.wasm', 'rb') as f:
       with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
-        assert f.read() != g.read(), 'the lazy-loaded wasm is different'
+        self.assertNotEqual(f.read(), g.read())
 
     # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
     def break_wasm(name):
@@ -7786,7 +7786,7 @@ extern "C" {
     if conditional:
       # if we do not call the lazy load function, then we do not need the lazy wasm,
       # and we do the second call in the first wasm
-      os.unlink('src.cpp.o.wasm.lazy.wasm')
+      os.remove('src.cpp.o.wasm.lazy.wasm')
       verify_broken()
       verify_working(['42'])
       break_wasm('src.cpp.o.wasm')
@@ -7820,7 +7820,7 @@ extern "C" {
       cmd += ['-O2']
     run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
     # remove the wasm to make sure we never use it again
-    os.unlink('src.c.o.wasm')
+    os.remove('src.c.o.wasm')
     # verify that it runs
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
