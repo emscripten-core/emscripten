@@ -526,7 +526,7 @@ def run(args):
     # An online HTML version (which may be of a different version of Emscripten)
     #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
 
-    print(open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'r', encoding='utf-8').read())
+    print(shared.asstr(open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'rb').read()))
 
     print('''
 ------------------------------------------------------------------
