@@ -2996,10 +2996,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
-    cmd += shared.Building.get_binaryen_feature_flags()
-    if intermediate_debug_info:
-      cmd += ['-g'] # preserve the debug info
+    cmd = shared.Building.get_wasm_opt_command(debug=intermediate_debug_info)
+    cmd += [wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
     if use_source_map(options):
       cmd += ['--input-source-map=' + wasm_source_map_target]
       cmd += ['--output-source-map=' + wasm_source_map_target]
@@ -3056,6 +3054,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                            debug_info=intermediate_debug_info,
                                            emitting_js=not target.endswith(WASM_ENDINGS))
     save_intermediate_with_wasm('postclean', wasm_binary_target)
+
+  if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
+    if not shared.Settings.ASYNCIFY:
+      exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
+    shared.Building.asyncify_lazy_load_code(wasm_binary_target, options, debug=intermediate_debug_info)
 
   def run_closure_compiler(final):
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,

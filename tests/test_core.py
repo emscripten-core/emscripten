@@ -7709,6 +7709,89 @@ extern "C" {
     self.set_setting('ASYNCIFY', 1)
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
+  @no_fastcomp('wasm-backend specific feature')
+  @no_wasm2js('TODO: lazy loading in wasm2js')
+  @parameterized({
+    'conditional': (True,),
+    'unconditional': (False,),
+  })
+  def test_emscripten_lazy_load_code(self, conditional):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_LAZY_LOAD_CODE', 1)
+    self.set_setting('ASYNCIFY_IGNORE_INDIRECT', 1)
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += ['--profiling-funcs'] # so that we can find the functions for the changes below
+    if conditional:
+      self.emcc_args += ['-DCONDITIONAL']
+    self.do_run_in_out_file_test('tests', 'core', 'emscripten_lazy_load_code', args=['0'])
+
+    first_size = os.path.getsize('src.cpp.o.wasm')
+    second_size = os.path.getsize('src.cpp.o.wasm.lazy.wasm')
+    print('first wasm size', first_size)
+    print('second wasm size', second_size)
+    if not conditional and is_optimizing(self.emcc_args):
+      # If the call to lazy-load is unconditional, then the optimizer can dce
+      # out more than half
+      self.assertLess(first_size, 0.5 * second_size)
+
+    with open('src.cpp.o.wasm', 'rb') as f:
+      with open('src.cpp.o.wasm.lazy.wasm', 'rb') as g:
+        self.assertNotEqual(f.read(), g.read())
+
+    # attempts to "break" the wasm by adding an unreachable in $foo_end. returns whether we found it.
+    def break_wasm(name):
+      wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), name], stdout=PIPE).stdout
+      lines = wat.splitlines()
+      wat = None
+      for i in range(len(lines)):
+        if '(func $foo_end ' in lines[i]:
+          j = i + 1
+          while '(local ' in lines[j]:
+            j += 1
+          # we found the first line after the local defs
+          lines[j] = '(unreachable)' + lines[j]
+          wat = '\n'.join(lines)
+          break
+      if wat is None:
+        # $foo_end is not present in the wasm, nothing to break
+        shutil.copyfile(name, name + '.orig')
+        return False
+      with open('wat.wat', 'w') as f:
+        f.write(wat)
+      shutil.move(name, name + '.orig')
+      run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-as'), 'wat.wat', '-o', name, '-g'])
+      return True
+
+    def verify_working(args=['0']):
+      self.assertContained('foo_end', run_js('src.cpp.o.js', args=args))
+
+    def verify_broken(args=['0']):
+      self.assertNotContained('foo_end', run_js('src.cpp.o.js', args=args, stderr=STDOUT, assert_returncode=None))
+
+    # the first-loaded wasm will not reach the second call, since we call it after lazy-loading.
+    # verify that by changing the first wasm to throw in that function
+    found_foo_end = break_wasm('src.cpp.o.wasm')
+    if not conditional and is_optimizing(self.emcc_args):
+      self.assertFalse(found_foo_end, 'should have optimizd out $foo_end')
+    verify_working()
+    # but breaking the second wasm actually breaks us
+    break_wasm('src.cpp.o.wasm.lazy.wasm')
+    verify_broken()
+
+    # restore
+    shutil.copyfile('src.cpp.o.wasm.orig', 'src.cpp.o.wasm')
+    shutil.copyfile('src.cpp.o.wasm.lazy.wasm.orig', 'src.cpp.o.wasm.lazy.wasm')
+    verify_working()
+
+    if conditional:
+      # if we do not call the lazy load function, then we do not need the lazy wasm,
+      # and we do the second call in the first wasm
+      os.remove('src.cpp.o.wasm.lazy.wasm')
+      verify_broken()
+      verify_working(['42'])
+      break_wasm('src.cpp.o.wasm')
+      verify_broken()
+
   # Test basic wasm2js functionality in all core compilation modes.
   @no_fastcomp('wasm-backend specific feature')
   def test_wasm2js(self):
@@ -7737,7 +7820,7 @@ extern "C" {
       cmd += ['-O2']
     run_process(cmd, stdout=open('do_wasm2js.js', 'w')).stdout
     # remove the wasm to make sure we never use it again
-    os.unlink('src.c.o.wasm')
+    os.remove('src.c.o.wasm')
     # verify that it runs
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
