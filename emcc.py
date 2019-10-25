@@ -526,13 +526,14 @@ def run(args):
     # An online HTML version (which may be of a different version of Emscripten)
     #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
 
-    print('''%s
+    print(open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read())
 
+    print('''
 ------------------------------------------------------------------
 
 emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
-''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read()))
+''')
     return 0
 
   if '--version' in args:
