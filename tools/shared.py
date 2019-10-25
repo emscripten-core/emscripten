@@ -2616,7 +2616,11 @@ class Building(object):
     with open(temp, 'w') as f:
       f.write(txt)
     # run wasm-metadce
-    cmd = Building.get_binaryen_command('wasm-metadce', ['--graph-file=' + temp, wasm_file, '-o', wasm_file], debug_info)
+    cmd = Building.get_binaryen_command('wasm-metadce',
+                                        ['--graph-file=' + temp],
+                                        infile=wasm_file,
+                                        outfile=wasm_file,
+                                        debug=debug_info)
     out = run_process(cmd, stdout=PIPE).stdout
     # find the unused things in js
     unused = []
@@ -2639,10 +2643,11 @@ class Building(object):
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code
-    cmd = Building.get_wasm_opt_command(debug=debug)
-    cmd += [wasm_binary_target, '-o', wasm_binary_target + '.lazy.wasm']
-    cmd += ['--remove-memory']
-    cmd += ['--mod-asyncify-never-unwind']
+    cmd = Building.get_wasm_opt_command(args=['--remove-memory',
+                                              '--mod-asyncify-never-unwind'],
+                                        infile=wasm_binary_target,
+                                        outfile=wasm_binary_target + '.lazy.wasm',
+                                        debug=debug)
     if options.opt_level > 0:
       cmd.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
     print_compiler_stage(cmd)
@@ -2652,9 +2657,10 @@ class Building(object):
     # a lot of code
     # TODO: support other asyncify stuff, imports that don't always unwind?
     # TODO: source maps etc.
-    cmd = Building.get_wasm_opt_command(debug=debug)
-    cmd += [wasm_binary_target, '-o', wasm_binary_target]
-    cmd += ['--mod-asyncify-always-and-only-unwind']
+    cmd = Building.get_wasm_opt_command(args=['--mod-asyncify-always-and-only-unwind'],
+                                        infile=wasm_binary_target,
+                                        outfile=wasm_binary_target,
+                                        debug=debug)
     if options.opt_level > 0:
       cmd.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
     print_compiler_stage(cmd)
@@ -2664,7 +2670,9 @@ class Building(object):
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
-    cmd = Building.get_wasm_opt_command(['--minify-imports-and-exports' if minify_exports else '--minify-imports', wasm_file, '-o', wasm_file], debug_info)
+    cmd = Building.get_wasm_opt_command(['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
+                                        infile=wasm_file, outfile=wasm_file,
+                                        debug=debug_info)
     out = check_call(cmd, stdout=PIPE).stdout
     # get the mapping
     SEP = ' => '
@@ -2684,7 +2692,8 @@ class Building(object):
   @staticmethod
   def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
     logger.debug('wasm2js')
-    cmd = Building.get_binaryen_command('wasm2js', ['--emscripten', wasm_file], debug_info)
+    cmd = Building.get_binaryen_command('wasm2js', ['--emscripten'],
+                                        infile=wasm_file, debug=debug_info)
     if opt_level > 0:
       cmd += ['-O']
     if symbols_file:
@@ -2874,16 +2883,20 @@ class Building(object):
     return os.path.join(BINARYEN_ROOT, 'bin')
 
   @staticmethod
-  def get_binaryen_command(tool, args=[], debug=False):
+  def get_binaryen_command(tool, args=[], infile=None, outfile=None, debug=False):
     cmd = [os.path.join(Building.get_binaryen_bin(), tool)] + args
-    cmd += Building.get_binaryen_feature_flags()
+    if infile:
+      cmd += [infile]
+    if outfile:
+      cmd += ['-o', outfile]
     if debug:
       cmd += ['-g'] # preserve the debug info
+    cmd += Building.get_binaryen_feature_flags()
     return cmd
 
   @staticmethod
-  def get_wasm_opt_command(args=[], debug=False):
-    return Building.get_binaryen_command('wasm-opt', args=args, debug=debug)
+  def get_wasm_opt_command(*args, **kwargs):
+    return Building.get_binaryen_command('wasm-opt', *args, **kwargs)
 
 
 # compatibility with existing emcc, etc. scripts
