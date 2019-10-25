@@ -205,6 +205,8 @@ int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload
 typedef void (*em_run_preload_plugins_data_onload_func)(void*, const char*);
 void emscripten_run_preload_plugins_data(char* data, int size, const char *suffix, void *arg, em_run_preload_plugins_data_onload_func onload, em_arg_callback_func onerror);
 
+void emscripten_lazy_load_code(void);
+
 // show an error on some renamed methods
 #define emscripten_async_prepare(...) _Pragma("GCC error(\"emscripten_async_prepare has been replaced by emscripten_run_preload_plugins\")")
 #define emscripten_async_prepare_data(...) _Pragma("GCC error(\"emscripten_async_prepare_data has been replaced by emscripten_run_preload_plugins_data\")")

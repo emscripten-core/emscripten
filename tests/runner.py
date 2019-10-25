@@ -1733,12 +1733,10 @@ def build_library(name,
 
 
 def check_js_engines():
-  total_engines = len(shared.JS_ENGINES)
-  shared.JS_ENGINES = list(filter(jsrun.check_engine, shared.JS_ENGINES))
-  if not shared.JS_ENGINES:
-    print('WARNING: None of the JS engines in JS_ENGINES appears to work.')
-  elif len(shared.JS_ENGINES) < total_engines:
-    print('WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.')
+  working_engines = list(filter(jsrun.check_engine, shared.JS_ENGINES))
+  if len(working_engines) < len(shared.JS_ENGINES):
+    print('Not all the JS engines in JS_ENGINES appears to work.')
+    exit(1)
 
   if EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')

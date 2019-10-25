@@ -119,7 +119,7 @@ indexeddb_name = 'EM_PRELOAD_CACHE'
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed
 # directly to that data. This optimizes for minimal memory usage and fread()
 # performance.
-no_heap_copy = True
+heap_copy = True
 # If set to True, the package metadata is stored separately from js-output
 # file which makes js-output file immutable to the package content changes.
 # If set to False, the package metadata is stored inside the js-output file
@@ -146,7 +146,7 @@ for arg in sys.argv[2:]:
     indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
     leading = ''
   elif arg == '--no-heap-copy':
-    no_heap_copy = False
+    heap_copy = False
     leading = ''
   elif arg == '--separate-metadata':
     separate_metadata = True
@@ -496,7 +496,7 @@ for file_ in data_files:
 if has_preloaded:
   if not lz4:
     # Get the big archive and split it up
-    if no_heap_copy:
+    if heap_copy:
       use_data = '''
         // copy the entire loaded file into a spot in the heap. Files will refer to slices in that. They cannot be freed though
         // (we may be allocating before malloc is ready, during startup).
