@@ -65,13 +65,13 @@ upgrade from fastcomp to upstream:
     LLVM optimization passes by default, even if using LLVM IR in object files;
     for that you must pass ``--llvm-lto 1``.
 
-* `wasm-ld`, the linker used by the wasm backend, requires librarys (`.a`
-  archives) to continue symbol indexes.  This matches the behaviour the native
+* `wasm-ld`, the linker used by the wasm backend, requires libraries (`.a`
+  archives) to contain symbol indexes.  This matches the behaviour the native
   GNU linker.  While `emar` will create such indexes by default, native tools
   such as GNU `ar` and GNU `strip` are not aware of the WebAssembly object
-  format and cannot create archive indexes.  In particular if you run GNU
-  `strip` on an archive file contains WebAssembly abject files it will remove
-  the index which makes the archive unusable at link time.
+  format and cannot create archive indexes.  In particular, if you run GNU
+  `strip` on an archive file that contains WebAssembly object files it will
+  remove the index which makes the archive unusable at link time.
 
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
