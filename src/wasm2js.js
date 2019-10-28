@@ -69,7 +69,9 @@ WebAssembly = {
         });
       }
     };
-  }
+  },
+
+  RuntimeError: Error
 };
 
 // We don't need to actually download a wasm binary, mark it as present but empty.
