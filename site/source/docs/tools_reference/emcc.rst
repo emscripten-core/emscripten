@@ -42,7 +42,11 @@ Options that are modified or new in *emcc* are listed below:
 ``-O0``
   No optimizations (default). This is the recommended setting for starting to port a project, as it includes various assertions.
 
-  This and other optimization settings are meaningful both during compile and during link. During compile it affects LLVM optimizations, and during link it affects final optimization of the code in Binaryen as well as optimization of the JS. (For fast incremental builds ``-O0`` is best, while for release you should link with something higher.)
+  This and other optimization settings are meaningful both during compile and
+  during link. During compile it affects LLVM optimizations, and during link it
+  affects final optimization of the code in Binaryen as well as optimization of
+  the JS. (For fast incremental builds ``-O0`` is best, while for release you
+  should link with something higher.)
 
 .. _emcc-O1:
 
@@ -107,69 +111,42 @@ Options that are modified or new in *emcc* are listed below:
 ``-g``
   Preserve debug information.
 
-  - When compiling to bitcode, this is the same as in *Clang* and *gcc* (it adds debug information to the object files).
-  - When compiling from source to JavaScript or bitcode to JavaScript, it is equivalent to :ref:`-g3 <emcc-g3>` (discards LLVM debug info including C/C++ line numbers, but otherwise keeps as much debug information as possible). Use :ref:`-g4 <emcc-g4>` to get line number debugging information in JavaScript.
+  - When compiling to object files, this is the same as in *Clang* and *gcc*, it adds debug information to the object files.
+  - When linking, this is equivalent to :ref:`-g3 <emcc-g3>` (preserve JS whitespace and compiled function names).
 
 .. _emcc-gN:
 
 ``-g<level>``
-  Controls how much debug information is kept when compiling from bitcode to JavaScript. Each level builds on the previous level:
+  Controls the level of debuggability. Each level builds on the previous one:
 
     -
       .. _emcc-g0:
 
-      ``-g0``: Make no effort to keep code debuggable. Will discard LLVM debug information (this is done by default in :ref:`-01 <emcc-O1>` and higher).
+      ``-g0``: Make no effort to keep code debuggable.
 
     -
       .. _emcc-g1:
 
-      ``-g1``: Preserve whitespace (do not minify).
-
-        .. code-block:: javascript
-
-          function a(a, b) {
-            a = a | 0;
-            b = b | 0;
-            f(a + b | 0);
-          }
+      ``-g1``: When linking, preserve whitespace in JavaScript.
 
     -
       .. _emcc-g2:
 
-      ``-g2``: Preserve function names.
-
-        .. code-block:: javascript
-
-          function _addAndPrint(a, b) {
-            a = a | 0;
-            b = b | 0;
-            _printAnInteger(a + b | 0); // _printAnInteger is human readable.
-          }
+      ``-g2``: When linking, preserve function names in compiled code.
 
     -
       .. _emcc-g3:
 
-      ``-g3``: Preserve variable names (this is the same as :ref:`-g <emcc-g>`).
-
-        .. code-block:: javascript
-
-          function _addAndPrint($left, $right) {
-            $left = $left | 0;
-            $right = $right | 0;
-            _printAnInteger($left + $right | 0);
-          }
-
-        .. note:: Variable names in the output will not necessarily match the original variable names in source. They are, however, usually similar enough to infer the purpose of the variables.
+      ``-g3``: When compiling to object files, keep debug info (this is the same as :ref:`-g <emcc-g>`).
 
     .. _emcc-g4:
 
-    - ``-g4``: Preserve LLVM debug information. This is the highest level of debuggability. If ``-g`` was used when compiling the C/C++ sources, this shows line number debug comments, and generates source maps.
+    - ``-g4``: When linking, generate a source map using LLVM debug information (which must be present in object files, i.e., they should have been compiled with ``-g``).
 
       .. note::
 
-        - This debugging level may make compilation at optimization level :ref:`-O1 <emcc-O1>` and above significantly slower, because JavaScript optimization will be limited to one core (the default in ``-O0``).
-        - Source maps allow you to view and debug the *C/C++ source code* in your browser's debugger! This works in Firefox, Chrome and Safari.
-
+        - Source maps allow you to view and debug the *C/C++ source code* in your browser's debugger!
+        - This debugging level may make compilation significantly slower (this is why we only do it on ``-g4``).
 
 .. _emcc-profiling:
 

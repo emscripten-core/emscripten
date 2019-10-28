@@ -1213,10 +1213,10 @@ Typedefs
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
 
-Emterpreter-Async functions
-===========================
+Async functions
+===============
 
-Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/emscripten-core/emscripten/wiki/Emterpreter>`_ for more details.
+These functions require Asyncify (``-s ASYNCIFY``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronously in C.
 
 Sleeping
 --------
@@ -1225,13 +1225,15 @@ Sleeping
 
   Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
   there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
-  on the stack (that's how it looks in the C source code). If you do want things to happen while sleeping, see ``emscripten_sleep_with_yield``.
+  on the stack (that's how it looks in the C source code).
 
 .. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
 
   Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
   this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
   Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
+  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
 
 Network
 -------
@@ -1286,10 +1288,10 @@ IndexedDB
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
 
-Asyncify functions
-==================
+Fastcomp Asyncify functions
+===========================
 
-Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/emscripten-core/emscripten/wiki/Asyncify>`_ for more details.
+Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/emscripten-core/emscripten/wiki/Asyncify>`_ for more details.
 
 Typedefs
 --------
@@ -1311,25 +1313,18 @@ Functions
 
     :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
 
-  .. note:: this only works in fastcomp
-
 .. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
 
     Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
-
-  .. note:: this only works in fastcomp
 
 .. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
 
-  .. note:: this only works in fastcomp
+Upstream Asyncify functions
+===========================
 
-Memory scanning functions
-=========================
-
-These functions can help with conservative garbage collection, where roots are
-scanned for.
+These functions only work with the upstream wasm backend when using Asyncify.
 
 Typedefs
 --------
@@ -1363,6 +1358,22 @@ Functions
     This function requires Asyncify - it relies on that option to spill the
     local state all the way up the stack. As a result, it will add overhead
     to your program.
+
+.. c:function:: void emscripten_lazy_load_code()
+
+    This creates two wasm files at compile time: the first wasm which is
+    downloaded and run normally, and a second that is lazy-loaded. When an
+    ``emscripten_lazy_load_code()`` call is reached, we load the second wasm
+    and resume execution using it.
+
+    The idea here is that the initial download can be quite small, if you
+    place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
+    the optimizer can remove code from the first wasm if it sees it can't
+    be reached. The second downloaded wasm can contain your full codebase,
+    including rarely-used functions, in which case the lazy-loading may
+    not happen at all.
+
+  .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
 
 ABI functions
 =============

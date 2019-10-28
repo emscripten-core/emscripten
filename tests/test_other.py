@@ -575,6 +575,15 @@ f.close()
     self.assertEqual(proc.stderr, "")
     self.assertContained('LLVM', proc.stdout)
 
+  def test_emsize(self):
+    with open(path_from_root('tests', 'other', 'test_emsize.out')) as expected_output:
+      expected = expected_output.read()
+      cmd = [PYTHON, path_from_root('emsize.py'),
+             path_from_root('tests', 'other', 'test_emsize.js')]
+      for command in [cmd, cmd + ['-format=sysv']]:
+        output = run_process(cmd, stdout=PIPE).stdout
+        self.assertContained(expected, output)
+
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
