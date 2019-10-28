@@ -96,11 +96,12 @@ proxying, see the previous section. If the main thread blocks while a worker
 attempts to proxy to it, a deadlock can occur.
 
 The bottom line is that on the Web it is bad for the main browser thread to
-wait on anything else. Therefore by default Emscripten disallows
-``pthread_join`` and ``pthread_cond_wait`` on the main browser thread, and
-will throw an error (whose message will point to here).
+wait on anything else. Therefore by default Emscripten warns if
+``pthread_join`` and ``pthread_cond_wait`` happen on the main browser thread,
+and will throw an error if ``ALLOW_BLOCKING_ON_MAIN_THREAD`` is zero
+(whose message will point to here).
 
-To avoid this problem, you can use ``PROXY_TO_PTHREAD``, which as
+To avoid these problems, you can use ``PROXY_TO_PTHREAD``, which as
 mentioned earlier moves your ``main()`` function to a pthread, which leaves
 the main browser thread to focus only on receiving proxied events. This is
 recommended in general, but may take some porting work, if the application
@@ -110,14 +111,6 @@ Another option is to replace blocking calls with nonblocking ones. For example
 you can replace ``pthread_join`` with ``pthread_tryjoin_np``. This may require
 your application to be refactored to use asynchronous events, perhaps through
 :c:func:`emscripten_set_main_loop` or :ref:`Asyncify`.
-
-Alternatively, you can flip a flag to allow blocking on the main browser thread,
-using::
-
-    -s ALLOW_BLOCKING_ON_MAIN_THREAD=1
-
-This lets you avoid the error, but you have the risk of deadlocks and other
-problems as mentioned earlier.
 
 Special considerations
 ======================

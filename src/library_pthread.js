@@ -805,6 +805,7 @@ var LibraryPThread = {
   emscripten_check_blocking_allowed: function() {
 #if ASSERTIONS
     assert(ENVIRONMENT_IS_WEB);
+    warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #endif
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
     abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');

@@ -17,10 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
- - Pthread blocking on the main thread is now disallowed by default. To enable
-   it, you must set `ALLOW_BLOCKING_ON_MAIN_THREAD` (disallowing by default
-   makes it less likely new users of pthreads will hit surprising deadlocks
-   on the Web).
+ - Pthread blocking on the main thread will now warn in the console. If
+   `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
  - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
    but without blocking.
  - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
