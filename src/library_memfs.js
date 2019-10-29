@@ -272,6 +272,10 @@ mergeInto(LibraryManager.library, {
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
       write: function(stream, buffer, offset, length, position, canOwn) {
+#if ASSERTIONS
+        // The data buffer should be a typed array view
+        assert(!(buffer instanceof ArrayBuffer));
+#endif
 #if ALLOW_MEMORY_GROWTH
         // If memory can grow, we don't want to hold on to references of
         // the memory Buffer, as they may get invalidated. That means
@@ -341,6 +345,10 @@ mergeInto(LibraryManager.library, {
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap: function(stream, buffer, offset, length, position, prot, flags) {
+#if ASSERTIONS
+        // The data buffer should be a typed array view
+        assert(!(buffer instanceof ArrayBuffer));
+#endif
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
@@ -349,7 +357,7 @@ mergeInto(LibraryManager.library, {
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
         if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) &&
-              (contents.buffer === buffer || contents.buffer === buffer.buffer) ) {
+              contents.buffer === buffer.buffer ) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
           allocated = false;
