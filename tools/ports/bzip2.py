@@ -14,7 +14,7 @@ def get(ports, settings, shared):
   if settings.USE_BZIP2 != 1:
     return []
 
-  ports.fetch_project('bzip2', 'https://downloads.sourceforge.net/project/bzip2/bzip2-1.0.6.tar.gz', 'bzip2-1.0.6', sha512hash=HASH)
+  ports.fetch_project('bzip2', 'https://sourceware.org/pub/bzip2-1.0.6.tar.gz', 'bzip2-1.0.6', sha512hash=HASH)
 
   def create():
     ports.clear_project_build('bzip2')
