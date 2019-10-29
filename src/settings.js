@@ -26,6 +26,26 @@
 // Settings in this file can be directly set from the command line.  Internal
 // settings that are not part of the user ABI live in the settings_internal.js.
 //
+// In general it is best to pass the same arguments at both compile and link
+// time, as whether wasm object files are used or not affects when codegen
+// happens (without wasm object files, or when using fastcomp, codegen is all
+// during link; otherwise, it is during compile). Flags affecting codegen must
+// be passed when codegen happens, so to let a build easily switch when codegen
+// happens (LTO vs normal), pass the flags at both times. The flags are also
+// annotated in this file:
+//
+// [link] - Should be passed at link time. This is the case for all JS flags,
+//          as we emit JS at link (and that is most of the flags here, and
+//          hence the default).
+// [compile+link] - A flag that has an effect at both compile and link time,
+//                  basically any time emcc is invoked. The same flag should be
+//                  passed at both times in most cases.
+//
+// If not otherwise specified, a flag is [link]. Note that no flag is only
+// relevant during compile time, as during link we may do codegen for system
+// libraries and other support code, so all flags are either link or
+// compile+link.
+//
 
 // Tuning
 
@@ -227,6 +247,7 @@ var SKIP_STACK_IN_SMALL = 1;
 // greater than 0, we will *not* inline in LLVM, and we will prevent inlining of
 // functions of this size or larger in closure. 50 is a reasonable setting if
 // you do not want inlining
+// [compile+link]
 var INLINING_LIMIT = 0;
 
 // Run aggressiveVariableElimination in js-optimizer.js
@@ -525,10 +546,13 @@ var LZ4 = 0;
 //     -fno-exceptions to really get rid of all exceptions code overhead,
 //     as it may contain thrown exceptions that are never caught (e.g.
 //     just using std::vector can have that). -fno-rtti may help as well.
+//
+// [compile+link] - affects user code at compile and system libraries at link
 var DISABLE_EXCEPTION_CATCHING = 1;
 
 // Enables catching exception in the listed functions only, if
 // DISABLE_EXCEPTION_CATCHING = 2 is set
+// [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_WHITELIST = [];
 
 // By default we handle exit() in node, by catching the Exit exception. However,
@@ -830,6 +854,7 @@ var LINKABLE = 0;
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+// [compile+link]
 var STRICT = 0;
 
 // Add "use strict;" to generated JS
@@ -1112,6 +1137,7 @@ var WASM_BACKEND = 0;
 // of using LLVM IR.
 // Setting to zero will enable LTO and at link time will also enable bitcode
 // versions of the standard libraries.
+// [compile+link]
 var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
@@ -1272,6 +1298,7 @@ var SDL2_IMAGE_FORMATS = [];
 var IN_TEST_HARNESS = 0;
 
 // If true, enables support for pthreads.
+// [compile+link] - affects user code at compile and system libraries at link
 var USE_PTHREADS = 0;
 
 // PTHREAD_POOL_SIZE specifies the number of web workers that are created
