@@ -854,6 +854,7 @@ var LINKABLE = 0;
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+// [compile+link]
 var STRICT = 0;
 
 // Add "use strict;" to generated JS
