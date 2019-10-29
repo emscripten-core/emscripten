@@ -236,6 +236,13 @@ var DECLARE_ASM_MODULE_EXPORTS = 1;
 // Ignore closure warnings and errors (like on duplicate definitions)
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 
+// When enabled, does not push/pop the stack at all in functions that have no
+// basic stack usage. But, they may allocate stack later, and in a loop, this
+// can be very bad. In particular, when debugging, printf()ing a lot can exhaust
+// the stack very fast, with this option.  In particular, be careful with the
+// autodebugger! (We do turn this off automatically in that case, though.)
+var SKIP_STACK_IN_SMALL = 1;
+
 // A limit on inlining. If 0, we will inline normally in LLVM and closure. If
 // greater than 0, we will *not* inline in LLVM, and we will prevent inlining of
 // functions of this size or larger in closure. 50 is a reasonable setting if
