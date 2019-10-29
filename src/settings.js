@@ -1012,7 +1012,7 @@ var EXPORT_NAME = 'Module';
 //   being able to call functions that have been exported in the Module object in advance.
 // When set to -s DYNAMIC_EXECUTION=2 flag is set, attempts to call to eval() are demoted
 // to warnings instead of throwing an exception.
-var DYNAMIC_EXECUTION = 0;
+var DYNAMIC_EXECUTION = 1;
 
 // Runs tools/emterpretify on the compiler output
 var EMTERPRETIFY = 0;
