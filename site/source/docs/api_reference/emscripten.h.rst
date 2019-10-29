@@ -485,7 +485,7 @@ Functions
 
 .. _emscripten-h-asynchronous-file-system-api:
 
-Emscripten Asynchronous File System API
+Asynchronous File System API
 =========================================
 
 Typedefs
@@ -561,20 +561,6 @@ Typedefs
 
 Functions
 ---------
-
-.. c:function:: void emscripten_wget(const char* url, const char* file)
-
-  Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
-
-  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-files` for more information on preloading files.
-
-  This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
-
-  To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
-
-  :param const char* url: The URL to load.
-  :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
-
 
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 
@@ -732,7 +718,7 @@ Functions
     - *(void*)* : Equal to ``arg`` (user defined data).
 
 
-Emscripten Asynchronous IndexedDB API
+Asynchronous IndexedDB API
 =====================================
 
   IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
@@ -1213,10 +1199,10 @@ Typedefs
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
 
-Async functions
-===============
+Pseudo-synchronous functions
+============================
 
-These functions require Asyncify (``-s ASYNCIFY``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronously in C.
+These functions require Asyncify (``-s ASYNCIFY=1``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ and `Emterpreter <https://emscripten.org/docs/porting/emterpreter.html>`_ for more details.
 
 Sleeping
 --------
@@ -1237,6 +1223,17 @@ Sleeping
 
 Network
 -------
+
+.. c:function:: void emscripten_wget(const char* url, const char* file)
+
+  Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
+
+  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-files` for more information on preloading files.
+
+  This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
+
+  :param const char* url: The URL to load.
+  :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 
 .. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
@@ -1291,7 +1288,7 @@ IndexedDB
 Fastcomp Asyncify functions
 ===========================
 
-Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/emscripten-core/emscripten/wiki/Asyncify>`_ for more details.
+Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Typedefs
 --------
