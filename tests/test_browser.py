@@ -3621,8 +3621,8 @@ window.close = function() {
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'])
 
   @parameterized({
-    'join': ['join',],
-    'wait': ['wait',],
+    'join': ('join',),
+    'wait': ('wait',),
   })
   @requires_threads
   def test_pthread_main_thread_blocking(self, name):
