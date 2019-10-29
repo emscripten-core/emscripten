@@ -8359,6 +8359,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '''
     self.build(src, self.get_dir(), 'test.c')
 
+  def test_fpic_static(self):
+    self.emcc_args.append('-fPIC')
+    self.emcc_args.remove('-Werror')
+    self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
