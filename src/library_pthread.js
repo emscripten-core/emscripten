@@ -434,7 +434,7 @@ var LibraryPThread = {
           };
 
           if (ENVIRONMENT_IS_NODE) {
-            worker.ref(); // XXX FIXME wat
+            worker.ref(); // XXX FIXME wat?
             worker.on('message', function(data) {
               worker.onmessage({ data: data });
             });
