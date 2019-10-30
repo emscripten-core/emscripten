@@ -1758,6 +1758,21 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
     self.do_run(open(src).read(), open(output).read().replace('waka', shared.EMSCRIPTEN_VERSION))
 
+  def test_emscripten_has_asyncify(self):
+    src = r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      int main() {
+        printf("%d\n", emscripten_has_asyncify());
+        return 0;
+      }
+    '''
+    self.set_setting('ASYNCIFY', 0)
+    self.do_run(src, '0')
+    self.set_setting('ASYNCIFY', 1)
+    self.do_run(src, '1')
+
   # TODO: test only worked in non-fastcomp
   def test_inlinejs(self):
     self.skipTest('non-fastcomp is deprecated and fails in 3.5') # only supports EM_ASM

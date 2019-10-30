@@ -228,6 +228,7 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 // misc.
 
 int emscripten_get_compiler_setting(const char *name);
+int emscripten_has_asyncify();
 
 void emscripten_debugger(void);
 

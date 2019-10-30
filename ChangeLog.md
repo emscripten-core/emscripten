@@ -20,6 +20,7 @@ Current Trunk
  - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
    must be linked in explicitly, using `-lnodefs.js`, `-lidbfs.js`',
    `-lworkerfs.js`, `-lproxyfs.js`. See #9645
+ - New function emscripten_has_asyncify()
 
 v1.39.0: 10/18/2019
 -------------------
