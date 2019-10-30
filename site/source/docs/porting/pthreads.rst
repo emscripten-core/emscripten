@@ -62,8 +62,7 @@ In addition, Emscripten currently has a simple model of file I/O only happening
 on the main application thread (as we support JS plugin filesystems, which
 cannot share memory); this is another set of operations that are proxied.
 
-Proxying can cause problems in certain cases, see the section on blocking right
-after this one.
+Proxying can cause problems in certain cases, see the section on blocking below.
 
 Blocking on the main browser thread
 ===================================
