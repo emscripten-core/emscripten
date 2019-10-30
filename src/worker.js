@@ -289,24 +289,11 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
 
   var parentPort = nodeWorkerThreads.parentPort;
 
-  parentPort.ref(); // stay alive XXX?
-//process.exit(); XXX at the right time
+  parentPort.ref(); // TODO: investigate when we need this
 
   parentPort.on('message', function(data) {
     onmessage({ data: data });
   });
-            parentPort.on('close', function(data) {
-              console.log('parentPort closed ..!?');
-            });
-            parentPort.on('error', function(data) {
-              console.log('parentPort errored :(');
-            });
-            parentPort.on('exit', function(data) {
-              console.log('werker exited');
-            });
-            parentPort.on('online', function(data) {
-              console.log('parentPortah is online!!!1!');
-            });
 
   var nodeFS = require('fs');
 
