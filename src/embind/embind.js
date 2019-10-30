@@ -915,10 +915,10 @@ var LibraryEmbind = {
     var returns = (argTypes[0].name !== "void");
 
 #if DYNAMIC_EXECUTION == 0
-    const expectedArgCount = argCount - 2;
-    const argsWired = new Array(expectedArgCount);
-    const invokerFuncArgs = [];
-    const destructors = [];
+    var expectedArgCount = argCount - 2;
+    var argsWired = new Array(expectedArgCount);
+    var invokerFuncArgs = [];
+    var destructors = [];
     return function() {
       if (arguments.length !== expectedArgCount) {
         throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount} args!`);
@@ -1048,7 +1048,7 @@ var LibraryEmbind = {
 
     function makeDynCaller(dynCall) {
 #if DYNAMIC_EXECUTION == 0
-      const argCache = [rawFunction];
+      var argCache = [rawFunction];
       return function() {
           argCache.length = arguments.length + 1;
           for (var i = 0; i < arguments.length; i++) {
@@ -1999,8 +1999,8 @@ var LibraryEmbind = {
   ) {
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = embind__requireFunction(invokerSignature, invoker);
-    const args = [rawConstructor];
-    const destructors = [];
+    var args = [rawConstructor];
+    var destructors = [];
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
