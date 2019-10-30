@@ -8541,6 +8541,13 @@ end
     self.assertContained('file1', result)
     self.assertContained('file2', result)
 
+  def test_emar_duplicate_inputs(self):
+    # Verify the we can supply the same intput muliple times without
+    # confusing emar.py:
+    # See https://github.com/emscripten-core/emscripten/issues/9733
+    create_test_file('file1', ' ')
+    run_process([PYTHON, EMAR, 'cr', 'file1.a', 'file1', 'file1'])
+
   def test_flag_aliases(self):
     def assert_aliases_match(flag1, flag2, flagarg, extra_args):
       results = {}
