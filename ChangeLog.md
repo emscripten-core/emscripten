@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+ - `ERROR_ON_MISSING_LIBRARIES` now also applies to internal symbols that start
+   with `emscripten_`.  Prior to this change such missing symbols would result
+   in a runtime error, not they are reported at compile time.
 
 v1.39.1: 10/30/2019
 -------------------
