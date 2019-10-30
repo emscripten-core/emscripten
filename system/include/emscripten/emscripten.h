@@ -170,12 +170,9 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, const 
 
 void emscripten_async_wget2_abort(int handle);
 
-// wget "sync" (ASYNCIFY)
+// wget "sync"
 
 void emscripten_wget(const char* url, const char* file);
-
-// wget data "sync" (EMTERPRETIFY_ASYNC)
-
 void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 // IDB
@@ -186,7 +183,7 @@ void emscripten_idb_async_delete(const char *db_name, const char *file_id, void*
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
 
-// IDB "sync" (EMTERPRETIFY_ASYNC)
+// IDB "sync"
 
 void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
@@ -204,6 +201,8 @@ int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload
 
 typedef void (*em_run_preload_plugins_data_onload_func)(void*, const char*);
 void emscripten_run_preload_plugins_data(char* data, int size, const char *suffix, void *arg, em_run_preload_plugins_data_onload_func onload, em_arg_callback_func onerror);
+
+void emscripten_lazy_load_code(void);
 
 // show an error on some renamed methods
 #define emscripten_async_prepare(...) _Pragma("GCC error(\"emscripten_async_prepare has been replaced by emscripten_run_preload_plugins\")")

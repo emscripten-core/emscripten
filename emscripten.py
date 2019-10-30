@@ -2225,10 +2225,11 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
+  asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
+  asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   pre = pre.replace(
     '// === Body ===',
-    ('// === Body ===\n\nvar ASM_CONSTS = [' +
-     ',\n '.join(asm_consts) + '];\n' +
+    ('// === Body ===\n\n' + asm_const_map +
      asstr('\n'.join(asm_const_funcs)) +
      '\n'.join(em_js_funcs) + '\n'))
   pre = apply_table(pre)
@@ -2342,7 +2343,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
 
 
 def create_asm_consts_wasm(forwarded_json, metadata):
-  asm_consts = [0] * len(metadata['asmConsts'])
+  asm_consts = {}
   all_sigs = []
   for k, v in metadata['asmConsts'].items():
     const, sigs, call_types = v
@@ -2417,6 +2418,8 @@ function %s(code, sigPtr, argbuf) {%s
   var args = readAsmConstArgs(sigPtr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
+  asm_consts = [(key, value) for key, value in asm_consts.items()]
+  asm_consts.sort()
   return asm_consts, asm_const_funcs
 
 

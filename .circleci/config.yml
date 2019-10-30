@@ -26,10 +26,11 @@ commands:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
-            echo "WASM_ENGINES = []" >> ~/.emscripten
             echo "import os" >> ~/.emscripten
+            echo "V8_ENGINE = os.path.expanduser('~/.jsvu/v8')" >> ~/.emscripten
+            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
+            echo "if os.path.exists(V8_ENGINE): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
+            echo "WASM_ENGINES = []" >> ~/.emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
             cd -
@@ -72,6 +73,7 @@ commands:
             - .emscripten_ports/
             - .emscripten
             - vms
+            - .jsvu
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -392,6 +394,15 @@ jobs:
             wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
             tar -xf wasmtime-dev-x86_64-linux.tar.xz
             cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
+      - run:
+          name: get v8
+          command: |
+            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+            tar -xf node-v12.13.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            export PATH="${HOME}/.jsvu:${PATH}"
+            jsvu --os=default --engines=v8
       - build-upstream
   test-upstream-wasm0:
     executor: bionic

@@ -8684,8 +8684,8 @@ int main() {
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', '''
-var ASM_CONSTS = [function() {var x = !<->5.;}];
-                                       ^
+  0: function() {var x = !<->5.;}
+                          ^
 '''), stderr)
 
   def test_EM_ASM_ES6(self):
@@ -9853,3 +9853,18 @@ Module.arguments has been replaced with plain arguments_
     stderr = self.expect_fail(cmd + ['-Werror'])
     self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
     self.assertContained('ERROR: treating warnings as errors (-Werror)', stderr)
+
+  def test_emranlib(self):
+    create_test_file('foo.c', 'int foo = 1;')
+    create_test_file('bar.c', 'int bar = 2;')
+    run_process([PYTHON, EMCC, '-c', 'foo.c', 'bar.c'])
+
+    # Create a library with no archive map
+    run_process([PYTHON, EMAR, 'crS', 'liba.a', 'foo.o', 'bar.o'])
+    output = run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    self.assertNotContained('Archive map', output)
+
+    # Add an archive map
+    run_process([PYTHON, EMRANLIB, 'liba.a'])
+    output = run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    self.assertContained('Archive map', output)

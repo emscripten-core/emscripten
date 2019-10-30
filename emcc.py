@@ -526,13 +526,15 @@ def run(args):
     # An online HTML version (which may be of a different version of Emscripten)
     #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
 
-    print('''%s
+    with open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'r') as f:
+      print(f.read())
 
+    print('''
 ------------------------------------------------------------------
 
 emcc: supported targets: llvm bitcode, javascript, NOT elf
 (autoconf likes to see elf above to enable shared object support)
-''' % (open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt')).read()))
+''')
     return 0
 
   if '--version' in args:
@@ -1814,8 +1816,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
-      if shared.Settings.SIMD:
-        exit_with_error('STANDALONE_WASM does not support simd yet')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
@@ -1883,6 +1883,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
+      if '-fPIC' in compile_args and not shared.Settings.RELOCATABLE:
+        shared.warning('ignoring -fPIC flag when not building with SIDE_MODULE or MAIN_MODULE')
+        compile_args.remove('-fPIC')
 
       # Bitcode args generation code
       def get_clang_command(input_files):
@@ -2996,10 +2999,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
-    cmd = [os.path.join(binaryen_bin, 'wasm-opt'), wasm_binary_target, '-o', wasm_binary_target] + options.binaryen_passes
-    cmd += shared.Building.get_binaryen_feature_flags()
-    if intermediate_debug_info:
-      cmd += ['-g'] # preserve the debug info
+    cmd = shared.Building.get_wasm_opt_command(wasm_binary_target,
+                                               wasm_binary_target,
+                                               options.binaryen_passes,
+                                               debug=intermediate_debug_info)
     if use_source_map(options):
       cmd += ['--input-source-map=' + wasm_source_map_target]
       cmd += ['--output-source-map=' + wasm_source_map_target]
@@ -3056,6 +3059,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                            debug_info=intermediate_debug_info,
                                            emitting_js=not target.endswith(WASM_ENDINGS))
     save_intermediate_with_wasm('postclean', wasm_binary_target)
+
+  if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
+    if not shared.Settings.ASYNCIFY:
+      exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
+    shared.Building.asyncify_lazy_load_code(wasm_binary_target, options, debug=intermediate_debug_info)
 
   def run_closure_compiler(final):
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
@@ -3658,5 +3666,5 @@ if __name__ == '__main__':
   try:
     sys.exit(run(sys.argv))
   except KeyboardInterrupt:
-    logger.warning("KeyboardInterrupt")
+    logger.warning('KeyboardInterrupt')
     sys.exit(1)

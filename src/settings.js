@@ -26,6 +26,26 @@
 // Settings in this file can be directly set from the command line.  Internal
 // settings that are not part of the user ABI live in the settings_internal.js.
 //
+// In general it is best to pass the same arguments at both compile and link
+// time, as whether wasm object files are used or not affects when codegen
+// happens (without wasm object files, or when using fastcomp, codegen is all
+// during link; otherwise, it is during compile). Flags affecting codegen must
+// be passed when codegen happens, so to let a build easily switch when codegen
+// happens (LTO vs normal), pass the flags at both times. The flags are also
+// annotated in this file:
+//
+// [link] - Should be passed at link time. This is the case for all JS flags,
+//          as we emit JS at link (and that is most of the flags here, and
+//          hence the default).
+// [compile+link] - A flag that has an effect at both compile and link time,
+//                  basically any time emcc is invoked. The same flag should be
+//                  passed at both times in most cases.
+//
+// If not otherwise specified, a flag is [link]. Note that no flag is only
+// relevant during compile time, as during link we may do codegen for system
+// libraries and other support code, so all flags are either link or
+// compile+link.
+//
 
 // Tuning
 
@@ -216,17 +236,11 @@ var DECLARE_ASM_MODULE_EXPORTS = 1;
 // Ignore closure warnings and errors (like on duplicate definitions)
 var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 
-// When enabled, does not push/pop the stack at all in functions that have no
-// basic stack usage. But, they may allocate stack later, and in a loop, this
-// can be very bad. In particular, when debugging, printf()ing a lot can exhaust
-// the stack very fast, with this option.  In particular, be careful with the
-// autodebugger! (We do turn this off automatically in that case, though.)
-var SKIP_STACK_IN_SMALL = 1;
-
 // A limit on inlining. If 0, we will inline normally in LLVM and closure. If
 // greater than 0, we will *not* inline in LLVM, and we will prevent inlining of
 // functions of this size or larger in closure. 50 is a reasonable setting if
 // you do not want inlining
+// [compile+link]
 var INLINING_LIMIT = 0;
 
 // Run aggressiveVariableElimination in js-optimizer.js
@@ -525,10 +539,13 @@ var LZ4 = 0;
 //     -fno-exceptions to really get rid of all exceptions code overhead,
 //     as it may contain thrown exceptions that are never caught (e.g.
 //     just using std::vector can have that). -fno-rtti may help as well.
+//
+// [compile+link] - affects user code at compile and system libraries at link
 var DISABLE_EXCEPTION_CATCHING = 1;
 
 // Enables catching exception in the listed functions only, if
 // DISABLE_EXCEPTION_CATCHING = 2 is set
+// [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_WHITELIST = [];
 
 // By default we handle exit() in node, by catching the Exit exception. However,
@@ -563,7 +580,7 @@ var ASYNCIFY_IMPORTS = [
   'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
-  'emscripten_scan_registers',
+  'emscripten_scan_registers', 'emscripten_lazy_load_code',
   'wasi_unstable.fd_sync', '__wasi_fd_sync',
 ];
 
@@ -606,6 +623,10 @@ var ASYNCIFY_BLACKLIST = [];
 // your application.
 // See notes on ASYNCIFY_BLACKLIST about the names.
 var ASYNCIFY_WHITELIST = [];
+
+// Allows lazy code loading: where emscripten_lazy_load_code() is written, we
+// will pause execution, load the rest of the code, and then resume.
+var ASYNCIFY_LAZY_LOAD_CODE = 0;
 
 // Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;
@@ -826,6 +847,7 @@ var LINKABLE = 0;
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+// [compile+link]
 var STRICT = 0;
 
 // Add "use strict;" to generated JS
@@ -1108,6 +1130,7 @@ var WASM_BACKEND = 0;
 // of using LLVM IR.
 // Setting to zero will enable LTO and at link time will also enable bitcode
 // versions of the standard libraries.
+// [compile+link]
 var WASM_OBJECT_FILES = 1;
 
 // An optional comma-separated list of script hooks to run after binaryen,
@@ -1268,6 +1291,7 @@ var SDL2_IMAGE_FORMATS = [];
 var IN_TEST_HARNESS = 0;
 
 // If true, enables support for pthreads.
+// [compile+link] - affects user code at compile and system libraries at link
 var USE_PTHREADS = 0;
 
 // PTHREAD_POOL_SIZE specifies the number of web workers that are created
@@ -1627,6 +1651,7 @@ var LEGACY_SETTINGS = [
   ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
+  ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
 ];
 
 
