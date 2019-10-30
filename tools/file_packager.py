@@ -115,7 +115,7 @@ force = True
 use_preload_cache = False
 indexeddb_name = 'EM_PRELOAD_CACHE'
 # If set to True, the blob received from XHR is moved to the Emscripten HEAP,
-# optimizing for mmap() performance.
+# optimizing for mmap() performance (if ALLOW_MEMORY_GROWTH=0).
 # If set to False, the XHR blob is kept intact, and fread()s etc. are performed
 # directly to that data. This optimizes for minimal memory usage and fread()
 # performance.

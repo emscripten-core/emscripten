@@ -170,12 +170,9 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, const 
 
 void emscripten_async_wget2_abort(int handle);
 
-// wget "sync" (ASYNCIFY)
+// wget "sync"
 
 void emscripten_wget(const char* url, const char* file);
-
-// wget data "sync" (EMTERPRETIFY_ASYNC)
-
 void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 // IDB
@@ -186,7 +183,7 @@ void emscripten_idb_async_delete(const char *db_name, const char *file_id, void*
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
 
-// IDB "sync" (EMTERPRETIFY_ASYNC)
+// IDB "sync"
 
 void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
