@@ -62,7 +62,7 @@ Options that are modified or new in *emcc* are listed below:
      removing things that the compiler does not see being used, in
      particular, parts of the runtime may be stripped if they are not
      exported on the "Module" object. The compiler is aware of code in
-     –pre-js and –post-js, so you can safely use the runtime from
+     --pre-js and --post-js, so you can safely use the runtime from
      there. Alternatively, you can use
      "EXTRA_EXPORTED_RUNTIME_METHODS", see src/settings.js.
 
@@ -92,7 +92,7 @@ Options that are modified or new in *emcc* are listed below:
 
    Note: If no value is specifed it will default to "1".
 
-   Note: For options that are lists, you need quotation marks (“)
+   Note: For options that are lists, you need quotation marks (")
      around the list in most shells (to avoid errors being raised).
      Two examples are shown below:
 
@@ -143,7 +143,7 @@ Options that are modified or new in *emcc* are listed below:
         Note:
 
           * Source maps allow you to view and debug the *C/C++
-            source code* in your browser’s debugger!
+            source code* in your browser's debugger!
 
           * This debugging level may make compilation significantly
             slower (this is why we only do it on "-g4").
@@ -181,7 +181,7 @@ Options that are modified or new in *emcc* are listed below:
 
       * "1": Use JavaScript optimizer (default).
 
-   You normally don’t need to specify this option, as "-O" with an
+   You normally don't need to specify this option, as "-O" with an
    optimization level will set a good value.
 
    Note: Some options might override this flag (e.g. "EMTERPRETIFY",
@@ -205,7 +205,7 @@ Options that are modified or new in *emcc* are listed below:
 
       --llvm-opts "['-O3', '-somethingelse']"
 
-   You normally don’t need to specify this option, as "-O" with an
+   You normally don't need to specify this option, as "-O" with an
    optimization level will set a good value.
 
 "--llvm-lto <level>"
@@ -279,12 +279,12 @@ Options that are modified or new in *emcc* are listed below:
    to put all the output in an inner function scope (see "MODULARIZE"
    for that).
 
-   *–pre-js* (but not *–post-js*) is also useful for specifying things
-   on the "Module" object, as it appears before the JS looks at
+   *--pre-js* (but not *--post-js*) is also useful for specifying
+   things on the "Module" object, as it appears before the JS looks at
    "Module" (for example, you can define "Module['print']" there).
 
 "--post-js <file>"
-   Like *–pre-js`*, but emits a file *after* the emitted code.
+   Like *--pre-js`*, but emits a file *after* the emitted code.
 
 "--embed-file <file>"
    Specify a file (with path) to embed inside the generated
@@ -313,7 +313,7 @@ Options that are modified or new in *emcc* are listed below:
    **filename.html** is the main file you are compiling to. To run
    your code, you will need both the **.html** and the **.data**.
 
-   Note: This option is similar to –embed-file, except that it is
+   Note: This option is similar to --embed-file, except that it is
      only relevant when generating HTML (it uses asynchronous binary
      *XHRs*), or JavaScript that will be used in a web page.
 
@@ -327,13 +327,13 @@ Options that are modified or new in *emcc* are listed below:
    Packaging Files.
 
 "--exclude-file <name>"
-   Files and directories to be excluded from –embed-file and –preload-
-   file. Wildcards (*) are supported.
+   Files and directories to be excluded from --embed-file and
+   --preload-file. Wildcards (*) are supported.
 
 "--use-preload-plugins"
    Tells the file packager to run preload plugins on the files as they
    are loaded. This performs tasks like decoding images and audio
-   using the browser’s codecs.
+   using the browser's codecs.
 
 "--shell-file <path>"
    The path name to a skeleton HTML file used when generating HTML
@@ -385,15 +385,15 @@ Options that are modified or new in *emcc* are listed below:
    without errors.
 
 "--js-library <lib>"
-   A JavaScript library to use in addition to those in Emscripten’s
+   A JavaScript library to use in addition to those in Emscripten's
    core libraries (src/library_*).
 
 "-v"
    Turns on verbose output.
 
    This will pass "-v" to *Clang*, and also enable "EMCC_DEBUG" to
-   generate intermediate files for the compiler’s various stages. It
-   will also run Emscripten’s internal sanity checks on the toolchain,
+   generate intermediate files for the compiler's various stages. It
+   will also run Emscripten's internal sanity checks on the toolchain,
    etc.
 
    Tip: "emcc -v" is a useful tool for diagnosing errors. It works
@@ -485,7 +485,7 @@ Options that are modified or new in *emcc* are listed below:
    and a separate **.js** file containing the JavaScript to be run in
    a worker. If emitting JavaScript, the target file name contains the
    part to be run on the main thread, while a second **.js** file with
-   suffix “.worker.js” will contain the worker portion.
+   suffix ".worker.js" will contain the worker portion.
 
 "--emrun"
    Enables the generated output to be aware of the emrun command line
@@ -548,7 +548,7 @@ Options that are modified or new in *emcc* are listed below:
         WebAssembly object.
 
       * <name> **.wasm** : WebAssembly without JavaScript support
-        code (“standalone wasm”; this enables "STANDALONE_WASM").
+        code ("standalone wasm"; this enables "STANDALONE_WASM").
 
    Note: If "--memory-init-file" is used, a **.mem** file will be
      created in addition to the generated **.js** and/or **.html**
@@ -567,9 +567,9 @@ Options that are modified or new in *emcc* are listed below:
 
 "--output_eol windows|linux"
    Specifies the line ending to generate for the text files that are
-   outputted. If “–output_eol windows” is passed, the final output
-   files will have Windows rn line endings in them. With “–output_eol
-   linux”, the final generated files will be written with Unix n line
+   outputted. If "--output_eol windows" is passed, the final output
+   files will have Windows rn line endings in them. With "--output_eol
+   linux", the final generated files will be written with Unix n line
    endings.
 
 "--cflags"
@@ -603,7 +603,7 @@ Environment variables
    * "EMCC_CLOSURE_ARGS" : arguments to be passed to *Closure
      Compiler*
 
-Search for ‘os.environ’ in emcc.py to see how these are used. The most
+Search for 'os.environ' in emcc.py to see how these are used. The most
 interesting is possibly "EMCC_DEBUG", which forces the compiler to
 dump its build and temporary files to a temporary directory where they
 can be reviewed.

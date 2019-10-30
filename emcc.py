@@ -526,11 +526,8 @@ def run(args):
     # An online HTML version (which may be of a different version of Emscripten)
     #    is up at http://kripken.github.io/emscripten-site/docs/tools_reference/emcc.html
 
-    with open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'rb') as f:
-      text = f.read()
-      # if LC_ALL=C in the env, then python2 will fail to print a utf8 string.
-      # convert it to ascii, and ignore any issues
-      print(text.decode('ascii', 'ignore'))
+    with open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'r') as f:
+      print(f.read())
 
     print('''
 ------------------------------------------------------------------
