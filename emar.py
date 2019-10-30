@@ -67,9 +67,9 @@ def run():
         parts[0] += '_' + h
         newname = '.'.join(parts)
         full_newname = os.path.join(dirname, newname)
-        newargs[j] = full_newname
         try:
           shutil.copyfile(orig_name, full_newname)
+          newargs[j] = full_newname
           to_delete.append(full_newname)
         except Exception:
           # it is ok to fail here, we just don't get hashing
