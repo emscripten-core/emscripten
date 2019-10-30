@@ -529,7 +529,11 @@ def run(args):
     f = open(shared.path_from_root('site', 'build', 'text', 'docs', 'tools_reference', 'emcc.txt'), 'rb')
     g = f.read()
     h = shared.asstr(g)
-    print(h)
+    try:
+      print(h)
+      1/0
+    except Exception as e:
+      raise Exception(str(e) + ' waka ' + str(type(h)))
 
     print('''
 ------------------------------------------------------------------
