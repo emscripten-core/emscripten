@@ -50,7 +50,7 @@ The Web allows certain operations to only happen from the main browser thread,
 like interacting with the DOM. As a result, various operations are proxied to
 the main browser thread if they are called on a background thread. See
 `bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
-more information and how to try to work around this until this. To check which
+more information and how to try to work around this until then. To check which
 operations are proxied, you can look for the function's implementation in
 the JS library (``src/library_*``) and see if it is annotated with
 ``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
@@ -60,22 +60,23 @@ thread).
 
 In addition, Emscripten currently has a simple model of file I/O only happening
 on the main application thread (as we support JS plugin filesystems, which
-cannot share memory), which is another set of operations that are proxied.
+cannot share memory); this is another set of operations that are proxied.
 
-Normally you don't need to worry about this proxying, as it is fully automatic,
-however see the section on blocking right after this one.
+Proxying can cause problems in certain cases, see the section on blocking right
+after this one.
 
 Blocking on the main browser thread
 ===================================
 
 Note that in most cases the "main browser thread" is the same as the "main
-application thread". The main browser thread is literally the browser's main
-thread where DOM access is allowed, and the main application thread is the one
-on which you started up the application. If you started it on the main browser
-thread - by it being a normal HTML page - then the two are identical. However,
-you can also start a multithreaded application in a worker; in that case the
-main application thread is that worker, and there is no access to the main
-browser thread.
+application thread". The main browser thread is where web pages start to run
+JavaScript, and where JavaScript can access the DOM (a page can also create a Web
+Worker, which would no longer be on the main thread). The main application
+thread is the one on which you started up the Emscripten JavaScript file. If you
+started it on the main browser thread - by it being a normal HTML page - then
+the two are identical. However, you can also start a multithreaded application
+in a worker; in that case the main application thread is that worker, and there
+is no access to the main browser thread.
 
 The Web API for atomics does not allow blocking on the main thread
 (specifically, ``Atomics.wait`` doesn't work there). Such blocking is
