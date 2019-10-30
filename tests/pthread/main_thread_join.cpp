@@ -8,25 +8,37 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#include <atomic>
+
 pthread_t thread;
+
+std::atomic<int> tries;
+
+static const int EXPECTED_TRIES = 7;
 
 void loop() {
   void* retval;
+  printf("try...\n");
   if (pthread_tryjoin_np(thread, &retval) == 0) {
     emscripten_cancel_main_loop();
+    assert(tries.load() == EXPECTED_TRIES);
 #ifdef REPORT_RESULT
     REPORT_RESULT(2);
 #endif
   }
+  tries++;
 }
 
-void *ThreadMain(void *arg)
-{
+void *ThreadMain(void *arg) {
+#ifdef TRY_JOIN
+  // Delay to force the main thread to try and fail a few times before
+  // succeeding.
+  while (tries.load() < EXPECTED_TRIES) {}
+#endif
 	pthread_exit((void*)0);
 }
 
-pthread_t CreateThread()
-{
+pthread_t CreateThread() {
   pthread_t ret;
   int rc = pthread_create(&ret, NULL, ThreadMain, (void*)0);
   assert(rc == 0);
@@ -34,8 +46,7 @@ pthread_t CreateThread()
 }
 
 int main() {
-  if (!emscripten_has_threading_support())
-  {
+  if (!emscripten_has_threading_support()) {
 #ifdef REPORT_RESULT
     REPORT_RESULT(0);
 #endif
