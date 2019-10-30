@@ -8684,8 +8684,8 @@ int main() {
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', '''
-var ASM_CONSTS = [function() {var x = !<->5.;}];
-                                       ^
+  0: function() {var x = !<->5.;}
+                          ^
 '''), stderr)
 
   def test_EM_ASM_ES6(self):
