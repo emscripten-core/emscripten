@@ -150,6 +150,13 @@ def also_with_impure_standalone_wasm(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS', 1)
+    f(self, js_engines=[NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']])
+  return decorated
+
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
@@ -8363,6 +8370,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fPIC')
     self.emcc_args.remove('-Werror')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @node_pthreads
+  def test_pthreads_hello(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create',
+                                 js_engines=js_engines)
 
 
 # Generate tests for everything
