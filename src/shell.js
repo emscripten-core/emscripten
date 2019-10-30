@@ -122,6 +122,11 @@ var read_,
     setWindowTitle;
 
 #if ENVIRONMENT_MAY_BE_NODE
+var nodeFS;
+var nodePath;
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT
 #if ASSERTIONS

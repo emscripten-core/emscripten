@@ -1,8 +1,3 @@
-  // Expose functionality in the same simple way that the shells work
-  // Note that we pollute the global namespace here, otherwise we break in node
-  var nodeFS;
-  var nodePath;
-
   read_ = function shell_read(filename, binary) {
     var ret;
 #if SUPPORT_BASE64_EMBEDDING
