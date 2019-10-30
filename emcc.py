@@ -1819,8 +1819,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('STANDALONE_WASM is only available in the upstream wasm backend path')
       if shared.Settings.USE_PTHREADS:
         exit_with_error('STANDALONE_WASM does not support pthreads yet')
-      if shared.Settings.SIMD:
-        exit_with_error('STANDALONE_WASM does not support simd yet')
       # the wasm must be runnable without the JS, so there cannot be anything that
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
@@ -1888,6 +1886,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
+      if '-fPIC' in compile_args and not shared.Settings.RELOCATABLE:
+        shared.warning('ignoring -fPIC flag when not building with SIDE_MODULE or MAIN_MODULE')
+        compile_args.remove('-fPIC')
 
       # Bitcode args generation code
       def get_clang_command(input_files):
@@ -3666,5 +3667,5 @@ if __name__ == '__main__':
   try:
     sys.exit(run(sys.argv))
   except KeyboardInterrupt:
-    logger.warning("KeyboardInterrupt")
+    logger.warning('KeyboardInterrupt')
     sys.exit(1)
