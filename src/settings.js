@@ -1653,8 +1653,3 @@ var LEGACY_SETTINGS = [
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
 ];
-
-
-// ./emcc tests/pthread/test_pthread_create.cpp -s USE_PTHREADS -s PTHREAD_POOL_SIZE=1 -g
-// ~/Downloads/node-v13.0.0-nightly20190924e078e482c5-linux-x64/bin/node --experimental-wasm-threads --experimental-wasm-bulk-memory a.out.js
-

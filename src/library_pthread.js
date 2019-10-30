@@ -433,21 +433,11 @@ var LibraryPThread = {
             err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
           };
 
-          if (ENVIRONMENT_IS_NODE) {
-            worker.ref(); // XXX FIXME wat?
+          if (ENVIRONMENT_HAS_NODE) {
+            //worker.ref(); // TODO: investigate when we need this
             worker.on('message', function(data) {
               worker.onmessage({ data: data });
             });
-            worker.on('close', function(data) {
-              console.log('worker closed ..!?');
-            });
-            worker.on('exit', function(data) {
-              console.log('werker exited');
-            });
-            worker.on('online', function(data) {
-              console.log('workerah is online!!!1!');
-            });
-            // note: adding onerror seems to only hurt on node.js
           }
         }(worker));
       }  // for each worker
@@ -581,13 +571,10 @@ var LibraryPThread = {
         'offscreenCanvases': threadParams.offscreenCanvases,
 #endif
       };
-console.log('parent ready to run pthread');
     worker.runPthread = function() {
       // Ask the worker to start executing its pthread entry point function.
-console.log('  posting to run pthread');
       msg.time = performance.now();
       worker.postMessage(msg, threadParams.transferList);
-console.log('  postedded');
     };
     if (worker.loaded) {
       worker.runPthread();

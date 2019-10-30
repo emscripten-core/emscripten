@@ -39,19 +39,6 @@ function assert(condition, text) {
 }
 #endif
 
-// When error objects propagate from Web Worker to main thread, they lose helpful call stack and thread ID information, so print out errors early here,
-// before that happens.
-// Note that addEventListener may not exist on some environments, like node.
-if (typeof addEventListener === 'function') {
-  addEventListener('error', function(e) {
-    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return e.preventDefault();
-
-    var errorSource = ' in ' + e.filename + ':' + e.lineno + ':' + e.colno;
-    console.error('Pthread ' + selfThreadId + ' uncaught exception' + (e.filename || e.lineno || e.colno ? errorSource : "") + ': ' + e.message + '. Error object:');
-    console.error(e.error);
-  });
-}
-
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   console.error(text);
@@ -105,7 +92,6 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   console.log('child gottt ' + [e, JSON.stringify(e), typeof e.data.urlOrBlob, e.data.urlOrBlob]);
   try {
-console.log('child command:', e.data.cmd);
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if !WASM_BACKEND
       // Initialize the thread-local field(s):
@@ -158,9 +144,7 @@ console.log('child command:', e.data.cmd);
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
-console.log('child loading scripts');
         importScripts(e.data.urlOrBlob);
-console.log('child loaded scripts');
       } else {
         var objectUrl = URL.createObjectURL(e.data.urlOrBlob);
         importScripts(objectUrl);
@@ -283,15 +267,12 @@ console.log('child loaded scripts');
 };
 
 // Node.js support
-if (typeof require === 'function') {
-
+if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
   console.log('child wants to live forever ' + typeof setInterval);
   setInterval(function() {
     console.log('time in worker...');
     throw 55;
   }, 2000);
-
-
 
   // Create as web-worker-like an environment as we can.
   self = {
@@ -356,5 +337,3 @@ if (typeof require === 'function') {
     };
   }
 }
-console.log('workers first event loop is going away now');
-
