@@ -153,6 +153,10 @@ def also_with_impure_standalone_wasm(func):
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
+    if not self.is_wasm_backend():
+      self.skipTest('node pthreads only supported on wasm backend')
+    if not self.get_setting('WASM'):
+      self.skipTest("pthreads doesn't work in non-wasm yet")
     f(self, js_engines=[NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']])
   return decorated
 
