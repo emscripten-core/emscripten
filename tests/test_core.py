@@ -1758,6 +1758,7 @@ int main() {
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
     self.do_run(open(src).read(), open(output).read().replace('waka', shared.EMSCRIPTEN_VERSION))
 
+  @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_emscripten_has_asyncify(self):
     src = r'''
       #include <stdio.h>
