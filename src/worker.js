@@ -283,8 +283,6 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
 
   var parentPort = nodeWorkerThreads.parentPort;
 
-  parentPort.ref(); // TODO: investigate when we need this
-
   parentPort.on('message', function(data) {
     onmessage({ data: data });
   });

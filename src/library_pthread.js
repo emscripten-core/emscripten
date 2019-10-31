@@ -434,7 +434,6 @@ var LibraryPThread = {
           };
 
           if (ENVIRONMENT_HAS_NODE) {
-            worker.ref(); // TODO: investigate when we need this
             worker.on('message', function(data) {
               worker.onmessage({ data: data });
             });

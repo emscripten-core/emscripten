@@ -24,6 +24,7 @@ Current Trunk
    `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
  - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
    but without blocking.
+ - Add support for pthreads in Node.js, using Node Workers. See #9745
 
 v1.39.1: 10/30/2019
 -------------------
