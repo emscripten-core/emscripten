@@ -8403,6 +8403,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
   if env is None:
