@@ -171,7 +171,13 @@ if (ENVIRONMENT_IS_NODE) {
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
 
 #if USE_PTHREADS
-  var nodeWorkerThreads = require('worker_threads');
+  var nodeWorkerThreads;
+  try {
+    nodeWorkerThreads = require('worker_threads');
+  } catch (e) {
+    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
+    throw e;
+  }
   Worker = nodeWorkerThreads.Worker;
 
   // Polyfill the performance object, which emscripten pthreads support
