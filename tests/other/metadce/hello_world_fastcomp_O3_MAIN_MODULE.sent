@@ -887,6 +887,7 @@ _emscripten_gluOrtho2D
 _emscripten_gluPerspective
 _emscripten_gluProject
 _emscripten_gluUnProject
+_emscripten_has_asyncify
 _emscripten_hide_mouse
 _emscripten_html5_remove_all_event_listeners
 _emscripten_idb_async_delete

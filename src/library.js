@@ -4258,6 +4258,10 @@ LibraryManager.library = {
     return cache[fullname] = allocate(intArrayFromString(ret + ''), 'i8', ALLOC_NORMAL);
   },
 
+  emscripten_has_asyncify: function() {
+    return {{{ ASYNCIFY || EMTERPRETIFY_ASYNC }}};
+  },
+
   emscripten_debugger: function() {
     debugger;
   },

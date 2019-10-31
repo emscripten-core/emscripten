@@ -670,14 +670,14 @@ var LibraryEmbind = {
             }
 
             _free(value);
-            
+
             return str;
         },
         'toWireType': function(destructors, value) {
             if (value instanceof ArrayBuffer) {
                 value = new Uint8Array(value);
             }
-            
+
             var getLength;
             var valueIsOfTypeString = (typeof value === 'string');
 
@@ -689,7 +689,7 @@ var LibraryEmbind = {
             } else {
                 getLength = function() {return value.length;};
             }
-            
+
             // assumes 4-byte alignment
             var length = getLength();
             var ptr = _malloc(4 + length + 1);
@@ -915,27 +915,33 @@ var LibraryEmbind = {
     var returns = (argTypes[0].name !== "void");
 
 #if DYNAMIC_EXECUTION == 0
-    var argsWired = new Array(argCount - 2);
+    var expectedArgCount = argCount - 2;
+    var argsWired = new Array(expectedArgCount);
+    var invokerFuncArgs = [];
+    var destructors = [];
     return function() {
-      if (arguments.length !== argCount - 2) {
-        throwBindingError('function ' + humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount - 2) + ' args!');
+      if (arguments.length !== expectedArgCount) {
+        throwBindingError('function ' + humanName + ' called with ' +
+          arguments.length + ' arguments, expected ' + expectedArgCount +
+          ' args!');
       }
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context('embind::' + humanName);
 #endif
-      var destructors = needsDestructorStack ? [] : null;
+      destructors.length = 0;
       var thisWired;
+      invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
+      invokerFuncArgs[0] = cppTargetFunc;
       if (isClassMethodFunc) {
         thisWired = argTypes[1].toWireType(destructors, this);
+        invokerFuncArgs[1] = thisWired;
       }
-      for (var i = 0; i < argCount - 2; ++i) {
+      for (var i = 0; i < expectedArgCount; ++i) {
         argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
+        invokerFuncArgs.push(argsWired[i]);
       }
 
-      var invokerFuncArgs = isClassMethodFunc ?
-          [cppTargetFunc, thisWired] : [cppTargetFunc];
-
-      var rv = cppInvokerFunc.apply(null, invokerFuncArgs.concat(argsWired));
+      var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
 
       if (needsDestructorStack) {
         runDestructors(destructors);
@@ -1044,13 +1050,13 @@ var LibraryEmbind = {
 
     function makeDynCaller(dynCall) {
 #if DYNAMIC_EXECUTION == 0
+      var argCache = [rawFunction];
       return function() {
-          var args = new Array(arguments.length + 1);
-          args[0] = rawFunction;
+          argCache.length = arguments.length + 1;
           for (var i = 0; i < arguments.length; i++) {
-            args[i + 1] = arguments[i];
+            argCache[i + 1] = arguments[i];
           }
-          return dynCall.apply(null, args);
+          return dynCall.apply(null, argCache);
       };
 #else
         var args = [];
@@ -1993,8 +1999,11 @@ var LibraryEmbind = {
     invoker,
     rawConstructor
   ) {
+    assert(argCount > 0);
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = embind__requireFunction(invokerSignature, invoker);
+    var args = [rawConstructor];
+    var destructors = [];
 
     whenDependentTypesAreResolved([], [rawClassType], function(classType) {
         classType = classType[0];
@@ -2015,9 +2024,8 @@ var LibraryEmbind = {
                 if (arguments.length !== argCount - 1) {
                     throwBindingError(humanName + ' called with ' + arguments.length + ' arguments, expected ' + (argCount-1));
                 }
-                var destructors = [];
-                var args = new Array(argCount);
-                args[0] = rawConstructor;
+                destructors.length = 0;
+                args.length = argCount;
                 for (var i = 1; i < argCount; ++i) {
                     args[i] = argTypes[i]['toWireType'](destructors, arguments[i - 1]);
                 }

@@ -71,11 +71,12 @@ Note that in most cases the "main browser thread" is the same as the "main
 application thread". The main browser thread is where web pages start to run
 JavaScript, and where JavaScript can access the DOM (a page can also create a Web
 Worker, which would no longer be on the main thread). The main application
-thread is the one on which you started up the Emscripten JavaScript file. If you
-started it on the main browser thread - by it being a normal HTML page - then
-the two are identical. However, you can also start a multithreaded application
-in a worker; in that case the main application thread is that worker, and there
-is no access to the main browser thread.
+thread is the one on which you started up the application (by loading the main
+JS file emitted by Emscripten). If you started it on the main browser thread -
+by it being a normal HTML page - then the two are identical. However, you can
+also start a multithreaded application in a worker; in that case the main
+application thread is that worker, and there is no access to the main browser
+thread.
 
 The Web API for atomics does not allow blocking on the main thread
 (specifically, ``Atomics.wait`` doesn't work there). Such blocking is

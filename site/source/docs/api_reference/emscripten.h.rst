@@ -992,6 +992,13 @@ Functions
   :returns: The value of the specified setting. Note that for values other than an integer, a string is returned (cast the ``int`` return value to a ``char*``).
   :rtype: int
 
+.. c:function:: int emscripten_has_asyncify()
+
+  Returns whether pseudo-synchronous functions can be used.
+
+  :rtype: int
+  :returns: 1 if program was compiled with ASYNCIFY=1 or EMTERPRETER_ASYNC=1, 0 otherwise.
+
 
 .. c:function:: void emscripten_debugger()
 
