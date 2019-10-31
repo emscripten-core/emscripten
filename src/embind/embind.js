@@ -921,7 +921,9 @@ var LibraryEmbind = {
     var destructors = [];
     return function() {
       if (arguments.length !== expectedArgCount) {
-        throwBindingError(`function ${humanName} called with ${arguments.length} arguments, expected ${expectedArgCount} args!`);
+        throwBindingError('function ' + humanName + ' called with ' +
+          arguments.length + ' arguments, expected ' + expectedArgCount +
+          ' args!');
       }
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context('embind::' + humanName);
@@ -1997,6 +1999,7 @@ var LibraryEmbind = {
     invoker,
     rawConstructor
   ) {
+    assert(argCount > 0);
     var rawArgTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
     invoker = embind__requireFunction(invokerSignature, invoker);
     var args = [rawConstructor];
