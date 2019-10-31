@@ -159,16 +159,12 @@ function JSify(data, functionsOnly) {
         usedExternPrimitives[ident] = 1;
         return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
-          if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
-            if (!LINKABLE) {
-              if (ERROR_ON_UNDEFINED_SYMBOLS) {
-                error('undefined symbol: ' + ident);
-                warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
-              } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
-                warn('undefined symbol: ' + ident);
-              }
-            }
+        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+          if (ERROR_ON_UNDEFINED_SYMBOLS) {
+            error('undefined symbol: ' + ident);
+            warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
+          } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
+            warn('undefined symbol: ' + ident);
           }
         }
         if (!RELOCATABLE) {

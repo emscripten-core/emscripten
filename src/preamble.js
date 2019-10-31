@@ -719,17 +719,25 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
-  var extra = '';
-  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+  var output = 'abort(' + what + ') at ' + stackTrace();
 #if EMTERPRETIFY_ASYNC
   abortDecorators.forEach(function(decorator) {
     output = decorator(output, what);
   });
 #endif
-  throw output;
+  what = output;
 #endif // ASSERTIONS
+
+  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+  // exception, which means we'd run destructors on it. We need the error to
+  // simply make the program stop.
+#if WASM
+  throw new WebAssembly.RuntimeError(what);
+#else
+  throw what;
+#endif
 }
 
 #if RELOCATABLE

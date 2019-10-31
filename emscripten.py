@@ -62,7 +62,7 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
+def emscript_fastcomp(infile, outfile, memfile, compiler_engine,
                       temp_files, DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
@@ -93,7 +93,7 @@ def emscript_fastcomp(infile, outfile, memfile, libraries, compiler_engine,
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG)
+      glue, forwarded_data = compiler_glue(metadata, compiler_engine, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
@@ -230,7 +230,7 @@ def fixup_functions(funcs, metadata):
   return funcs
 
 
-def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
+def compiler_glue(metadata, compiler_engine, temp_files, DEBUG):
   if DEBUG:
     logger.debug('emscript: js compiler glue')
     t = time.time()
@@ -243,7 +243,7 @@ def compiler_glue(metadata, libraries, compiler_engine, temp_files, DEBUG):
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
 
-  glue, forwarded_data = compile_settings(compiler_engine, libraries, temp_files)
+  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
 
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -745,7 +745,7 @@ def apply_forwarded_data(forwarded_data):
   StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
-def compile_settings(compiler_engine, libraries, temp_files):
+def compile_settings(compiler_engine, temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
@@ -755,7 +755,7 @@ def compile_settings(compiler_engine, libraries, temp_files):
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
     out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), compiler_engine,
-                            [settings_file] + libraries, stdout=subprocess.PIPE, stderr=STDERR_FILE,
+                            [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:')
@@ -2163,7 +2163,7 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
+def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
                           temp_files, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
@@ -2182,7 +2182,7 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   if DEBUG:
     t = time.time()
-  glue, forwarded_data = compile_settings(compiler_engine, libraries, temp_files)
+  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -2225,10 +2225,11 @@ def emscript_wasm_backend(infile, outfile, memfile, libraries, compiler_engine,
 
   asm_consts, asm_const_funcs = create_asm_consts_wasm(forwarded_json, metadata)
   em_js_funcs = create_em_js(forwarded_json, metadata)
+  asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
+  asm_const_map = 'var ASM_CONSTS = {\n  ' + ',  \n '.join(asm_const_pairs) + '\n};\n'
   pre = pre.replace(
     '// === Body ===',
-    ('// === Body ===\n\nvar ASM_CONSTS = [' +
-     ',\n '.join(asm_consts) + '];\n' +
+    ('// === Body ===\n\n' + asm_const_map +
      asstr('\n'.join(asm_const_funcs)) +
      '\n'.join(em_js_funcs) + '\n'))
   pre = apply_table(pre)
@@ -2342,7 +2343,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
 
 
 def create_asm_consts_wasm(forwarded_json, metadata):
-  asm_consts = [0] * len(metadata['asmConsts'])
+  asm_consts = {}
   all_sigs = []
   for k, v in metadata['asmConsts'].items():
     const, sigs, call_types = v
@@ -2366,28 +2367,31 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   if all_sigs:
     # emit the signature-reading helper function only if we have any EM_ASM
     # functions in the module
+    check = ''
+    if shared.Settings.ASSERTIONS:
+      check = ' else abort("unexpected char in asm const signature " + ch);'
     asm_const_funcs.append(r'''
-function readAsmConstArgs(sig_ptr, buf) {
-  var args = [];
-  var sig = AsciiToString(sig_ptr);
-  function align_to(ptr, align) {
-    return (ptr+align-1) & ~(align-1);
-  }
-  for (var i = 0; i < sig.length; i++) {
-    var c = sig[i];
-    if (c == 'd' || c == 'f') {
-      buf = align_to(buf, 8);
+// Avoid creating a new array
+var _readAsmConstArgsArray = [];
+
+function readAsmConstArgs(sigPtr, buf) {
+  var args = _readAsmConstArgsArray;
+  args.length = 0;
+  while (1) {
+    var ch = HEAPU8[sigPtr++];
+    if (!ch) return args;
+    if (ch === 'd'.charCodeAt(0) || ch === 'f'.charCodeAt(0)) {
+      buf = alignMemory(buf, 8);
       args.push(HEAPF64[(buf >> 3)]);
       buf += 8;
-    } else if (c == 'i') {
-      buf = align_to(buf, 4);
+    } else if (ch === 'i'.charCodeAt(0)) {
+      buf = alignMemory(buf, 4);
       args.push(HEAP32[(buf >> 2)]);
       buf += 4;
-    }
+    }%s
   }
-  return args;
 }
-''')
+''' % check)
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
@@ -2407,13 +2411,15 @@ function readAsmConstArgs(sig_ptr, buf) {
                      proxy_debug_print(sync_proxy) +
                      'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
                      str(int(sync_proxy)) +
-                     ', code, sig_ptr, argbuf); }')
+                     ', code, sigPtr, argbuf); }')
 
     asm_const_funcs.append(r'''
-function %s(code, sig_ptr, argbuf) {%s
-  var args = readAsmConstArgs(sig_ptr, argbuf);
+function %s(code, sigPtr, argbuf) {%s
+  var args = readAsmConstArgs(sigPtr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
+  asm_consts = [(key, value) for key, value in asm_consts.items()]
+  asm_consts.sort()
   return asm_consts, asm_const_funcs
 
 
@@ -2753,7 +2759,7 @@ def normalize_line_endings(text):
   return text
 
 
-def run(infile, outfile, memfile, libraries):
+def run(infile, outfile, memfile):
   temp_files = get_configuration().get_temp_files()
   infile, outfile = substitute_response_files([infile, outfile])
 
@@ -2773,5 +2779,5 @@ def run(infile, outfile, memfile, libraries):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, memfile, libraries, shared.NODE_JS, temp_files, shared.DEBUG)
+      infile, outfile_obj, memfile, shared.NODE_JS, temp_files, shared.DEBUG)
   )
