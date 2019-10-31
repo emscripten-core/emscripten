@@ -8392,10 +8392,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   @node_pthreads
-  def test_pthreads_hello(self, js_engines):
-    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create',
-                                 js_engines=js_engines)
+  def test_pthreads_create(self, js_engines):
+    def test():
+      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create',
+                                   js_engines=js_engines)
+    test()
 
+    # with a pool, we can synchronously depend on workers being available
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.emcc_args += ['-DPOOL']
+    test()
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):

@@ -46,8 +46,12 @@ void mainn() {
   main_adds++;
   printf("main iter %d : %d\n", main_adds, worker_adds);
   if (worker_adds == NUM_THREADS * TOTAL) {
-    emscripten_cancel_main_loop();
     printf("done!\n");
+#ifndef POOL
+    emscripten_cancel_main_loop();
+#else
+    exit(0);
+#endif
   }
 }
 
@@ -57,6 +61,10 @@ int main() {
     CreateThread(i);
   }
 
-  // Node.js requires the event loop to be reached for the worker to start up.
+  // Without a pool, the event loop must be reached for the worker to start up.
+#ifndef POOL
   emscripten_set_main_loop(mainn, 0, 0);
+#else
+  while (1) mainn();
+#endif
 }
