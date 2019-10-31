@@ -1325,6 +1325,14 @@ var PTHREAD_HINT_NUM_CORES = 4;
 // True when building with --threadprofiler
 var PTHREADS_PROFILING = 0;
 
+// It is dangerous to call pthread_join or pthread_cond_wait
+// on the main thread, as doing so can cause deadlocks on the Web (and also
+// it works using a busy-wait which is expensive). See
+// https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread
+// This may become set to 0 by default in the future; for now, this just
+// warns in the console.
+var ALLOW_BLOCKING_ON_MAIN_THREAD = 1;
+
 // If true, add in debug traces for diagnosing pthreads related issues.
 var PTHREADS_DEBUG = 0;
 

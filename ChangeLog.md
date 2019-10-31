@@ -20,6 +20,10 @@ Current Trunk
  - `ERROR_ON_MISSING_LIBRARIES` now also applies to internal symbols that start
    with `emscripten_`.  Prior to this change such missing symbols would result
    in a runtime error, not they are reported at compile time.
+ - Pthread blocking on the main thread will now warn in the console. If
+   `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
+ - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
+   but without blocking.
 
 v1.39.1: 10/30/2019
 -------------------
