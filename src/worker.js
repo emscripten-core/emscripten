@@ -90,7 +90,6 @@ var wasmOffsetData;
 #endif
 
 this.onmessage = function(e) {
-  console.log('child gottt ' + [e, JSON.stringify(e), typeof e.data.urlOrBlob, e.data.urlOrBlob]);
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if !WASM_BACKEND
@@ -266,18 +265,13 @@ this.onmessage = function(e) {
   }
 };
 
+#if ENVIRONMENT_MAY_BE_NODE
 // Node.js support
 if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
-  console.log('child wants to live forever ' + typeof setInterval);
-  setInterval(function() {
-    console.log('time in worker...');
-    throw 55;
-  }, 2000);
-
   // Create as web-worker-like an environment as we can.
   self = {
     location: {
-      href: __filename // XXX wat
+      href: __filename
     }
   };
 
@@ -298,7 +292,6 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
   var nodeFS = require('fs');
 
   var nodeRead = function(filename) {
-    // TODO: convert to absolute path?
     return nodeFS.readFileSync(filename).toString();
   };
 
@@ -324,3 +317,4 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
     };
   }
 }
+#endif // ENVIRONMENT_MAY_BE_NODE
