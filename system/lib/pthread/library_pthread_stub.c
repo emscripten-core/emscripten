@@ -354,3 +354,7 @@ int pthread_cond_signal(pthread_cond_t *cond) {
 int pthread_cond_broadcast(pthread_cond_t *cond) {
   return 0;
 }
+
+int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void)) {
+  return 0;
+}
