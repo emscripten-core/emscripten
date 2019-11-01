@@ -987,8 +987,7 @@ class libgl(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libgl, cls).vary_on() + \
-           ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
+    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
