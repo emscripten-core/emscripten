@@ -958,6 +958,7 @@ class libgl(MTLibrary):
     self.is_legacy = kwargs.pop('is_legacy')
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
+    self.is_full_es3 = kwargs.pop('is_full_es3')
     super(libgl, self).__init__(**kwargs)
 
   def get_base_name(self):
@@ -968,6 +969,8 @@ class libgl(MTLibrary):
       name += '-webgl2'
     if self.is_ofb:
       name += '-ofb'
+    if self.is_full_es3:
+      name += '-full_es3'
     return name
 
   def get_cflags(self):
@@ -978,11 +981,13 @@ class libgl(MTLibrary):
       cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
+    if self.is_full_es3:
+      cflags += ['-D__EMSCRIPTEN_FULL_ES3__']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb']
+    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -990,6 +995,7 @@ class libgl(MTLibrary):
       is_legacy=shared.Settings.LEGACY_GL_EMULATION,
       is_webgl2=shared.Settings.USE_WEBGL2,
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
+      is_full_es3=shared.Settings.FULL_ES3,
       **kwargs
     )
 

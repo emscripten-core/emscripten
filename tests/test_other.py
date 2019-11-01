@@ -1925,7 +1925,7 @@ int f() {
       }
       ''')
 
-    for args in ([], ['-O2']):
+    for args in ([], ['-O1'], ['-s', 'USE_WEBGL2=1']):
       for action in ('WARN', 'ERROR', None):
         for value in ([0, 1]):
           try_delete('a.out.js')
