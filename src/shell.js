@@ -177,16 +177,6 @@ if (ENVIRONMENT_IS_NODE) {
     throw e;
   }
   Worker = nodeWorkerThreads.Worker;
-
-  // Polyfill the performance object, which emscripten pthreads support
-  // depends on for good timing.
-  if (typeof performance === 'undefined') {
-    performance = {
-      now: function() {
-        return Date.now();
-      }
-    };
-  }
 #endif
 
 } else
@@ -305,6 +295,16 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   throw new Error('environment detection error');
 #endif // ASSERTIONS
 }
+
+#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
+if (ENVIRONMENT_HAS_NODE) {
+  // Polyfill the performance object, which emscripten pthreads support
+  // depends on for good timing.
+  if (typeof performance === 'undefined') {
+    performance = require('perf_hooks').performance;
+  }
+}
+#endif
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
