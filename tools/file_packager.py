@@ -477,6 +477,8 @@ for file_ in data_files:
                      % (counter, counter, str(data[start:start + chunk_size])))
         start += chunk_size
       code += ''.join(parts)
+    # escape 's in file path
+    basename = basename.replace("'", r"\'")
     code += ('''Module['FS_createDataFile']('%s', '%s', fileData%d, true, true, false);\n'''
              % (dirname, basename, counter))
     counter += 1

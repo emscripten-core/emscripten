@@ -273,7 +273,8 @@ If manually bisecting:
       ("somefile.txt@/directory/file.txt", "directory/file.txt"),
       (absolute_src_path + "@/directory/file.txt", "directory/file.txt"),
       ("some@@file.txt@other.txt", "other.txt"),
-      ("some@@file.txt@some@@otherfile.txt", "some@otherfile.txt")]
+      ("some@@file.txt@some@@otherfile.txt", "some@otherfile.txt"),
+      ("somefile'.txt", "somefile'.txt")]
 
     for test in test_cases:
       (srcpath, dstpath) = test
