@@ -39,16 +39,6 @@ function assert(condition, text) {
 }
 #endif
 
-// When error objects propagate from Web Worker to main thread, they lose helpful call stack and thread ID information, so print out errors early here,
-// before that happens.
-this.addEventListener('error', function(e) {
-  if (e.message.indexOf('SimulateInfiniteLoop') != -1) return e.preventDefault();
-
-  var errorSource = ' in ' + e.filename + ':' + e.lineno + ':' + e.colno;
-  console.error('Pthread ' + selfThreadId + ' uncaught exception' + (e.filename || e.lineno || e.colno ? errorSource : "") + ': ' + e.message + '. Error object:');
-  console.error(e.error);
-});
-
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   console.error(text);
@@ -274,3 +264,55 @@ this.onmessage = function(e) {
     throw e;
   }
 };
+
+#if ENVIRONMENT_MAY_BE_NODE
+// Node.js support
+if (typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string') {
+  // Create as web-worker-like an environment as we can.
+  self = {
+    location: {
+      href: __filename
+    }
+  };
+
+  var onmessage = this.onmessage;
+
+  var nodeWorkerThreads = require('worker_threads');
+
+  Worker = nodeWorkerThreads.Worker;
+
+  var parentPort = nodeWorkerThreads.parentPort;
+
+  parentPort.on('message', function(data) {
+    onmessage({ data: data });
+  });
+
+  var nodeFS = require('fs');
+
+  var nodeRead = function(filename) {
+    return nodeFS.readFileSync(filename).toString();
+  };
+
+  function globalEval(x) {
+    global.require = require;
+    global.Module = Module;
+    eval.call(null, x);
+  }
+
+  importScripts = function(f) {
+    globalEval(nodeRead(f));
+  };
+
+  postMessage = function(msg) {
+    parentPort.postMessage(msg);
+  };
+
+  if (typeof performance === 'undefined') {
+    performance = {
+      now: function() {
+        return Date.now();
+      }
+    };
+  }
+}
+#endif // ENVIRONMENT_MAY_BE_NODE

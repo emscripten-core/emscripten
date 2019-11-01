@@ -150,6 +150,17 @@ def also_with_impure_standalone_wasm(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS', 1)
+    if not self.is_wasm_backend():
+      self.skipTest('node pthreads only supported on wasm backend')
+    if not self.get_setting('WASM'):
+      self.skipTest("pthreads doesn't work in non-wasm yet")
+    f(self, js_engines=[NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']])
+  return decorated
+
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
@@ -8379,6 +8390,18 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args.append('-fPIC')
     self.emcc_args.remove('-Werror')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @node_pthreads
+  def test_pthreads_create(self, js_engines):
+    def test():
+      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create',
+                                   js_engines=js_engines)
+    test()
+
+    # with a pool, we can synchronously depend on workers being available
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.emcc_args += ['-DPOOL']
+    test()
 
 
 # Generate tests for everything
