@@ -990,7 +990,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # TODO(sbc): Pass this and other flags through when using lld
         # link_flags.append((i, arg))
         newargs[i] = ''
-
+      elif arg == '-':
+        input_files.append((i, arg))
+        newargs[i] = ''
     newargs = [a for a in newargs if a]
 
     if has_dash_c or has_dash_S:

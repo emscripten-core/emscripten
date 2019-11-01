@@ -9875,3 +9875,14 @@ Module.arguments has been replaced with plain arguments_
     run_process([PYTHON, EMRANLIB, 'liba.a'])
     output = run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertContained('Archive map', output)
+
+  def test_preprocess_stdin(self):
+    create_test_file('temp.h', '#include <string>')
+    outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
+    outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
+    self.assertTextDataIdentical(outputStdin, outputFile)
+
+  def test_compile_stdin(self):
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
+    self.assertContained('hello, world!', run_js('a.out.js'))
