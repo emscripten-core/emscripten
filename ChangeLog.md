@@ -24,6 +24,7 @@ Current Trunk
    `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
  - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
    but without blocking.
+ - New function emscripten_has_asyncify()
  - Add support for pthreads in Node.js, using Node Workers. See #9745
 
 v1.39.1: 10/30/2019
@@ -31,7 +32,6 @@ v1.39.1: 10/30/2019
  - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
    must be linked in explicitly, using `-lnodefs.js`, `-lidbfs.js`',
    `-lworkerfs.js`, `-lproxyfs.js`. See #9645
- - New function emscripten_has_asyncify()
 
 v1.39.0: 10/18/2019
 -------------------
