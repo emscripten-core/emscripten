@@ -290,7 +290,7 @@ if (typeof process === 'object' && typeof process.versions === 'object' && typeo
   var nodeFS = require('fs');
 
   var nodeRead = function(filename) {
-    return nodeFS.readFileSync(filename).toString();
+    return nodeFS.readFileSync(filename, 'utf8');
   };
 
   function globalEval(x) {
