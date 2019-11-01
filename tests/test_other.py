@@ -8704,12 +8704,16 @@ int main() {
 ''')
     stderr = self.expect_fail([PYTHON, EMCC, 'src.cpp', '-O2'])
     # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    # TODO(sbc): remove second option once binaryen#2408 rolls
     self.assertContained(('''
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', '''
   0: function() {var x = !<->5.;}
                           ^
+''', '''
+  1024: function() {var x = !<->5.;}
+                             ^
 '''), stderr)
 
   def test_EM_ASM_ES6(self):
