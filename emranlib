@@ -1,24 +1,11 @@
 #!/usr/bin/env python
-# Copyright 2019 The Emscripten Authors.  All rights reserved.
-# Emscripten is available under two separate licenses, the MIT license and the
-# University of Illinois/NCSA Open Source License.  Both these licenses can be
-# found in the LICENSE file.
 
+# This script should work in python 2 *or* 3. It loads the main code using
+# python_selector, which may pick a different version.
 
-"""emranlib - ranlib helper script
-===========================
+from tools import python_selector
 
-This script acts as a frontend replacement for ranlib. See emcc.
-"""
-
-
-from __future__ import print_function
 import sys
-from tools import shared
-
-def run():
-  newargs = [shared.LLVM_RANLIB] + sys.argv[1:]
-  return shared.run_process(newargs, stdin=sys.stdin, check=False).returncode
 
 if __name__ == '__main__':
-  sys.exit(run())
+  python_selector.run(__file__)
