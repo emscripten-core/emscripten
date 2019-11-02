@@ -1143,6 +1143,7 @@ printf
 program_invocation_name
 program_invocation_short_name
 pselect
+pthread_atfork
 pthread_barrier_destroy
 pthread_barrier_init
 pthread_barrier_wait
