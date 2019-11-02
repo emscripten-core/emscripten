@@ -1037,7 +1037,7 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name === '.') { // XXX name[0]?
+      if (name[0] === '.') { // XXX name? see https://github.com/emscripten-core/emscripten/issues/7487
         id = 1;
         type = 4; // DT_DIR
       } else {
