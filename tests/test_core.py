@@ -1442,6 +1442,12 @@ int main() {
 }
 ''', 'bugfree code')
 
+  @also_with_impure_standalone_wasm
+  def test_ctors_no_main(self):
+    self.set_setting('EXPORTED_FUNCTIONS', ['_get_foo'])
+    self.add_post_run('console.log(Module._get_foo());')
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+
   def test_class(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_class')
 
