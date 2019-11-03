@@ -5,16 +5,9 @@
  * found in the LICENSE file.
  */
 
-#include <emscripten.h>
-
-int foo = 1;
+#include <stdio.h>
 
 struct A {
-  // Use EM_ASM to prevent ctor eval from working.
-  A() { foo = EM_ASM_INT({ return 99 }); }
+  A() { printf("ctor\n"); }
 };
 A a;
-
-extern "C" int get_foo() {
-  return foo;
-}
