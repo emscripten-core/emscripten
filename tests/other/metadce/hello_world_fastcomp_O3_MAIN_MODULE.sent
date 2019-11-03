@@ -1443,7 +1443,6 @@ _pixelRGBA
 _posix_spawn
 _posix_spawnp
 _proc_exit
-_pthread_atfork
 _pthread_attr_destroy
 _pthread_attr_getdetachstate
 _pthread_attr_getstack
