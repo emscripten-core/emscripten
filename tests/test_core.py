@@ -1442,7 +1442,7 @@ int main() {
 }
 ''', 'bugfree code')
 
-  @also_with_impure_standalone_wasm
+  @also_with_standalone_wasm
   def test_ctors_no_main(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
