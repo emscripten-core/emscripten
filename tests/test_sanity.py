@@ -351,9 +351,11 @@ class sanity(RunnerCore):
 
     # Fake a different node version
     restore_and_set_up()
-    f = open(CONFIG_FILE, 'a')
-    f.write('NODE_JS = "' + self.in_dir('fake', 'nodejs') + '"')
-    f.close()
+    with open(CONFIG_FILE, 'a') as f:
+      f.write('NODE_JS = "' + self.in_dir('fake', 'nodejs') + '"')
+
+    if not os.path.exists('fake'):
+      os.makedirs('fake')
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
