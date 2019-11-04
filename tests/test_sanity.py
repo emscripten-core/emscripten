@@ -60,6 +60,7 @@ def make_fake_clang(filename, version):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
   """
+  print('make_fake_clang: %s' % filename)
   if not os.path.exists(os.path.dirname(filename)):
     os.makedirs(os.path.dirname(filename))
   with open(filename, 'w') as f:
@@ -75,6 +76,7 @@ def make_fake_llc(filename, targets):
   """Create a fake llc that only handles --version and writes target
   list to stdout.
   """
+  print('make_fake_llc: %s' % filename)
   if not os.path.exists(os.path.dirname(filename)):
     os.makedirs(os.path.dirname(filename))
   with open(filename, 'w') as f:
@@ -84,6 +86,7 @@ def make_fake_llc(filename, targets):
 
 
 def make_fake_lld(filename):
+  print('make_fake_lld: %s' % filename)
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('exit 0\n')
@@ -273,14 +276,14 @@ class sanity(RunnerCore):
     # Fake a different llvm version
     restore_and_set_up()
     with open(CONFIG_FILE, 'a') as f:
-      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake') + '"')
+      f.write('LLVM_ROOT = "' + self.in_dir('fake') + '"')
 
     real_version_x, real_version_y = (int(x) for x in expected_llvm_version().split('.'))
     if shared.get_llvm_target() == shared.WASM_TARGET:
-      make_fake_llc(path_from_root('tests', 'fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
-      make_fake_lld(path_from_root('tests', 'fake', 'wasm-ld'))
+      make_fake_llc(self.in_dir('fake', 'llc'), 'wasm32 - WebAssembly 32-bit')
+      make_fake_lld(self.in_dir('fake', 'wasm-ld'))
     else:
-      make_fake_llc(path_from_root('tests', 'fake', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+      make_fake_llc(self.in_dir('fake', 'llc'), 'js - JavaScript (asm.js, emscripten)')
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for inc_x in range(-2, 3):
@@ -290,7 +293,7 @@ class sanity(RunnerCore):
           if expected_x < 0 or expected_y < 0:
             continue # must be a valid llvm version
           print("mod LLVM version: %d %d -> %d %d" % (real_version_x, real_version_x, expected_x, expected_y))
-          make_fake_clang(path_from_root('tests', 'fake', 'clang'), '%s.%s' % (expected_x, expected_y))
+          make_fake_clang(self.in_dir('fake', 'clang'), '%s.%s' % (expected_x, expected_y))
           did_modify = inc_x != 0 or inc_y != 0
           if did_modify:
             output = self.check_working(EMCC, LLVM_WARNING)
@@ -322,16 +325,16 @@ class sanity(RunnerCore):
     # Fake incorrect llc output, no mention of js backend
     restore_and_set_up()
     with open(CONFIG_FILE, 'a') as f:
-      f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"')
+      f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"')
     # print '1', open(CONFIG_FILE).read()
 
-    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
-    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'no j-s backend for you!')
+    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'no j-s backend for you!')
     self.check_working(EMCC, WARNING)
 
     # fake some more
     for fake in ['llvm-link', 'llvm-ar', 'opt', 'llvm-as', 'llvm-dis', 'llvm-nm', 'lli']:
-      open(path_from_root('tests', 'fake', 'bin', fake), 'w').write('.')
+      open(self.in_dir('fake', 'bin', fake), 'w').write('.')
     try_delete(SANITY_FILE)
     self.check_working(EMCC, WARNING)
 
@@ -349,7 +352,7 @@ class sanity(RunnerCore):
     # Fake a different node version
     restore_and_set_up()
     f = open(CONFIG_FILE, 'a')
-    f.write('NODE_JS = "' + path_from_root('tests', 'fake', 'nodejs') + '"')
+    f.write('NODE_JS = "' + self.in_dir('fake', 'nodejs') + '"')
     f.close()
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
@@ -359,7 +362,7 @@ class sanity(RunnerCore):
                                ('v4.2.3-pre', True),
                                ('cheez', False)]:
         print(version, succeed)
-        f = open(path_from_root('tests', 'fake', 'nodejs'), 'w')
+        f = open(self.in_dir('fake', 'nodejs'), 'w')
         f.write('#!/bin/sh\n')
         f.write('''if [ $1 = "--version" ]; then
 echo "%s"
@@ -368,7 +371,7 @@ else
 fi
 ''' % (version, NODE_JS))
         f.close()
-        os.chmod(path_from_root('tests', 'fake', 'nodejs'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+        os.chmod(self.in_dir('fake', 'nodejs'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
         if not succeed:
           if version[0] == 'v':
             self.check_working(EMCC, NODE_WARNING)
@@ -493,9 +496,9 @@ fi
 
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     self.ensure_cache()
-    make_fake_clang(path_from_root('tests', 'fake', 'bin', 'clang'), expected_llvm_version())
-    make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
-    with env_modify({'EM_LLVM_ROOT': path_from_root('tests', 'fake', 'bin')}):
+    make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
+    make_fake_llc(self.in_dir('fake', 'bin', 'llc'), 'js - JavaScript (asm.js, emscripten)')
+    with env_modify({'EM_LLVM_ROOT': self.in_dir('fake', 'bin')}):
       self.assertTrue(os.path.exists(Cache.dirname))
       output = self.do([PYTHON, EMCC])
       self.assertIn(ERASING_MESSAGE, output)
@@ -674,7 +677,7 @@ fi
     sample_script = path_from_root('tests', 'print_args.js')
 
     # Note that the path contains 'd8'.
-    test_path = path_from_root('tests', 'fake', 'abcd8765')
+    test_path = self.in_dir('fake', 'abcd8765')
     if not os.path.exists(test_path):
       os.makedirs(test_path)
 
@@ -751,13 +754,14 @@ fi
 
     def make_fake(report):
       with open(CONFIG_FILE, 'a') as f:
-        f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake', 'bin') + '"\n')
+        f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"\n')
         # BINARYEN_ROOT needs to exist in the config, even though this test
         # doesn't actually use it.
-        f.write('BINARYEN_ROOT= "%s"\n' % path_from_root('tests', 'fake', 'bin'))
+        f.write('BINARYEN_ROOT= "%s"\n' % self.in_dir('fake', 'bin'))
 
-      make_fake_llc(path_from_root('tests', 'fake', 'bin', 'llc'), report)
-      make_fake_lld(path_from_root('tests', 'fake', 'bin', 'wasm-ld'))
+      make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version())
+      make_fake_llc(self.in_dir('fake', 'bin', 'llc'), report)
+      make_fake_lld(self.in_dir('fake', 'bin', 'wasm-ld'))
 
     with env_modify({'EMCC_DEBUG': '1'}):
       make_fake('wasm32-unknown-unknown-elf')
@@ -793,26 +797,26 @@ fi
     assert not os.environ.get('EM_LLVM_ROOT'), 'we need to modify EM_LLVM_ROOT env var for this'
 
     f = open(CONFIG_FILE, 'a')
-    f.write('LLVM_ROOT = "' + path_from_root('tests', 'fake1', 'bin') + '"\n')
+    f.write('LLVM_ROOT = "' + self.in_dir('fake1', 'bin') + '"\n')
     f.close()
 
-    safe_ensure_dirs(path_from_root('tests', 'fake1', 'bin'))
-    f = open(path_from_root('tests', 'fake1', 'bin', 'llc'), 'w')
+    safe_ensure_dirs(self.in_dir('fake1', 'bin'))
+    f = open(self.in_dir('fake1', 'bin', 'llc'), 'w')
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake1 output\nRegistered Targets:\n%s"' % 'got js backend! JavaScript (asm.js, emscripten) backend')
     f.close()
-    os.chmod(path_from_root('tests', 'fake1', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    os.chmod(self.in_dir('fake1', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
-    safe_ensure_dirs(path_from_root('tests', 'fake2', 'bin'))
-    f = open(path_from_root('tests', 'fake2', 'bin', 'llc'), 'w')
+    safe_ensure_dirs(self.in_dir('fake2', 'bin'))
+    f = open(self.in_dir('fake2', 'bin', 'llc'), 'w')
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake2 output\nRegistered Targets:\n%s"' % 'got wasm32 backend! WebAssembly 32-bit')
     f.close()
-    os.chmod(path_from_root('tests', 'fake2', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+    os.chmod(self.in_dir('fake2', 'bin', 'llc'), stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
 
     with env_modify({'EMCC_DEBUG': '1'}):
       self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'use asm.js backend')
-      with env_modify({'EM_LLVM_ROOT': path_from_root('tests', 'fake2', 'bin')}):
+      with env_modify({'EM_LLVM_ROOT': self.in_dir('fake2', 'bin')}):
         self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], 'regenerating vanilla check since other llvm')
 
     try_delete(CANONICAL_TEMP_DIR)
