@@ -1560,13 +1560,17 @@ class Ports(object):
               logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
               sys.exit(1)
             subdir = port.SUBDIR
-            logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
-            shared.try_delete(fullname)
-            shutil.copytree(path, os.path.join(fullname, subdir))
-            Ports.clear_project_build(name)
+            target = os.path.join(fullname, subdir)
+            if os.path.exists(target) and not shared.dir_is_newer(path, target):
+              logger.warning('not grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ') as the destination ' + target + ' is newer (run emcc --clear-ports if that is incorrect)')
+            else:
+              logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+              shared.try_delete(fullname)
+              shutil.copytree(path, target)
+              Ports.clear_project_build(name)
+            return
       finally:
         shared.Cache.release_cache_lock()
-      return
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'

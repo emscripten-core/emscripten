@@ -199,6 +199,20 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
 
 
+def get_all_files_under(dirname):
+  ret = []
+  for path, subdirs, files in os.walk(dirname):
+    for name in files:
+      ret.append(os.path.join(path, name))
+  return ret
+
+
+def dir_is_newer(dir_a, dir_b):
+  newest_a = max([os.path.getmtime(x) for x in get_all_files_under(dir_a)])
+  newest_b = max([os.path.getmtime(x) for x in get_all_files_under(dir_b)])
+  return newest_a < newest_b
+
+
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
