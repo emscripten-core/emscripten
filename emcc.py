@@ -476,6 +476,19 @@ def do_emscripten(infile, memfile):
   return outfile
 
 
+def ensure_archive_index(archive_file):
+  # Fastcomp linking works without archive indexes
+  if not shared.Settings.WASM_BACKEND:
+    return
+  stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE).stdout
+  stdout = stdout.strip()
+  if stdout.startswith('Archive map\n') or stdout.startswith('Archive index\n'):
+    return
+  shared.warning('%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
+  shared.warning('%s: adding index', archive_file)
+  run_process([shared.LLVM_RANLIB, archive_file])
+
+
 #
 # Main run() function
 #
@@ -1885,9 +1898,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
-      if '-fPIC' in compile_args and not shared.Settings.RELOCATABLE:
-        shared.warning('ignoring -fPIC flag when not building with SIDE_MODULE or MAIN_MODULE')
-        compile_args.remove('-fPIC')
 
       # Bitcode args generation code
       def get_clang_command(input_files):
@@ -1952,8 +1962,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if file_ending.endswith(OBJECT_FILE_ENDINGS):
             logger.debug('using object file: ' + input_file)
             temp_files.append((i, input_file))
-          elif file_ending.endswith(DYNAMICLIB_ENDINGS) or shared.Building.is_ar(input_file):
-            logger.debug('using library file: ' + input_file)
+          elif file_ending.endswith(DYNAMICLIB_ENDINGS):
+            logger.debug('using shared library: ' + input_file)
+            temp_files.append((i, input_file))
+          elif shared.Building.is_ar(input_file):
+            logger.debug('using static library: ' + input_file)
+            ensure_archive_index(input_file)
             temp_files.append((i, input_file))
           elif file_ending.endswith(ASSEMBLY_ENDINGS):
             if not LEAVE_INPUTS_RAW:

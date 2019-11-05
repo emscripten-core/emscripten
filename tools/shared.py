@@ -1887,12 +1887,10 @@ class Building(object):
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
 
-    # emscripten-wasm-finalize currently depends on the presence of debug
-    # symbols for renaming of the __invoke symbols
-    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
-    # no longer need to rename these symbols.
-    # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
-    #   cmd.append('--strip-debug')
+    if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
+                                     not Settings.PROFILING_FUNCS and
+                                     not Settings.ASYNCIFY):
+      cmd.append('--strip-debug')
 
     if Settings.RELOCATABLE:
       if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
@@ -1924,7 +1922,7 @@ class Building(object):
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
       ]
-      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:

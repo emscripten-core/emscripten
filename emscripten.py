@@ -2414,9 +2414,7 @@ function readAsmConstArgs(sigPtr, buf) {
                      ', code, sigPtr, argbuf); }')
 
     if shared.Settings.RELOCATABLE:
-      # TODO(sbc): remove this conidtion after
-      # https://github.com/WebAssembly/binaryen/pull/2408 lands
-      preamble += '\n  if (code > %s) code -= %s;\n' % (shared.Settings.GLOBAL_BASE, shared.Settings.GLOBAL_BASE)
+      preamble += '\n  code -= %s;\n' % shared.Settings.GLOBAL_BASE
 
     asm_const_funcs.append(r'''
 function %s(code, sigPtr, argbuf) {%s

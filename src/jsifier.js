@@ -40,11 +40,13 @@ var proxiedFunctionInvokers = {};
 // But we can avoid emitting all the others in many cases.
 var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
 
-// used internally. set when there is a main() function.
-// also set when in a linkable module, as the main() function might
+// Used internally. set when there is a main() function.
+// Also set when in a linkable module, as the main() function might
 // arrive from a dynamically-linked library, and not necessarily
 // the current compilation unit.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
+// Also set for STANDALONE_WASM since the _start function is needed to call
+// static ctors, even if there is no user main.
+var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE || STANDALONE_WASM;
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {

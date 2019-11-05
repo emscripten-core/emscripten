@@ -385,9 +385,10 @@ jobs:
       - run:
           name: get wasmer
           command: |
-            curl https://get.wasmer.io -sSfL | sh
+            wget https://github.com/wasmerio/wasmer/releases/download/0.9.0/wasmer-linux-amd64.tar.gz
+            tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
-            cp ~/.wasmer/bin/wasmer ~/vms
+            cp bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
