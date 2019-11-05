@@ -6756,6 +6756,7 @@ return malloc(size);
     self.emcc_args += ['--tracing']
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
+  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/9527')
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')

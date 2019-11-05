@@ -2344,7 +2344,7 @@ class Building(object):
   # evals ctors. if binaryen_bin is provided, it is the dir of the binaryen tool for this, and we are in wasm mode
   @staticmethod
   def eval_ctors(js_file, binary_file, binaryen_bin='', debug_info=False):
-    if shared.Settings.WASM_BACKEND:
+    if Settings.WASM_BACKEND:
       logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
       return
     cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
