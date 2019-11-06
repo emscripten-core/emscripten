@@ -2865,6 +2865,16 @@ class Building(object):
     return library_files
 
   @staticmethod
+  def emit_wasm_source_map(wasm_file, map_file):
+    sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+                     wasm_file,
+                     '--dwarfdump=' + LLVM_DWARFDUMP,
+                     '-o',  map_file]
+    if not Settings.SOURCE_MAP_BASE:
+      logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
+    check_call(sourcemap_cmd)
+
+  @staticmethod
   def get_binaryen_feature_flags():
     # start with the MVP features, add the rest as needed
     ret = ['--mvp-features']
@@ -2912,7 +2922,8 @@ class Building(object):
         infile = temp_infile
       identity_map = temp_files.get('.map').name
       # TODO: we could detect if we already created a map for this wasm
-      run_process([WTMAPS, infile, '-o', identity_map])
+      Building.emit_wasm_source_map(infile, identity_map)
+      #run_process([WTMAPS, infile, '-o', identity_map])
       output_map = outfile + '.map'
       cmd += ['--input-source-map=' + identity_map]
       cmd += ['--output-source-map=' + output_map]
@@ -2933,9 +2944,10 @@ class Building(object):
       WTMAPS = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps')
       WDWARF_CP = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wdwarf-cp')
       temp_wasm = temp_files.get('.wasm').name
-      run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
-      shutil.copyfile(temp_wasm, outfile)
-      run_process([WTMAPS, outfile, '-o', output_map])
+      #run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
+      #shutil.copyfile(temp_wasm, outfile)
+      #Building.emit_wasm_source_map(outfile, output_map)
+      #run_process([WTMAPS, outfile, '-o', output_map])
 
     return ret
 

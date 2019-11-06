@@ -2278,15 +2278,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
-    base_source_map = base_wasm + '.map'
-    sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
-                     base_wasm,
-                     '--dwarfdump=' + shared.LLVM_DWARFDUMP,
-                     '-o',  base_source_map]
-    if not shared.Settings.SOURCE_MAP_BASE:
-      logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
-    shared.check_call(sourcemap_cmd)
-    debug_copy(base_source_map, 'base_wasm.map')
+    shared.Building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
+    debug_copy(base_wasm + '.map', 'base_wasm.map')
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
