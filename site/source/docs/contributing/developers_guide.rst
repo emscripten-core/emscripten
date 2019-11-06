@@ -4,9 +4,9 @@
 Developer's Guide
 =================
 
-This article provides information that is relevant to people that contribute
-to Emscripten. We welcome contributions from anyone that is interested to
-help out!
+This article provides information that is relevant to people who want to
+contribute to Emscripten. We welcome contributions from anyone that is
+interested in helping out!
 
 .. tip:: The information will be less relevant if you're just using Emscripten, but may still be of interest.
 
@@ -14,10 +14,10 @@ help out!
 Getting Binaries
 ================
 
-For contributing to core Emscripten code, like ``emcc.py``, you don't need to
+For contributing to core Emscripten code, such as ``emcc.py``, you don't need to
 build any binaries as ``emcc.py`` is in Python, and the core JS generation is
 in JavaScript. You do still need binaries for LLVM and Binaryen, which you can
-get using the emsdk,
+get using the emsdk:
 
 ::
 
@@ -57,12 +57,14 @@ Patches should be submitted as *pull requests* to the **incoming** branch.
 When submitting patches, please:
 
 - Make pull requests to **incoming**, not master.
-- Do not include merge commits in pull requests; include only commits with the new relevant code.
 - Add an automatic test if you add any new functionality or fix a bug. Search
   in ``tests/*.py`` for related tests, as often the simplest thing is to add to
   an existing one. If you're not sure how to test your code, feel free to ask
   for help.
-
+- We normally squash and merge PRs, which means the PR turns into a single
+  commit on the target branch. Because of that, it's ok to have merge commits
+  in the PR itself, as they get removed. Please put a good description for
+  the final commit in the PR description, and we'll use it when squashing.
 
 Code reviews
 ============
