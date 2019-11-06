@@ -575,6 +575,15 @@ f.close()
     self.assertEqual(proc.stderr, "")
     self.assertContained('LLVM', proc.stdout)
 
+  def test_emsize(self):
+    with open(path_from_root('tests', 'other', 'test_emsize.out')) as expected_output:
+      expected = expected_output.read()
+      cmd = [PYTHON, path_from_root('emsize.py'),
+             path_from_root('tests', 'other', 'test_emsize.js')]
+      for command in [cmd, cmd + ['-format=sysv']]:
+        output = run_process(cmd, stdout=PIPE).stdout
+        self.assertContained(expected, output)
+
   def test_cmake(self):
     # Test all supported generators.
     if WINDOWS:
@@ -1916,7 +1925,7 @@ int f() {
       }
       ''')
 
-    for args in ([], ['-O2']):
+    for args in ([], ['-O1'], ['-s', 'USE_WEBGL2=1']):
       for action in ('WARN', 'ERROR', None):
         for value in ([0, 1]):
           try_delete('a.out.js')
@@ -8137,7 +8146,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1519, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1520, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8157,7 +8166,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1600, [], [], 226403, None, 107, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1601, [], [], 226403, None, 108, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
@@ -8585,6 +8594,21 @@ end
     self.assertContained('file1', result)
     self.assertContained('file2', result)
 
+  def test_emar_duplicate_inputs(self):
+    # Verify the we can supply the same intput muliple times without
+    # confusing emar.py:
+    # See https://github.com/emscripten-core/emscripten/issues/9733
+    create_test_file('file1', ' ')
+    run_process([PYTHON, EMAR, 'cr', 'file1.a', 'file1', 'file1'])
+
+  def test_archive_no_index(self):
+    create_test_file('foo.c', 'int foo = 1;')
+    run_process([PYTHON, EMCC, '-c', 'foo.c'])
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
+    # The `S` flag means don't add an archive index
+    run_process([PYTHON, EMAR, 'crS', 'libfoo.a', 'foo.o'])
+    run_process([PYTHON, EMCC, 'libfoo.a', 'hello_world.o'])
+
   def test_flag_aliases(self):
     def assert_aliases_match(flag1, flag2, flagarg, extra_args):
       results = {}
@@ -8724,12 +8748,16 @@ int main() {
 ''')
     stderr = self.expect_fail([PYTHON, EMCC, 'src.cpp', '-O2'])
     # wasm backend output doesn't have spaces in the EM_ASM function bodies
+    # TODO(sbc): remove second option once binaryen#2408 rolls
     self.assertContained(('''
 var ASM_CONSTS = [function() { var x = !<->5.; }];
                                         ^
 ''', '''
-var ASM_CONSTS = [function() {var x = !<->5.;}];
-                                       ^
+  0: function() {var x = !<->5.;}
+                          ^
+''', '''
+  1024: function() {var x = !<->5.;}
+                             ^
 '''), stderr)
 
   def test_EM_ASM_ES6(self):
@@ -9897,3 +9925,32 @@ Module.arguments has been replaced with plain arguments_
     stderr = self.expect_fail(cmd + ['-Werror'])
     self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
     self.assertContained('ERROR: treating warnings as errors (-Werror)', stderr)
+
+  def test_emranlib(self):
+    create_test_file('foo.c', 'int foo = 1;')
+    create_test_file('bar.c', 'int bar = 2;')
+    run_process([PYTHON, EMCC, '-c', 'foo.c', 'bar.c'])
+
+    # Create a library with no archive map
+    run_process([PYTHON, EMAR, 'crS', 'liba.a', 'foo.o', 'bar.o'])
+    output = run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    self.assertNotContained('Archive map', output)
+
+    # Add an archive map
+    run_process([PYTHON, EMRANLIB, 'liba.a'])
+    output = run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    self.assertContained('Archive map', output)
+
+  def test_pthread_stub(self):
+    # Verify that programs containing pthread code can still be compiled even
+    # without enabling threads.  This is possible becase we link in
+    # libpthread_stub.a
+    create_test_file('pthread.c', '''
+#include <pthread.h>
+
+int main() {
+  pthread_atfork(NULL, NULL, NULL);
+  return 0;
+}
+''')
+    run_process([PYTHON, EMCC, 'pthread.c'])

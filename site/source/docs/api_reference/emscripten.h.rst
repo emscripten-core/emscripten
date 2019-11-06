@@ -485,7 +485,7 @@ Functions
 
 .. _emscripten-h-asynchronous-file-system-api:
 
-Emscripten Asynchronous File System API
+Asynchronous File System API
 =========================================
 
 Typedefs
@@ -561,20 +561,6 @@ Typedefs
 
 Functions
 ---------
-
-.. c:function:: void emscripten_wget(const char* url, const char* file)
-
-  Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
-
-  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-files` for more information on preloading files.
-
-  This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
-
-  To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
-
-  :param const char* url: The URL to load.
-  :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
-
 
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 
@@ -732,7 +718,7 @@ Functions
     - *(void*)* : Equal to ``arg`` (user defined data).
 
 
-Emscripten Asynchronous IndexedDB API
+Asynchronous IndexedDB API
 =====================================
 
   IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
@@ -1006,6 +992,13 @@ Functions
   :returns: The value of the specified setting. Note that for values other than an integer, a string is returned (cast the ``int`` return value to a ``char*``).
   :rtype: int
 
+.. c:function:: int emscripten_has_asyncify()
+
+  Returns whether pseudo-synchronous functions can be used.
+
+  :rtype: int
+  :returns: 1 if program was compiled with ASYNCIFY=1 or EMTERPRETER_ASYNC=1, 0 otherwise.
+
 
 .. c:function:: void emscripten_debugger()
 
@@ -1213,10 +1206,10 @@ Typedefs
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
 
-Emterpreter-Async functions
-===========================
+Pseudo-synchronous functions
+============================
 
-Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/emscripten-core/emscripten/wiki/Emterpreter>`_ for more details.
+These functions require Asyncify (``-s ASYNCIFY=1``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ and `Emterpreter <https://emscripten.org/docs/porting/emterpreter.html>`_ for more details.
 
 Sleeping
 --------
@@ -1225,7 +1218,7 @@ Sleeping
 
   Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
   there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
-  on the stack (that's how it looks in the C source code). If you do want things to happen while sleeping, see ``emscripten_sleep_with_yield``.
+  on the stack (that's how it looks in the C source code).
 
 .. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
 
@@ -1233,8 +1226,21 @@ Sleeping
   this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
   Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
 
+  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
+
 Network
 -------
+
+.. c:function:: void emscripten_wget(const char* url, const char* file)
+
+  Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
+
+  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-files` for more information on preloading files.
+
+  This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
+
+  :param const char* url: The URL to load.
+  :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 
 .. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
@@ -1286,10 +1292,10 @@ IndexedDB
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
 
-Asyncify functions
-==================
+Fastcomp Asyncify functions
+===========================
 
-Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/emscripten-core/emscripten/wiki/Asyncify>`_ for more details.
+Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Typedefs
 --------
@@ -1311,25 +1317,18 @@ Functions
 
     :param int stack_size: the stack size that should be allocated for the coroutine, use 0 for the default value.
 
-  .. note:: this only works in fastcomp
-
 .. c:function:: int emscripten_coroutine_next(emscripten_coroutine coroutine)
 
     Run `coroutine` until it returns, or `emscripten_yield` is called. A non-zero value is returned if `emscripten_yield` is called, otherwise 0 is returned, and future calls of `emscripten_coroutine_next` on this coroutine is undefined behaviour.
-
-  .. note:: this only works in fastcomp
 
 .. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
 
-  .. note:: this only works in fastcomp
+Upstream Asyncify functions
+===========================
 
-Memory scanning functions
-=========================
-
-These functions can help with conservative garbage collection, where roots are
-scanned for.
+These functions only work with the upstream wasm backend when using Asyncify.
 
 Typedefs
 --------
@@ -1363,6 +1362,22 @@ Functions
     This function requires Asyncify - it relies on that option to spill the
     local state all the way up the stack. As a result, it will add overhead
     to your program.
+
+.. c:function:: void emscripten_lazy_load_code()
+
+    This creates two wasm files at compile time: the first wasm which is
+    downloaded and run normally, and a second that is lazy-loaded. When an
+    ``emscripten_lazy_load_code()`` call is reached, we load the second wasm
+    and resume execution using it.
+
+    The idea here is that the initial download can be quite small, if you
+    place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
+    the optimizer can remove code from the first wasm if it sees it can't
+    be reached. The second downloaded wasm can contain your full codebase,
+    including rarely-used functions, in which case the lazy-loading may
+    not happen at all.
+
+  .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
 
 ABI functions
 =============

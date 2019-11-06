@@ -22,8 +22,10 @@ ASYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glBeginQuery, GLenum, GLuint);
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glEndQuery, GLenum);
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryiv, GLenum, GLenum, GLint *);
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetQueryObjectuiv, GLuint, GLenum, GLuint *);
+#ifdef __EMSCRIPTEN_FULL_ES3__
 RET_SYNC_GL_FUNCTION_1(EM_FUNC_SIG_II, GLboolean, glUnmapBuffer, GLenum);
 VOID_SYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glGetBufferPointerv, GLenum, GLenum, void **);
+#endif
 VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glDrawBuffers, GLsizei, const GLenum *);
 VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glUniformMatrix2x3fv, GLint, GLsizei, GLboolean, const GLfloat *);
 VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glUniformMatrix3x2fv, GLint, GLsizei, GLboolean, const GLfloat *);
@@ -34,8 +36,10 @@ VOID_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void, glUniformMatrix4x3fv, GLint, GL
 ASYNC_GL_FUNCTION_10(EM_FUNC_SIG_VIIIIIIIIII, void, glBlitFramebuffer, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLint, GLbitfield, GLenum);
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glRenderbufferStorageMultisample, GLenum, GLsizei, GLenum, GLsizei, GLsizei);
 ASYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glFramebufferTextureLayer, GLenum, GLenum, GLuint, GLint, GLint);
+#ifdef __EMSCRIPTEN_FULL_ES3__
 RET_SYNC_GL_FUNCTION_4(EM_FUNC_SIG_VIIII, void *, glMapBufferRange, GLenum, GLintptr, GLsizeiptr, GLbitfield);
 ASYNC_GL_FUNCTION_3(EM_FUNC_SIG_VIII, void, glFlushMappedBufferRange, GLenum, GLintptr, GLsizeiptr);
+#endif
 ASYNC_GL_FUNCTION_1(EM_FUNC_SIG_VI, void, glBindVertexArray, GLuint);
 VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glDeleteVertexArrays, GLsizei, const GLuint *);
 VOID_SYNC_GL_FUNCTION_2(EM_FUNC_SIG_VII, void, glGenVertexArrays, GLsizei, GLuint *);
@@ -188,8 +192,10 @@ void *emscripten_webgl2_get_proc_address(const char *name)
 	RETURN_FN(glEndQuery);
 	RETURN_FN(glGetQueryiv);
 	RETURN_FN(glGetQueryObjectuiv);
+#ifdef __EMSCRIPTEN_FULL_ES3__
 	RETURN_FN(glUnmapBuffer);
 	RETURN_FN(glGetBufferPointerv);
+#endif
 	RETURN_FN(glDrawBuffers);
 	RETURN_FN(glUniformMatrix2x3fv);
 	RETURN_FN(glUniformMatrix3x2fv);
@@ -200,8 +206,10 @@ void *emscripten_webgl2_get_proc_address(const char *name)
 	RETURN_FN(glBlitFramebuffer);
 	RETURN_FN(glRenderbufferStorageMultisample);
 	RETURN_FN(glFramebufferTextureLayer);
+#ifdef __EMSCRIPTEN_FULL_ES3__
 	RETURN_FN(glMapBufferRange);
 	RETURN_FN(glFlushMappedBufferRange);
+#endif
 	RETURN_FN(glBindVertexArray);
 	RETURN_FN(glDeleteVertexArrays);
 	RETURN_FN(glGenVertexArrays);

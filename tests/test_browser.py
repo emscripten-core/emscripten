@@ -1721,15 +1721,16 @@ keydown(100);keyup(100); // trigger the end
       time.sleep(2)
 
   @requires_graphics_hardware
-  def test_glgears(self):
-    def test(args):
-      self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
-                 args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
-    # test normally
-    test([])
+  def test_glgears(self, extra_args=[]):
+    self.btest('hello_world_gles.c', reference='gears.png', reference_slack=3,
+               args=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + extra_args)
+
+  @requires_graphics_hardware
+  @requires_threads
+  def test_glgears_pthreads(self, extra_args=[]):
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
-    test(['-s', 'USE_PTHREADS=1'])
+    self.test_glgears(['-s', 'USE_PTHREADS=1'])
 
   @requires_graphics_hardware
   def test_glgears_long(self):
@@ -3619,6 +3620,24 @@ window.close = function() {
       for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'])
 
+  @parameterized({
+    'join': ('join',),
+    'wait': ('wait',),
+  })
+  @requires_threads
+  def test_pthread_main_thread_blocking(self, name):
+    print('Test that we error if not ALLOW_BLOCKING_ON_MAIN_THREAD')
+    self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    if name == 'join':
+      print('Test that by default we just warn about blocking on the main thread.')
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+      print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD')
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      print('Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD, and even without a pool')
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_join.cpp'), expected='2', args=['-O3', '-s', 'USE_PTHREADS=1', '-g', '-DTRY_JOIN', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+      print('Test that everything works ok when we are on a pthread.')
+      self.btest(path_from_root('tests', 'pthread', 'main_thread_%s.cpp' % name), expected='1', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1', '-s', 'PROXY_TO_PTHREAD', '-s', 'ALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @requires_threads
   def test_pthread_gcc_atomic_fetch_and_op(self):
@@ -3975,6 +3994,7 @@ window.close = function() {
     self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
 
   @no_fastcomp('ASan is only supported on WASM backend')
+  @requires_threads
   def test_pthread_asan_use_after_free(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'TOTAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 

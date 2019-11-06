@@ -796,6 +796,7 @@ CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG = CLANG_CPP
 LLVM_LINK = build_llvm_tool_path(exe_suffix('llvm-link'))
 LLVM_AR = build_llvm_tool_path(exe_suffix('llvm-ar'))
+LLVM_RANLIB = build_llvm_tool_path(exe_suffix('llvm-ranlib'))
 LLVM_OPT = os.path.expanduser(build_llvm_tool_path(exe_suffix('opt')))
 LLVM_AS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-as')))
 LLVM_DIS = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dis')))
@@ -1886,12 +1887,10 @@ class Building(object):
     for a in Building.llvm_backend_args():
       cmd += ['-mllvm', a]
 
-    # emscripten-wasm-finalize currently depends on the presence of debug
-    # symbols for renaming of the __invoke symbols
-    # TODO(sbc): Re-enable once emscripten-wasm-finalize is fixed or we
-    # no longer need to rename these symbols.
-    # if Settings.DEBUG_LEVEL < 2 and not Settings.PROFILING_FUNCS:
-    #   cmd.append('--strip-debug')
+    if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
+                                     not Settings.PROFILING_FUNCS and
+                                     not Settings.ASYNCIFY):
+      cmd.append('--strip-debug')
 
     if Settings.RELOCATABLE:
       if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
@@ -1923,7 +1922,7 @@ class Building(object):
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
         '--initial-memory=%d' % Settings.TOTAL_MEMORY,
       ]
-      use_start_function = Settings.STANDALONE_WASM and '_main' in Settings.EXPORTED_FUNCTIONS
+      use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
       if Settings.WASM_MEM_MAX != -1:
@@ -2538,7 +2537,9 @@ class Building(object):
         # If we are building with DECLARE_ASM_MODULE_EXPORTS=0, we must *not* minify the exports from the wasm module, since in DECLARE_ASM_MODULE_EXPORTS=0 mode, the code that
         # reads out the exports is compacted by design that it does not have a chance to unminify the functions. If we are building with DECLARE_ASM_MODULE_EXPORTS=1, we might
         # as well minify wasm exports to regain some of the code size loss that setting DECLARE_ASM_MODULE_EXPORTS=1 caused.
-        if not Settings.STANDALONE_WASM and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.SIDE_MODULE and emitting_js:
+        # ASYNCIFY_LAZY_LOAD_CODE disables minification because it runs after the wasm is completely finalized, and we need to be able to still
+        # identify import names at that time. To avoid that, we would need to keep a mapping of the names and send that to binaryen.
+        if not Settings.STANDALONE_WASM and not Settings.AUTODEBUG and not Settings.ASSERTIONS and not Settings.SIDE_MODULE and emitting_js and not Settings.ASYNCIFY_LAZY_LOAD_CODE:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
     return js_file
 
@@ -2614,10 +2615,11 @@ class Building(object):
     with open(temp, 'w') as f:
       f.write(txt)
     # run wasm-metadce
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-metadce'), '--graph-file=' + temp, wasm_file, '-o', wasm_file]
-    cmd += Building.get_binaryen_feature_flags()
-    if debug_info:
-      cmd += ['-g']
+    cmd = Building.get_binaryen_command('wasm-metadce',
+                                        wasm_file,
+                                        wasm_file,
+                                        ['--graph-file=' + temp],
+                                        debug=debug_info)
     out = run_process(cmd, stdout=PIPE).stdout
     # find the unused things in js
     unused = []
@@ -2636,13 +2638,40 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
+  def asyncify_lazy_load_code(wasm_binary_target, options, debug):
+    # create the lazy-loaded wasm. remove the memory segments from it, as memory
+    # segments have already been applied by the initial wasm, and apply the knowledge
+    # that it will only rewind, after which optimizations can remove some code
+    cmd = Building.get_wasm_opt_command(wasm_binary_target,
+                                        wasm_binary_target + '.lazy.wasm',
+                                        args=['--remove-memory',
+                                              '--mod-asyncify-never-unwind'],
+                                        debug=debug)
+    if options.opt_level > 0:
+      cmd.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    print_compiler_stage(cmd)
+    check_call(cmd)
+    # re-optimize the original, by applying the knowledge that imports will
+    # definitely unwind, and we never rewind, after which optimizations can remove
+    # a lot of code
+    # TODO: support other asyncify stuff, imports that don't always unwind?
+    # TODO: source maps etc.
+    cmd = Building.get_wasm_opt_command(infile=wasm_binary_target,
+                                        outfile=wasm_binary_target,
+                                        args=['--mod-asyncify-always-and-only-unwind'],
+                                        debug=debug)
+    if options.opt_level > 0:
+      cmd.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    print_compiler_stage(cmd)
+    check_call(cmd)
+
+  @staticmethod
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), '--minify-imports-and-exports' if minify_exports else '--minify-imports', wasm_file, '-o', wasm_file]
-    cmd += Building.get_binaryen_feature_flags()
-    if debug_info:
-      cmd.append('-g')
+    cmd = Building.get_wasm_opt_command(wasm_file, wasm_file,
+                                        ['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
+                                        debug=debug_info)
     out = check_call(cmd, stdout=PIPE).stdout
     # get the mapping
     SEP = ' => '
@@ -2662,12 +2691,13 @@ class Building(object):
   @staticmethod
   def wasm2js(js_file, wasm_file, opt_level, minify_whitespace, use_closure_compiler, debug_info, symbols_file=None):
     logger.debug('wasm2js')
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm2js'), '--emscripten', wasm_file]
+    cmd = Building.get_binaryen_command('wasm2js', wasm_file,
+                                        args=['--emscripten'],
+                                        debug=debug_info)
     if opt_level > 0:
       cmd += ['-O']
     if symbols_file:
       cmd += ['--symbols-file=%s' % symbols_file]
-    cmd += Building.get_binaryen_feature_flags()
     wasm2js_js = run_process(cmd, stdout=PIPE).stdout
     if DEBUG:
       with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
@@ -2747,13 +2777,12 @@ class Building(object):
   @staticmethod
   def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
     logger.debug('handle_final_wasm_symbols')
-    cmd = [os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), wasm_file]
+    cmd = Building.get_wasm_opt_command(wasm_file)
     if symbols_file:
       cmd += ['--print-function-map']
     if not debug_info:
       # to remove debug info, we just write to that same file, and without -g
       cmd += ['-o', wasm_file]
-    cmd += Building.get_binaryen_feature_flags()
     # ignore stderr because if wasm-opt is run without a -o it will warn
     output = run_process(cmd, stdout=PIPE, stderr=PIPE).stdout
     if symbols_file:
@@ -2852,6 +2881,22 @@ class Building(object):
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
     return os.path.join(BINARYEN_ROOT, 'bin')
+
+  @staticmethod
+  def get_binaryen_command(tool, infile, outfile=None, args=[], debug=False):
+    cmd = [os.path.join(Building.get_binaryen_bin(), tool)] + args
+    if infile:
+      cmd += [infile]
+    if outfile:
+      cmd += ['-o', outfile]
+    if debug:
+      cmd += ['-g'] # preserve the debug info
+    cmd += Building.get_binaryen_feature_flags()
+    return cmd
+
+  @staticmethod
+  def get_wasm_opt_command(*args, **kwargs):
+    return Building.get_binaryen_command('wasm-opt', *args, **kwargs)
 
 
 # compatibility with existing emcc, etc. scripts
@@ -3320,7 +3365,7 @@ def read_and_preprocess(filename, expand_macros=False):
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
   src = open(source_file, 'r').read()
-  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_runtime_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
+  funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_browser_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
   function_prologue = '''this.onerror = function(e) {
   console.error(e);
