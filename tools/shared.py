@@ -2891,10 +2891,51 @@ class Building(object):
       cmd += ['-g'] # preserve the debug info
     cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
+
+    preserve_dwarf = Settings.DEBUG_LEVEL >= 4 and Settings.WASM_BACKEND and outfile
+    if preserve_dwarf:
+      # We are emitting the maximum amount of debug info; in the wasm backend,
+      # our wasm file contains DWARF sections. Keep them valid through
+      # binaryen transformations. First, before running the command generate
+      # an source map that is the identity transformation, i.e., represents
+      # the locations of things before we change anything.
+      WTMAPS = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps')
+      WDWARF_CP = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wdwarf-cp')
+      temp_files = configuration.get_temp_files()
+      # make sure the input and output files are different, as we will need
+      # them both around for the fixing up of the dwarf info
+      if os.path.abspath(infile) == os.path.abspath(outfile):
+        temp_infile = temp_files.get('.wasm').name
+        shutil.copyfile(infile, temp_infile)
+        infile = temp_infile
+      identity_map = temp_files.get('.map').name
+      # TODO: we could detect if we already created a map for this wasm
+      run_process([WTMAPS, infile, '-o', identity_map])
+      output_map = outfile + '.map'
+      cmd += ['--input-source-map=' + identity_map]
+      cmd += ['--output-source-map=' + output_map]
+      cmd += ['--output-source-map-url=' + Settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
+
     if stdout is not None:
-      return run_process(cmd, stdout=stdout).stdout
+      ret = run_process(cmd, stdout=stdout).stdout
     else:
       run_process(cmd)
+      ret = None
+
+    if preserve_dwarf:
+      # The wasm has been modified, and we emitted a new source map. Adjust
+      # the debug info in the new wasm file.
+      # We are emitting the maximum amount of debug info; in the wasm backend,
+      # our wasm file contains DWARF sections. Keep them valid through
+      # binaryen transformations
+      WTMAPS = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps')
+      WDWARF_CP = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wdwarf-cp')
+      temp_wasm = temp_files.get('.wasm').name
+      run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
+      shutil.copyfile(temp_wasm, outfile)
+      run_process([WTMAPS, outfile, '-o', output_map])
+
+    return ret
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):

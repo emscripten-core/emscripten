@@ -2295,10 +2295,6 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
-  if write_source_map:
-    args.append('--input-source-map=' + base_source_map)
-    args.append('--output-source-map=' + wasm + '.map')
-    args.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
     args.append('--separate-data-segments=' + memfile)
   if shared.Settings.SIDE_MODULE:

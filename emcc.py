@@ -3014,12 +3014,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
     args = options.binaryen_passes
-    if use_source_map(options):
-      args += ['--input-source-map=' + wasm_source_map_target]
-      args += ['--output-source-map=' + wasm_source_map_target]
-      args += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
-      if DEBUG:
-        shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
     shared.Building.run_wasm_opt(wasm_binary_target,
                                  wasm_binary_target,
                                  args=args,
