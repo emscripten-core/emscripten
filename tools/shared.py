@@ -2889,7 +2889,9 @@ class Building(object):
       cmd += ['-o', outfile]
     if debug:
       cmd += ['-g'] # preserve the debug info
-    cmd += Building.get_binaryen_feature_flags()
+    # if the features are not already handled, handle them
+    if '--detect-features' not in cmd:
+      cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
     if stdout is not None:
       return run_process(cmd, stdout=stdout).stdout
