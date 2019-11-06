@@ -2928,7 +2928,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                 optimizer):
   global final
   logger.debug('using binaryen')
-  if use_source_map(options) and not Settings.SOURCE_MAP_BASE:
+  if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   binaryen_bin = shared.Building.get_binaryen_bin()
   # whether we need to emit -g (function name debug info) in the final wasm
