@@ -2889,7 +2889,9 @@ class Building(object):
       cmd += ['-o', outfile]
     if debug:
       cmd += ['-g'] # preserve the debug info
-    cmd += Building.get_binaryen_feature_flags()
+    # if the features are not already handled, handle them
+    if '--detect-features' not in cmd:
+      cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
 
     preserve_dwarf = Settings.DEBUG_LEVEL >= 4 and Settings.WASM_BACKEND and outfile
