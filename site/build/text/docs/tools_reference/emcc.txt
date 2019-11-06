@@ -443,6 +443,10 @@ Options that are modified or new in *emcc* are listed below:
 
 "--memory-init-file <on>"
    Specifies whether to emit a separate memory initialization file.
+
+      Note: Note that this is only relevant when *not* emitting
+        wasm, as wasm embeds the memory init data in the wasm binary.
+
    Possible "on" values are:
 
       * "0": Do not emit a separate memory initialization file.
