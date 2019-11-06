@@ -2870,8 +2870,6 @@ class Building(object):
                      wasm_file,
                      '--dwarfdump=' + LLVM_DWARFDUMP,
                      '-o',  map_file]
-    if not Settings.SOURCE_MAP_BASE:
-      logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
     check_call(sourcemap_cmd)
 
   @staticmethod
@@ -2944,9 +2942,9 @@ class Building(object):
       WTMAPS = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps')
       WDWARF_CP = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wdwarf-cp')
       temp_wasm = temp_files.get('.wasm').name
-      #run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
-      #shutil.copyfile(temp_wasm, outfile)
-      #Building.emit_wasm_source_map(outfile, output_map)
+      run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
+      shutil.copyfile(temp_wasm, outfile)
+      Building.emit_wasm_source_map(outfile, output_map)
       #run_process([WTMAPS, outfile, '-o', output_map])
 
     return ret
