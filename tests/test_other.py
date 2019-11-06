@@ -9888,18 +9888,7 @@ Module.arguments has been replaced with plain arguments_
     output = run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertContained('Archive map', output)
 
-  def test_preprocess_stdin(self):
-    create_test_file('temp.h', '#include <string>')
-    outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
-    outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
-    self.assertTextDataIdentical(outputStdin, outputFile)
-
-  def test_compile_stdin(self):
-    with open(path_from_root('tests', 'hello_world.cpp')) as f:
-      run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
-    self.assertContained('hello, world!', run_js('a.out.js'))
-
-    def test_pthread_stub(self):
+  def test_pthread_stub(self):
     # Verify that programs containing pthread code can still be compiled even
     # without enabling threads.  This is possible becase we link in
     # libpthread_stub.a
@@ -9912,3 +9901,14 @@ int main() {
 }
 ''')
     run_process([PYTHON, EMCC, 'pthread.c'])
+
+  def test_preprocess_stdin(self):
+    create_test_file('temp.h', '#include <string>')
+    outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
+    outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
+    self.assertTextDataIdentical(outputStdin, outputFile)
+
+  def test_compile_stdin(self):
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
+    self.assertContained('hello, world!', run_js('a.out.js'))
