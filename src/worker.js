@@ -17,12 +17,6 @@ var tempDoublePtr = 0; // A temporary memory area for global float and double ma
 
 var noExitRuntime;
 
-// performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
-// subtle problems in emscripten_get_now() as this essentially would measure time from pthread_create(), meaning that the clocks between each threads
-// would be wildly out of sync. Therefore sync all pthreads to the clock on the main browser thread, so that different threads see a somewhat
-// coherent clock across each of them (+/- 0.1msecs in testing)
-var __performance_now_clock_drift = 0;
-
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
@@ -156,7 +150,11 @@ this.onmessage = function(e) {
     } else if (e.data.cmd === 'objectTransfer') {
       PThread.receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') { // This worker was idle, and now should start executing its pthread entry point.
-      __performance_now_clock_drift = performance.now() - e.data.time; // Sync up to the clock of the main thread.
+      // performance.now() is specced to return a wallclock time in msecs since that Web Worker/main thread launched. However for pthreads this can cause
+      // subtle problems in emscripten_get_now() as this essentially would measure time from pthread_create(), meaning that the clocks between each threads
+      // would be wildly out of sync. Therefore sync all pthreads to the clock on the main browser thread, so that different threads see a somewhat
+      // coherent clock across each of them (+/- 0.1msecs in testing)
+      Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
       threadInfoStruct = e.data.threadInfoStruct;
       Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
       selfThreadId = e.data.selfThreadId;
