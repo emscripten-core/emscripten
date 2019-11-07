@@ -4003,7 +4003,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
+                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
                                "} else " +
 #endif
                                "if (typeof dateNow !== 'undefined') {\n" +
