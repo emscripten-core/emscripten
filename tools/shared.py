@@ -2864,14 +2864,25 @@ class Building(object):
 
     return library_files
 
+  counter = 0
+
+  @staticmethod
+  def get_temp_name(suffix='.wasm'):
+    ret = '/tmp/emscripten_temp/temp_' + str(Building.counter) + suffix
+    print('emitting ' + ret)
+    Building.counter += 1
+    return ret;
+
   @staticmethod
   def emit_wasm_source_map(wasm_file, map_file):
-    sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
-                     wasm_file,
-                     '--dwarfdump=' + LLVM_DWARFDUMP,
-                     '-o',  map_file]
-    check_call(sourcemap_cmd)
-    #run_process([os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps'), wasm_file, '-o', map_file])
+    #sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+    #                 wasm_file,
+    #                 '--dwarfdump=' + LLVM_DWARFDUMP,
+    #                 '-o',  map_file]
+    #check_call(sourcemap_cmd)
+    run_process([os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps'), wasm_file, '-o', map_file])
+    shutil.copyfile(wasm_file, Building.get_temp_name())
+    shutil.copyfile(map_file, Building.get_temp_name('.map'))
 
   @staticmethod
   def get_binaryen_feature_flags():
@@ -2925,13 +2936,19 @@ class Building(object):
       cmd += ['--output-source-map=' + output_map]
       cmd += ['--output-source-map-url=' + Settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
 
+    shutil.copyfile(infile, Building.get_temp_name())
+
     if stdout is not None:
       ret = run_process(cmd, stdout=stdout).stdout
     else:
       run_process(cmd)
       ret = None
 
-    if 0 and preserve_dwarf:
+    if outfile:
+      shutil.copyfile(outfile, Building.get_temp_name())
+      shutil.copyfile(output_map, Building.get_temp_name('.map'))
+
+    if preserve_dwarf:
       # The wasm has been modified, and we emitted a new source map. Adjust
       # the debug info in the new wasm file.
       # We are emitting the maximum amount of debug info; in the wasm backend,
@@ -2941,6 +2958,7 @@ class Building(object):
       temp_wasm = temp_files.get('.wasm').name
       run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
       shutil.copyfile(temp_wasm, outfile)
+      shutil.copyfile(outfile, Building.get_temp_name())
       Building.emit_wasm_source_map(outfile, output_map)
 
     return ret
