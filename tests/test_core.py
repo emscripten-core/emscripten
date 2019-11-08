@@ -8437,7 +8437,7 @@ def make_run(name, emcc_args, settings=None, env=None):
     for k, v in settings.items():
       self.set_setting(k, v)
 
-    self.emcc_args += emcc_args + ['--llvm-lto', '1']
+    self.emcc_args += emcc_args
     # avoid various compiler warnings in our test output
     self.emcc_args += [
       '-Wno-dynamic-class-memaccess', '-Wno-format',
