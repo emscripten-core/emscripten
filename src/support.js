@@ -441,15 +441,12 @@ function loadWebAssemblyModule(binary, flags) {
         sym = 'orig$' + sym;
       }
 #if WASM_BACKEND
-      var moduleSym = '_' + sym;
-#else
-      var moduleSym = sym;
+      sym = '_' + sym;
 #endif
-      var exportSym = sym;
       // First look on the exports of this new module.
-      var resolved = Module[moduleSym];
+      var resolved = Module[sym];
       if (!resolved) {
-        resolved = moduleLocal[exportSym];
+        resolved = moduleLocal[sym];
       }
 #if ASSERTIONS
       assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
