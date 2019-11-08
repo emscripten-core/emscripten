@@ -9,6 +9,7 @@
 #ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
 #endif
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -26,6 +27,17 @@ extern size_t emscripten_get_heap_size(void);
 }
 #endif
 
+#ifndef EMSCRIPTEN_NO_ERRNO
+#define SET_ERRNO() { errno = ENOMEM; }
+#else
+#define SET_ERRNO()
+#endif
+
+#define RETURN_ERROR() { \
+  SET_ERRNO()            \
+  return (void*)-1;      \
+}
+
 void *sbrk(intptr_t increment) {
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
@@ -41,8 +53,13 @@ void *sbrk(intptr_t increment) {
 #else
     intptr_t old_brk = *sbrk_ptr;
 #endif
-    // TODO: overflow checks
     intptr_t new_brk = old_brk + increment;
+    // ArrayBuffers are currently limited in practice to 2GB, the size of a
+    // signed integer. When 4GB support arrives, we'll want to add an option
+    // to ignore this check there.
+    if ((uint32_t)new_brk > (uint32_t)INT_MAX) {
+      RETURN_ERROR();
+    }
 #ifdef __wasm__
     uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
 #else
@@ -52,10 +69,7 @@ void *sbrk(intptr_t increment) {
       // Try to grow memory.
       intptr_t diff = new_brk - old_size;
       if (!emscripten_resize_heap(new_brk)) {
-#ifndef EMSCRIPTEN_NO_ERRNO
-        errno = ENOMEM;
-#endif
-        return (void*)-1;
+        RETURN_ERROR();
       }
     }
 #if __EMSCRIPTEN_PTHREADS__
