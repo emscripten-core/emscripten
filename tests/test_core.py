@@ -3894,7 +3894,7 @@ ok
       #include <stdint.h>
       extern int64_t sidey();
       int64_t testAdd(int64_t a) {
-          return a + 1;
+        return a + 1;
       }
       typedef int64_t (*testAddHandler)(int64_t);
       testAddHandler h = &testAdd;
