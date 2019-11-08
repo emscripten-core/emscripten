@@ -20,7 +20,7 @@
 // https://github.com/emscripten-core/emscripten/issues/9640
 extern int main(int argc, char** argv) __attribute__((weak));
 
-// Avoid using stack allocation for argument-passed values in _start(), as the
+// Avoid using stack allocation for argument-passed values here, as the
 // stack allocation for them can't be eliminated by Binaryen later, so if we
 // have no main we end up with a stack push and pop for no reason. Also, the
 // stack allocation here would last for the entire program anyhow, so it's
