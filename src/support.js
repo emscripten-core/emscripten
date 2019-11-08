@@ -443,7 +443,6 @@ function loadWebAssemblyModule(binary, flags) {
 #if WASM_BACKEND
       sym = '_' + sym;
 #endif
-      // First look on the exports of this new module.
       var resolved = Module[sym];
       if (!resolved) {
         resolved = moduleLocal[sym];
