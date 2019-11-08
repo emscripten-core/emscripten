@@ -436,13 +436,20 @@ function loadWebAssemblyModule(binary, flags) {
     // b) Symbols from loaded modules are not always added to the global Module.
     var moduleLocal = {};
 
-    var resolveSymbol = function(sym, type) {
+    var resolveSymbol = function(sym, type, legalized) {
+      if (legalized) {
+        sym = 'orig$' + sym;
+      }
 #if WASM_BACKEND
-      sym = '_' + sym;
+      var moduleSym = '_' + sym;
+#else
+      var moduleSym = sym;
 #endif
-      var resolved = Module[sym];
+      var exportSym = sym;
+      // First look on the exports of this new module.
+      var resolved = Module[moduleSym];
       if (!resolved) {
-        resolved = moduleLocal[sym];
+        resolved = moduleLocal[exportSym];
       }
 #if ASSERTIONS
       assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
@@ -496,10 +503,11 @@ function loadWebAssemblyModule(binary, flags) {
           assert(parts.length == 3)
           var name = parts[1];
           var sig = parts[2];
+          var legalized = sig.indexOf('j') >= 0;
           var fp = 0;
           return obj[prop] = function() {
             if (!fp) {
-              var f = resolveSymbol(name, 'function');
+              var f = resolveSymbol(name, 'function', legalized);
               fp = addFunction(f, sig);
             }
             return fp;

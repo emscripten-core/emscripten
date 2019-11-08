@@ -3022,6 +3022,10 @@ class JS(object):
     return ''.join(ret)
 
   @staticmethod
+  def is_legal_sig(sig):
+    return sig == JS.legalize_sig(sig)
+
+  @staticmethod
   def make_extcall(sig, named=True):
     args = ','.join(['a' + str(i) for i in range(1, len(sig))])
     args = 'index' + (',' if args else '') + args

@@ -1793,19 +1793,21 @@ def create_fp_accessors(metadata):
       continue
     _, name, sig = fullname.split('$')
     mangled = asmjs_mangle(name)
-    short = mangled[1:]
     side = 'parent' if shared.Settings.SIDE_MODULE else ''
     assertion = ('\n  assert(%sModule["%s"] || typeof %s !== "undefined", "external function `%s` is missing.' % (side, mangled, mangled, name) +
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
                  'from a system library, try to build the MAIN_MODULE with '
                  'EMCC_FORCE_STDLIBS=XX in the environment");')
+    # the name of the original function before JS legalization, if we legalized
+    original = mangled[1:]
+    if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
+      original = 'orig$' + original
 
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
   // Use the wasm function itself in the table.
-  var func = Module['asm']['%(short)s'];
-  console.log('waka', '%(mangled)s', func, '%(full)s', '%(short)s');
+  var func = Module['asm']['%(original)s'];
   // If there is no wasm function, this may be a JS library function or
   // something from another module.
   if (!func) Module['%(mangled)s'];
@@ -1814,7 +1816,7 @@ Module['%(full)s'] = function() {
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'short': short, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': original, 'assert': assertion, 'sig': sig})
 
   return '\n'.join(accessors)
 
