@@ -3911,7 +3911,7 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.')
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.')
 
   @needs_dlfcn
   def test_dylink_class(self):
