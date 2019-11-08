@@ -750,10 +750,10 @@ class crt1(MuslInternalLibrary):
   name = 'crt1'
   cflags = ['-O2']
   src_dir = ['system', 'lib', 'libc']
-  src_files = ['crt1.c']
+  src_files = ['crt1.c', '__original_main.c']
 
   def get_ext(self):
-    return '.o'
+    return '.a'
 
   def can_use(self):
     return shared.Settings.STANDALONE_WASM
