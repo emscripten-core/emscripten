@@ -3889,7 +3889,6 @@ ok
 
   @needs_dlfcn
   def test_dylink_i64_b(self):
-    self.emcc_args += ['-g']
     self.dylink_test(r'''
       #include <stdio.h>
       #include <stdint.h>
