@@ -1793,6 +1793,7 @@ def create_fp_accessors(metadata):
       continue
     _, name, sig = fullname.split('$')
     mangled = asmjs_mangle(name)
+    short = mangled[1:]
     side = 'parent' if shared.Settings.SIDE_MODULE else ''
     assertion = ('\n  assert(%sModule["%s"] || typeof %s !== "undefined", "external function `%s` is missing.' % (side, mangled, mangled, name) +
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
@@ -1802,14 +1803,18 @@ def create_fp_accessors(metadata):
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
-  var func = Module['%(mangled)s'];
-  if (!func)
-    func = %(mangled)s;
+  // Use the wasm function itself in the table.
+  var func = Module['asm']['%(short)s'];
+  console.log('waka', '%(mangled)s', func, '%(full)s', '%(short)s');
+  // If there is no wasm function, this may be a JS library function or
+  // something from another module.
+  if (!func) Module['%(mangled)s'];
+  if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'short': short, 'assert': assertion, 'sig': sig})
 
   return '\n'.join(accessors)
 
