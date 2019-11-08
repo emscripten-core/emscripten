@@ -1695,7 +1695,7 @@ LibraryManager.library = {
     }
 
     try {
-      handle = loadDynamicLibrary(filename, flags)
+      var handle = loadDynamicLibrary(filename, flags)
     } catch (e) {
 #if ASSERTIONS
       err('Error in loading dynamic library ' + filename + ": " + e);
