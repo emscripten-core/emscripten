@@ -21,22 +21,21 @@ extern void __wasm_call_ctors(void) __attribute__((weak));
 // https://github.com/emscripten-core/emscripten/issues/9640
 extern int main(int argc, char** argv) __attribute__((weak));
 
-// Avoid using stack allocation for argument-passed values here, as the
-// stack allocation for them can't be eliminated by Binaryen later, so if we
-// have no main we end up with a stack push and pop for no reason. Also, the
-// stack allocation here would last for the entire program anyhow, so it's
-// effectively static.
-static size_t argc;
-static size_t argv_buf_size;
-
+// If main() uses argc/argv, then no __original_main is emitted, and then
+// this defintiion is used, which loads those values and sends them to main.
+// If main() does not use argc/argv, then the compiler emits __original_main
+// and this definition is not necessary, which avoids the wasi calls for
+// getting the args.
+// If there is no main() at all, we don't need this definition, but it will get
+// linked in. However, _start checks for main()'s existence and only calls
+// __original_main() if it does, so this will not be called, which allows
+// LLVM LTO or the Binaryen optimizer to remove it.
 __attribute__((weak))
 int __original_main(void) {
-  if (!main) {
-    return 0;
-  }
-
   /* Fill in the arguments from WASI syscalls. */
+  size_t argc;
   char **argv;
+  size_t argv_buf_size;
   __wasi_errno_t err;
 
   /* Get the sizes of the arrays we'll have to create to copy in the args. */

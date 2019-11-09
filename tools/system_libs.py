@@ -1242,7 +1242,6 @@ class libstandalonewasm(MuslInternalLibrary):
     base_files = files_in_path(
         path_components=['system', 'lib'],
         filenames=['standalone_wasm.c'])
-
     # It is more efficient to use JS methods for time, normally.
     time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
