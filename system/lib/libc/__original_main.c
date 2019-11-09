@@ -29,6 +29,10 @@ static size_t argc;
 static size_t argv_buf_size;
 
 int __original_main(void) {
+  if (!main) {
+    return 0;
+  }
+
   /* Fill in the arguments from WASI syscalls. */
   char **argv;
   __wasi_errno_t err;

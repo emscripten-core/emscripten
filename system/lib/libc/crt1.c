@@ -20,13 +20,14 @@ extern void __wasm_call_ctors(void) __attribute__((weak));
 // TODO(sbc): We shouldn't even link this file if there is no main:
 // https://github.com/emscripten-core/emscripten/issues/9640
 extern int __original_main(void) __attribute__((weak));
+extern int main(int argc, char** argv) __attribute__((weak));
 
 void _start(void) {
   if (__wasm_call_ctors) {
     __wasm_call_ctors();
   }
 
-  if (!__original_main) {
+  if (!main) {
     return;
   }
 
