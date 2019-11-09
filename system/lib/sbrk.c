@@ -55,8 +55,12 @@ void *sbrk(intptr_t increment) {
 #endif
     intptr_t new_brk = old_brk + increment;
     // ArrayBuffers are currently limited in practice to 2GB, the size of a
-    // signed integer. When 4GB support arrives, we'll want to add an option
-    // to ignore this check there.
+    // signed integer, because VMs do not properly support 4GB. They may not
+    // report an error when trying to allocate past that boundary, but later
+    // accessing the memory will fail on out of  bounds. So we need to guard
+    // against it here.
+    // TODO When 4GB support arrives, we'll want to add an option
+    //      to ignore this check there.
     if ((uint32_t)new_brk > (uint32_t)INT_MAX) {
       RETURN_ERROR();
     }
