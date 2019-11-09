@@ -750,10 +750,10 @@ class crt1(MuslInternalLibrary):
   name = 'crt1'
   cflags = ['-O2']
   src_dir = ['system', 'lib', 'libc']
-  src_files = ['crt1.c', '__original_main.c']
+  src_files = ['crt1.c']
 
   def get_ext(self):
-    return '.a'
+    return '.o'
 
   def can_use(self):
     return shared.Settings.STANDALONE_WASM
@@ -1242,6 +1242,7 @@ class libstandalonewasm(MuslInternalLibrary):
     base_files = files_in_path(
         path_components=['system', 'lib'],
         filenames=['standalone_wasm.c'])
+
     # It is more efficient to use JS methods for time, normally.
     time_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
