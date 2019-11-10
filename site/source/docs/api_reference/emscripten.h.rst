@@ -151,7 +151,9 @@ Defines
 
     EM_ASM(console.log('hello ' + UTF8ToString($0)), "world!");
 
-    In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly. ::
+  In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly.
+
+  .. code-block:: none
 
     int arr[2] = { 30, 45 };
     EM_ASM({
@@ -176,7 +178,9 @@ Defines
 
     int y = EM_ASM_INT(return TOTAL_MEMORY);
 
-    Strings can be returned back to C from JavaScript, but one needs to be careful about memory management. ::
+  Strings can be returned back to C from JavaScript, but one needs to be careful about memory management.
+
+  .. code-block:: none
 
     char *str = (char*)EM_ASM_INT({
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
