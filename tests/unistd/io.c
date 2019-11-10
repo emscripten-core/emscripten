@@ -1,3 +1,10 @@
+/*
+ * Copyright 2011 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -33,7 +40,7 @@ int main() {
       },
       write: function(stream, buffer, offset, length, pos) {
         for (var i = 0; i < length; i++) {
-          Module.print('TO DEVICE: ' + buffer[offset+i]);
+          out('TO DEVICE: ' + buffer[offset+i]);
         }
         return i;
       }
@@ -154,6 +161,16 @@ int main() {
   printf("seek: %d\n", lseek(f, 10, SEEK_END));
   printf("write after end of file: %d\n", write(f, writeBuffer, sizeof writeBuffer));
   printf("errno: %d\n\n", errno);
+  errno = 0;
+
+  printf("pwrite to the middle of file: %d\n", pwrite(f, writeBuffer + 2, 3, 17));
+  printf("errno: %d\n", errno);
+  printf("seek: %d\n\n", lseek(f, 0, SEEK_CUR));
+  errno = 0;
+
+  printf("pwrite past end of file: %d\n", pwrite(f, writeBuffer, 5, 32));
+  printf("errno: %d\n", errno);
+  printf("seek: %d\n\n", lseek(f, 0, SEEK_CUR));
   errno = 0;
 
   int bytesRead;

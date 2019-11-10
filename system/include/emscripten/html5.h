@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #ifndef __emscripten_events_h__
 #define __emscripten_events_h__
 
@@ -53,6 +60,7 @@ extern "C" {
 #define EMSCRIPTEN_EVENT_MOUSEOVER             35
 #define EMSCRIPTEN_EVENT_MOUSEOUT              36
 #define EMSCRIPTEN_EVENT_CANVASRESIZED         37
+#define EMSCRIPTEN_EVENT_POINTERLOCKERROR      38
 
 #define EMSCRIPTEN_RESULT int
 
@@ -66,8 +74,11 @@ extern "C" {
 #define EMSCRIPTEN_RESULT_INVALID_PARAM       -5
 #define EMSCRIPTEN_RESULT_FAILED              -6
 #define EMSCRIPTEN_RESULT_NO_DATA             -7
+#define EMSCRIPTEN_RESULT_TIMED_OUT           -8
 
 #define EM_BOOL int
+#define EM_TRUE 1
+#define EM_FALSE 0
 #define EM_UTF8 char
 
 #define DOM_KEY_LOCATION int
@@ -76,18 +87,21 @@ extern "C" {
 #define DOM_KEY_LOCATION_RIGHT    0x02
 #define DOM_KEY_LOCATION_NUMPAD   0x03
 
+#define EM_HTML5_SHORT_STRING_LEN_BYTES 32
+#define EM_HTML5_MEDIUM_STRING_LEN_BYTES 64
+#define EM_HTML5_LONG_STRING_LEN_BYTES 128
 
 typedef struct EmscriptenKeyboardEvent {
-  EM_UTF8 key[32];
-  EM_UTF8 code[32];
+  EM_UTF8 key[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 code[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long location;
   EM_BOOL ctrlKey;
   EM_BOOL shiftKey;
   EM_BOOL altKey;
   EM_BOOL metaKey;
   EM_BOOL repeat;
-  EM_UTF8 locale[32];
-  EM_UTF8 charValue[32];
+  EM_UTF8 locale[EM_HTML5_SHORT_STRING_LEN_BYTES];
+  EM_UTF8 charValue[EM_HTML5_SHORT_STRING_LEN_BYTES];
   unsigned long charCode;
   unsigned long keyCode;
   unsigned long which;
@@ -169,8 +183,8 @@ extern EMSCRIPTEN_RESULT emscripten_set_resize_callback(const char *target, void
 extern EMSCRIPTEN_RESULT emscripten_set_scroll_callback(const char *target, void *userData, EM_BOOL useCapture, em_ui_callback_func callback);
 
 typedef struct EmscriptenFocusEvent {
-  EM_UTF8 nodeName[128];
-  EM_UTF8 id[128];
+  EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
+  EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
 } EmscriptenFocusEvent;
 
 typedef EM_BOOL (*em_focus_callback_func)(int eventType, const EmscriptenFocusEvent *focusEvent, void *userData);
@@ -231,8 +245,8 @@ extern EMSCRIPTEN_RESULT emscripten_unlock_orientation(void);
 typedef struct EmscriptenFullscreenChangeEvent {
   EM_BOOL isFullscreen;
   EM_BOOL fullscreenEnabled;
-  EM_UTF8 nodeName[128];
-  EM_UTF8 id[128];
+  EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
+  EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
   int elementWidth;
   int elementHeight;
   int screenWidth;
@@ -282,13 +296,16 @@ extern EMSCRIPTEN_RESULT emscripten_exit_soft_fullscreen(void);
 
 typedef struct EmscriptenPointerlockChangeEvent {
   EM_BOOL isActive;
-  EM_UTF8 nodeName[128];
-  EM_UTF8 id[128];
+  EM_UTF8 nodeName[EM_HTML5_LONG_STRING_LEN_BYTES];
+  EM_UTF8 id[EM_HTML5_LONG_STRING_LEN_BYTES];
 } EmscriptenPointerlockChangeEvent;
 
 
 typedef EM_BOOL (*em_pointerlockchange_callback_func)(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent, void *userData);
 extern EMSCRIPTEN_RESULT emscripten_set_pointerlockchange_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockchange_callback_func callback);
+
+typedef EM_BOOL (*em_pointerlockerror_callback_func)(int eventType, const void *reserved, void *userData);
+extern EMSCRIPTEN_RESULT emscripten_set_pointerlockerror_callback(const char *target, void *userData, EM_BOOL useCapture, em_pointerlockerror_callback_func callback);
 
 extern EMSCRIPTEN_RESULT emscripten_get_pointerlock_status(EmscriptenPointerlockChangeEvent *pointerlockStatus);
 
@@ -355,8 +372,8 @@ typedef struct EmscriptenGamepadEvent {
   EM_BOOL digitalButton[64];
   EM_BOOL connected;
   long index;
-  EM_UTF8 id[64];
-  EM_UTF8 mapping[64];
+  EM_UTF8 id[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
+  EM_UTF8 mapping[EM_HTML5_MEDIUM_STRING_LEN_BYTES];
 } EmscriptenGamepadEvent;
 
 
@@ -403,6 +420,8 @@ typedef struct EmscriptenWebGLContextAttributes {
   int minorVersion;
 
   EM_BOOL enableExtensionsByDefault;
+  EM_BOOL explicitSwapControl;
+  EM_BOOL renderViaOffscreenBackBuffer;
 } EmscriptenWebGLContextAttributes;
 
 extern void emscripten_webgl_init_context_attributes(EmscriptenWebGLContextAttributes *attributes);
@@ -411,7 +430,9 @@ extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_create_context(const cha
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_make_context_current(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
-extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context();
+extern EMSCRIPTEN_WEBGL_CONTEXT_HANDLE emscripten_webgl_get_current_context(void);
+
+extern EMSCRIPTEN_RESULT emscripten_webgl_get_drawing_buffer_size(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context, int *width, int *height);
 
 extern EMSCRIPTEN_RESULT emscripten_webgl_destroy_context(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context);
 
@@ -422,6 +443,11 @@ extern EMSCRIPTEN_RESULT emscripten_set_webglcontextlost_callback(const char *ta
 extern EMSCRIPTEN_RESULT emscripten_set_webglcontextrestored_callback(const char *target, void *userData, EM_BOOL useCapture, em_webgl_context_callback callback);
 
 extern EM_BOOL emscripten_is_webgl_context_lost(const char *target);
+
+extern EMSCRIPTEN_RESULT emscripten_webgl_commit_frame(void);
+
+extern EMSCRIPTEN_RESULT emscripten_set_canvas_element_size(const char *target, int width, int height);
+extern EMSCRIPTEN_RESULT emscripten_get_canvas_element_size(const char *target, int *width, int *height);
 
 extern EMSCRIPTEN_RESULT emscripten_set_element_css_size(const char *target, double width, double height);
 extern EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target, double *width, double *height);

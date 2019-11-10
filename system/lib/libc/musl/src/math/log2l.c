@@ -173,4 +173,10 @@ done:
 	z += e;
 	return z;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double log2l(long double x)
+{
+	return log2(x);
+}
 #endif

@@ -50,7 +50,7 @@ float complex ctanhf(float complex z)
 	}
 
 	if (!isfinite(y))
-		return CMPLXF(y - y, y - y);
+		return CMPLXF(ix ? y - y : x, y - y);
 
 	if (ix >= 0x41300000) { /* x >= 11 */
 		float exp_mx = expf(-fabsf(x));

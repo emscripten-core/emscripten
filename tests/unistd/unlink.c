@@ -1,3 +1,10 @@
+/*
+ * Copyright 2011 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -24,11 +31,16 @@ static void create_file(const char *path, const char *buffer, int mode) {
 void setup() {
   mkdir("working", 0777);
 #ifdef __EMSCRIPTEN__
+
+#ifdef __EMSCRIPTEN_ASMFS__
+  mkdir("working", 0777);
+#else
   EM_ASM(
 #if NODEFS
     FS.mount(NODEFS, { root: '.' }, 'working');
 #endif
   );
+#endif
 #endif
   chdir("working");
   create_file("file", "test", 0777);
@@ -79,15 +91,21 @@ void test() {
 
   err = unlink("dir-readonly");
   assert(err == -1);
-#ifdef __linux__
-  assert(errno == EISDIR);
+
+  // emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
+#if defined(__linux__) || defined(__EMSCRIPTEN__)
+  // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
+  // See issue #6121.
+  assert(errno == EISDIR || errno == EPERM);
 #else
   assert(errno == EPERM);
 #endif
 
+#ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
   assert(err == -1);
   assert(errno == EACCES);
+#endif
 
 #ifndef NO_SYMLINK
   // try unlinking the symlink first to make sure
@@ -118,9 +136,11 @@ void test() {
   assert(err == -1);
   assert(errno == ENOTDIR);
 
+#ifndef SKIP_ACCESS_TESTS
   err = rmdir("dir-readonly/anotherdir");
   assert(err == -1);
   assert(errno == EACCES);
+#endif
 
   err = rmdir("dir-full");
   assert(err == -1);
@@ -132,14 +152,19 @@ void test() {
   getcwd(buffer, sizeof(buffer));
   err = rmdir(buffer);
   assert(err == -1);
+#ifdef NODERAWFS
+  assert(errno == ENOTEMPTY);
+#else
   assert(errno == EBUSY);
+#endif
 #endif
   err = rmdir("/");
   assert(err == -1);
 #ifdef __APPLE__
   assert(errno == EISDIR);
 #else
-  assert(errno == EBUSY);
+  // errno is EISDIR for NODERAWFS on macOS. See issue #6121.
+  assert(errno == EBUSY || errno == EISDIR);
 #endif
 
 #ifndef NO_SYMLINK
@@ -161,5 +186,9 @@ int main() {
   signal(SIGABRT, cleanup);
   setup();
   test();
+
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
   return EXIT_SUCCESS;
 }

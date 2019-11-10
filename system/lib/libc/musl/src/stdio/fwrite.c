@@ -13,8 +13,8 @@ size_t __fwritex(const unsigned char *restrict s, size_t l, FILE *restrict f)
 		/* Match /^(.*\n|)/ */
 		for (i=l; i && s[i-1] != '\n'; i--);
 		if (i) {
-			if (f->write(f, s, i) < i)
-				return i;
+			size_t n = f->write(f, s, i);
+			if (n < i) return n;
 			s += i;
 			l -= i;
 		}
@@ -28,6 +28,7 @@ size_t __fwritex(const unsigned char *restrict s, size_t l, FILE *restrict f)
 size_t fwrite(const void *restrict src, size_t size, size_t nmemb, FILE *restrict f)
 {
 	size_t k, l = size*nmemb;
+	if (!size) nmemb = 0;
 	FLOCK(f);
 	k = __fwritex(src, l, f);
 	FUNLOCK(f);

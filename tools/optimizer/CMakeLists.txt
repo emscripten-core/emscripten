@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 2.8.10)
 
 project(asmjs_optimizer)
 
@@ -18,13 +18,23 @@ endif()
 # won't be optimized by the compiler!
 
 if (IS_GCC_LIKE)
-	set(cFlags "-std=c++11 -fno-exceptions -fno-rtti")
+	set(cFlags "-fno-exceptions -fno-rtti")
+
+	if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.7")
+		set(cFlags "${cFlags} -std=c++0x")
+	else()
+		set(cFlags "${cFlags} -std=c++11")
+	endif()
 endif()
 
 if (MSVC)
 	set(cFlags "${cFlags} -D_CRT_SECURE_NO_WARNINGS=1")
+	set(cFlagsDebug "${cFlagsDebug} /bigobj") # Debug build in Visual Studio is large and generates error C1128 if not explicitly recognized, so pass /bigobj for that
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /STACK:10485760")
 endif()
+
+set(CMAKE_C_FLAGS_DEBUG     "${CMAKE_C_FLAGS_DEBUG} ${cFlagsDebug}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${cFlagsDebug}")
 
 set(CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} ${cFlags}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${cFlags}")

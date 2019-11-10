@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #if LZ4
 mergeInto(LibraryManager.library, {
   $LZ4__deps: ['$FS'],
@@ -25,7 +30,6 @@ mergeInto(LibraryManager.library, {
                                                                       compressedData.cachedOffset + (i+1)*LZ4.CHUNK_SIZE);
         assert(compressedData.cachedChunks[i].length === LZ4.CHUNK_SIZE);
       }
-      console.log('loading package');
       pack['metadata'].files.forEach(function(file) {
         var dir = PATH.dirname(file.filename);
         var name = PATH.basename(file.filename);
@@ -176,6 +180,10 @@ mergeInto(LibraryManager.library, {
     },
   },
 });
-LibraryManager.library['$FS__deps'].push('$LZ4'); // LZ4=1, so auto-include us
+if (LibraryManager.library['$FS__deps']) {
+  LibraryManager.library['$FS__deps'].push('$LZ4'); // LZ4=1, so auto-include us
+} else {
+  warn('FS does not seem to be in use (no preloaded files etc.), LZ4 will not do anything');
+}
 #endif
 

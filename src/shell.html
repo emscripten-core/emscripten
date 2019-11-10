@@ -15,7 +15,7 @@
       div.emscripten { text-align: center; }      
       div.emscripten_border { border: 1px solid black; }
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
-      canvas.emscripten { border: 0px none; }
+      canvas.emscripten { border: 0px none; background-color: black; }
 
       #emscripten_logo {
         display: inline-block;
@@ -73,7 +73,7 @@
 
       #progress {
         height: 20px;
-        width: 30px;
+        width: 300px;
       }
 
       #controls {
@@ -103,7 +103,7 @@
   </head>
   <body>
     <a href="http://emscripten.org">
-      <?xml version="1.0" encoding="UTF-8" standalone="no"?><svg
+      <svg
    version="1.1"
    id="Layer_1"
    x="0px"
@@ -1201,7 +1201,7 @@
 <span id='controls'>
   <span><input type="checkbox" id="resize">Resize canvas</span>
   <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
-  <span><input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, 
+  <span><input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
                                                                             document.getElementById('resize').checked)">
   </span>
 </span>
@@ -1261,10 +1261,12 @@
         })(),
         setStatus: function(text) {
           if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.text) return;
+          if (text === Module.setStatus.last.text) return;
           var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
           var now = Date.now();
-          if (m && now - Date.now() < 30) return; // if this is a progress update, skip it if too soon
+          if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+          Module.setStatus.last.time = now;
+          Module.setStatus.last.text = text;
           if (m) {
             text = m[1];
             progressElement.value = parseInt(m[2])*100;

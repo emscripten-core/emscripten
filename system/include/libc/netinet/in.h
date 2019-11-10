@@ -13,16 +13,14 @@ typedef uint16_t in_port_t;
 typedef uint32_t in_addr_t;
 struct in_addr { in_addr_t s_addr; };
 
-struct sockaddr_in
-{
+struct sockaddr_in {
 	sa_family_t sin_family;
 	in_port_t sin_port;
 	struct in_addr sin_addr;
 	uint8_t sin_zero[8];
 };
 
-struct in6_addr
-{
+struct in6_addr {
 	union {
 		uint8_t __s6_addr[16];
 		uint16_t __s6_addr16[8];
@@ -33,8 +31,7 @@ struct in6_addr
 #define s6_addr16 __in6_union.__s6_addr16
 #define s6_addr32 __in6_union.__s6_addr32
 
-struct sockaddr_in6
-{
+struct sockaddr_in6 {
 	sa_family_t     sin6_family;
 	in_port_t       sin6_port;
 	uint32_t        sin6_flowinfo;
@@ -42,8 +39,7 @@ struct sockaddr_in6
 	uint32_t        sin6_scope_id;
 };
 
-struct ipv6_mreq
-{
+struct ipv6_mreq {
 	struct in6_addr ipv6mr_multiaddr;
 	unsigned        ipv6mr_interface;
 };
@@ -103,6 +99,7 @@ uint16_t ntohs(uint16_t);
 #define IPPROTO_SCTP     132
 #define IPPROTO_MH       135
 #define IPPROTO_UDPLITE  136
+#define IPPROTO_MPLS     137
 #define IPPROTO_RAW      255
 #define IPPROTO_MAX      256
 
@@ -198,6 +195,9 @@ uint16_t ntohs(uint16_t);
 #define IP_ORIGDSTADDR     20
 #define IP_RECVORIGDSTADDR IP_ORIGDSTADDR
 #define IP_MINTTL          21
+#define IP_NODEFRAG        22
+#define IP_CHECKSUM        23
+#define IP_BIND_ADDRESS_NO_PORT 24
 #define IP_MULTICAST_IF    32
 #define IP_MULTICAST_TTL   33
 #define IP_MULTICAST_LOOP  34
@@ -218,13 +218,13 @@ uint16_t ntohs(uint16_t);
 #define IP_PMTUDISC_DO     2
 #define IP_PMTUDISC_PROBE  3
 #define IP_PMTUDISC_INTERFACE 4
+#define IP_PMTUDISC_OMIT   5
 
 #define IP_DEFAULT_MULTICAST_TTL        1
 #define IP_DEFAULT_MULTICAST_LOOP       1
 #define IP_MAX_MEMBERSHIPS              20
 
-struct ip_opts
-{
+struct ip_opts {
 	struct in_addr ip_dst;
 	char ip_opts[40];
 };
@@ -242,14 +242,12 @@ struct ip_opts
 #define MCAST_EXCLUDE 0
 #define MCAST_INCLUDE 1
 
-struct ip_mreq
-{
+struct ip_mreq {
 	struct in_addr imr_multiaddr;
 	struct in_addr imr_interface;
 };
 
-struct ip_mreqn
-{
+struct ip_mreqn {
 	struct in_addr imr_multiaddr;
 	struct in_addr imr_address;
 	int imr_ifindex;
@@ -294,21 +292,18 @@ struct group_filter {
 	(sizeof(struct group_filter) - sizeof(struct sockaddr_storage) \
 	+ (numsrc) * sizeof(struct sockaddr_storage))
 
-struct in_pktinfo
-{
+struct in_pktinfo {
 	int ipi_ifindex;
 	struct in_addr ipi_spec_dst;
 	struct in_addr ipi_addr;
 };
 
-struct in6_pktinfo
-{
+struct in6_pktinfo {
 	struct in6_addr ipi6_addr;
 	unsigned ipi6_ifindex;
 };
 
-struct ip6_mtuinfo
-{
+struct ip6_mtuinfo {
 	struct sockaddr_in6 ip6m_addr;
 	uint32_t ip6m_mtu;
 };
@@ -339,6 +334,7 @@ struct ip6_mtuinfo
 #define IPV6_LEAVE_ANYCAST      28
 #define IPV6_IPSEC_POLICY       34
 #define IPV6_XFRM_POLICY        35
+#define IPV6_HDRINCL            36
 
 #define IPV6_RECVPKTINFO        49
 #define IPV6_PKTINFO            50
@@ -351,9 +347,18 @@ struct ip6_mtuinfo
 #define IPV6_RTHDR              57
 #define IPV6_RECVDSTOPTS        58
 #define IPV6_DSTOPTS            59
-
+#define IPV6_RECVPATHMTU        60
+#define IPV6_PATHMTU            61
+#define IPV6_DONTFRAG           62
 #define IPV6_RECVTCLASS         66
 #define IPV6_TCLASS             67
+#define IPV6_AUTOFLOWLABEL      70
+#define IPV6_ADDR_PREFERENCES   72
+#define IPV6_MINHOPCOUNT        73
+#define IPV6_ORIGDSTADDR        74
+#define IPV6_RECVORIGDSTADDR    IPV6_ORIGDSTADDR
+#define IPV6_TRANSPARENT        75
+#define IPV6_UNICAST_IF         76
 
 #define IPV6_ADD_MEMBERSHIP     IPV6_JOIN_GROUP
 #define IPV6_DROP_MEMBERSHIP    IPV6_LEAVE_GROUP
@@ -364,6 +369,16 @@ struct ip6_mtuinfo
 #define IPV6_PMTUDISC_WANT      1
 #define IPV6_PMTUDISC_DO        2
 #define IPV6_PMTUDISC_PROBE     3
+#define IPV6_PMTUDISC_INTERFACE 4
+#define IPV6_PMTUDISC_OMIT      5
+
+#define IPV6_PREFER_SRC_TMP            0x0001
+#define IPV6_PREFER_SRC_PUBLIC         0x0002
+#define IPV6_PREFER_SRC_PUBTMP_DEFAULT 0x0100
+#define IPV6_PREFER_SRC_COA            0x0004
+#define IPV6_PREFER_SRC_HOME           0x0400
+#define IPV6_PREFER_SRC_CGA            0x0008
+#define IPV6_PREFER_SRC_NONCGA         0x0800
 
 #define IPV6_RTHDR_LOOSE        0
 #define IPV6_RTHDR_STRICT       1

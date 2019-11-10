@@ -13,14 +13,12 @@
          T __vm_unlock
          W __vm_unlock_impl
          T __wait
-         T _emscripten_atomic_fetch_and_add_u64
-         T _emscripten_atomic_fetch_and_and_u64
-         T _emscripten_atomic_fetch_and_or_u64
-         T _emscripten_atomic_fetch_and_sub_u64
-         T _emscripten_atomic_fetch_and_xor_u64
          T _pthread_getcanceltype
          T _pthread_isduecanceled
          T _pthread_msecs_until
+         T ___atomic_is_lock_free
+         T _llvm_atomic_load_add_i32_p0i32
+         T _llvm_memory_barrier
          U accept
          U access
          U atexit
@@ -44,29 +42,15 @@
          U dup
          U dup2
          U emscripten_asm_const
-         T emscripten_atomic_add_u64
-         T emscripten_atomic_and_u64
-         U emscripten_atomic_cas_u32
-         T emscripten_atomic_cas_u64
-         T emscripten_atomic_exchange_u32
-         T emscripten_atomic_exchange_u64
-         T emscripten_atomic_load_f32
-         T emscripten_atomic_load_f64
-         U emscripten_atomic_load_u32
-         T emscripten_atomic_load_u64
-         T emscripten_atomic_or_u64
-         T emscripten_atomic_store_f32
-         T emscripten_atomic_store_f64
-         U emscripten_atomic_store_u32
-         T emscripten_atomic_store_u64
-         T emscripten_atomic_sub_u64
-         T emscripten_atomic_xor_u64
          U emscripten_futex_wait
          U emscripten_futex_wake
          U emscripten_get_now
          U emscripten_is_main_runtime_thread
          T emscripten_main_thread_process_queued_calls
+         T emscripten_pthread_attr_settransferredcanvases
+         T emscripten_pthread_attr_gettransferredcanvases
          T emscripten_sync_run_in_main_thread
+         T emscripten_sync_run_in_main_thread_0
          T emscripten_sync_run_in_main_thread_1
          T emscripten_sync_run_in_main_thread_2
          T emscripten_sync_run_in_main_thread_3
@@ -134,6 +118,7 @@
          U mktemp
          U mmap
          U munmap
+         T nanosleep
          U open
          U opendir
          U pclose

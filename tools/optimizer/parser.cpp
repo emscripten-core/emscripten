@@ -1,3 +1,7 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
 #include "parser.h"
 
@@ -34,13 +38,16 @@ IString TOPLEVEL("toplevel"),
         NaN("nan"),
         TEMP_RET0("tempRet0"),
         UNARY_PREFIX("unary-prefix"),
-        UNARY_POSTFIX("unary-postfix"),
         MATH_FROUND("Math_fround"),
         SIMD_FLOAT32X4("SIMD_Float32x4"),
         SIMD_FLOAT64X2("SIMD_Float64x2"),
         SIMD_INT8X16("SIMD_Int8x16"),
         SIMD_INT16X8("SIMD_Int16x8"),
         SIMD_INT32X4("SIMD_Int32x4"),
+        SIMD_BOOL8X16("SIMD_Bool8x16"),
+        SIMD_BOOL16X8("SIMD_Bool16x8"),
+        SIMD_BOOL32X4("SIMD_Bool32x4"),
+        SIMD_BOOL64X2("SIMD_Bool64x2"),
         PLUS("+"),
         MINUS("-"),
         OR("|"),

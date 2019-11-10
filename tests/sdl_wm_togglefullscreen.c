@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <SDL/SDL_ttf.h>
@@ -12,6 +19,8 @@ int inFullscreen = 0;
 
 int wasFullscreen = 0;
 
+int finished = 0;
+
 void render() {
   int width, height, isfs;
   emscripten_get_canvas_size(&width, &height, &isfs);
@@ -21,8 +30,11 @@ void render() {
 
 void mainloop() {
   render();
+
+  if (finished) return;
+
   SDL_Event event;
-  int isInFullscreen = EM_ASM_INT_V(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
+  int isInFullscreen = EM_ASM_INT(return !!(document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement));
   if (isInFullscreen && !wasFullscreen) {
     printf("Successfully transitioned to fullscreen mode!\n");
     wasFullscreen = isInFullscreen;
@@ -30,12 +42,11 @@ void mainloop() {
   
   if (wasFullscreen && !isInFullscreen) {
     printf("Exited fullscreen. Test succeeded.\n");
-    result = 1;
 #ifdef REPORT_RESULT
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     wasFullscreen = isInFullscreen;
-    emscripten_cancel_main_loop();
+    finished = 1;
     return;
   }
 
@@ -53,9 +64,9 @@ void mainloop() {
             printf("Exited fullscreen. Test failed, fullscreen transition did not happen!\n");
           }
 #ifdef REPORT_RESULT
-          REPORT_RESULT();
+          REPORT_RESULT(result);
 #endif
-          emscripten_cancel_main_loop();
+          finished = 1;
           return;
         } else {
           printf("Entering fullscreen...\n");

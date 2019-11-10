@@ -1,5 +1,5 @@
 ; ModuleID = 'tests/hello_world.bc'
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target datalayout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
 target triple = "asmjs-unknown-emscripten"
 
 @globaliz = global [300 x i8] zeroinitializer
@@ -11,7 +11,7 @@ define i64 @retter(i64 %x) {
   ret i64 7017280452245743464
 }
 
-define i32 @main() {
+define i32 @main() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
   %buffer = alloca i8, i32 1000, align 4
   %bundled = bitcast i8* %buffer to i104*
@@ -178,7 +178,7 @@ a100:
   br label %done
 
 a111:
-  %aaaa79 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %aaaa79 = landingpad { i8*, i32 }
           cleanup
   br label %done
 

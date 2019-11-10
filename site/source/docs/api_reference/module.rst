@@ -4,15 +4,15 @@
 Module object
 =============
 
-``Module`` is a global JavaScript object with attributes that Emscripten-generated code calls at various points in its execution. 
+``Module`` is a global JavaScript object with attributes that Emscripten-generated code calls at various points in its execution.
 
 Developers can provide an implementation of ``Module`` to control the execution of code. For example, to define how notification messages from Emscripten are displayed, developers implement the :js:attr:`Module.print` attribute.
 
-.. note:: ``Module`` is also used to provide access to all Emscripten API functions (for example :js:func:`ccall`) in a way that avoids issues with function name minification at higher optimisation levels. These functions are documented as part of their own APIs.
+.. note:: ``Module`` is also used to provide access to Emscripten API functions (for example :js:func:`ccall`) in a safe way. Any function or runtime method exported (using ``EXPORTED_FUNCTIONS`` for compiled functions, or ``EXTRA_EXPORTED_RUNTIME_METHODS`` for runtime methods like ``ccall``) will be accessible on the ``Module`` object, without minification changing the name, and the optimizer will make sure to keep the function present (and not remove it as unused). See the :ref:`relevant FAQ entry<faq-export-stuff>`.
 
 .. contents:: Table of Contents
-	:local:
-	:depth: 1
+  :local:
+  :depth: 1
 
 
 .. _module-creating:
@@ -20,86 +20,119 @@ Developers can provide an implementation of ``Module`` to control the execution 
 Creating the Module object
 ==========================
 
-Use emcc's :ref:`pre-js option<emcc-pre-js>` to add JavaScript code that defines (or extends) the ``Module`` object with the behaviour you need. 
+Use emcc's :ref:`pre-js option<emcc-pre-js>` to add JavaScript code that defines (or extends) the ``Module`` object with the behaviour you need.
 
 When generating only JavaScript (as opposed to HTML), no ``Module`` object is created by default, and the behaviour is entirely defined by the developer. For example, creating a ``Module`` object with the following code will cause all notifications from the program to be calls to ``alert()``.
 
-	::
+  .. code-block:: javascript
 
-		var Module = {
-		  'print': function(text) { alert('stdout: ' + text) }
-		  'printErr': function(text) { alert('stderr: ' + text) }
-		};
+    var Module = {
+      'print': function(text) { alert('stdout: ' + text) },
+      'printErr': function(text) { alert('stderr: ' + text) }
+    };
 
 .. important:: If you run the :term:`Closure Compiler` on your code (which is optional, and can be done by ``--closure 1``), you will need quotation marks around the properties of ``Module`` as in the example above. In addition, you need to run closure on the compiled code together with the declaration of ``Module`` — this is done automatically for a ``-pre-js`` file.
 
-When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example
+When generating HTML, Emscripten creates a ``Module`` object with default methods (see `src/shell.html <https://github.com/kripken/emscripten/blob/1.29.12/src/shell.html#L1220>`_). In this case you should again use ``--pre-js``, but this time you add properties to the *existing* ``Module`` object, for example:
 
-	::
+  .. code-block:: javascript
 
-		Module['print'] = function(text) { alert('stdout: ' + text) };
+    Module['print'] = function(text) { alert('stdout: ' + text) };
 
+Note that once the Module object is received by the main JavaScript file, it will look for `Module['print']` and so forth at that time, and use them accordingly. Changing their values later may not be noticed.
 
 Affecting execution
 ===================
 
-The following ``Module`` attributes affect code execution. 
-
-
-.. js:attribute:: Module.print
-
-	Called when something is printed to standard output (stdout)
-	
-.. js:attribute:: Module.printErr
-
-	Called when something is printed to standard error (stderr)
+The following ``Module`` attributes affect code execution. Set them to customize behavior.
 
 
 .. js:attribute:: Module.arguments
 
-	The commandline arguments. The value of ``arguments`` contains the values returned if compiled code checks ``argc`` and ``argv``.
+  The commandline arguments. The value of ``arguments`` contains the values returned if compiled code checks ``argc`` and ``argv``.
 
-
-.. js:attribute:: Module.preInit
-
-	A function (or array of functions) that must be called before global initializers run, but after basic initialization of the JavaScript runtime. This is typically used for :ref:`File System operations <Filesystem-API>`.
-	
-	
-.. js:attribute:: Module.preRun
-
-	An array of functions to call right before calling ``run()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` — as this needs to happen after the FileSystem API has been loaded, but before the program starts to run.
-
-	.. note:: If code needs to affect global initializers, it should instead be run using :js:attr:`preInit`.
-
-
-.. js:attribute:: Module.noInitialRun
-
-	If ``noInitialRun`` is set to ``true``, ``main()`` will not be automatically called (you can do so yourself later). The program will still call global initializers, set up memory initialization, and so forth.
-
-
-.. js:attribute:: Module.noExitRuntime
-
-	If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
-
-.. js:attribute:: Module.filePackagePrefixURL
-
-	This is the "prefix" URL for a preloaded data file that is hosted separately from its JavaScript and HTML files (it includes the full path up to, but not including, the data file). See :ref:`packaging-files-data-file-location` for more information.
-	
 .. js:attribute:: Module.locateFile
 
-	If set, this method will be called when the runtime needs to load either a file generated by the file packager (this is a generalization of ``Module.filePackagePrefixURL``), or the ``.mem`` memory init file. In both cases the function receives the URL, and should return the actual URL. This lets you host file packages or the ``.mem`` file on a different location than the current directory (which is the default expectation), for example if you want to host them on a CDN.
+  If set, this method will be called when the runtime needs to load a file, such as a ``.wasm`` WebAssembly file, ``.mem`` memory init file, or a file generated by the file packager. The function receives the relative path to the file as configured in build process and a ``prefix`` (path to the main JavaScript file's directory), and should return the actual URL. This lets you host file packages or the ``.mem`` file etc. on a different location than the directory of the JavaScript file (which is the default expectation), for example if you want to host them on a CDN.
+
+  .. note:: ``prefix`` might be an empty string, if ``locateFile`` is called before we load the main JavaScript. For example, that can happen if a file package or a mememory initializer file are loaded beforehand (perhaps from the HTML, before it loads the main JavaScript).
+
+  .. note:: Several ``Module.*PrefixURL`` options have been deprecated in favor of ``locateFile``, which includes ``memoryInitializerPrefixURL``, ``pthreadMainPrefixURL``, ``cdInitializerPrefixURL``, ``filePackagePrefixURL``. To update your code, for example if you used ``Module.memoryInitializerPrefixURL`` equal to ``"https://mycdn.com/memory-init-dir/"``, then you can replace that with something like:
+
+    .. code-block:: javascript
+
+      Module['locateFile'] = function(path, prefix) {
+        // if it's a mem init file, use a custom dir
+        if (path.endsWith(".mem")) return "https://mycdn.com/memory-init-dir/" + path;
+        // otherwise, use the default, the prefix (JS file's dir) + the path
+        return prefix + path;
+      }
 
 .. js:attribute:: Module.logReadFiles
 
-	If set, :js:attr:`Module.printErr` will log when any file is read.
+  If set, stderr will log when any file is read.
 
-	
+.. js:attribute:: Module.onAbort
+
+  If set, this function is called when abnormal program termination occurs. That can happen due to the C method ``abort()`` being called directly, or called from JavaScript, or due to a fatal problem such as being unable to fetch a necessary file during startup (like the wasm binary when running wasm), etc. After calling this function, program termination occurs (i.e., you can't use this to try to do something else instead of stopping; there is no possibility of recovering here).
+
+.. js:attribute:: Module.onRuntimeInitialized
+
+  If set, this function is called when the runtime is fully initialized, that is, when compiled code is safe to run, which is after any asynchronous startup operations have completed (such as asynchronous WebAssembly compilation, file preloading, etc.). (An alternative to waiting for this to be called is to wait for ``main()`` to be called.)
+
+.. js:attribute:: Module.noExitRuntime
+
+  If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
+
+.. js:attribute:: Module.noInitialRun
+
+  If ``noInitialRun`` is set to ``true``, ``main()`` will not be automatically called (you can do so yourself later). The program will still call global initializers, set up memory initialization, and so forth.
+
+.. js:attribute:: Module.preInit
+
+  A function (or array of functions) that must be called before global initializers run, but after basic initialization of the JavaScript runtime. This is typically used for :ref:`File System operations <Filesystem-API>`.
+
+.. js:attribute:: Module.preinitializedWebGLContext
+
+  If building with -s GL_PREINITIALIZED_CONTEXT=1 set, you can set ``Module.preinitializedWebGLContext`` to a precreated instance of a WebGL context, which will be used later when initializing WebGL in C/C++ side. Precreating the GL context is useful if doing GL side loading (shader compilation, texture loading etc.) parallel to other page startup actions, and/or for detecting WebGL feature support, such as GL version or compressed texture support up front on a page before or in parallel to loading up any compiled code.
+
+.. js:attribute:: Module.preRun
+
+  An array of functions to call right before calling ``run()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` — as this needs to happen after the FileSystem API has been loaded, but before the program starts to run.
+
+  .. note:: If code needs to affect global initializers, it should instead be run using :js:attr:`preInit`.
+
+.. js:attribute:: Module.print
+
+  Called when something is printed to standard output (stdout)
+
+.. js:attribute:: Module.printErr
+
+  Called when something is printed to standard error (stderr)
+
+
 Other methods
 =============
 
 .. js:function:: Module.destroy(obj)
 
-	This method should be called to destroy C++ objects created in JavaScript using :ref:`WebIDL bindings <WebIDL-Binder>`. If this method is not called, an object may be garbage collected, but its destructor will not be called.
+  This method should be called to destroy C++ objects created in JavaScript using :ref:`WebIDL bindings <WebIDL-Binder>`. If this method is not called, an object may be garbage collected, but its destructor will not be called.
 
-	:param obj: The JavaScript-wrapped C++ object to be destroyed.
-	
+  :param obj: The JavaScript-wrapped C++ object to be destroyed.
+
+.. js:function:: Module.getPreloadedPackage
+
+  If you want to manually manage the download of .data file packages for custom caching, progress reporting and error handling behavior, you can implement the ``Module.getPreloadedPackage = function(remotePackageName, remotePackageSize)`` callback to provide the contents of the data files back to the file loading scripts. The return value of this callback should be an Arraybuffer with the contents of the downloade file data. See file ``tests/manual_download_data.html`` and the test ``browser.test_preload_file_with_manual_data_download`` for an example.
+
+.. js:function:: Module.instantiateWasm
+
+  When targeting WebAssembly, Module.instantiateWasm is an optional user-implemented callback function that the Emscripten runtime calls to perform the WebAssembly instantiation action. The callback function will be called with two parameters, ``imports`` and ``successCallback``. ``imports`` is a JS object which contains all the function imports that need to be passed to the WebAssembly Module when instantiating, and once instantiated, this callback function should call ``successCallback()`` with the generated WebAssembly Instance object.
+
+  The instantiation can be performed either synchronously or asynchronously. The return value of this function should contain the ``exports`` object of the instantiated WebAssembly Module, or an empty dictionary object ``{}`` if the instantiation is performed asynchronously, or ``false`` if instantiation failed.
+
+  Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``tests/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
+
+.. js:function:: Module.onCustomMessage
+
+  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/kripken/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/kripken/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/kripken/emscripten/blob/master/src/proxyWorker.js>`_).
+

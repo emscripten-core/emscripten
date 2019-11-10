@@ -1,13 +1,13 @@
 ; ModuleID = '/tmp/tmpJctwj0/bug.bc'
 ; just an asm validation check, no output
-target datalayout = "e-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-f32:32:32-f64:64:64-p:32:32:32-v128:32:128-n32-S128"
+target datalayout = "e-p:32:32-i64:64-v128:32:128-n32-S128"
 target triple = "asmjs-unknown-emscripten"
 
 %"class.test::Processor" = type { i32, %"class.test::StateMachine" }
 %"class.test::StateMachine" = type { { i32, i32 } }
 
-@_ZN4test9ProcessorC1Ev = internal alias void (%"class.test::Processor"*)* @_ZN4test9ProcessorC2Ev
-@_ZN4test9ProcessorD1Ev = internal alias void (%"class.test::Processor"*)* @_ZN4test9ProcessorD2Ev
+@_ZN4test9ProcessorC1Ev = internal alias void (%"class.test::Processor"*), void (%"class.test::Processor"*)* @_ZN4test9ProcessorC2Ev
+@_ZN4test9ProcessorD1Ev = internal alias void (%"class.test::Processor"*), void (%"class.test::Processor"*)* @_ZN4test9ProcessorD2Ev
 
 define internal void @_ZN4test9ProcessorC2Ev(%"class.test::Processor"* nocapture %this) unnamed_addr nounwind align 2 {
   %1 = getelementptr inbounds %"class.test::Processor", %"class.test::Processor"* %this, i32 0, i32 0
@@ -103,7 +103,7 @@ define internal i32 @_ZNK4test9Processor6resultEv(%"class.test::Processor"* noca
   ret i32 %2
 }
 
-define i32 @runProcess() {
+define i32 @runProcess() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
   %processor = alloca %"class.test::Processor", align 4
   call void @_ZN4test9ProcessorC1Ev(%"class.test::Processor"* %processor)
   %1 = invoke zeroext i1 @_ZN4test9Processor3runEv(%"class.test::Processor"* %processor)
@@ -118,7 +118,7 @@ define i32 @runProcess() {
   ret i32 %3
 
 ; <label>:5                                       ; preds = %2, %0
-  %6 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %6 = landingpad { i8*, i32 }
           cleanup
   invoke void @_ZN4test9ProcessorD1Ev(%"class.test::Processor"* %processor)
           to label %7 unwind label %8
@@ -127,7 +127,7 @@ define i32 @runProcess() {
   resume { i8*, i32 } %6
 
 ; <label>:8                                       ; preds = %5
-  %9 = landingpad { i8*, i32 } personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*)
+  %9 = landingpad { i8*, i32 }
           catch i8* null
   call void @_ZSt9terminatev() noreturn nounwind
   unreachable

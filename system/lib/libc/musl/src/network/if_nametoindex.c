@@ -10,7 +10,7 @@ unsigned if_nametoindex(const char *name)
 	struct ifreq ifr;
 	int fd, r;
 
-	if ((fd = socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0)) < 0) return -1;
+	if ((fd = socket(AF_UNIX, SOCK_DGRAM|SOCK_CLOEXEC, 0)) < 0) return 0;
 	strncpy(ifr.ifr_name, name, sizeof ifr.ifr_name);
 	r = ioctl(fd, SIOCGIFINDEX, &ifr);
 	__syscall(SYS_close, fd);

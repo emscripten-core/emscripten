@@ -114,4 +114,10 @@ long double expm1l(long double x)
 	x = px * qx + (px - 1.0);
 	return x;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double expm1l(long double x)
+{
+	return expm1(x);
+}
 #endif

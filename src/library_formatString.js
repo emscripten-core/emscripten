@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   // Performs printf-style formatting.
   //   format: A pointer to the format string.
@@ -8,11 +13,25 @@ mergeInto(LibraryManager.library, {
     assert((varargs & 3) === 0);
     var textIndex = format;
     var argIndex = varargs;
+    // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
+    // It also does an assert on i32 values, so it's nice to call it before all varargs calls.
+    function prepVararg(ptr, type) {
+      if (type === 'double' || type === 'i64') {
+        // move so the load is aligned
+        if (ptr & 7) {
+          assert((ptr & 7) === 4);
+          ptr += 4;
+        }
+      } else {
+        assert((ptr & 3) === 0);
+      }
+      return ptr;
+    }
     function getNextArg(type) {
       // NOTE: Explicitly ignoring type safety. Otherwise this fails:
       //       int x = 4; printf("%c\n", (char)x);
       var ret;
-      argIndex = Runtime.prepVararg(argIndex, type);
+      argIndex = prepVararg(argIndex, type);
       if (type === 'double') {
         ret = {{{ makeGetValue('argIndex', 0, 'double', undefined, undefined, true) }}};
         argIndex += 8;
@@ -154,14 +173,14 @@ mergeInto(LibraryManager.library, {
             // Integer.
             var signed = next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}};
             argSize = argSize || 4;
-            var currArg = getNextArg('i' + (argSize * 8));
+            currArg = getNextArg('i' + (argSize * 8));
 #if PRECISE_I64_MATH
             var origArg = currArg;
 #endif
             var argText;
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
-              currArg = Runtime.makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
+              currArg = makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
             }
             // Truncate to requested size.
             if (argSize <= 4) {
@@ -173,12 +192,12 @@ mergeInto(LibraryManager.library, {
             var prefix = '';
             if (next == {{{ charCode('d') }}} || next == {{{ charCode('i') }}}) {
 #if PRECISE_I64_MATH
-              if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], null); else
+              if (argSize == 8 && typeof i64Math === 'object') argText = i64Math.stringify(origArg[0], origArg[1], null); else
 #endif
               argText = reSign(currArg, 8 * argSize, 1).toString(10);
             } else if (next == {{{ charCode('u') }}}) {
 #if PRECISE_I64_MATH
-              if (argSize == 8 && i64Math) argText = i64Math.stringify(origArg[0], origArg[1], true); else
+              if (argSize == 8 && typeof i64Math === 'object') argText = i64Math.stringify(origArg[0], origArg[1], true); else
 #endif
               argText = unSign(currArg, 8 * argSize, 1).toString(10);
               currArg = Math.abs(currArg);
@@ -187,7 +206,7 @@ mergeInto(LibraryManager.library, {
             } else if (next == {{{ charCode('x') }}} || next == {{{ charCode('X') }}}) {
               prefix = (flagAlternative && currArg != 0) ? '0x' : '';
 #if PRECISE_I64_MATH
-              if (argSize == 8 && i64Math) {
+              if (argSize == 8 && typeof i64Math === 'object') {
                 if (origArg[1]) {
                   argText = (origArg[1]>>>0).toString(16);
                   var lower = (origArg[0]>>>0).toString(16);
@@ -266,7 +285,7 @@ mergeInto(LibraryManager.library, {
           }
           case 'f': case 'F': case 'e': case 'E': case 'g': case 'G': {
             // Float.
-            var currArg = getNextArg('double');
+            currArg = getNextArg('double');
             var argText;
             if (isNaN(currArg)) {
               argText = 'nan';
@@ -428,7 +447,7 @@ mergeInto(LibraryManager.library, {
     var result = __formatString(format, varargs);
     var string = intArrayToString(result);
     if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    Module.print(string);
+    out(string);
     return result.length;
   },
   puts: function(s) {
@@ -436,7 +455,7 @@ mergeInto(LibraryManager.library, {
     var result = Pointer_stringify(s);
     var string = result.substr(0);
     if (string[string.length-1] === '\n') string = string.substr(0, string.length-1); // remove a final \n, as Module.print will do that
-    Module.print(string);
+    out(string);
     return result.length;
   },
 });

@@ -1,0 +1,7 @@
+BasedOnStyle: LLVM
+PointerAlignment: Left
+IndentCaseLabels: true
+ColumnLimit: 100
+ContinuationIndentWidth: 2
+ConstructorInitializerIndentWidth: 2
+AlignAfterOpenBracket: DontAlign

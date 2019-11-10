@@ -1,5 +1,12 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
+#if FILESYSTEM == 1
   $PATH__deps: ['$FS'],
+#endif
   $PATH: {
     // split a filename into [root, dir, basename, ext], unix version
     // 'root' is just a slash, or nothing.
@@ -24,7 +31,7 @@ mergeInto(LibraryManager.library, {
       }
       // if the path is allowed to go above the root, restore leading ..s
       if (allowAboveRoot) {
-        for (; up--; up) {
+        for (; up; up--) {
           parts.unshift('..');
         }
       }

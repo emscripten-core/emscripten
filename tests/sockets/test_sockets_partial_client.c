@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -20,9 +27,11 @@ int sum = 0;
 void finish(int result) {
   close(sockfd);
 #ifdef __EMSCRIPTEN__
-  REPORT_RESULT();
-#endif
+  REPORT_RESULT(result);
+  emscripten_force_exit(result);
+#else
   exit(result);
+#endif
 }
 
 void iter() {
@@ -54,7 +63,7 @@ void iter() {
   }
 
   if (res != 1) {
-    perror("should read 1 byte");
+    fprintf(stderr, "should read 1 byte, got: %d, sum %d so far\n", res, sum);
     finish(EXIT_FAILURE);
   }
 

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
@@ -264,8 +271,8 @@ void mainloop()
   for(int i = 0; i < numGamepads && i < 32; ++i)
   {
     EmscriptenGamepadEvent ge;
-    int failed = emscripten_get_gamepad_status(i, &ge);
-    if (!failed)
+    int ret = emscripten_get_gamepad_status(i, &ge);
+    if (ret == EMSCRIPTEN_RESULT_SUCCESS)
     {
       int g = ge.index;
       for(int j = 0; j < ge.numAxes; ++j)
@@ -288,8 +295,7 @@ void mainloop()
 #ifdef REPORT_RESULT
 void report_result(void *arg)
 {
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 }
 #endif
 

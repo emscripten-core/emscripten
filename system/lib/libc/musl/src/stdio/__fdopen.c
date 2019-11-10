@@ -1,6 +1,5 @@
 #include "stdio_impl.h"
 #include <stdlib.h>
-#include <termios.h>
 #include <sys/ioctl.h>
 #include <fcntl.h>
 #include <errno.h>
@@ -9,7 +8,7 @@
 FILE *__fdopen(int fd, const char *mode)
 {
 	FILE *f;
-	struct termios tio;
+	struct winsize wsz;
 
 	/* Check for valid initial mode character */
 	if (!strchr("rwa", *mode)) {
@@ -43,7 +42,7 @@ FILE *__fdopen(int fd, const char *mode)
 
 	/* Activate line buffered mode for terminals */
 	f->lbf = EOF;
-	if (!(f->flags & F_NOWR) && !__syscall(SYS_ioctl, fd, TCGETS, &tio))
+	if (!(f->flags & F_NOWR) && !__syscall(SYS_ioctl, fd, TIOCGWINSZ, &wsz))
 		f->lbf = '\n';
 
 	/* Initialize op ptrs. No problem if some are unneeded. */
@@ -55,13 +54,7 @@ FILE *__fdopen(int fd, const char *mode)
 	if (!libc.threaded) f->lock = -1;
 
 	/* Add new FILE to open file list */
-	OFLLOCK();
-	f->next = libc.ofl_head;
-	if (libc.ofl_head) libc.ofl_head->prev = f;
-	libc.ofl_head = f;
-	OFLUNLOCK();
-
-	return f;
+	return __ofl_add(f);
 }
 
 weak_alias(__fdopen, fdopen);

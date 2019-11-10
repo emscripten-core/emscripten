@@ -1,3 +1,10 @@
+/*
+ * Copyright 2011 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +61,7 @@ int main(int argc, char **argv){
   sqlite3 *db;
   char *zErrMsg = 0;
   int rc, i;
-  clock_t t;
+  double t;
   int n, m;
 
   n = argc > 1 ? atoi(argv[1]) : 5000;
@@ -79,12 +86,12 @@ int main(int argc, char **argv){
 
   #define TIME(msg) \
     { \
-      int now = emscripten_get_now(); \
-      printf(msg " : took %d ms\n", (int)(now - t)); \
+      double now = emscripten_get_now(); \
+      printf(msg " : took %f ms\n", now - t); \
       t = now; \
     }
 
-  t = clock();
+  t = emscripten_get_now();
   TIME("'startup' - IGNORE THIS VALUE, it is an artifact");
 
   RUN("CREATE TABLE t1(a INTEGER, b INTEGER, c VARCHAR(100));");

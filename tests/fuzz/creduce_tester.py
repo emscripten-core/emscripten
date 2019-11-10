@@ -1,4 +1,8 @@
 #!/usr/bin/python
+# Copyright 2013 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 Usage: creduce ./creduce_tester.py newfail1.c
@@ -17,13 +21,13 @@ ENGINE = shared.JS_ENGINES[0]
 EMCC_ARGS = ['-O2', '-s', 'ASM_JS=1', '-s', 'PRECISE_I64_MATH=1']
 
 filename = sys.argv[1]
-obj_filename = os.path.splitext(filename)[0]
+obj_filename = shared.unsuffixed(filename)
 js_filename = obj_filename + '.js'
 print 'testing file', filename
 
 try:
   print '2) Compile natively'
-  shared.check_execute([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
+  shared.run_process([shared.CLANG_CC, '-O2', filename, '-o', obj_filename] + CSMITH_CFLAGS)
   print '3) Run natively'
   correct = jsrun.timeout_run(Popen([obj_filename], stdout=PIPE, stderr=PIPE), 3)
 except Exception, e:
@@ -33,7 +37,7 @@ except Exception, e:
 print '4) Compile JS-ly and compare'
 
 def try_js(args):
-  shared.check_execute([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
+  shared.run_process([shared.PYTHON, shared.EMCC] + EMCC_ARGS + CSMITH_CFLAGS + args +
     [filename, '-o', js_filename])
   js = shared.run_js(js_filename, stderr=PIPE, engine=ENGINE)
   assert correct == js

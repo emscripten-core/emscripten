@@ -241,11 +241,11 @@ int main(int argc, char *argv[])
     if (!ok) {
       printf("Shader compilation error with fragment\n");
       GLint infoLen = 0;
-      glGetShaderiv (vs, GL_INFO_LOG_LENGTH, &infoLen);
+      glGetShaderiv (fs, GL_INFO_LOG_LENGTH, &infoLen);
       if (infoLen > 1)
       {
          char* infoLog = (char *)malloc(sizeof(char) * infoLen+1);
-         glGetShaderInfoLog(vs, infoLen, NULL, infoLog);
+         glGetShaderInfoLog(fs, infoLen, NULL, infoLog);
          printf("Error compiling shader:\n%s\n", infoLog);            
       }
     }

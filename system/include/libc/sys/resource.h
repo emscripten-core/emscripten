@@ -19,14 +19,12 @@ extern "C" {
 
 typedef unsigned long long rlim_t;
 
-struct rlimit
-{
+struct rlimit {
 	rlim_t rlim_cur;
 	rlim_t rlim_max;
 };
 
-struct rusage
-{
+struct rusage {
 	struct timeval ru_utime;
 	struct timeval ru_stime;
 	/* linux extentions, but useful */
@@ -68,7 +66,8 @@ int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
 #define PRIO_USER    2
 
 #define RUSAGE_SELF     0
-#define RUSAGE_CHILDREN 1
+#define RUSAGE_CHILDREN (-1)
+#define RUSAGE_THREAD   1
 
 #define RLIM_INFINITY (~0ULL)
 #define RLIM_SAVED_CUR RLIM_INFINITY
@@ -96,6 +95,9 @@ int prlimit(pid_t, int, const struct rlimit *, struct rlimit *);
 #define RLIM_NLIMITS RLIMIT_NLIMITS
 
 #if defined(_LARGEFILE64_SOURCE) || defined(_GNU_SOURCE)
+#define RLIM64_INFINITY RLIM_INFINITY
+#define RLIM64_SAVED_CUR RLIM_SAVED_CUR
+#define RLIM64_SAVED_MAX RLIM_SAVED_MAX
 #define getrlimit64 getrlimit
 #define setrlimit64 setrlimit
 #define rlimit64 rlimit

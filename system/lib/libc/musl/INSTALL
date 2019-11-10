@@ -18,24 +18,17 @@ Build Prerequisites
 
 The only build-time prerequisites for musl are GNU Make and a
 freestanding C99 compiler toolchain targeting the desired instruction
-set architecture and ABI, with support for gcc-style inline assembly,
-weak aliases, and stand-alone assembly source files.
+set architecture and ABI, with support for a minimal subset of "GNU C"
+extensions consisting mainly of gcc-style inline assembly, weak
+aliases, hidden visibility, and stand-alone assembly source files.
+
+GCC, LLVM/clang, Firm/cparser, and PCC have all successfully built
+musl, but GCC is the most widely used/tested. Recent compiler (and
+binutils) versions should be used if possible since some older
+versions have bugs which affect musl.
 
 The system used to build musl does not need to be Linux-based, nor do
 the Linux kernel headers need to be available.
-
-If support for dynamic linking is desired, some further requirements
-are placed on the compiler and linker. In particular, the linker must
-support the -Bsymbolic-functions option.
-
-At present, GCC 4.6 or later is the recommended compiler for building
-musl. Any earlier version of GCC with full C99 support should also
-work, but may be subject to minor floating point conformance issues on
-i386 targets. Sufficiently recent versions of PCC and LLVM/clang are
-also believed to work, but have not been tested as heavily; prior to
-Fall 2012, both had known bugs that affected musl. Firm/cparser is
-also believed to work but lacks support for producing shared
-libraries.
 
 
 
@@ -50,11 +43,16 @@ and ABI combinations:
       the `cmpxchg` instruction is added
 
 * x86_64
+    * ILP32 ABI (x32) is available as a separate arch but is still
+      experimental
 
 * ARM
     * EABI, standard or hard-float VFP variant
     * Little-endian default; big-endian variants also supported
     * Compiler toolchains only support armv4t and later
+
+* AArch64
+    * Little-endian default; big-endian variants also supported
 
 * MIPS
     * ABI is o32
@@ -64,6 +62,12 @@ and ABI combinations:
     * MIPS2 or later, or kernel emulation of ll/sc (standard in Linux)
       is required
 
+* MIPS64
+    * ABI is n64 (LP64)
+    * Big-endian default; little-endian variants also supported
+    * Default ABI variant uses FPU registers; alternate soft-float ABI
+      that does not use FPU registers or instructions is available
+
 * PowerPC
     * Only 32-bit is supported
     * Compiler toolchain must provide 64-bit long double, not IBM
@@ -71,21 +75,18 @@ and ABI combinations:
     * For dynamic linking, compiler toolchain must be configured for
       "secure PLT" variant
 
+* SuperH (SH)
+    * Standard ELF ABI or FDPIC ABI (shared-text without MMU)
+    * Little-endian by default; big-engian variant also supported
+    * Full FPU ABI or soft-float ABI is supported, but the
+      single-precision-only FPU ABI is not
+
 * Microblaze
     * Big-endian default; little-endian variants also supported
     * Soft-float
     * Requires support for lwx/swx instructions
 
-The following additional targets are available for build, but may not
-work correctly and may not yet have ABI stability:
-
-* SuperH (SH)
-    * Little-endian by default; big-engian variant also supported
-    * Full FPU ABI or soft-float ABI is supported, but the
-      single-precision-only FPU ABI is not supported (musl always
-      requires IEEE single and double to be supported)
-
-* x32 (x86_64 ILP32 ABI)
+* OpenRISC 1000 (or1k)
 
 
 

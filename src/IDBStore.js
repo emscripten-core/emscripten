@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 {
   indexedDB: function() {
     if (typeof indexedDB !== 'undefined') return indexedDB;
@@ -45,6 +50,7 @@
   },
   getStore: function(dbName, type, callback) {
     IDBStore.getDB(dbName, function(error, db) {
+      if (error) return callback(error);
       var transaction = db.transaction([IDBStore.DB_STORE_NAME], type);
       transaction.onerror = function(e) {
         callback(this.error || 'unknown error');

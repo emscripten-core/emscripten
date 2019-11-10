@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <assert.h>
@@ -5,6 +12,7 @@
 
 int result = 1;
 
+#define abs(x) ((x) < 0 ? -(x) : (x))
 void one() {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
@@ -16,23 +24,37 @@ void one() {
         SDL_GetMouseState(&x, &y);
         assert(x == m->x && y == m->y);
         printf("motion: %d,%d  %d,%d\n", m->x, m->y, m->xrel, m->yrel);
-        result += 2 * (m->x + m->y + m->xrel + m->yrel);
+#ifdef TEST_SDL_MOUSE_OFFSETS
+        assert( (abs(m->x-5) <= 1 && abs(m->y-15) <= 1 && abs(m->xrel-5) <= 1 && abs(m->yrel-15) <= 1)
+            ||  (abs(m->x-25) <= 1 && abs(m->y-72) <= 1 && abs(m->xrel-20) <= 1 && abs(m->yrel-57) <= 1) );
+#else
+        assert( (abs(m->x-10) <= 1 && abs(m->y-20) <= 1 && abs(m->xrel-10) <= 1 && abs(m->yrel-20) <= 1)
+            ||  (abs(m->x-30) <= 1 && abs(m->y-77) <= 1 && abs(m->xrel-20) <= 1 && abs(m->yrel-57) <= 1) );
+#endif
         break;
       }
       case SDL_MOUSEBUTTONDOWN: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
         if (m->button == 2) {
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           emscripten_run_script("throw 'done'");
         }
         printf("button down: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
-        result += 3 * (m->button + m->state + m->x + m->y);
+#ifdef TEST_SDL_MOUSE_OFFSETS
+        assert(m->button == 1 && m->state == 1 && abs(m->x-5) <= 1 && abs(m->y-15) <= 1);
+#else
+        assert(m->button == 1 && m->state == 1 && abs(m->x-10) <= 1 && abs(m->y-20) <= 1);
+#endif
         break;
       }
       case SDL_MOUSEBUTTONUP: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
         printf("button up: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
-        result += 5 * (m->button + m->state + m->x + m->y);
+#ifdef TEST_SDL_MOUSE_OFFSETS
+        assert(m->button == 1 && m->state == 0 && abs(m->x-5) <= 1 && abs(m->y-15) <= 1);
+#else
+        assert(m->button == 1 && m->state == 0 && abs(m->x-10) <= 1 && abs(m->y-20) <= 1);
+#endif
         // Remove another click we want to ignore
         assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONDOWN) == 1);
         assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONUP, SDL_MOUSEBUTTONUP) == 1);

@@ -11,6 +11,9 @@
 #include "algorithm"
 #include "climits"
 #include "cstring"
+#include "cstdlib"
+#include "__debug"
+#include "__undef_macros"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -167,11 +170,13 @@ strstreambuf::overflow(int_type __c)
             buf = new char[new_size];
         if (buf == nullptr)
             return int_type(EOF);
-        memcpy(buf, eback(), static_cast<size_t>(old_size));
+        if (old_size != 0) {
+            _LIBCPP_ASSERT(eback(), "overflow copying from NULL");
+            memcpy(buf, eback(), static_cast<size_t>(old_size));
+        }
         ptrdiff_t ninp = gptr()  - eback();
         ptrdiff_t einp = egptr() - eback();
         ptrdiff_t nout = pptr()  - pbase();
-        ptrdiff_t eout = epptr() - pbase();
         if (__strmode_ & __allocated)
         {
             if (__pfree_)
@@ -180,8 +185,8 @@ strstreambuf::overflow(int_type __c)
                 delete [] eback();
         }
         setg(buf, buf + ninp, buf + einp);
-        setp(buf + einp, buf + einp + eout);
-        pbump(static_cast<int>(nout));
+        setp(buf + einp, buf + new_size);
+        __pbump(nout);
         __strmode_ |= __allocated;
     }
     *pptr() = static_cast<char>(__c);
@@ -263,6 +268,8 @@ strstreambuf::seekoff(off_type __off, ios_base::seekdir __way, ios_base::openmod
         case ios::end:
             newoff = seekhigh - eback();
             break;
+        default:
+            _LIBCPP_UNREACHABLE();
         }
         newoff += __off;
         if (0 <= newoff && newoff <= seekhigh - eback())
@@ -275,7 +282,7 @@ strstreambuf::seekoff(off_type __off, ios_base::seekdir __way, ios_base::openmod
                 // min(pbase, newpos), newpos, epptr()
                 __off = epptr() - newpos;
                 setp(min(pbase(), newpos), epptr());
-                pbump(static_cast<int>((epptr() - pbase()) - __off));
+                __pbump((epptr() - pbase()) - __off);
             }
             __p = newoff;
         }
@@ -305,7 +312,7 @@ strstreambuf::seekpos(pos_type __sp, ios_base::openmode __which)
                     // min(pbase, newpos), newpos, epptr()
                     off_type temp = epptr() - newpos;
                     setp(min(pbase(), newpos), epptr());
-                    pbump(static_cast<int>((epptr() - pbase()) - temp));
+                    __pbump((epptr() - pbase()) - temp);
                 }
                 __p = newoff;
             }

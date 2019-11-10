@@ -20,7 +20,7 @@ static struct {
 	sem_t *sem;
 	int refcnt;
 } *semtab;
-static int lock[2];
+static volatile int lock[2];
 
 #define FLAGS (O_RDWR|O_NOFOLLOW|O_CLOEXEC|O_NONBLOCK)
 
@@ -126,6 +126,7 @@ sem_t *sem_open(const char *name, int flags, ...)
 		e = link(tmp, name) ? errno : 0;
 		unlink(tmp);
 		if (!e) break;
+		munmap(map, sizeof(sem_t));
 		/* Failure is only fatal when doing an exclusive open;
 		 * otherwise, next iteration will try to open the
 		 * existing file. */

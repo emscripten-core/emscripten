@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <emscripten.h>
 #include <fcntl.h>
@@ -10,7 +17,7 @@ int result = 1;
 
 void success()
 {
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 void test() {
@@ -113,6 +120,17 @@ void test() {
       result = -24000 - errno;
   }
 
+#endif
+
+#if EXTRA_WORK
+  EM_ASM(
+    for (var i = 0; i < 100; i++) {
+      FS.syncfs(function (err) {
+        assert(!err);
+        console.log('extra work');
+      });
+    }
+  );
 #endif
 
   // sync from memory state to persisted and then

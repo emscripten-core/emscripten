@@ -15,7 +15,7 @@ extern "C" {
 #define SEM_FAILED ((sem_t *)0)
 
 typedef struct {
-	int __val[4*sizeof(long)/sizeof(int)];
+	volatile int __val[4*sizeof(long)/sizeof(int)];
 } sem_t;
 
 int    sem_close(sem_t *);

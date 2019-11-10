@@ -47,8 +47,8 @@ typedef uint64_t uint_least64_t;
 
 #define UINT8_MAX  (0xff)
 #define UINT16_MAX (0xffff)
-#define UINT32_MAX (0xffffffff)
-#define UINT64_MAX (0xffffffffffffffff)
+#define UINT32_MAX (0xffffffffu)
+#define UINT64_MAX (0xffffffffffffffffu)
 
 #define INT_FAST8_MIN   INT8_MIN
 #define INT_FAST64_MIN  INT64_MIN

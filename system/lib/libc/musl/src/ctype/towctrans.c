@@ -1,6 +1,5 @@
-#include <wchar.h>
 #include <wctype.h>
-#include <stdio.h>
+#include "libc.h"
 
 #define CASEMAP(u1,u2,l) { (u1), (l)-(u1), (u2)-(u1)+1 }
 #define CASELACE(u1,u2) CASEMAP((u1),(u2),(u1)+1)
@@ -152,7 +151,6 @@ static const unsigned short pairs[][2] = {
 	{ 0x03f7, 0x03f8 },
 	{ 0x03fa, 0x03fb },
 	{ 0x1e60, 0x1e9b },
-	{ 0xdf, 0xdf },
 	{ 0x1e9e, 0xdf },
 
 	{ 0x1f59, 0x1f51 },
@@ -266,3 +264,16 @@ wint_t towlower(wint_t wc)
 {
 	return __towcase(wc, 1);
 }
+
+wint_t __towupper_l(wint_t c, locale_t l)
+{
+	return towupper(c);
+}
+
+wint_t __towlower_l(wint_t c, locale_t l)
+{
+	return towlower(c);
+}
+
+weak_alias(__towupper_l, towupper_l);
+weak_alias(__towlower_l, towlower_l);

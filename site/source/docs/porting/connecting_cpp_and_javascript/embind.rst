@@ -65,11 +65,18 @@ or via a ``<script>`` tag:
 
     <!doctype html>
     <html>
-      <script src="quick_example.js"></script>
       <script>
-        console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
+        var Module = {
+          onRuntimeInitialized: function() {
+            console.log('lerp result: ' + Module.lerp(1, 2, 0.5));
+          }
+        };
       </script>
+      <script src="quick_example.js"></script>
     </html>
+
+.. note:: We use the ``onRuntimeInitialized`` callback to run code when the runtime is ready, which is an asynchronous operation (in order to compile WebAssembly).
+.. note:: Open the developer tools console to see the output of ``console.log``.
 
 The code in an :cpp:func:`EMSCRIPTEN_BINDINGS` block runs when the JavaScript
 file is initially loaded (at the same time as the global constructors). The
@@ -150,7 +157,7 @@ shown below:
 
    var instance = new Module.MyClass(10, "hello");
    instance.incrementX();
-   instance.x; // 12
+   instance.x; // 11
    instance.x = 20; // 20
    Module.MyClass.getStringFromInstance(instance); // "hello"
    instance.delete();
@@ -246,7 +253,7 @@ For example:
 
 .. note::
 
-   Currently the markup serves only to whitelist smart pointer use, and
+   Currently the markup serves only to whitelist raw pointer use, and
    show that you've thought about the use of the raw pointers. Eventually
    we hope to implement `Boost.Python-like raw pointer policies`_ for
    managing object ownership.
@@ -320,7 +327,7 @@ smart pointer type:
 
     EMSCRIPTEN_BINDINGS(better_smart_pointers) {
         class_<C>("C")
-            .smart_ptr_constructor(&std::make_shared<C>)
+            .smart_ptr_constructor("C", &std::make_shared<C>)
             ;
     }
 
@@ -335,7 +342,7 @@ An alternative is to use :cpp:func:`~class_::smart_ptr` in the
     EMSCRIPTEN_BINDINGS(smart_pointers) {
         class_<C>("C")
             .constructor<>()
-            .smart_ptr<std::shared_ptr<C>>()
+            .smart_ptr<std::shared_ptr<C>>("C")
             ;
     }
 
@@ -647,7 +654,7 @@ Memory views should be treated like raw pointers; lifetime and validity
 are not managed by the runtime and it's easy to corrupt data if the
 underlying object is modified or deallocated.
 
-.. code::cpp
+.. code:: cpp
 
     #include <emscripten/bind.h>
     #include <emscripten/val.h>
@@ -667,7 +674,7 @@ underlying object is modified or deallocated.
 
 The calling JavaScript code will receive a typed array view into the emscripten heap:
 
-.. code::js
+.. code:: js
 
    var myUint8Array = Module.getBytes()
    var xhr = new XMLHttpRequest();
@@ -769,41 +776,41 @@ Built-in type conversions
 
 Out of the box, *embind* provides converters for many standard C++ types:
 
-+---------------------+-------------------------------------------------+
-| C++ type            | JavaScript type                                 |
-+=====================+=================================================+
-| ``void``            | undefined                                       |
-+---------------------+-------------------------------------------------+
-| ``bool``            | true or false                                   |
-+---------------------+-------------------------------------------------+
-| ``char``            | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``signed char``     | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``unsigned char``   | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``short``           | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``unsigned short``  | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``int``             | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``unsigned int``    | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``long``            | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``unsigned long``   | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``float``           | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``double``          | Number                                          |
-+---------------------+-------------------------------------------------+
-| ``std::string``     | ArrayBuffer, Uint8Array, Int8Array, or String   |
-+---------------------+-------------------------------------------------+
-| ``std::wstring``    | String (UTF-16 code units)                      |
-+---------------------+-------------------------------------------------+
-| ``emscripten::val`` | anything                                        |
-+---------------------+-------------------------------------------------+
++---------------------+--------------------------------------------------------------------+
+| C++ type            | JavaScript type                                                    |
++=====================+====================================================================+
+| ``void``            | undefined                                                          |
++---------------------+--------------------------------------------------------------------+
+| ``bool``            | true or false                                                      |
++---------------------+--------------------------------------------------------------------+
+| ``char``            | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``signed char``     | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``unsigned char``   | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``short``           | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``unsigned short``  | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``int``             | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``unsigned int``    | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``long``            | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``unsigned long``   | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``float``           | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``double``          | Number                                                             |
++---------------------+--------------------------------------------------------------------+
+| ``std::string``     | ArrayBuffer, Uint8Array, Uint8ClampedArray, Int8Array, or String   |
++---------------------+--------------------------------------------------------------------+
+| ``std::wstring``    | String (UTF-16 code units)                                         |
++---------------------+--------------------------------------------------------------------+
+| ``emscripten::val`` | anything                                                           |
++---------------------+--------------------------------------------------------------------+
 
 For convenience, *embind* provides factory functions to register
 ``std::vector<T>`` (:cpp:func:`register_vector`) and ``std::map<K, V>``
@@ -815,6 +822,79 @@ For convenience, *embind* provides factory functions to register
         register_vector<int>("VectorInt");
         register_map<int,int>("MapIntInt");
     }
+
+A full example is shown below:
+
+.. code:: cpp
+
+    #include <emscripten/bind.h>
+    #include <string>
+    #include <vector>
+
+    using namespace emscripten;
+
+    std::vector<int> returnVectorData () {
+      std::vector<int> v(10, 1);
+      return v;
+    }
+
+    std::map<int, std::string> returnMapData () {
+      std::map<int, std::string> m;
+      m.insert(std::pair<int, std::string>(10, "This is a string."));
+      return m;
+    }
+
+    EMSCRIPTEN_BINDINGS(module) {
+      function("returnVectorData", &returnVectorData);
+      function("returnMapData", &returnMapData);
+
+      // register bindings for std::vector<int> and std::map<int, std::string>.
+      register_vector<int>("vector<int>");
+      register_map<int, std::string>("map<int, string>");
+    }
+
+
+The following JavaScript can be used to interact with the above C++.
+
+.. code:: js
+
+    var retVector = Module['returnVectorData']();
+
+    // vector size
+    var vectorSize = retVector.size();
+
+    // reset vector value
+    retVector.set(vectorSize - 1, 11);
+
+    // push value into vector
+    retVector.push_back(12);
+
+    // retrieve value from the vector
+    for (var i = 0; i < retVector.size(); i++) {
+        console.log("Vector Value: ", retVector.get(i));
+    }
+
+    // expand vector size
+    retVector.resize(20, 1);
+
+    var retMap = Module['returnMapData']();
+
+    // map size
+    var mapSize = retMap.size();
+
+    // retrieve value from map
+    console.log("Map Value: ", retMap.get(10));
+
+    // figure out which map keys are available
+    // NB! You must call `register_vector<key_type>`
+    // to make vectors available
+    var mapKeys = retMap.keys();
+    for (var i = 0; i < mapKeys.size(); i++) {
+        console.log("Map key/value: ", retVector.get(i), retMap.get(retVector.get(i)));
+    }
+
+    // reset the value at the given index position
+    retMap.set(10, "OtherValue");
 
 
 Performance

@@ -15,6 +15,7 @@ int __mkostemps(char *template, int len, int flags)
 		return -1;
 	}
 
+	flags -= flags & O_ACCMODE;
 	int fd, retries = 100;
 	do {
 		__randname(template+l-len-6);

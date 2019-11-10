@@ -44,7 +44,7 @@ static void notify_signal(struct sigevent *sev)
 		.si_signo = sev->sigev_signo,
 		.si_value = sev->sigev_value,
 		.si_code = SI_ASYNCIO,
-		.si_pid = __pthread_self()->pid,
+		.si_pid = getpid(),
 		.si_uid = getuid()
 	};
 	__syscall(SYS_rt_sigqueueinfo, si.si_pid, si.si_signo, &si);
@@ -141,3 +141,4 @@ int lio_listio(int mode, struct aiocb *restrict const *restrict cbs, int cnt, st
 	return 0;
 }
 
+LFS64(lio_listio);

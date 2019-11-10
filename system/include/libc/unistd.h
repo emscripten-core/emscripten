@@ -140,9 +140,6 @@ int lockf(int, int, off_t);
 long gethostid(void);
 int nice(int);
 void sync(void);
-#endif
-
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE)
 pid_t setpgrp(void);
 char *crypt(const char *, const char *);
 void encrypt(char *, int);
@@ -177,6 +174,8 @@ void endusershell(void);
 char *getusershell(void);
 int acct(const char *);
 /* XXX EMSCRIPTEN long syscall(long, ...); */
+int execvpe(const char *, char *const [], char *const []);
+int issetugid(void);
 #endif
 
 #ifdef _GNU_SOURCE
@@ -186,7 +185,7 @@ int setresgid(gid_t, gid_t, gid_t);
 int getresuid(uid_t *, uid_t *, uid_t *);
 int getresgid(gid_t *, gid_t *, gid_t *);
 char *get_current_dir_name(void);
-void syncfs(int);
+int syncfs(int);
 int euidaccess(const char *, int);
 int eaccess(const char *, int);
 #endif
@@ -320,11 +319,9 @@ int eaccess(const char *, int);
 #define _SC_BC_SCALE_MAX	38
 #define _SC_BC_STRING_MAX	39
 #define _SC_COLL_WEIGHTS_MAX	40
-#define _SC_EQUIV_CLASS_MAX	41
 #define _SC_EXPR_NEST_MAX	42
 #define _SC_LINE_MAX	43
 #define _SC_RE_DUP_MAX	44
-#define _SC_CHARCLASS_NAME_MAX	45
 #define _SC_2_VERSION	46
 #define _SC_2_C_BIND	47
 #define _SC_2_C_DEV	48
@@ -332,21 +329,8 @@ int eaccess(const char *, int);
 #define _SC_2_FORT_RUN	50
 #define _SC_2_SW_DEV	51
 #define _SC_2_LOCALEDEF	52
-#define _SC_PII	53
-#define _SC_PII_XTI	54
-#define _SC_PII_SOCKET	55
-#define _SC_PII_INTERNET	56
-#define _SC_PII_OSI	57
-#define _SC_POLL	58
-#define _SC_SELECT	59
 #define _SC_UIO_MAXIOV	60 /* !! */
 #define _SC_IOV_MAX	60
-#define _SC_PII_INTERNET_STREAM	61
-#define _SC_PII_INTERNET_DGRAM	62
-#define _SC_PII_OSI_COTS	63
-#define _SC_PII_OSI_CLTS	64
-#define _SC_PII_OSI_M	65
-#define _SC_T_IOV_MAX	66
 #define _SC_THREADS	67
 #define _SC_THREAD_SAFE_FUNCTIONS	68
 #define _SC_GETGR_R_SIZE_MAX	69
@@ -376,35 +360,11 @@ int eaccess(const char *, int);
 #define _SC_XOPEN_ENH_I18N	93
 #define _SC_XOPEN_SHM	94
 #define _SC_2_CHAR_TERM	95
-#define _SC_2_C_VERSION	96
 #define _SC_2_UPE	97
 #define _SC_XOPEN_XPG2	98
 #define _SC_XOPEN_XPG3	99
 #define _SC_XOPEN_XPG4	100
-#define _SC_CHAR_BIT	101
-#define _SC_CHAR_MAX	102
-#define _SC_CHAR_MIN	103
-#define _SC_INT_MAX	104
-#define _SC_INT_MIN	105
-#define _SC_LONG_BIT	106
-#define _SC_WORD_BIT	107
-#define _SC_MB_LEN_MAX	108
 #define _SC_NZERO	109
-#define _SC_SSIZE_MAX	110
-#define _SC_SCHAR_MAX	111
-#define _SC_SCHAR_MIN	112
-#define _SC_SHRT_MAX	113
-#define _SC_SHRT_MIN	114
-#define _SC_UCHAR_MAX	115
-#define _SC_UINT_MAX	116
-#define _SC_ULONG_MAX	117
-#define _SC_USHRT_MAX	118
-#define _SC_NL_ARGMAX	119
-#define _SC_NL_LANGMAX	120
-#define _SC_NL_MSGMAX	121
-#define _SC_NL_NMAX	122
-#define _SC_NL_SETMAX	123
-#define _SC_NL_TEXTMAX	124
 #define _SC_XBS5_ILP32_OFF32	125
 #define _SC_XBS5_ILP32_OFFBIG	126
 #define _SC_XBS5_LP64_OFF64	127
@@ -414,40 +374,19 @@ int eaccess(const char *, int);
 #define _SC_XOPEN_REALTIME_THREADS	131
 #define _SC_ADVISORY_INFO	132
 #define _SC_BARRIERS	133
-#define _SC_BASE	134
-#define _SC_C_LANG_SUPPORT	135
-#define _SC_C_LANG_SUPPORT_R	136
 #define _SC_CLOCK_SELECTION	137
 #define _SC_CPUTIME	138
 #define _SC_THREAD_CPUTIME	139
-#define _SC_DEVICE_IO	140
-#define _SC_DEVICE_SPECIFIC	141
-#define _SC_DEVICE_SPECIFIC_R	142
-#define _SC_FD_MGMT	143
-#define _SC_FIFO	144
-#define _SC_PIPE	145
-#define _SC_FILE_ATTRIBUTES	146
-#define _SC_FILE_LOCKING	147
-#define _SC_FILE_SYSTEM	148
 #define _SC_MONOTONIC_CLOCK	149
-#define _SC_MULTI_PROCESS	150
-#define _SC_SINGLE_PROCESS	151
-#define _SC_NETWORKING	152
 #define _SC_READER_WRITER_LOCKS	153
 #define _SC_SPIN_LOCKS	154
 #define _SC_REGEXP	155
-#define _SC_REGEX_VERSION	156
 #define _SC_SHELL	157
-#define _SC_SIGNALS	158
 #define _SC_SPAWN	159
 #define _SC_SPORADIC_SERVER	160
 #define _SC_THREAD_SPORADIC_SERVER	161
-#define _SC_SYSTEM_DATABASE	162
-#define _SC_SYSTEM_DATABASE_R	163
 #define _SC_TIMEOUTS	164
 #define _SC_TYPED_MEMORY_OBJECTS	165
-#define _SC_USER_GROUPS	166
-#define _SC_USER_GROUPS_R	167
 #define _SC_2_PBS	168
 #define _SC_2_PBS_ACCOUNTING	169
 #define _SC_2_PBS_LOCATE	170

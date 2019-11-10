@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <GL/glew.h>
 #include <GL/glfw.h>
 #include <emscripten.h>
@@ -7,6 +14,7 @@
 int nbSamples = 0;
 int nbDepthBits = 0;
 int nbStencilBits = 0;
+int nbAlphaBits = 0;
 
 int main() {
   
@@ -28,9 +36,14 @@ int main() {
     stencilActivated = true;  
     nbStencilBits = 8;
 #endif
+  
+#ifdef ALPHA_ACTIVATED
+    alphaActivated = true;  
+    nbAlphaBits = 8;
+#endif
 
     glfwOpenWindowHint(GLFW_FSAA_SAMPLES, nbSamples);
-    glfwOpenWindow(WINDOWS_SIZE, WINDOWS_SIZE, 8, 8, 8, 8, nbDepthBits, nbStencilBits, GLFW_WINDOW);
+    glfwOpenWindow(WINDOWS_SIZE, WINDOWS_SIZE, 8, 8, 8, nbAlphaBits, nbDepthBits, nbStencilBits, GLFW_WINDOW);
   
     glewInit();
     initGlObjects();
@@ -39,7 +52,7 @@ int main() {
   
     glfwTerminate();
   
-    REPORT_RESULT();
+    REPORT_RESULT(result);
   
     return 0;
 

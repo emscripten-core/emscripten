@@ -1,32 +1,16 @@
 // === Preamble library stuff ===
 
-// Documentation for the public APIs defined in this file must be updated in: 
+// Documentation for the public APIs defined in this file must be updated in:
 //    site/source/docs/api_reference/preamble.js.rst
-// A prebuilt local version of the documentation is available at: 
+// A prebuilt local version of the documentation is available at:
 //    site/build/text/docs/api_reference/preamble.js.txt
 // You can also build docs locally as HTML or other formats in site/
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-//========================================
-// Runtime code shared with compiler
-//========================================
-
-{{RUNTIME}}
-
-#if RELOCATABLE
-Runtime.GLOBAL_BASE = Runtime.alignMemory(Runtime.GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
-#endif
-
-{{{ maybeExport('Runtime') }}}
-#if USE_CLOSURE_COMPILER
-Runtime['addFunction'] = Runtime.addFunction;
-Runtime['removeFunction'] = Runtime.removeFunction;
-#endif
-
 #if BENCHMARK
-Module.realPrint = Module.print;
-Module.print = Module.printErr = function(){};
+Module.realPrint = out;
+out = err = function(){};
 #endif
 
 #if SAFE_HEAP
@@ -46,12 +30,17 @@ var SAFE_HEAP_COUNTER = 0;
 
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
+  out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
-  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  if (staticSealed) {
+    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+    assert(DYNAMICTOP_PTR);
+    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
+  } else {
+    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when storing ' + bytes + ' bytes to address ' + dest + '. STATICTOP=' + STATICTOP);
+  }
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
 }
 function SAFE_HEAP_STORE_D(dest, value, bytes) {
@@ -61,13 +50,18 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > Math.max(DYNAMICTOP, STATICTOP)) abort('segmentation fault, exceeded the top of the available heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + DYNAMICTOP);
-  assert(DYNAMICTOP <= TOTAL_MEMORY);
+  if (staticSealed) {
+    if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP + ', DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+    assert(DYNAMICTOP_PTR);
+    assert(HEAP32[DYNAMICTOP_PTR>>2] <= TOTAL_MEMORY);
+  } else {
+    if (dest + bytes > STATICTOP) abort('segmentation fault, exceeded the top of the available static heap when loading ' + bytes + ' bytes from address ' + dest + '. STATICTOP=' + STATICTOP);
+  }
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
   if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
 #if SAFE_HEAP_LOG
-  Module.print('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
+  out('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
 #endif
   return ret;
 }
@@ -98,18 +92,16 @@ function ftfault() {
 // Runtime essentials
 //========================================
 
-var __THREW__ = 0; // Used in checking for thrown exceptions.
+// whether we are quitting the application. no code should run after this.
+// set in exit() and abort()
+var ABORT = false;
 
-var ABORT = false; // whether we are quitting the application. no code should run after this. set in exit() and abort()
+// set by exit() and abort().  Passed to 'onExit' handler.
+// NOTE: This is also used as the process return code code in shell environments
+// but only when noExitRuntime is false.
 var EXITSTATUS = 0;
 
-var undef = 0;
-// tempInt is used for 32-bit signed values or smaller. tempBigInt is used
-// for 32-bit unsigned values or more than 32 bits. TODO: audit all uses of tempInt
-var tempValue, tempInt, tempBigInt, tempInt2, tempBigInt2, tempPair, tempBigIntI, tempBigIntR, tempBigIntS, tempBigIntP, tempBigIntD, tempDouble, tempFloat;
-var tempI64, tempI64b;
-var tempRet0, tempRet1, tempRet2, tempRet3, tempRet4, tempRet5, tempRet6, tempRet7, tempRet8, tempRet9;
-
+/** @type {function(*, string=)} */
 function assert(condition, text) {
   if (!condition) {
     abort('Assertion failed: ' + text);
@@ -121,170 +113,111 @@ var globalScope = this;
 // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
 function getCFunc(ident) {
   var func = Module['_' + ident]; // closure exported function
-  if (!func) {
-#if NO_DYNAMIC_EXECUTION == 0
-    try {
-      func = eval('_' + ident); // explicit lookup
-    } catch(e) {}
-#else
-    abort('NO_DYNAMIC_EXECUTION was set, cannot eval - ccall/cwrap are not functional');
-#endif
-  }
-  assert(func, 'Cannot call unknown function ' + ident + ' (perhaps LLVM optimizations or closure removed it?)');
+  assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
   return func;
 }
 
-var cwrap, ccall;
-(function(){
-  var JSfuncs = {
-    // Helpers for cwrap -- it can't refer to Runtime directly because it might
-    // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
-    // out what the minified function name is.
-    'stackSave': function() {
-      Runtime.stackSave()
-    },
-    'stackRestore': function() {
-      Runtime.stackRestore()
-    },
-    // type conversion from js to c
-    'arrayToC' : function(arr) {
-      var ret = Runtime.stackAlloc(arr.length);
-      writeArrayToMemory(arr, ret);
-      return ret;
-    },
-    'stringToC' : function(str) {
-      var ret = 0;
-      if (str !== null && str !== undefined && str !== 0) { // null string
-        // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
-        ret = Runtime.stackAlloc((str.length << 2) + 1);
-        writeStringToMemory(str, ret);
-      }
-      return ret;
-    }
-  };
-  // For fast lookup of conversion functions
-  var toC = {'string' : JSfuncs['stringToC'], 'array' : JSfuncs['arrayToC']};
-
-  // C calling interface. 
-  ccall = function ccallFunc(ident, returnType, argTypes, args, opts) {
-    var func = getCFunc(ident);
-    var cArgs = [];
-    var stack = 0;
-#if ASSERTIONS
-    assert(returnType !== 'array', 'Return type should not be "array".');
-#endif
-    if (args) {
-      for (var i = 0; i < args.length; i++) {
-        var converter = toC[argTypes[i]];
-        if (converter) {
-          if (stack === 0) stack = Runtime.stackSave();
-          cArgs[i] = converter(args[i]);
-        } else {
-          cArgs[i] = args[i];
-        }
-      }
-    }
-    var ret = func.apply(null, cArgs);
-#if ASSERTIONS
-    if ((!opts || !opts.async) && typeof EmterpreterAsync === 'object') {
-      assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling ccall');
-    }
-    if (opts && opts.async) assert(!returnType, 'async ccalls cannot return values');
-#endif
-    if (returnType === 'string') ret = Pointer_stringify(ret);
-    if (stack !== 0) {
-      if (opts && opts.async) {
-        EmterpreterAsync.asyncFinalizers.push(function() {
-          Runtime.stackRestore(stack);
-        });
-        return;
-      }
-      Runtime.stackRestore(stack);
+var JSfuncs = {
+  // Helpers for cwrap -- it can't refer to Runtime directly because it might
+  // be renamed by closure, instead it calls JSfuncs['stackSave'].body to find
+  // out what the minified function name is.
+  'stackSave': function() {
+    stackSave()
+  },
+  'stackRestore': function() {
+    stackRestore()
+  },
+  // type conversion from js to c
+  'arrayToC' : function(arr) {
+    var ret = stackAlloc(arr.length);
+    writeArrayToMemory(arr, ret);
+    return ret;
+  },
+  'stringToC' : function(str) {
+    var ret = 0;
+    if (str !== null && str !== undefined && str !== 0) { // null string
+      // at most 4 bytes per UTF-8 code point, +1 for the trailing '\0'
+      var len = (str.length << 2) + 1;
+      ret = stackAlloc(len);
+      stringToUTF8(str, ret, len);
     }
     return ret;
   }
+};
 
-#if NO_DYNAMIC_EXECUTION == 0
-  var sourceRegex = /^function\s*\(([^)]*)\)\s*{\s*([^*]*?)[\s;]*(?:return\s*(.*?)[;\s]*)?}$/;
-  function parseJSFunc(jsfunc) {
-    // Match the body and the return value of a javascript function source
-    var parsed = jsfunc.toString().match(sourceRegex).slice(1);
-    return {arguments : parsed[0], body : parsed[1], returnValue: parsed[2]}
-  }
-  var JSsource = {};
-  for (var fun in JSfuncs) {
-    if (JSfuncs.hasOwnProperty(fun)) {
-      // Elements of toCsource are arrays of three items:
-      // the code, and the return value
-      JSsource[fun] = parseJSFunc(JSfuncs[fun]);
-    }
+// For fast lookup of conversion functions
+var toC = {
+  'string': JSfuncs['stringToC'], 'array': JSfuncs['arrayToC']
+};
+
+
+// C calling interface.
+function ccall(ident, returnType, argTypes, args, opts) {
+  function convertReturnValue(ret) {
+    if (returnType === 'string') return Pointer_stringify(ret);
+    if (returnType === 'boolean') return Boolean(ret);
+    return ret;
   }
 
-  
-  cwrap = function cwrap(ident, returnType, argTypes) {
-    argTypes = argTypes || [];
-    var cfunc = getCFunc(ident);
-    // When the function takes numbers and returns a number, we can just return
-    // the original function
-    var numericArgs = argTypes.every(function(type){ return type === 'number'});
-    var numericRet = (returnType !== 'string');
-    if ( numericRet && numericArgs) {
-      return cfunc;
-    }
-    // Creation of the arguments list (["$1","$2",...,"$nargs"])
-    var argNames = argTypes.map(function(x,i){return '$'+i});
-    var funcstr = "(function(" + argNames.join(',') + ") {";
-    var nargs = argTypes.length;
-    if (!numericArgs) {
-      // Generate the code needed to convert the arguments from javascript
-      // values to pointers
-      funcstr += 'var stack = ' + JSsource['stackSave'].body + ';';
-      for (var i = 0; i < nargs; i++) {
-        var arg = argNames[i], type = argTypes[i];
-        if (type === 'number') continue;
-        var convertCode = JSsource[type + 'ToC']; // [code, return]
-        funcstr += 'var ' + convertCode.arguments + ' = ' + arg + ';';
-        funcstr += convertCode.body + ';';
-        funcstr += arg + '=' + convertCode.returnValue + ';';
+  var func = getCFunc(ident);
+  var cArgs = [];
+  var stack = 0;
+#if ASSERTIONS
+  assert(returnType !== 'array', 'Return type should not be "array".');
+#endif
+  if (args) {
+    for (var i = 0; i < args.length; i++) {
+      var converter = toC[argTypes[i]];
+      if (converter) {
+        if (stack === 0) stack = stackSave();
+        cArgs[i] = converter(args[i]);
+      } else {
+        cArgs[i] = args[i];
       }
     }
-
-    // When the code is compressed, the name of cfunc is not literally 'cfunc' anymore
-    var cfuncname = parseJSFunc(function(){return cfunc}).returnValue;
-    // Call the function
-    funcstr += 'var ret = ' + cfuncname + '(' + argNames.join(',') + ');';
-    if (!numericRet) { // Return type can only by 'string' or 'number'
-      // Convert the result to a string
-      var strgfy = parseJSFunc(function(){return Pointer_stringify}).returnValue;
-      funcstr += 'ret = ' + strgfy + '(ret);';
-    }
+  }
+  var ret = func.apply(null, cArgs);
+#if EMTERPRETIFY_ASYNC
+  if (typeof EmterpreterAsync === 'object' && EmterpreterAsync.state) {
 #if ASSERTIONS
-    funcstr += "if (typeof EmterpreterAsync === 'object') { assert(!EmterpreterAsync.state, 'cannot start async op with normal JS calling cwrap') }";
+    assert(opts && opts.async, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+    assert(!EmterpreterAsync.restartFunc, 'Cannot have multiple async ccalls in flight at once');
 #endif
-    if (!numericArgs) {
-      // If we had a stack, restore it
-      funcstr += JSsource['stackRestore'].body.replace('()', '(stack)') + ';';
-    }
-    funcstr += 'return ret})';
-    return eval(funcstr);
-  };
-#else
-  // NO_DYNAMIC_EXECUTION is on, so we can't use the fast version of cwrap.
-  // Fall back to returning a bound version of ccall.
-  cwrap = function cwrap(ident, returnType, argTypes) {
-    return function() {
-#if ASSERTIONS
-      Runtime.warnOnce('NO_DYNAMIC_EXECUTION was set, '
-                     + 'using slow cwrap implementation');
-#endif
-      return ccall(ident, returnType, argTypes, arguments);
-    }
+    return new Promise(function(resolve) {
+      EmterpreterAsync.restartFunc = func;
+      EmterpreterAsync.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
+      });
+    });
   }
 #endif
-})();
-{{{ maybeExport("ccall") }}}
-{{{ maybeExport("cwrap") }}}
+  ret = convertReturnValue(ret);
+  if (stack !== 0) stackRestore(stack);
+#if EMTERPRETIFY_ASYNC
+  // If this is an async ccall, ensure we return a promise
+  if (opts && opts.async) return Promise.resolve(ret);
+#endif
+  return ret;
+}
 
+function cwrap(ident, returnType, argTypes, opts) {
+#if !ASSERTIONS
+  argTypes = argTypes || [];
+  // When the function takes numbers and returns a number, we can just return
+  // the original function
+  var numericArgs = argTypes.every(function(type){ return type === 'number'});
+  var numericRet = returnType !== 'string';
+  if (numericRet && numericArgs && !opts) {
+    return getCFunc(ident);
+  }
+#endif
+  return function() {
+    return ccall(ident, returnType, argTypes, arguments, opts);
+  }
+}
+
+/** @type {function(number, number, string, boolean=)} */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -316,9 +249,8 @@ function setValue(ptr, value, type, noSafe) {
   }
 #endif
 }
-{{{ maybeExport("setValue") }}}
 
-
+/** @type {function(number, string, boolean=)} */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -332,7 +264,7 @@ function getValue(ptr, type, noSafe) {
       case 'i64': return {{{ makeGetValue('ptr', '0', 'i64', undefined, undefined, undefined, undefined, '1') }}};
       case 'float': return {{{ makeGetValue('ptr', '0', 'float', undefined, undefined, undefined, undefined, '1') }}};
       case 'double': return {{{ makeGetValue('ptr', '0', 'double', undefined, undefined, undefined, undefined, '1') }}};
-      default: abort('invalid type for setValue: ' + type);
+      default: abort('invalid type for getValue: ' + type);
     }
   } else {
 #endif
@@ -344,25 +276,19 @@ function getValue(ptr, type, noSafe) {
       case 'i64': return {{{ makeGetValue('ptr', '0', 'i64') }}};
       case 'float': return {{{ makeGetValue('ptr', '0', 'float') }}};
       case 'double': return {{{ makeGetValue('ptr', '0', 'double') }}};
-      default: abort('invalid type for setValue: ' + type);
+      default: abort('invalid type for getValue: ' + type);
     }
 #if SAFE_HEAP
   }
 #endif
   return null;
 }
-{{{ maybeExport("getValue") }}}
 
 var ALLOC_NORMAL = 0; // Tries to use _malloc()
 var ALLOC_STACK = 1; // Lives for the duration of the current function call
 var ALLOC_STATIC = 2; // Cannot be freed
 var ALLOC_DYNAMIC = 3; // Cannot be freed except through sbrk
 var ALLOC_NONE = 4; // Do not allocate
-{{{ maybeExport('ALLOC_NORMAL') }}}
-{{{ maybeExport('ALLOC_STACK') }}}
-{{{ maybeExport('ALLOC_STATIC') }}}
-{{{ maybeExport('ALLOC_DYNAMIC') }}}
-{{{ maybeExport('ALLOC_NONE') }}}
 
 // allocate(): This is for internal use. You can use it yourself as well, but the interface
 //             is a little tricky (see docs right below). The reason is that it is optimized
@@ -377,6 +303,7 @@ var ALLOC_NONE = 4; // Do not allocate
 //         is initial data - if @slab is a number, then this does not matter at all and is
 //         ignored.
 // @allocator: How to allocate memory, see ALLOC_*
+/** @type {function((TypedArray|Array<number>|number), string, number, number=)} */
 function allocate(slab, types, allocator, ptr) {
   var zeroinit, size;
   if (typeof slab === 'number') {
@@ -393,11 +320,12 @@ function allocate(slab, types, allocator, ptr) {
   if (allocator == ALLOC_NONE) {
     ret = ptr;
   } else {
-    ret = [_malloc, Runtime.stackAlloc, Runtime.staticAlloc, Runtime.dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
+    ret = [typeof _malloc === 'function' ? _malloc : staticAlloc, stackAlloc, staticAlloc, dynamicAlloc][allocator === undefined ? ALLOC_STATIC : allocator](Math.max(size, singleType ? 1 : types.length));
   }
 
   if (zeroinit) {
-    var ptr = ret, stop;
+    var stop;
+    ptr = ret;
     assert((ret & 3) == 0);
     stop = ret + (size & ~3);
     for (; ptr < stop; ptr += 4) {
@@ -412,7 +340,7 @@ function allocate(slab, types, allocator, ptr) {
 
   if (singleType === 'i8') {
     if (slab.subarray || slab.slice) {
-      HEAPU8.set(slab, ret);
+      HEAPU8.set(/** @type {!Uint8Array} */ (slab), ret);
     } else {
       HEAPU8.set(new Uint8Array(slab), ret);
     }
@@ -422,10 +350,6 @@ function allocate(slab, types, allocator, ptr) {
   var i = 0, type, typeSize, previousType;
   while (i < size) {
     var curr = slab[i];
-
-    if (typeof curr === 'function') {
-      curr = Runtime.getFunctionIndex(curr);
-    }
 
     type = singleType || types[i];
     if (type === 0) {
@@ -442,7 +366,7 @@ function allocate(slab, types, allocator, ptr) {
 
     // no need to look up size unless type changes, so cache it
     if (previousType !== type) {
-      typeSize = Runtime.getNativeTypeSize(type);
+      typeSize = getNativeTypeSize(type);
       previousType = type;
     }
     i += typeSize;
@@ -450,19 +374,17 @@ function allocate(slab, types, allocator, ptr) {
 
   return ret;
 }
-{{{ maybeExport('allocate') }}}
 
 // Allocate memory during any stage of startup - static memory early on, dynamic memory later, malloc when ready
 function getMemory(size) {
-  if (!staticSealed) return Runtime.staticAlloc(size);
-  if ((typeof _sbrk !== 'undefined' && !_sbrk.called) || !runtimeInitialized) return Runtime.dynamicAlloc(size);
+  if (!staticSealed) return staticAlloc(size);
+  if (!runtimeInitialized) return dynamicAlloc(size);
   return _malloc(size);
 }
-{{{ maybeExport('getMemory') }}}
 
-function Pointer_stringify(ptr, /* optional */ length) {
+/** @type {function(number, number=)} */
+function Pointer_stringify(ptr, length) {
   if (length === 0 || !ptr) return '';
-  // TODO: use TextDecoder
   // Find the length, and check for UTF while doing so
   var hasUtf = 0;
   var t;
@@ -492,9 +414,8 @@ function Pointer_stringify(ptr, /* optional */ length) {
     }
     return ret;
   }
-  return Module['UTF8ToString'](ptr);
+  return UTF8ToString(ptr);
 }
-{{{ maybeExport('Pointer_stringify') }}}
 
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -507,7 +428,6 @@ function AsciiToString(ptr) {
     str += String.fromCharCode(ch);
   }
 }
-{{{ maybeExport('AsciiToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in ASCII form. The copy will require at most str.length+1 bytes of space in the HEAP.
@@ -515,48 +435,65 @@ function AsciiToString(ptr) {
 function stringToAscii(str, outPtr) {
   return writeAsciiToMemory(str, outPtr, false);
 }
-{{{ maybeExport('stringToAscii') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the given array that contains uint8 values, returns
 // a copy of that string as a Javascript String object.
 
+#if TEXTDECODER
+var UTF8Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf8') : undefined;
+#endif
 function UTF8ArrayToString(u8Array, idx) {
-  var u0, u1, u2, u3, u4, u5;
+#if TEXTDECODER
+  var endPtr = idx;
+  // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
+  // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
+  while (u8Array[endPtr]) ++endPtr;
 
-  var str = '';
-  while (1) {
-    // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
-    u0 = u8Array[idx++];
-    if (!u0) return str;
-    if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
-    u1 = u8Array[idx++] & 63;
-    if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
-    u2 = u8Array[idx++] & 63;
-    if ((u0 & 0xF0) == 0xE0) {
-      u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
-    } else {
-      u3 = u8Array[idx++] & 63;
-      if ((u0 & 0xF8) == 0xF0) {
-        u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
+  if (endPtr - idx > 16 && u8Array.subarray && UTF8Decoder) {
+    return UTF8Decoder.decode(u8Array.subarray(idx, endPtr));
+  } else {
+#endif
+    var u0, u1, u2, u3, u4, u5;
+
+    var str = '';
+    while (1) {
+      // For UTF8 byte structure, see:
+      // http://en.wikipedia.org/wiki/UTF-8#Description
+      // https://www.ietf.org/rfc/rfc2279.txt
+      // https://tools.ietf.org/html/rfc3629
+      u0 = u8Array[idx++];
+      if (!u0) return str;
+      if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
+      u1 = u8Array[idx++] & 63;
+      if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
+      u2 = u8Array[idx++] & 63;
+      if ((u0 & 0xF0) == 0xE0) {
+        u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
-        u4 = u8Array[idx++] & 63;
-        if ((u0 & 0xFC) == 0xF8) {
-          u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
+        u3 = u8Array[idx++] & 63;
+        if ((u0 & 0xF8) == 0xF0) {
+          u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | u3;
         } else {
-          u5 = u8Array[idx++] & 63;
-          u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
+          u4 = u8Array[idx++] & 63;
+          if ((u0 & 0xFC) == 0xF8) {
+            u0 = ((u0 & 3) << 24) | (u1 << 18) | (u2 << 12) | (u3 << 6) | u4;
+          } else {
+            u5 = u8Array[idx++] & 63;
+            u0 = ((u0 & 1) << 30) | (u1 << 24) | (u2 << 18) | (u3 << 12) | (u4 << 6) | u5;
+          }
         }
       }
+      if (u0 < 0x10000) {
+        str += String.fromCharCode(u0);
+      } else {
+        var ch = u0 - 0x10000;
+        str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
+      }
     }
-    if (u0 < 0x10000) {
-      str += String.fromCharCode(u0);
-    } else {
-      var ch = u0 - 0x10000;
-      str += String.fromCharCode(0xD800 | (ch >> 10), 0xDC00 | (ch & 0x3FF));
-    }
+#if TEXTDECODER
   }
+#endif
 }
-{{{ maybeExport('UTF8ArrayToString') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
@@ -564,17 +501,17 @@ function UTF8ArrayToString(u8Array, idx) {
 function UTF8ToString(ptr) {
   return UTF8ArrayToString({{{ heapAndOffset('HEAPU8', 'ptr') }}});
 }
-{{{ maybeExport('UTF8ToString') }}}
 
 // Copies the given Javascript String object 'str' to the given byte array at address 'outIdx',
 // encoded in UTF8 form and null-terminated. The copy will require at most str.length*4+1 bytes of space in the HEAP.
-// Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Parameters:
 //   str: the Javascript string to copy.
 //   outU8Array: the array to copy to. Each index in this array is assumed to be one 8-byte element.
 //   outIdx: The starting offset in the array to begin the copying.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
-//                    terminator, i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array.
+//                    This count should include the null terminator,
+//                    i.e. if maxBytesToWrite=1, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite=0 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
@@ -589,7 +526,10 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
     // See http://unicode.org/faq/utf_bom.html#utf16-3
     // For UTF8 byte structure, see http://en.wikipedia.org/wiki/UTF-8#Description and https://www.ietf.org/rfc/rfc2279.txt and https://tools.ietf.org/html/rfc3629
     var u = str.charCodeAt(i); // possibly a lead surrogate
-    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u >= 0xD800 && u <= 0xDFFF) {
+      var u1 = str.charCodeAt(++i);
+      u = 0x10000 + ((u & 0x3FF) << 10) | (u1 & 0x3FF);
+    }
     if (u <= 0x7F) {
       if (outIdx >= endIdx) break;
       outU8Array[outIdx++] = u;
@@ -629,11 +569,10 @@ function stringToUTF8Array(str, outU8Array, outIdx, maxBytesToWrite) {
   outU8Array[outIdx] = 0;
   return outIdx - startIdx;
 }
-{{{ maybeExport('stringToUTF8Array') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF8 form. The copy will require at most str.length*4+1 bytes of space in the HEAP.
-// Use the function lengthBytesUTF8() to compute the exact number of bytes (excluding null terminator) that this function will write.
+// Use the function lengthBytesUTF8 to compute the exact number of bytes (excluding null terminator) that this function will write.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
 function stringToUTF8(str, outPtr, maxBytesToWrite) {
@@ -642,7 +581,6 @@ function stringToUTF8(str, outPtr, maxBytesToWrite) {
 #endif
   return stringToUTF8Array(str, {{{ heapAndOffset('HEAPU8', 'outPtr') }}}, maxBytesToWrite);
 }
-{{{ maybeExport('stringToUTF8') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
 
@@ -669,25 +607,41 @@ function lengthBytesUTF8(str) {
   }
   return len;
 }
-{{{ maybeExport('lengthBytesUTF8') }}}
 
 // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 
+var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16le') : undefined;
 function UTF16ToString(ptr) {
-  var i = 0;
+#if ASSERTIONS
+  assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
+#endif
+#if TEXTDECODER
+  var endPtr = ptr;
+  // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
+  // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
+  var idx = endPtr >> 1;
+  while (HEAP16[idx]) ++idx;
+  endPtr = idx << 1;
 
-  var str = '';
-  while (1) {
-    var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
-    if (codeUnit == 0)
-      return str;
-    ++i;
-    // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
-    str += String.fromCharCode(codeUnit);
+  if (endPtr - ptr > 32 && UTF16Decoder) {
+    return UTF16Decoder.decode(HEAPU8.subarray(ptr, endPtr));
+  } else {
+#endif
+    var i = 0;
+
+    var str = '';
+    while (1) {
+      var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
+      if (codeUnit == 0) return str;
+      ++i;
+      // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
+      str += String.fromCharCode(codeUnit);
+    }
+#if TEXTDECODER
   }
+#endif
 }
-{{{ maybeExport('UTF16ToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF16 form. The copy will require at most str.length*4+2 bytes of space in the HEAP.
@@ -695,12 +649,15 @@ function UTF16ToString(ptr) {
 // Parameters:
 //   str: the Javascript string to copy.
 //   outPtr: Byte address in Emscripten HEAP where to write the string to.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=2, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite<2 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
 function stringToUTF16(str, outPtr, maxBytesToWrite) {
+#if ASSERTIONS
+  assert(outPtr % 2 == 0, 'Pointer passed to stringToUTF16 must be aligned to two bytes!');
+#endif
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF16(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
@@ -722,16 +679,17 @@ function stringToUTF16(str, outPtr, maxBytesToWrite) {
   {{{ makeSetValue('outPtr', 0, 0, 'i16') }}};
   return outPtr - startPtr;
 }
-{{{ maybeExport('stringToUTF16') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
 
 function lengthBytesUTF16(str) {
   return str.length*2;
 }
-{{{ maybeExport('lengthBytesUTF16') }}}
 
 function UTF32ToString(ptr) {
+#if ASSERTIONS
+  assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
+#endif
   var i = 0;
 
   var str = '';
@@ -750,7 +708,6 @@ function UTF32ToString(ptr) {
     }
   }
 }
-{{{ maybeExport('UTF32ToString') }}}
 
 // Copies the given Javascript String object 'str' to the emscripten HEAP at address 'outPtr',
 // null-terminated and encoded in UTF32 form. The copy will require at most str.length*4+4 bytes of space in the HEAP.
@@ -758,12 +715,15 @@ function UTF32ToString(ptr) {
 // Parameters:
 //   str: the Javascript string to copy.
 //   outPtr: Byte address in Emscripten HEAP where to write the string to.
-//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null 
+//   maxBytesToWrite: The maximum number of bytes this function can write to the array. This count should include the null
 //                    terminator, i.e. if maxBytesToWrite=4, only the null terminator will be written and nothing else.
 //                    maxBytesToWrite<4 does not write any bytes to the output, not even the null terminator.
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
 function stringToUTF32(str, outPtr, maxBytesToWrite) {
+#if ASSERTIONS
+  assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');
+#endif
 #if ASSERTIONS
   assert(typeof maxBytesToWrite == 'number', 'stringToUTF32(str, outPtr, maxBytesToWrite) is missing the third parameter that specifies the length of the output buffer!');
 #endif
@@ -790,7 +750,6 @@ function stringToUTF32(str, outPtr, maxBytesToWrite) {
   {{{ makeSetValue('outPtr', 0, 0, 'i32') }}};
   return outPtr - startPtr;
 }
-{{{ maybeExport('stringToUTF32') }}}
 
 // Returns the number of bytes the given Javascript string takes if encoded as a UTF16 byte array, EXCLUDING the null terminator byte.
 
@@ -806,185 +765,70 @@ function lengthBytesUTF32(str) {
 
   return len;
 }
-{{{ maybeExport('lengthBytesUTF32') }}}
+
+// Allocate heap space for a JS string, and write it there.
+// It is the responsibility of the caller to free() that memory.
+function allocateUTF8(str) {
+  var size = lengthBytesUTF8(str) + 1;
+  var ret = _malloc(size);
+  if (ret) stringToUTF8Array(str, HEAP8, ret, size);
+  return ret;
+}
+
+// Allocate stack space for a JS string, and write it there.
+function allocateUTF8OnStack(str) {
+  var size = lengthBytesUTF8(str) + 1;
+  var ret = stackAlloc(size);
+  stringToUTF8Array(str, HEAP8, ret, size);
+  return ret;
+}
 
 function demangle(func) {
-  var hasLibcxxabi = !!Module['___cxa_demangle'];
-  if (hasLibcxxabi) {
-    try {
-      var buf = _malloc(func.length);
-      writeStringToMemory(func.substr(1), buf);
-      var status = _malloc(4);
-      var ret = Module['___cxa_demangle'](buf, 0, 0, status);
-      if (getValue(status, 'i32') === 0 && ret) {
-        return Pointer_stringify(ret);
-      }
-      // otherwise, libcxxabi failed, we can try ours which may return a partial result
-    } catch(e) {
-      // failure when using libcxxabi, we can try ours which may return a partial result
-    } finally {
-      if (buf) _free(buf);
-      if (status) _free(status);
-      if (ret) _free(ret);
-    }
-  }
-  var i = 3;
-  // params, etc.
-  var basicTypes = {
-    'v': 'void',
-    'b': 'bool',
-    'c': 'char',
-    's': 'short',
-    'i': 'int',
-    'l': 'long',
-    'f': 'float',
-    'd': 'double',
-    'w': 'wchar_t',
-    'a': 'signed char',
-    'h': 'unsigned char',
-    't': 'unsigned short',
-    'j': 'unsigned int',
-    'm': 'unsigned long',
-    'x': 'long long',
-    'y': 'unsigned long long',
-    'z': '...'
-  };
-  var subs = [];
-  var first = true;
-  function dump(x) {
-    //return;
-    if (x) Module.print(x);
-    Module.print(func);
-    var pre = '';
-    for (var a = 0; a < i; a++) pre += ' ';
-    Module.print (pre + '^');
-  }
-  function parseNested() {
-    i++;
-    if (func[i] === 'K') i++; // ignore const
-    var parts = [];
-    while (func[i] !== 'E') {
-      if (func[i] === 'S') { // substitution
-        i++;
-        var next = func.indexOf('_', i);
-        var num = func.substring(i, next) || 0;
-        parts.push(subs[num] || '?');
-        i = next+1;
-        continue;
-      }
-      if (func[i] === 'C') { // constructor
-        parts.push(parts[parts.length-1]);
-        i += 2;
-        continue;
-      }
-      var size = parseInt(func.substr(i));
-      var pre = size.toString().length;
-      if (!size || !pre) { i--; break; } // counter i++ below us
-      var curr = func.substr(i + pre, size);
-      parts.push(curr);
-      subs.push(curr);
-      i += pre + size;
-    }
-    i++; // skip E
-    return parts;
-  }
-  function parse(rawList, limit, allowVoid) { // main parser
-    limit = limit || Infinity;
-    var ret = '', list = [];
-    function flushList() {
-      return '(' + list.join(', ') + ')';
-    }
-    var name;
-    if (func[i] === 'N') {
-      // namespaced N-E
-      name = parseNested().join('::');
-      limit--;
-      if (limit === 0) return rawList ? [name] : name;
-    } else {
-      // not namespaced
-      if (func[i] === 'K' || (first && func[i] === 'L')) i++; // ignore const and first 'L'
-      var size = parseInt(func.substr(i));
-      if (size) {
-        var pre = size.toString().length;
-        name = func.substr(i + pre, size);
-        i += pre + size;
-      }
-    }
-    first = false;
-    if (func[i] === 'I') {
-      i++;
-      var iList = parse(true);
-      var iRet = parse(true, 1, true);
-      ret += iRet[0] + ' ' + name + '<' + iList.join(', ') + '>';
-    } else {
-      ret = name;
-    }
-    paramLoop: while (i < func.length && limit-- > 0) {
-      //dump('paramLoop');
-      var c = func[i++];
-      if (c in basicTypes) {
-        list.push(basicTypes[c]);
-      } else {
-        switch (c) {
-          case 'P': list.push(parse(true, 1, true)[0] + '*'); break; // pointer
-          case 'R': list.push(parse(true, 1, true)[0] + '&'); break; // reference
-          case 'L': { // literal
-            i++; // skip basic type
-            var end = func.indexOf('E', i);
-            var size = end - i;
-            list.push(func.substr(i, size));
-            i += size + 2; // size + 'EE'
-            break;
-          }
-          case 'A': { // array
-            var size = parseInt(func.substr(i));
-            i += size.toString().length;
-            if (func[i] !== '_') throw '?';
-            i++; // skip _
-            list.push(parse(true, 1, true)[0] + ' [' + size + ']');
-            break;
-          }
-          case 'E': break paramLoop;
-          default: ret += '?' + c; break paramLoop;
-        }
-      }
-    }
-    if (!allowVoid && list.length === 1 && list[0] === 'void') list = []; // avoid (void)
-    if (rawList) {
-      if (ret) {
-        list.push(ret + '?');
-      }
-      return list;
-    } else {
-      return ret + flushList();
-    }
-  }
-  var parsed = func;
+#if DEMANGLE_SUPPORT
+  var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
+  assert(__cxa_demangle_func);
   try {
-    // Special-case the entry point, since its name differs from other name mangling.
-    if (func == 'Object._main' || func == '_main') {
-      return 'main()';
+    var s = func;
+    if (s.startsWith('__Z'))
+      s = s.substr(1);
+    var len = lengthBytesUTF8(s)+1;
+    var buf = _malloc(len);
+    stringToUTF8(s, buf, len);
+    var status = _malloc(4);
+    var ret = __cxa_demangle_func(buf, 0, 0, status);
+    if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
+      return Pointer_stringify(ret);
     }
-    if (typeof func === 'number') func = Pointer_stringify(func);
-    if (func[0] !== '_') return func;
-    if (func[1] !== '_') return func; // C function
-    if (func[2] !== 'Z') return func;
-    switch (func[3]) {
-      case 'n': return 'operator new()';
-      case 'd': return 'operator delete()';
-    }
-    parsed = parse();
+    // otherwise, libcxxabi failed
   } catch(e) {
-    parsed += '?';
+    // ignore problems here
+  } finally {
+    if (buf) _free(buf);
+    if (status) _free(status);
+    if (ret) _free(ret);
   }
-  if (parsed.indexOf('?') >= 0 && !hasLibcxxabi) {
-    Runtime.warnOnce('warning: a problem occurred in builtin C++ name demangling; build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
-  }
-  return parsed;
+  // failure when using libcxxabi, don't demangle
+  return func;
+#else // DEMANGLE_SUPPORT
+#if ASSERTIONS
+  warnOnce('warning: build with  -s DEMANGLE_SUPPORT=1  to link in libcxxabi demangling');
+#endif // ASSERTIONS
+  return func;
+#endif // DEMANGLE_SUPPORT
 }
 
 function demangleAll(text) {
-  return text.replace(/__Z[\w\d_]+/g, function(x) { var y = demangle(x); return x === y ? x : (x + ' [' + y + ']') });
+  var regex =
+#if WASM_BACKEND
+    /_Z[\w\d_]+/g;
+#else
+    /__Z[\w\d_]+/g;
+#endif
+  return text.replace(regex,
+    function(x) {
+      var y = demangle(x);
+      return x === y ? x : (y + ' [' + x + ']');
+    });
 }
 
 function jsStackTrace() {
@@ -1005,27 +849,72 @@ function jsStackTrace() {
 }
 
 function stackTrace() {
-  return demangleAll(jsStackTrace());
+  var js = jsStackTrace();
+  if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+  return demangleAll(js);
 }
-{{{ maybeExport('stackTrace') }}}
 
 // Memory management
 
-var PAGE_SIZE = 4096;
+var PAGE_SIZE = 16384;
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+var MIN_TOTAL_MEMORY = 16777216;
 
-function alignMemoryPage(x) {
-  if (x % 4096 > 0) {
-    x += (4096 - (x % 4096));
+function alignUp(x, multiple) {
+  if (x % multiple > 0) {
+    x += multiple - (x % multiple);
   }
   return x;
 }
 
-var HEAP;
-var HEAP8, HEAPU8, HEAP16, HEAPU16, HEAP32, HEAPU32, HEAPF32, HEAPF64;
+var HEAP,
+/** @type {ArrayBuffer} */
+  buffer,
+/** @type {Int8Array} */
+  HEAP8,
+/** @type {Uint8Array} */
+  HEAPU8,
+/** @type {Int16Array} */
+  HEAP16,
+/** @type {Uint16Array} */
+  HEAPU16,
+/** @type {Int32Array} */
+  HEAP32,
+/** @type {Uint32Array} */
+  HEAPU32,
+/** @type {Float32Array} */
+  HEAPF32,
+/** @type {Float64Array} */
+  HEAPF64;
 
-var STATIC_BASE = 0, STATICTOP = 0, staticSealed = false; // static area
-var STACK_BASE = 0, STACKTOP = 0, STACK_MAX = 0; // stack area
-var DYNAMIC_BASE = 0, DYNAMICTOP = 0; // dynamic area handled by sbrk
+function updateGlobalBuffer(buf) {
+  Module['buffer'] = buffer = buf;
+}
+
+function updateGlobalBufferViews() {
+  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+}
+
+var STATIC_BASE, STATICTOP, staticSealed; // static area
+var STACK_BASE, STACKTOP, STACK_MAX; // stack area
+var DYNAMIC_BASE, DYNAMICTOP_PTR; // dynamic area handled by sbrk
+
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/pthread-main.js, where they were passed to the thread worker at startup time
+#endif
+  STATIC_BASE = STATICTOP = STACK_BASE = STACKTOP = STACK_MAX = DYNAMIC_BASE = DYNAMICTOP_PTR = 0;
+  staticSealed = false;
+#if USE_PTHREADS
+}
+#endif
 
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -1036,10 +925,60 @@ if (ENVIRONMENT_IS_PTHREAD) {
 }
 #endif
 
-#if ALLOW_MEMORY_GROWTH == 0
-function abortOnCannotGrowMemory() {
-  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which adjusts the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#if STACK_OVERFLOW_CHECK
+// Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
+function writeStackCookie() {
+  assert((STACK_MAX & 3) == 0);
+  HEAPU32[(STACK_MAX >> 2)-1] = 0x02135467;
+  HEAPU32[(STACK_MAX >> 2)-2] = 0x89BACDFE;
 }
+
+function checkStackCookie() {
+  if (HEAPU32[(STACK_MAX >> 2)-1] != 0x02135467 || HEAPU32[(STACK_MAX >> 2)-2] != 0x89BACDFE) {
+    abort('Stack overflow! Stack cookie has been overwritten, expected hex dwords 0x89BACDFE and 0x02135467, but received 0x' + HEAPU32[(STACK_MAX >> 2)-2].toString(16) + ' ' + HEAPU32[(STACK_MAX >> 2)-1].toString(16));
+  }
+#if !SAFE_SPLIT_MEMORY
+  // Also test the global address 0 for integrity. This check is not compatible with SAFE_SPLIT_MEMORY though, since that mode already tests all address 0 accesses on its own.
+  if (HEAP32[0] !== 0x63736d65 /* 'emsc' */) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
+#endif
+}
+
+function abortStackOverflow(allocSize) {
+  abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
+}
+#endif
+
+#if EMTERPRETIFY
+function abortStackOverflowEmterpreter() {
+  abort("Emterpreter stack overflow! Decrease the recursion level or increase EMT_STACK_MAX in tools/emterpretify.py (current value " + EMT_STACK_MAX + ").");
+}
+#endif
+
+#if ABORTING_MALLOC
+function abortOnCannotGrowMemory() {
+#if WASM
+  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#else
+  abort('Cannot enlarge memory arrays. Either (1) compile with  -s TOTAL_MEMORY=X  with X higher than the current value ' + TOTAL_MEMORY + ', (2) compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at runtime but prevents some optimizations, (3) set Module.TOTAL_MEMORY to a higher value before the program runs, or (4) if you want malloc to return NULL (0) instead of this abort, compile with  -s ABORTING_MALLOC=0 ');
+#endif
+}
+#endif
+
+#if ALLOW_MEMORY_GROWTH
+if (!Module['reallocBuffer']) Module['reallocBuffer'] = function(size) {
+  var ret;
+  try {
+    var oldHEAP8 = HEAP8;
+    ret = new ArrayBuffer(size);
+    var temp = new Int8Array(ret);
+    temp.set(oldHEAP8);
+  } catch(e) {
+    return false;
+  }
+  var success = _emscripten_replace_memory(ret);
+  if (!success) return false;
+  return ret;
+};
 #endif
 
 function enlargeMemory() {
@@ -1055,80 +994,92 @@ function enlargeMemory() {
 #else
   // TOTAL_MEMORY is the current size of the actual array, and DYNAMICTOP is the new top.
 #if ASSERTIONS
-  assert(DYNAMICTOP >= TOTAL_MEMORY);
-  assert(TOTAL_MEMORY > 4); // So the loop below will not be infinite
+  assert(HEAP32[DYNAMICTOP_PTR>>2] > TOTAL_MEMORY); // This function should only ever be called after the ceiling of the dynamic heap has already been bumped to exceed the current total size of the asm.js heap.
 #endif
-
-  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
 
 #if EMSCRIPTEN_TRACING
   // Report old layout one last time
   _emscripten_trace_report_memory_layout();
 #endif
 
-  var LIMIT = Math.pow(2, 31); // 2GB is a practical maximum, as we use signed ints as pointers
-                               // and JS engines seem unhappy to give us 2GB arrays currently
-  if (DYNAMICTOP >= LIMIT) return false;
+  var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+  var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
-  while (TOTAL_MEMORY <= DYNAMICTOP) { // Simple heuristic.
-    if (TOTAL_MEMORY < LIMIT/2) {
-      TOTAL_MEMORY = alignMemoryPage(2*TOTAL_MEMORY); // double until 1GB
+  if (HEAP32[DYNAMICTOP_PTR>>2] > LIMIT) {
+#if ASSERTIONS
+    err('Cannot enlarge memory, asked to go up to ' + HEAP32[DYNAMICTOP_PTR>>2] + ' bytes, but the limit is ' + LIMIT + ' bytes!');
+#endif
+    return false;
+  }
+
+  var OLD_TOTAL_MEMORY = TOTAL_MEMORY;
+  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
+
+  while (TOTAL_MEMORY < HEAP32[DYNAMICTOP_PTR>>2]) { // Keep incrementing the heap size as long as it's less than what is requested.
+    if (TOTAL_MEMORY <= 536870912) {
+      TOTAL_MEMORY = alignUp(2 * TOTAL_MEMORY, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
     } else {
-      var last = TOTAL_MEMORY;
-      TOTAL_MEMORY = alignMemoryPage((3*TOTAL_MEMORY + LIMIT)/4); // add smaller increments towards 2GB, which we cannot reach
-      if (TOTAL_MEMORY <= last) return false;
+      // ..., but after that, add smaller increments towards 2GB, which we cannot reach
+      TOTAL_MEMORY = Math.min(alignUp((3 * TOTAL_MEMORY + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
+#if ASSERTIONS
+      if (TOTAL_MEMORY === OLD_TOTAL_MEMORY) {
+        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + TOTAL_MEMORY);
+      }
+#endif
     }
   }
 
-  TOTAL_MEMORY = Math.max(TOTAL_MEMORY, 16*1024*1024);
-
-  if (TOTAL_MEMORY >= LIMIT) return false;
-
+#if WASM_MEM_MAX != -1
+  // A limit was set for how much we can grow. We should not exceed that
+  // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
+  // if we are at say 64MB, and the max is 100MB, then we should *not* try to
+  // grow 64->128MB which is the default behavior (doubling), as 128MB will
+  // fail because of the max limit. Instead, we should only try to grow
+  // 64->100MB in this example, which has a chance of succeeding (but may
+  // still fail for another reason, of actually running out of memory).
+  TOTAL_MEMORY = Math.min(TOTAL_MEMORY, {{{ WASM_MEM_MAX }}});
+  if (TOTAL_MEMORY == OLD_TOTAL_MEMORY) {
 #if ASSERTIONS
-  Module.printErr('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
+    err('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
 #endif
-
-#if EMSCRIPTEN_TRACING
-  _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
-  // And now report the new layout
-  _emscripten_trace_report_memory_layout();
+    // restore the state to before this call, we failed
+    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
+    return false;
+  }
 #endif
 
 #if ASSERTIONS
   var start = Date.now();
 #endif
 
-  try {
-    if (ArrayBuffer.transfer) {
-      buffer = ArrayBuffer.transfer(buffer, TOTAL_MEMORY);
-    } else {
-      var oldHEAP8 = HEAP8;
-      buffer = new ArrayBuffer(TOTAL_MEMORY);
+  var replacement = Module['reallocBuffer'](TOTAL_MEMORY);
+  if (!replacement || replacement.byteLength != TOTAL_MEMORY) {
+#if ASSERTIONS
+    err('Failed to grow the heap from ' + OLD_TOTAL_MEMORY + ' bytes to ' + TOTAL_MEMORY + ' bytes, not enough memory!');
+    if (replacement) {
+      err('Expected to get back a buffer of size ' + TOTAL_MEMORY + ' bytes, but instead got back a buffer of size ' + replacement.byteLength);
     }
-  } catch(e) {
+#endif
+    // restore the state to before this call, we failed
+    TOTAL_MEMORY = OLD_TOTAL_MEMORY;
     return false;
   }
 
-  var success = _emscripten_replace_memory(buffer);
-  if (!success) return false;
-
   // everything worked
 
-  Module['buffer'] = buffer;
-  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
-  if (!ArrayBuffer.transfer) {
-    HEAP8.set(oldHEAP8);
-  }
+  updateGlobalBuffer(replacement);
+  updateGlobalBufferViews();
 
 #if ASSERTIONS
-  Module.printErr('enlarged memory arrays from ' + OLD_TOTAL_MEMORY + ' to ' + TOTAL_MEMORY + ', took ' + (Date.now() - start) + ' ms (has ArrayBuffer.transfer? ' + (!!ArrayBuffer.transfer) + ')');
+  if (!Module["usingWasm"]) {
+    err('Warning: Enlarging memory arrays, this is not fast! ' + [OLD_TOTAL_MEMORY, TOTAL_MEMORY]);
+  }
+#endif
+
+#if EMSCRIPTEN_TRACING
+  _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + OLD_TOTAL_MEMORY + " to " + TOTAL_MEMORY);
+  // And now report the new layout
+  _emscripten_trace_report_memory_layout();
 #endif
 
   return true;
@@ -1148,34 +1099,27 @@ try {
 
 var TOTAL_STACK = Module['TOTAL_STACK'] || {{{ TOTAL_STACK }}};
 var TOTAL_MEMORY = Module['TOTAL_MEMORY'] || {{{ TOTAL_MEMORY }}};
-
-var totalMemory = 64*1024;
-while (totalMemory < TOTAL_MEMORY || totalMemory < 2*TOTAL_STACK) {
-  if (totalMemory < 16*1024*1024) {
-    totalMemory *= 2;
-  } else {
-    totalMemory += 16*1024*1024
-  }
-}
-#if ALLOW_MEMORY_GROWTH
-totalMemory = Math.max(totalMemory, 16*1024*1024);
-#endif
-if (totalMemory !== TOTAL_MEMORY) {
-#if ASSERTIONS
-  Module.printErr('increasing TOTAL_MEMORY to ' + totalMemory + ' to be compliant with the asm.js spec (and given that TOTAL_STACK=' + TOTAL_STACK + ')');
-#endif
-  TOTAL_MEMORY = totalMemory;
-}
+if (TOTAL_MEMORY < TOTAL_STACK) err('TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // Initialize the runtime's memory
+#if ASSERTIONS
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
-assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && !!(new Int32Array(1)['subarray']) && !!(new Int32Array(1)['set']),
+assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
        'JS engine does not provide full typed array support');
-
-var buffer;
+#endif
 
 #if IN_TEST_HARNESS
-#if USE_PTHREADS == 1
+
+// Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
+if (ENVIRONMENT_IS_WEB) {
+  window.addEventListener('error', function(e) {
+    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return;
+    console.error('Page threw an exception ' + e);
+    Module['pageThrewException'] = true;
+  });
+}
+
+#if USE_PTHREADS
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
   xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
@@ -1186,6 +1130,7 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 #endif
 
 #if USE_PTHREADS
+#if !WASM
 if (typeof SharedArrayBuffer !== 'undefined') {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new SharedArrayBuffer(TOTAL_MEMORY);
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.
@@ -1208,32 +1153,16 @@ if (typeof SharedArrayBuffer !== 'undefined') {
         var num = end - begin;
         var target = new ArrayBuffer(num);
         var targetArray = new Uint8Array(target);
-        var sourceArray = new SharedUint8Array(this, begin, num);
+        var sourceArray = new Uint8Array(this, begin, num);
         targetArray.set(sourceArray);
         return target;
       };
     }
   })();
-
-  HEAP8 = new SharedInt8Array(buffer);
-  HEAP16 = new SharedInt16Array(buffer);
-  HEAP32 = new SharedInt32Array(buffer);
-  HEAPU8 = new SharedUint8Array(buffer);
-  HEAPU16 = new SharedUint16Array(buffer);
-  HEAPU32 = new SharedUint32Array(buffer);
-  HEAPF32 = new SharedFloat32Array(buffer);
-  HEAPF64 = new SharedFloat64Array(buffer);
 } else {
   if (!ENVIRONMENT_IS_PTHREAD) buffer = new ArrayBuffer(TOTAL_MEMORY);
-  HEAP8 = new Int8Array(buffer);
-  HEAP16 = new Int16Array(buffer);
-  HEAP32 = new Int32Array(buffer);
-  HEAPU8 = new Uint8Array(buffer);
-  HEAPU16 = new Uint16Array(buffer);
-  HEAPU32 = new Uint32Array(buffer);
-  HEAPF32 = new Float32Array(buffer);
-  HEAPF64 = new Float64Array(buffer);
 }
+updateGlobalBufferViews();
 
 if (typeof Atomics === 'undefined') {
   // Polyfill singlethreaded atomics ops from http://lars-t-hansen.github.io/ecmascript_sharedmem/shmem.html#Atomics.add
@@ -1242,9 +1171,10 @@ if (typeof Atomics === 'undefined') {
   Atomics['add'] = function(t, i, v) { var w = t[i]; t[i] += v; return w; }
   Atomics['and'] = function(t, i, v) { var w = t[i]; t[i] &= v; return w; }
   Atomics['compareExchange'] = function(t, i, e, r) { var w = t[i]; if (w == e) t[i] = r; return w; }
-  Atomics['futexWait'] = function(t, i, v, o) { if (t[i] != v) abort('Multithreading is not supported, cannot sleep to wait for futex!'); }
-  Atomics['futexWake'] = function(t, i, c) {}
-  Atomics['futexWakeOrRequeue'] = function(t, i1, c, i2, v) {}
+  Atomics['exchange'] = function(t, i, v) { var w = t[i]; t[i] = v; return w; }
+  Atomics['wait'] = function(t, i, v, o) { if (t[i] != v) return 'not-equal'; else return 'timed-out'; }
+  Atomics['wake'] = function(t, i, c) { return 0; }
+  Atomics['wakeOrRequeue'] = function(t, i1, c, i2, v) { return 0; }
   Atomics['isLockFree'] = function(s) { return true; }
   Atomics['load'] = function(t, i) { return t[i]; }
   Atomics['or'] = function(t, i, v) { var w = t[i]; t[i] |= v; return w; }
@@ -1253,18 +1183,59 @@ if (typeof Atomics === 'undefined') {
   Atomics['xor'] = function(t, i, v) { var w = t[i]; t[i] ^= v; return w; }
 }
 
+#else
+if (!ENVIRONMENT_IS_PTHREAD) {
+#if ALLOW_MEMORY_GROWTH
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE, 'shared': true });
+#else
+  Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE , 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE, 'shared': true });
+#endif
+  buffer = Module['wasmMemory'].buffer;
+  assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+}
+
+updateGlobalBufferViews();
+#endif // !WASM
 #else // USE_PTHREADS
 
 #if SPLIT_MEMORY == 0
-buffer = new ArrayBuffer(TOTAL_MEMORY);
-HEAP8 = new Int8Array(buffer);
-HEAP16 = new Int16Array(buffer);
-HEAP32 = new Int32Array(buffer);
-HEAPU8 = new Uint8Array(buffer);
-HEAPU16 = new Uint16Array(buffer);
-HEAPU32 = new Uint32Array(buffer);
-HEAPF32 = new Float32Array(buffer);
-HEAPF64 = new Float64Array(buffer);
+// Use a provided buffer, if there is one, or else allocate a new one
+if (Module['buffer']) {
+  buffer = Module['buffer'];
+#if ASSERTIONS
+  assert(buffer.byteLength === TOTAL_MEMORY, 'provided buffer should be ' + TOTAL_MEMORY + ' bytes, but it is ' + buffer.byteLength);
+#endif
+} else {
+  // Use a WebAssembly memory where available
+#if WASM
+  if (typeof WebAssembly === 'object' && typeof WebAssembly.Memory === 'function') {
+#if ASSERTIONS
+    assert(TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
+#endif // ASSERTIONS
+#if ALLOW_MEMORY_GROWTH
+#if WASM_MEM_MAX != -1
+#if ASSERTIONS
+    assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
+#endif
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE });
+#else
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE });
+#endif // BINARYEN_MEM_MAX
+#else
+    Module['wasmMemory'] = new WebAssembly.Memory({ 'initial': TOTAL_MEMORY / WASM_PAGE_SIZE, 'maximum': TOTAL_MEMORY / WASM_PAGE_SIZE });
+#endif // ALLOW_MEMORY_GROWTH
+    buffer = Module['wasmMemory'].buffer;
+  } else
+#endif // WASM
+  {
+    buffer = new ArrayBuffer(TOTAL_MEMORY);
+  }
+#if ASSERTIONS
+  assert(buffer.byteLength === TOTAL_MEMORY);
+#endif // ASSERTIONS
+  Module['buffer'] = buffer;
+}
+updateGlobalBufferViews();
 #else // SPLIT_MEMORY
 // make sure total memory is a multiple of the split memory size
 var SPLIT_MEMORY = {{{ SPLIT_MEMORY }}};
@@ -1283,7 +1254,7 @@ if (totalMemory === SPLIT_MEMORY) totalMemory *= 2;
 if (totalMemory !== TOTAL_MEMORY) {
   TOTAL_MEMORY = totalMemory;
 #if ASSERTIONS == 2
-  Module.printErr('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple>1 of the split memory size ' + SPLIT_MEMORY + ')');
+  err('increasing TOTAL_MEMORY to ' + TOTAL_MEMORY + ' to be a multiple>1 of the split memory size ' + SPLIT_MEMORY + ')');
 #endif
 }
 
@@ -1296,22 +1267,35 @@ var buffers = [], HEAP8s = [], HEAP16s = [], HEAP32s = [], HEAPU8s = [], HEAPU16
 // the browser fails to allocate the buffer.
 function allocateSplitChunk(i, data) {
   if (buffers[i]) return false; // already taken
-  var curr = data ? data : new ArrayBuffer(SPLIT_MEMORY);
-  assert(curr instanceof ArrayBuffer);
-  buffers[i] = curr;
-  HEAP8s[i] = new Int8Array(curr);
-  HEAP16s[i] = new Int16Array(curr);
-  HEAP32s[i] = new Int32Array(curr);
-  HEAPU8s[i] = new Uint8Array(curr);
-  HEAPU16s[i] = new Uint16Array(curr);
-  HEAPU32s[i] = new Uint32Array(curr);
-  HEAPF32s[i] = new Float32Array(curr);
-  HEAPF64s[i] = new Float64Array(curr);
+  // any of these allocations might fail; do them all before writing anything to global state
+  var currBuffer = data ? data : new ArrayBuffer(SPLIT_MEMORY);
+#if ASSERTIONS
+  assert(currBuffer instanceof ArrayBuffer);
+#endif
+  var currHEAP8s = new Int8Array(currBuffer);
+  var currHEAP16s = new Int16Array(currBuffer);
+  var currHEAP32s = new Int32Array(currBuffer);
+  var currHEAPU8s = new Uint8Array(currBuffer);
+  var currHEAPU16s = new Uint16Array(currBuffer);
+  var currHEAPU32s = new Uint32Array(currBuffer);
+  var currHEAPF32s = new Float32Array(currBuffer);
+  var currHEAPF64s = new Float64Array(currBuffer);
+  buffers[i] = currBuffer;
+  HEAP8s[i] = currHEAP8s;
+  HEAP16s[i] = currHEAP16s;
+  HEAP32s[i] = currHEAP32s;
+  HEAPU8s[i] = currHEAPU8s;
+  HEAPU16s[i] = currHEAPU16s;
+  HEAPU32s[i] = currHEAPU32s;
+  HEAPF32s[i] = currHEAPF32s;
+  HEAPF64s[i] = currHEAPF64s;
   return true;
 }
 function freeSplitChunk(i) {
+#if ASSERTIONS
   assert(buffers[i] && HEAP8s[i]);
   assert(i > 0); // cannot free the first chunk
+#endif
   buffers[i] = HEAP8s[i] = HEAP16s[i] = HEAP32s[i] = HEAPU8s[i] = HEAPU16s[i] = HEAPU32s[i] = HEAPF32s[i] = HEAPF64s[i] = null;
 }
 
@@ -1333,7 +1317,9 @@ function freeSplitChunk(i) {
   function fake(real) {
     var bytes = real[0].BYTES_PER_ELEMENT;
     var shifts = SHIFT_TABLE[bytes];
+#if ASSERTIONS
     assert(shifts > 0 || bytes == 1);
+#endif
     var that = {
       BYTES_PER_ELEMENT: bytes,
       set: function(array, offset) {
@@ -1347,7 +1333,9 @@ function freeSplitChunk(i) {
             break;
           } else {
             var currSize = SPLIT_MEMORY - relative;
+#if ASSERTIONS
             assert(currSize % that.BYTES_PER_ELEMENT === 0);
+#endif
             var lastIndex = currSize >> shifts;
             real[chunk].set(array.subarray(0, lastIndex), relative);
             // increments
@@ -1367,7 +1355,9 @@ function freeSplitChunk(i) {
         to = Math.max(from, to); // if to is smaller, we'll get nothing anyway, same as to == from
         if (from < to) {
           var end = (to - 1) >> SPLIT_MEMORY_BITS; // -1, since we do not actually read the last address
+#if ASSERTIONS
           assert(start === end, 'subarray cannot span split chunks');
+#endif
         }
         if (to > from && (to & SPLIT_MEMORY_MASK) == 0) {
           // avoid the mask on the next line giving 0 for the end
@@ -1377,7 +1367,9 @@ function freeSplitChunk(i) {
       },
       buffer: {
         slice: function(from, to) {
+#if ASSERTIONS
           assert(to, 'TODO: this is an actual copy, so we could support a slice across multiple chunks');
+#endif
           return new Uint8Array(HEAPU8.subarray(from, to)).buffer;
         },
       },
@@ -1398,7 +1390,7 @@ function freeSplitChunk(i) {
 function checkPtr(ptr, shifts) {
   if (ptr <= 0) abort('segmentation fault storing to address ' + ptr);
   if (ptr !== ((ptr >> shifts) << shifts)) abort('alignment error storing to address ' + ptr + ', which was expected to be aligned to a shift of ' + shifts);
-  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]); 
+  if ((ptr >> SPLIT_MEMORY_BITS) !== (ptr + Math.pow(2, shifts) - 1 >> SPLIT_MEMORY_BITS)) abort('segmentation fault, write spans split chunks ' + [ptr, shifts]);
 }
 #endif
 
@@ -1442,7 +1434,7 @@ function getU32(ptr) {
 #if SAFE_SPLIT_MEMORY
   checkPtr(ptr, 2);
 #endif
-  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] | 0;
+  return HEAPU32s[ptr >> SPLIT_MEMORY_BITS][(ptr & SPLIT_MEMORY_MASK) >> 2] >>> 0;
 }
 function getF32(ptr) {
   ptr = ptr | 0;
@@ -1526,22 +1518,28 @@ function setF64(ptr, value) {
 
 #endif // USE_PTHREADS
 
+function getTotalMemory() {
+  return TOTAL_MEMORY;
+}
+
 // Endianness check (note: assumes compiler arch was little-endian)
 #if SAFE_SPLIT_MEMORY == 0
-HEAP32[0] = 255;
-assert(HEAPU8[0] === 255 && HEAPU8[3] === 0, 'Typed arrays 2 must be run on a little-endian system');
+#if STACK_OVERFLOW_CHECK
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
-
-Module['HEAP'] = HEAP;
-Module['buffer'] = buffer;
-Module['HEAP8'] = HEAP8;
-Module['HEAP16'] = HEAP16;
-Module['HEAP32'] = HEAP32;
-Module['HEAPU8'] = HEAPU8;
-Module['HEAPU16'] = HEAPU16;
-Module['HEAPU32'] = HEAPU32;
-Module['HEAPF32'] = HEAPF32;
-Module['HEAPF64'] = HEAPF64;
+  HEAP32[0] = 0x63736d65; /* 'emsc' */
+#if USE_PTHREADS
+} else {
+  if (HEAP32[0] !== 0x63736d65) throw 'Runtime error: The application has corrupted its heap memory area (address zero)!';
+}
+#endif // USE_PTHREADS
+#endif // STACK_OVERFLOW_CHECK
+#if ASSERTIONS
+HEAP16[1] = 0x6373;
+if (HEAPU8[2] !== 0x73 || HEAPU8[3] !== 0x63) throw 'Runtime error: expected the system to be little-endian!';
+#endif // ASSERTIONS
+#endif // SAFE_SPLIT_MEMORY == 0
 
 function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
@@ -1553,9 +1551,9 @@ function callRuntimeCallbacks(callbacks) {
     var func = callback.func;
     if (typeof func === 'number') {
       if (callback.arg === undefined) {
-        Runtime.dynCall('v', func);
+        Module['dynCall_v'](func);
       } else {
-        Runtime.dynCall('vi', func, [callback.arg]);
+        Module['dynCall_vi'](func, callback.arg);
       }
     } else {
       func(callback.arg === undefined ? null : callback.arg);
@@ -1567,7 +1565,7 @@ var __ATPRERUN__  = []; // functions called before the runtime is initialized
 var __ATINIT__    = []; // functions called during startup
 var __ATMAIN__    = []; // functions called when main() is to be run
 var __ATEXIT__    = []; // functions called during shutdown
-var __ATPOSTRUN__ = []; // functions called after the runtime has exited
+var __ATPOSTRUN__ = []; // functions called after the main() is called
 
 var runtimeInitialized = false;
 var runtimeExited = false;
@@ -1591,15 +1589,25 @@ function preRun() {
 }
 
 function ensureInitRuntime() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
   if (runtimeInitialized) return;
   runtimeInitialized = true;
+#if USE_PTHREADS
+  // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+  __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
+#endif
   callRuntimeCallbacks(__ATINIT__);
 }
 
 function preMain() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1607,6 +1615,9 @@ function preMain() {
 }
 
 function exitRuntime() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1615,6 +1626,9 @@ function exitRuntime() {
 }
 
 function postRun() {
+#if STACK_OVERFLOW_CHECK
+  checkStackCookie();
+#endif
 #if USE_PTHREADS
   if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
 #endif
@@ -1631,73 +1645,49 @@ function postRun() {
 function addOnPreRun(cb) {
   __ATPRERUN__.unshift(cb);
 }
-{{{ maybeExport('addOnPreRun') }}}
 
 function addOnInit(cb) {
   __ATINIT__.unshift(cb);
 }
-{{{ maybeExport('addOnInit') }}}
 
 function addOnPreMain(cb) {
   __ATMAIN__.unshift(cb);
 }
-{{{ maybeExport('addOnPreMain') }}}
 
 function addOnExit(cb) {
   __ATEXIT__.unshift(cb);
 }
-{{{ maybeExport('addOnExit') }}}
 
 function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
-{{{ maybeExport('addOnPostRun') }}}
 
-// Tools
-
-
-function intArrayFromString(stringy, dontAddNull, length /* optional */) {
-  var len = length > 0 ? length : lengthBytesUTF8(stringy)+1;
-  var u8array = new Array(len);
-  var numBytesWritten = stringToUTF8Array(stringy, u8array, 0, u8array.length);
-  if (dontAddNull) u8array.length = numBytesWritten;
-  return u8array;
-}
-{{{ maybeExport('intArrayFromString') }}}
-
-function intArrayToString(array) {
-  var ret = [];
-  for (var i = 0; i < array.length; i++) {
-    var chr = array[i];
-    if (chr > 0xFF) {
-#if ASSERTIONS
-      assert(false, 'Character code ' + chr + ' (' + String.fromCharCode(chr) + ')  at offset ' + i + ' not in 0x00-0xFF.');
-#endif
-      chr &= 0xFF;
-    }
-    ret.push(String.fromCharCode(chr));
-  }
-  return ret.join('');
-}
-{{{ maybeExport('intArrayToString') }}}
-
+// Deprecated: This function should not be called because it is unsafe and does not provide
+// a maximum length limit of how many bytes it is allowed to write. Prefer calling the
+// function stringToUTF8Array() instead, which takes in a maximum length that can be used
+// to be secure from out of bounds writes.
+/** @deprecated */
 function writeStringToMemory(string, buffer, dontAddNull) {
-  var array = intArrayFromString(string, dontAddNull);
-  var i = 0;
-  while (i < array.length) {
-    var chr = array[i];
-    {{{ makeSetValue('buffer', 'i', 'chr', 'i8') }}};
-    i = i + 1;
+  warnOnce('writeStringToMemory is deprecated and should not be called! Use stringToUTF8() instead!');
+
+  var /** @type {number} */ lastChar, /** @type {number} */ end;
+  if (dontAddNull) {
+    // stringToUTF8Array always appends null. If we don't want to do that, remember the
+    // character that existed at the location where the null will be placed, and restore
+    // that after the write (below).
+    end = buffer + lengthBytesUTF8(string);
+    lastChar = HEAP8[end];
   }
+  stringToUTF8(string, buffer, Infinity);
+  if (dontAddNull) HEAP8[end] = lastChar; // Restore the value under the null character.
 }
-{{{ maybeExport('writeStringToMemory') }}}
 
 function writeArrayToMemory(array, buffer) {
-  for (var i = 0; i < array.length; i++) {
-    {{{ makeSetValue('buffer++', 0, 'array[i]', 'i8') }}};
-  }
+#if ASSERTIONS
+  assert(array.length >= 0, 'writeArrayToMemory array must have a length (should be an array or typed array)')
+#endif
+  HEAP8.set(array, buffer);
 }
-{{{ maybeExport('writeArrayToMemory') }}}
 
 function writeAsciiToMemory(str, buffer, dontAddNull) {
   for (var i = 0; i < str.length; ++i) {
@@ -1709,26 +1699,11 @@ function writeAsciiToMemory(str, buffer, dontAddNull) {
   // Null-terminate the pointer to the HEAP.
   if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
 }
-{{{ maybeExport('writeAsciiToMemory') }}}
 
 {{{ unSign }}}
 {{{ reSign }}}
 
-#if USE_PTHREADS
-// Atomics.exchange is not yet implemented in the spec, so polyfill that in via compareExchange in the meanwhile.
-// TODO: Keep an eye out for the opportunity to remove this once Atomics.exchange is available.
-if (typeof Atomics !== 'undefined' && !Atomics['exchange']) {
-  Atomics['exchange'] = function(heap, index, val) {
-    var oldVal, oldVal2;
-    do {
-      oldVal = Atomics['load'](heap, index);
-      oldVal2 = Atomics['compareExchange'](heap, index, oldVal, val);
-    } while(oldVal != oldVal2);
-    return oldVal;
-  }
-}
-#endif
-
+#if LEGACY_VM_SUPPORT
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math['imul'] || Math['imul'](0xffffffff, 5) !== -5) Math['imul'] = function imul(a, b) {
   var ah  = a >>> 16;
@@ -1756,13 +1731,25 @@ if (!Math['fround']) Math['fround'] = function(x) { return x };
 #endif
 
 if (!Math['clz32']) Math['clz32'] = function(x) {
-  x = x >>> 0;
-  for (var i = 0; i < 32; i++) {
-    if (x & (1 << (31 - i))) return i;
-  }
-  return 32;
+  var n = 32;
+  var y = x >> 16; if (y) { n -= 16; x = y; }
+  y = x >> 8; if (y) { n -= 8; x = y; }
+  y = x >> 4; if (y) { n -= 4; x = y; }
+  y = x >> 2; if (y) { n -= 2; x = y; }
+  y = x >> 1; if (y) return n - 2;
+  return n - x;
 };
 Math.clz32 = Math['clz32']
+
+if (!Math['trunc']) Math['trunc'] = function(x) {
+  return x < 0 ? Math.ceil(x) : Math.floor(x);
+};
+Math.trunc = Math['trunc'];
+#else // LEGACY_VM_SUPPORT
+#if ASSERTIONS
+assert(Math['imul'] && Math['fround'] && Math['clz32'] && Math['trunc'], 'this is a legacy browser, build with LEGACY_VM_SUPPORT');
+#endif
+#endif // LEGACY_VM_SUPPORT
 
 var Math_abs = Math.abs;
 var Math_cos = Math.cos;
@@ -1780,13 +1767,16 @@ var Math_floor = Math.floor;
 var Math_pow = Math.pow;
 var Math_imul = Math.imul;
 var Math_fround = Math.fround;
+var Math_round = Math.round;
 var Math_min = Math.min;
+var Math_max = Math.max;
 var Math_clz32 = Math.clz32;
+var Math_trunc = Math.trunc;
 
 // A counter of dependencies for calling run(). If we need to
 // do asynchronous work before running, increment this and
 // decrement it. Incrementing must happen in a place like
-// PRE_RUN_ADDITIONS (used by emcc to add file preloading).
+// Module.preRun (used by emcc to add file preloading).
 // Note that you can add dependencies in preRun, even though
 // it happens right before run - run will be postponed until
 // the dependencies are met.
@@ -1809,6 +1799,11 @@ function getUniqueRunDependency(id) {
 }
 
 function addRunDependency(id) {
+#if USE_PTHREADS
+  // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
+  // so good to be very explicit)
+  assert(!ENVIRONMENT_IS_PTHREAD);
+#endif
   runDependencies++;
   if (Module['monitorRunDependencies']) {
     Module['monitorRunDependencies'](runDependencies);
@@ -1829,21 +1824,20 @@ function addRunDependency(id) {
         for (var dep in runDependencyTracking) {
           if (!shown) {
             shown = true;
-            Module.printErr('still waiting on run dependencies:');
+            err('still waiting on run dependencies:');
           }
-          Module.printErr('dependency: ' + dep);
+          err('dependency: ' + dep);
         }
         if (shown) {
-          Module.printErr('(end of list)');
+          err('(end of list)');
         }
       }, 10000);
     }
   } else {
-    Module.printErr('warning: run dependency added without ID');
+    err('warning: run dependency added without ID');
   }
 #endif
 }
-{{{ maybeExport('addRunDependency') }}}
 
 function removeRunDependency(id) {
   runDependencies--;
@@ -1855,7 +1849,7 @@ function removeRunDependency(id) {
     assert(runDependencyTracking[id]);
     delete runDependencyTracking[id];
   } else {
-    Module.printErr('warning: run dependency removed without ID');
+    err('warning: run dependency removed without ID');
   }
 #endif
   if (runDependencies == 0) {
@@ -1870,10 +1864,14 @@ function removeRunDependency(id) {
     }
   }
 }
-{{{ maybeExport('removeRunDependency') }}}
 
 Module["preloadedImages"] = {}; // maps url to image data
 Module["preloadedAudios"] = {}; // maps url to audio data
+#if WASM
+#if MAIN_MODULE
+Module["preloadedWasm"] = {}; // maps url to wasm instance exports
+#endif // MAIN_MODULE
+#endif // WASM
 
 #if PGO
 var PGOMonitor = {
@@ -1884,7 +1882,7 @@ var PGOMonitor = {
       var func = this.allGenerated[i];
       if (!this.called[func]) dead.push(func);
     }
-    Module.print('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
+    out('-s DEAD_FUNCTIONS=\'' + JSON.stringify(dead) + '\'\n');
   }
 };
 Module['PGOMonitor'] = PGOMonitor;
@@ -1905,12 +1903,42 @@ addOnPreRun(function() { addRunDependency('pgo') });
 }}}
 
 addOnPreRun(function() {
-  if (Module['dynamicLibraries']) {
-    Module['dynamicLibraries'].forEach(function(lib) {
-      Runtime.loadDynamicLibrary(lib);
-    });
+  function loadDynamicLibraries(libs) {
+    if (libs) {
+      libs.forEach(function(lib) {
+        loadDynamicLibrary(lib);
+      });
+    }
+    if (Module['asm']['runPostSets']) {
+      Module['asm']['runPostSets']();
+    }
   }
-  asm['runPostSets']();
+  // if we can load dynamic libraries synchronously, do so, otherwise, preload
+#if WASM
+  if (Module['dynamicLibraries'] && Module['dynamicLibraries'].length > 0 && !Module['readBinary']) {
+    // we can't read binary data synchronously, so preload
+    addRunDependency('preload_dynamicLibraries');
+    var binaries = [];
+    Module['dynamicLibraries'].forEach(function(lib) {
+      fetch(lib, { credentials: 'same-origin' }).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + lib + "'";
+        }
+        return response['arrayBuffer']();
+      }).then(function(buffer) {
+        var binary = new Uint8Array(buffer);
+        binaries.push(binary);
+        if (binaries.length === Module['dynamicLibraries'].length) {
+          // we got them all, wonderful
+          loadDynamicLibraries(binaries);
+          removeRunDependency('preload_dynamicLibraries');
+        }
+      });
+    });
+    return;
+  }
+#endif
+  loadDynamicLibraries(Module['dynamicLibraries']);
 });
 
 #if ASSERTIONS
@@ -1968,6 +1996,536 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 #if PTHREAD_POOL_SIZE > 0
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
+#endif
+
+#if ASSERTIONS
+#if FILESYSTEM == 0
+var /* show errors on likely calls to FS when it was not included */ FS = {
+  error: function() {
+    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1');
+  },
+  init: function() { FS.error() },
+  createDataFile: function() { FS.error() },
+  createPreloadedFile: function() { FS.error() },
+  createLazyFile: function() { FS.error() },
+  open: function() { FS.error() },
+  mkdev: function() { FS.error() },
+  registerDevice: function() { FS.error() },
+  analyzePath: function() { FS.error() },
+  loadFilesFromDB: function() { FS.error() },
+
+  ErrnoError: function ErrnoError() { FS.error() },
+};
+Module['FS_createDataFile'] = FS.createDataFile;
+Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
+#endif
+#endif
+
+#if CYBERDWARF
+var cyberDWARFFile = '{{{ BUNDLED_CD_DEBUG_FILE }}}';
+#endif
+
+#include "URIUtils.js"
+
+#if WASM
+function integrateWasmJS() {
+  // wasm.js has several methods for creating the compiled code module here:
+  //  * 'native-wasm' : use native WebAssembly support in the browser
+  //  * 'interpret-s-expr': load s-expression code from a .wast and interpret
+  //  * 'interpret-binary': load binary wasm and interpret
+  //  * 'interpret-asm2wasm': load asm.js code, translate to wasm, and interpret
+  //  * 'asmjs': no wasm, just load the asm.js code and use that (good for testing)
+  // The method is set at compile time (BINARYEN_METHOD)
+  // The method can be a comma-separated list, in which case, we will try the
+  // options one by one. Some of them can fail gracefully, and then we can try
+  // the next.
+
+  // inputs
+
+  var method = '{{{ BINARYEN_METHOD }}}';
+
+  var wasmTextFile = '{{{ WASM_TEXT_FILE }}}';
+  var wasmBinaryFile = '{{{ WASM_BINARY_FILE }}}';
+  var asmjsCodeFile = '{{{ ASMJS_CODE_FILE }}}';
+
+  if (!isDataURI(wasmTextFile)) {
+    wasmTextFile = locateFile(wasmTextFile);
+  }
+  if (!isDataURI(wasmBinaryFile)) {
+    wasmBinaryFile = locateFile(wasmBinaryFile);
+  }
+  if (!isDataURI(asmjsCodeFile)) {
+    asmjsCodeFile = locateFile(asmjsCodeFile);
+  }
+
+  // utilities
+
+  var wasmPageSize = 64*1024;
+
+  var info = {
+    'global': null,
+    'env': null,
+    'asm2wasm': asm2wasmImports,
+    'parent': Module // Module inside wasm-js.cpp refers to wasm-js.cpp; this allows access to the outside program.
+  };
+
+  var exports = null;
+
+#if BINARYEN_METHOD != 'native-wasm'
+  function lookupImport(mod, base) {
+    var lookup = info;
+    if (mod.indexOf('.') < 0) {
+      lookup = (lookup || {})[mod];
+    } else {
+      var parts = mod.split('.');
+      lookup = (lookup || {})[parts[0]];
+      lookup = (lookup || {})[parts[1]];
+    }
+    if (base) {
+      lookup = (lookup || {})[base];
+    }
+    if (lookup === undefined) {
+      abort('bad lookupImport to (' + mod + ').' + base);
+    }
+    return lookup;
+  }
+#endif // BINARYEN_METHOD != 'native-wasm'
+
+  function mergeMemory(newBuffer) {
+    // The wasm instance creates its memory. But static init code might have written to
+    // buffer already, including the mem init file, and we must copy it over in a proper merge.
+    // TODO: avoid this copy, by avoiding such static init writes
+    // TODO: in shorter term, just copy up to the last static init write
+    var oldBuffer = Module['buffer'];
+    if (newBuffer.byteLength < oldBuffer.byteLength) {
+      err('the new buffer in mergeMemory is smaller than the previous one. in native wasm, we should grow memory here');
+    }
+    var oldView = new Int8Array(oldBuffer);
+    var newView = new Int8Array(newBuffer);
+
+#if MEM_INIT_IN_WASM == 0
+    // If we have a mem init file, do not trample it
+    if (!memoryInitializer) {
+      oldView.set(newView.subarray(Module['STATIC_BASE'], Module['STATIC_BASE'] + Module['STATIC_BUMP']), Module['STATIC_BASE']);
+    }
+#endif
+
+    newView.set(oldView);
+    updateGlobalBuffer(newBuffer);
+    updateGlobalBufferViews();
+  }
+
+  function fixImports(imports) {
+#if WASM_BACKEND
+    var ret = {};
+    for (var i in imports) {
+      var fixed = i;
+      if (fixed[0] == '_') fixed = fixed.substr(1);
+      ret[fixed] = imports[i];
+    }
+    return ret;
+#else
+    return imports;
+#endif // WASM_BACKEND
+  }
+
+  function getBinary() {
+    try {
+      if (Module['wasmBinary']) {
+        return new Uint8Array(Module['wasmBinary']);
+      }
+#if SUPPORT_BASE64_EMBEDDING
+      var binary = tryParseAsDataURI(wasmBinaryFile);
+      if (binary) {
+        return binary;
+      }
+#endif
+      if (Module['readBinary']) {
+        return Module['readBinary'](wasmBinaryFile);
+      } else {
+#if BINARYEN_ASYNC_COMPILATION
+        throw "both async and sync fetching of the wasm failed";
+#else
+        throw "sync fetching of the wasm failed: you can preload it to Module['wasmBinary'] manually, or emcc.py will do that for you when generating HTML (but not JS)";
+#endif
+      }
+    }
+    catch (err) {
+      abort(err);
+    }
+  }
+
+  function getBinaryPromise() {
+    // if we don't have the binary yet, and have the Fetch api, use that
+    // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
+    if (!Module['wasmBinary'] && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+      return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
+        if (!response['ok']) {
+          throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
+        }
+        return response['arrayBuffer']();
+      }).catch(function () {
+        return getBinary();
+      });
+    }
+    // Otherwise, getBinary should be able to get it synchronously
+    return new Promise(function(resolve, reject) {
+      resolve(getBinary());
+    });
+  }
+
+  // do-method functions
+
+#if BINARYEN_METHOD != 'native-wasm'
+  function doJustAsm(global, env, providedBuffer) {
+    // if no Module.asm, or it's the method handler helper (see below), then apply
+    // the asmjs
+    if (typeof Module['asm'] !== 'function' || Module['asm'] === methodHandler) {
+      if (!Module['asmPreload']) {
+        // you can load the .asm.js file before this, to avoid this sync xhr and eval
+        {{{ makeEval("eval(Module['read'](asmjsCodeFile));") }}} // set Module.asm
+      } else {
+        Module['asm'] = Module['asmPreload'];
+      }
+    }
+    if (typeof Module['asm'] !== 'function') {
+      err('asm evalling did not set the module properly');
+      return false;
+    }
+    return Module['asm'](global, env, providedBuffer);
+  }
+#endif // BINARYEN_METHOD != 'native-wasm'
+
+  function doNativeWasm(global, env, providedBuffer) {
+    if (typeof WebAssembly !== 'object') {
+#if BINARYEN_METHOD == 'native-wasm'
+#if ASSERTIONS
+      // when the method is just native-wasm, our error message can be very specific
+      abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
+#endif
+#endif
+      err('no native wasm support detected');
+      return false;
+    }
+    // prepare memory import
+    if (!(Module['wasmMemory'] instanceof WebAssembly.Memory)) {
+      err('no native wasm Memory in use');
+      return false;
+    }
+    env['memory'] = Module['wasmMemory'];
+    // Load the wasm module and create an instance of using native support in the JS engine.
+    info['global'] = {
+      'NaN': NaN,
+      'Infinity': Infinity
+    };
+    info['global.Math'] = Math;
+    info['env'] = env;
+    // handle a generated wasm instance, receiving its exports and
+    // performing other necessary setup
+    function receiveInstance(instance, module) {
+      exports = instance.exports;
+      if (exports.memory) mergeMemory(exports.memory);
+      Module['asm'] = exports;
+      Module["usingWasm"] = true;
+#if WASM_BACKEND
+      // wasm backend stack goes down
+      STACKTOP = STACK_BASE + TOTAL_STACK;
+      STACK_MAX = STACK_BASE;
+      // can't call stackRestore() here since this function can be called
+      // synchronously before stackRestore() is declared.
+      Module["asm"]["stackRestore"](STACKTOP);
+#endif
+#if USE_PTHREADS
+      // Keep a reference to the compiled module so we can post it to the workers.
+      Module['wasmModule'] = module;
+      // Instantiation is synchronous in pthreads and we assert on run dependencies.
+      if(!ENVIRONMENT_IS_PTHREAD) removeRunDependency('wasm-instantiate');
+#else
+      removeRunDependency('wasm-instantiate');
+#endif
+    }
+#if USE_PTHREADS
+    if (!ENVIRONMENT_IS_PTHREAD) {
+      addRunDependency('wasm-instantiate'); // we can't run yet (except in a pthread, where we have a custom sync instantiator)
+    }
+#else
+    addRunDependency('wasm-instantiate');
+#endif
+
+    // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback
+    // to manually instantiate the Wasm module themselves. This allows pages to run the instantiation parallel
+    // to any other async startup actions they are performing.
+    if (Module['instantiateWasm']) {
+      try {
+        return Module['instantiateWasm'](info, receiveInstance);
+      } catch(e) {
+        err('Module.instantiateWasm callback failed with error: ' + e);
+        return false;
+      }
+    }
+
+#if BINARYEN_ASYNC_COMPILATION
+#if RUNTIME_LOGGING
+    err('asynchronously preparing wasm');
+#endif
+#if ASSERTIONS
+    // Async compilation can be confusing when an error on the page overwrites Module
+    // (for example, if the order of elements is wrong, and the one defining Module is
+    // later), so we save Module and check it later.
+    var trueModule = Module;
+#endif
+    function receiveInstantiatedSource(output) {
+      // 'output' is a WebAssemblyInstantiatedSource object which has both the module and instance.
+      // receiveInstance() will swap in the exports (to Module.asm) so they can be called
+#if ASSERTIONS
+      assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
+      trueModule = null;
+#endif
+      receiveInstance(output['instance'], output['module']);
+    }
+    function instantiateArrayBuffer(receiver) {
+      getBinaryPromise().then(function(binary) {
+        return WebAssembly.instantiate(binary, info);
+      }).then(receiver, function(reason) {
+        err('failed to asynchronously prepare wasm: ' + reason);
+        abort(reason);
+      });
+    }
+    // Prefer streaming instantiation if available.
+    if (!Module['wasmBinary'] &&
+        typeof WebAssembly.instantiateStreaming === 'function' &&
+        !isDataURI(wasmBinaryFile) &&
+        typeof fetch === 'function') {
+      WebAssembly.instantiateStreaming(fetch(wasmBinaryFile, { credentials: 'same-origin' }), info)
+        .then(receiveInstantiatedSource, function(reason) {
+          // We expect the most common failure cause to be a bad MIME type for the binary,
+          // in which case falling back to ArrayBuffer instantiation should work.
+          err('wasm streaming compile failed: ' + reason);
+          err('falling back to ArrayBuffer instantiation');
+          instantiateArrayBuffer(receiveInstantiatedSource);
+        });
+    } else {
+      instantiateArrayBuffer(receiveInstantiatedSource);
+    }
+    return {}; // no exports yet; we'll fill them in later
+#else
+    var instance;
+    try {
+      instance = new WebAssembly.Instance(new WebAssembly.Module(getBinary()), info)
+    } catch (e) {
+      err('failed to compile wasm module: ' + e);
+      if (e.toString().indexOf('imported Memory with incompatible size') >= 0) {
+        err('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).');
+      }
+      return false;
+    }
+    receiveInstance(instance);
+    return exports;
+#endif
+  }
+
+#if BINARYEN_METHOD != 'native-wasm'
+  function doWasmPolyfill(global, env, providedBuffer, method) {
+    if (typeof WasmJS !== 'function') {
+      err('WasmJS not detected - polyfill not bundled?');
+      return false;
+    }
+
+    // Use wasm.js to polyfill and execute code in a wasm interpreter.
+    var wasmJS = WasmJS({});
+
+    // XXX don't be confused. Module here is in the outside program. wasmJS is the inner wasm-js.cpp.
+    wasmJS['outside'] = Module; // Inside wasm-js.cpp, Module['outside'] reaches the outside module.
+
+    // Information for the instance of the module.
+    wasmJS['info'] = info;
+
+    wasmJS['lookupImport'] = lookupImport;
+
+    assert(providedBuffer === Module['buffer']); // we should not even need to pass it as a 3rd arg for wasm, but that's the asm.js way.
+
+    info.global = global;
+    info.env = env;
+
+    // polyfill interpreter expects an ArrayBuffer
+    assert(providedBuffer === Module['buffer']);
+    env['memory'] = providedBuffer;
+    assert(env['memory'] instanceof ArrayBuffer);
+
+    wasmJS['providedTotalMemory'] = Module['buffer'].byteLength;
+
+    // Prepare to generate wasm, using either asm2wasm or s-exprs
+    var code;
+    if (method === 'interpret-binary') {
+      code = getBinary();
+    } else {
+      code = Module['read'](method == 'interpret-asm2wasm' ? asmjsCodeFile : wasmTextFile);
+    }
+    var temp;
+    if (method == 'interpret-asm2wasm') {
+      temp = wasmJS['_malloc'](code.length + 1);
+      wasmJS['writeAsciiToMemory'](code, temp);
+      wasmJS['_load_asm2wasm'](temp);
+    } else if (method === 'interpret-s-expr') {
+      temp = wasmJS['_malloc'](code.length + 1);
+      wasmJS['writeAsciiToMemory'](code, temp);
+      wasmJS['_load_s_expr2wasm'](temp);
+    } else if (method === 'interpret-binary') {
+      temp = wasmJS['_malloc'](code.length);
+      wasmJS['HEAPU8'].set(code, temp);
+      wasmJS['_load_binary2wasm'](temp, code.length);
+    } else {
+      throw 'what? ' + method;
+    }
+    wasmJS['_free'](temp);
+
+    wasmJS['_instantiate'](temp);
+
+    if (Module['newBuffer']) {
+      mergeMemory(Module['newBuffer']);
+      Module['newBuffer'] = null;
+    }
+
+    exports = wasmJS['asmExports'];
+
+    return exports;
+  }
+#endif // BINARYEN_METHOD != 'native-wasm'
+
+  // We may have a preloaded value in Module.asm, save it
+  Module['asmPreload'] = Module['asm'];
+
+  // Memory growth integration code
+
+  var asmjsReallocBuffer = Module['reallocBuffer'];
+
+  var wasmReallocBuffer = function(size) {
+    var PAGE_MULTIPLE = Module["usingWasm"] ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE; // In wasm, heap size must be a multiple of 64KB. In asm.js, they need to be multiples of 16MB.
+    size = alignUp(size, PAGE_MULTIPLE); // round up to wasm page size
+    var old = Module['buffer'];
+    var oldSize = old.byteLength;
+    if (Module["usingWasm"]) {
+      // native wasm support
+      try {
+        var result = Module['wasmMemory'].grow((size - oldSize) / wasmPageSize); // .grow() takes a delta compared to the previous size
+        if (result !== (-1 | 0)) {
+          // success in native wasm memory growth, get the buffer from the memory
+          return Module['buffer'] = Module['wasmMemory'].buffer;
+        } else {
+          return null;
+        }
+      } catch(e) {
+#if ASSERTIONS
+        console.error('Module.reallocBuffer: Attempted to grow from ' + oldSize  + ' bytes to ' + size + ' bytes, but got error: ' + e);
+#endif
+        return null;
+      }
+    }
+#if BINARYEN_METHOD != 'native-wasm'
+    else {
+      // wasm interpreter support
+      exports['__growWasmMemory']((size - oldSize) / wasmPageSize); // tiny wasm method that just does grow_memory
+      // in interpreter, we replace Module.buffer if we allocate
+      return Module['buffer'] !== old ? Module['buffer'] : null; // if it was reallocated, it changed
+    }
+#endif // BINARYEN_METHOD != 'native-wasm'
+  };
+
+  Module['reallocBuffer'] = function(size) {
+    if (finalMethod === 'asmjs') {
+      return asmjsReallocBuffer(size);
+    } else {
+      return wasmReallocBuffer(size);
+    }
+  };
+
+  // we may try more than one; this is the final one, that worked and we are using
+  var finalMethod = '';
+
+  // Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
+  // the wasm module at that time, and it receives imports and provides exports and so forth, the app
+  // doesn't need to care that it is wasm or olyfilled wasm or asm.js.
+
+  Module['asm'] = function(global, env, providedBuffer) {
+#if BINARYEN_METHOD != 'native-wasm'
+    global = fixImports(global);
+#endif
+    env = fixImports(env);
+
+    // import table
+    if (!env['table']) {
+      var TABLE_SIZE = Module['wasmTableSize'];
+      if (TABLE_SIZE === undefined) TABLE_SIZE = 1024; // works in binaryen interpreter at least
+      var MAX_TABLE_SIZE = Module['wasmMaxTableSize'];
+      if (typeof WebAssembly === 'object' && typeof WebAssembly.Table === 'function') {
+        if (MAX_TABLE_SIZE !== undefined) {
+          env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, 'maximum': MAX_TABLE_SIZE, 'element': 'anyfunc' });
+        } else {
+          env['table'] = new WebAssembly.Table({ 'initial': TABLE_SIZE, element: 'anyfunc' });
+        }
+      } else {
+        env['table'] = new Array(TABLE_SIZE); // works in binaryen interpreter at least
+      }
+      Module['wasmTable'] = env['table'];
+    }
+
+    if (!env['memoryBase']) {
+      env['memoryBase'] = Module['STATIC_BASE']; // tell the memory segments where to place themselves
+    }
+    if (!env['tableBase']) {
+      env['tableBase'] = 0; // table starts at 0 by default, in dynamic linking this will change
+    }
+
+    // try the methods. each should return the exports if it succeeded
+
+    var exports;
+#if BINARYEN_METHOD == 'native-wasm'
+    exports = doNativeWasm(global, env, providedBuffer);
+#else // native-wasm
+#if BINARYEN_METHOD == 'asmjs'
+    exports = doJustAsm(global, env, providedBuffer);
+#else
+    var methods = method.split(',');
+
+    for (var i = 0; i < methods.length; i++) {
+      var curr = methods[i];
+
+#if RUNTIME_LOGGING
+      err('trying binaryen method: ' + curr);
+#endif
+
+      finalMethod = curr;
+
+      if (curr === 'native-wasm') {
+        if (exports = doNativeWasm(global, env, providedBuffer)) break;
+      } else if (curr === 'asmjs') {
+        if (exports = doJustAsm(global, env, providedBuffer)) break;
+      } else if (curr === 'interpret-asm2wasm' || curr === 'interpret-s-expr' || curr === 'interpret-binary') {
+        if (exports = doWasmPolyfill(global, env, providedBuffer, curr)) break;
+      } else {
+        abort('bad method: ' + curr);
+      }
+    }
+#endif // asmjs
+#endif // native-wasm
+
+#if ASSERTIONS
+    assert(exports, 'no binaryen method succeeded. consider enabling more options, like interpreting, if you want that: http://kripken.github.io/emscripten-site/docs/compiling/WebAssembly.html#binaryen-methods');
+#else
+    assert(exports, 'no binaryen method succeeded.');
+#endif
+
+#if RUNTIME_LOGGING
+    err('binaryen method succeeded.');
+#endif
+
+    return exports;
+  };
+
+  var methodHandler = Module['asm']; // note our method handler, as we may modify Module['asm'] later
+}
+
+integrateWasmJS();
 #endif
 
 // === Body ===

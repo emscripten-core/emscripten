@@ -1,9 +1,15 @@
+// Copyright 2011 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //"use strict";
 
 // Utilities for browser environments
-mergeInto(LibraryManager.library, {
-  $Browser__deps: ['$PATH', 'emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+var LibraryBrowser = {
+  $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
+  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { err("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead."); Module["requestFullScreen"] = Module["requestFullscreen"]; Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+                     'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
@@ -67,14 +73,14 @@ mergeInto(LibraryManager.library, {
           if (e instanceof ExitStatus) {
             return;
           } else {
-            if (e && typeof e === 'object' && e.stack) Module.printErr('exception thrown: ' + [e, e.stack]);
+            if (e && typeof e === 'object' && e.stack) err('exception thrown: ' + [e, e.stack]);
             throw e;
           }
         }
         if (Module['postMainLoop']) Module['postMainLoop']();
       }
     },
-    isFullScreen: false,
+    isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
     workers: [],
@@ -121,7 +127,7 @@ mergeInto(LibraryManager.library, {
               b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
             }
           } catch(e) {
-            Runtime.warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
+            warnOnce('Blob constructor present but fails: ' + e + '; falling back to blob builder');
           }
         }
         if (!b) {
@@ -224,19 +230,48 @@ mergeInto(LibraryManager.library, {
       };
       Module['preloadPlugins'].push(audioPlugin);
 
+#if WASM
+#if MAIN_MODULE
+      var wasmPlugin = {};
+      wasmPlugin['asyncWasmLoadPromise'] = new Promise(
+        function(resolve, reject) { return resolve(); });
+      wasmPlugin['canHandle'] = function(name) {
+        return !Module.noWasmDecoding && name.endsWith('.so');
+      };
+      wasmPlugin['handle'] = function(byteArray, name, onload, onerror) {
+        // loadWebAssemblyModule can not load modules out-of-order, so rather
+        // than just running the promises in parallel, this makes a chain of
+        // promises to run in series.
+        this['asyncWasmLoadPromise'] = this['asyncWasmLoadPromise'].then(
+          function() {
+            return loadWebAssemblyModule(byteArray, true);
+          }).then(
+            function(module) {
+              Module['preloadedWasm'][name] = module;
+              onload();
+            },
+            function(err) {
+              console.warn("Couldn't instantiate wasm: " + name + " '" + err + "'");
+              onerror();
+            });
+      };
+      Module['preloadPlugins'].push(wasmPlugin);
+#endif // MAIN_MODULE
+#endif // WASM
+
       // Canvas event setup
 
-      var canvas = Module['canvas'];
       function pointerLockChange() {
-        Browser.pointerLock = document['pointerLockElement'] === canvas ||
-                              document['mozPointerLockElement'] === canvas ||
-                              document['webkitPointerLockElement'] === canvas ||
-                              document['msPointerLockElement'] === canvas;
+        Browser.pointerLock = document['pointerLockElement'] === Module['canvas'] ||
+                              document['mozPointerLockElement'] === Module['canvas'] ||
+                              document['webkitPointerLockElement'] === Module['canvas'] ||
+                              document['msPointerLockElement'] === Module['canvas'];
       }
+      var canvas = Module['canvas'];
       if (canvas) {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
-        
+
         canvas.requestPointerLock = canvas['requestPointerLock'] ||
                                     canvas['mozRequestPointerLock'] ||
                                     canvas['webkitRequestPointerLock'] ||
@@ -249,7 +284,6 @@ mergeInto(LibraryManager.library, {
                                  function(){}; // no-op if function does not exist
         canvas.exitPointerLock = canvas.exitPointerLock.bind(document);
 
-
         document.addEventListener('pointerlockchange', pointerLockChange, false);
         document.addEventListener('mozpointerlockchange', pointerLockChange, false);
         document.addEventListener('webkitpointerlockchange', pointerLockChange, false);
@@ -257,8 +291,8 @@ mergeInto(LibraryManager.library, {
 
         if (Module['elementPointerLock']) {
           canvas.addEventListener("click", function(ev) {
-            if (!Browser.pointerLock && canvas.requestPointerLock) {
-              canvas.requestPointerLock();
+            if (!Browser.pointerLock && Module['canvas'].requestPointerLock) {
+              Module['canvas'].requestPointerLock();
               ev.preventDefault();
             }
           }, false);
@@ -283,16 +317,11 @@ mergeInto(LibraryManager.library, {
             contextAttributes[attribute] = webGLContextAttributes[attribute];
           }
         }
-#if GL_TESTING
-        contextAttributes.preserveDrawingBuffer = true;
-#endif
 
         contextHandle = GL.createContext(canvas, contextAttributes);
         if (contextHandle) {
           ctx = GL.getContext(contextHandle).GLctx;
         }
-        // Set the background of the WebGL canvas to black
-        canvas.style.backgroundColor = "black";
       } else {
         ctx = canvas.getContext('2d');
       }
@@ -313,10 +342,10 @@ mergeInto(LibraryManager.library, {
 
     destroyContext: function(canvas, useWebGL, setInModule) {},
 
-    fullScreenHandlersInstalled: false,
+    fullscreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
+    requestFullscreen: function(lockPointer, resizeCanvas, vrDevice) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
       Browser.vrDevice = vrDevice;
@@ -325,42 +354,47 @@ mergeInto(LibraryManager.library, {
       if (typeof Browser.vrDevice === 'undefined') Browser.vrDevice = null;
 
       var canvas = Module['canvas'];
-      function fullScreenChange() {
-        Browser.isFullScreen = false;
+      function fullscreenChange() {
+        Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
-        if ((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
-             document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
-             document['fullScreenElement'] || document['fullscreenElement'] ||
-             document['msFullScreenElement'] || document['msFullscreenElement'] ||
+        if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+             document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
              document['webkitCurrentFullScreenElement']) === canvasContainer) {
-          canvas.cancelFullScreen = document['cancelFullScreen'] ||
-                                    document['mozCancelFullScreen'] ||
-                                    document['webkitCancelFullScreen'] ||
-                                    document['msExitFullscreen'] ||
-                                    document['exitFullscreen'] ||
-                                    function() {};
-          canvas.cancelFullScreen = canvas.cancelFullScreen.bind(document);
+          canvas.exitFullscreen = document['exitFullscreen'] ||
+                                  document['cancelFullScreen'] ||
+                                  document['mozCancelFullScreen'] ||
+                                  document['msExitFullscreen'] ||
+                                  document['webkitCancelFullScreen'] ||
+                                  function() {};
+          canvas.exitFullscreen = canvas.exitFullscreen.bind(document);
           if (Browser.lockPointer) canvas.requestPointerLock();
-          Browser.isFullScreen = true;
-          if (Browser.resizeCanvas) Browser.setFullScreenCanvasSize();
+          Browser.isFullscreen = true;
+          if (Browser.resizeCanvas) {
+            Browser.setFullscreenCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+          }
         } else {
-          
           // remove the full screen specific parent of the canvas again to restore the HTML structure from before going full screen
           canvasContainer.parentNode.insertBefore(canvas, canvasContainer);
           canvasContainer.parentNode.removeChild(canvasContainer);
-          
-          if (Browser.resizeCanvas) Browser.setWindowedCanvasSize();
+
+          if (Browser.resizeCanvas) {
+            Browser.setWindowedCanvasSize();
+          } else {
+            Browser.updateCanvasDimensions(canvas);
+          }
         }
-        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullScreen);
-        Browser.updateCanvasDimensions(canvas);
+        if (Module['onFullScreen']) Module['onFullScreen'](Browser.isFullscreen);
+        if (Module['onFullscreen']) Module['onFullscreen'](Browser.isFullscreen);
       }
 
-      if (!Browser.fullScreenHandlersInstalled) {
-        Browser.fullScreenHandlersInstalled = true;
-        document.addEventListener('fullscreenchange', fullScreenChange, false);
-        document.addEventListener('mozfullscreenchange', fullScreenChange, false);
-        document.addEventListener('webkitfullscreenchange', fullScreenChange, false);
-        document.addEventListener('MSFullscreenChange', fullScreenChange, false);
+      if (!Browser.fullscreenHandlersInstalled) {
+        Browser.fullscreenHandlersInstalled = true;
+        document.addEventListener('fullscreenchange', fullscreenChange, false);
+        document.addEventListener('mozfullscreenchange', fullscreenChange, false);
+        document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
+        document.addEventListener('MSFullscreenChange', fullscreenChange, false);
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
@@ -369,16 +403,25 @@ mergeInto(LibraryManager.library, {
       canvasContainer.appendChild(canvas);
 
       // use parent of canvas as full screen root to allow aspect ratio correction (Firefox stretches the root to screen size)
-      canvasContainer.requestFullScreen = canvasContainer['requestFullScreen'] ||
+      canvasContainer.requestFullscreen = canvasContainer['requestFullscreen'] ||
                                           canvasContainer['mozRequestFullScreen'] ||
                                           canvasContainer['msRequestFullscreen'] ||
+                                         (canvasContainer['webkitRequestFullscreen'] ? function() { canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null) ||
                                          (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
 
       if (vrDevice) {
-        canvasContainer.requestFullScreen({ vrDisplay: vrDevice });
+        canvasContainer.requestFullscreen({ vrDisplay: vrDevice });
       } else {
-        canvasContainer.requestFullScreen();
+        canvasContainer.requestFullscreen();
       }
+    },
+
+    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
+        err('Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.');
+        Browser.requestFullScreen = function(lockPointer, resizeCanvas, vrDevice) {
+          return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
+        }
+        return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
     },
 
     nextRAF: 0,
@@ -481,7 +524,7 @@ mergeInto(LibraryManager.library, {
         'mp3': 'audio/mpeg'
       }[name.substr(name.lastIndexOf('.')+1)];
     },
-    
+
     getUserMedia: function(func) {
       if(!window.getUserMedia) {
         window.getUserMedia = navigator['getUserMedia'] ||
@@ -515,13 +558,13 @@ mergeInto(LibraryManager.library, {
     getMouseWheelDelta: function(event) {
       var delta = 0;
       switch (event.type) {
-        case 'DOMMouseScroll': 
+        case 'DOMMouseScroll':
           delta = event.detail;
           break;
-        case 'mousewheel': 
+        case 'mousewheel':
           delta = event.wheelDelta;
           break;
-        case 'wheel': 
+        case 'wheel':
           delta = event['deltaY'];
           break;
         default:
@@ -549,17 +592,17 @@ mergeInto(LibraryManager.library, {
           Browser.mouseMovementX = Browser.getMovementX(event);
           Browser.mouseMovementY = Browser.getMovementY(event);
         }
-        
+
         // check if SDL is available
         if (typeof SDL != "undefined") {
-        	Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
-        	Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
+          Browser.mouseX = SDL.mouseX + Browser.mouseMovementX;
+          Browser.mouseY = SDL.mouseY + Browser.mouseMovementY;
         } else {
-        	// just add the mouse delta to the current absolut mouse position
-        	// FIXME: ideally this should be clamped against the canvas size and zero
-        	Browser.mouseX += Browser.mouseMovementX;
-        	Browser.mouseY += Browser.mouseMovementY;
-        }        
+          // just add the mouse delta to the current absolut mouse position
+          // FIXME: ideally this should be clamped against the canvas size and zero
+          Browser.mouseX += Browser.mouseMovementX;
+          Browser.mouseY += Browser.mouseMovementY;
+        }
       } else {
         // Otherwise, calculate the movement based on the changes
         // in the coordinates.
@@ -591,7 +634,7 @@ mergeInto(LibraryManager.library, {
           adjustedY = adjustedY * (ch / rect.height);
 
           var coords = { x: adjustedX, y: adjustedY };
-          
+
           if (event.type === 'touchstart') {
             Browser.lastTouches[touch.identifier] = coords;
             Browser.touches[touch.identifier] = coords;
@@ -600,7 +643,7 @@ mergeInto(LibraryManager.library, {
             if (!last) last = coords;
             Browser.lastTouches[touch.identifier] = last;
             Browser.touches[touch.identifier] = coords;
-          } 
+          }
           return;
         }
 
@@ -620,26 +663,12 @@ mergeInto(LibraryManager.library, {
       }
     },
 
-    xhrLoad: function(url, onload, onerror) {
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, true);
-      xhr.responseType = 'arraybuffer';
-      xhr.onload = function xhr_onload() {
-        if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-          onload(xhr.response);
-        } else {
-          onerror();
-        }
-      };
-      xhr.onerror = onerror;
-      xhr.send(null);
-    },
-
     asyncLoad: function(url, onload, onerror, noRunDep) {
-      Browser.xhrLoad(url, function(arrayBuffer) {
+      var dep = !noRunDep ? getUniqueRunDependency('al ' + url) : '';
+      Module['readAsync'](url, function(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file "' + url + '" failed (no arrayBuffer).');
         onload(new Uint8Array(arrayBuffer));
-        if (!noRunDep) removeRunDependency('al ' + url);
+        if (dep) removeRunDependency(dep);
       }, function(event) {
         if (onerror) {
           onerror();
@@ -647,7 +676,7 @@ mergeInto(LibraryManager.library, {
           throw 'Loading data file "' + url + '" failed.';
         }
       });
-      if (!noRunDep) addRunDependency('al ' + url);
+      if (dep) addRunDependency(dep);
     },
 
     resizeListeners: [],
@@ -667,23 +696,25 @@ mergeInto(LibraryManager.library, {
 
     windowedWidth: 0,
     windowedHeight: 0,
-    setFullScreenCanvasSize: function() {
-      // check if SDL is available   
+    setFullscreenCanvasSize: function() {
+      // check if SDL is available
       if (typeof SDL != "undefined") {
-      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      	flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
-      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        flags = flags | 0x00800000; // set SDL_FULLSCREEN flag
+        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
       }
+      Browser.updateCanvasDimensions(Module['canvas']);
       Browser.updateResizeListeners();
     },
 
     setWindowedCanvasSize: function() {
-      // check if SDL is available       
+      // check if SDL is available
       if (typeof SDL != "undefined") {
-      	var flags = {{{ makeGetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'i32', 0, 1) }}};
-      	flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
-      	{{{ makeSetValue('SDL.screen+Runtime.QUANTUM_SIZE*0', '0', 'flags', 'i32') }}}
+        var flags = {{{ makeGetValue('SDL.screen', '0', 'i32', 0, 1) }}};
+        flags = flags & ~0x00800000; // clear SDL_FULLSCREEN flag
+        {{{ makeSetValue('SDL.screen', '0', 'flags', 'i32') }}}
       }
+      Browser.updateCanvasDimensions(Module['canvas']);
       Browser.updateResizeListeners();
     },
 
@@ -704,10 +735,8 @@ mergeInto(LibraryManager.library, {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
-      if (((document['webkitFullScreenElement'] || document['webkitFullscreenElement'] ||
-           document['mozFullScreenElement'] || document['mozFullscreenElement'] ||
-           document['fullScreenElement'] || document['fullscreenElement'] ||
-           document['msFullScreenElement'] || document['msFullscreenElement'] ||
+      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
+           document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
            document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
          w = Math.round(w * factor);
@@ -745,41 +774,25 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-#if ASYNCIFY
-  emscripten_wget__deps: ['emscripten_async_resume'],
-  emscripten_wget: function(url, file) {
-    var _url = Pointer_stringify(url);
-    var _file = Pointer_stringify(file);
-    asm.setAsync();
-    Module['noExitRuntime'] = true;
-    FS.createPreloadedFile(
-      PATH.dirname(_file),
-      PATH.basename(_file),
-      _url, true, true,
-      _emscripten_async_resume,
-      _emscripten_async_resume
-    );
-  },
-#else
-  emscripten_wget: function(url, file) {
-    throw 'Please compile your program with -s ASYNCIFY=1 in order to use asynchronous operations like emscripten_wget';
-  },
-#endif
-
+  emscripten_async_wget__deps: ['$PATH'],
+  emscripten_async_wget__proxy: 'sync',
+  emscripten_async_wget__sig: 'viiii',
   emscripten_async_wget: function(url, file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
     function doCallback(callback) {
       if (callback) {
-        var stack = Runtime.stackSave();
-        Runtime.dynCall('vi', callback, [allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
-        Runtime.stackRestore(stack);
+        var stack = stackSave();
+        Module['dynCall_vi'](callback, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
+        stackRestore(stack);
       }
     }
+    var destinationDirectory = PATH.dirname(_file);
     FS.createPreloadedFile(
-      PATH.dirname(_file),
+      destinationDirectory,
       PATH.basename(_file),
       _url, true, true,
       function() {
@@ -795,51 +808,33 @@ mergeInto(LibraryManager.library, {
         try {
           FS.unlink(_file);
         } catch (e) {}
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
       }
     );
   },
 
-#if EMTERPRETIFY_ASYNC
-  emscripten_wget_data__deps: ['$EmterpreterAsync'],
-  emscripten_wget_data: function(url, pbuffer, pnum, perror) {
-    EmterpreterAsync.handle(function(resume) {
-      Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
-        resume(function() {
-          // can only allocate the buffer after the resume, not during an asyncing
-          var buffer = _malloc(byteArray.length); // must be freed by caller!
-          HEAPU8.set(byteArray, buffer);
-          {{{ makeSetValueAsm('pbuffer', 0, 'buffer', 'i32') }}};
-          {{{ makeSetValueAsm('pnum',  0, 'byteArray.length', 'i32') }}};
-          {{{ makeSetValueAsm('perror',  0, '0', 'i32') }}};
-        });
-      }, function() {
-        {{{ makeSetValueAsm('perror',  0, '1', 'i32') }}};
-        resume();
-      }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
-    });
-  },
-#else
-  emscripten_wget_data: function(url, file) {
-    throw 'Please compile your program with -s EMTERPRETER_ASYNC=1 in order to use asynchronous operations like emscripten_wget_data';
-  },
-#endif
-
+  emscripten_async_wget_data__proxy: 'sync',
+  emscripten_async_wget_data__sig: 'viiii',
   emscripten_async_wget_data: function(url, arg, onload, onerror) {
     Browser.asyncLoad(Pointer_stringify(url), function(byteArray) {
       var buffer = _malloc(byteArray.length);
       HEAPU8.set(byteArray, buffer);
-      Runtime.dynCall('viii', onload, [arg, buffer, byteArray.length]);
+      Module['dynCall_viii'](onload, arg, buffer, byteArray.length);
       _free(buffer);
     }, function() {
-      if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+      if (onerror) Module['dynCall_vi'](onerror, arg);
     }, true /* no need for run dependency, this is async but will not do any prepare etc. step */ );
   },
 
+  emscripten_async_wget2__proxy: 'sync',
+  emscripten_async_wget2__sig: 'iiiiiiiii',
   emscripten_async_wget2: function(url, file, request, param, arg, onload, onerror, onprogress) {
     Module['noExitRuntime'] = true;
 
     var _url = Pointer_stringify(url);
     var _file = Pointer_stringify(file);
+    _file = PATH.resolve(FS.cwd(), _file);
     var _request = Pointer_stringify(request);
     var _param = Pointer_stringify(param);
     var index = _file.lastIndexOf('/');
@@ -850,6 +845,8 @@ mergeInto(LibraryManager.library, {
 
     var handle = Browser.getNextWgetRequestHandle();
 
+    var destinationDirectory = PATH.dirname(_file);
+
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status == 200) {
@@ -857,14 +854,17 @@ mergeInto(LibraryManager.library, {
         try {
           FS.unlink(_file);
         } catch (e) {}
-        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true);
+        // if the destination directory does not yet exist, create it
+        FS.mkdirTree(destinationDirectory);
+
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
         if (onload) {
-          var stack = Runtime.stackSave();
-          Runtime.dynCall('viii', onload, [handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK)]);
-          Runtime.stackRestore(stack);
+          var stack = stackSave();
+          Module['dynCall_viii'](onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
+          stackRestore(stack);
         }
       } else {
-        if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
+        if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
       }
 
       delete Browser.wgetRequests[handle];
@@ -872,7 +872,7 @@ mergeInto(LibraryManager.library, {
 
     // ERROR
     http.onerror = function http_onerror(e) {
-      if (onerror) Runtime.dynCall('viii', onerror, [handle, arg, http.status]);
+      if (onerror) Module['dynCall_viii'](onerror, handle, arg, http.status);
       delete Browser.wgetRequests[handle];
     };
 
@@ -880,7 +880,7 @@ mergeInto(LibraryManager.library, {
     http.onprogress = function http_onprogress(e) {
       if (e.lengthComputable || (e.lengthComputable === undefined && e.total != 0)) {
         var percentComplete = (e.loaded / e.total)*100;
-        if (onprogress) Runtime.dynCall('viii', onprogress, [handle, arg, percentComplete]);
+        if (onprogress) Module['dynCall_viii'](onprogress, handle, arg, percentComplete);
       }
     };
 
@@ -889,17 +889,9 @@ mergeInto(LibraryManager.library, {
       delete Browser.wgetRequests[handle];
     };
 
-    // Useful because the browser can limit the number of redirection
-    try {
-      if (http.channel instanceof Ci.nsIHttpChannel)
-      http.channel.redirectionLimit = 0;
-    } catch (ex) { /* whatever */ }
-
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.setRequestHeader("Content-length", _param.length);
-      http.setRequestHeader("Connection", "close");
       http.send(_param);
     } else {
       http.send(null);
@@ -910,6 +902,8 @@ mergeInto(LibraryManager.library, {
     return handle;
   },
 
+  emscripten_async_wget2_data__proxy: 'sync',
+  emscripten_async_wget2_data__sig: 'iiiiiiiii',
   emscripten_async_wget2_data: function(url, request, param, arg, free, onload, onerror, onprogress) {
     var _url = Pointer_stringify(url);
     var _request = Pointer_stringify(request);
@@ -927,10 +921,10 @@ mergeInto(LibraryManager.library, {
         var byteArray = new Uint8Array(http.response);
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
-        if (onload) Runtime.dynCall('viiii', onload, [handle, arg, buffer, byteArray.length]);
+        if (onload) Module['dynCall_viiii'](onload, handle, arg, buffer, byteArray.length);
         if (free) _free(buffer);
       } else {
-        if (onerror) Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
+        if (onerror) Module['dynCall_viiii'](onerror, handle, arg, http.status, http.statusText);
       }
       delete Browser.wgetRequests[handle];
     };
@@ -938,14 +932,14 @@ mergeInto(LibraryManager.library, {
     // ERROR
     http.onerror = function http_onerror(e) {
       if (onerror) {
-        Runtime.dynCall('viiii', onerror, [handle, arg, http.status, http.statusText]);
+        Module['dynCall_viiii'](onerror, handle, arg, http.status, http.statusText);
       }
       delete Browser.wgetRequests[handle];
     };
 
     // PROGRESS
     http.onprogress = function http_onprogress(e) {
-      if (onprogress) Runtime.dynCall('viiii', onprogress, [handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0]);
+      if (onprogress) Module['dynCall_viiii'](onprogress, handle, arg, e.loaded, e.lengthComputable || e.lengthComputable === undefined ? e.total : 0);
     };
 
     // ABORT
@@ -953,17 +947,9 @@ mergeInto(LibraryManager.library, {
       delete Browser.wgetRequests[handle];
     };
 
-    // Useful because the browser can limit the number of redirection
-    try {
-      if (http.channel instanceof Ci.nsIHttpChannel)
-      http.channel.redirectionLimit = 0;
-    } catch (ex) { /* whatever */ }
-
     if (_request == "POST") {
       //Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
-      http.setRequestHeader("Content-length", _param.length);
-      http.setRequestHeader("Connection", "close");
       http.send(_param);
     } else {
       http.send(null);
@@ -974,6 +960,8 @@ mergeInto(LibraryManager.library, {
     return handle;
   },
 
+  emscripten_async_wget2_abort__proxy: 'sync',
+  emscripten_async_wget2_abort__sig: 'vi',
   emscripten_async_wget2_abort: function(handle) {
     var http = Browser.wgetRequests[handle];
     if (http) {
@@ -981,6 +969,9 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  emscripten_run_preload_plugins__deps: ['$PATH'],
+  emscripten_run_preload_plugins__proxy: 'sync',
+  emscripten_run_preload_plugins__sig: 'iiii',
   emscripten_run_preload_plugins: function(file, onload, onerror) {
     Module['noExitRuntime'] = true;
 
@@ -992,40 +983,43 @@ mergeInto(LibraryManager.library, {
       PATH.basename(_file),
       new Uint8Array(data.object.contents), true, true,
       function() {
-        if (onload) Runtime.dynCall('vi', onload, [file]);
+        if (onload) Module['dynCall_vi'](onload, file);
       },
       function() {
-        if (onerror) Runtime.dynCall('vi', onerror, [file]);
+        if (onerror) Module['dynCall_vi'](onerror, file);
       },
       true // don'tCreateFile - it's already there
     );
     return 0;
   },
 
+  emscripten_run_preload_plugins_data__proxy: 'sync',
+  emscripten_run_preload_plugins_data__sig: 'viiiiii',
   emscripten_run_preload_plugins_data: function(data, size, suffix, arg, onload, onerror) {
     Module['noExitRuntime'] = true;
 
     var _suffix = Pointer_stringify(suffix);
     if (!Browser.asyncPrepareDataCounter) Browser.asyncPrepareDataCounter = 0;
     var name = 'prepare_data_' + (Browser.asyncPrepareDataCounter++) + '.' + _suffix;
-    var cname = _malloc(name.length+1);
-    writeStringToMemory(name, cname);
+    var lengthAsUTF8 = lengthBytesUTF8(name);
+    var cname = _malloc(lengthAsUTF8+1);
+    stringToUTF8(name, cname, lengthAsUTF8+1);
     FS.createPreloadedFile(
       '/',
       name,
       {{{ makeHEAPView('U8', 'data', 'data + size') }}},
       true, true,
       function() {
-        if (onload) Runtime.dynCall('vii', onload, [arg, cname]);
+        if (onload) Module['dynCall_vii'](onload, arg, cname);
       },
       function() {
-        if (onerror) Runtime.dynCall('vi', onerror, [arg]);
+        if (onerror) Module['dynCall_vi'](onerror, arg);
       },
       true // don'tCreateFile - it's already there
     );
-    return 0;
   },
 
+  // Callable from pthread, executes in pthread context.
   emscripten_async_run_script__deps: ['emscripten_run_script'],
   emscripten_async_run_script: function(script, millis) {
     Module['noExitRuntime'] = true;
@@ -1036,30 +1030,42 @@ mergeInto(LibraryManager.library, {
     }, millis);
   },
 
+  // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
   emscripten_async_load_script: function(url, onload, onerror) {
-    Module['noExitRuntime'] = true;
+    onload = getFuncWrapper(onload, 'v');
+    onerror = getFuncWrapper(onerror, 'v');
 
-    onload = Runtime.getFuncWrapper(onload, 'v');
+#if USE_PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      console.error('emscripten_async_load_script("' + Pointer_stringify(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
+      return onerror ? onerror() : undefined;
+    }
+#endif
+    Module['noExitRuntime'] = true;
 
     assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
     var script = document.createElement('script');
-    script.onload = function script_onload() {
-      if (runDependencies > 0) {
-        dependenciesFulfilled = onload;
-      } else {
-        onload();
-      }
-    };
-    script.onerror = onerror;
+    if (onload) {
+      script.onload = function script_onload() {
+        if (runDependencies > 0) {
+          dependenciesFulfilled = onload;
+        } else {
+          onload();
+        }
+      };
+    }
+    if (onerror) script.onerror = onerror;
     script.src = Pointer_stringify(url);
     document.body.appendChild(script);
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_get_main_loop_timing: function(mode, value) {
     if (mode) {{{ makeSetValue('mode', 0, 'Browser.mainLoop.timingMode', 'i32') }}};
     if (value) {{{ makeSetValue('value', 0, 'Browser.mainLoop.timingValue', 'i32') }}};
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_timing: function(mode, value) {
     Browser.mainLoop.timingMode = mode;
     Browser.mainLoop.timingValue = value;
@@ -1073,7 +1079,8 @@ mergeInto(LibraryManager.library, {
 
     if (mode == 0 /*EM_TIMING_SETTIMEOUT*/) {
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setTimeout() {
-        setTimeout(Browser.mainLoop.runner, value); // doing this each time means that on exception, we stop
+        var timeUntilNextTick = Math.max(0, Browser.mainLoop.tickStartTime + value - _emscripten_get_now())|0;
+        setTimeout(Browser.mainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
       Browser.mainLoop.method = 'timeout';
     } else if (mode == 1 /*EM_TIMING_RAF*/) {
@@ -1082,31 +1089,42 @@ mergeInto(LibraryManager.library, {
       };
       Browser.mainLoop.method = 'rAF';
     } else if (mode == 2 /*EM_TIMING_SETIMMEDIATE*/) {
-      if (!window['setImmediate']) {
+      if (typeof setImmediate === 'undefined') {
         // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
         var setImmediates = [];
-        var emscriptenMainLoopMessageId = '__emcc';
+        var emscriptenMainLoopMessageId = 'setimmediate';
         function Browser_setImmediate_messageHandler(event) {
-          if (event.source === window && event.data === emscriptenMainLoopMessageId) {
+          // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
+          // so check for both cases.
+          if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
             event.stopPropagation();
             setImmediates.shift()();
           }
         }
-        window.addEventListener("message", Browser_setImmediate_messageHandler, true);
-        window['setImmediate'] = function Browser_emulated_setImmediate(func) {
+        addEventListener("message", Browser_setImmediate_messageHandler, true);
+        setImmediate = function Browser_emulated_setImmediate(func) {
           setImmediates.push(func);
-          window.postMessage(emscriptenMainLoopMessageId, "*");
+          if (ENVIRONMENT_IS_WORKER) {
+            if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
+            Module['setImmediates'].push(func);
+            postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
+          } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
         }
       }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
-        window['setImmediate'](Browser.mainLoop.runner);
+        setImmediate(Browser.mainLoop.runner);
       };
       Browser.mainLoop.method = 'immediate';
     }
     return 0;
   },
 
-  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing'],
+  // Runs natively in pthread, no __proxy needed.
+#if OFFSCREEN_FRAMEBUFFER
+  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now', 'emscripten_webgl_commit_frame'],
+#else
+  emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
+#endif
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     Module['noExitRuntime'] = true;
 
@@ -1114,6 +1132,17 @@ mergeInto(LibraryManager.library, {
 
     Browser.mainLoop.func = func;
     Browser.mainLoop.arg = arg;
+
+    var browserIterationFunc;
+    if (typeof arg !== 'undefined') {
+      browserIterationFunc = function() {
+        Module['dynCall_vi'](func, arg);
+      };
+    } else {
+      browserIterationFunc = function() {
+        Module['dynCall_v'](func);
+      };
+    }
 
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
 
@@ -1136,6 +1165,10 @@ mergeInto(LibraryManager.library, {
         }
         console.log('main loop blocker "' + blocker.name + '" took ' + (Date.now() - start) + ' ms'); //, left: ' + Browser.mainLoop.remainingBlockers);
         Browser.mainLoop.updateStatus();
+
+        // catches pause/resume main loop from blocker execution
+        if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
+
         setTimeout(Browser.mainLoop.runner, 0);
         return;
       }
@@ -1149,6 +1182,8 @@ mergeInto(LibraryManager.library, {
         // Not the scheduled time to render this frame - skip.
         Browser.mainLoop.scheduler();
         return;
+      } else if (Browser.mainLoop.timingMode == 0/*EM_TIMING_SETTIMEOUT*/) {
+        Browser.mainLoop.tickStartTime = _emscripten_get_now();
       }
 
       // Signal GL rendering layer that processing of a new frame is about to start. This helps it optimize
@@ -1157,18 +1192,34 @@ mergeInto(LibraryManager.library, {
       GL.newRenderingFrameStarted();
 #endif
 
+#if USE_PTHREADS
+#if OFFSCREEN_FRAMEBUFFER
+      // If the current GL context is a proxied regular WebGL context, and was initialized with implicit swap mode on the main thread, and we are on the parent thread,
+      // perform the swap on behalf of the user.
+      if (typeof GL !== 'undefined' && GL.currentContext && GLctxIsOnParentThread) {
+        var explicitSwapControl = {{{ makeGetValue('GL.currentContext', 0, 'i32') }}};
+        if (!explicitSwapControl) _emscripten_webgl_commit_frame();
+      }
+#endif
+#endif
+
+#if OFFSCREENCANVAS_SUPPORT
+      // If the current GL context is an OffscreenCanvas, but it was initialized with implicit swap mode, perform the swap on behalf of the user.
+      if (typeof GL !== 'undefined' && GL.currentContext && !GLctxIsOnParentThread && !GL.currentContext.attributes.explicitSwapControl && GL.currentContext.GLctx.commit) {
+        GL.currentContext.GLctx.commit();
+      }
+#endif
+
       if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
-        Module.printErr('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
+        err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
 
-      Browser.mainLoop.runIter(function() {
-        if (typeof arg !== 'undefined') {
-          Runtime.dynCall('vi', func, [arg]);
-        } else {
-          Runtime.dynCall('v', func);
-        }
-      });
+      Browser.mainLoop.runIter(browserIterationFunc);
+
+#if STACK_OVERFLOW_CHECK
+      checkStackCookie();
+#endif
 
       // catch pauses from the main loop itself
       if (thisMainLoopId < Browser.mainLoop.currentlyRunningMainloop) return;
@@ -1194,49 +1245,57 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_arg__deps: ['emscripten_set_main_loop'],
   emscripten_set_main_loop_arg: function(func, arg, fps, simulateInfiniteLoop) {
     _emscripten_set_main_loop(func, fps, simulateInfiniteLoop, arg);
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_cancel_main_loop: function() {
     Browser.mainLoop.pause();
     Browser.mainLoop.func = null;
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_pause_main_loop: function() {
     Browser.mainLoop.pause();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_resume_main_loop: function() {
     Browser.mainLoop.resume();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   _emscripten_push_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
-      Runtime.dynCall('vi', func, [arg]);
+      Module['dynCall_vi'](func, arg);
     }, name: Pointer_stringify(name), counted: true });
     Browser.mainLoop.updateStatus();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   _emscripten_push_uncounted_main_loop_blocker: function(func, arg, name) {
     Browser.mainLoop.queue.push({ func: function() {
-      Runtime.dynCall('vi', func, [arg]);
+      Module['dynCall_vi'](func, arg);
     }, name: Pointer_stringify(name), counted: false });
     Browser.mainLoop.updateStatus();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_set_main_loop_expected_blockers: function(num) {
     Browser.mainLoop.expectedBlockers = num;
     Browser.mainLoop.remainingBlockers = num;
     Browser.mainLoop.updateStatus();
   },
 
+  // Runs natively in pthread, no __proxy needed.
   emscripten_async_call: function(func, arg, millis) {
     Module['noExitRuntime'] = true;
 
     function wrapper() {
-      Runtime.getFuncWrapper(func, 'vi')(arg);
+      getFuncWrapper(func, 'vi')(arg);
     }
 
     if (millis >= 0) {
@@ -1246,20 +1305,32 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     Module['noExitRuntime'] = true;
     throw 'SimulateInfiniteLoop';
   },
 
+  emscripten_force_exit__proxy: 'sync',
+  emscripten_force_exit__sig: 'vi',
   emscripten_force_exit: function(status) {
+#if EXIT_RUNTIME == 0
+#if ASSERTIONS
+    warnOnce('emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set');
+#endif
+#endif
     Module['noExitRuntime'] = false;
-    Module['exit'](status);
+    exit(status);
   },
 
+  emscripten_get_device_pixel_ratio__proxy: 'sync',
+  emscripten_get_device_pixel_ratio__sig: 'd',
   emscripten_get_device_pixel_ratio: function() {
     return window.devicePixelRatio || 1.0;
   },
 
+  emscripten_hide_mouse__proxy: 'sync',
+  emscripten_hide_mouse__sig: 'v',
   emscripten_hide_mouse: function() {
     var styleSheet = document.styleSheets[0];
     var rules = styleSheet.cssRules;
@@ -1272,17 +1343,24 @@ mergeInto(LibraryManager.library, {
     styleSheet.insertRule('canvas.emscripten { border: 1px solid black; cursor: none; }', 0);
   },
 
+  emscripten_set_canvas_size__proxy: 'sync',
+  emscripten_set_canvas_size__sig: 'vii',
   emscripten_set_canvas_size: function(width, height) {
     Browser.setCanvasSize(width, height);
   },
-  
+
+  emscripten_get_canvas_size__proxy: 'sync',
+  emscripten_get_canvas_size__sig: 'viii',
   emscripten_get_canvas_size: function(width, height, isFullscreen) {
     var canvas = Module['canvas'];
     {{{ makeSetValue('width', '0', 'canvas.width', 'i32') }}};
     {{{ makeSetValue('height', '0', 'canvas.height', 'i32') }}};
-    {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullScreen ? 1 : 0', 'i32') }}};
+    {{{ makeSetValue('isFullscreen', '0', 'Browser.isFullscreen ? 1 : 0', 'i32') }}};
   },
 
+  // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
+  emscripten_create_worker__proxy: 'sync',
+  emscripten_create_worker__sig: 'ii',
   emscripten_create_worker: function(url) {
     url = Pointer_stringify(url);
     var id = Browser.workers.length;
@@ -1323,6 +1401,8 @@ mergeInto(LibraryManager.library, {
     return id;
   },
 
+  emscripten_destroy_worker__proxy: 'sync',
+  emscripten_destroy_worker__sig: 'vi',
   emscripten_destroy_worker: function(id) {
     var info = Browser.workers[id];
     info.worker.terminate();
@@ -1330,6 +1410,8 @@ mergeInto(LibraryManager.library, {
     Browser.workers[id] = null;
   },
 
+  emscripten_call_worker__proxy: 'sync',
+  emscripten_call_worker__sig: 'viiiiii',
   emscripten_call_worker: function(id, funcName, data, size, callback, arg) {
     Module['noExitRuntime'] = true; // should we only do this if there is a callback?
 
@@ -1339,43 +1421,67 @@ mergeInto(LibraryManager.library, {
     if (callback) {
       callbackId = info.callbacks.length;
       info.callbacks.push({
-        func: Runtime.getFuncWrapper(callback, 'viii'),
+        func: getFuncWrapper(callback, 'viii'),
         arg: arg
       });
       info.awaited++;
     }
-    info.worker.postMessage({
+    var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+    };
+    if (data) {
+      info.worker.postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
+      info.worker.postMessage(transferObject);
+    }
   },
 
+  emscripten_worker_respond_provisionally__proxy: 'sync',
+  emscripten_worker_respond_provisionally__sig: 'vii',
   emscripten_worker_respond_provisionally: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
-    postMessage({
+    var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+    };
+    if (data) {
+      postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
+      postMessage(transferObject);
+    }
   },
 
+  emscripten_worker_respond__proxy: 'sync',
+  emscripten_worker_respond__sig: 'vii',
   emscripten_worker_respond: function(data, size) {
     if (workerResponded) throw 'already responded with final response!';
     workerResponded = true;
-    postMessage({
+    var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': true,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0 // XXX copy to a new typed array as a workaround for chrome bug 169705
-    });
+      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+    };
+    if (data) {
+      postMessage(transferObject, [transferObject.data.buffer]);
+    } else {
+      postMessage(transferObject);
+    }
   },
 
+  emscripten_get_worker_queue_size__proxy: 'sync',
+  emscripten_get_worker_queue_size__sig: 'i',
   emscripten_get_worker_queue_size: function(id) {
     var info = Browser.workers[id];
     if (!info) return -1;
     return info.awaited;
   },
 
+  emscripten_get_preloaded_image_data__deps: ['$PATH'],
+  emscripten_get_preloaded_image_data__proxy: 'sync',
+  emscripten_get_preloaded_image_data__sig: 'iiii',
   emscripten_get_preloaded_image_data: function(path, w, h) {
     if (typeof path === "number") {
       path = Pointer_stringify(path);
@@ -1400,6 +1506,8 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_get_preloaded_image_data_from_FILE__deps: ['emscripten_get_preloaded_image_data'],
+  emscripten_get_preloaded_image_data_from_FILE__proxy: 'sync',
+  emscripten_get_preloaded_image_data_from_FILE__sig: 'iiii',
   emscripten_get_preloaded_image_data_from_FILE: function(file, w, h) {
     var fd = Module['_fileno'](file);
     var stream = FS.getStream(fd);
@@ -1409,7 +1517,11 @@ mergeInto(LibraryManager.library, {
 
     return 0;
   }
-});
+};
+
+autoAddDeps(LibraryBrowser, '$Browser');
+
+mergeInto(LibraryManager.library, LibraryBrowser);
 
 /* Useful stuff for browser debugging
 
@@ -1418,10 +1530,9 @@ function slowLog(label, text) {
   if (!slowLog.labels[label]) slowLog.labels[label] = 0;
   var now = Date.now();
   if (now - slowLog.labels[label] > 1000) {
-    Module.print(label + ': ' + text);
+    out(label + ': ' + text);
     slowLog.labels[label] = now;
   }
 }
 
 */
-

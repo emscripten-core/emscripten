@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {
@@ -15,8 +20,15 @@ mergeInto(LibraryManager.library, {
         var parent = root;
         for (var i = 0; i < parts.length-1; i++) {
           var curr = parts.slice(0, i+1).join('/');
+          // Issue 4254: Using curr as a node name will prevent the node
+          // from being found in FS.nameTable when FS.open is called on
+          // a path which holds a child of this node,
+          // given that all FS functions assume node names
+          // are just their corresponding parts within their given path,
+          // rather than incremental aggregates which include their parent's
+          // directories.
           if (!createdParents[curr]) {
-            createdParents[curr] = WORKERFS.createNode(parent, curr, WORKERFS.DIR_MODE, 0);
+            createdParents[curr] = WORKERFS.createNode(parent, parts[i], WORKERFS.DIR_MODE, 0);
           }
           parent = createdParents[curr];
         }
@@ -102,7 +114,14 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);
       },
       readdir: function(node) {
-        throw new FS.ErrnoError(ERRNO_CODES.EPERM);
+        var entries = ['.', '..'];
+        for (var key in node.contents) {
+          if (!node.contents.hasOwnProperty(key)) {
+            continue;
+          }
+          entries.push(key);
+        }
+        return entries;
       },
       symlink: function(parent, newName, oldPath) {
         throw new FS.ErrnoError(ERRNO_CODES.EPERM);

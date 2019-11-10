@@ -1,249 +1,92 @@
 #include <stdlib.h>
-#include <stdio.h>
-#include <netdb.h>
-#include <netinet/in.h>
 #include <sys/socket.h>
-#include <unistd.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #include <string.h>
-#include <ctype.h>
-#include "__dns.h"
-#include "stdio_impl.h"
-
-static int is_valid(const char *host)
-{
-	const unsigned char *s;
-	if (strlen(host)-1 > 254 || mbstowcs(0, host, 0) > 255) return 0;
-	for (s=(void *)host; *s>=0x80 || *s=='.' || *s=='-' || isalnum(*s); s++);
-	return !*s;
-}
-
-#if 0
-static int have_af(int family)
-{
-	struct sockaddr_in6 sin6 = { .sin6_family = family };
-	socklen_t sl = family == AF_INET
-		? sizeof(struct sockaddr_in)
-		: sizeof(struct sockaddr_in6);
-	int sock = socket(family, SOCK_STREAM, 0);
-	int have = !bind(sock, (void *)&sin6, sl);
-	close(sock);
-	return have;
-}
-#endif
-
-union sa {
-	struct sockaddr_in sin;
-	struct sockaddr_in6 sin6;
-};
-
-struct aibuf {
-	struct addrinfo ai;
-	union sa sa;
-};
-
-/* Extra slots needed for storing canonical name */
-#define EXTRA ((256+sizeof(struct aibuf)-1)/sizeof(struct aibuf))
+#include "lookup.h"
 
 int getaddrinfo(const char *restrict host, const char *restrict serv, const struct addrinfo *restrict hint, struct addrinfo **restrict res)
 {
-	int flags = hint ? hint->ai_flags : 0;
-	int family = hint ? hint->ai_family : AF_UNSPEC;
-	int type = hint ? hint->ai_socktype : 0;
-	int proto = hint ? hint->ai_protocol : 0;
-	unsigned long port = 0;
-	struct aibuf *buf;
-	union sa sa = {{0}};
-	unsigned char reply[1024];
-	int i, j;
-	char line[512];
-	FILE *f, _f;
-	unsigned char _buf[1024];
-	char *z;
-	int result;
-	int cnt;
+	struct service ports[MAXSERVS];
+	struct address addrs[MAXADDRS];
+	char canon[256], *outcanon;
+	int nservs, naddrs, nais, canon_len, i, j, k;
+	int family = AF_UNSPEC, flags = 0, proto = 0, socktype = 0;
+	struct aibuf {
+		struct addrinfo ai;
+		union sa {
+			struct sockaddr_in sin;
+			struct sockaddr_in6 sin6;
+		} sa;
+	} *out;
 
-	if (family != AF_INET && family != AF_INET6 && family != AF_UNSPEC)
-		return EAI_FAMILY;
+	if (!host && !serv) return EAI_NONAME;
 
-	if (host && strlen(host)>255) return EAI_NONAME;
-	if (serv && strlen(serv)>32) return EAI_SERVICE;
+	if (hint) {
+		family = hint->ai_family;
+		flags = hint->ai_flags;
+		proto = hint->ai_protocol;
+		socktype = hint->ai_socktype;
 
-	if (type && !proto)
-		proto = type==SOCK_DGRAM ? IPPROTO_UDP : IPPROTO_TCP;
-	if (!type && proto)
-		type = proto==IPPROTO_UDP ? SOCK_DGRAM : SOCK_STREAM;
+		const int mask = AI_PASSIVE | AI_CANONNAME | AI_NUMERICHOST |
+			AI_V4MAPPED | AI_ALL | AI_ADDRCONFIG | AI_NUMERICSERV;
+		if ((flags & mask) != flags)
+			return EAI_BADFLAGS;
 
-	if (serv) {
-		if (!*serv) return EAI_SERVICE;
-		port = strtoul(serv, &z, 10);
-		if (*z) {
-			size_t servlen = strlen(serv);
-			char *end = line;
-
-			if (flags & AI_NUMERICSERV) return EAI_SERVICE;
-
-			f = __fopen_rb_ca("/etc/services", &_f, _buf, sizeof _buf);
-			if (!f) return EAI_SERVICE;
-			while (fgets(line, sizeof line, f)) {
-				if (strncmp(line, serv, servlen) || !isspace(line[servlen]))
-					continue;
-				port = strtoul(line+servlen, &end, 10);
-				if (strncmp(end, proto==IPPROTO_UDP ? "/udp" : "/tcp", 4))
-					continue;
-				break;
-			}
-			__fclose_ca(f);
-			if (feof(f)) return EAI_SERVICE;
+		switch (family) {
+		case AF_INET:
+		case AF_INET6:
+		case AF_UNSPEC:
+			break;
+		default:
+			return EAI_FAMILY;
 		}
-		if (port > 65535) return EAI_SERVICE;
-		port = htons(port);
 	}
 
-	if (!host) {
-		if (family == AF_UNSPEC) {
-			cnt = 2; family = AF_INET;
-		} else {
-			cnt = 1;
+	nservs = __lookup_serv(ports, serv, proto, socktype, flags);
+	if (nservs < 0) return nservs;
+
+	naddrs = __lookup_name(addrs, canon, host, family, flags);
+	if (naddrs < 0) return naddrs;
+
+	nais = nservs * naddrs;
+	canon_len = strlen(canon);
+	out = calloc(1, nais * sizeof(*out) + canon_len + 1);
+	if (!out) return EAI_MEMORY;
+
+	if (canon_len) {
+		outcanon = (void *)&out[nais];
+		memcpy(outcanon, canon, canon_len+1);
+	} else {
+		outcanon = 0;
+	}
+
+	for (k=i=0; i<naddrs; i++) for (j=0; j<nservs; j++, k++) {
+		out[k].ai = (struct addrinfo){
+			.ai_family = addrs[i].family,
+			.ai_socktype = ports[j].socktype,
+			.ai_protocol = ports[j].proto,
+			.ai_addrlen = addrs[i].family == AF_INET
+				? sizeof(struct sockaddr_in)
+				: sizeof(struct sockaddr_in6),
+			.ai_addr = (void *)&out[k].sa,
+			.ai_canonname = outcanon,
+			.ai_next = &out[k+1].ai };
+		switch (addrs[i].family) {
+		case AF_INET:
+			out[k].sa.sin.sin_family = AF_INET;
+			out[k].sa.sin.sin_port = htons(ports[j].port);
+			memcpy(&out[k].sa.sin.sin_addr, &addrs[i].addr, 4);
+			break;
+		case AF_INET6:
+			out[k].sa.sin6.sin6_family = AF_INET6;
+			out[k].sa.sin6.sin6_port = htons(ports[j].port);
+			out[k].sa.sin6.sin6_scope_id = addrs[i].scopeid;
+			memcpy(&out[k].sa.sin6.sin6_addr, &addrs[i].addr, 16);
+			break;			
 		}
-		buf = calloc(sizeof *buf, cnt);
-		if (!buf) return EAI_MEMORY;
-		for (i=0; i<cnt; i++) {
-			if (i) family = AF_INET6;
-			buf[i].ai.ai_protocol = proto;
-			buf[i].ai.ai_socktype = type;
-			buf[i].ai.ai_addr = (void *)&buf[i].sa;
-			buf[i].ai.ai_addrlen = family==AF_INET6
-				? sizeof sa.sin6 : sizeof sa.sin;
-			buf[i].ai.ai_family = family;
-			buf[i].sa.sin.sin_family = family;
-			buf[i].sa.sin.sin_port = port;
-			if (i+1<cnt) buf[i].ai.ai_next = &buf[i+1].ai;
-			if (!(flags & AI_PASSIVE)) {
-				if (family == AF_INET) {
-					0[(uint8_t*)&buf[i].sa.sin.sin_addr.s_addr]=127;
-					3[(uint8_t*)&buf[i].sa.sin.sin_addr.s_addr]=1;
-				} else buf[i].sa.sin6.sin6_addr.s6_addr[15] = 1;
-			}
-		}
-		*res = &buf->ai;
-		return 0;
 	}
-
-	if (!*host) return EAI_NONAME;
-
-	/* Try as a numeric address */
-	if (__ipparse(&sa, family, host) >= 0) {
-		buf = calloc(sizeof *buf, 1+EXTRA);
-		if (!buf) return EAI_MEMORY;
-		family = sa.sin.sin_family;
-		buf->ai.ai_protocol = proto;
-		buf->ai.ai_socktype = type;
-		buf->ai.ai_addr = (void *)&buf->sa;
-		buf->ai.ai_addrlen = family==AF_INET6 ? sizeof sa.sin6 : sizeof sa.sin;
-		buf->ai.ai_family = family;
-		buf->ai.ai_canonname = (char *)host;
-		buf->sa = sa;
-		buf->sa.sin.sin_port = port;
-		*res = &buf->ai;
-		return 0;
-	}
-
-	if (flags & AI_NUMERICHOST) return EAI_NONAME;
-
-	f = __fopen_rb_ca("/etc/hosts", &_f, _buf, sizeof _buf);
-	if (f) while (fgets(line, sizeof line, f)) {
-		char *p;
-		size_t l = strlen(host);
-
-		if ((p=strchr(line, '#'))) *p++='\n', *p=0;
-		for(p=line+1; (p=strstr(p, host)) &&
-			(!isspace(p[-1]) || !isspace(p[l])); p++);
-		if (!p) continue;
-		__fclose_ca(f);
-
-		/* Isolate IP address to parse */
-		for (p=line; *p && !isspace(*p); p++);
-		*p++ = 0;
-		if (__ipparse(&sa, family, line) < 0) return EAI_NONAME;
-
-		/* Allocate and fill result buffer */
-		buf = calloc(sizeof *buf, 1+EXTRA);
-		if (!buf) return EAI_MEMORY;
-		family = sa.sin.sin_family;
-		buf->ai.ai_protocol = proto;
-		buf->ai.ai_socktype = type;
-		buf->ai.ai_addr = (void *)&buf->sa;
-		buf->ai.ai_addrlen = family==AF_INET6 ? sizeof sa.sin6 : sizeof sa.sin;
-		buf->ai.ai_family = family;
-		buf->sa = sa;
-		buf->sa.sin.sin_port = port;
-
-		/* Extract first name as canonical name */
-		for (; *p && isspace(*p); p++);
-		buf->ai.ai_canonname = (void *)(buf+1);
-		snprintf(buf->ai.ai_canonname, 256, "%s", p);
-		for (p=buf->ai.ai_canonname; *p && !isspace(*p); p++);
-		*p = 0;
-		if (!is_valid(buf->ai.ai_canonname))
-			buf->ai.ai_canonname = 0;
-
-		*res = &buf->ai;
-		return 0;
-	}
-	if (f) __fclose_ca(f);
-
-#if 0
-	f = __fopen_rb_ca("/etc/resolv.conf", &_f, _buf, sizeof _buf);
-	if (f) while (fgets(line, sizeof line, f)) {
-		if (!isspace(line[10]) || (strncmp(line, "search", 6)
-			&& strncmp(line, "domain", 6))) continue;
-	}
-	if (f) __fclose_ca(f);
-#endif
-
-	/* Perform one or more DNS queries for host */
-	memset(reply, 0, sizeof reply);
-	result = __dns_query(reply, host, family, 0);
-	if (result < 0) return result;
-
-	cnt = __dns_count_addrs(reply, result);
-	if (cnt <= 0) return EAI_NONAME;
-
-	buf = calloc(sizeof *buf, cnt+EXTRA);
-	if (!buf) return EAI_MEMORY;
-
-	i = 0;
-	if (family != AF_INET6) {
-		j = __dns_get_rr(&buf[i].sa.sin.sin_addr, sizeof *buf, 4, cnt-i, reply, RR_A, 0);
-		while (j--) buf[i++].sa.sin.sin_family = AF_INET;
-	}
-	if (family != AF_INET) {
-		j = __dns_get_rr(&buf[i].sa.sin6.sin6_addr, sizeof *buf, 16, cnt-i, reply, RR_AAAA, 0);
-		while (j--) buf[i++].sa.sin.sin_family = AF_INET6;
-	}
-	if (result>1) {
-		j = __dns_get_rr(&buf[i].sa.sin.sin_addr, sizeof *buf, 4, cnt-i, reply+512, RR_A, 0);
-		while (j--) buf[i++].sa.sin.sin_family = AF_INET;
-		j = __dns_get_rr(&buf[i].sa.sin6.sin6_addr, sizeof *buf, 16, cnt-i, reply+512, RR_AAAA, 0);
-		while (j--) buf[i++].sa.sin.sin_family = AF_INET6;
-	}
-
-	if (__dns_get_rr((void *)&buf[cnt], 0, 256, 1, reply, RR_CNAME, 1) <= 0)
-		strcpy((void *)&buf[cnt], host);
-
-	for (i=0; i<cnt; i++) {
-		buf[i].ai.ai_protocol = proto;
-		buf[i].ai.ai_socktype = type;
-		buf[i].ai.ai_addr = (void *)&buf[i].sa;
-		buf[i].ai.ai_addrlen = buf[i].sa.sin.sin_family==AF_INET6
-			? sizeof sa.sin6 : sizeof sa.sin;
-		buf[i].ai.ai_family = buf[i].sa.sin.sin_family;
-		buf[i].sa.sin.sin_port = port;
-		buf[i].ai.ai_next = &buf[i+1].ai;
-		buf[i].ai.ai_canonname = (void *)&buf[cnt];
-	}
-	buf[cnt-1].ai.ai_next = 0;
-	*res = &buf->ai;
-
+	out[nais-1].ai.ai_next = 0;
+	*res = &out->ai;
 	return 0;
 }

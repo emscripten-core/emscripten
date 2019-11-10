@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <memory.h>
@@ -17,7 +22,6 @@ volatile unsigned short globalUshort = 0;
 volatile unsigned int globalUint = 0;
 volatile float globalFloat = 0.0f;
 volatile double globalDouble = 0.0;
-volatile uint64_t globalU64 = 0;
 
 const int N = 10;
 int sharedData[N] = {};
@@ -44,9 +48,8 @@ void *ThreadMain(void *arg)
 	assert(globalUint == 5);
 	assert(globalFloat == 5.0f);
 	assert(globalDouble == 5.0);
-	assert(globalU64 == 5);
 	struct Test *t = (struct Test*)arg;
-	EM_ASM_INT( { Module['print']('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'); }, t->threadId, t->op);
+	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': starting computation.'), t->threadId, t->op);
 
 	for(int i = 0; i < 99999; ++i)
 		for(int j = 0; j < N; ++j)
@@ -86,7 +89,7 @@ void *ThreadMain(void *arg)
 				break;
 			}
 		}
-	EM_ASM_INT( { Module['print']('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'); }, t->threadId, t->op);
+	EM_ASM(out('Thread ' + $0 + ' for test ' + $1 + ': finished, exit()ing.'), t->threadId, t->op);
 	pthread_exit(0);
 }
 
@@ -110,7 +113,7 @@ void RunTest(int test)
 		default: memset(sharedData, 0, sizeof(sharedData)); break;
 	}
 
-	EM_ASM_INT( { Module['print']('Main: Starting test ' + $0); }, test);
+	EM_ASM(out('Main: Starting test ' + $0), test);
 
 	for(int i = 0; i < NUM_THREADS; ++i)
 	{
@@ -131,7 +134,7 @@ void RunTest(int test)
 	}
 
 	int val = sharedData[0];
-	EM_ASM_INT( { Module['print']('Main: Test ' + $0 + ' finished. Result: ' + $1); }, test, val);
+	EM_ASM(out('Main: Test ' + $0 + ' finished. Result: ' + $1), test, val);
 	if (test != 6)
 	{
 		for(int i = 1; i < N; ++i)
@@ -141,19 +144,23 @@ void RunTest(int test)
 
 int main()
 {
-	globalUchar = 5;
-	globalUshort = 5;
-	globalUint = 5;
+	globalUchar = 4;
+	globalUshort = 4;
+	globalUint = 4;
 	globalFloat = 5.0f;
 	globalDouble = 5.0;
-	globalU64 = 5;
 
-	int result = 0;
+	uint8_t prevUchar = emscripten_atomic_add_u8((void*)&globalUchar, 1); assert(prevUchar == 4);
+	uint16_t prevUshort = emscripten_atomic_add_u16((void*)&globalUshort, 1); assert(prevUshort == 4);
+	uint32_t prevUint = emscripten_atomic_add_u32((void*)&globalUint, 1); assert(prevUint == 4);
+
+	emscripten_atomic_fence();
+	__sync_synchronize();
 
 	if (!emscripten_has_threading_support())
 	{
 #ifdef REPORT_RESULT
-		REPORT_RESULT();
+		REPORT_RESULT(0);
 #endif
 		printf("Skipped: Threading is not supported.\n");
 		return 0;
@@ -176,9 +183,9 @@ int main()
 	else
 		printf("32-bit CAS test failed! totalRead != totalWritten (%llu != %llu)\n", totalRead, totalWritten);
 #ifdef REPORT_RESULT
-	if (totalRead != totalWritten) result = 1;
-	REPORT_RESULT();
+	int result = (totalRead != totalWritten) ? 1 : 0;
+	REPORT_RESULT(result);
 #else
-	EM_ASM(Module['print']('Main: Test successfully finished.'));
+	EM_ASM(out('Main: Test successfully finished.'));
 #endif
 }

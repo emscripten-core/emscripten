@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 /*  gcc whets.c cpuidc64.o cpuida64.o -m64 -lrt -lc -lm -o whet
 *
 *  XXX modified by emscripten to be slower, to not slow down test runner
@@ -567,7 +572,7 @@ void p3(SPDP *x, SPDP *y, SPDP *z, SPDP t, SPDP t1, SPDP t2)
 }
 
 
-void pout(char title[18], float ops, int type, SPDP checknum,
+void pout(const char title[18], float ops, int type, SPDP checknum,
 		  SPDP time, int calibrate, int section)
 {
 	SPDP mops,mflops;

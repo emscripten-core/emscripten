@@ -64,6 +64,7 @@ int gethostbyaddr_r(const void *a, socklen_t l, int af,
 	}
 
 	h->h_addrtype = af;
+	h->h_length = l;
 	h->h_name = h->h_aliases[0];
 	*res = h;
 	return 0;

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <emscripten.h>
 
@@ -16,7 +21,7 @@ void main_loop(void) {
       emscripten_cancel_main_loop();
       int result = rate > 600;
       printf("Final rate: %.2f, success: %d\n", rate, result);
-      REPORT_RESULT();
+      REPORT_RESULT(result);
       return;
     }
   }

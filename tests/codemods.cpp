@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <math.h>
 #include <emscripten.h>
@@ -16,6 +21,6 @@ int main() {
   int result;
   if (ok) result = 1;
   else result = diff+2; // add two to this >= number to avoid conflicts with 1
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 

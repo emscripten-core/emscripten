@@ -270,6 +270,69 @@ function vars_w_stack(x, y) {
  a = HEAP32[sp + 48 >> 2] | 0;
  b = +HEAPF32[sp + 56 >> 2];
 }
+function stack_returns_a() {
+ var sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 208 | 0;
+ if (1) {
+  STACKTOP = sp;
+  return;
+ }
+ a = x + y;
+ b = y * x;
+ HEAP32[sp + 48 >> 2] = 0;
+ HEAP32[sp + 52 >> 2] = 0;
+ stack_returns_a$1(sp);
+ HEAP32[sp + 40 >> 2] = 0;
+ HEAP32[sp + 44 >> 2] = 0;
+ stack_returns_a$0(sp);
+}
+function stack_returns_b() {
+ var sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 144 | 0;
+ if (1) {
+  STACKTOP = sp;
+  return;
+ }
+ HEAP32[sp + 24 >> 2] = 0;
+ HEAP32[sp + 28 >> 2] = 0;
+ stack_returns_b$1(sp);
+ HEAP32[sp + 16 >> 2] = 0;
+ HEAP32[sp + 20 >> 2] = 0;
+ stack_returns_b$0(sp);
+ STACKTOP = sp;
+}
+function stack_returns_c() {
+ var sp = 0;
+ sp = STACKTOP;
+ STACKTOP = STACKTOP + 144 | 0;
+ if (1) {
+  STACKTOP = sp;
+  return 21;
+ }
+ a = x + y;
+ b = y * x;
+ a = c(1 + a);
+ a = c(2 + a);
+ a = c(3 + a);
+ a = c(4 + a);
+ HEAP32[sp + 16 >> 2] = 0;
+ HEAP32[sp + 20 >> 2] = 0;
+ stack_returns_c$0(sp);
+ tempValue = HEAP32[sp + 16 >> 2] | 0;
+ tempInt = HEAP32[sp + 20 >> 2] | 0;
+ tempDouble = +HEAPF32[sp + 20 >> 2];
+ HEAP32[sp + 16 >> 2] = 0;
+ HEAP32[sp + 20 >> 2] = 0;
+ if ((tempValue | 0) == 6) {
+  STACKTOP = sp;
+  return tempInt | 0;
+ }
+ STACKTOP = sp;
+ return 0 | 0;
+ return 0;
+}
 function chain() {
  var helper$0 = 0, sp = 0;
  sp = STACKTOP;
@@ -708,6 +771,46 @@ function vars_w_stack$0(sp) {
  HEAP32[sp + 48 >> 2] = a;
  HEAPF32[sp + 56 >> 2] = b;
 }
+function stack_returns_a$0(sp) {
+ sp = sp | 0;
+ a = c(5 + a);
+ a = c(6 + a);
+ b = c(7 + a);
+ STACKTOP = sp;
+}
+function stack_returns_a$1(sp) {
+ sp = sp | 0;
+ a = c(1 + a);
+ a = c(2 + a);
+ a = c(3 + a);
+ a = c(4 + a);
+}
+function stack_returns_b$0(sp) {
+ sp = sp | 0;
+ a = c(4 + a);
+ a = c(5 + a);
+ a = c(6 + a);
+ b = c(7 + a);
+}
+function stack_returns_b$1(sp) {
+ sp = sp | 0;
+ a = x + y;
+ b = y * x;
+ a = c(1 + a);
+ a = c(2 + a);
+ a = c(3 + a);
+}
+function stack_returns_c$0(sp) {
+ sp = sp | 0;
+ OL : do {
+  a = c(5 + a);
+  a = c(6 + a);
+  b = c(7 + a);
+  HEAP32[sp + 16 >> 2] = 6;
+  HEAP32[sp + 20 >> 2] = 12;
+  break OL;
+ } while (0);
+}
 function chain$0(sp) {
  sp = sp | 0;
  var helper$0 = 0;
@@ -1097,4 +1200,6 @@ function leaveLabelsMagic$2(sp) {
  fakeLabel = 1;
  HEAP32[sp + 16 >> 2] = fakeLabel;
 }
+
+
 

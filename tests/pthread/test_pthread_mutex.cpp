@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
@@ -77,12 +82,11 @@ void WaitToJoin()
 	if (!threadsRunning)
 	{
 		if (counter == numThreadsToCreateTotal)
-			EM_ASM_INT( { console.log('All threads finished. Counter = ' + $0 + ' as expected.'); }, counter);
+			EM_ASM(console.log('All threads finished. Counter = ' + $0 + ' as expected.'), counter);
 		else
-			EM_ASM_INT( { console.error('All threads finished, but counter = ' + $0 + ' != ' + $1 + '!'); }, counter, numThreadsToCreateTotal);
+			EM_ASM(console.error('All threads finished, but counter = ' + $0 + ' != ' + $1 + '!'), counter, numThreadsToCreateTotal);
 #ifdef REPORT_RESULT
-		int result = counter;
-		REPORT_RESULT();
+		REPORT_RESULT(counter);
 #endif
 		emscripten_cancel_main_loop();
 	}
@@ -90,7 +94,13 @@ void WaitToJoin()
 
 int main()
 {
-	pthread_mutex_init(&lock, NULL);
+	pthread_mutexattr_t attr;
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	pthread_mutex_init(&lock, &attr);
+
+	pthread_mutex_lock(&lock);
+	pthread_mutex_unlock(&lock);
 
 	if (emscripten_has_threading_support()) {
 		// Create new threads in parallel.
@@ -99,11 +109,8 @@ int main()
 
 		emscripten_set_main_loop(WaitToJoin, 0, 0);
 	} else {
-		pthread_mutex_lock(&lock);
-		pthread_mutex_unlock(&lock);
 #ifdef REPORT_RESULT
-		int result = 50;
-		REPORT_RESULT();
+		REPORT_RESULT(50);
 #endif
 	}
 }

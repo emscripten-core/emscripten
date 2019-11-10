@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -25,6 +32,13 @@ unsigned int frequency = 0;
 unsigned int bits = 0;
 ALenum format = 0;
 ALuint source = 0;
+#ifdef TEST_ANIMATED_PITCH
+// When testing animated pitch, start testing at a high pitch, and scale smaller.
+float pitch = 1.3f;
+#else
+// When not testing animating the pitch value, play back at a slow rate.
+float pitch = 0.5f;
+#endif
 
 void iter() {
   ALuint buffer = 0;
@@ -32,6 +46,7 @@ void iter() {
   ALint buffersWereQueued = 0;
   ALint buffersQueued = 0;
   ALint state;
+  float testPitch;
 
   alGetSourcei(source, AL_BUFFERS_PROCESSED, &buffersProcessed);
 
@@ -66,17 +81,26 @@ void iter() {
     offset += len;
   }
 
+#ifdef TEST_ANIMATED_PITCH
+  pitch *= .999;
+  if (pitch < 0.5f)
+    pitch = 0.5f;
+  alSourcef(source, AL_PITCH, pitch);
+  alGetSourcef(source, AL_PITCH, &testPitch);
+  assert(pitch == testPitch);
+#endif
+
   // Exit once we've processed the entire clip.
   if (offset >= size) {
 #ifdef __EMSCRIPTEN__
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     exit(0);
   }
 }
 
 int main(int argc, char* argv[]) {
+  float testPitch;
   //
   // Setup the AL context.
   //
@@ -146,6 +170,10 @@ int main(int argc, char* argv[]) {
   alGenBuffers(NUM_BUFFERS, buffers);
   alGenSources(1, &source);
 
+  alSourcef(source, AL_PITCH, pitch);
+  alGetSourcef(source, AL_PITCH, &testPitch);
+  assert(pitch == testPitch);
+
   ALint numBuffers = 0;
   while (numBuffers < NUM_BUFFERS && offset < size) {
     int len = size - offset;
@@ -160,6 +188,16 @@ int main(int argc, char* argv[]) {
     offset += len;
     numBuffers++;
   }
+
+  ALint srcLen = 0;
+  alGetSourcei(source, 0x2009 /* AL_BYTE_LENGTH_SOFT */, &srcLen);
+  assert(srcLen == NUM_BUFFERS * BUFFER_SIZE);
+
+#ifdef TEST_ANIMATED_PITCH
+  printf("You should hear a clip of the 1902 piano song \"The Entertainer\" played back at a high pitch rate, and animated to slow down to half playback speed.\n");
+#else
+  printf("You should hear a clip of the 1902 piano song \"The Entertainer\" played back at half speed.\n");
+#endif
 
   //
   // Start playing the source.

@@ -1,6 +1,6 @@
-#define _Addr int
-#define _Int64 long long
-#define _Reg int
+#define _Addr __PTRDIFF_TYPE__
+#define _Int64 __INT64_TYPE__
+#define _Reg __PTRDIFF_TYPE__
 
 TYPEDEF __builtin_va_list va_list;
 TYPEDEF __builtin_va_list __isoc_va_list;
@@ -16,8 +16,8 @@ TYPEDEF double double_t;
 TYPEDEF long time_t;
 TYPEDEF long suseconds_t;
 
-TYPEDEF struct { union { int __i[9]; unsigned __s[9]; } __u; } pthread_attr_t;
-TYPEDEF struct { union { int __i[6]; void *__p[6]; } __u; } pthread_mutex_t;
+TYPEDEF struct { union { int __i[10]; unsigned __s[10]; } __u; } pthread_attr_t;
+TYPEDEF struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
 TYPEDEF struct { union { int __i[12]; void *__p[12]; } __u; } pthread_cond_t;
 TYPEDEF struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
 TYPEDEF struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;

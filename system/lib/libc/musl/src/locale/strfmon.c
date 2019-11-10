@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include <monetary.h>
 #include <errno.h>
+#include "locale_impl.h"
 
 static ssize_t vstrfmon_l(char *s, size_t n, locale_t loc, const char *fmt, va_list ap)
 {
@@ -93,7 +94,7 @@ ssize_t strfmon(char *restrict s, size_t n, const char *restrict fmt, ...)
 	ssize_t ret;
 
 	va_start(ap, fmt);
-	ret = vstrfmon_l(s, n, 0, fmt, ap);
+	ret = vstrfmon_l(s, n, CURRENT_LOCALE, fmt, ap);
 	va_end(ap);
 
 	return ret;

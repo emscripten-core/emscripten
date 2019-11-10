@@ -1,11 +1,15 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 
-'''
-See emcc.py. This script forwards to there, noting that we want C++ and not C by default
-'''
+# This script should work in python 2 *or* 3. It loads the main code using
+# python_selector, which may pick a different version.
+# It also tells emcc.py that we want C++ and not C by default
 
-import os, subprocess, sys
-from tools import shared
+import os
+import sys
+from tools import python_selector
 
-exit(subprocess.call([shared.PYTHON, shared.EMCC] + sys.argv[1:] + ['--emscripten-cxx']))
+sys.argv += ['--emscripten-cxx']
 
+emcc = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'emcc')
+if __name__ == '__main__':
+  python_selector.run(emcc)

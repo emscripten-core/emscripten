@@ -40,14 +40,13 @@ def parseInt(literal):
     return value * sign
 
 # Magic for creating enums
-def M_add_class_attribs(attribs, start):
-    def foo(name, bases, dict_):
-        for v, k in enumerate(attribs):
-            dict_[k] = start + v
-        assert 'length' not in dict_
-        dict_['length'] = start + len(attribs)
-        return type(name, bases, dict_)
-    return foo
+def M_add_class_attribs(name, base, attribs, start):
+    dict_ = dict()
+    for v, k in enumerate(attribs):
+        dict_[k] = start + v
+    assert 'length' not in dict_
+    dict_['length'] = start + len(attribs)
+    return type(name, (base,), dict_)
 
 def enum(*names, **kw):
     if len(kw) == 1:
@@ -57,10 +56,10 @@ def enum(*names, **kw):
         assert len(kw) == 0
         base = object
         start = 0
-    class Foo(base):
-        __metaclass__ = M_add_class_attribs(names, start)
-        def __setattr__(self, name, value):  # this makes it read-only
-            raise NotImplementedError
+    Foo = M_add_class_attribs("Foo", base, names, start)
+    def __setattr__(self, name, value):  # this makes it read-only
+        raise NotImplementedError
+    Foo.__setattr__ = __setattr__
     return Foo()
 
 class WebIDLError(Exception):
@@ -644,7 +643,6 @@ class IDLInterface(IDLObjectWithScope):
         # self.members.  Sort our consequential interfaces by name
         # just so we have a consistent order.
         for iface in sorted(self.getConsequentialInterfaces(),
-                            cmp=cmp,
                             key=lambda x: x.identifier.name):
             # Flag the interface as being someone's consequential interface
             iface.setIsConsequentialInterfaceOf(self)
@@ -962,7 +960,7 @@ class IDLInterface(IDLObjectWithScope):
                     newMethod = self.parentScope.lookupIdentifier(method.identifier)
                     if newMethod == method:
                         self.namedConstructors.append(method)
-                    elif not newMethod in self.namedConstructors:
+                    elif newMethod not in self.namedConstructors:
                         raise WebIDLError("NamedConstructor conflicts with a NamedConstructor of a different interface",
                                           [method.location, newMethod.location])
             elif (identifier == "ArrayClass"):
@@ -1155,7 +1153,7 @@ class IDLDictionary(IDLObjectWithScope):
                 assert member.type.isComplete()
 
         # Members of a dictionary are sorted in lexicographic order
-        self.members.sort(cmp=cmp, key=lambda x: x.identifier.name)
+        self.members.sort(key=lambda x: x.identifier.name)
 
         inheritedMembers = []
         ancestor = self.parent
@@ -3060,7 +3058,7 @@ class IDLCallbackType(IDLType, IDLObjectWithScope):
     def _getDependentObjects(self):
         return set([self._returnType] + self._arguments)
 
-class IDLMethodOverload:
+class IDLMethodOverload(object):
     """
     A class that represents a single overload of a WebIDL method.  This is not
     quite the same as an element of the "effective overload set" in the spec,
@@ -3754,7 +3752,7 @@ class Parser(Tokenizer):
                                       [location, p[0].location])
                 p[0].setNonPartial(location, parent, members)
                 return
-        except Exception, ex:
+        except Exception as ex:
             if isinstance(ex, WebIDLError):
                 raise ex
             pass
@@ -3778,7 +3776,7 @@ class Parser(Tokenizer):
                                       "%s and %s" % (identifier.name, p[0]),
                                       [location, p[0].location])
                 return
-        except Exception, ex:
+        except Exception as ex:
             if isinstance(ex, WebIDLError):
                 raise ex
             pass
@@ -3805,7 +3803,7 @@ class Parser(Tokenizer):
                 # automatically.
                 p[0].members.extend(members)
                 return
-        except Exception, ex:
+        except Exception as ex:
             if isinstance(ex, WebIDLError):
                 raise ex
             pass
@@ -4930,8 +4928,8 @@ class Parser(Tokenizer):
     def _installBuiltins(self, scope):
         assert isinstance(scope, IDLScope)
 
-        # xrange omits the last value.
-        for x in xrange(IDLBuiltinType.Types.ArrayBuffer, IDLBuiltinType.Types.Float64Array + 1):
+        # range omits the last value.
+        for x in range(IDLBuiltinType.Types.ArrayBuffer, IDLBuiltinType.Types.Float64Array + 1):
             builtin = BuiltinTypes[x]
             name = builtin.name
 
@@ -5020,14 +5018,14 @@ def main():
             f = open(fullPath, 'rb')
             lines = f.readlines()
             f.close()
-            print fullPath
+            print(fullPath)
             parser.parse(''.join(lines), fullPath)
         parser.finish()
-    except WebIDLError, e:
+    except WebIDLError as e:
         if options.verbose_errors:
             traceback.print_exc()
         else:
-            print e
+            print(e)
 
 if __name__ == '__main__':
     main()

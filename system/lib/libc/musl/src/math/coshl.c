@@ -38,4 +38,10 @@ long double coshl(long double x)
 	t = expl(0.5*x);
 	return 0.5*t*t;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double coshl(long double x)
+{
+	return cosh(x);
+}
 #endif

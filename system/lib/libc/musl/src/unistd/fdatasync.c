@@ -3,5 +3,5 @@
 
 int fdatasync(int fd)
 {
-	return syscall(SYS_fdatasync, fd);
+	return syscall_cp(SYS_fdatasync, fd);
 }

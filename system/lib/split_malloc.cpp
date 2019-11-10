@@ -1,6 +1,11 @@
 /*
-   malloc/free for SPLIT_MEMORY
-*/
+ * Copyright 2015 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * malloc/free for SPLIT_MEMORY
+ */
 
 #include <stdlib.h>
 #include <string.h>
@@ -51,7 +56,6 @@ struct Space {
   AllocateResult allocate() {
     assert(!allocated);
     assert(count == 0);
-    allocated = true;
     int start;
     if (index > 0) {
       if (int(split_memory*(index+1)) < 0) {
@@ -68,10 +72,13 @@ struct Space {
         }
       }, index, OK, NO_MEMORY, ALREADY_USED);
       if (result != OK) return result;
+      // success, we allocated this chunk
+      allocated = true;
       start = split_memory*index;
     } else {
       // small area in existing chunk 0
-      start = EM_ASM_INT_V({ return (DYNAMICTOP+3)&-4; });
+      allocated = true;
+      start = EM_ASM_INT({ return (HEAP32[DYNAMICTOP_PTR>>2]+3)&-4; });
       assert(start < split_memory);
     }
     int size = (split_memory*(index+1)) - start;
@@ -79,7 +86,7 @@ struct Space {
     space = create_mspace_with_base((void*)start, size, 0);
     if (index == 0) {
       if (!space) {
-        EM_ASM({ Module.printErr("failed to create space in the first split memory chunk - SPLIT_MEMORY might need to be larger"); });
+        EM_ASM({ err("failed to create space in the first split memory chunk - SPLIT_MEMORY might need to be larger"); });
       }
     }
     assert(space);
@@ -92,7 +99,7 @@ struct Space {
     allocated = false;
     destroy_mspace((void*)(split_memory*index));
     if (index > 0) {
-      EM_ASM_({ freeSplitChunk($0) }, index);
+      EM_ASM({ freeSplitChunk($0) }, index);
     }
   }
 };
@@ -100,9 +107,9 @@ struct Space {
 static Space spaces[MAX_SPACES];
 
 static void init() {
-  total_memory = EM_ASM_INT_V({ return TOTAL_MEMORY; });
-  split_memory = EM_ASM_INT_V({ return SPLIT_MEMORY; });
-  num_spaces = EM_ASM_INT_V({ return HEAPU8s.length; });
+  total_memory = EM_ASM_INT({ return TOTAL_MEMORY; });
+  split_memory = EM_ASM_INT({ return SPLIT_MEMORY; });
+  num_spaces = EM_ASM_INT({ return HEAPU8s.length; });
   if (num_spaces >= MAX_SPACES) abort();
   for (int i = 0; i < num_spaces; i++) {
     spaces[i].init(i);
@@ -130,8 +137,8 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
   if (size >= split_memory) {
     static bool warned = false;
     if (!warned) {
-      EM_ASM_({
-        Module.print("trying to get " + $0 + ", a size >= than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
+      EM_ASM({
+        out("trying to get " + $0 + ", a size >= than SPLIT_MEMORY (" + $1 + "), increase SPLIT_MEMORY if you want that to work");
       }, size, split_memory);
       warned = true;
     }
@@ -157,7 +164,7 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
         return ret;
       }
       if (must_succeed) {
-        EM_ASM({ Module.printErr("failed to allocate in a new space after memory growth, perhaps increase SPLIT_MEMORY?"); });
+        EM_ASM({ err("failed to allocate in a new space after memory growth, perhaps increase SPLIT_MEMORY?"); });
         abort();
       }
     } else {
@@ -168,7 +175,7 @@ static void* get_memory(size_t size, bool malloc=true, size_t alignment=-1, bool
     if (next == start) break;
   }
   // we cycled, so none of them can allocate
-  int returnNull = EM_ASM_INT_V({
+  int returnNull = EM_ASM_INT({
     if (!ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH) return 1; // malloc can return 0, and we cannot grow
     if (!ALLOW_MEMORY_GROWTH) {
       abortOnCannotGrowMemory();
@@ -229,13 +236,16 @@ void* calloc(size_t num, size_t size) {
 
 // very minimal sbrk, within one chunk
 void* sbrk(intptr_t increment) {
+  if (!initialized) {
+    init();
+  }
   const int SBRK_CHUNK = split_memory - 1024;
   static size_t start = -1;
   static size_t curr = 0;
   if (start == -1) {
     start = (size_t)malloc(SBRK_CHUNK);
     if (!start) {
-      EM_ASM({ Module.printErr("sbrk() failed to get space"); });
+      EM_ASM({ err("sbrk() failed to get space"); });
       abort();
     }
     curr = start;

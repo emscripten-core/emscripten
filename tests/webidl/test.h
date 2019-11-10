@@ -14,7 +14,8 @@ public:
   void parentFunc() {}
   const Parent *getAsConst() { return NULL; }
   void *voidStar(void *something) { return something; }
-
+  bool getBoolean() { return true; }
+  int attr;
   const int immutableAttr;
 };
 
@@ -40,10 +41,21 @@ public:
   static void runVirtualFunc(Child2 *self) { self->virtualFunc(); };
   virtual void virtualFunc3(int x) { printf("*virtualf3: %d*\n", x); }
   virtual void virtualFunc4(int x) { printf("*virtualf4: %d*\n", x); }
-  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); };
+  static void runVirtualFunc3(Child2 *self, int x) { self->virtualFunc3(x); }
 
 private:
   void doSomethingSecret() { printf("security breached!\n"); }; // we should not be able to do this
+};
+
+// We test compilation here: abstract base classes must be handled properly,
+// and in particular the const property may matter (if not overridden as
+// const, compilation will fail).
+class VirtualBase {
+public:
+  virtual ~VirtualBase() {};
+
+  virtual void func() = 0;
+  virtual void constFunc() const = 0;
 };
 
 // Part 2
@@ -54,7 +66,7 @@ class StringUser {
   char *s;
   int i;
 public:
-  StringUser(char *string="NO", int integer=99) : s(strdup(string)), i(integer) {}
+  StringUser(const char *string="NO", int integer=99) : s(strdup(string)), i(integer) {}
   ~StringUser() { free(s); }
   void Print(int anotherInteger, char *anotherString) {
     printf("|%s|%d|%s|%d|\n", s, i, anotherString, anotherInteger);
@@ -81,9 +93,15 @@ struct VoidPointerUser {
 
 namespace Space {
   struct Inner {
-    Inner() {}
+    int value;
+    Inner() : value(1) {}
     int get() { return 198; }
     Inner& operator*=(float x) { return *this; }
+    int operator[](int x) { return x*2; }
+    void operator+=(const Inner& other) {
+      value += other.value;
+      printf("Inner::+= => %d\n", value);
+    }
   };
 }
 
@@ -120,7 +138,7 @@ class TypeTestClass {
   void AcceptUnsignedShortMethod(unsigned short x) { printf("unsigned short int: %u\n", x); }
 
   unsigned long ReturnUnsignedLongMethod() { return 0xffffffff; }
-  void AcceptUnsignedLongMethod(unsigned long x) { printf("unsigned long int: %u\n", x); }
+  void AcceptUnsignedLongMethod(unsigned long x) { printf("unsigned long int: %lu\n", x); }
 };
 
 struct StructInArray {
@@ -143,3 +161,23 @@ class ArrayClass {
   StructInArray struct_array[8];
   StructInArray* struct_ptr_array[8];
 };
+
+struct ReceiveArrays {
+  void giveMeArrays(float* vertices, int* triangles, int num) {
+    for (int i = 0; i < num; i++) {
+      printf("%d : %.2f\n", triangles[i], vertices[i]);
+    }
+  }
+};
+
+struct StoreArray {
+  StoreArray() : int_array(NULL) {}
+  void setArray(const int *array) {
+    int_array = array;
+  }
+  int getArrayValue(int index) const {
+    return int_array[index];
+  }
+  const int* int_array;
+};
+

@@ -113,10 +113,6 @@ template <size_t N> struct hash<std::bitset<N>>;
 
 */
 
-#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
-#pragma GCC system_header
-#endif
-
 #include <__config>
 #include <__bit_reference>
 #include <cstddef>
@@ -125,11 +121,14 @@ template <size_t N> struct hash<std::bitset<N>>;
 #include <stdexcept>
 #include <iosfwd>
 #include <__functional_base>
-#if defined(_LIBCPP_NO_EXCEPTIONS)
-    #include <cassert>
+
+#if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
+#pragma GCC system_header
 #endif
 
-#include <__undef_min_max>
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
@@ -168,7 +167,9 @@ protected:
     typedef __bit_iterator<__bitset, false>            iterator;
     typedef __bit_iterator<__bitset, true>             const_iterator;
 
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR __bitset() _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     explicit _LIBCPP_CONSTEXPR __bitset(unsigned long long __v) _NOEXCEPT;
 
     _LIBCPP_INLINE_VISIBILITY reference __make_ref(size_t __pos) _NOEXCEPT
@@ -180,8 +181,11 @@ protected:
     _LIBCPP_INLINE_VISIBILITY const_iterator __make_iter(size_t __pos) const _NOEXCEPT
         {return const_iterator(__first_ + __pos / __bits_per_word, __pos % __bits_per_word);}
 
+    _LIBCPP_INLINE_VISIBILITY
     void operator&=(const __bitset& __v) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     void operator|=(const __bitset& __v) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     void operator^=(const __bitset& __v) _NOEXCEPT;
 
     void flip() _NOEXCEPT;
@@ -192,42 +196,52 @@ protected:
 
     bool all() const _NOEXCEPT;
     bool any() const _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     size_t __hash_code() const _NOEXCEPT;
 private:
-#ifdef _LIBCPP_HAS_NO_CONSTEXPR
+#ifdef _LIBCPP_CXX03_LANG
     void __init(unsigned long long __v, false_type) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     void __init(unsigned long long __v, true_type) _NOEXCEPT;
-#endif  // _LIBCPP_HAS_NO_CONSTEXPR
+#endif  // _LIBCPP_CXX03_LANG
     unsigned long to_ulong(false_type) const;
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long to_ulong(true_type) const;
     unsigned long long to_ullong(false_type) const;
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long long to_ullong(true_type) const;
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long long to_ullong(true_type, false_type) const;
     unsigned long long to_ullong(true_type, true_type) const;
 };
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 _LIBCPP_CONSTEXPR
 __bitset<_N_words, _Size>::__bitset() _NOEXCEPT
-#ifndef _LIBCPP_HAS_NO_CONSTEXPR
+#ifndef _LIBCPP_CXX03_LANG
     : __first_{0}
 #endif
 {
-#ifdef _LIBCPP_HAS_NO_CONSTEXPR
+#ifdef _LIBCPP_CXX03_LANG
     _VSTD::fill_n(__first_, _N_words, __storage_type(0));
 #endif
 }
 
-#ifdef _LIBCPP_HAS_NO_CONSTEXPR
+#ifdef _LIBCPP_CXX03_LANG
 
 template <size_t _N_words, size_t _Size>
 void
 __bitset<_N_words, _Size>::__init(unsigned long long __v, false_type) _NOEXCEPT
 {
     __storage_type __t[sizeof(unsigned long long) / sizeof(__storage_type)];
-    for (size_t __i = 0; __i < sizeof(__t)/sizeof(__t[0]); ++__i, __v >>= __bits_per_word)
-        __t[__i] = static_cast<__storage_type>(__v);
+    size_t __sz = _Size;
+    for (size_t __i = 0; __i < sizeof(__t)/sizeof(__t[0]); ++__i, __v >>= __bits_per_word, __sz -= __bits_per_word )
+        if ( __sz < __bits_per_word)
+        	__t[__i] = static_cast<__storage_type>(__v) & ( 1ULL << __sz ) - 1;
+        else
+        	__t[__i] = static_cast<__storage_type>(__v);
+
     _VSTD::copy(__t, __t + sizeof(__t)/sizeof(__t[0]), __first_);
     _VSTD::fill(__first_ + sizeof(__t)/sizeof(__t[0]), __first_ + sizeof(__first_)/sizeof(__first_[0]),
                __storage_type(0));
@@ -239,32 +253,37 @@ void
 __bitset<_N_words, _Size>::__init(unsigned long long __v, true_type) _NOEXCEPT
 {
     __first_[0] = __v;
+    if (_Size < __bits_per_word)
+    	__first_[0] &= ( 1ULL << _Size ) - 1;
+
     _VSTD::fill(__first_ + 1, __first_ + sizeof(__first_)/sizeof(__first_[0]), __storage_type(0));
 }
 
-#endif  // _LIBCPP_HAS_NO_CONSTEXPR
+#endif  // _LIBCPP_CXX03_LANG
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 _LIBCPP_CONSTEXPR
 __bitset<_N_words, _Size>::__bitset(unsigned long long __v) _NOEXCEPT
-#ifndef _LIBCPP_HAS_NO_CONSTEXPR
+#ifndef _LIBCPP_CXX03_LANG
 #if __SIZEOF_SIZE_T__ == 8
     : __first_{__v}
 #elif __SIZEOF_SIZE_T__ == 4
-    : __first_{__v, __v >> __bits_per_word}
+    : __first_{static_cast<__storage_type>(__v), 
+    			_Size >= 2 * __bits_per_word ? static_cast<__storage_type>(__v >> __bits_per_word)
+    			: static_cast<__storage_type>((__v >> __bits_per_word) & (__storage_type(1) << (_Size - __bits_per_word)) - 1)}
 #else
 #error This constructor has not been ported to this platform
 #endif
 #endif
 {
-#ifdef _LIBCPP_HAS_NO_CONSTEXPR
+#ifdef _LIBCPP_CXX03_LANG
     __init(__v, integral_constant<bool, sizeof(unsigned long long) == sizeof(__storage_type)>());
 #endif
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<_N_words, _Size>::operator&=(const __bitset& __v) _NOEXCEPT
 {
@@ -273,7 +292,7 @@ __bitset<_N_words, _Size>::operator&=(const __bitset& __v) _NOEXCEPT
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<_N_words, _Size>::operator|=(const __bitset& __v) _NOEXCEPT
 {
@@ -282,7 +301,7 @@ __bitset<_N_words, _Size>::operator|=(const __bitset& __v) _NOEXCEPT
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<_N_words, _Size>::operator^=(const __bitset& __v) _NOEXCEPT
 {
@@ -316,16 +335,13 @@ __bitset<_N_words, _Size>::to_ulong(false_type) const
     const_iterator __e = __make_iter(_Size);
     const_iterator __i = _VSTD::find(__make_iter(sizeof(unsigned long) * CHAR_BIT), __e, true);
     if (__i != __e)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw overflow_error("bitset to_ulong overflow error");
-#else
-        assert(!"bitset to_ulong overflow error");
-#endif
+        __throw_overflow_error("bitset to_ulong overflow error");
+
     return __first_[0];
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long
 __bitset<_N_words, _Size>::to_ulong(true_type) const
 {
@@ -339,16 +355,13 @@ __bitset<_N_words, _Size>::to_ullong(false_type) const
     const_iterator __e = __make_iter(_Size);
     const_iterator __i = _VSTD::find(__make_iter(sizeof(unsigned long long) * CHAR_BIT), __e, true);
     if (__i != __e)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw overflow_error("bitset to_ullong overflow error");
-#else
-        assert(!"bitset to_ullong overflow error");
-#endif
+        __throw_overflow_error("bitset to_ullong overflow error");
+
     return to_ullong(true_type());
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long long
 __bitset<_N_words, _Size>::to_ullong(true_type) const
 {
@@ -356,7 +369,7 @@ __bitset<_N_words, _Size>::to_ullong(true_type) const
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long long
 __bitset<_N_words, _Size>::to_ullong(true_type, false_type) const
 {
@@ -414,7 +427,7 @@ __bitset<_N_words, _Size>::any() const _NOEXCEPT
 }
 
 template <size_t _N_words, size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 size_t
 __bitset<_N_words, _Size>::__hash_code() const _NOEXCEPT
 {
@@ -450,7 +463,9 @@ protected:
     typedef __bit_iterator<__bitset, false>            iterator;
     typedef __bit_iterator<__bitset, true>             const_iterator;
 
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR __bitset() _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     explicit _LIBCPP_CONSTEXPR __bitset(unsigned long long __v) _NOEXCEPT;
 
     _LIBCPP_INLINE_VISIBILITY reference __make_ref(size_t __pos) _NOEXCEPT
@@ -462,23 +477,32 @@ protected:
     _LIBCPP_INLINE_VISIBILITY const_iterator __make_iter(size_t __pos) const _NOEXCEPT
         {return const_iterator(&__first_ + __pos / __bits_per_word, __pos % __bits_per_word);}
 
+    _LIBCPP_INLINE_VISIBILITY
     void operator&=(const __bitset& __v) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     void operator|=(const __bitset& __v) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     void operator^=(const __bitset& __v) _NOEXCEPT;
 
+    _LIBCPP_INLINE_VISIBILITY
     void flip() _NOEXCEPT;
 
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long to_ulong() const;
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long long to_ullong() const;
 
+    _LIBCPP_INLINE_VISIBILITY
     bool all() const _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bool any() const _NOEXCEPT;
 
+    _LIBCPP_INLINE_VISIBILITY
     size_t __hash_code() const _NOEXCEPT;
 };
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 _LIBCPP_CONSTEXPR
 __bitset<1, _Size>::__bitset() _NOEXCEPT
     : __first_(0)
@@ -486,15 +510,18 @@ __bitset<1, _Size>::__bitset() _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 _LIBCPP_CONSTEXPR
 __bitset<1, _Size>::__bitset(unsigned long long __v) _NOEXCEPT
-    : __first_(static_cast<__storage_type>(__v))
+    : __first_(
+        _Size == __bits_per_word ? static_cast<__storage_type>(__v)
+                                 : static_cast<__storage_type>(__v) & ((__storage_type(1) << _Size) - 1)
+    )
 {
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<1, _Size>::operator&=(const __bitset& __v) _NOEXCEPT
 {
@@ -502,7 +529,7 @@ __bitset<1, _Size>::operator&=(const __bitset& __v) _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<1, _Size>::operator|=(const __bitset& __v) _NOEXCEPT
 {
@@ -510,7 +537,7 @@ __bitset<1, _Size>::operator|=(const __bitset& __v) _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<1, _Size>::operator^=(const __bitset& __v) _NOEXCEPT
 {
@@ -518,7 +545,7 @@ __bitset<1, _Size>::operator^=(const __bitset& __v) _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 void
 __bitset<1, _Size>::flip() _NOEXCEPT
 {
@@ -528,7 +555,7 @@ __bitset<1, _Size>::flip() _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long
 __bitset<1, _Size>::to_ulong() const
 {
@@ -536,7 +563,7 @@ __bitset<1, _Size>::to_ulong() const
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long long
 __bitset<1, _Size>::to_ullong() const
 {
@@ -544,7 +571,7 @@ __bitset<1, _Size>::to_ullong() const
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 __bitset<1, _Size>::all() const _NOEXCEPT
 {
@@ -553,7 +580,7 @@ __bitset<1, _Size>::all() const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 __bitset<1, _Size>::any() const _NOEXCEPT
 {
@@ -562,7 +589,7 @@ __bitset<1, _Size>::any() const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 size_t
 __bitset<1, _Size>::__hash_code() const _NOEXCEPT
 {
@@ -593,7 +620,9 @@ protected:
     typedef __bit_iterator<__bitset, false>            iterator;
     typedef __bit_iterator<__bitset, true>             const_iterator;
 
+    _LIBCPP_INLINE_VISIBILITY
     _LIBCPP_CONSTEXPR __bitset() _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     explicit _LIBCPP_CONSTEXPR __bitset(unsigned long long) _NOEXCEPT;
 
     _LIBCPP_INLINE_VISIBILITY reference __make_ref(size_t) _NOEXCEPT
@@ -620,23 +649,23 @@ protected:
     _LIBCPP_INLINE_VISIBILITY size_t __hash_code() const _NOEXCEPT {return 0;}
 };
 
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 _LIBCPP_CONSTEXPR
 __bitset<0, 0>::__bitset() _NOEXCEPT
 {
 }
 
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 _LIBCPP_CONSTEXPR
 __bitset<0, 0>::__bitset(unsigned long long) _NOEXCEPT
 {
 }
 
-template <size_t _Size> class _LIBCPP_TYPE_VIS_ONLY bitset;
-template <size_t _Size> struct _LIBCPP_TYPE_VIS_ONLY hash<bitset<_Size> >;
+template <size_t _Size> class _LIBCPP_TEMPLATE_VIS bitset;
+template <size_t _Size> struct hash<bitset<_Size> >;
 
 template <size_t _Size>
-class _LIBCPP_TYPE_VIS_ONLY bitset
+class _LIBCPP_TEMPLATE_VIS bitset
     : private __bitset<_Size == 0 ? 0 : (_Size - 1) / (sizeof(size_t) * CHAR_BIT) + 1, _Size>
 {
 public:
@@ -663,16 +692,23 @@ public:
                         _CharT __zero = _CharT('0'), _CharT __one = _CharT('1'));
 
     // 23.3.5.2 bitset operations:
+    _LIBCPP_INLINE_VISIBILITY
     bitset& operator&=(const bitset& __rhs) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bitset& operator|=(const bitset& __rhs) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bitset& operator^=(const bitset& __rhs) _NOEXCEPT;
     bitset& operator<<=(size_t __pos) _NOEXCEPT;
     bitset& operator>>=(size_t __pos) _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bitset& set() _NOEXCEPT;
     bitset& set(size_t __pos, bool __val = true);
+    _LIBCPP_INLINE_VISIBILITY
     bitset& reset() _NOEXCEPT;
     bitset& reset(size_t __pos);
+    _LIBCPP_INLINE_VISIBILITY
     bitset  operator~() const _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bitset& flip() _NOEXCEPT;
     bitset& flip(size_t __pos);
 
@@ -680,28 +716,40 @@ public:
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR
                               const_reference operator[](size_t __p) const {return base::__make_ref(__p);}
     _LIBCPP_INLINE_VISIBILITY       reference operator[](size_t __p)       {return base::__make_ref(__p);}
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long to_ulong() const;
+    _LIBCPP_INLINE_VISIBILITY
     unsigned long long to_ullong() const;
     template <class _CharT, class _Traits, class _Allocator>
         basic_string<_CharT, _Traits, _Allocator> to_string(_CharT __zero = _CharT('0'),
                                                             _CharT __one = _CharT('1')) const;
     template <class _CharT, class _Traits>
+        _LIBCPP_INLINE_VISIBILITY
         basic_string<_CharT, _Traits, allocator<_CharT> > to_string(_CharT __zero = _CharT('0'),
                                                                     _CharT __one = _CharT('1')) const;
     template <class _CharT>
+        _LIBCPP_INLINE_VISIBILITY
         basic_string<_CharT, char_traits<_CharT>, allocator<_CharT> > to_string(_CharT __zero = _CharT('0'),
                                                                                 _CharT __one = _CharT('1')) const;
+    _LIBCPP_INLINE_VISIBILITY
     basic_string<char, char_traits<char>, allocator<char> > to_string(char __zero = '0',
                                                                       char __one = '1') const;
+    _LIBCPP_INLINE_VISIBILITY
     size_t count() const _NOEXCEPT;
     _LIBCPP_INLINE_VISIBILITY _LIBCPP_CONSTEXPR size_t size() const _NOEXCEPT {return _Size;}
+    _LIBCPP_INLINE_VISIBILITY
     bool operator==(const bitset& __rhs) const _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bool operator!=(const bitset& __rhs) const _NOEXCEPT;
     bool test(size_t __pos) const;
+    _LIBCPP_INLINE_VISIBILITY
     bool all() const _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bool any() const _NOEXCEPT;
     _LIBCPP_INLINE_VISIBILITY bool none() const _NOEXCEPT {return !any();}
+    _LIBCPP_INLINE_VISIBILITY
     bitset operator<<(size_t __pos) const _NOEXCEPT;
+    _LIBCPP_INLINE_VISIBILITY
     bitset operator>>(size_t __pos) const _NOEXCEPT;
 
 private:
@@ -721,11 +769,8 @@ bitset<_Size>::bitset(const _CharT* __str,
     size_t __rlen = _VSTD::min(__n, char_traits<_CharT>::length(__str));
     for (size_t __i = 0; __i < __rlen; ++__i)
         if (__str[__i] != __zero && __str[__i] != __one)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-            throw invalid_argument("bitset string ctor has invalid argument");
-#else
-            assert(!"bitset string ctor has invalid argument");
-#endif
+            __throw_invalid_argument("bitset string ctor has invalid argument");
+
     size_t _Mp = _VSTD::min(__rlen, _Size);
     size_t __i = 0;
     for (; __i < _Mp; ++__i)
@@ -747,19 +792,13 @@ bitset<_Size>::bitset(const basic_string<_CharT,_Traits,_Allocator>& __str,
        _CharT __zero, _CharT __one)
 {
     if (__pos > __str.size())
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("bitset string pos out of range");
-#else
-        assert(!"bitset string pos out of range");
-#endif
+        __throw_out_of_range("bitset string pos out of range");
+
     size_t __rlen = _VSTD::min(__n, __str.size() - __pos);
     for (size_t __i = __pos; __i < __pos + __rlen; ++__i)
         if (!_Traits::eq(__str[__i], __zero) && !_Traits::eq(__str[__i], __one))
-#ifndef _LIBCPP_NO_EXCEPTIONS
-            throw invalid_argument("bitset string ctor has invalid argument");
-#else
-            assert(!"bitset string ctor has invalid argument");
-#endif
+            __throw_invalid_argument("bitset string ctor has invalid argument");
+
     size_t _Mp = _VSTD::min(__rlen, _Size);
     size_t __i = 0;
     for (; __i < _Mp; ++__i)
@@ -774,7 +813,7 @@ bitset<_Size>::bitset(const basic_string<_CharT,_Traits,_Allocator>& __str,
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>&
 bitset<_Size>::operator&=(const bitset& __rhs) _NOEXCEPT
 {
@@ -783,7 +822,7 @@ bitset<_Size>::operator&=(const bitset& __rhs) _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>&
 bitset<_Size>::operator|=(const bitset& __rhs) _NOEXCEPT
 {
@@ -792,7 +831,7 @@ bitset<_Size>::operator|=(const bitset& __rhs) _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>&
 bitset<_Size>::operator^=(const bitset& __rhs) _NOEXCEPT
 {
@@ -821,7 +860,7 @@ bitset<_Size>::operator>>=(size_t __pos) _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>&
 bitset<_Size>::set() _NOEXCEPT
 {
@@ -834,17 +873,14 @@ bitset<_Size>&
 bitset<_Size>::set(size_t __pos, bool __val)
 {
     if (__pos >= _Size)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("bitset set argument out of range");
-#else
-        assert(!"bitset set argument out of range");
-#endif
+        __throw_out_of_range("bitset set argument out of range");
+
     (*this)[__pos] = __val;
     return *this;
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>&
 bitset<_Size>::reset() _NOEXCEPT
 {
@@ -857,17 +893,14 @@ bitset<_Size>&
 bitset<_Size>::reset(size_t __pos)
 {
     if (__pos >= _Size)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("bitset reset argument out of range");
-#else
-        assert(!"bitset reset argument out of range");
-#endif
+        __throw_out_of_range("bitset reset argument out of range");
+
     (*this)[__pos] = false;
     return *this;
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>
 bitset<_Size>::operator~() const _NOEXCEPT
 {
@@ -877,7 +910,7 @@ bitset<_Size>::operator~() const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>&
 bitset<_Size>::flip() _NOEXCEPT
 {
@@ -890,18 +923,15 @@ bitset<_Size>&
 bitset<_Size>::flip(size_t __pos)
 {
     if (__pos >= _Size)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("bitset flip argument out of range");
-#else
-        assert(!"bitset flip argument out of range");
-#endif
+        __throw_out_of_range("bitset flip argument out of range");
+
     reference r = base::__make_ref(__pos);
     r = ~r;
     return *this;
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long
 bitset<_Size>::to_ulong() const
 {
@@ -909,7 +939,7 @@ bitset<_Size>::to_ulong() const
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 unsigned long long
 bitset<_Size>::to_ullong() const
 {
@@ -932,7 +962,7 @@ bitset<_Size>::to_string(_CharT __zero, _CharT __one) const
 
 template <size_t _Size>
 template <class _CharT, class _Traits>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_string<_CharT, _Traits, allocator<_CharT> >
 bitset<_Size>::to_string(_CharT __zero, _CharT __one) const
 {
@@ -941,7 +971,7 @@ bitset<_Size>::to_string(_CharT __zero, _CharT __one) const
 
 template <size_t _Size>
 template <class _CharT>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_string<_CharT, char_traits<_CharT>, allocator<_CharT> >
 bitset<_Size>::to_string(_CharT __zero, _CharT __one) const
 {
@@ -949,7 +979,7 @@ bitset<_Size>::to_string(_CharT __zero, _CharT __one) const
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 basic_string<char, char_traits<char>, allocator<char> >
 bitset<_Size>::to_string(char __zero, char __one) const
 {
@@ -957,7 +987,7 @@ bitset<_Size>::to_string(char __zero, char __one) const
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 size_t
 bitset<_Size>::count() const _NOEXCEPT
 {
@@ -965,7 +995,7 @@ bitset<_Size>::count() const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 bitset<_Size>::operator==(const bitset& __rhs) const _NOEXCEPT
 {
@@ -973,7 +1003,7 @@ bitset<_Size>::operator==(const bitset& __rhs) const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 bitset<_Size>::operator!=(const bitset& __rhs) const _NOEXCEPT
 {
@@ -985,16 +1015,13 @@ bool
 bitset<_Size>::test(size_t __pos) const
 {
     if (__pos >= _Size)
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("bitset test argument out of range");
-#else
-        assert(!"bitset test argument out of range");
-#endif
+        __throw_out_of_range("bitset test argument out of range");
+
     return (*this)[__pos];
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 bitset<_Size>::all() const _NOEXCEPT
 {
@@ -1002,7 +1029,7 @@ bitset<_Size>::all() const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bool
 bitset<_Size>::any() const _NOEXCEPT
 {
@@ -1010,7 +1037,7 @@ bitset<_Size>::any() const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>
 bitset<_Size>::operator<<(size_t __pos) const _NOEXCEPT
 {
@@ -1020,7 +1047,7 @@ bitset<_Size>::operator<<(size_t __pos) const _NOEXCEPT
 }
 
 template <size_t _Size>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 bitset<_Size>
 bitset<_Size>::operator>>(size_t __pos) const _NOEXCEPT
 {
@@ -1060,7 +1087,7 @@ operator^(const bitset<_Size>& __x, const bitset<_Size>& __y) _NOEXCEPT
 }
 
 template <size_t _Size>
-struct _LIBCPP_TYPE_VIS_ONLY hash<bitset<_Size> >
+struct _LIBCPP_TEMPLATE_VIS hash<bitset<_Size> >
     : public unary_function<bitset<_Size>, size_t>
 {
     _LIBCPP_INLINE_VISIBILITY
@@ -1077,5 +1104,7 @@ basic_ostream<_CharT, _Traits>&
 operator<<(basic_ostream<_CharT, _Traits>& __os, const bitset<_Size>& __x);
 
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // _LIBCPP_BITSET

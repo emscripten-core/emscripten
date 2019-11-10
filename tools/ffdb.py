@@ -1,5 +1,10 @@
 #!/usr/bin/env python
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
+from __future__ import print_function
 import socket, json, sys, uuid, datetime, time, logging, cgi, zipfile, os, tempfile, atexit, subprocess, re, base64, struct, imghdr
 
 WINDOWS = sys.platform == 'win32'
@@ -43,11 +48,11 @@ def zipdir(path, zipfilename):
     filename = os.path.join(root, file)
     filesize = os.path.getsize(filename)
     path_in_archive = os.path.relpath(filename, path)
-    print 'Compressing ' + str(n) + '/' + str(len(files_to_compress)) + ': "' + path_in_archive + '" (' + sizeof_fmt(filesize) + ')...'
+    print('Compressing ' + str(n) + '/' + str(len(files_to_compress)) + ': "' + path_in_archive + '" (' + sizeof_fmt(filesize) + ')...')
     n += 1
     zipf.write(os.path.join(root, file), path_in_archive)
   zipf.close()
-  print 'Done. '
+  print('Done. ')
 
 # Returns given log message formatted to be outputted on a HTML page.
 def format_html(msg):
@@ -81,14 +86,14 @@ def read_b2g_response(print_errors_to_console = True):
     if semicolon+1+payload_len > len(read_queue):
       try:
         read_queue += b2g_socket.recv(4096)
-      except socket.timeout, e: 
+      except socket.timeout as e: 
         pass # We simulate blocking sockets with looping over reads that time out, since on Windows, the user cannot press Ctrl-C to break on blocking sockets.
-      except Exception, e:
+      except Exception as e:
         if e[0] == 57: # Socket is not connected
-          print 'Error! Failed to receive data from the device: socket is not connected!'
+          print('Error! Failed to receive data from the device: socket is not connected!')
           sys.exit(1)
         else:
-          print 'Got exception ' + str(e)
+          print('Got exception ' + str(e))
           raise
       continue
     payload = read_queue[semicolon+1:semicolon+1+payload_len]
@@ -97,7 +102,7 @@ def read_b2g_response(print_errors_to_console = True):
     payload = json.loads(payload)
     # Log received errors immediately to console
     if print_errors_to_console and 'error' in payload:
-      print >> sys.stderr, 'Received error "' + payload['error'] + '"! Reason: ' + payload['message']
+      print('Received error "' + payload['error'] + '"! Reason: ' + payload['message'], file=sys.stderr)
     else:
       break
   return payload
@@ -106,7 +111,7 @@ def read_b2g_response(print_errors_to_console = True):
 def send_b2g_cmd(to, cmd, data = {}, print_errors_to_console = True):
   global b2g_socket
   msg = { 'to': to, 'type': cmd}
-  msg = dict(msg.items() + data.items())
+  msg = dict(list(msg.items()) + list(data.items()))
   msg = json.dumps(msg, encoding='latin-1')
   msg = msg.replace('\\\\', '\\')
   msg = str(len(msg))+':'+msg
@@ -169,24 +174,24 @@ def print_applist(applist, running_app_manifests, print_removable):
         version = ''
       if app['manifestURL'] in running_app_manifests:
         version += '   RUNNING'
-      print '   ' + str(app['localId']) + ': "' + app['name'] + '"' + version
+      print('   ' + str(app['localId']) + ': "' + app['name'] + '"' + version)
       num_printed += 1
   return num_printed
 
 def adb_devices():
   try:
-    devices = subprocess.check_output([ADB, 'devices'])
+    devices = run_process([ADB, 'devices'], check=True, stdout=subprocess.PIPE).stdout
     devices = devices.strip().split('\n')[1:]
-    devices = map(lambda x: x.strip().split('\t'), devices)
+    devices = [x.strip().split('\t') for x in devices]
     return devices
-  except Exception, e:
+  except Exception as e:
     return []
 
 def b2g_get_prefs_filename():
-  return subprocess.check_output([ADB, 'shell', 'echo', '-n', '/data/b2g/mozilla/*.default/prefs.js'])
+  return run_process([ADB, 'shell', 'echo', '-n', '/data/b2g/mozilla/*.default/prefs.js'], check=True, stdout=subprocess.PIPE).stdout
 
 def b2g_get_prefs_data():
-  return subprocess.check_output([ADB, 'shell', 'cat', '/data/b2g/mozilla/*.default/prefs.js'])
+  return run_process([ADB, 'shell', 'cat', '/data/b2g/mozilla/*.default/prefs.js'], check=True, stdout=subprocess.PIPE).stdout
 
 def b2g_get_pref(sub):
   prefs_data = b2g_get_prefs_data().split('\n')
@@ -195,7 +200,7 @@ def b2g_get_pref(sub):
   for line in prefs_data:
     m = r.match(line)
     if m and (sub is None or sub in m.group(1)):
-      print m.group(1) + ': ' + m.group(2).strip()
+      print(m.group(1) + ': ' + m.group(2).strip())
 
 def b2g_set_pref(pref, value):
   prefs_data = b2g_get_prefs_data().split('\n')
@@ -208,10 +213,10 @@ def b2g_set_pref(pref, value):
       new_prefs_data += [line]
 
   if value != None:
-    print 'Setting pref "' + pref + '" = ' + value
+    print('Setting pref "' + pref + '" = ' + value)
     new_prefs_data += ['user_pref("' + pref + '", ' + value + ');']
   else:
-    print 'Unsetting pref "' + pref + '"'
+    print('Unsetting pref "' + pref + '"')
   (oshandle, tempfilename) = tempfile.mkstemp(suffix='.js', prefix='ffdb_temp_')
   os.write(oshandle, '\n'.join(new_prefs_data));
 
@@ -219,7 +224,7 @@ def b2g_set_pref(pref, value):
   subprocess.check_output([ADB, 'shell', 'stop', 'b2g'])
   subprocess.check_output([ADB, 'push', tempfilename, b2g_get_prefs_filename()])
   subprocess.check_output([ADB, 'shell', 'start', 'b2g'])
-  print 'Rebooting phone...'
+  print('Rebooting phone...')
 
   def delete_temp_file():
     os.remove(tempfilename)
@@ -229,26 +234,26 @@ def get_packaged_app_manifest(target_app_path):
   if os.path.isdir(target_app_path):
     manifest_file = os.path.join(target_app_path, 'manifest.webapp')
     if not os.path.isfile(manifest_file):
-      print "Error: Failed to find FFOS packaged app manifest file '" + manifest_file + "'! That directory does not contain a packaged app?"
+      print("Error: Failed to find FFOS packaged app manifest file '" + manifest_file + "'! That directory does not contain a packaged app?")
       sys.exit(1)
     return json.loads(open(manifest_file, 'r').read())
   elif target_app_path.endswith('.zip') and os.path.isfile(target_app_path):
     try:
       z = zipfile.ZipFile(target_app_path, "r")
       bytes = z.read('manifest.webapp')
-    except Exception, e:
-      print "Error: Failed to read FFOS packaged app manifest file 'manifest.webapp' in zip file '" + target_app_path + "'! Error: " + str(e)
+    except Exception as e:
+      print("Error: Failed to read FFOS packaged app manifest file 'manifest.webapp' in zip file '" + target_app_path + "'! Error: " + str(e))
       sys.exit(1)
       return None
     return json.loads(str(bytes))
   else:
-      print "Error: Path '" + target_app_path + "' is neither a directory or a .zip file to represent the location of a FFOS packaged app!"
+      print("Error: Path '" + target_app_path + "' is neither a directory or a .zip file to represent the location of a FFOS packaged app!")
       sys.exit(1)
   return None
 
 def b2g_install(target_app_path):
   if os.path.isdir(target_app_path):
-    print 'Zipping up the contents of directory "' + target_app_path + '"...'
+    print('Zipping up the contents of directory "' + target_app_path + '"...')
     (oshandle, tempzip) = tempfile.mkstemp(suffix='.zip', prefix='ffdb_temp_')
     zipdir(target_app_path, tempzip)
     target_app_path = tempzip
@@ -257,8 +262,8 @@ def b2g_install(target_app_path):
       os.remove(tempzip)
     atexit.register(delete_temp_file)
 
-  print 'Uploading application package "' + target_app_path + '"...'
-  print 'Size of compressed package: ' + sizeof_fmt(os.path.getsize(target_app_path)) + '.'
+  print('Uploading application package "' + target_app_path + '"...')
+  print('Size of compressed package: ' + sizeof_fmt(os.path.getsize(target_app_path)) + '.')
   app_file = open(target_app_path, 'rb')
   data = app_file.read()
   file_size = len(data)
@@ -269,7 +274,7 @@ def b2g_install(target_app_path):
     packageUploadActor = uploadResponse['actor']
     send_b2g_bulk_data(packageUploadActor, data)
   else: # Old B2G 1.4 and older, serialize binary data in JSON text strings (SLOW!)
-    print 'Bulk upload is not supported, uploading binary data with old slow format. Consider flashing your device to FFOS 2.0 or newer to enjoy faster upload speeds.'
+    print('Bulk upload is not supported, uploading binary data with old slow format. Consider flashing your device to FFOS 2.0 or newer to enjoy faster upload speeds.')
     uploadResponse = send_b2g_cmd(webappsActorName, 'uploadPackage')
     packageUploadActor = uploadResponse['actor']
     chunk_size = 4*1024*1024
@@ -285,15 +290,15 @@ def b2g_install(target_app_path):
       percentage_done = bytes_uploaded * 1.0 / file_size
       total_time = secs_elapsed / percentage_done
       time_left = total_time - secs_elapsed
-      print sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed)
+      print(sizeof_fmt(bytes_uploaded) + " uploaded, {:5.1f} % done.".format(percentage_done*100.0) + ' Elapsed: ' + str(int(secs_elapsed)) + ' seconds. Time left: ' + str(datetime.timedelta(seconds=int(time_left))) + '. Data rate: {:5.2f} KB/second.'.format(bytes_uploaded / 1024.0 / secs_elapsed))
 
   app_local_id = str(uuid.uuid4())
   reply = send_b2g_cmd(webappsActorName, 'install', { 'appId': app_local_id, 'upload': packageUploadActor })
   cur_time = time.time()
   secs_elapsed = cur_time - start_time
-  print 'Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed)
-  if not 'appId' in reply:
-    print 'Error: Application install failed! ' + str(reply)
+  print('Upload of ' + sizeof_fmt(file_size) + ' finished. Total time elapsed: ' + str(int(secs_elapsed)) + ' seconds. Data rate: {:5.2f} KB/second.'.format(file_size / 1024.0 / secs_elapsed))
+  if 'appId' not in reply:
+    print('Error: Application install failed! ' + str(reply))
     sys.exit()
   return reply['appId']
 
@@ -304,7 +309,7 @@ def b2g_app_command(app_command, app_name, print_errors_to_console = True):
       send_b2g_cmd(webappsActorName, app_command, { 'manifestURL': app['manifestURL'] })
       return 0
   if print_errors_to_console:
-    print 'Error! Application "' + app_name + '" was not found! Use the \'list\' command to find installed applications.'
+    print('Error! Application "' + app_name + '" was not found! Use the \'list\' command to find installed applications.')
   return 1
 
 def b2g_memory(app_name):
@@ -320,9 +325,9 @@ def b2g_memory(app_name):
     for k,v in measure.items():
       if k != 'from':
         if k in ['otherSize', 'jsStringsSize', 'jsObjectsSize', 'styleSize', 'jsOtherSize', 'domSize', 'total']: # These are formatted in bytes
-          print k + ': ' + sizeof_fmt(v)
+          print(k + ': ' + sizeof_fmt(v))
         else:
-          print k + ': ' + str(v)
+          print(k + ': ' + str(v))
 
 def b2g_log(app_name, clear=False):
   global LOG_FORMAT
@@ -337,7 +342,7 @@ def b2g_log(app_name, clear=False):
 
     if clear:
       send_b2g_cmd(consoleActor, 'clearMessagesCache')
-      print 'Cleared message log.'
+      print('Cleared message log.')
       return 0
 
     msgs = send_b2g_cmd(consoleActor, 'startListeners', { 'listeners': ['PageError','ConsoleAPI','NetworkActivity','FileActivity'] })
@@ -397,7 +402,7 @@ def b2g_log(app_name, clear=False):
             channel = m['level'] + '/'
 
           text = set_color(channel + text, color)
-          print text
+          print(text)
           reset_color()
 
     msgs = send_b2g_cmd(consoleActor, 'getCachedMessages', { 'messageTypes': ['PageError', 'ConsoleAPI'] })
@@ -407,13 +412,13 @@ def b2g_log(app_name, clear=False):
       msg = read_b2g_response()
       log_b2g_message(msg)
   else:
-    print 'Application "' + sys.argv[2] + '" is not running!'
+    print('Application "' + sys.argv[2] + '" is not running!')
 
 def b2g_screenshot(filename):
   global deviceActorName
   data_reply = send_b2g_cmd(deviceActorName, 'screenshotToDataURL')
   data = data_reply['value']
-  if not isinstance(data, basestring): # The device is sending the screenshot in multiple fragments since it's too long to fit in one message?
+  if not isinstance(data, (type(u''), bytes)): # The device is sending the screenshot in multiple fragments since it's too long to fit in one message?
     data_get_actor = data['actor']
     data_len = int(data['length'])
     data = data['initial']
@@ -424,7 +429,7 @@ def b2g_screenshot(filename):
       bytes_to_read = min(data_len - pos, chunk_size)
       data_reply = send_b2g_cmd(data_get_actor, 'substring', { 'start': str(pos), 'end': str(pos + bytes_to_read) })
       if len(data_reply['substring']) != bytes_to_read:
-        print >> sys.stderr, 'Error! Expected to receive ' + str(bytes_to_read) + ' bytes of image data, but got ' + str(len(data_reply['substring'])) + ' bytes instead!'
+        print('Error! Expected to receive ' + str(bytes_to_read) + ' bytes of image data, but got ' + str(len(data_reply['substring'])) + ' bytes instead!', file=sys.stderr)
         sys.exit(1)
       data += data_reply['substring']
       pos += bytes_to_read
@@ -434,7 +439,7 @@ def b2g_screenshot(filename):
   delim = re.search(",", data).start()
   data_format = data[:delim]
   if data_format != "data:image/png;base64":
-    print >> sys.stderr, "Error: Received screenshot from device in an unexpected format '" + data_format + "'!"
+    print("Error: Received screenshot from device in an unexpected format '" + data_format + "'!", file=sys.stderr)
     sys.exit(1)
   data = data[delim+1:]
 
@@ -453,25 +458,25 @@ def b2g_screenshot(filename):
 
   width, height = get_png_image_size(filename)
   if width <= 0 or height <= 0:
-    print >> sys.stderr, "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "', but the contents may be corrupted!"
+    print("Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "', but the contents may be corrupted!", file=sys.stderr)
   else:
-    print "Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "' (" + str(width) + 'x' + str(height) + ' pixels).'
+    print("Wrote " + sizeof_fmt(len(binary_data)) + " to file '" + filename + "' (" + str(width) + 'x' + str(height) + ' pixels).')
 
 def b2g_get_description(desc):
   global deviceActorName
   data_reply = send_b2g_cmd(deviceActorName, 'getDescription')
   # First try an exact match to requested desc
   if desc and desc in data_reply['value']:
-    print desc + ': ' + str(data_reply['value'][desc])
+    print(desc + ': ' + str(data_reply['value'][desc]))
   else: # Print all with case-insensitive substring search
     for k,v in data_reply['value'].items():
       if not desc or desc.lower() in k.lower():
-        print k + ': ' + str(v)
+        print(k + ': ' + str(v))
 
 def main():
   global b2g_socket, webappsActorName, deviceActorName, HOST, PORT, VERBOSE, ADB
   if len(sys.argv) < 2 or '--help' in sys.argv or 'help' in sys.argv or '-v' in sys.argv:
-    print '''Firefox OS Debug Bridge, a tool for automating FFOS device tasks from the command line.
+    print('''Firefox OS Debug Bridge, a tool for automating FFOS device tasks from the command line.
 
     Usage: ffdb.py <command>, where command is one of:
 
@@ -516,7 +521,7 @@ def main():
       --simulator: Signal that we will be connecting to a FFOS simulator and not a real device.
 
   In the above, whenever a command requires an <app> to be specified, either the human-readable name, 
-  localId or manifestURL of the application can be used.'''
+  localId or manifestURL of the application can be used.''')
 
     sys.exit(0)
 
@@ -528,7 +533,7 @@ def main():
   for i in range(0, len(sys.argv)):
     if sys.argv[i] in options_with_value:
       if i+1 >= sys.argv or sys.argv[i+1].startswith('-'):
-        print >> sys.stderr, "Missing value for option " + sys.argv[i] +'!'
+        print("Missing value for option " + sys.argv[i] +'!', file=sys.stderr)
         sys.exit(1)
     if sys.argv[i] == '--host':
       HOST = sys.argv[i+1]
@@ -543,17 +548,17 @@ def main():
     if sys.argv[i] in options: sys.argv[i] = ''
     if sys.argv[i] in options_with_value: sys.argv[i+1] = ''
 
-  sys.argv = filter(lambda x: len(x) > 0, sys.argv)
+  sys.argv = [x for x in sys.argv if len(x)]
 
   # Double-check that the device is found via adb:
   if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:
     devices = adb_devices()
     if len(devices) == 0:
-      print 'Error! Failed to connect to B2G device debugger socket at address ' + HOST + ':' + str(PORT) + ' and no devices were detected via adb. Please double-check the following and try again: '
-      print ' 1) The device is powered on and connected to the computer with an USB cable.'
-      print ' 2) ADB and DevTools debugging is enabled on the device. (Settings -> Developer -> Debugging via USB: "ADB and DevTools"'
-      print ' 3) The device is listed when you run "adb devices" on the command line.'
-      print ' 4) When launching ffdb, remember to acknowledge the "incoming debug connection" dialog if it pops up on the device.'
+      print('Error! Failed to connect to B2G device debugger socket at address ' + HOST + ':' + str(PORT) + ' and no devices were detected via adb. Please double-check the following and try again: ')
+      print(' 1) The device is powered on and connected to the computer with an USB cable.')
+      print(' 2) ADB and DevTools debugging is enabled on the device. (Settings -> Developer -> Debugging via USB: "ADB and DevTools"')
+      print(' 3) The device is listed when you run "adb devices" on the command line.')
+      print(' 4) When launching ffdb, remember to acknowledge the "incoming debug connection" dialog if it pops up on the device.')
       sys.exit(1)
   b2g_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   if WINDOWS:
@@ -561,38 +566,38 @@ def main():
     b2g_socket.settimeout(0.5)
   try:
     b2g_socket.connect((HOST, PORT))
-  except Exception, e:
+  except Exception as e:
     if e[0] == 61 or e[0] == 107 or e[0] == 111: # 61 == Connection refused and 107+111 == Transport endpoint is not connected
       if (HOST == 'localhost' or HOST == '127.0.0.1') and not connect_to_simulator:
         cmd = [ADB, 'forward', 'tcp:'+str(PORT), 'localfilesystem:/data/local/debugger-socket']
-        print 'Connection to ' + HOST + ':' + str(PORT) + ' refused, attempting to forward device debugger-socket to local address by calling ' + str(cmd) + ':'
+        print('Connection to ' + HOST + ':' + str(PORT) + ' refused, attempting to forward device debugger-socket to local address by calling ' + str(cmd) + ':')
       else:
-        print 'Error! Failed to connect to B2G ' + ('simulator' if connect_to_simulator else 'device') + ' debugger socket at address ' + HOST + ':' + str(PORT) + '!'
+        print('Error! Failed to connect to B2G ' + ('simulator' if connect_to_simulator else 'device') + ' debugger socket at address ' + HOST + ':' + str(PORT) + '!')
         sys.exit(1)
       try:
         retcode = subprocess.check_call(cmd)
-      except Exception, e:
-        print 'Error! Failed to execute adb: ' + str(e)
-        print "Check that the device is connected properly, call 'adb devices' to list the detected devices."
+      except Exception as e:
+        print('Error! Failed to execute adb: ' + str(e))
+        print("Check that the device is connected properly, call 'adb devices' to list the detected devices.")
         sys.exit(1)
       if retcode is not 0:
-        print 'Error! Failed to connect to B2G device and executing adb failed with return code ' + retcode + '!'
+        print('Error! Failed to connect to B2G device and executing adb failed with return code ' + retcode + '!')
         sys.exit(1)
       time.sleep(3)
       # Try again:
       try:
         b2g_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         b2g_socket.connect((HOST, PORT))
-      except Exception, e:
-        print 'Error! Failed to connect to B2G device debugger socket at address ' + HOST + ':' + str(PORT) + '!'
+      except Exception as e:
+        print('Error! Failed to connect to B2G device debugger socket at address ' + HOST + ':' + str(PORT) + '!')
         sys.exit(1)
 
   handshake = read_b2g_response()
   logv('Connected. Handshake: ' + str(handshake))
 
   data = send_b2g_cmd('root', 'listTabs')
-  if not 'deviceActor' in data:
-    print 'Error! Debugging connection was not available. Make sure that the "Remote debugging" developer option on the device is set to "ADB and Devtools".'
+  if 'deviceActor' not in data:
+    print('Error! Debugging connection was not available. Make sure that the "Remote debugging" developer option on the device is set to "ADB and Devtools".')
     sys.exit(1)
   deviceActorName = data['deviceActor']
   logv('deviceActor: ' + deviceActorName)
@@ -608,28 +613,28 @@ def main():
     printed_apps = apps
     print_only_running = '--running' in sys.argv and not '--all' in sys.argv
     if print_only_running: # Print running apps only?
-      print 'Running applications by id:'
-      printed_apps = filter(lambda x: x['manifestURL'] in running_app_manifests, apps)
+      print('Running applications by id:')
+      printed_apps = [x for x in apps if x['manifestURL'] in running_app_manifests]
     else:
-      print 'Installed applications by id:'
+      print('Installed applications by id:')
     num_printed = print_applist(printed_apps, running_app_manifests, '--all' in sys.argv or print_only_running)
     if num_printed == 0:
       if print_only_running:
-        print '   No applications running.'
+        print('   No applications running.')
       else:
-        print '   No applications installed.'
-    if not '--all' in sys.argv and not print_only_running:
-      print 'Not showing built-in apps that cannot be uninstalled. Pass --all to include those in the listing.'
+        print('   No applications installed.')
+    if '--all' not in sys.argv and not print_only_running:
+      print('Not showing built-in apps that cannot be uninstalled. Pass --all to include those in the listing.')
   elif sys.argv[1] == 'launch' or sys.argv[1] == 'close' or sys.argv[1] == 'uninstall' or sys.argv[1] == 'getAppActor':
     if len(sys.argv) < 3:
-      print 'Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>'
+      print('Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>')
       return 1
     ret = b2g_app_command(sys.argv[1], sys.argv[2])
     if ret == 0 and '--log' in sys.argv:
       b2g_log(sys.argv[2])
   elif sys.argv[1] == 'install':
     if len(sys.argv) < 3:
-      print 'Error! No application path given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <path>'
+      print('Error! No application path given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <path>')
       return 1
     target_app_path = sys.argv[2]
     # Kill and uninstall old running app execution before starting.
@@ -647,7 +652,7 @@ def main():
       b2g_log(app_id)
   elif sys.argv[1] == 'navigate':
     if len(sys.argv) < 3:
-      print 'Error! No URL given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <url>'
+      print('Error! No URL given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <url>')
       return 1
     browserActor = ''
     for app in apps:
@@ -658,10 +663,10 @@ def main():
       browserActor = browserActor['actor']['actor']
       send_b2g_cmd(browserActor, 'navigateTo', { 'url': sys.argv[2]})
     else:
-      print 'Web browser is not running!'
+      print('Web browser is not running!')
   elif sys.argv[1] == 'log':
     if len(sys.argv) < 3:
-      print 'Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>'
+      print('Error! No application name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <app>')
       return 1
     clear = '-c' in sys.argv or '-clear' in sys.argv or '--clear' in sys.argv
     b2g_log(sys.argv[2], clear)
@@ -671,7 +676,7 @@ def main():
     if len(sys.argv) >= 3:
       filename = sys.argv[2]
       if not filename.endswith('.png'):
-        print >> sys.stderr, "Writing screenshots only to .png files are supported!"
+        print("Writing screenshots only to .png files are supported!", file=sys.stderr)
         sys.exit(1)
     else:
       filename = time.strftime("screen_%Y%m%d_%H%M%S.png", time.gmtime())
@@ -681,18 +686,18 @@ def main():
     b2g_get_pref(sys.argv[2] if len(sys.argv) >= 3 else None)
   elif sys.argv[1] == 'set':
     if len(sys.argv) < 3:
-      print 'Error! No pref name to set given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref> <value>'
+      print('Error! No pref name to set given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref> <value>')
       sys.exit(1)
     if len(sys.argv) < 4:
-      print 'Error! No value given to set! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref> <value>'
+      print('Error! No value given to set! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref> <value>')
       sys.exit(1)
     if len(sys.argv) > 4:
-      print 'Error! Too many arguments given (' + str(sys.argv) + '), need exactly four! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref> <value>'
+      print('Error! Too many arguments given (' + str(sys.argv) + '), need exactly four! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref> <value>')
       sys.exit(1)
     b2g_set_pref(sys.argv[2], sys.argv[3])
   elif sys.argv[1] == 'unset':
     if len(sys.argv) < 3:
-      print 'Error! No pref name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref>'
+      print('Error! No pref name given! Usage: ' + sys.argv[0] + ' ' + sys.argv[1] + ' <pref>')
       sys.exit(1)
     b2g_set_pref(sys.argv[2], None)
   elif sys.argv[1] == 'hide-prompt':
@@ -702,7 +707,7 @@ def main():
   elif sys.argv[1] == 'desc':
     b2g_get_description(sys.argv[2] if len(sys.argv) >= 3 else None)
   else:
-    print "Unknown command '" + sys.argv[1] + "'! Pass --help for instructions."
+    print("Unknown command '" + sys.argv[1] + "'! Pass --help for instructions.")
 
   b2g_socket.close()
   return 0
@@ -713,5 +718,5 @@ if __name__ == '__main__':
     logv('ffdb.py quitting with process exit code ' + str(returncode))
     sys.exit(returncode)
   except KeyboardInterrupt:
-    print ('^C' if WINDOWS else '') + ' Aborted by user'
+    print(('^C' if WINDOWS else '') + ' Aborted by user')
     sys.exit(1)

@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 // WebGLWorker client code
 
 function assert(x) {
@@ -150,8 +155,16 @@ function WebGLClient() {
     ctx.uniform1f(objects[buffer[i]], buffer[i+1]);
     i += 2;
   }
+  function uniform1fv() {
+    ctx.uniform1fv(objects[buffer[i]], buffer[i+1]);
+    i += 2;
+  }
   function uniform2fv() {
     ctx.uniform2fv(objects[buffer[i]], buffer[i+1]);
+    i += 2;
+  }
+  function uniform1iv() {
+    ctx.uniform1iv(objects[buffer[i]], buffer[i+1]);
     i += 2;
   }
   function uniform3f() {
@@ -253,6 +266,8 @@ function WebGLClient() {
     78: { name: 'stencilFuncSeparate', func: func4 },
     79: { name: 'stencilOpSeparate', func: func4 },
     80: { name: 'drawBuffersWEBGL', func: func1 },
+    81: { name: 'uniform1iv', func: uniform1iv },
+    82: { name: 'uniform1fv', func: uniform1fv },
   };
 
   function renderCommands(buf) {
@@ -306,13 +321,17 @@ WebGLClient.prefetch = function() {
   // Create a fake temporary GL context
   var canvas = document.createElement('canvas');
   var ctx = canvas.getContext('webgl-experimental') || canvas.getContext('webgl');
-  if (!ctx) return;
+  if (!ctx) {
+    // If we have no webGL support, we still notify that prefetching is done, as the app blocks on that
+    worker.postMessage({ target: 'gl', op: 'setPrefetched', preMain: true });
+    return;
+  } 
 
   // Fetch the parameters and proxy them
   var parameters = {};
   ['MAX_VERTEX_ATTRIBS', 'MAX_TEXTURE_IMAGE_UNITS', 'MAX_TEXTURE_SIZE', 'MAX_CUBE_MAP_TEXTURE_SIZE', 'MAX_VERTEX_UNIFORM_VECTORS', 'MAX_FRAGMENT_UNIFORM_VECTORS',
    'MAX_VARYING_VECTORS', 'MAX_COMBINED_TEXTURE_IMAGE_UNITS', 'MAX_VERTEX_TEXTURE_IMAGE_UNITS', 'VENDOR', 'RENDERER', 'VERSION', 'SHADING_LANGUAGE_VERSION',
-   'COMPRESSED_TEXTURE_FORMATS', 'RED_BITS', 'GREEN_BITS', 'BLUE_BITS', 'ALPHA_BITS', 'DEPTH_BITS', 'MAX_RENDERBUFFER_SIZE'].forEach(function(name) {
+   'COMPRESSED_TEXTURE_FORMATS', 'RED_BITS', 'GREEN_BITS', 'BLUE_BITS', 'ALPHA_BITS', 'DEPTH_BITS', 'STENCIL_BITS', 'MAX_RENDERBUFFER_SIZE'].forEach(function(name) {
     var id = ctx[name];
     parameters[id] = ctx.getParameter(id);
   });

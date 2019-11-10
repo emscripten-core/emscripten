@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <SDL/SDL.h>
@@ -69,7 +76,7 @@ int main(int argc, char **argv) {
   printf("done.\n");
 
   int result = sum > 3000 && sum < 5000; // varies a little on different browsers, font differences?
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 
   return 0;
 }

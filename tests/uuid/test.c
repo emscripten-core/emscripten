@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <uuid/uuid.h>
 #include <assert.h>
 #include <ctype.h>
@@ -58,12 +65,9 @@ int main() {
     assert(uuid_is_null(uuid) == 1);
 
     // The following lets the browser test exit cleanly.
-    int result = 1;
-    #if defined(__EMSCRIPTEN__)
-        #ifdef REPORT_RESULT
-            REPORT_RESULT();
-        #endif
-    #endif
+#ifdef REPORT_RESULT
+    REPORT_RESULT(1);
+#endif
     exit(0);
 }
 

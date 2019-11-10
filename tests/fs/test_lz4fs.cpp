@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -68,12 +73,12 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   num = fread(buffer, 1, 1, f3); assert(num == 1); // read near the end
   ret = fseek(f3, TOTAL_SIZE - 5000, SEEK_SET); assert(ret == 0);
   num = fread(buffer, 1, 1, f3); assert(num == 1); // also near the end
-  EM_ASM({
+  EM_ASM((
     assert(!Module['decompressedChunks']);
     Module.compressedData.debug = true;
     console.log('last cached indexes ' + Module.compressedData.cachedIndexes);
     assert(Module.compressedData.cachedIndexes.indexOf(0) < 0); // 0 is not cached
-  });
+  ));
   printf("multiple reads of same byte\n");
   for (int i = 0; i < 100; i++) {
     ret = fseek(f1, 0, SEEK_SET); // read near the start, should trigger one decompress, then all cache hits
@@ -81,9 +86,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     num = fread(buffer, 1, 1, f1);
     assert(num == 1);
   }
-  EM_ASM({
+  EM_ASM((
     assert(Module['decompressedChunks'] == 1, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
-  });
+  ));
   printf("multiple reads of adjoining byte\n");
   for (int i = 0; i < 100; i++) {
     ret = fseek(f1, i, SEEK_SET);
@@ -91,9 +96,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     num = fread(buffer, 1, 1, f1);
     assert(num == 1);
   }
-  EM_ASM({
+  EM_ASM((
     assert(Module['decompressedChunks'] == 1, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
-  });
+  ));
   printf("multiple reads across two chunks\n");
   for (int i = 0; i < 2100; i++) {
     ret = fseek(f1, i, SEEK_SET);
@@ -101,9 +106,9 @@ void EMSCRIPTEN_KEEPALIVE finish() {
     num = fread(buffer, 1, 1, f1);
     assert(num == 1);
   }
-  EM_ASM({
+  EM_ASM((
     assert(Module['decompressedChunks'] == 2, ['seeing', Module['decompressedChunks'], 'decompressed chunks']);
-  });
+  ));
   printf("caching test ok\n");
 #endif
 
@@ -118,7 +123,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 #else
   result = 2;
 #endif
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 }
 
 }
@@ -127,7 +132,7 @@ int main() {
   before_it_all = emscripten_get_now();
 
 #if LOAD_MANUALLY
-  EM_ASM({
+  EM_ASM((
     var COMPLETE_SIZE = 10*1024*128*3;
 
     var meta, data;
@@ -136,7 +141,7 @@ int main() {
 
       meta = JSON.parse(meta);
 
-      Module.print('loading into filesystem');
+      out('loading into filesystem');
       FS.mkdir('/files');
       LZ4.loadPackage({ 'metadata': meta, 'data': data });
 
@@ -147,14 +152,14 @@ int main() {
       console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);
       assert(compressedSize > low && compressedSize < high); // more than 1/3, because 1/3 is uncompressible, but still, less than 1/2
 
-      Module['ccall']('finish');
+      ccall('finish');
     }
 
     var meta_xhr = new XMLHttpRequest();
     meta_xhr.open("GET", "files.js.metadata", true);
     meta_xhr.responseType = "text";
     meta_xhr.onload = function() {
-      Module.print('got metadata');
+      out('got metadata');
       meta = meta_xhr.response;
       maybeReady();
     };
@@ -164,12 +169,12 @@ int main() {
     data_xhr.open("GET", "files.data", true);
     data_xhr.responseType = "arraybuffer";
     data_xhr.onload = function() {
-      Module.print('got data');
+      out('got data');
       data = data_xhr.response;
       maybeReady();
     };
     data_xhr.send();
-  });
+  ));
 
   emscripten_exit_with_live_runtime();
 #else

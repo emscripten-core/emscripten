@@ -11,9 +11,6 @@
 #ifndef _LIBCPP_DYNARRAY
 #define _LIBCPP_DYNARRAY
 
-#include <__config>
-#if _LIBCPP_STD_VER > 11
-
 /*
     dynarray synopsis
 
@@ -96,6 +93,8 @@ public:
 }}  // std::experimental
 
 */
+#include <__config>
+#if _LIBCPP_STD_VER > 11
 
 #include <__functional_base>
 #include <iterator>
@@ -104,18 +103,17 @@ public:
 #include <new>
 #include <algorithm>
 
-#if defined(_LIBCPP_NO_EXCEPTIONS)
-    #include <cassert>
-#endif
-
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
 #endif
 
+_LIBCPP_PUSH_MACROS
+#include <__undef_macros>
+
 namespace std { namespace experimental { inline namespace __array_extensions_v1 {
 
 template <class _Tp>
-struct _LIBCPP_TYPE_VIS_ONLY dynarray
+struct _LIBCPP_TEMPLATE_VIS _LIBCPP_AVAILABILITY_DYNARRAY dynarray
 {
 public:
     // types:
@@ -135,31 +133,30 @@ public:
 private:
     size_t                  __size_;
     value_type *            __base_;
-    _LIBCPP_ALWAYS_INLINE dynarray () noexcept : __base_(nullptr), __size_(0) {}
+    _LIBCPP_ALWAYS_INLINE dynarray () noexcept :  __size_(0), __base_(nullptr) {}
     
     static inline _LIBCPP_INLINE_VISIBILITY value_type* __allocate ( size_t count )
     {
         if ( numeric_limits<size_t>::max() / sizeof (value_type) <= count )
-        {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-            throw bad_array_length();
-#else
-            assert(!"dynarray::allocation");
-#endif
-        }
+            __throw_bad_array_length();
+
         return static_cast<value_type *> (_VSTD::__allocate (sizeof(value_type) * count));
     }
 
-    static inline _LIBCPP_INLINE_VISIBILITY void __deallocate ( value_type* __ptr ) noexcept
+    static inline _LIBCPP_INLINE_VISIBILITY void __deallocate_value( value_type* __ptr ) noexcept
     {
-        _VSTD::__deallocate (static_cast<void *> (__ptr));
+        _VSTD::__libcpp_deallocate (static_cast<void *> (__ptr));
     }
 
 public:
 
+    _LIBCPP_INLINE_VISIBILITY
     explicit dynarray(size_type __c);
+    _LIBCPP_INLINE_VISIBILITY
     dynarray(size_type __c, const value_type& __v);
+    _LIBCPP_INLINE_VISIBILITY
     dynarray(const dynarray& __d);
+    _LIBCPP_INLINE_VISIBILITY
     dynarray(initializer_list<value_type>);
 
 //  We're not implementing these right now.
@@ -174,6 +171,7 @@ public:
 //       dynarray(allocator_arg_t, const _Alloc& __alloc, initializer_list<value_type>);
 
     dynarray& operator=(const dynarray&) = delete;
+    _LIBCPP_INLINE_VISIBILITY
     ~dynarray();
 
     // iterators:
@@ -217,7 +215,7 @@ public:
 };
 
 template <class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 dynarray<_Tp>::dynarray(size_type __c) : dynarray ()
 {
     __base_ = __allocate (__c);
@@ -227,7 +225,7 @@ dynarray<_Tp>::dynarray(size_type __c) : dynarray ()
 }
 
 template <class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 dynarray<_Tp>::dynarray(size_type __c, const value_type& __v) : dynarray ()
 {
     __base_ = __allocate (__c);
@@ -237,7 +235,7 @@ dynarray<_Tp>::dynarray(size_type __c, const value_type& __v) : dynarray ()
 }
 
 template <class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 dynarray<_Tp>::dynarray(initializer_list<value_type> __il) : dynarray ()
 {
     size_t sz = __il.size();
@@ -249,7 +247,7 @@ dynarray<_Tp>::dynarray(initializer_list<value_type> __il) : dynarray ()
 }
 
 template <class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 dynarray<_Tp>::dynarray(const dynarray& __d) : dynarray ()
 {
     size_t sz = __d.size();
@@ -261,13 +259,13 @@ dynarray<_Tp>::dynarray(const dynarray& __d) : dynarray ()
 }
 
 template <class _Tp>
-inline _LIBCPP_INLINE_VISIBILITY
+inline
 dynarray<_Tp>::~dynarray()
 { 
     value_type *__data = data () + __size_;
     for ( size_t i = 0; i < __size_; ++i )
         (--__data)->value_type::~value_type();
-    __deallocate ( __base_ );
+    __deallocate_value( __base_ );
 }
 
 template <class _Tp>
@@ -276,13 +274,8 @@ typename dynarray<_Tp>::reference
 dynarray<_Tp>::at(size_type __n)
 {
     if (__n >= __size_)
-    {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("dynarray::at");
-#else
-        assert(!"dynarray::at out_of_range");
-#endif
-    }
+        __throw_out_of_range("dynarray::at");
+
     return data()[__n];
 }
 
@@ -292,13 +285,8 @@ typename dynarray<_Tp>::const_reference
 dynarray<_Tp>::at(size_type __n) const
 {
     if (__n >= __size_)
-    {
-#ifndef _LIBCPP_NO_EXCEPTIONS
-        throw out_of_range("dynarray::at");
-#else
-        assert(!"dynarray::at out_of_range");
-#endif
-    }
+        __throw_out_of_range("dynarray::at");
+
     return data()[__n];
 }
 
@@ -307,8 +295,10 @@ dynarray<_Tp>::at(size_type __n) const
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 template <class _Tp, class _Alloc>
-struct _LIBCPP_TYPE_VIS_ONLY uses_allocator<std::experimental::dynarray<_Tp>, _Alloc> : true_type {};
+struct _LIBCPP_TEMPLATE_VIS uses_allocator<std::experimental::dynarray<_Tp>, _Alloc> : true_type {};
 _LIBCPP_END_NAMESPACE_STD
+
+_LIBCPP_POP_MACROS
 
 #endif  // if _LIBCPP_STD_VER > 11 
 #endif  // _LIBCPP_DYNARRAY

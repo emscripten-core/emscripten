@@ -17,8 +17,7 @@ extern "C" {
 
 typedef struct __dirstream DIR;
 
-struct dirent
-{
+struct dirent {
 	ino_t d_ino;
 	off_t d_off;
 	unsigned short d_reclen;

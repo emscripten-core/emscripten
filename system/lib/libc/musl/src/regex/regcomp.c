@@ -34,6 +34,7 @@
 #include <regex.h>
 #include <limits.h>
 #include <stdint.h>
+#include <ctype.h>
 
 #include "tre.h"
 
@@ -135,108 +136,88 @@ typedef struct {
   tre_ast_node_t *right;
 } tre_union_t;
 
-static tre_ast_node_t *
-tre_ast_new_node(tre_mem_t mem, tre_ast_type_t type, size_t size);
 
 static tre_ast_node_t *
-tre_ast_new_literal(tre_mem_t mem, int code_min, int code_max, int position);
-
-static tre_ast_node_t *
-tre_ast_new_iter(tre_mem_t mem, tre_ast_node_t *arg, int min, int max,
-		 int minimal);
-
-static tre_ast_node_t *
-tre_ast_new_union(tre_mem_t mem, tre_ast_node_t *left, tre_ast_node_t *right);
-
-static tre_ast_node_t *
-tre_ast_new_catenation(tre_mem_t mem, tre_ast_node_t *left,
-		       tre_ast_node_t *right);
-
-
-static tre_ast_node_t *
-tre_ast_new_node(tre_mem_t mem, tre_ast_type_t type, size_t size)
+tre_ast_new_node(tre_mem_t mem, int type, void *obj)
 {
-  tre_ast_node_t *node;
-
-  node = tre_mem_calloc(mem, sizeof(*node));
-  if (!node)
-    return NULL;
-  node->obj = tre_mem_calloc(mem, size);
-  if (!node->obj)
-    return NULL;
-  node->type = type;
-  node->nullable = -1;
-  node->submatch_id = -1;
-
-  return node;
+	tre_ast_node_t *node = tre_mem_calloc(mem, sizeof *node);
+	if (!node || !obj)
+		return 0;
+	node->obj = obj;
+	node->type = type;
+	node->nullable = -1;
+	node->submatch_id = -1;
+	return node;
 }
 
 static tre_ast_node_t *
 tre_ast_new_literal(tre_mem_t mem, int code_min, int code_max, int position)
 {
-  tre_ast_node_t *node;
-  tre_literal_t *lit;
+	tre_ast_node_t *node;
+	tre_literal_t *lit;
 
-  node = tre_ast_new_node(mem, LITERAL, sizeof(tre_literal_t));
-  if (!node)
-    return NULL;
-  lit = node->obj;
-  lit->code_min = code_min;
-  lit->code_max = code_max;
-  lit->position = position;
-
-  return node;
+	lit = tre_mem_calloc(mem, sizeof *lit);
+	node = tre_ast_new_node(mem, LITERAL, lit);
+	if (!node)
+		return 0;
+	lit->code_min = code_min;
+	lit->code_max = code_max;
+	lit->position = position;
+	return node;
 }
 
 static tre_ast_node_t *
-tre_ast_new_iter(tre_mem_t mem, tre_ast_node_t *arg, int min, int max,
-		 int minimal)
+tre_ast_new_iter(tre_mem_t mem, tre_ast_node_t *arg, int min, int max, int minimal)
 {
-  tre_ast_node_t *node;
-  tre_iteration_t *iter;
+	tre_ast_node_t *node;
+	tre_iteration_t *iter;
 
-  node = tre_ast_new_node(mem, ITERATION, sizeof(tre_iteration_t));
-  if (!node)
-    return NULL;
-  iter = node->obj;
-  iter->arg = arg;
-  iter->min = min;
-  iter->max = max;
-  iter->minimal = minimal;
-  node->num_submatches = arg->num_submatches;
-
-  return node;
+	iter = tre_mem_calloc(mem, sizeof *iter);
+	node = tre_ast_new_node(mem, ITERATION, iter);
+	if (!node)
+		return 0;
+	iter->arg = arg;
+	iter->min = min;
+	iter->max = max;
+	iter->minimal = minimal;
+	node->num_submatches = arg->num_submatches;
+	return node;
 }
 
 static tre_ast_node_t *
 tre_ast_new_union(tre_mem_t mem, tre_ast_node_t *left, tre_ast_node_t *right)
 {
-  tre_ast_node_t *node;
+	tre_ast_node_t *node;
+	tre_union_t *un;
 
-  node = tre_ast_new_node(mem, UNION, sizeof(tre_union_t));
-  if (node == NULL)
-    return NULL;
-  ((tre_union_t *)node->obj)->left = left;
-  ((tre_union_t *)node->obj)->right = right;
-  node->num_submatches = left->num_submatches + right->num_submatches;
-
-  return node;
+	if (!left)
+		return right;
+	un = tre_mem_calloc(mem, sizeof *un);
+	node = tre_ast_new_node(mem, UNION, un);
+	if (!node || !right)
+		return 0;
+	un->left = left;
+	un->right = right;
+	node->num_submatches = left->num_submatches + right->num_submatches;
+	return node;
 }
 
 static tre_ast_node_t *
-tre_ast_new_catenation(tre_mem_t mem, tre_ast_node_t *left,
-		       tre_ast_node_t *right)
+tre_ast_new_catenation(tre_mem_t mem, tre_ast_node_t *left, tre_ast_node_t *right)
 {
-  tre_ast_node_t *node;
+	tre_ast_node_t *node;
+	tre_catenation_t *cat;
 
-  node = tre_ast_new_node(mem, CATENATION, sizeof(tre_catenation_t));
-  if (node == NULL)
-    return NULL;
-  ((tre_catenation_t *)node->obj)->left = left;
-  ((tre_catenation_t *)node->obj)->right = right;
-  node->num_submatches = left->num_submatches + right->num_submatches;
-
-  return node;
+	if (!left)
+		return right;
+	cat = tre_mem_calloc(mem, sizeof *cat);
+	node = tre_ast_new_node(mem, CATENATION, cat);
+	if (!node)
+		return 0;
+	cat->left = left;
+	cat->right = right;
+	node->num_submatches = left->num_submatches + right->num_submatches;
+	return node;
 }
 
 
@@ -412,1072 +393,676 @@ define_popf(voidptr, void *)
 
 /* Parse context. */
 typedef struct {
-  /* Memory allocator.	The AST is allocated using this. */
-  tre_mem_t mem;
-  /* Stack used for keeping track of regexp syntax. */
-  tre_stack_t *stack;
-  /* The parse result. */
-  tre_ast_node_t *result;
-  /* The regexp to parse and its length. */
-  const char *re;
-  /* The first character of the entire regexp. */
-  const char *re_start;
-  /* Current submatch ID. */
-  int submatch_id;
-  /* Current position (number of literal). */
-  int position;
-  /* The highest back reference or -1 if none seen so far. */
-  int max_backref;
-  /* This flag is set if the regexp uses approximate matching. */
-  int have_approx;
-  /* Compilation flags. */
-  int cflags;
-  /* If this flag is set the top-level submatch is not captured. */
-  int nofirstsub;
+	/* Memory allocator. The AST is allocated using this. */
+	tre_mem_t mem;
+	/* Stack used for keeping track of regexp syntax. */
+	tre_stack_t *stack;
+	/* The parsed node after a parse function returns. */
+	tre_ast_node_t *n;
+	/* Position in the regexp pattern after a parse function returns. */
+	const char *s;
+	/* The first character of the regexp. */
+	const char *re;
+	/* Current submatch ID. */
+	int submatch_id;
+	/* Current position (number of literal). */
+	int position;
+	/* The highest back reference or -1 if none seen so far. */
+	int max_backref;
+	/* Compilation flags. */
+	int cflags;
 } tre_parse_ctx_t;
 
-/* Parses a wide character regexp pattern into a syntax tree.  This parser
-   handles both syntaxes (BRE and ERE), including the TRE extensions. */
-static reg_errcode_t
-tre_parse(tre_parse_ctx_t *ctx);
-
-
-/*
-  This parser is just a simple recursive descent parser for POSIX.2
-  regexps.  The parser supports both the obsolete default syntax and
-  the "extended" syntax, and some nonstandard extensions.
-*/
-
-/* Characters with special meanings in regexp syntax. */
-#define CHAR_PIPE	   '|'
-#define CHAR_LPAREN	   '('
-#define CHAR_RPAREN	   ')'
-#define CHAR_LBRACE	   '{'
-#define CHAR_RBRACE	   '}'
-#define CHAR_LBRACKET	   '['
-#define CHAR_RBRACKET	   ']'
-#define CHAR_MINUS	   '-'
-#define CHAR_STAR	   '*'
-#define CHAR_QUESTIONMARK  '?'
-#define CHAR_PLUS	   '+'
-#define CHAR_PERIOD	   '.'
-#define CHAR_COLON	   ':'
-#define CHAR_EQUAL	   '='
-#define CHAR_COMMA	   ','
-#define CHAR_CARET	   '^'
-#define CHAR_DOLLAR	   '$'
-#define CHAR_BACKSLASH	   '\\'
-#define CHAR_HASH	   '#'
-#define CHAR_TILDE	   '~'
-
-
 /* Some macros for expanding \w, \s, etc. */
-static const struct tre_macro_struct {
-  const char c;
-  const char *expansion;
-} tre_macros[] =
-  { {'t', "\t"},	   {'n', "\n"},		   {'r', "\r"},
-    {'f', "\f"},	   {'a', "\a"},		   {'e', "\033"},
-    {'w', "[[:alnum:]_]"}, {'W', "[^[:alnum:]_]"}, {'s', "[[:space:]]"},
-    {'S', "[^[:space:]]"}, {'d', "[[:digit:]]"},   {'D', "[^[:digit:]]"},
-    { 0, NULL }
-  };
-
+static const struct {
+	char c;
+	const char *expansion;
+} tre_macros[] = {
+	{'t', "\t"}, {'n', "\n"}, {'r', "\r"},
+	{'f', "\f"}, {'a', "\a"}, {'e', "\033"},
+	{'w', "[[:alnum:]_]"}, {'W', "[^[:alnum:]_]"}, {'s', "[[:space:]]"},
+	{'S', "[^[:space:]]"}, {'d', "[[:digit:]]"}, {'D', "[^[:digit:]]"},
+	{ 0, 0 }
+};
 
 /* Expands a macro delimited by `regex' and `regex_end' to `buf', which
    must have at least `len' items.  Sets buf[0] to zero if the there
    is no match in `tre_macros'. */
-static const char *
-tre_expand_macro(const char *regex)
+static const char *tre_expand_macro(const char *s)
 {
-  int i;
-
-  if (!*regex)
-    return 0;
-
-  for (i = 0; tre_macros[i].expansion && tre_macros[i].c != *regex; i++);
-  return tre_macros[i].expansion;
+	int i;
+	for (i = 0; tre_macros[i].c && tre_macros[i].c != *s; i++);
+	return tre_macros[i].expansion;
 }
-
-static reg_errcode_t
-tre_new_item(tre_mem_t mem, int min, int max, int *i, int *max_i,
-	 tre_ast_node_t ***items)
-{
-  reg_errcode_t status;
-  tre_ast_node_t **array = *items;
-  /* Allocate more space if necessary. */
-  if (*i >= *max_i)
-    {
-      tre_ast_node_t **new_items;
-      /* If the array is already 1024 items large, give up -- there's
-	 probably an error in the regexp (e.g. not a '\0' terminated
-	 string and missing ']') */
-      if (*max_i > 1024)
-	return REG_ESPACE;
-      *max_i *= 2;
-      new_items = xrealloc(array, sizeof(*array) * *max_i);
-      if (new_items == NULL)
-	return REG_ESPACE;
-      *items = array = new_items;
-    }
-  array[*i] = tre_ast_new_literal(mem, min, max, -1);
-  status = array[*i] == NULL ? REG_ESPACE : REG_OK;
-  (*i)++;
-  return status;
-}
-
 
 static int
-tre_compare_items(const void *a, const void *b)
+tre_compare_lit(const void *a, const void *b)
 {
-  const tre_ast_node_t *node_a = *(tre_ast_node_t * const *)a;
-  const tre_ast_node_t *node_b = *(tre_ast_node_t * const *)b;
-  tre_literal_t *l_a = node_a->obj, *l_b = node_b->obj;
-  int a_min = l_a->code_min, b_min = l_b->code_min;
-
-  if (a_min < b_min)
-    return -1;
-  else if (a_min > b_min)
-    return 1;
-  else
-    return 0;
+	const tre_literal_t *const *la = a;
+	const tre_literal_t *const *lb = b;
+	/* assumes the range of valid code_min is < INT_MAX */
+	return la[0]->code_min - lb[0]->code_min;
 }
 
-/* Maximum number of character classes that can occur in a negated bracket
-   expression.	*/
+struct literals {
+	tre_mem_t mem;
+	tre_literal_t **a;
+	int len;
+	int cap;
+};
+
+static tre_literal_t *tre_new_lit(struct literals *p)
+{
+	tre_literal_t **a;
+	if (p->len >= p->cap) {
+		if (p->cap >= 1<<15)
+			return 0;
+		p->cap *= 2;
+		a = xrealloc(p->a, p->cap * sizeof *p->a);
+		if (!a)
+			return 0;
+		p->a = a;
+	}
+	a = p->a + p->len++;
+	*a = tre_mem_calloc(p->mem, sizeof **a);
+	return *a;
+}
+
+static int add_icase_literals(struct literals *ls, int min, int max)
+{
+	tre_literal_t *lit;
+	int b, e, c;
+	for (c=min; c<=max; ) {
+		/* assumes islower(c) and isupper(c) are exclusive
+		   and toupper(c)!=c if islower(c).
+		   multiple opposite case characters are not supported */
+		if (tre_islower(c)) {
+			b = e = tre_toupper(c);
+			for (c++, e++; c<=max; c++, e++)
+				if (tre_toupper(c) != e) break;
+		} else if (tre_isupper(c)) {
+			b = e = tre_tolower(c);
+			for (c++, e++; c<=max; c++, e++)
+				if (tre_tolower(c) != e) break;
+		} else {
+			c++;
+			continue;
+		}
+		lit = tre_new_lit(ls);
+		if (!lit)
+			return -1;
+		lit->code_min = b;
+		lit->code_max = e-1;
+		lit->position = -1;
+	}
+	return 0;
+}
+
+
+/* Maximum number of character classes in a negated bracket expression. */
 #define MAX_NEG_CLASSES 64
 
-/* Maximum length of character class names. */
-#define MAX_CLASS_NAME
+struct neg {
+	int negate;
+	int len;
+	tre_ctype_t a[MAX_NEG_CLASSES];
+};
 
-static reg_errcode_t
-tre_parse_bracket_items(tre_parse_ctx_t *ctx, int negate,
-			tre_ctype_t neg_classes[], int *num_neg_classes,
-			tre_ast_node_t ***items, int *num_items,
-			int *items_size)
+// TODO: parse bracket into a set of non-overlapping [lo,hi] ranges
+
+/*
+bracket grammar:
+Bracket  =  '[' List ']'  |  '[^' List ']'
+List     =  Term  |  List Term
+Term     =  Char  |  Range  |  Chclass  |  Eqclass
+Range    =  Char '-' Char  |  Char '-' '-'
+Char     =  Coll  |  coll_single
+Meta     =  ']'  |  '-'
+Coll     =  '[.' coll_single '.]'  |  '[.' coll_multi '.]'  |  '[.' Meta '.]'
+Eqclass  =  '[=' coll_single '=]'  |  '[=' coll_multi '=]'
+Chclass  =  '[:' class ':]'
+
+coll_single is a single char collating element but it can be
+ '-' only at the beginning or end of a List and
+ ']' only at the beginning of a List and
+ '^' anywhere except after the openning '['
+*/
+
+static reg_errcode_t parse_bracket_terms(tre_parse_ctx_t *ctx, const char *s, struct literals *ls, struct neg *neg)
 {
-  const char *re = ctx->re;
-  reg_errcode_t status = REG_OK;
-  tre_ctype_t class = (tre_ctype_t)0;
-  int i = *num_items;
-  int max_i = *items_size;
-  int skip;
+	const char *start = s;
+	tre_ctype_t class;
+	int min, max;
+	wchar_t wc;
+	int len;
 
-  /* Build an array of the items in the bracket expression. */
-  while (status == REG_OK)
-    {
-      skip = 0;
-      if (!*re)
-	{
-	  status = REG_EBRACK;
-	}
-      else if (*re == CHAR_RBRACKET && re > ctx->re)
-	{
-	  re++;
-	  break;
-	}
-      else
-	{
-	  tre_cint_t min = 0, max = 0;
-	  wchar_t wc;
-	  int clen = mbtowc(&wc, re, -1);
-
-	  if (clen<0) clen=1, wc=WEOF;
-
-	  class = (tre_ctype_t)0;
-	  if (*(re + clen) == CHAR_MINUS && *(re + clen + 1) != CHAR_RBRACKET)
-	    {
-	      min = wc;
-	      re += clen+1;
-	      clen = mbtowc(&wc, re, -1);
-	      if (clen<0) clen=1, wc=WEOF;
-	      max = wc;
-	      re += clen;
-	      /* XXX - Should use collation order instead of encoding values
-		 in character ranges. */
-	      if (min > max)
-		status = REG_ERANGE;
-	    }
-	  else if (*re == CHAR_LBRACKET && *(re + 1) == CHAR_PERIOD)
-	    status = REG_ECOLLATE;
-	  else if (*re == CHAR_LBRACKET && *(re + 1) == CHAR_EQUAL)
-	    status = REG_ECOLLATE;
-	  else if (*re == CHAR_LBRACKET && *(re + 1) == CHAR_COLON)
-	    {
-	      char tmp_str[64];
-	      const char *endptr = re + 2;
-	      int len;
-	      while (*endptr && *endptr != CHAR_COLON)
-		endptr++;
-	      if (*endptr)
-		{
-		  len = MIN(endptr - re - 2, 63);
-		  strncpy(tmp_str, re + 2, len);
-		  tmp_str[len] = '\0';
-		  class = tre_ctype(tmp_str);
-		  if (!class)
-		    status = REG_ECTYPE;
-		  re = endptr + 2;
+	for (;;) {
+		class = 0;
+		len = mbtowc(&wc, s, -1);
+		if (len <= 0)
+			return *s ? REG_BADPAT : REG_EBRACK;
+		if (*s == ']' && s != start) {
+			ctx->s = s+1;
+			return REG_OK;
 		}
-	      else
-		status = REG_ECTYPE;
-	      min = 0;
-	      max = TRE_CHAR_MAX;
-	    }
-	  else
-	    {
-	      if (*re == CHAR_MINUS && *(re + 1) != CHAR_RBRACKET
-		  && ctx->re != re)
-		/* Two ranges are not allowed to share and endpoint. */
-		status = REG_ERANGE;
-	      min = max = wc;
-	      re += clen;
-	    }
-
-	  if (status != REG_OK)
-	    break;
-
-	  if (class && negate)
-	    if (*num_neg_classes >= MAX_NEG_CLASSES)
-	      status = REG_ESPACE;
-	    else
-	      neg_classes[(*num_neg_classes)++] = class;
-	  else if (!skip)
-	    {
-	      status = tre_new_item(ctx->mem, min, max, &i, &max_i, items);
-	      if (status != REG_OK)
-		break;
-	      ((tre_literal_t*)((*items)[i-1])->obj)->class = class;
-	    }
-
-	  /* Add opposite-case counterpoints if REG_ICASE is present.
-	     This is broken if there are more than two "same" characters. */
-	  if (ctx->cflags & REG_ICASE && !class && status == REG_OK && !skip)
-	    {
-	      tre_cint_t cmin, ccurr;
-
-	      while (min <= max)
-		{
-		  if (tre_islower(min))
-		    {
-		      cmin = ccurr = tre_toupper(min++);
-		      while (tre_islower(min) && tre_toupper(min) == ccurr + 1
-			     && min <= max)
-			ccurr = tre_toupper(min++);
-		      status = tre_new_item(ctx->mem, cmin, ccurr,
-					    &i, &max_i, items);
-		    }
-		  else if (tre_isupper(min))
-		    {
-		      cmin = ccurr = tre_tolower(min++);
-		      while (tre_isupper(min) && tre_tolower(min) == ccurr + 1
-			     && min <= max)
-			ccurr = tre_tolower(min++);
-		      status = tre_new_item(ctx->mem, cmin, ccurr,
-					    &i, &max_i, items);
-		    }
-		  else min++;
-		  if (status != REG_OK)
-		    break;
-		}
-	      if (status != REG_OK)
-		break;
-	    }
-	}
-    }
-  *num_items = i;
-  *items_size = max_i;
-  ctx->re = re;
-  return status;
-}
-
-static reg_errcode_t
-tre_parse_bracket(tre_parse_ctx_t *ctx, tre_ast_node_t **result)
-{
-  tre_ast_node_t *node = NULL;
-  int negate = 0;
-  reg_errcode_t status = REG_OK;
-  tre_ast_node_t **items, *u, *n;
-  int i = 0, j, max_i = 32, curr_max, curr_min;
-  tre_ctype_t neg_classes[MAX_NEG_CLASSES];
-  int num_neg_classes = 0;
-
-  /* Start off with an array of `max_i' elements. */
-  items = xmalloc(sizeof(*items) * max_i);
-  if (items == NULL)
-    return REG_ESPACE;
-
-  if (*ctx->re == CHAR_CARET)
-    {
-      negate = 1;
-      ctx->re++;
-    }
-
-  status = tre_parse_bracket_items(ctx, negate, neg_classes, &num_neg_classes,
-				   &items, &i, &max_i);
-
-  if (status != REG_OK)
-    goto parse_bracket_done;
-
-  /* Sort the array if we need to negate it. */
-  if (negate)
-    qsort(items, (unsigned)i, sizeof(*items), tre_compare_items);
-
-  curr_max = curr_min = 0;
-  /* Build a union of the items in the array, negated if necessary. */
-  for (j = 0; j < i && status == REG_OK; j++)
-    {
-      int min, max;
-      tre_literal_t *l = items[j]->obj;
-      min = l->code_min;
-      max = l->code_max;
-
-      if (negate)
-	{
-	  if (min < curr_max)
-	    {
-	      /* Overlap. */
-	      curr_max = MAX(max + 1, curr_max);
-	      l = NULL;
-	    }
-	  else
-	    {
-	      /* No overlap. */
-	      curr_max = min - 1;
-	      if (curr_max >= curr_min)
-		{
-		  l->code_min = curr_min;
-		  l->code_max = curr_max;
-		}
-	      else
-		{
-		  l = NULL;
-		}
-	      curr_min = curr_max = max + 1;
-	    }
-	}
-
-      if (l != NULL)
-	{
-	  int k;
-	  l->position = ctx->position;
-	  if (num_neg_classes > 0)
-	    {
-	      l->neg_classes = tre_mem_alloc(ctx->mem,
-					     (sizeof(*l->neg_classes)
-					      * (num_neg_classes + 1)));
-	      if (l->neg_classes == NULL)
-		{
-		  status = REG_ESPACE;
-		  break;
-		}
-	      for (k = 0; k < num_neg_classes; k++)
-		l->neg_classes[k] = neg_classes[k];
-	      l->neg_classes[k] = (tre_ctype_t)0;
-	    }
-	  else
-	    l->neg_classes = NULL;
-	  if (node == NULL)
-	    node = items[j];
-	  else
-	    {
-	      u = tre_ast_new_union(ctx->mem, node, items[j]);
-	      if (u == NULL)
-		status = REG_ESPACE;
-	      node = u;
-	    }
-	}
-    }
-
-  if (status != REG_OK)
-    goto parse_bracket_done;
-
-  if (negate)
-    {
-      int k;
-      n = tre_ast_new_literal(ctx->mem, curr_min, TRE_CHAR_MAX, ctx->position);
-      if (n == NULL)
-	status = REG_ESPACE;
-      else
-	{
-	  tre_literal_t *l = n->obj;
-	  if (num_neg_classes > 0)
-	    {
-	      l->neg_classes = tre_mem_alloc(ctx->mem,
-					     (sizeof(*l->neg_classes)
-					      * (num_neg_classes + 1)));
-	      if (l->neg_classes == NULL)
-		{
-		  status = REG_ESPACE;
-		  goto parse_bracket_done;
-		}
-	      for (k = 0; k < num_neg_classes; k++)
-		l->neg_classes[k] = neg_classes[k];
-	      l->neg_classes[k] = (tre_ctype_t)0;
-	    }
-	  else
-	    l->neg_classes = NULL;
-	  if (node == NULL)
-	    node = n;
-	  else
-	    {
-	      u = tre_ast_new_union(ctx->mem, node, n);
-	      if (u == NULL)
-		status = REG_ESPACE;
-	      node = u;
-	    }
-	}
-    }
-
-  if (status != REG_OK)
-    goto parse_bracket_done;
-
-#ifdef TRE_DEBUG
-  tre_ast_print(node);
-#endif /* TRE_DEBUG */
-
- parse_bracket_done:
-  xfree(items);
-  ctx->position++;
-  *result = node;
-  return status;
-}
-
-
-/* Parses a positive decimal integer.  Returns -1 if the string does not
-   contain a valid number. */
-static int
-tre_parse_int(const char **regex)
-{
-  int num = -1;
-  const char *r = *regex;
-  while (*r-'0'<10U)
-    {
-      if (num < 0)
-	num = 0;
-      num = num * 10 + *r - '0';
-      r++;
-    }
-  *regex = r;
-  return num;
-}
-
-
-static reg_errcode_t
-tre_parse_bound(tre_parse_ctx_t *ctx, tre_ast_node_t **result)
-{
-  int min, max;
-  const char *r = ctx->re;
-  int minimal = 0;
-
-  /* Parse number (minimum repetition count). */
-  min = -1;
-  if (*r >= '0' && *r <= '9') {
-    min = tre_parse_int(&r);
-  }
-
-  /* Parse comma and second number (maximum repetition count). */
-  max = min;
-  if (*r == CHAR_COMMA)
-    {
-      r++;
-      max = tre_parse_int(&r);
-    }
-
-  /* Check that the repeat counts are sane. */
-  if ((max >= 0 && min > max) || max > RE_DUP_MAX)
-    return REG_BADBR;
-
-  /* Missing }. */
-  if (!*r)
-    return REG_EBRACE;
-
-  /* Empty contents of {}. */
-  if (r == ctx->re)
-    return REG_BADBR;
-
-  /* Parse the ending '}' or '\}'.*/
-  if (ctx->cflags & REG_EXTENDED)
-    {
-      if (*r != CHAR_RBRACE)
-	return REG_BADBR;
-      r++;
-    }
-  else
-    {
-      if (*r != CHAR_BACKSLASH || *(r + 1) != CHAR_RBRACE)
-	return REG_BADBR;
-      r += 2;
-    }
-
-  /* Create the AST node(s). */
-  if (min == 0 && max == 0)
-    {
-      *result = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
-      if (*result == NULL)
-	return REG_ESPACE;
-    }
-  else
-    {
-      if (min < 0 && max < 0)
-	/* Only approximate parameters set, no repetitions. */
-	min = max = 1;
-
-      *result = tre_ast_new_iter(ctx->mem, *result, min, max, minimal);
-      if (!*result)
-	return REG_ESPACE;
-    }
-
-  ctx->re = r;
-  return REG_OK;
-}
-
-typedef enum {
-  PARSE_RE = 0,
-  PARSE_ATOM,
-  PARSE_MARK_FOR_SUBMATCH,
-  PARSE_BRANCH,
-  PARSE_PIECE,
-  PARSE_CATENATION,
-  PARSE_POST_CATENATION,
-  PARSE_UNION,
-  PARSE_POST_UNION,
-  PARSE_POSTFIX,
-  PARSE_RESTORE_CFLAGS
-} tre_parse_re_stack_symbol_t;
-
-
-static reg_errcode_t
-tre_parse(tre_parse_ctx_t *ctx)
-{
-  tre_ast_node_t *result = NULL;
-  tre_parse_re_stack_symbol_t symbol;
-  reg_errcode_t status = REG_OK;
-  tre_stack_t *stack = ctx->stack;
-  int bottom = tre_stack_num_objects(stack);
-  int depth = 0;
-  wchar_t wc;
-  int clen;
-
-  if (!ctx->nofirstsub)
-    {
-      STACK_PUSH(stack, int, ctx->submatch_id);
-      STACK_PUSH(stack, int, PARSE_MARK_FOR_SUBMATCH);
-      ctx->submatch_id++;
-    }
-  STACK_PUSH(stack, int, PARSE_RE);
-  ctx->re_start = ctx->re;
-
-
-  /* The following is basically just a recursive descent parser.  I use
-     an explicit stack instead of recursive functions mostly because of
-     two reasons: compatibility with systems which have an overflowable
-     call stack, and efficiency (both in lines of code and speed).  */
-  while (tre_stack_num_objects(stack) > bottom && status == REG_OK)
-    {
-      if (status != REG_OK)
-	break;
-      symbol = tre_stack_pop_int(stack);
-      switch (symbol)
-	{
-	case PARSE_RE:
-	  /* Parse a full regexp.  A regexp is one or more branches,
-	     separated by the union operator `|'. */
-	  if (ctx->cflags & REG_EXTENDED)
-	    STACK_PUSHX(stack, int, PARSE_UNION);
-	  STACK_PUSHX(stack, int, PARSE_BRANCH);
-	  break;
-
-	case PARSE_BRANCH:
-	  /* Parse a branch.  A branch is one or more pieces, concatenated.
-	     A piece is an atom possibly followed by a postfix operator. */
-	  STACK_PUSHX(stack, int, PARSE_CATENATION);
-	  STACK_PUSHX(stack, int, PARSE_PIECE);
-	  break;
-
-	case PARSE_PIECE:
-	  /* Parse a piece.  A piece is an atom possibly followed by one
-	     or more postfix operators. */
-	    STACK_PUSHX(stack, int, PARSE_POSTFIX);
-	  STACK_PUSHX(stack, int, PARSE_ATOM);
-	  break;
-
-	case PARSE_CATENATION:
-	  /* If the expression has not ended, parse another piece. */
-	  {
-	    tre_char_t c;
-	    if (!*ctx->re)
-	      break;
-	    c = *ctx->re;
-		if (ctx->cflags & REG_EXTENDED && c == CHAR_PIPE)
-		  break;
-		if ((ctx->cflags & REG_EXTENDED
-		     && c == CHAR_RPAREN && depth > 0)
-		    || (!(ctx->cflags & REG_EXTENDED)
-			&& (c == CHAR_BACKSLASH
-			    && *(ctx->re + 1) == CHAR_RPAREN)))
-		  {
-		    if (!(ctx->cflags & REG_EXTENDED) && depth == 0)
-		      status = REG_EPAREN;
-		    depth--;
-		    if (!(ctx->cflags & REG_EXTENDED))
-		      ctx->re += 2;
-		    break;
-		  }
-
-	      {
-		/* Default case, left associative concatenation. */
-		STACK_PUSHX(stack, int, PARSE_CATENATION);
-		STACK_PUSHX(stack, voidptr, result);
-		STACK_PUSHX(stack, int, PARSE_POST_CATENATION);
-		STACK_PUSHX(stack, int, PARSE_PIECE);
-	      }
-	    break;
-	  }
-
-	case PARSE_POST_CATENATION:
-	  {
-	    tre_ast_node_t *tree = tre_stack_pop_voidptr(stack);
-	    tre_ast_node_t *tmp_node;
-	    tmp_node = tre_ast_new_catenation(ctx->mem, tree, result);
-	    if (!tmp_node)
-	      return REG_ESPACE;
-	    result = tmp_node;
-	    break;
-	  }
-
-	case PARSE_UNION:
-	  switch (*ctx->re)
-	    {
-	    case CHAR_PIPE:
-	      STACK_PUSHX(stack, int, PARSE_UNION);
-	      STACK_PUSHX(stack, voidptr, result);
-	      STACK_PUSHX(stack, int, PARSE_POST_UNION);
-	      STACK_PUSHX(stack, int, PARSE_BRANCH);
-	      ctx->re++;
-	      break;
-
-	    case CHAR_RPAREN:
-	      ctx->re++;
-	      break;
-
-	    default:
-	      break;
-	    }
-	  break;
-
-	case PARSE_POST_UNION:
-	  {
-	    tre_ast_node_t *tmp_node;
-	    tre_ast_node_t *tree = tre_stack_pop_voidptr(stack);
-	    tmp_node = tre_ast_new_union(ctx->mem, tree, result);
-	    if (!tmp_node)
-	      return REG_ESPACE;
-	    result = tmp_node;
-	    break;
-	  }
-
-	case PARSE_POSTFIX:
-	  /* Parse postfix operators. */
-	  switch (*ctx->re)
-	    {
-	    case CHAR_PLUS:
-	    case CHAR_QUESTIONMARK:
-	      if (!(ctx->cflags & REG_EXTENDED))
-		break;
-		/*FALLTHROUGH*/
-	    case CHAR_STAR:
-	      {
-		tre_ast_node_t *tmp_node;
-		int minimal = 0;
-		int rep_min = 0;
-		int rep_max = -1;
-
-		if (*ctx->re == CHAR_PLUS)
-		  rep_min = 1;
-		if (*ctx->re == CHAR_QUESTIONMARK)
-		  rep_max = 1;
-
-		ctx->re++;
-		tmp_node = tre_ast_new_iter(ctx->mem, result, rep_min, rep_max,
-					    minimal);
-		if (tmp_node == NULL)
-		  return REG_ESPACE;
-		result = tmp_node;
-		STACK_PUSHX(stack, int, PARSE_POSTFIX);
-	      }
-	      break;
-
-	    case CHAR_BACKSLASH:
-	      /* "\{" is special without REG_EXTENDED */
-	      if (!(ctx->cflags & REG_EXTENDED)
-		  && *(ctx->re + 1) == CHAR_LBRACE)
-		{
-		  ctx->re++;
-		  goto parse_brace;
-		}
-	      else
-		break;
-
-	    case CHAR_LBRACE:
-	      /* "{" is literal without REG_EXTENDED */
-	      if (!(ctx->cflags & REG_EXTENDED))
-		break;
-
-	    parse_brace:
-	      ctx->re++;
-
-	      status = tre_parse_bound(ctx, &result);
-	      if (status != REG_OK)
-		return status;
-	      STACK_PUSHX(stack, int, PARSE_POSTFIX);
-	      break;
-	    }
-	  break;
-
-	case PARSE_ATOM:
-	  /* Parse an atom.  An atom is a regular expression enclosed in `()',
-	     an empty set of `()', a bracket expression, `.', `^', `$',
-	     a `\' followed by a character, or a single character. */
-
-	  switch (*ctx->re)
-	    {
-	    case CHAR_LPAREN:  /* parenthesized subexpression */
-
-	      if (ctx->cflags & REG_EXTENDED)
-		{
-		lparen:
-		  depth++;
-		    {
-		      ctx->re++;
-		      /* First parse a whole RE, then mark the resulting tree
-			 for submatching. */
-		      STACK_PUSHX(stack, int, ctx->submatch_id);
-		      STACK_PUSHX(stack, int, PARSE_MARK_FOR_SUBMATCH);
-		      STACK_PUSHX(stack, int, PARSE_RE);
-		      ctx->submatch_id++;
-		    }
-		}
-	      else
-		goto parse_literal;
-	      break;
-
-	    case CHAR_LBRACKET: /* bracket expression */
-	      ctx->re++;
-	      status = tre_parse_bracket(ctx, &result);
-	      if (status != REG_OK)
-		return status;
-	      break;
-
-	    case CHAR_BACKSLASH:
-	      /* If this is "\(" or "\)" chew off the backslash and
-		 try again. */
-	      if (!(ctx->cflags & REG_EXTENDED) && *(ctx->re + 1) == CHAR_LPAREN)
-		{
-		  ctx->re++;
-		  goto lparen;
-		}
-	      if (!(ctx->cflags & REG_EXTENDED) && *(ctx->re + 1) == CHAR_RPAREN)
-		{
-		  goto empty_atom;
-		}
-
-	      /* If a macro is used, parse the expanded macro recursively. */
-	      {
-		const char *buf = tre_expand_macro(ctx->re + 1);
-		if (buf)
-		  {
-		    tre_parse_ctx_t subctx;
-		    memcpy(&subctx, ctx, sizeof(subctx));
-		    subctx.re = buf;
-		    subctx.nofirstsub = 1;
-		    status = tre_parse(&subctx);
-		    if (status != REG_OK)
-		      return status;
-		    ctx->re += 2;
-		    ctx->position = subctx.position;
-		    result = subctx.result;
-		    break;
-		  }
-	      }
-
-	      if (!ctx->re[1])
-		/* Trailing backslash. */
-		return REG_EESCAPE;
-
-	      ctx->re++;
-	      switch (*ctx->re)
-		{
-		case 'b':
-		  result = tre_ast_new_literal(ctx->mem, ASSERTION,
-					       ASSERT_AT_WB, -1);
-		  ctx->re++;
-		  break;
-		case 'B':
-		  result = tre_ast_new_literal(ctx->mem, ASSERTION,
-					       ASSERT_AT_WB_NEG, -1);
-		  ctx->re++;
-		  break;
-		case '<':
-		  result = tre_ast_new_literal(ctx->mem, ASSERTION,
-					       ASSERT_AT_BOW, -1);
-		  ctx->re++;
-		  break;
-		case '>':
-		  result = tre_ast_new_literal(ctx->mem, ASSERTION,
-					       ASSERT_AT_EOW, -1);
-		  ctx->re++;
-		  break;
-		case 'x':
-		  ctx->re++;
-		  if (ctx->re[0] != CHAR_LBRACE)
-		    {
-		      /* 8 bit hex char. */
-		      char tmp[3] = {0, 0, 0};
-		      long val;
-
-		      if (tre_isxdigit(ctx->re[0]))
-			{
-			  tmp[0] = (char)ctx->re[0];
-			  ctx->re++;
+		if (*s == '-' && s != start && s[1] != ']' &&
+		    /* extension: [a-z--@] is accepted as [a-z]|[--@] */
+		    (s[1] != '-' || s[2] == ']'))
+			return REG_ERANGE;
+		if (*s == '[' && (s[1] == '.' || s[1] == '='))
+			/* collating symbols and equivalence classes are not supported */
+			return REG_ECOLLATE;
+		if (*s == '[' && s[1] == ':') {
+			char tmp[CHARCLASS_NAME_MAX+1];
+			s += 2;
+			for (len=0; len < CHARCLASS_NAME_MAX && s[len]; len++) {
+				if (s[len] == ':') {
+					memcpy(tmp, s, len);
+					tmp[len] = 0;
+					class = tre_ctype(tmp);
+					break;
+				}
 			}
-		      if (tre_isxdigit(ctx->re[0]))
-			{
-			  tmp[1] = (char)ctx->re[0];
-			  ctx->re++;
+			if (!class || s[len+1] != ']')
+				return REG_ECTYPE;
+			min = 0;
+			max = TRE_CHAR_MAX;
+			s += len+2;
+		} else {
+			min = max = wc;
+			s += len;
+			if (*s == '-' && s[1] != ']') {
+				s++;
+				len = mbtowc(&wc, s, -1);
+				max = wc;
+				/* XXX - Should use collation order instead of
+				   encoding values in character ranges. */
+				if (len <= 0 || min > max)
+					return REG_ERANGE;
+				s += len;
 			}
-		      val = strtol(tmp, NULL, 16);
-		      result = tre_ast_new_literal(ctx->mem, (int)val,
-						   (int)val, ctx->position);
-		      ctx->position++;
-		      break;
-		    }
-		  else if (*ctx->re)
-		    {
-		      /* Wide char. */
-		      char tmp[32];
-		      long val;
-		      int i = 0;
-		      ctx->re++;
-		      while (*ctx->re && i < sizeof tmp)
-			{
-			  if (ctx->re[0] == CHAR_RBRACE)
-			    break;
-			  if (tre_isxdigit(ctx->re[0]))
-			    {
-			      tmp[i] = (char)ctx->re[0];
-			      i++;
-			      ctx->re++;
-			      continue;
-			    }
-			  return REG_EBRACE;
-			}
-		      ctx->re++;
-		      tmp[i] = 0;
-		      val = strtol(tmp, NULL, 16);
-		      result = tre_ast_new_literal(ctx->mem, (int)val, (int)val,
-						   ctx->position);
-		      ctx->position++;
-		      break;
-		    }
-		  /*FALLTHROUGH*/
+		}
 
-		default:
-		  if (tre_isdigit(*ctx->re))
-		    {
-		      /* Back reference. */
-		      int val = *ctx->re - '0';
-		      result = tre_ast_new_literal(ctx->mem, BACKREF, val,
-						   ctx->position);
-		      if (result == NULL)
+		if (class && neg->negate) {
+			if (neg->len >= MAX_NEG_CLASSES)
+				return REG_ESPACE;
+			neg->a[neg->len++] = class;
+		} else  {
+			tre_literal_t *lit = tre_new_lit(ls);
+			if (!lit)
+				return REG_ESPACE;
+			lit->code_min = min;
+			lit->code_max = max;
+			lit->class = class;
+			lit->position = -1;
+
+			/* Add opposite-case codepoints if REG_ICASE is present.
+			   It seems that POSIX requires that bracket negation
+			   should happen before case-folding, but most practical
+			   implementations do it the other way around. Changing
+			   the order would need efficient representation of
+			   case-fold ranges and bracket range sets even with
+			   simple patterns so this is ok for now. */
+			if (ctx->cflags & REG_ICASE && !class)
+				if (add_icase_literals(ls, min, max))
+					return REG_ESPACE;
+		}
+	}
+}
+
+static reg_errcode_t parse_bracket(tre_parse_ctx_t *ctx, const char *s)
+{
+	int i, max, min, negmax, negmin;
+	tre_ast_node_t *node = 0, *n;
+	tre_ctype_t *nc = 0;
+	tre_literal_t *lit;
+	struct literals ls;
+	struct neg neg;
+	reg_errcode_t err;
+
+	ls.mem = ctx->mem;
+	ls.len = 0;
+	ls.cap = 32;
+	ls.a = xmalloc(ls.cap * sizeof *ls.a);
+	if (!ls.a)
+		return REG_ESPACE;
+	neg.len = 0;
+	neg.negate = *s == '^';
+	if (neg.negate)
+		s++;
+
+	err = parse_bracket_terms(ctx, s, &ls, &neg);
+	if (err != REG_OK)
+		goto parse_bracket_done;
+
+	if (neg.negate) {
+		/* Sort the array if we need to negate it. */
+		qsort(ls.a, ls.len, sizeof *ls.a, tre_compare_lit);
+		/* extra lit for the last negated range */
+		lit = tre_new_lit(&ls);
+		if (!lit) {
+			err = REG_ESPACE;
+			goto parse_bracket_done;
+		}
+		lit->code_min = TRE_CHAR_MAX+1;
+		lit->code_max = TRE_CHAR_MAX+1;
+		lit->position = -1;
+		/* negated classes */
+		if (neg.len) {
+			nc = tre_mem_alloc(ctx->mem, (neg.len+1)*sizeof *neg.a);
+			if (!nc) {
+				err = REG_ESPACE;
+				goto parse_bracket_done;
+			}
+			memcpy(nc, neg.a, neg.len*sizeof *neg.a);
+			nc[neg.len] = 0;
+		}
+	}
+
+	/* Build a union of the items in the array, negated if necessary. */
+	negmax = negmin = 0;
+	for (i = 0; i < ls.len; i++) {
+		lit = ls.a[i];
+		min = lit->code_min;
+		max = lit->code_max;
+		if (neg.negate) {
+			if (min <= negmin) {
+				/* Overlap. */
+				negmin = MAX(max + 1, negmin);
+				continue;
+			}
+			negmax = min - 1;
+			lit->code_min = negmin;
+			lit->code_max = negmax;
+			negmin = max + 1;
+		}
+		lit->position = ctx->position;
+		lit->neg_classes = nc;
+		n = tre_ast_new_node(ctx->mem, LITERAL, lit);
+		node = tre_ast_new_union(ctx->mem, node, n);
+		if (!node) {
+			err = REG_ESPACE;
+			break;
+		}
+	}
+
+parse_bracket_done:
+	xfree(ls.a);
+	ctx->position++;
+	ctx->n = node;
+	return err;
+}
+
+static const char *parse_dup_count(const char *s, int *n)
+{
+	*n = -1;
+	if (!isdigit(*s))
+		return s;
+	*n = 0;
+	for (;;) {
+		*n = 10 * *n + (*s - '0');
+		s++;
+		if (!isdigit(*s) || *n > RE_DUP_MAX)
+			break;
+	}
+	return s;
+}
+
+static const char *parse_dup(const char *s, int ere, int *pmin, int *pmax)
+{
+	int min, max;
+
+	s = parse_dup_count(s, &min);
+	if (*s == ',')
+		s = parse_dup_count(s+1, &max);
+	else
+		max = min;
+
+	if (
+		(max < min && max >= 0) ||
+		max > RE_DUP_MAX ||
+		min > RE_DUP_MAX ||
+		min < 0 ||
+		(!ere && *s++ != '\\') ||
+		*s++ != '}'
+	)
+		return 0;
+	*pmin = min;
+	*pmax = max;
+	return s;
+}
+
+static int hexval(unsigned c)
+{
+	if (c-'0'<10) return c-'0';
+	c |= 32;
+	if (c-'a'<6) return c-'a'+10;
+	return -1;
+}
+
+static reg_errcode_t marksub(tre_parse_ctx_t *ctx, tre_ast_node_t *node, int subid)
+{
+	if (node->submatch_id >= 0) {
+		tre_ast_node_t *n = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
+		if (!n)
 			return REG_ESPACE;
-		      ctx->position++;
-		      ctx->max_backref = MAX(val, ctx->max_backref);
-		      ctx->re++;
-		    }
-		  else
-		    {
-		      /* Escaped character. */
-		      goto parse_literal;
-		    }
-		  break;
-		}
-	      if (result == NULL)
-		return REG_ESPACE;
-	      break;
-
-	    case CHAR_PERIOD:	 /* the any-symbol */
-	      if (ctx->cflags & REG_NEWLINE)
-		{
-		  tre_ast_node_t *tmp1;
-		  tre_ast_node_t *tmp2;
-		  tmp1 = tre_ast_new_literal(ctx->mem, 0, '\n' - 1,
-					     ctx->position);
-		  if (!tmp1)
-		    return REG_ESPACE;
-		  tmp2 = tre_ast_new_literal(ctx->mem, '\n' + 1, TRE_CHAR_MAX,
-					     ctx->position + 1);
-		  if (!tmp2)
-		    return REG_ESPACE;
-		  result = tre_ast_new_union(ctx->mem, tmp1, tmp2);
-		  if (!result)
-		    return REG_ESPACE;
-		  ctx->position += 2;
-		}
-	      else
-		{
-		  result = tre_ast_new_literal(ctx->mem, 0, TRE_CHAR_MAX,
-					       ctx->position);
-		  if (!result)
-		    return REG_ESPACE;
-		  ctx->position++;
-		}
-	      ctx->re++;
-	      break;
-
-	    case CHAR_CARET:	 /* beginning of line assertion */
-	      /* '^' has a special meaning everywhere in EREs, and at
-		 beginning of BRE. */
-	      if (ctx->cflags & REG_EXTENDED
-		  || ctx->re == ctx->re_start)
-		{
-		  if (!(ctx->cflags & REG_EXTENDED))
-		    STACK_PUSHX(stack, int, PARSE_CATENATION);
-		  result = tre_ast_new_literal(ctx->mem, ASSERTION,
-					       ASSERT_AT_BOL, -1);
-		  if (result == NULL)
-		    return REG_ESPACE;
-		  ctx->re++;
-		}
-	      else
-		goto parse_literal;
-	      break;
-
-	    case CHAR_DOLLAR:	 /* end of line assertion. */
-	      /* '$' is special everywhere in EREs, and in the end of the
-		 string in BREs. */
-	      if (ctx->cflags & REG_EXTENDED
-		  || !*(ctx->re + 1))
-		{
-		  result = tre_ast_new_literal(ctx->mem, ASSERTION,
-					       ASSERT_AT_EOL, -1);
-		  if (result == NULL)
-		    return REG_ESPACE;
-		  ctx->re++;
-		}
-	      else
-		goto parse_literal;
-	      break;
-
-	    case CHAR_RPAREN:
-	      if (!depth)
-	        goto parse_literal;
-	    case CHAR_STAR:
-	    case CHAR_PIPE:
-	    case CHAR_LBRACE:
-	    case CHAR_PLUS:
-	    case CHAR_QUESTIONMARK:
-	      if (!(ctx->cflags & REG_EXTENDED))
-	        goto parse_literal;
-
-	    case 0:
-	    empty_atom:
-	      result = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
-	      if (!result)
-		return REG_ESPACE;
-	      break;
-
-	    default:
-	    parse_literal:
-
-	      clen = mbtowc(&wc, ctx->re, -1);
-	      if (clen<0) clen=1, wc=WEOF;
-
-	      /* Note that we can't use an tre_isalpha() test here, since there
-		 may be characters which are alphabetic but neither upper or
-		 lower case. */
-	      if (ctx->cflags & REG_ICASE
-		  && (tre_isupper(wc) || tre_islower(wc)))
-		{
-		  tre_ast_node_t *tmp1;
-		  tre_ast_node_t *tmp2;
-
-		  /* XXX - Can there be more than one opposite-case
-		     counterpoints for some character in some locale?  Or
-		     more than two characters which all should be regarded
-		     the same character if case is ignored?  If yes, there
-		     does not seem to be a portable way to detect it.  I guess
-		     that at least for multi-character collating elements there
-		     could be several opposite-case counterpoints, but they
-		     cannot be supported portably anyway. */
-		  tmp1 = tre_ast_new_literal(ctx->mem, tre_toupper(wc),
-					     tre_toupper(wc),
-					     ctx->position);
-		  if (!tmp1)
-		    return REG_ESPACE;
-		  tmp2 = tre_ast_new_literal(ctx->mem, tre_tolower(wc),
-					     tre_tolower(wc),
-					     ctx->position);
-		  if (!tmp2)
-		    return REG_ESPACE;
-		  result = tre_ast_new_union(ctx->mem, tmp1, tmp2);
-		  if (!result)
-		    return REG_ESPACE;
-		}
-	      else
-		{
-		  result = tre_ast_new_literal(ctx->mem, wc, wc,
-					       ctx->position);
-		  if (!result)
-		    return REG_ESPACE;
-		}
-	      ctx->position++;
-	      ctx->re += clen;
-	      break;
-	    }
-	  break;
-
-	case PARSE_MARK_FOR_SUBMATCH:
-	  {
-	    int submatch_id = tre_stack_pop_int(stack);
-
-	    if (result->submatch_id >= 0)
-	      {
-		tre_ast_node_t *n, *tmp_node;
-		n = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
-		if (n == NULL)
-		  return REG_ESPACE;
-		tmp_node = tre_ast_new_catenation(ctx->mem, n, result);
-		if (tmp_node == NULL)
-		  return REG_ESPACE;
-		tmp_node->num_submatches = result->num_submatches;
-		result = tmp_node;
-	      }
-	    result->submatch_id = submatch_id;
-	    result->num_submatches++;
-	    break;
-	  }
-
-	case PARSE_RESTORE_CFLAGS:
-	  ctx->cflags = tre_stack_pop_int(stack);
-	  break;
-
-	default:
-	  assert(0);
-	  break;
+		n = tre_ast_new_catenation(ctx->mem, n, node);
+		if (!n)
+			return REG_ESPACE;
+		n->num_submatches = node->num_submatches;
+		node = n;
 	}
-    }
-
-  /* Check for missing closing parentheses. */
-  if (depth > 0)
-    return REG_EPAREN;
-
-  if (status == REG_OK)
-    ctx->result = result;
-
-  return status;
+	node->submatch_id = subid;
+	node->num_submatches++;
+	ctx->n = node;
+	return REG_OK;
 }
 
+/*
+BRE grammar:
+Regex  =  Branch  |  '^'  |  '$'  |  '^$'  |  '^' Branch  |  Branch '$'  |  '^' Branch '$'
+Branch =  Atom  |  Branch Atom
+Atom   =  char  |  quoted_char  |  '.'  |  Bracket  |  Atom Dup  |  '\(' Branch '\)'  |  back_ref
+Dup    =  '*'  |  '\{' Count '\}'  |  '\{' Count ',\}'  |  '\{' Count ',' Count '\}'
+
+(leading ^ and trailing $ in a sub expr may be an anchor or literal as well)
+
+ERE grammar:
+Regex  =  Branch  |  Regex '|' Branch
+Branch =  Atom  |  Branch Atom
+Atom   =  char  |  quoted_char  |  '.'  |  Bracket  |  Atom Dup  |  '(' Regex ')'  |  '^'  |  '$'
+Dup    =  '*'  |  '+'  |  '?'  |  '{' Count '}'  |  '{' Count ',}'  |  '{' Count ',' Count '}'
+
+(a*+?, ^*, $+, \X, {, (|a) are unspecified)
+*/
+
+static reg_errcode_t parse_atom(tre_parse_ctx_t *ctx, const char *s)
+{
+	int len, ere = ctx->cflags & REG_EXTENDED;
+	const char *p;
+	tre_ast_node_t *node;
+	wchar_t wc;
+	switch (*s) {
+	case '[':
+		return parse_bracket(ctx, s+1);
+	case '\\':
+		p = tre_expand_macro(s+1);
+		if (p) {
+			/* assume \X expansion is a single atom */
+			reg_errcode_t err = parse_atom(ctx, p);
+			ctx->s = s+2;
+			return err;
+		}
+		/* extensions: \b, \B, \<, \>, \xHH \x{HHHH} */
+		switch (*++s) {
+		case 0:
+			return REG_EESCAPE;
+		case 'b':
+			node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_WB, -1);
+			break;
+		case 'B':
+			node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_WB_NEG, -1);
+			break;
+		case '<':
+			node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_BOW, -1);
+			break;
+		case '>':
+			node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_EOW, -1);
+			break;
+		case 'x':
+			s++;
+			int i, v = 0, c;
+			len = 2;
+			if (*s == '{') {
+				len = 8;
+				s++;
+			}
+			for (i=0; i<len && v<0x110000; i++) {
+				c = hexval(s[i]);
+				if (c < 0) break;
+				v = 16*v + c;
+			}
+			s += i;
+			if (len == 8) {
+				if (*s != '}')
+					return REG_EBRACE;
+				s++;
+			}
+			node = tre_ast_new_literal(ctx->mem, v, v, ctx->position++);
+			s--;
+			break;
+		case '{':
+		case '+':
+		case '?':
+			/* extension: treat \+, \? as repetitions in BRE */
+			/* reject repetitions after empty expression in BRE */
+			if (!ere)
+				return REG_BADRPT;
+		case '|':
+			/* extension: treat \| as alternation in BRE */
+			if (!ere) {
+				node = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
+				s--;
+				goto end;
+			}
+			/* fallthrough */
+		default:
+			if (!ere && (unsigned)*s-'1' < 9) {
+				/* back reference */
+				int val = *s - '0';
+				node = tre_ast_new_literal(ctx->mem, BACKREF, val, ctx->position++);
+				ctx->max_backref = MAX(val, ctx->max_backref);
+			} else {
+				/* extension: accept unknown escaped char
+				   as a literal */
+				goto parse_literal;
+			}
+		}
+		s++;
+		break;
+	case '.':
+		if (ctx->cflags & REG_NEWLINE) {
+			tre_ast_node_t *tmp1, *tmp2;
+			tmp1 = tre_ast_new_literal(ctx->mem, 0, '\n'-1, ctx->position++);
+			tmp2 = tre_ast_new_literal(ctx->mem, '\n'+1, TRE_CHAR_MAX, ctx->position++);
+			if (tmp1 && tmp2)
+				node = tre_ast_new_union(ctx->mem, tmp1, tmp2);
+			else
+				node = 0;
+		} else {
+			node = tre_ast_new_literal(ctx->mem, 0, TRE_CHAR_MAX, ctx->position++);
+		}
+		s++;
+		break;
+	case '^':
+		/* '^' has a special meaning everywhere in EREs, and at beginning of BRE. */
+		if (!ere && s != ctx->re)
+			goto parse_literal;
+		node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_BOL, -1);
+		s++;
+		break;
+	case '$':
+		/* '$' is special everywhere in EREs, and in the end of the string in BREs. */
+		if (!ere && s[1])
+			goto parse_literal;
+		node = tre_ast_new_literal(ctx->mem, ASSERTION, ASSERT_AT_EOL, -1);
+		s++;
+		break;
+	case '*':
+	case '{':
+	case '+':
+	case '?':
+		/* reject repetitions after empty expression in ERE */
+		if (ere)
+			return REG_BADRPT;
+	case '|':
+		if (!ere)
+			goto parse_literal;
+	case 0:
+		node = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
+		break;
+	default:
+parse_literal:
+		len = mbtowc(&wc, s, -1);
+		if (len < 0)
+			return REG_BADPAT;
+		if (ctx->cflags & REG_ICASE && (tre_isupper(wc) || tre_islower(wc))) {
+			tre_ast_node_t *tmp1, *tmp2;
+			/* multiple opposite case characters are not supported */
+			tmp1 = tre_ast_new_literal(ctx->mem, tre_toupper(wc), tre_toupper(wc), ctx->position);
+			tmp2 = tre_ast_new_literal(ctx->mem, tre_tolower(wc), tre_tolower(wc), ctx->position);
+			if (tmp1 && tmp2)
+				node = tre_ast_new_union(ctx->mem, tmp1, tmp2);
+			else
+				node = 0;
+		} else {
+			node = tre_ast_new_literal(ctx->mem, wc, wc, ctx->position);
+		}
+		ctx->position++;
+		s += len;
+		break;
+	}
+end:
+	if (!node)
+		return REG_ESPACE;
+	ctx->n = node;
+	ctx->s = s;
+	return REG_OK;
+}
+
+#define PUSHPTR(err, s, v) do { \
+	if ((err = tre_stack_push_voidptr(s, v)) != REG_OK) \
+		return err; \
+} while(0)
+
+#define PUSHINT(err, s, v) do { \
+	if ((err = tre_stack_push_int(s, v)) != REG_OK) \
+		return err; \
+} while(0)
+
+static reg_errcode_t tre_parse(tre_parse_ctx_t *ctx)
+{
+	tre_ast_node_t *nbranch=0, *nunion=0;
+	int ere = ctx->cflags & REG_EXTENDED;
+	const char *s = ctx->re;
+	int subid = 0;
+	int depth = 0;
+	reg_errcode_t err;
+	tre_stack_t *stack = ctx->stack;
+
+	PUSHINT(err, stack, subid++);
+	for (;;) {
+		if ((!ere && *s == '\\' && s[1] == '(') ||
+		    (ere && *s == '(')) {
+			PUSHPTR(err, stack, nunion);
+			PUSHPTR(err, stack, nbranch);
+			PUSHINT(err, stack, subid++);
+			s++;
+			if (!ere)
+				s++;
+			depth++;
+			nbranch = nunion = 0;
+			continue;
+		}
+		if ((!ere && *s == '\\' && s[1] == ')') ||
+		    (ere && *s == ')' && depth)) {
+			ctx->n = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
+			if (!ctx->n)
+				return REG_ESPACE;
+		} else {
+			err = parse_atom(ctx, s);
+			if (err != REG_OK)
+				return err;
+			s = ctx->s;
+		}
+
+	parse_iter:
+		for (;;) {
+			int min, max;
+
+			if (*s!='\\' && *s!='*') {
+				if (!ere)
+					break;
+				if (*s!='+' && *s!='?' && *s!='{')
+					break;
+			}
+			if (*s=='\\' && ere)
+				break;
+			/* extension: treat \+, \? as repetitions in BRE */
+			if (*s=='\\' && s[1]!='+' && s[1]!='?' && s[1]!='{')
+				break;
+			if (*s=='\\')
+				s++;
+
+			/* handle ^* at the start of a complete BRE. */
+			if (!ere && s==ctx->re+1 && s[-1]=='^')
+				break;
+
+			/* extension: multiple consecutive *+?{,} is unspecified,
+			   but (a+)+ has to be supported so accepting a++ makes
+			   sense, note however that the RE_DUP_MAX limit can be
+			   circumvented: (a{255}){255} uses a lot of memory.. */
+			if (*s=='{') {
+				s = parse_dup(s+1, ere, &min, &max);
+				if (!s)
+					return REG_BADBR;
+			} else {
+				min=0;
+				max=-1;
+				if (*s == '+')
+					min = 1;
+				if (*s == '?')
+					max = 1;
+				s++;
+			}
+			if (max == 0)
+				ctx->n = tre_ast_new_literal(ctx->mem, EMPTY, -1, -1);
+			else
+				ctx->n = tre_ast_new_iter(ctx->mem, ctx->n, min, max, 0);
+			if (!ctx->n)
+				return REG_ESPACE;
+		}
+
+		nbranch = tre_ast_new_catenation(ctx->mem, nbranch, ctx->n);
+		if ((ere && *s == '|') ||
+		    (ere && *s == ')' && depth) ||
+		    (!ere && *s == '\\' && s[1] == ')') ||
+		    /* extension: treat \| as alternation in BRE */
+		    (!ere && *s == '\\' && s[1] == '|') ||
+		    !*s) {
+			/* extension: empty branch is unspecified (), (|a), (a|)
+			   here they are not rejected but match on empty string */
+			int c = *s;
+			nunion = tre_ast_new_union(ctx->mem, nunion, nbranch);
+			nbranch = 0;
+
+			if (c == '\\' && s[1] == '|') {
+				s+=2;
+			} else if (c == '|') {
+				s++;
+			} else {
+				if (c == '\\') {
+					if (!depth) return REG_EPAREN;
+					s+=2;
+				} else if (c == ')')
+					s++;
+				depth--;
+				err = marksub(ctx, nunion, tre_stack_pop_int(stack));
+				if (err != REG_OK)
+					return err;
+				if (!c && depth<0) {
+					ctx->submatch_id = subid;
+					return REG_OK;
+				}
+				if (!c || depth<0)
+					return REG_EPAREN;
+				nbranch = tre_stack_pop_voidptr(stack);
+				nunion = tre_stack_pop_voidptr(stack);
+				goto parse_iter;
+			}
+		}
+	}
+}
 
 
 /***********************************************************************
@@ -1521,6 +1106,7 @@ tre_add_tag_left(tre_mem_t mem, tre_ast_node_t *node, int tag_id)
   c->right->firstpos = NULL;
   c->right->lastpos = NULL;
   c->right->num_tags = 0;
+  c->right->num_submatches = 0;
   node->obj = c;
   node->type = CATENATION;
   return REG_OK;
@@ -1551,6 +1137,7 @@ tre_add_tag_right(tre_mem_t mem, tre_ast_node_t *node, int tag_id)
   c->left->firstpos = NULL;
   c->left->lastpos = NULL;
   c->left->num_tags = 0;
+  c->left->num_submatches = 0;
   node->obj = c;
   node->type = CATENATION;
   return REG_OK;
@@ -2023,7 +1610,8 @@ tre_add_tags(tre_mem_t mem, tre_stack_t *stack, tre_ast_node_t *tree,
 		  {
 		    status = tre_add_tag_right(mem, left, tag_left);
 		    tnfa->tag_directions[tag_left] = TRE_TAG_MAXIMIZE;
-		    status = tre_add_tag_right(mem, right, tag_right);
+		    if (status == REG_OK)
+		      status = tre_add_tag_right(mem, right, tag_right);
 		    tnfa->tag_directions[tag_right] = TRE_TAG_MAXIMIZE;
 		  }
 		num_tags += 2;
@@ -3102,7 +2690,7 @@ regcomp(regex_t *restrict preg, const char *restrict regex, int cflags)
 
   /* Allocate a stack used throughout the compilation process for various
      purposes. */
-  stack = tre_stack_new(512, 10240, 128);
+  stack = tre_stack_new(512, 1024000, 128);
   if (!stack)
     return REG_ESPACE;
   /* Allocate a fast memory allocator. */
@@ -3124,12 +2712,7 @@ regcomp(regex_t *restrict preg, const char *restrict regex, int cflags)
   if (errcode != REG_OK)
     ERROR_EXIT(errcode);
   preg->re_nsub = parse_ctx.submatch_id - 1;
-  tree = parse_ctx.result;
-
-  /* Back references and approximate matching cannot currently be used
-     in the same regexp. */
-  if (parse_ctx.max_backref >= 0 && parse_ctx.have_approx)
-    ERROR_EXIT(REG_BADPAT);
+  tree = parse_ctx.n;
 
 #ifdef TRE_DEBUG
   tre_ast_print(tree);
@@ -3144,7 +2727,7 @@ regcomp(regex_t *restrict preg, const char *restrict regex, int cflags)
   if (tnfa == NULL)
     ERROR_EXIT(REG_ESPACE);
   tnfa->have_backrefs = parse_ctx.max_backref >= 0;
-  tnfa->have_approx = parse_ctx.have_approx;
+  tnfa->have_approx = 0;
   tnfa->num_submatches = parse_ctx.submatch_id;
 
   /* Set up tags for submatch addressing.  If REG_NOSUB is set and the

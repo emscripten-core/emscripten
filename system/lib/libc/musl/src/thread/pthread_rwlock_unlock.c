@@ -2,12 +2,12 @@
 
 int pthread_rwlock_unlock(pthread_rwlock_t *rw)
 {
-	int val, cnt, waiters, new;
+	int val, cnt, waiters, new, priv = rw->_rw_shared^128;
 
 #ifdef __EMSCRIPTEN__
 	/// XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, which we do here to avoid hangs.
 	/// Mark this thread to not own the write lock anymore.
-	if (rw->_rw_wr_owner == pthread_self()) rw->_rw_wr_owner = 0;
+	if (rw->_rw_wr_owner == (int)pthread_self()) rw->_rw_wr_owner = 0;
 #endif
 
 	do {
@@ -18,7 +18,7 @@ int pthread_rwlock_unlock(pthread_rwlock_t *rw)
 	} while (a_cas(&rw->_rw_lock, val, new) != val);
 
 	if (!new && (waiters || val<0))
-		__wake(&rw->_rw_lock, cnt, 0);
+		__wake(&rw->_rw_lock, cnt, priv);
 
 	return 0;
 }

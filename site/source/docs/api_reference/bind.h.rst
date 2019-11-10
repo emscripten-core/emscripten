@@ -1,8 +1,8 @@
 .. _bind-h:
 
-================================
+===========================
 bind.h (under-construction)
-================================
+===========================
 
 The C++ APIs in `bind.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/bind.h>`_ define (**HamishW**-Replace with description.)
 
@@ -186,14 +186,6 @@ Functions
    :returns: **HamishW** Add description.
 
 
-.. cpp:function:: void* __getDynamicPointerType(void* p)
-
-   **HamishW** Add description.
-
-   :param void* p: **HamishW** Add description.
-   :returns: **HamishW** Add description.
-
-
 .. cpp:function:: void function()
 
    .. code-block:: cpp
@@ -286,7 +278,7 @@ Value tuples
 
 
 Value structs
-======================================
+=============
 
 .. cpp:class:: value_object : public internal::noncopyable
 
@@ -314,7 +306,7 @@ Value structs
       **HamishW** Add description.
 
       :param const char* fieldName: **HamishW** Add description.
-      :param FieldType InstanceType::*field: **HamishW** Add description.
+      :param FieldType InstanceType\:\:\*field: **HamishW** Add description.
 
       :returns: **HamishW** Add description.
 
@@ -339,11 +331,8 @@ Value structs
       :returns: **HamishW** Add description.
 
 
-
-
-
 Smart pointers
-======================================
+==============
 
 
 .. cpp:type:: default_smart_ptr_trait
@@ -409,7 +398,7 @@ Smart pointers
 
 
 
-.. cpp:type:: smart_ptr_trait<std::shared_ptr<PointeeType>>
+.. cpp:type:: template<typename PointeeType> smart_ptr_trait<std::shared_ptr<PointeeType>>
 
    .. code-block:: cpp
 
@@ -447,7 +436,7 @@ Smart pointers
       **HamishW** Add description.
 
       :param PointeeType* p: **HamishW** Add description. Note that ``PointeeType`` is a typename (templated type).
-      :param internal::EM_VAL v: **HamishW** Add description.
+      :param internal\:\:EM_VAL v: **HamishW** Add description.
       :returns: **HamishW** Add description.
 
    .. cpp:function:: static PointerType* construct_null()
@@ -466,7 +455,7 @@ Classes
 **HamishW** Add description if needed. Note from source "// abstract classes"
 
 
-.. cpp:class:: class wrapper : public T, public internal::WrapperBase
+.. cpp:class:: wrapper : public T, public internal::WrapperBase
 
    .. code-block:: cpp
 
@@ -541,7 +530,7 @@ Classes
 
 
 
-   .. cpp:function:: HAMISHW_ HELP_Needed
+   .. cpp:function:: HAMISHW_ HELP_Needed()
 
       **HamishW** I don't understand this C++, so not sure how to document. Putting code here for Chad to advise on how to document
 
@@ -683,7 +672,7 @@ Classes
       .. _embind-class-function-pointer-constructor:
 
 
-   .. cpp:function:: const class_& constructor() const
+   .. cpp:function:: const class_& constructor(ReturnType (*factory)(Args...), Policies...) const
 
       .. code-block:: cpp
 
@@ -730,11 +719,11 @@ Classes
 
       :param const char* wrapperClassName: **HamishW** Add description.
       :param const char* pointerName: **HamishW** Add description.
-      :param ::emscripten::constructor<ConstructorArgs...> constructor): **HamishW** Add description.
+      :param emscripten\:\:constructor<ConstructorArgs...> constructor): **HamishW** Add description.
       :returns: |class_-function-returns|
 
 
-   .. cpp:function:: const class_& allow_subclass() const
+   .. cpp:function:: const class_& allow_subclass(const char* wrapperClassName, ::emscripten::constructor<ConstructorArgs...> constructor) const
 
       .. code-block:: cpp
 
@@ -748,7 +737,7 @@ Classes
       **HamishW** Add description. Explain how this constructor differs from other one.
 
       :param const char* wrapperClassName: **HamishW** Add description.
-      :param ::emscripten::constructor<ConstructorArgs...> constructor): **HamishW** Add description.
+      :param \:\:emscripten\:\:constructor<ConstructorArgs...> constructor): **HamishW** Add description.
 
       :returns: |class_-function-returns|
 
@@ -768,12 +757,12 @@ Classes
       **HamishW** Check description. Note prototype moved to "prototype" block above because syntax broke Sphinx. Also explain how this method differs from the other overloads.
 
       :param const char* methodName: **HamishW** Add description.
-      :param ReturnType (ClassType::*memberFunction)(Args...): **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
+      :param ReturnType (ClassType\:\:\*memberFunction)(Args...): **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
       :param typename... Policies: |policies-argument|
       :returns: |class_-function-returns|
 
 
-   .. cpp:function:: const class_& function() const
+   .. cpp:function:: const class_& function(const char* methodName, ReturnType (ClassType::*memberFunction)(Args...) const, Policies...) const
 
       .. code-block:: cpp
 
@@ -784,12 +773,12 @@ Classes
       **HamishW** Add description. Note, prototype moved into block above as it broke Sphinx. Also this only differs by a const on the ReturnType from the previous function
 
       :param const char* methodName: **HamishW** Add description.
-      :param ReturnType (ClassType::*memberFunction)(Args...) const: **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
+      :param ReturnType (ClassType\:\:\*memberFunction)(Args...) const: **HamishW** Add description. Note that ``ReturnType`` is a template typename for this function and ``ClassType`` is a template typename for the class.
       :param typename... Policies: |policies-argument|
       :returns: |class_-function-returns|
 
 
-   .. cpp:function:: const class_& function() const
+   .. cpp:function:: const class_& function(const char* methodName, ReturnType (*function)(ThisType, Args...), Policies...) const
 
       .. code-block:: cpp
 
@@ -816,7 +805,7 @@ Classes
       **HamishW** Add description. Note, signature copied to prototype block above because proper signature broke Sphinx. Also because it is useful to include the template information.
 
       :param const char* fieldName: **HamishW** Add description.
-      :param const FieldType ClassType::*field: **HamishW** Add description.
+      :param const FieldType ClassType\:\:\*field: **HamishW** Add description.
 
       :returns: |class_-function-returns|
 
@@ -832,7 +821,7 @@ Classes
       **HamishW** Add description.
 
       :param const char* fieldName: **HamishW** Add description.
-      :param FieldType ClassType::*field: **HamishW** Add description.
+      :param FieldType ClassType\:\:\*field: **HamishW** Add description.
 
       :returns: |class_-function-returns|
 
@@ -888,6 +877,22 @@ Classes
       :param ReturnType (\*classMethod)(Args...): **HamishW** Add description.
       :param Policies...: |policies-argument|
       :returns: |class_-function-returns|
+
+   .. cpp:function:: const class_& class_property(const char* fieldName, FieldType *field) const
+
+      .. code-block:: cpp
+
+         //prototype
+         template<typename FieldType>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType *field) const
+
+      **HamishW** Add description.
+
+      :param const char* fieldName: **HamishW** Add description.
+      :param FieldType ClassType\:\:\*field: **HamishW** Add description.
+
+      :returns: |class_-function-returns|
+
 
 
 

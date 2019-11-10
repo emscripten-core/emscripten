@@ -75,7 +75,7 @@ a license to everyone to use it as detailed in LICENSE.)
 * Anthony J. Thibault <ajt@hyperlogic.org>
 * John Allwine <jallwine86@gmail.com>
 * Martin Gerhardy <martin.gerhardy@gmail.com>
-* James Gregory <jgregory@zynga.com> (copyright owned by Zynga, Inc)
+* James Gregory <jgregory@zynga.com> (copyright owned by Zynga, Inc.)
 * Dan Gohman <sunfish@google.com> (copyright owned by Google, Inc.)
 * Jeff Gilbert <jgilbert@mozilla.com> (copyright owned by Mozilla Foundation)
 * Frits Talbot <frits@metapathy.com>
@@ -87,7 +87,7 @@ a license to everyone to use it as detailed in LICENSE.)
 * Manfred Manik Nerurkar <nerurkar*at*made-apps.biz> (copyright owned by MADE, GmbH)
 * Joseph Gentle <me@josephg.com>
 * Douglas T. Crosher <dtc-moz@scieneer.com> (copyright owned by Mozilla Foundation)
-* Douglas T. Crosher <info@jsstats.com> (copyright owned by Scieneer Pty Ltd)
+* Douglas T. Crosher <info@jsstats.com> (copyright owned by Scieneer Pty Ltd.)
 * Soeren Balko <soeren.balko@gmail.com>
 * Ryan Kelly (ryan@rfk.id.au)
 * Michael Lelli <toadking@toadking.com>
@@ -209,4 +209,159 @@ a license to everyone to use it as detailed in LICENSE.)
 * Louis Lagrange <lagrange.louis@gmail.com>
 * Ying-Ruei Liang <thumbd03803@gmail.com>
 * Stuart Geipel <lapimlu@gmail.com>
-
+* Yeonjun Lim <yjroot@gmail.com>
+* Andrew Karpushin <reven86@gmail.com>
+* Felix Zimmermann <fzimmermann89@gmail.com>
+* Sven-Hendrik Haase <svenstaro@gmail.com>
+* Simon Sandström <simon@nikanor.nu>
+* Khaled Sami <k.sami.mohammed@gmail.com>
+* Omar El-Mohandes <omar.elmohandes90@gmail.com>
+* Florian Rival <florian.rival@gmail.com>
+* Mark Achée <mark@achee.com>
+* Piotr Paczkowski <kontakt@trzeci.eu>
+* Braden MacDonald <braden@bradenmacdonald.com>
+* Kevin Cheung <kevin.cheung@autodesk.com> (copyright owned by Autodesk, Inc.)
+* Josh Peterson <petersonjm1@gmail.com>
+* eska <eska@eska.me>
+* Nate Burr <nate.oo@gmail.com>
+* Paul "TBBle" Hampson <Paul.Hampson@Pobox.com>
+* Andreas Plesch <andreasplesch@gmail.com>
+* Brian Armstrong <brian.armstrong.ece+github@gmail.com>
+* Vincenzo Chianese <vincenz.chianese@icloud.com>
+* Noam T.Cohen <noam@ecb.co.il>
+* Nick Shin <nick.shin@gmail.com>
+* Gregg Tavares <github@greggman.com>
+* Tanner Rogalsky <tanner@tannerrogalsky.com>
+* Richard Cook <rcook@tableau.com> (copyright owned by Tableau Software, Inc.)
+* Arnab Choudhury <achoudhury@tableau.com> (copyright owned by Tableau Software, Inc.)
+* Charles Vaughn <cvaughn@tableau.com> (copyright owned by Tableau Software, Inc.)
+* Pierre Krieger <pierre.krieger1708@gmail.com>
+* Jakob Stoklund Olesen <stoklund@2pi.dk>
+* Jérémy Anger <angerj.dev@gmail.com>
+* Derek Schuff <dschuff@chromium.org> (copyright owned by Google, Inc.)
+* Ashley Sommer <flubba86@gmail.com>
+* Dave Fletcher <graveyhead@gmail.com>
+* Lars-Magnus Skog <ralphtheninja@riseup.net>
+* Pieter Vantorre <pietervantorre@gmail.com>
+* Maher Sallam <maher@sallam.me>
+* Andrey Burov <burik666@gmail.com>
+* Holland Schutte <hgschutte1@gmail.com>
+* Kerby Geffrard <kerby.geffrard@gmail.com>
+* cynecx <me@cynecx.net>
+* Chris Gibson <cgibson@mrvoxel.com>
+* Harald Reingruber <code*at*h-reingruber.at>
+* Aiden Koss <madd0131@umn.edu>
+* Dustin VanLerberghe <good_ol_dv@hotmail.com>
+* Philip Bielby <pmb45-github@srcf.ucam.org> (copyright owned by Jagex Ltd.)
+* Régis Fénéon <regis.feneon@gmail.com>
+* Dominic Chen <d.c.ddcc@gmail.com> (copyright owned by Google, Inc.)
+* Junji Hashimoto <junji.hashimoto@gmail.com>
+* Heejin Ahn <aheejin@gmail.com> (copyright owned by Google, Inc.)
+* Andras Kucsma <andras.kucsma@gmail.com>
+* Mateusz Borycki <mateuszborycki@gmail.com>
+* Franklin Ta <fta2012@gmail.com>
+* Jacob Gravelle <jgravelle@google.com> (copyright owned by Google, Inc.)
+* Kagami Sascha Rosylight <saschanaz@outlook.com>
+* Benny Jacobs <benny@gmx.it>
+* Ray Brown <code@liquibits.com>
+* Christopher Serr <christopher.serr@gmail.com>
+* Aaron Ruß <aaron.russ@dfki.de> (copyright owned by DFKI GmbH)
+* Vilibald Wanča <vilibald@wvi.cz>
+* Alex Hixon <alex@alexhixon.com>
+* Vladimir Davidovich <thy.ringo@gmail.com>
+* Yuriy Levchenko <irov13@mail.ru>
+* Dmitry Tolmachov <dmitolm@gmail.com>
+* Dylan McKay <me@dylanmckay.io>
+* Christophe Gragnic <cgragnic@netc.fr>
+* Murphy McCauley <murphy.mccauley@gmail.com>
+* Anatoly Trosinenko <anatoly.trosinenko@gmail.com>
+* Brad Grantham <grantham@plunk.org>
+* Sam Clegg <sbc@chromium.org> (copyright owned by Google, Inc.)
+* Joshua Lind <joshualind007@hotmail.com>
+* Hiroaki GOTO as "GORRY" <gorry@hauN.org>
+* Mikhail Kremnyov <mkremnyov@gmail.com> (copyright owned by XCDS International)
+* Tasuku SUENAGA a.k.a. gunyarakun <tasuku-s-github@titech.ac>
+* Evan Wallace <evan.exe@gmail.com>
+* Henning Pohl <henning@still-hidden.de>
+* Tim Neumann <mail@timnn.me>
+* Ondrej Stava <ondrej.stava@gmail.com> (copyright owned by Google, Inc.)
+* Jakub Jirutka <jakub@jirutka.cz>
+* Loo Rong Jie <loorongjie@gmail.com>
+* Jean-François Geyelin <jfgeyelin@gmail.com>
+* Matthew Collins <thethinkofdeath@gmail.com>
+* Satoshi N. M <snmatsutake@yahoo.co.jp>
+* Ryan Speets <ryan@speets.ca>
+* Fumiya Chiba <fumiya.chiba@nifty.com>
+* Ryan C. Gordon <icculus@icculus.org>
+* Inseok Lee <dlunch@gmail.com>
+* Yair Levinson (copyright owned by Autodesk, Inc.)
+* Matjaž Drolc <mdrolc@gmail.com>
+* James Swift <james@3dengineer.com> (copyright owned by PSPDFKit GmbH)
+* Ryan Lester <ryan@cyph.com> (copyright owned by Cyph, Inc.)
+* Nikolay Zapolnov <zapolnov@gmail.com>
+* Nazar Mokrynskyi <nazar@mokrynskyi.com>
+* Yury Delendik <ydelendik@mozilla.com> (copyright owned by Mozilla Foundation)
+* Kenneth Perry <thothonegan@gmail.com>
+* Jim Mussared <jim.mussared@gmail.com>
+* Dirk Vanden Boer <dirk.vdb@gmail.com>
+* Mitchell Foley <mitchfoley@google.com> (copyright owned by Google, Inc.)
+* Oleksandr Chekhovskyi <oleksandr.chekhovskyi@gmail.com>
+* Michael Siebert <michael.siebert2k@gmail.com>
+* Jonathan Hale <squareys@googlemail.com>
+* Etienne Brateau <etienne.brateau@gmail.com>
+* Zhiming Wang <zmwangx@gmail.com>
+* Jameson Ernst <jameson@jpernst.com>
+* Yoan Lecoq <yoanlecoq.io@gmail.com>
+* Jiajie Hu <jiajie.hu@intel.com> (copyright owned by Intel Corporation)
+* Kamil Klimek <naresh@tlen.pl>
+* José Carlos Pujol <josecpujol(at)gmail.com>
+* Dannii Willis <curiousdannii@gmail.com>
+* Erik Dubbelboer <erik@dubbelboer.com>
+* Sergey Tsatsulin <tsatsulin@gmail.com>
+* varkor <github@varkor.com>
+* Stuart Knightley <website@stuartk.com>
+* Amadeus Guo<gliheng@foxmail.com>
+* Nathan Froyd <froydnj@gmail.com> (copyright owned by Mozilla Foundation)
+* Daniel Wirtz <dcode@dcode.io>
+* Kibeom Kim <kk1674@nyu.edu>
+* Marcel Klammer <m.klammer@tastenkunst.com>
+* Axel Forsman <axelsfor@gmail.com>
+* Ebrahim Byagowi <ebrahim@gnu.org>
+* Thorsten Möller <thorsten.moeller@sbi.ch>
+* Michael Droettboom <mdroettboom@mozilla.com>
+* Nicolas Bouquet <hgy01@hieroglyphe.net>
+* Miguel Saldivar <miguel.saldivar22@hotmail.com>
+* Gert Van Hoey <gert.vanhoey@gmail.com>
+* Valtteri Heikkilä <rnd@nic.fi>
+* Daniel McNab <daniel.mcnab6+emcc(at)gmail.com>
+* Tyler Limkemann <tslimkemann42 gmail.com>
+* Ben Smith <binji@google.com> (copyright owned by Google, Inc.)
+* Sylvain Beucler <beuc@beuc.net>
+* Patrik Weiskircher <patrik@weiskircher.name>
+* Tobias Widlund <widlundtobias(at)gmail.com>
+* Rob Fors <mail@robfors.com>
+* Mike Frysinger <vapier@chromium.org> (copyright owned by Google, Inc.)
+* Sébasiten Crozet <developer@crozet.re>
+* Andrey Nagikh <andrey@nagih.ru>
+* Dzmitry Malyshau <dmalyshau@mozilla.com> (copyright owned by Mozilla Foundation)
+* Bjorn Swenson <tie.372@gmail.com>
+* Ryhor Spivak <grisha@rusteddreams.net>
+* Jan Schär <jscissr@gmail.com>
+* Ryhor Spivak <grisha@rusteddreams.net>
+* Alexander Bich <quyse0@gmail.com>
+* Ashleigh Thomas <ashleighbcthomas@gmail.com>
+* Veniamin Petrenko <bjpbjpbjp10@gmail.com>
+* Ian Henderson <ian@ianhenderson.org>
+* Siim Kallas <siimkallas@gmail.com>
+* Carl Woffenden <cwoffenden@gmail.com> (copyright owned by Numfum GmbH)
+* Patrick Berger <patrick.berger@xmail.net> (copyright owned by Compusoft Group)
+* Alexander Frank Lehmann <alexander.frank.lehmann@compusoftgroup.com> (copyright owned by Compusoft Group)
+* Tommy Nguyen <tn0502@gmail.com>
+* Thomas Schander <info@thomasschander.com> (copyright owned by Enscape GmbH)
+* Benjamin S. Rodgers <acdimalev@gmail.com>
+* Paul Shapiro <paul@mymonero.com>
+* Elmo Todurov <elmo.todurov@eesti.ee>
+* Zoltán Žarkov <zeko@freecivweb.org>
+* Roman Yurchak <rth.yurchak@pm.me>
+* Hampton Maxwell <me@hamptonmaxwell.com>
+* Matt Kane <m@mk.gg>

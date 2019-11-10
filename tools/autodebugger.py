@@ -1,3 +1,8 @@
+# Copyright 2011 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 '''
 Processes an LLVM assembly (.ll) file, adding debugging information.
 
@@ -8,19 +13,44 @@ Warning: You probably want to compile with SKIP_STACK_IN_SMALL=0! Otherwise
          there may be weird errors.
 '''
 
+from __future__ import print_function
 import os, sys, re
 
-ALLOW_POINTERS = False
+ALLOW_POINTERS = True
 ALLOW_MISC = True
 MEMCPY = False
 MEMCPY2 = False
-NO_DLMALLOC = True
+NO_DLMALLOC = False
+JS_LIB_PRINTING = True
 
 POSTAMBLE = '''
 @.emscripten.autodebug.str = private constant [10 x i8] c"AD:%d,%d\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.f = private constant [11 x i8] c"AD:%d,%lf\\0A\\00", align 1 ; [#uses=1]
 @.emscripten.autodebug.str.64 = private constant [13 x i8] c"AD:%d,%d,%d\\0A\\00", align 1 ; [#uses=1]
+'''
 
+if JS_LIB_PRINTING:
+  POSTAMBLE += '''
+; [#uses=1]
+declare void @emscripten_autodebug_i64(i32 %line, i64 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_i32(i32 %line, i32 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_i16(i32 %line, i16 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_i8(i32 %line, i8 %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_float(i32 %line, float %value)
+
+; [#uses=1]
+declare void @emscripten_autodebug_double(i32 %line, double %value)
+'''
+else:
+  POSTAMBLE += '''
 ; [#uses=1]
 define void @emscripten_autodebug_i64(i32 %line, i64 %value) {
 entry:
@@ -93,7 +123,7 @@ f = open(filename, 'r')
 data = f.read()
 f.close()
 
-if 'declare i32 @printf(' not in data and 'define internal i32 @printf(' not in data:
+if not re.search('(declare.*@printf\(|define.*@printf\()', data):
   POSTAMBLE += '''
 ; [#uses=1]
 declare i32 @printf(i8*, ...)
@@ -173,7 +203,8 @@ for i in range(len(lines)):
       if in_func:
         added_entry = False
       if 'printf' in lines[i] or '__fwritex' in lines[i] or '__towrite' in lines[i] or 'pop_arg391' in lines[i] or 'fmt_u' in lines[i] or 'pad(' in lines[i] or 'stdout_write' in lines[i] or 'stdio_write' in lines[i] or 'syscall' in lines[i]:
-        in_func = False # do not add logging in musl printing code, which would infinitely recurse
+        if not JS_LIB_PRINTING:
+          in_func = False # do not add logging in musl printing code, which would infinitely recurse
     elif lines[i].startswith('}'):
       in_func = False
     elif in_func and not added_entry and ' = alloca' not in lines[i] and lines[i].startswith('  '):
@@ -220,7 +251,7 @@ for i in range(len(lines)):
                         '\n  call void @emscripten_autodebug_i8(i32 %d, i8 %%adtemp%d)' % (index, index)
             lines_added += 3
             continue
-      m = re.match('[^ ] .*; preds = ', lines[i])
+      m = re.match('[^ ].*; preds = ', lines[i])
       if m:
         # basic block
         if len(lines) > i+1 and 'phi' not in lines[i+1] and 'landingpad' not in lines[i+1]:
@@ -229,7 +260,7 @@ for i in range(len(lines)):
           continue
 
   finally:
-    if len(pre) > 0:
+    if len(pre):
       lines[i] = pre + '\n' + lines[i]
       lines_added += 1
 
@@ -239,5 +270,5 @@ meta_start = ll.find('\n!')
 f.write(ll[:meta_start] + '\n' + POSTAMBLE + '\n' + ll[meta_start:])
 f.close()
 
-print 'Success.'
+print('Success.')
 

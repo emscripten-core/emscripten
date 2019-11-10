@@ -1,3 +1,7 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
 var MAGIC = 0;
 Math.random = function() {
@@ -10,15 +14,16 @@ Date.now = function() {
 };
 if (typeof performance === 'object') performance.now = Date.now;
 
+if (!Module) Module = {};
 Module['thisProgram'] = 'thisProgram'; // for consistency between different builds than between runs of the same build
 
 function hashMemory(id) {
   var ret = 0;
-  var len = Math.max(DYNAMICTOP, STATICTOP);
+  var len = Math.max(HEAP32[DYNAMICTOP_PTR>>2], STATICTOP);
   for (var i = 0; i < len; i++) {
     ret = (ret*17 + HEAPU8[i])|0;
   }
-  printErr(id + ':' + ret);
+  return id + ':' + ret;
 }
 
 function hashString(s) {

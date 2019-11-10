@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <sys/types.h>
 #include <stdio.h>
@@ -33,12 +38,10 @@ void BusySleep(double msecs)
 
 int main()
 {
-  int result;
   if (!emscripten_has_threading_support())
   {
 #ifdef REPORT_RESULT
-    result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 #endif
     printf("Skipped: Threading is not supported.\n");
     return 0;
@@ -74,9 +77,8 @@ int main()
   // Finally test that the thread is not doing any work and it is dead.
   assert(sharedVar == 0);
   assert(emscripten_atomic_load_u32((void*)&sharedVar) == 0);
-  EM_ASM_INT( { Module['print']('Main: Done. Successfully killed thread. sharedVar: '+$0+'.'); }, sharedVar);
+  EM_ASM(out('Main: Done. Successfully killed thread. sharedVar: '+$0+'.'), sharedVar);
 #ifdef REPORT_RESULT
-  result = sharedVar;
-  REPORT_RESULT();
+  REPORT_RESULT(sharedVar);
 #endif
 }

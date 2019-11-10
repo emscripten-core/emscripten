@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <assert.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -5,12 +12,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef _WIN32
+#include <winsock2.h>
+typedef int socklen_t;
+#define close closesocket
+#pragma comment(lib, "Ws2_32.lib")
+#else
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/ioctl.h>
-#include <sys/types.h>
 #include <sys/socket.h>
+#endif
+#include <sys/types.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
 #endif
@@ -92,12 +106,12 @@ void main_loop() {
     int fd = server.fd;
 #endif
   if (client.state == MSG_READ) {
-    socklen_t addrlen;
 
     if (!FD_ISSET(fd, &fdr)) {
       return;
     }
 
+    socklen_t addrlen = sizeof(client.addr);
     res = do_msg_read(fd, &client.msg, client.read, 0, (struct sockaddr *)&client.addr, &addrlen);
     if (res == -1) {
       return;
@@ -154,6 +168,16 @@ void async_main_loop(int fd, void* userData) {
 }
 
 int main() {
+
+#ifdef _WIN32
+  WSADATA wsaData = {};
+  int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
+  if (result) {
+    printf("WSAStartup failed!\n");
+    exit(1);
+  }
+#endif
+
   struct sockaddr_in addr;
   int res;
 
@@ -173,7 +197,12 @@ int main() {
     perror("cannot create socket");
     exit(EXIT_FAILURE);
   }
+#ifdef _WIN32
+  unsigned long nonblocking = 1;
+  ioctlsocket(server.fd, FIONBIO, &nonblocking);
+#else
   fcntl(server.fd, F_SETFL, O_NONBLOCK);
+#endif
 
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;

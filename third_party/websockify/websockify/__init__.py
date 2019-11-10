@@ -1,2 +1,2 @@
-from websocket import *
-from websocketproxy import *
+from websockify.websocket import *
+from websockify.websocketproxy import *

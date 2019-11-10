@@ -1,4 +1,15 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #pragma once
+
+#if __cplusplus < 201103L
+#error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
+#else
 
 #include <stddef.h>
 #include <assert.h>
@@ -20,7 +31,8 @@ namespace emscripten {
     namespace internal {
         typedef long GenericEnumValue;
 
-        typedef void (*GenericFunction)();
+        typedef void* GenericFunction;
+        typedef void (*VoidFunctionPtr)(void);
 
         // Implemented in JavaScript.  Don't call these directly.
         extern "C" {
@@ -174,6 +186,16 @@ namespace emscripten {
                 GenericFunction invoker,
                 GenericFunction method);
 
+            void _embind_register_class_class_property(
+                TYPEID classType,
+                const char* fieldName,
+                TYPEID fieldType,
+                const void* fieldContext,
+                const char* getterSignature,
+                GenericFunction getter,
+                const char* setterSignature,
+                GenericFunction setter);
+
             EM_VAL _embind_create_inheriting_constructor(
                 const char* constructorName,
                 TYPEID wrapperType,
@@ -207,7 +229,7 @@ namespace emscripten {
             void _embind_register_constant(
                 const char* name,
                 TYPEID constantType,
-                uintptr_t value);
+                double value);
         }
     }
 }
@@ -522,6 +544,20 @@ namespace emscripten {
             }
         };
 
+        template<typename FieldType>
+        struct GlobalAccess {
+            typedef internal::BindingType<FieldType> MemberBinding;
+            typedef typename MemberBinding::WireType WireType;
+
+            static WireType get(FieldType* context) {
+                return MemberBinding::toWireType(*context);
+            }
+
+            static void set(FieldType* context, WireType value) {
+                *context = MemberBinding::fromWireType(value);
+            }
+        };
+
         // TODO: This could do a reinterpret-cast if sizeof(T) === sizeof(void*)
         template<typename T>
         inline T* getContext(const T& t) {
@@ -776,7 +812,33 @@ namespace emscripten {
                 getContext(field));
             return *this;
         }
-    
+
+        template<typename InstanceType, typename ElementType, int N>
+        value_object& field(const char* fieldName, ElementType (InstanceType::*field)[N]) {
+            using namespace internal;
+
+            typedef std::array<ElementType, N> FieldType;
+            static_assert(sizeof(FieldType) == sizeof(ElementType[N]));
+
+            auto getter = &MemberAccess<InstanceType, FieldType>
+                ::template getWire<ClassType>;
+            auto setter = &MemberAccess<InstanceType, FieldType>
+                ::template setWire<ClassType>;
+
+            _embind_register_value_object_field(
+                TypeID<ClassType>::get(),
+                fieldName,
+                TypeID<FieldType>::get(),
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
+                getContext(field),
+                TypeID<FieldType>::get(),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter),
+                getContext(field));
+            return *this;
+        }
+
         template<typename Getter, typename Setter>
         value_object& field(
             const char* fieldName,
@@ -958,12 +1020,12 @@ namespace emscripten {
             }
 
             template<typename ClassType>
-            static GenericFunction getUpcaster() {
+            static VoidFunctionPtr getUpcaster() {
                 return nullptr;
             }
 
             template<typename ClassType>
-            static GenericFunction getDowncaster() {
+            static VoidFunctionPtr getDowncaster() {
                 return nullptr;
             }
         };
@@ -1066,7 +1128,7 @@ namespace emscripten {
             BaseSpecifier::template verify<ClassType>();
 
             auto _getActualType = &getActualType<ClassType>;
-            auto upcast = BaseSpecifier::template getUpcaster<ClassType>();
+            auto upcast   = BaseSpecifier::template getUpcaster<ClassType>();
             auto downcast = BaseSpecifier::template getDowncaster<ClassType>();
             auto destructor = &raw_destructor<ClassType>;
 
@@ -1357,8 +1419,43 @@ namespace emscripten {
                 args.getCount(),
                 args.getTypes(),
                 getSignature(invoke),
-                reinterpret_cast<internal::GenericFunction>(invoke),
+                reinterpret_cast<GenericFunction>(invoke),
                 reinterpret_cast<GenericFunction>(classMethod));
+            return *this;
+        }
+
+        template<typename FieldType>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& class_property(const char* name, const FieldType* field) const {
+            using namespace internal;
+
+            auto getter = &GlobalAccess<FieldType>::get;
+            _embind_register_class_class_property(
+                TypeID<ClassType>::get(),
+                name,
+                TypeID<FieldType>::get(),
+                field,
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
+                0,
+                0);
+            return *this;
+        }
+
+        template<typename FieldType>
+        EMSCRIPTEN_ALWAYS_INLINE const class_& class_property(const char* name, FieldType* field) const {
+            using namespace internal;
+
+            auto getter = &GlobalAccess<FieldType>::get;
+            auto setter = &GlobalAccess<FieldType>::set;
+            _embind_register_class_class_property(
+                TypeID<ClassType>::get(),
+                name,
+                TypeID<FieldType>::get(),
+                field,
+                getSignature(getter),
+                reinterpret_cast<GenericFunction>(getter),
+                getSignature(setter),
+                reinterpret_cast<GenericFunction>(setter));
             return *this;
         }
     };
@@ -1434,6 +1531,17 @@ namespace emscripten {
             ) {
                 m[k] = v;
             }
+
+            static std::vector<typename MapType::key_type> keys(
+                const MapType& m
+            ) {
+              std::vector<typename MapType::key_type> keys;
+              keys.reserve(m.size());
+              for (const auto& pair : m) {
+                keys.push_back(pair.first);
+              }
+              return keys;
+            }
         };
     }
 
@@ -1446,6 +1554,7 @@ namespace emscripten {
             .function("size", &MapType::size)
             .function("get", internal::MapAccess<MapType>::get)
             .function("set", internal::MapAccess<MapType>::set)
+            .function("keys", internal::MapAccess<MapType>::keys)
             ;
     }
 
@@ -1488,8 +1597,8 @@ namespace emscripten {
 
     namespace internal {
         template<typename T>
-        uintptr_t asGenericValue(T t) {
-            return static_cast<uintptr_t>(t);
+        double asGenericValue(T t) {
+            return static_cast<double>(t);
         }
 
         template<typename T>
@@ -1505,7 +1614,7 @@ namespace emscripten {
         _embind_register_constant(
             name,
             TypeID<const ConstantType&>::get(),
-            asGenericValue(BT::toWireType(v)));
+            static_cast<double>(asGenericValue(BT::toWireType(v))));
     }
 }
 
@@ -1514,3 +1623,5 @@ namespace emscripten {
         EmscriptenBindingInitializer_##name();                          \
     } EmscriptenBindingInitializer_##name##_instance;                   \
     EmscriptenBindingInitializer_##name::EmscriptenBindingInitializer_##name()
+
+#endif // ~C++11 version check

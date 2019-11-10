@@ -1,3 +1,10 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL/SDL.h>
 #include <emscripten.h>
@@ -35,7 +42,7 @@ int SDLCALL EventHandler(void *userdata, SDL_Event *event) {
             printf("b scancode\n"); result *= 23; break;
           }
           printf("unknown key: sym %d scancode %d\n", event->key.keysym.sym, event->key.keysym.scancode);
-          REPORT_RESULT();
+          REPORT_RESULT(result);
           emscripten_run_script("throw 'done'"); // comment this out to leave event handling active. Use the following to log DOM keys:
                                                  // addEventListener('keyup', function(event) { console.log(event->keyCode) }, true)
         }
@@ -66,10 +73,10 @@ int main(int argc, char **argv) {
 
   emscripten_set_main_loop(one, 0, 0);
 
-  emscripten_run_script("keydown(1250);keydown(38);keyup(38);keyup(1250);"); // alt, up
-  emscripten_run_script("keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248);"); // ctrl, shift, down
-  emscripten_run_script("keydown(37);keyup(37);"); // left
-  emscripten_run_script("keydown(39);keyup(39);"); // right
+  EM_ASM({keydown(1250);keydown(38);keyup(38);keyup(1250);}); // alt, up
+  EM_ASM({keydown(1248);keydown(1249);keydown(40);keyup(40);keyup(1249);keyup(1248);}); // ctrl, shift, down
+  EM_ASM({keydown(37);keyup(37);}); // left
+  EM_ASM({keydown(39);keyup(39);}); // right
 
 #ifdef TEST_SLEEP
   printf("sleep...\n");
@@ -78,9 +85,9 @@ int main(int argc, char **argv) {
   printf("rise!\n");
 #endif
 
-  emscripten_run_script("keydown(65);keyup(65);"); // a
-  emscripten_run_script("keydown(66);keyup(66);"); // b
-  emscripten_run_script("keydown(100);keyup(100);"); // trigger the end
+  EM_ASM({keydown(65);keyup(65);}); // a
+  EM_ASM({keydown(66);keyup(66);}); // b
+  EM_ASM({keydown(100);keyup(100);}); // trigger the end
 
   return 0;
 }

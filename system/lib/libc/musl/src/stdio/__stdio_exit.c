@@ -16,8 +16,7 @@ static void close_file(FILE *f)
 void __stdio_exit(void)
 {
 	FILE *f;
-	OFLLOCK();
-	for (f=libc.ofl_head; f; f=f->next) close_file(f);
+	for (f=*__ofl_lock(); f; f=f->next) close_file(f);
 	close_file(__stdin_used);
 	close_file(__stdout_used);
 }

@@ -56,6 +56,8 @@
 
 #include "libm.h"
 
+#if LDBL_MANT_DIG == 53 && LDBL_MAX_EXP == 1024
+#else
 /*
  * Polynomial evaluator:
  *  P[0] x^n  +  P[1] x^(n-1)  +  ...  +  P[n]
@@ -88,3 +90,4 @@ long double __p1evll(long double x, const long double *P, int n)
 
 	return y;
 }
+#endif

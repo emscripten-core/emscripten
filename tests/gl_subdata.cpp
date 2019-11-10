@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 #include <cmath>
@@ -124,7 +129,7 @@ static void gl_init(void) {
     memset(zeroes, 0, sizeof(zeroes));
     glBufferData(GL_ARRAY_BUFFER, elements.size() * sizeof(float), zeroes, GL_STATIC_DRAW);
     for (int x = 0; x < nbNodes; x++) {
-      glBufferSubData(GL_ARRAY_BUFFER, x * sizeof(float), elements.size() * sizeof(float), &elements[x]);
+      glBufferSubData(GL_ARRAY_BUFFER, x * sizeof(float), sizeof(float), &elements[x]);
     }
     /* Get the locations of the uniforms so we can access them */
     nodeSamplerLocation      = glGetUniformLocation(program, "nodeInfo");

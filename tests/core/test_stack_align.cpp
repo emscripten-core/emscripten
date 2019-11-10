@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 
 #define ALIGN(num_bytes) __attribute__((aligned(num_bytes)))
@@ -9,6 +14,7 @@ struct Aligned {
   char ALIGN(32) a32;
 };
 
+__attribute__((noinline))
 void Test(const void* p, int size) {
   printf("align %d: %d\n", size, reinterpret_cast<size_t>(p) % size);
 }

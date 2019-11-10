@@ -230,6 +230,56 @@ function vars_w_stack(x, y) {
   b = c(7+a);
   STACKTOP = sp;
 }
+function stack_returns_a() {
+  var sp = 0;
+  sp = STACKTOP;
+  STACKTOP = STACKTOP + 16 | 0;
+  if (1) {
+    STACKTOP = sp;
+    return;
+  }
+  a = x+y;
+  b = y*x;
+  a = c(1+a);
+  a = c(2+a);
+  a = c(3+a);
+  a = c(4+a);
+  a = c(5+a);
+  a = c(6+a);
+  b = c(7+a);
+  STACKTOP = sp;
+}
+function stack_returns_b() {
+  var sp = 0;
+  if (1) {
+    return;
+  }
+  a = x+y;
+  b = y*x;
+  a = c(1+a);
+  a = c(2+a);
+  a = c(3+a);
+  a = c(4+a);
+  a = c(5+a);
+  a = c(6+a);
+  b = c(7+a);
+}
+function stack_returns_c() {
+  var sp = 0;
+  if (1) {
+    return 21;
+  }
+  a = x+y;
+  b = y*x;
+  a = c(1+a);
+  a = c(2+a);
+  a = c(3+a);
+  a = c(4+a);
+  a = c(5+a);
+  a = c(6+a);
+  b = c(7+a);
+  return 12;
+}
 function chain() {
   if (x == 1) {
     print(1);

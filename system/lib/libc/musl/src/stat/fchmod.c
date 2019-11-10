@@ -13,5 +13,9 @@ int fchmod(int fd, mode_t mode)
 
 	char buf[15+3*sizeof(int)];
 	__procfdname(buf, fd);
+#ifdef SYS_chmod
 	return syscall(SYS_chmod, buf, mode);
+#else
+	return syscall(SYS_fchmodat, AT_FDCWD, buf, mode);
+#endif
 }

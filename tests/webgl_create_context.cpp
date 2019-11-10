@@ -1,3 +1,8 @@
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
@@ -12,7 +17,7 @@
 #include <string.h>
 #include <assert.h>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 std::vector<std::string> &split(const std::string &s, char delim, std::vector<std::string> &elems) {
     std::stringstream ss(s);
@@ -36,10 +41,9 @@ GLint GetInt(GLenum param)
 }
 
 void final(void*) {
-  #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
-  #endif
+#ifdef REPORT_RESULT
+  REPORT_RESULT(0);
+#endif
 }
 
 EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context;
@@ -77,9 +81,18 @@ int main()
 {
   bool first = true;
   EmscriptenWebGLContextAttributes attrs;
-  for(int depth = 0; depth <= 1; ++depth)
-  for(int stencil = 0; stencil <= 1; ++stencil)
-  for(int antialias = 0; antialias <= 1; ++antialias)
+  int depth = 0;
+  int stencil = 0;
+  int antialias = 0;
+#ifndef NO_DEPTH
+  for(depth = 0; depth <= 1; ++depth)
+#endif
+#ifndef NO_STENCIL
+  for(stencil = 0; stencil <= 1; ++stencil)
+#endif
+#ifndef NO_ANTIALIAS
+  for(antialias = 0; antialias <= 1; ++antialias)
+#endif
   {
     emscripten_webgl_init_context_attributes(&attrs);
     attrs.depth = depth;
@@ -87,18 +100,14 @@ int main()
     attrs.antialias = antialias;
     printf("Requesting depth: %d, stencil: %d, antialias: %d\n", depth, stencil, antialias);
 
-    if (!first)
-    {
-      EM_ASM(var canvas2 = Module.canvas.cloneNode();
-        Module.canvas.parentElement.appendChild(canvas2);
-   //   Module.canvas.parentElement.removeChild(canvas);
-      Module.canvas = canvas2;
-      );
-    }
-    first = false;
+    EM_ASM(
+      var canvas2 = document.createElement('canvas');
+      Module.canvas.parentElement.appendChild(canvas2);
+      canvas2.id = 'customCanvas';
+    );
     
     assert(emscripten_webgl_get_current_context() == 0);
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context(0, &attrs);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
     EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
@@ -112,6 +121,14 @@ int main()
       EM_BOOL supported = emscripten_webgl_enable_extension(context, exts[i].c_str());
       assert(supported);
     }
+
+    int drawingBufferWidth = -1;
+    int drawingBufferHeight = -1;
+    res = emscripten_webgl_get_drawing_buffer_size(context, &drawingBufferWidth, &drawingBufferHeight);
+    assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+    printf("drawingBufferWidth x Height: %dx%d\n", drawingBufferWidth, drawingBufferHeight);
+    assert(drawingBufferWidth == 300);
+    assert(drawingBufferHeight == 150);
 
     // Try with a simple glClear() that we got a context.
     glClearColor(1.f, 0.f, 0.f, 1.f);
@@ -130,7 +147,7 @@ int main()
       GetInt(GL_RED_BITS), GetInt(GL_GREEN_BITS), GetInt(GL_BLUE_BITS), GetInt(GL_ALPHA_BITS),
       numDepthBits, numStencilBits, numSamples);
     
-    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT_V(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
+    if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;
       printf("Applying workaround to ignore Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=982477\n");
@@ -140,10 +157,36 @@ int main()
     assert(!!numSamples == !!antialias);
     printf("\n");
 
+    // Test bug https://github.com/kripken/emscripten/issues/1330:
+    unsigned vb;
+    glGenBuffers(1, &vb);
+    glBindBuffer(GL_ARRAY_BUFFER, vb);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    unsigned vb2;
+    glGenBuffers(1, &vb2);
+    glBindBuffer(GL_ARRAY_BUFFER, vb2);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, 0);
+
+    int vb3;
+    glGetVertexAttribiv(0, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vb3);
+    if (vb != vb3) printf("Index 0: Generated VB: %d, read back VB: %d\n", vb, vb3);
+    assert(vb == vb3);
+
+    int vb4;
+    glGetVertexAttribiv(1, GL_VERTEX_ATTRIB_ARRAY_BUFFER_BINDING, &vb4);
+    if (vb2 != vb4) printf("Index 1: Generated VB: %d, read back VB: %d\n", vb2, vb4);
+    assert(vb2 == vb4);
+
     // Test that deleting the context works.
     res = emscripten_webgl_destroy_context(context);
     assert(res == 0);
     assert(emscripten_webgl_get_current_context() == 0);
+
+    EM_ASM(
+      var canvas2 = document.getElementById('customCanvas');
+      canvas2.parentElement.removeChild(canvas2);
+    );
   }
   
   // result will be reported when mainLoop completes

@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <string.h>
 #include <emscripten.h>
@@ -14,8 +19,7 @@ struct Class {
     printf("waka %d\n", x++);
 
     if (x == 7 || x < 0) {
-      int result = x;
-      REPORT_RESULT();
+      REPORT_RESULT(x);
       emscripten_cancel_main_loop();
     }
   }
@@ -28,11 +32,11 @@ struct Class {
     instance = this;
 
     EM_ASM({
-      var initial = Runtime.stackSave();
-      Module.print('seeing initial stack of ' + initial);
+      var initial = stackSave();
+      out('seeing initial stack of ' + initial);
       setTimeout(function() {
-        var current = Runtime.stackSave();
-        Module.print('seeing later stack of   ' + current);
+        var current = stackSave();
+        out('seeing later stack of   ' + current);
         assert(current === initial);
       }, 0);
     });

@@ -1,16 +1,15 @@
 #include "stdio_impl.h"
+#include "locale_impl.h"
 #include <wchar.h>
 #include <errno.h>
 
-wint_t __fgetwc_unlocked(FILE *f)
+static wint_t __fgetwc_unlocked_internal(FILE *f)
 {
 	mbstate_t st = { 0 };
 	wchar_t wc;
 	int c;
 	unsigned char b;
 	size_t l;
-
-	f->mode |= f->mode+1;
 
 	/* Convert character from buffer if possible */
 	if (f->rpos < f->rend) {
@@ -36,6 +35,16 @@ wint_t __fgetwc_unlocked(FILE *f)
 		if (l == -1) return WEOF;
 	}
 
+	return wc;
+}
+
+wint_t __fgetwc_unlocked(FILE *f)
+{
+	locale_t *ploc = &CURRENT_LOCALE, loc = *ploc;
+	if (f->mode <= 0) fwide(f, 1);
+	*ploc = f->locale;
+	wchar_t wc = __fgetwc_unlocked_internal(f);
+	*ploc = loc;
 	return wc;
 }
 

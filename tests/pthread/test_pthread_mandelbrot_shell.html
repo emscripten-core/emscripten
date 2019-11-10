@@ -15,7 +15,7 @@
       div.emscripten { text-align: center; }      
       div.emscripten_border { border: 1px solid black; background: black;}
       /* the canvas *must not* have any border or padding, or mouse coords will be wrong */
-      canvas.emscripten { border: 0px none; }
+      canvas.emscripten { border: 0px none; background-color: black; }
 
       #emscripten_logo {
         display: inline-block;
@@ -1197,7 +1197,7 @@
 <span id='controls' style="display:none">
   <span><input type="checkbox" id="resize">Resize canvas</span>
   <span><input type="checkbox" id="pointerLock" checked>Lock/hide mouse pointer &nbsp;&nbsp;&nbsp;</span>
-  <span><input type="button" value="Fullscreen" onclick="Module.requestFullScreen(document.getElementById('pointerLock').checked, 
+  <span><input type="button" value="Fullscreen" onclick="Module.requestFullscreen(document.getElementById('pointerLock').checked, 
                                                                             document.getElementById('resize').checked)">
   </span>
 </span>
@@ -1213,7 +1213,7 @@
 
     Updates per frame:<input type="number" id="updates_per_frame" value=50 min=10 max=50000> <br />
     # of threads:<input type="number" id="num_threads" value=4 min=1 max=16> <br />
-    Use SSE: <input type="checkbox" id='use_sse'> <br />
+    Use SSE: <input type="checkbox" id='use_sse' checked> <br />
     Performance: <span id='performance'>-</span><br />
 
     <textarea id="output" rows="8" style='display:none'></textarea>

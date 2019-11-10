@@ -1,4 +1,15 @@
+/*
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #pragma once
+
+#if __cplusplus < 201103L
+#error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
+#else
 
 // A value moving between JavaScript and C++ has three representations:
 // - The original JS value: a String
@@ -53,18 +64,39 @@ namespace emscripten {
         struct LightTypeID {
             static constexpr TYPEID get() {
                 typedef typename Canonicalized<T>::type C;
-                return (has_unbound_type_names || std::is_polymorphic<C>::value)
-                    ? &typeid(C)
-                    : CanonicalizedID<C>::get();
+                if(has_unbound_type_names || std::is_polymorphic<C>::value) {
+#if __has_feature(cxx_rtti)
+                    return &typeid(T);
+#else
+                    static_assert(!has_unbound_type_names,
+                        "Unbound type names are illegal with RTTI disabled. "
+                        "Either add -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 to or remove -fno-rtti "
+                        "from the compiler arguments");
+                    static_assert(!std::is_polymorphic<C>::value,
+                        "Canonicalized<T>::type being polymorphic is illegal with RTTI disabled");
+#endif
+                }
+
+                return CanonicalizedID<C>::get();
             }
         };
 
         template<typename T>
         constexpr TYPEID getLightTypeID(const T& value) {
             typedef typename Canonicalized<T>::type C;
-            return (has_unbound_type_names || std::is_polymorphic<C>::value)
-                ? &typeid(value)
-                : LightTypeID<T>::get();
+            if(has_unbound_type_names || std::is_polymorphic<C>::value) {
+#if __has_feature(cxx_rtti)
+                return &typeid(value);
+#else
+                static_assert(!has_unbound_type_names,
+                    "Unbound type names are illegal with RTTI disabled. "
+                    "Either add -DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0 to or remove -fno-rtti "
+                    "from the compiler arguments");
+                static_assert(!std::is_polymorphic<C>::value,
+                    "Canonicalized<T>::type being polymorphic is illegal with RTTI disabled");
+#endif
+            }
+            return LightTypeID<T>::get();
         }
 
         template<typename T>
@@ -375,6 +407,14 @@ namespace emscripten {
         auto toWireType(T&& v) -> typename BindingType<T>::WireType {
             return BindingType<T>::toWireType(std::forward<T>(v));
         }
+
+        template<typename T>
+        constexpr bool typeSupportsMemoryView() {
+            return (std::is_floating_point<T>::value &&
+                        (sizeof(T) == 4 || sizeof(T) == 8)) ||
+                    (std::is_integral<T>::value &&
+                        (sizeof(T) == 1 || sizeof(T) == 2 || sizeof(T) == 4));
+        }
     }
 
     template<typename ElementType>
@@ -395,6 +435,8 @@ namespace emscripten {
     // as it merely aliases the C heap.
     template<typename T>
     inline memory_view<T> typed_memory_view(size_t size, const T* data) {
+        static_assert(internal::typeSupportsMemoryView<T>(),
+            "type of typed_memory_view is invalid");
         return memory_view<T>(size, data);
     }
 
@@ -415,3 +457,5 @@ namespace emscripten {
         };
     }
 }
+
+#endif // ~C++11 version check

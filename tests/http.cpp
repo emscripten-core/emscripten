@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //
 //  http.cpp
 //  Player Javascript
@@ -201,7 +206,7 @@ void http::onLoaded(const char* file) {
 			char* data = new char[size];
 			fread(data,size,1,f);
 			_content = data;
-			delete data;
+			delete[] data;
 			fclose(f);
 		} else {
 			_content = file;
@@ -233,8 +238,7 @@ void wait_https() {
 	if (num_request == 0) {
 		printf("End of all download ... %fs\n",(emscripten_get_now() - time_elapsed) / 1000.f);
 		emscripten_cancel_main_loop();
-    int result = 0;
-    REPORT_RESULT();
+    REPORT_RESULT(0);
 	}
 }
 

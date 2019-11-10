@@ -1,3 +1,10 @@
+/*
+ * Copyright 2014 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
@@ -11,7 +18,7 @@ void report_result(int result)
     printf("Test failed!\n");
   }
 #ifdef REPORT_RESULT
-  REPORT_RESULT();
+  REPORT_RESULT(result);
 #endif
 }
 
@@ -69,12 +76,9 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
 
   if (e->screenX != 0 && e->screenY != 0 && e->clientX != 0 && e->clientY != 0 && e->canvasX != 0 && e->canvasY != 0 && e->targetX != 0 && e->targetY != 0)
   {
-    if (e->buttons != 0)
-    {
-      if (eventType == EMSCRIPTEN_EVENT_CLICK) gotClick = 1;
-      if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN) gotMouseDown = 1;
-      if (eventType == EMSCRIPTEN_EVENT_DBLCLICK) gotDblClick = 1;
-    }
+    if (eventType == EMSCRIPTEN_EVENT_CLICK) gotClick = 1;
+    if (eventType == EMSCRIPTEN_EVENT_MOUSEDOWN && e->buttons != 0) gotMouseDown = 1;
+    if (eventType == EMSCRIPTEN_EVENT_DBLCLICK) gotDblClick = 1;
     if (eventType == EMSCRIPTEN_EVENT_MOUSEUP) gotMouseUp = 1;
     if (eventType == EMSCRIPTEN_EVENT_MOUSEMOVE && (e->movementX != 0 || e->movementY != 0)) gotMouseMove = 1;
   }
@@ -107,6 +111,10 @@ EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userD
 
 int main()
 {
+  // Make the canvas area stand out from the background.
+  emscripten_set_canvas_size(400, 300);
+  EM_ASM(Module['canvas'].style.backgroundColor = 'black';);
+
   EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_click_callback);
   ret = emscripten_set_mousedown_callback(0, 0, 1, mouse_callback);
@@ -129,8 +137,21 @@ int main()
       for(var d in data) event[d] = data[d];
       window.dispatchEvent(event);
     }
-    sendEvent('click', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
+    sendEvent('click', { screenX: 123, screenY: 456, clientX: 123, clientY: 456, button: 0, buttons: 1 });
   );
+
+  // get_mouse_status should contain the results of the last event
+  EmscriptenMouseEvent mouseEvent;
+  ret = emscripten_get_mouse_status(&mouseEvent);
+  TEST_RESULT(emscripten_get_mouse_status);
+
+  if (mouseEvent.screenX != 123 || mouseEvent.screenY != 456
+    || mouseEvent.clientX != 123 || mouseEvent.clientY != 456)
+  {
+    printf("ERROR! Incorrect mouse status\n");
+    report_result(1);
+  }
+
   // Test that unregistering a callback works. Clicks should no longer be received.
   ret = emscripten_set_click_callback(0, 0, 1, 0);
   TEST_RESULT(emscripten_set_click_callback);
@@ -142,10 +163,10 @@ int main()
       for(var d in data) event[d] = data[d];
       window.dispatchEvent(event);
     }
-    sendEvent('click', { screenX: -500000, screenY: -500000, clientX: -500000, clientY: -500000, button: 0, buttons: 1 }); // Send a dummy event that should not be received.
+    sendEvent('click', { screenX: -500000, screenY: -500000, clientX: -500000, clientY: -500000, button: 0, buttons: 0 }); // Send a dummy event that should not be received.
     sendEvent('mousedown', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
     sendEvent('mouseup', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0 });
-    sendEvent('dblclick', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 1 });
+    sendEvent('dblclick', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0 });
     sendEvent('mousemove', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'movementX': 1, 'movementY': 1 });
     sendEvent('wheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'deltaX': 1, 'deltaY': 1, 'deltaZ': 1, 'deltaMode': 1 });
     sendEvent('mousewheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'wheelDeltaX': 1, 'wheelDeltaY': 1 });

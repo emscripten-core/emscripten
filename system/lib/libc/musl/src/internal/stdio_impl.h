@@ -38,14 +38,16 @@ struct _IO_FILE {
 	short dummy3;
 	signed char mode;
 	signed char lbf;
-	int lock;
-	int waiters;
+	volatile int lock;
+	volatile int waiters;
 	void *cookie;
 	off_t off;
 	char *getln_buf;
 	void *mustbezero_2;
 	unsigned char *shend;
 	off_t shlim, shcnt;
+	FILE *prev_locked, *next_locked;
+	struct __locale_struct *locale;
 };
 
 size_t __stdio_read(FILE *, unsigned char *, size_t);
@@ -74,8 +76,9 @@ int __putc_unlocked(int, FILE *);
 FILE *__fdopen(int, const char *);
 int __fmodeflags(const char *);
 
-#define OFLLOCK() LOCK(libc.ofl_lock)
-#define OFLUNLOCK() UNLOCK(libc.ofl_lock)
+FILE *__ofl_add(FILE *f);
+FILE **__ofl_lock(void);
+void __ofl_unlock(void);
 
 #define feof(f) ((f)->flags & F_EOF)
 #define ferror(f) ((f)->flags & F_ERR)
@@ -83,7 +86,8 @@ int __fmodeflags(const char *);
 #define getc_unlocked(f) \
 	( ((f)->rpos < (f)->rend) ? *(f)->rpos++ : __uflow((f)) )
 
-#define putc_unlocked(c, f) ( ((c)!=(f)->lbf && (f)->wpos<(f)->wend) \
+#define putc_unlocked(c, f) \
+	( ((unsigned char)(c)!=(f)->lbf && (f)->wpos<(f)->wend) \
 	? *(f)->wpos++ = (c) : __overflow((f),(c)) )
 
 /* Caller-allocated FILE * operations */

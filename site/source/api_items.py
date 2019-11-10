@@ -1,3 +1,8 @@
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 # Auto-generated file (see get-api_items.py)
 #
 
@@ -86,7 +91,7 @@ def get_mapped_items():
 	mapped_wiki_inline_code['em_str_callback_func']=':c:type:`em_str_callback_func`'
 	mapped_wiki_inline_code['EMSCRIPTEN_EVENT_TOUCHSTART']=':c:macro:`EMSCRIPTEN_EVENT_TOUCHSTART`'
 	mapped_wiki_inline_code['emscripten_set_keypress_callback()']=':c:func:`emscripten_set_keypress_callback`'
-	mapped_wiki_inline_code['EM_ASM_']=':c:macro:`EM_ASM_`'
+	mapped_wiki_inline_code['EM_ASM']=':c:macro:`EM_ASM`'
 	mapped_wiki_inline_code['emscripten_set_orientationchange_callback()']=':c:func:`emscripten_set_orientationchange_callback`'
 	mapped_wiki_inline_code['HEAPF32']=':js:data:`HEAPF32`'
 	mapped_wiki_inline_code['EMSCRIPTEN_EVENT_VISIBILITYCHANGE']=':c:macro:`EMSCRIPTEN_EVENT_VISIBILITYCHANGE`'

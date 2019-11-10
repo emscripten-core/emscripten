@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var LibraryPThreadStub = {
   // ===================================================================================
   // Stub implementation for pthread.h when not compiling with pthreads support enabled.
@@ -27,35 +32,61 @@ var LibraryPThreadStub = {
     // We will never have any queued calls to process, so no-op.
   },
 
+  pthread_barrier_init: function() {},
+  pthread_barrier_wait: function() {},
+  pthread_barrier_destroy: function() {},
   pthread_mutex_init: function() {},
   pthread_mutex_destroy: function() {},
   pthread_mutexattr_init: function() {},
+  pthread_mutexattr_setschedparam: function() {},
+  pthread_mutexattr_setprotocol: function() {},
   pthread_mutexattr_settype: function() {},
   pthread_mutexattr_destroy: function() {},
-  pthread_mutex_lock: function() {},
-  pthread_mutex_unlock: function() {},
-  pthread_mutex_trylock: function() {
+
+  pthread_mutex_lock__asm: true,
+  pthread_mutex_lock__sig: 'ii',
+  pthread_mutex_lock: function(x) {
+    x = x | 0;
     return 0;
   },
+  pthread_mutex_unlock__asm: true,
+  pthread_mutex_unlock__sig: 'ii',
+  pthread_mutex_unlock: function(x) {
+    x = x | 0;
+    return 0;
+  },
+  pthread_mutex_trylock__asm: true,
+  pthread_mutex_trylock__sig: 'ii',
+  pthread_mutex_trylock: function(x) {
+    x = x | 0;
+    return 0;
+  },
+
   pthread_mutexattr_setpshared: function(attr, pshared) {
     // XXX implement if/when getpshared is required
     return 0;
   },
-  pthread_cond_init: function() {},
-  pthread_cond_destroy: function() {},
-  pthread_cond_broadcast: function() {
+
+  pthread_cond_init: function() { return 0; },
+  pthread_cond_destroy: function() { return 0; },
+  pthread_cond_wait: function() { return 0; },
+  pthread_cond_timedwait: function() { return 0; },
+  pthread_cond_signal: function() { return 0; },
+
+  pthread_condattr_init: function() { return 0; },
+  pthread_condattr_destroy: function() { return 0; },
+  pthread_condattr_setclock: function() { return 0; },
+  pthread_condattr_setpshared: function() { return 0; },
+  pthread_condattr_getclock: function() { return 0; },
+  pthread_condattr_getpshared: function() { return 0; },
+
+  pthread_cond_broadcast__asm: true,
+  pthread_cond_broadcast__sig: 'ii',
+  pthread_cond_broadcast: function(x) {
+    x = x | 0;
     return 0;
   },
-  pthread_cond_wait: function() {
-    return 0;
-  },
-  pthread_cond_timedwait: function() {
-    return 0;
-  },
-  pthread_self: function() {
-    //FIXME: assumes only a single thread
-    return 0;
-  },
+
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
     //FIXME: should allocate a pthread_attr_t
@@ -81,10 +112,12 @@ var LibraryPThreadStub = {
     return 0;
   },
 
+  pthread_setcancelstate: function() { return 0; },
+
   pthread_once: function(ptr, func) {
     if (!_pthread_once.seen) _pthread_once.seen = {};
     if (ptr in _pthread_once.seen) return;
-    Runtime.dynCall('v', func);
+    Module['dynCall_v'](func);
     _pthread_once.seen[ptr] = 1;
   },
 
@@ -126,7 +159,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_cleanup_push: function(routine, arg) {
-    __ATEXIT__.push(function() { Runtime.dynCall('vi', routine, [arg]) })
+    __ATEXIT__.push(function() { Module['dynCall_vi'](routine, arg) })
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
@@ -136,21 +169,54 @@ var LibraryPThreadStub = {
     _pthread_cleanup_push.level = __ATEXIT__.length;
   },
 
-  pthread_rwlock_init: function() {
-    return 0; // XXX
-  },
+  _pthread_cleanup_push: 'pthread_cleanup_push',
+  _pthread_cleanup_pop: 'pthread_cleanup_pop',
+
+  pthread_sigmask: function() { return 0; },
+
+  pthread_rwlock_init: function() { return 0; },
+  pthread_rwlock_destroy: function() { return 0; },
+  pthread_rwlock_rdlock: function() { return 0; },
+  pthread_rwlock_tryrdlock: function() { return 0; },
+  pthread_rwlock_timedrdlock: function() { return 0; },
+  pthread_rwlock_wrlock: function() { return 0; },
+  pthread_rwlock_trywrlock: function() { return 0; },
+  pthread_rwlock_timedwrlock: function() { return 0; },
+  pthread_rwlock_unlock: function() { return 0; },
+
+  pthread_rwlockattr_init: function() { return 0; },
+  pthread_rwlockattr_destroy: function() { return 0; },
+  pthread_rwlockattr_setpshared: function() { return 0; },
+  pthread_rwlockattr_getpshared: function() { return 0; },
+
+  pthread_spin_init: function() { return 0; },
+  pthread_spin_destroy: function() { return 0; },
+  pthread_spin_lock: function() { return 0; },
+  pthread_spin_trylock: function() { return 0; },
+  pthread_spin_unlock: function() { return 0; },
 
   pthread_attr_setdetachstate: function() {},
+  pthread_attr_setschedparam: function() {},
+  pthread_attr_setstacksize: function() {},
 
   pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
   },
-  pthread_exit: function() {},
+  pthread_cancel: function() {},
+  pthread_exit__deps: ['exit'],
+  pthread_exit: function(status) {
+    _exit(status);
+  },
 
-  pthread_cond_signal: function() {},
-  pthread_equal: function() {},
+  pthread_equal: function(x, y) { return x == y },
   pthread_join: function() {},
   pthread_detach: function() {},
+
+  sem_init: function() {},
+  sem_post: function() {},
+  sem_wait: function() {},
+  sem_trywait: function() {},
+  sem_destroy: function() {},
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
   usleep: function(useconds) {
@@ -170,7 +236,122 @@ var LibraryPThreadStub = {
       }
     }
     return 0;
-  }
+  },
+
+  nanosleep__deps: ['usleep'],
+  nanosleep: function(rqtp, rmtp) {
+    // int nanosleep(const struct timespec  *rqtp, struct timespec *rmtp);
+    var seconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_sec, 'i32') }}};
+    var nanoseconds = {{{ makeGetValue('rqtp', C_STRUCTS.timespec.tv_nsec, 'i32') }}};
+    if (rmtp !== 0) {
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_sec, '0', 'i32') }}};
+      {{{ makeSetValue('rmtp', C_STRUCTS.timespec.tv_nsec, '0', 'i32') }}};
+    }
+    return _usleep((seconds * 1e6) + (nanoseconds / 1000));
+  },
+
+  llvm_memory_barrier: function(){},
+
+  llvm_atomic_load_add_i32_p0i32: function(ptr, delta) {
+    var ret = {{{ makeGetValue('ptr', '0', 'i32') }}};
+    {{{ makeSetValue('ptr', '0', 'ret+delta', 'i32') }}};
+    return ret;
+  },
+
+  // gnu atomics
+
+  __atomic_is_lock_free: function(size, ptr) {
+    return size <= 4 && (size & (size-1)) == 0 && (ptr&(size-1)) == 0;
+  },
+
+  __atomic_load_8: function(ptr, memmodel) {
+    {{{ makeStructuralReturn([makeGetValue('ptr', 0, 'i32'), makeGetValue('ptr', 4, 'i32')]) }}};
+  },
+
+  __atomic_store_8: function(ptr, vall, valh, memmodel) {
+    {{{ makeSetValue('ptr', 0, 'vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'valh', 'i32') }}};
+  },
+
+  __atomic_exchange_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_compare_exchange_8: function(ptr, expected, desiredl, desiredh, weak, success_memmodel, failure_memmodel) {
+    var pl = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var ph = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    var el = {{{ makeGetValue('expected', 0, 'i32') }}};
+    var eh = {{{ makeGetValue('expected', 4, 'i32') }}};
+    if (pl === el && ph === eh) {
+      {{{ makeSetValue('ptr', 0, 'desiredl', 'i32') }}};
+      {{{ makeSetValue('ptr', 4, 'desiredh', 'i32') }}};
+      return 1;
+    } else {
+      {{{ makeSetValue('expected', 0, 'pl', 'i32') }}};
+      {{{ makeSetValue('expected', 4, 'ph', 'i32') }}};
+      return 0;
+    }
+  },
+
+  __atomic_fetch_add_8__deps: ['i64Add'],
+  __atomic_fetch_add_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, '_i64Add(l, h, vall, valh)', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'getTempRet0()', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_sub_8__deps: ['i64Subtract'],
+  __atomic_fetch_sub_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, '_i64Subtract(l, h, vall, valh)', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'getTempRet0()', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_and_8__deps: ['i64Subtract'],
+  __atomic_fetch_and_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'l&vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'h&valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_or_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'l|vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'h|valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  __atomic_fetch_xor_8: function(ptr, vall, valh, memmodel) {
+    var l = {{{ makeGetValue('ptr', 0, 'i32') }}};
+    var h = {{{ makeGetValue('ptr', 4, 'i32') }}};
+    {{{ makeSetValue('ptr', 0, 'l^vall', 'i32') }}};
+    {{{ makeSetValue('ptr', 4, 'h^valh', 'i32') }}};
+    {{{ makeStructuralReturn(['l', 'h']) }}};
+  },
+
+  emscripten_atomic_add_u32: 'llvm_atomic_load_add_i32_p0i32',
+  emscripten_atomic_load_u64: '__atomic_load_8',
+  emscripten_atomic_store_u64: '__atomic_store_8',
+  emscripten_atomic_cas_u64: '__atomic_compare_exchange_8',
+  emscripten_atomic_exchange_u64: '__atomic_exchange_8',
+  _emscripten_atomic_fetch_and_add_u64: '__atomic_fetch_add_8',
+  _emscripten_atomic_fetch_and_sub_u64: '__atomic_fetch_sub_8',
+  _emscripten_atomic_fetch_and_and_u64: '__atomic_fetch_and_8',
+  _emscripten_atomic_fetch_and_or_u64: '__atomic_fetch_or_8',
+  _emscripten_atomic_fetch_and_xor_u64: '__atomic_fetch_xor_8',
+
+  __wait: function() {},
 };
 
 mergeInto(LibraryManager.library, LibraryPThreadStub);

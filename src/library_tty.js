@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $TTY__deps: ['$FS'],
   $TTY__postset: '__ATINIT__.unshift(function() { TTY.init() });' +
@@ -100,15 +105,26 @@ mergeInto(LibraryManager.library, {
             var buf = new Buffer(BUFSIZE);
             var bytesRead = 0;
 
-            var fd = process.stdin.fd;
-            // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
-            var usingDevice = false;
-            try {
-              fd = fs.openSync('/dev/stdin', 'r');
-              usingDevice = true;
-            } catch (e) {}
+            var isPosixPlatform = (process.platform != 'win32'); // Node doesn't offer a direct check, so test by exclusion
 
-            bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
+            var fd = process.stdin.fd;
+            if (isPosixPlatform) {
+              // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
+              var usingDevice = false;
+              try {
+                fd = fs.openSync('/dev/stdin', 'r');
+                usingDevice = true;
+              } catch (e) {}
+            }
+
+            try {
+              bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
+            } catch(e) {
+              // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
+              // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
+              if (e.toString().indexOf('EOF') != -1) bytesRead = 0;
+              else throw e;
+            }
 
             if (usingDevice) { fs.closeSync(fd); }
             if (bytesRead > 0) {
@@ -140,7 +156,7 @@ mergeInto(LibraryManager.library, {
       },
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['print'](UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val); // val == 0 would cut text output off in the middle.
@@ -148,7 +164,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['print'](UTF8ArrayToString(tty.output, 0));
+          out(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }
@@ -156,7 +172,7 @@ mergeInto(LibraryManager.library, {
     default_tty1_ops: {
       put_char: function(tty, val) {
         if (val === null || val === {{{ charCode('\n') }}}) {
-          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         } else {
           if (val != 0) tty.output.push(val);
@@ -164,7 +180,7 @@ mergeInto(LibraryManager.library, {
       },
       flush: function(tty) {
         if (tty.output && tty.output.length > 0) {
-          Module['printErr'](UTF8ArrayToString(tty.output, 0));
+          err(UTF8ArrayToString(tty.output, 0));
           tty.output = [];
         }
       }

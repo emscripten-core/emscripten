@@ -1,32 +1,32 @@
-import BaseHTTPServer, multiprocessing, os, shutil, subprocess, unittest, zlib, webbrowser, time, shlex
-from runner import BrowserCore, path_from_root
-from tools.shared import *
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
-# User can specify an environment variable EMSCRIPTEN_BROWSER to force the browser test suite to
-# run using another browser command line than the default system browser.
-emscripten_browser = os.environ.get('EMSCRIPTEN_BROWSER')
-if emscripten_browser:
-  cmd = shlex.split(emscripten_browser)
-  def run_in_other_browser(url):
-    Popen(cmd + [url])
-  if EM_BUILD_VERBOSE_LEVEL >= 3:
-    print >> sys.stderr, "using Emscripten browser: " + str(cmd)
-  webbrowser.open_new = run_in_other_browser
+from __future__ import print_function
+import os
+import shutil
+from runner import BrowserCore, path_from_root
+from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
+
 
 class interactive(BrowserCore):
   @classmethod
   def setUpClass(self):
     super(interactive, self).setUpClass()
     self.browser_timeout = 60
-    print
-    print 'Running the interactive tests. Make sure the browser allows popups from localhost.'
-    print
+    print()
+    print('Running the interactive tests. Make sure the browser allows popups from localhost.')
+    print()
 
   def test_html5_fullscreen(self):
     self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
 
   def test_html5_mouse(self):
     self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0')
+
+  def test_html5_pointerlockerror(self):
+    self.btest(path_from_root('tests', 'test_html5_pointerlockerror.c'), expected='0')
 
   def test_sdl_mousewheel(self):
     self.btest(path_from_root('tests', 'test_sdl_mousewheel.c'), expected='0')
@@ -35,10 +35,10 @@ class interactive(BrowserCore):
     self.btest(path_from_root('tests', 'sdl_touch.c'), args=['-O2', '-g1', '--closure', '1'], expected='0')
 
   def test_sdl_wm_togglefullscreen(self):
-    self.btest('sdl_wm_togglefullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1'])
+    self.btest('sdl_wm_togglefullscreen.c', expected='1')
 
   def test_sdl2_togglefullscreen(self):
-    self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2', '-s', 'NO_EXIT_RUNTIME=1'])
+    self.btest('sdl_togglefullscreen.c', expected='1', args=['-s', 'USE_SDL=2'])
 
   def test_sdl_audio(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'alarmvictory_1.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -52,11 +52,14 @@ class interactive(BrowserCore):
     Popen([PYTHON, EMCC, '-O2', '--closure', '1', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]']).communicate()
     self.run_browser('page.html', '', '/report_result?1')
 
-    print 'SDL2'
-
+    # print('SDL2')
     # check sdl2 as well
-    Popen([PYTHON, EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
-    self.run_browser('page.html', '', '/report_result?1')
+    # FIXME: restore this test once we have proper SDL2 audio (existing test
+    #        depended on fragile SDL1/SDL2 mixing, which stopped working with
+    #        7a5744d754e00bec4422405a1a94f60b8e53c8fc (which just uncovered
+    #        the existing problem)
+    # Popen([PYTHON, EMCC, '-O1', '--closure', '0', '--minify', '0', os.path.join(self.get_dir(), 'sdl_audio.c'), '--preload-file', 'sound.ogg', '--preload-file', 'sound2.wav', '--embed-file', 'the_entertainer.ogg', '--preload-file', 'noise.ogg', '--preload-file', 'bad.ogg', '-o', 'page.html', '-s', 'EXPORTED_FUNCTIONS=["_main", "_play", "_play2"]', '-s', 'USE_SDL=2', '-DUSE_SDL2']).communicate()
+    # self.run_browser('page.html', '', '/report_result?1')
 
   def test_sdl_audio_mix_channels(self):
     shutil.copyfile(path_from_root('tests', 'sounds', 'noise.ogg'), os.path.join(self.get_dir(), 'sound.ogg'))
@@ -104,8 +107,43 @@ class interactive(BrowserCore):
     self.run_browser('page.html', '', '/report_result?1')
 
   def test_openal_buffers(self):
-    shutil.copyfile(path_from_root('tests', 'sounds', 'the_entertainer.wav'), os.path.join(self.get_dir(), 'the_entertainer.wav'))
-    self.btest('openal_buffers.c', '0', args=['--preload-file', 'the_entertainer.wav'],)
+    self.btest('openal_buffers.c', '0', args=['--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
+
+  def test_openal_buffers_animated_pitch(self):
+    self.btest('openal_buffers.c', '0', args=['-DTEST_ANIMATED_PITCH=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/'],)
+
+  def test_openal_looped_pitched_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_looped_seek_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_pitched_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_distance_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_doppler_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_panned_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_animated_looped_relative_playback(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_al_soft_loop_points(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_alc_soft_pause_device(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_al_soft_source_spatialize(self):
+    self.btest('openal_playback.cpp', '1', args=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', path_from_root('tests', 'sounds', 'the_entertainer.wav') + '@/audio.wav'],)
+
+  def test_openal_capture(self):
+    self.btest('openal_capture.c', expected='0')
 
   def get_freealut_library(self):
     if WINDOWS and Building.which('cmake'):
@@ -120,8 +158,29 @@ class interactive(BrowserCore):
   def test_vr(self):
     self.btest(path_from_root('tests', 'test_vr.c'), expected='0')
 
+  def test_glfw_cursor_disabled(self):
+    self.btest('test_glfw_cursor_disabled.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+
+  def test_glfw_dropfile(self):
+    self.btest('test_glfw_dropfile.c', expected='1', args=['-s', 'USE_GLFW=3', '-lglfw', '-lGL'])
+
   def test_glfw_fullscreen(self):
-    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'NO_EXIT_RUNTIME=1', '-s', 'USE_GLFW=3'])
+    self.btest('test_glfw_fullscreen.c', expected='1', args=['-s', 'USE_GLFW=3'])
+
+  def test_glfw_get_key_stuck(self):
+    self.btest('test_glfw_get_key_stuck.c', expected='1', args=['-s', 'USE_GLFW=3'])
+
+  def test_glfw_joystick(self):
+    self.btest('glfw_joystick.c', expected='1', args=['-s', 'USE_GLFW=3'])
+
+  def test_glfw_pointerlock(self):
+    self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'USE_GLFW=3'])
+
+  def test_glut_fullscreen(self):
+    self.btest('glut_fullscreen.c', expected='1', args=['-lglut', '-lGL'])
 
   def test_cpuprofiler_memoryprofiler(self):
     self.btest('hello_world_gles.c', expected='0', args=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '-O2', '--cpuprofiler', '--memoryprofiler'])
+
+  def test_threadprofiler(self):
+    self.btest('pthread/test_pthread_mandelbrot.cpp', expected='0', args=['-O2', '--threadprofiler', '-s', 'USE_PTHREADS=1', '-DTEST_THREAD_PROFILING=1', '-msse', '-s', 'PTHREAD_POOL_SIZE=16', '--shell-file', path_from_root('tests', 'pthread', 'test_pthread_mandelbrot_shell.html')])

@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -217,14 +224,46 @@ static int testStencil(bool activated) {
     return (activated && firstTriangleColor) || (!activated && secondTriangleColor);
 }
 
+// Clear to a color with alpha = 0. If alpha is enabled then all pixels will have alpha = 0.
+// If alpha is disabled then pixels will have alpha of 255
+static int testAlpha(bool activated) {
+    glViewport(0, 0, WINDOWS_SIZE, WINDOWS_SIZE);
+    glClearColor(backgroundColor[0]/255.f, backgroundColor[1]/255.f, backgroundColor[2]/255.f, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    
+    bool hasAlpha = true;
+    
+    unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
+    glReadPixels(0, 0, WINDOWS_SIZE, WINDOWS_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
+    glFinish();
+    for (unsigned int i = 0 ; i < WINDOWS_SIZE ; ++i) {
+      for (unsigned int j = 0 ; j < WINDOWS_SIZE ; ++j) {
+        unsigned char r = buffer[4*(i*WINDOWS_SIZE+j)];
+        unsigned char g = buffer[4*(i*WINDOWS_SIZE+j)+1];
+        unsigned char b = buffer[4*(i*WINDOWS_SIZE+j)+2];
+        unsigned char a = buffer[4*(i*WINDOWS_SIZE+j)+3];
+        if (r == backgroundColor[0] && g == backgroundColor[1] && b == backgroundColor[2] && a == 0) {
+          continue;
+        } else {
+          hasAlpha = false;
+          break;
+        }
+      }
+    }
+    
+    return (activated && hasAlpha) || (!activated && !hasAlpha);
+}
+
 static bool antiAliasingActivated = false;
 static bool depthActivated = false;
 static bool stencilActivated = false;
+static bool alphaActivated = false;
 
 static int result = 0;
 static int resultAA = 0;
 static int resultDepth = 0;
 static int resultStencil = 0;
+static int resultAlpha = 0;
 
 static void draw() {
   
@@ -234,28 +273,35 @@ static void draw() {
   
   if (!resultStencil) resultStencil = testStencil(stencilActivated);
   
-  result = resultAA && resultDepth && resultStencil;
+  if (!resultAlpha) resultAlpha = testAlpha(alphaActivated);
+  
+  result = resultAA && resultDepth && resultStencil && resultAlpha;
  
 }
 
 extern int webglAntialiasSupported(void);
 extern int webglDepthSupported(void);
 extern int webglStencilSupported(void);
+extern int webglAlphaSupported(void);
 
 // Check attributes support in the WebGL implementation (see test_webgl_context_attributes function in test_browser.py)
 // Tests will succeed if they are not.
 static void checkContextAttributesSupport() {
   if (!webglAntialiasSupported()) {
     resultAA = 1;
-    EM_ASM(alert('warning: no antialiasing\n'));
+    EM_ASM(out('warning: no antialiasing\n'));
   }
   if (!webglDepthSupported()) {
     resultDepth = 1;
-    EM_ASM(alert('warning: no depth\n'));
+    EM_ASM(out('warning: no depth\n'));
   }
   if (!webglStencilSupported()) {
     resultStencil = 1;
-    EM_ASM(alert('warning: no stencil\n'));
+    EM_ASM(out('warning: no stencil\n'));
+  }
+  if (!webglAlphaSupported()) {
+    resultAlpha = 1;
+    EM_ASM(out('warning: no alpha\n'));
   }
 }
 

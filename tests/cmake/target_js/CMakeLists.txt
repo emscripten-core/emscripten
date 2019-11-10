@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 2.8)
 
 project(test_cmake)
 
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../cpp_lib ${CMAKE_CURRENT_BINARY_DIR}/cpp_lib)
+
 file(GLOB sourceFiles main.cpp)
 
 file(GLOB preJsFiles pre*.js)
@@ -13,6 +15,9 @@ if (CMAKE_BUILD_TYPE STREQUAL Debug)
 else() # Either MinSizeRel, RelWithDebInfo or Release, all which run with optimizations enabled.
 	SET(linkFlags "-O2 -s NO_EXIT_RUNTIME=1")
 endif()
+
+# Ensure synchronous startup for this test, whose output expects it
+SET(linkFlags "${linkFlags} -s BINARYEN_ASYNC_COMPILATION=0")
 
 # Test that the CMake-provided macro check_function_exists() works.
 include(CheckFunctionExists)
@@ -83,6 +88,7 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.2.20150502)
 endif()
 
 add_executable(test_cmake ${sourceFiles})
+target_link_libraries( test_cmake cpp_lib)
 
 # GOTCHA: If your project has custom link flags, these must be set *before* calling any of the em_link_xxx functions!
 set_target_properties(test_cmake PROPERTIES LINK_FLAGS "${linkFlags}")

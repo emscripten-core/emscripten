@@ -1,0 +1,378 @@
+defaults: &defaults
+  docker:
+    - image: buildpack-deps:xenial
+      environment:
+        LANG: C.UTF-8
+        EMTEST_DETECT_TEMPFILE_LEAKS: 1
+
+test-defaults: &test-defaults
+  <<: *defaults
+  working_directory: ~/
+  steps:
+    - checkout:
+        path: emscripten/
+    - attach_workspace:
+        # Must be absolute path or relative path from working_directory
+        at: ~/
+    - run:
+        name: install package dependencies
+        command: |
+          apt-get update -q
+          # openjdk-9 is also available, but hits #7232
+          apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
+    - run:
+        name: run tests
+        command: |
+          EMCC_CORES=4 python3 emscripten/tests/runner.py $TEST_TARGET
+
+version: 2
+jobs:
+  build:
+    <<: *defaults
+    working_directory: ~/
+    steps:
+      - checkout:
+          path: emscripten/
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            apt-get install -q -y python3 cmake
+      - run:
+          name: install emsdk
+          command: |
+            wget https://github.com/juj/emsdk/archive/master.tar.gz
+            tar -xf master.tar.gz
+            cd emsdk-master
+            ./emsdk --notty update-tags
+            ./emsdk --notty install latest
+            ./emsdk --notty activate latest
+            cd -
+            # Remove the emsdk version of emscripten save space in the
+            # persistent workspace and to avoid any confusion with that version
+            # we are trying to test.
+            rm -r ~/emsdk-master/emscripten/
+            echo BINARYEN_ROOT="''" >> ~/.emscripten
+      - run:
+          name: embuilder build ALL
+          command: |
+            EMCC_CORES=4 python3 ~/emscripten/embuilder.py build ALL
+            python3 ~/emscripten/tests/runner.py test_hello_world
+      - persist_to_workspace:
+          # Must be an absolute path, or relative path from working_directory
+          root: ~/
+          # Must be relative path from root
+          paths:
+            - emsdk-master/
+            - .emscripten_cache/
+            - .emscripten_ports/
+            - .emscripten
+  build-docs:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: install pip
+          command: |
+            apt-get update -q
+            apt-get install -q -y python-pip
+      - run:
+          name: install sphinx
+          command: |
+            pip install sphinx==1.7.8
+      - run: make -C site html
+  flake8:
+    <<: *defaults
+    steps:
+      - checkout
+      - run:
+          name: install pip
+          command: |
+            apt-get update -q
+            apt-get install -q -y python-pip
+      - run: pip install flake8==3.4.1
+      - run: flake8
+  test-other:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=other skip:other.test_native_link_error_message skip:other.test_emcc_v skip:other.test_llvm_lit
+      # some native-dependent tests fail because of the lack of native headers on emsdk-bundled clang
+      # CircleCI actively kills memory-over-consuming process
+      # skip llvm-lit tests which need lit, and pip to get lit, but pip has broken on CI
+  test-browser-firefox:
+    <<: *defaults
+    environment:
+    working_directory: ~/
+    steps:
+      - checkout:
+          path: emscripten/
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+    steps:
+      - checkout:
+          path: emscripten/
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
+            # preseed packages so that apt-get won't prompt for user input
+            echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
+            echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
+            apt-get install -q -y dbus-x11 firefox menu openbox ttf-mscorefonts-installer xinit xserver-xorg xserver-xorg-video-dummy
+      - run:
+          name: download firefox
+          command: |
+            # wget https://download-installer.cdn.mozilla.net/pub/firefox/releases/62.0.2/linux-x86_64/en-US/firefox-62.0.2.tar.bz2
+            # tar xf firefox-62.0.2.tar.bz2
+            # Currently we need firefox nightly to test wasm threads
+            wget https://download-installer.cdn.mozilla.net/pub/firefox/nightly/latest-mozilla-central/firefox-64.0a1.en-US.linux-x86_64.tar.bz2
+            tar xf firefox-64.0a1.en-US.linux-x86_64.tar.bz2
+      - run:
+          name: configure firefox
+          command: |
+            mkdir tmp-firefox-profile/
+            cat > tmp-firefox-profile/user.js <<EOF
+            user_pref("gfx.offscreencanvas.enabled", true);
+            user_pref("javascript.options.shared_memory", true);
+            EOF
+      - run:
+          name: configure openbox
+          command: |
+            # Set up X and Openbox config (if we move to a headless browser, this may not be needed).
+            mkdir -p .config/X11
+            cat > .config/X11/xorg.conf <<EOF
+            Section "ServerLayout"
+              Identifier "X.org Configured"
+              Screen 0 "Screen0" 0 0
+            EndSection
+
+            Section "Monitor"
+              Identifier "Monitor0"
+              HorizSync 72
+              Modeline "1920x1080@60" 144 1920 1920 1960 2000 1080 1080 1140 1200
+            EndSection
+
+            Section "Device"
+              Identifier "Card0"
+              Driver "dummy"
+              VideoRam 1048576
+            EndSection
+
+            Section "Screen"
+              Identifier "Screen0"
+              Device "Card0"
+              Monitor "Monitor0"
+              DefaultDepth 24
+              SubSection "Display"
+                Depth 24
+                Modes "1920x1080@60"
+              EndSubSection
+            EndSection
+            EOF
+            mkdir -p .config/openbox
+            echo "[ -f \"\$EXTRA_AUTOSTART\" ] && sh \"\$EXTRA_AUTOSTART\"" > .config/openbox/autostart
+            mkdir -p .config/autostart
+            cat > .config/autostart/at-spi-dbus-bus.desktop <<EOF
+            [Desktop Entry]
+            Type=Application
+            Name=AT-SPI D-Bus Bus
+            Hidden=true # do not auto-start AT-SPI to suppress one warning
+            EOF
+      - run:
+          # browser.test_sdl2_mouse and/or SDL2 should be fixed. The case happens
+          # to be failing here, and the root cause might be related with the
+          # initial position of the mouse pointer relative to the canvas.
+          # browser.test_html5_webgl_create_context is skipped because
+          # anti-aliasing is not well supported.
+          # browser.test_webgl_offscreen_canvas_in_pthread and
+          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
+          # are crashing Firefox (bugzil.la/1281796). The former case is
+          # further blocked by issue #6897.
+          # TODO: use Firefox headless mode when https://bugzil.la/1375585 resolves
+          name: run tests
+          command: |
+            export EMTEST_BROWSER="$HOME/firefox/firefox -profile tmp-firefox-profile/"
+            export GALLIUM_DRIVER=softpipe # TODO: use the default llvmpipe when it supports more extensions
+            export EMTEST_LACKS_SOUND_HARDWARE=1
+            export EMTEST_DETECT_TEMPFILE_LEAKS=0
+            export DISPLAY=:0
+            # Start an X session. Openbox might be optional for now, but
+            # an ICCCM/EWMH compliant window manager is potentially needed
+            # for tests with fullscreen toggling (if we move to a headless
+            # browser, this may not be needed eventually).
+            TMPDIR=`mktemp -d`
+            mkfifo $TMPDIR/fifo
+            echo "echo -n > $TMPDIR/fifo" > $TMPDIR/autostart
+            EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
+            cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
+            rm -r $TMPDIR
+            EMCC_CORES=4 ./emscripten/tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
+            openbox --exit
+            wait # wait for startx to shutdown cleanly
+  test-browser-chrome:
+    <<: *defaults
+    environment:
+      - EMTEST_LACKS_SOUND_HARDWARE=1
+      - EMTEST_DETECT_TEMPFILE_LEAKS=0
+    working_directory: ~/
+    steps:
+      - checkout:
+          path: emscripten/
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: install package dependencies
+          command: |
+            apt-get update -q
+            # install chromium-browser in order to ensure we have most of the
+            # dependecies for chrome.
+            EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
+            apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
+      - run:
+          name: download chrome
+          command: |
+            wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            dpkg -i google-chrome-stable_current_amd64.deb
+      - run:
+          name: run tests
+          command: |
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE="--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader"
+            CHROME_FLAGS_WASM="--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            export EMTEST_BROWSER="xvfb-run /usr/bin/google-chrome-stable $CHROME_FLAGS_BASE $CHROME_FLAGS_WASM"
+            export EMTEST_LACKS_GRAPHICS_HARDWARE=1
+            export EMCC_CORES=4
+            # Just run a subset of the tests for now.  To be expanded.
+            ./emscripten/tests/runner.py browser.test_[a-f]* browser.test_pthread_* skip:browser.test_aniso
+            # Skip browser.test_aniso - see #7117
+  test-ab:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_a* asm*.test_b*
+  test-c:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_c*
+  test-d:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=default.test_d* asm1.test_d* asm2.test_d* asm2g.test_d* asm3.test_d*
+  test-e:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_e*
+  test-f:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_f*
+  test-ghi:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_g* asm*.test_h* asm*.test_i*
+  test-jklmno:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_j* asm*.test_k* asm*.test_l* asm*.test_m* asm*.test_n* asm*.test_o*
+  test-p:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=default.test_p* asm1.test_p* asm2.test_p* asm2g.test_p* asm3.test_p*
+  test-qrst:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_q* asm*.test_r* asm*.test_s* asm*.test_t* skip:asm*.test_sse1_full skip:asm*.test_sse2_full skip:asm*.test_sse3_full skip:asm*.test_ssse3_full skip:asm*.test_sse4_1_full
+      # SSE tests fail because of the lack of native headers on emsdk-bundled clang
+  test-uvwxyz:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=asm*.test_u* asm*.test_w* asm*.test_v* asm*.test_x* asm*.test_y* asm*.test_z*
+  test-binaryen0:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen0
+  test-binaryen1:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen1
+  test-binaryen2:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen2
+  test-binaryen3:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=binaryen3
+  test-sanity:
+    <<: *test-defaults
+    environment:
+      - TEST_TARGET=sanity
+
+workflows:
+  version: 2
+
+  build-test:
+    jobs:
+      - flake8
+      - build-docs
+      - build
+      - test-other:
+          requires:
+            - build
+      - test-browser-firefox:
+          requires:
+            - build
+      - test-browser-chrome:
+          requires:
+            - build
+      - test-ab:
+          requires:
+            - build
+      - test-c:
+          requires:
+            - build
+      - test-d:
+          requires:
+            - build
+      - test-e:
+          requires:
+            - build
+      - test-f:
+          requires:
+            - build
+      - test-ghi:
+          requires:
+            - build
+      - test-jklmno:
+          requires:
+            - build
+      - test-p:
+          requires:
+            - build
+      - test-qrst:
+          requires:
+            - build
+      - test-uvwxyz:
+          requires:
+            - build
+      - test-binaryen0:
+          requires:
+            - build
+      - test-binaryen1:
+          requires:
+            - build
+      - test-binaryen2:
+          requires:
+            - build
+      - test-binaryen3:
+          requires:
+            - build
+      - test-sanity:
+          requires:
+            - build

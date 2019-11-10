@@ -1,3 +1,10 @@
+/*
+ * Copyright 2015 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 unsigned char problematic[] = { 0x20, 0x7c, 0x02, 0x07, 0x5f, 0xa0, 0xdf };
 int main() {
   unsigned char a, b;
@@ -14,5 +21,5 @@ int main() {
       }
     }
   }
-  REPORT_RESULT()
+  REPORT_RESULT(result);
 }

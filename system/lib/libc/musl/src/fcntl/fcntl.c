@@ -39,7 +39,6 @@ int fcntl(int fd, int cmd, ...)
 	}
 	switch (cmd) {
 	case F_SETLK:
-	case F_SETLKW:
 	case F_GETLK:
 	case F_GETOWN_EX:
 	case F_SETOWN_EX:

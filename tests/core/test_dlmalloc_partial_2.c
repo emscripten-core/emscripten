@@ -1,0 +1,18 @@
+/*
+ * Copyright 2016 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <emscripten.h>
+void *malloc(size_t size) { return (void *)123; }
+int main() {
+  void *x = malloc(10);
+  EM_ASM({ out("got 0x" + $0.toString(16)) }, x);
+  free(0);
+  EM_ASM({ out("freed a fake") });
+  return 1;
+}

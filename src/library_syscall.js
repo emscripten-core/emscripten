@@ -1,6 +1,11 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
                    '$FS', '$ERRNO_CODES', '$PATH',
 #endif
 #if SYSCALL_DEBUG
@@ -8,7 +13,7 @@ var SyscallsLibrary = {
 #endif
   ],
   $SYSCALLS: {
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
 
@@ -93,9 +98,15 @@ var SyscallsLibrary = {
     doReadlink: function(path, buf, bufsize) {
       if (bufsize <= 0) return -ERRNO_CODES.EINVAL;
       var ret = FS.readlink(path);
-      ret = ret.slice(0, Math.max(0, bufsize));
-      writeStringToMemory(ret, buf, true);
-      return ret.length;
+
+      var len = Math.min(bufsize, lengthBytesUTF8(ret));
+      var endChar = HEAP8[buf+len];
+      stringToUTF8(ret, buf, bufsize+1);
+      // readlink is one of the rare functions that write out a C string, but does never append a null to the output buffer(!)
+      // stringToUTF8() always appends a null byte, so restore the character under the null byte after the write.
+      HEAP8[buf+len] = endChar;
+
+      return len;
     },
     doAccess: function(path, amode) {
       if (amode & ~{{{ cDefine('S_IRWXO') }}}) {
@@ -142,7 +153,20 @@ var SyscallsLibrary = {
       }
       return ret;
     },
-#endif // NO_FILESYSTEM == 0
+#else
+    // MEMFS filesystem disabled lite handling of stdout and stderr:
+    buffers: [null, [], []], // 1 => stdout, 2 => stderr
+    printChar: function(stream, curr) {
+      var buffer = SYSCALLS.buffers[stream];
+      assert(buffer);
+      if (curr === 0 || curr === {{{ charCode('\n') }}}) {
+        (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+        buffer.length = 0;
+      } else {
+        buffer.push(curr);
+      }
+    },
+#endif // FILESYSTEM
 
     // arguments handling
 
@@ -152,23 +176,23 @@ var SyscallsLibrary = {
       SYSCALLS.varargs += 4;
       var ret = {{{ makeGetValue('SYSCALLS.varargs', '-4', 'i32') }}};
 #if SYSCALL_DEBUG
-      Module.printErr('    (raw: "' + ret + '")');
+      err('    (raw: "' + ret + '")');
 #endif
       return ret;
     },
     getStr: function() {
       var ret = Pointer_stringify(SYSCALLS.get());
 #if SYSCALL_DEBUG
-      Module.printErr('    (str: "' + ret + '")');
+      err('    (str: "' + ret + '")');
 #endif
       return ret;
     },
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     getStreamFromFD: function() {
       var stream = FS.getStream(SYSCALLS.get());
       if (!stream) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
 #if SYSCALL_DEBUG
-      Module.printErr('    (stream: "' + stream.path + '")');
+      err('    (stream: "' + stream.path + '")');
 #endif
       return stream;
     },
@@ -176,7 +200,7 @@ var SyscallsLibrary = {
       var socket = SOCKFS.getSocket(SYSCALLS.get());
       if (!socket) throw new FS.ErrnoError(ERRNO_CODES.EBADF);
 #if SYSCALL_DEBUG
-      Module.printErr('    (socket: "' + socket.path + '")');
+      err('    (socket: "' + socket.path + '")');
 #endif
       return socket;
     },
@@ -187,17 +211,17 @@ var SyscallsLibrary = {
       if (info.errno) throw new FS.ErrnoError(info.errno);
       info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
-      Module.printErr('    (socketaddress: "' + [info.addr, info.port] + '")');
+      err('    (socketaddress: "' + [info.addr, info.port] + '")');
 #endif
       return info;
     },
-#endif // NO_FILESYSTEM == 0
+#endif // FILESYSTEM
     get64: function() {
       var low = SYSCALLS.get(), high = SYSCALLS.get();
       if (low >= 0) assert(high === 0);
       else assert(high === -1);
 #if SYSCALL_DEBUG
-      Module.printErr('    (i64: "' + low + '")');
+      err('    (i64: "' + low + '")');
 #endif
       return low;
     },
@@ -208,7 +232,7 @@ var SyscallsLibrary = {
 
   __syscall1: function(which, varargs) { // exit
     var status = SYSCALLS.get();
-    Module['exit'](status);
+    exit(status);
     return 0;
   },
   __syscall3: function(which, varargs) { // read
@@ -216,8 +240,17 @@ var SyscallsLibrary = {
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
   __syscall4: function(which, varargs) { // write
+#if FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get();
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
+#else
+    // hack to support printf in FILESYSTEM=0
+    var stream = SYSCALLS.get(), buf = SYSCALLS.get(), count = SYSCALLS.get();
+    for (var i = 0; i < count; i++) {
+      SYSCALLS.printChar(stream, HEAPU8[buf+i]);
+    }
+    return count;
+#endif // FILESYSTEM
   },
   __syscall5: function(which, varargs) { // open
     var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get() // optional TODO
@@ -288,27 +321,47 @@ var SyscallsLibrary = {
     var old = SYSCALLS.getStreamFromFD();
     return FS.open(old.path, old.flags, 0).fd;
   },
-  __syscall42: '__syscall51',      // pipe
+  __syscall42__deps: ['$PIPEFS'],
+  __syscall42: function(which, varargs) { // pipe
+    var fdPtr = SYSCALLS.get();
+
+    if (fdPtr == 0) {
+      throw new FS.ErrnoError(ERRNO_CODES.EFAULT);
+    }
+
+    var res = PIPEFS.createPipe();
+
+    {{{ makeSetValue('fdPtr', 0, 'res.readable_fd', 'i32') }}};
+    {{{ makeSetValue('fdPtr', 4, 'res.writable_fd', 'i32') }}};
+
+    return 0;
+  },
   __syscall51: function(which, varargs) { // acct
     return -ERRNO_CODES.ENOSYS; // unsupported features
   },
   __syscall54: function(which, varargs) { // ioctl
-#if NO_FILESYSTEM
+#if FILESYSTEM == 0
 #if SYSCALL_DEBUG
-    Module.printErr('no-op in ioctl syscall due to NO_FILESYSTEM');
+    err('no-op in ioctl syscall due to FILESYSTEM=0');
 #endif
     return 0;
 #else
     var stream = SYSCALLS.getStreamFromFD(), op = SYSCALLS.get();
     switch (op) {
+      case {{{ cDefine('TCGETA') }}}:
       case {{{ cDefine('TCGETS') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
 #if SYSCALL_DEBUG
-        Module.printErr('warning: not filling tio struct');
+        err('warning: not filling tio struct');
 #endif
         return 0;
       }
-      case {{{ cDefine('TCSETS') }}}: {
+      case {{{ cDefine('TCSETA') }}}:
+      case {{{ cDefine('TCSETAW') }}}:
+      case {{{ cDefine('TCSETAF') }}}:
+      case {{{ cDefine('TCSETS') }}}:
+      case {{{ cDefine('TCSETSW') }}}:
+      case {{{ cDefine('TCSETSF') }}}: {
         if (!stream.tty) return -ERRNO_CODES.ENOTTY;
         return 0; // no-op, not actually adjusting terminal settings
       }
@@ -326,9 +379,22 @@ var SyscallsLibrary = {
         var argp = SYSCALLS.get();
         return FS.ioctl(stream, op, argp);
       }
+      case {{{ cDefine('TIOCGWINSZ') }}}: {
+        // TODO: in theory we should write to the winsize struct that gets
+        // passed in, but for now musl doesn't read anything on it
+        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        return 0;
+      }
+      case {{{ cDefine('TIOCSWINSZ') }}}: {
+        // TODO: technically, this ioctl call should change the window size.
+        // but, since emscripten doesn't have any concept of a terminal window
+        // yet, we'll just silently throw it away as we do TIOCGWINSZ
+        if (!stream.tty) return -ERRNO_CODES.ENOTTY;
+        return 0;
+      }
       default: abort('bad ioctl syscall ' + op);
     }
-#endif // NO_FILESYSTEM
+#endif // FILESYSTEM
   },
   __syscall57__deps: ['$PROCINFO'],
   __syscall57: function(which, varargs) { // setpgid
@@ -364,7 +430,7 @@ var SyscallsLibrary = {
   },
   __syscall77: function(which, varargs) { // getrusage
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var who = SYSCALLS.get(), usage = SYSCALLS.get();
     _memset(usage, 0, {{{ C_STRUCTS.rusage.__size__ }}});
@@ -448,7 +514,17 @@ var SyscallsLibrary = {
       }
       case 6: { // getsockname
         var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
-        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr || '0.0.0.0'), sock.dport);
+        // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
+        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport);
+        assert(!res.errno);
+        return 0;
+      }
+      case 7: { // getpeername
+        var sock = SYSCALLS.getSocketFromFD(), addr = SYSCALLS.get(), addrlen = SYSCALLS.get();
+        if (!sock.daddr) {
+          return -ERRNO_CODES.ENOTCONN; // The socket is not connected.
+        }
+        var res = __write_sockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport);
         assert(!res.errno);
         return 0;
       }
@@ -584,7 +660,9 @@ var SyscallsLibrary = {
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
   },
+#if EMTERPRETIFY_ASYNC
   __syscall118__deps: ['$EmterpreterAsync'],
+#endif
   __syscall118: function(which, varargs) { // fsync
     var stream = SYSCALLS.getStreamFromFD();
 #if EMTERPRETIFY_ASYNC
@@ -641,8 +719,8 @@ var SyscallsLibrary = {
   },
   __syscall140: function(which, varargs) { // llseek
     var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
+    // NOTE: offset_high is unused - Emscripten's off_t is 32-bit
     var offset = offset_low;
-    assert(offset_high === 0);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('result', '0', 'stream.position', 'i32') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
@@ -740,32 +818,38 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt);
   },
+#if FILESYSTEM == 0
+  $flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers during shutdown
+    var fflush = Module["_fflush"];
+    if (fflush) fflush(0);
+    var buffers = SYSCALLS.buffers;
+    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
+  },
+  __syscall146__deps: ['$flush_NO_FILESYSTEM'],
+#if EXIT_RUNTIME == 1
+  __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+#endif
+#endif
   __syscall146: function(which, varargs) { // writev
-#if NO_FILESYSTEM == 0
+#if FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt);
 #else
-    // hack to support printf in NO_FILESYSTEM
+    // hack to support printf in FILESYSTEM=0
     var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
     var ret = 0;
-    if (!___syscall146.buffer) ___syscall146.buffer = [];
-    var buffer = ___syscall146.buffer;
     for (var i = 0; i < iovcnt; i++) {
       var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
       var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
       for (var j = 0; j < len; j++) {
-        var curr = HEAPU8[ptr+j];
-        if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-          Module['print'](UTF8ArrayToString(buffer, 0));
-          buffer.length = 0;
-        } else {
-          buffer.push(curr);
-        }
+        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
       }
       ret += len;
     }
     return ret;
-#endif // NO_FILESYSTEM == 0
+#endif // FILESYSTEM
   },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
@@ -807,28 +891,32 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall178: function(which, varargs) { // rt_sigqueueinfo
+#if SYSCALL_DEBUG
+    err('warning: ignoring SYS_rt_sigqueueinfo');
+#endif
+    return 0;
+  },
   __syscall180: function(which, varargs) { // pread64
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
   __syscall181: function(which, varargs) { // pwrite64
-#if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
-#endif
     var stream = SYSCALLS.getStreamFromFD(), buf = SYSCALLS.get(), count = SYSCALLS.get(), zero = SYSCALLS.getZero(), offset = SYSCALLS.get64();
-    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, nbyte, offset);
+    return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
   __syscall183: function(which, varargs) { // getcwd
     var buf = SYSCALLS.get(), size = SYSCALLS.get();
     if (size === 0) return -ERRNO_CODES.EINVAL;
     var cwd = FS.cwd();
-    if (size < cwd.length + 1) return -ERRNO_CODES.ERANGE;
-    writeAsciiToMemory(cwd, buf);
+    var cwdLengthInBytes = lengthBytesUTF8(cwd);
+    if (size < cwdLengthInBytes + 1) return -ERRNO_CODES.ERANGE;
+    stringToUTF8(cwd, buf, size);
     return buf;
   },
   __syscall191: function(which, varargs) { // ugetrlimit
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var resource = SYSCALLS.get(), rlim = SYSCALLS.get();
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
@@ -843,7 +931,7 @@ var SyscallsLibrary = {
     var ptr;
     var allocated = false;
     if (fd === -1) {
-      ptr = _malloc(len);
+      ptr = _memalign(PAGE_SIZE, len);
       if (!ptr) return -ERRNO_CODES.ENOMEM;
       _memset(ptr, 0, len);
       allocated = true;
@@ -923,7 +1011,7 @@ var SyscallsLibrary = {
   __syscall209: '__syscall211',     // getresuid
   __syscall211: function(which, varargs) { // getresgid32
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var ruid = SYSCALLS.get(), euid = SYSCALLS.get(), suid = SYSCALLS.get();
     {{{ makeSetValue('ruid', '0', '0', 'i32') }}};
@@ -943,11 +1031,10 @@ var SyscallsLibrary = {
       stream.getdents = FS.readdir(stream.path);
     }
     var pos = 0;
-    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} < count) {
+    while (stream.getdents.length > 0 && pos + {{{ C_STRUCTS.dirent.__size__ }}} <= count) {
       var id;
       var type;
       var name = stream.getdents.pop();
-      assert(name.length < 256); // limit of dirent struct
       if (name[0] === '.') {
         id = 1;
         type = 4; // DT_DIR
@@ -963,16 +1050,19 @@ var SyscallsLibrary = {
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, 'stream.position', 'i32') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_type, 'type', 'i8') }}};
-      for (var i = 0; i < name.length; i++) {
-        {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', 'name.charCodeAt(i)', 'i8') }}};
-      }
-      {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_name + ' + i', '0', 'i8') }}};
+      stringToUTF8(name, dirp + pos + {{{ C_STRUCTS.dirent.d_name }}}, 256);
       pos += {{{ C_STRUCTS.dirent.__size__ }}};
     }
     return pos;
   },
   __syscall221__deps: ['__setErrNo'],
   __syscall221: function(which, varargs) { // fcntl64
+#if FILESYSTEM == 0
+#if SYSCALL_DEBUG
+    err('no-op in fcntl64 syscall due to FILESYSTEM=0');
+#endif
+    return 0;
+#else
     var stream = SYSCALLS.getStreamFromFD(), cmd = SYSCALLS.get();
     switch (cmd) {
       case {{{ cDefine('F_DUPFD') }}}: {
@@ -1016,15 +1106,16 @@ var SyscallsLibrary = {
         return -1;
       default: {
 #if SYSCALL_DEBUG
-        Module.printErr('warning: fctl64 unrecognized command ' + cmd);
+        err('warning: fctl64 unrecognized command ' + cmd);
 #endif
         return -ERRNO_CODES.EINVAL;
       }
     }
+#endif // FILESYSTEM
   },
   __syscall265: function(which, varargs) { // clock_nanosleep
 #if SYSCALL_DEBUG
-    Module.printErr('warning: ignoring SYS_clock_nanosleep');
+    err('warning: ignoring SYS_clock_nanosleep');
 #endif
     return 0;
   },
@@ -1054,7 +1145,7 @@ var SyscallsLibrary = {
   },
   __syscall295: function(which, varargs) { // openat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get();
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -1062,7 +1153,7 @@ var SyscallsLibrary = {
   },
   __syscall296: function(which, varargs) { // mkdirat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), mode = SYSCALLS.get();
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -1070,7 +1161,7 @@ var SyscallsLibrary = {
   },
   __syscall297: function(which, varargs) { // mknodat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), mode = SYSCALLS.get(), dev = SYSCALLS.get();
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -1078,7 +1169,7 @@ var SyscallsLibrary = {
   },
   __syscall298: function(which, varargs) { // fchownat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), owner = SYSCALLS.get(), group = SYSCALLS.get(), flags = SYSCALLS.get();
     assert(flags === 0);
@@ -1098,18 +1189,20 @@ var SyscallsLibrary = {
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
   __syscall301: function(which, varargs) { // unlinkat
-#if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
-#endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), flags = SYSCALLS.get();
-    assert(flags === 0);
     path = SYSCALLS.calculateAt(dirfd, path);
-    FS.unlink(path);
+    if (flags === 0) {
+      FS.unlink(path);
+    } else if (flags === {{{ cDefine('AT_REMOVEDIR') }}}) {
+      FS.rmdir(path);
+    } else {
+      abort('Invalid flags passed to unlinkat');
+    }
     return 0;
   },
   __syscall302: function(which, varargs) { // renameat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var olddirfd = SYSCALLS.get(), oldpath = SYSCALLS.getStr(), newdirfd = SYSCALLS.get(), newpath = SYSCALLS.getStr();
     oldpath = SYSCALLS.calculateAt(olddirfd, oldpath);
@@ -1122,7 +1215,7 @@ var SyscallsLibrary = {
   },
   __syscall304: function(which, varargs) { // symlinkat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var target = SYSCALLS.get(), newdirfd = SYSCALLS.get(), linkpath = SYSCALLS.get();
     linkpath = SYSCALLS.calculateAt(newdirfd, linkpath);
@@ -1131,7 +1224,7 @@ var SyscallsLibrary = {
   },
   __syscall305: function(which, varargs) { // readlinkat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), buf = SYSCALLS.get(), bufsize = SYSCALLS.get();
     path = SYSCALLS.calculateAt(dirfd, path);
@@ -1139,7 +1232,7 @@ var SyscallsLibrary = {
   },
   __syscall306: function(which, varargs) { // fchmodat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), mode = SYSCALLS.get(), flags = SYSCALLS.get();
     assert(flags === 0);
@@ -1149,7 +1242,7 @@ var SyscallsLibrary = {
   },
   __syscall307: function(which, varargs) { // faccessat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), amode = SYSCALLS.get(), flags = SYSCALLS.get();
     assert(flags === 0);
@@ -1161,7 +1254,7 @@ var SyscallsLibrary = {
   },
   __syscall320: function(which, varargs) { // utimensat
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), times = SYSCALLS.get(), flags = SYSCALLS.get();
     assert(flags === 0);
@@ -1184,7 +1277,7 @@ var SyscallsLibrary = {
   },
   __syscall330: function(which, varargs) { // dup3
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var old = SYSCALLS.getStreamFromFD(), suggestFD = SYSCALLS.get(), flags = SYSCALLS.get();
     assert(!flags);
@@ -1196,17 +1289,23 @@ var SyscallsLibrary = {
   },
   __syscall333: function(which, varargs) { // preadv
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
   },
   __syscall334: function(which, varargs) { // pwritev
 #if SYSCALL_DEBUG
-    Module.printErr('warning: untested syscall');
+    err('warning: untested syscall');
 #endif
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
+  },
+  __syscall337: function(which, varargs) { // recvmmsg
+#if SYSCALL_DEBUG
+    err('warning: ignoring SYS_recvmmsg');
+#endif
+    return 0;
   },
   __syscall340: function(which, varargs) { // prlimit64
     var pid = SYSCALLS.get(), resource = SYSCALLS.get(), new_limit = SYSCALLS.get(), old_limit = SYSCALLS.get();
@@ -1216,6 +1315,12 @@ var SyscallsLibrary = {
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max, '-1', 'i32') }}};  // RLIM_INFINITY
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     }
+    return 0;
+  },
+  __syscall345: function(which, varargs) { // sendmmsg
+#if SYSCALL_DEBUG
+    err('warning: ignoring SYS_sendmmsg');
+#endif
     return 0;
   },
 };
@@ -1554,6 +1659,7 @@ if (SYSCALL_DEBUG) {
     SYS_inotify_init1: 332,
     SYS_preadv: 333,
     SYS_pwritev: 334,
+    SYS_recvmmsg: 337,
     SYS_prlimit64: 340,
     SYS_name_to_handle_at: 341,
     SYS_open_by_handle_at: 342,
@@ -1585,14 +1691,14 @@ for (var x in SyscallsLibrary) {
 #endif
   pre += 'SYSCALLS.varargs = varargs;\n';
 #if SYSCALL_DEBUG
-  pre += "Module.printErr('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
   post += "if (ret < 0 && canWarn) {\n";
-  post += "  Module.printErr('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
+  post += "  err('error: syscall may have failed with ' + (-ret) + ' (' + ERRNO_MESSAGES[-ret] + ')');\n";
   post += "}\n";
-  post += "Module.printErr('syscall return: ' + ret);\n";
+  post += "err('syscall return: ' + ret);\n";
   post += "return ret;\n";
 #endif
   pre += 'try {\n';
@@ -1601,7 +1707,7 @@ for (var x in SyscallsLibrary) {
   "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);\n";
 #if SYSCALL_DEBUG
   handler +=
-  "  Module.printErr('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
+  "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
   "  canWarn = false;\n";
 #endif
   handler +=
@@ -1641,4 +1747,3 @@ SyscallsLibrary.emscripten_syscall = eval('(' + switcher + ')');
 #endif
 
 mergeInto(LibraryManager.library, SyscallsLibrary);
-

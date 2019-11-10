@@ -76,7 +76,8 @@ size_t wcstombs (char *__restrict, const wchar_t *__restrict, size_t);
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
 
-#define MB_CUR_MAX ((size_t)+4)
+size_t __ctype_get_mb_cur_max(void);
+#define MB_CUR_MAX (__ctype_get_mb_cur_max())
 
 #define RAND_MAX (0x7fffffff)
 
@@ -114,9 +115,6 @@ long int random (void);
 void srandom (unsigned int);
 char *initstate (unsigned int, char *, size_t);
 char *setstate (char *);
-#endif
-
-#if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE)
 int putenv (char *);
 int posix_openpt (int);
 int grantpt (int);
@@ -144,12 +142,12 @@ int mkostemps (char *, int, int);
 void *valloc (size_t);
 void *memalign(size_t, size_t);
 int getloadavg(double *, int);
+int clearenv(void);
 #define WCOREDUMP(s) ((s) & 0x80)
 #define WIFCONTINUED(s) ((s) == 0xffff)
 #endif
 
 #ifdef _GNU_SOURCE
-int clearenv(void);
 int ptsname_r(int, char *, size_t);
 char *ecvt(double, int, int *, int *);
 char *fcvt(double, int, int *, int *);

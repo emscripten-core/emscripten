@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <wchar.h>
 #include <wctype.h>
+#include "locale_impl.h"
 
 #define END 0
 #define UNMATCHABLE -2
@@ -97,7 +98,13 @@ escaped:
 	return pat[0];
 }
 
-static int match_bracket(const char *p, int k)
+static int casefold(int k)
+{
+	int c = towupper(k);
+	return c == k ? towlower(k) : c;
+}
+
+static int match_bracket(const char *p, int k, int kfold)
 {
 	wchar_t wc;
 	int inv = 0;
@@ -119,7 +126,10 @@ static int match_bracket(const char *p, int k)
 			wchar_t wc2;
 			int l = mbtowc(&wc2, p+1, 4);
 			if (l < 0) return 0;
-			if (wc<=wc2 && (unsigned)k-wc <= wc2-wc) return !inv;
+			if (wc <= wc2)
+				if ((unsigned)k-wc <= wc2-wc ||
+				    (unsigned)kfold-wc <= wc2-wc)
+					return !inv;
 			p += l-1;
 			continue;
 		}
@@ -132,7 +142,9 @@ static int match_bracket(const char *p, int k)
 				char buf[16];
 				memcpy(buf, p0, p-1-p0);
 				buf[p-1-p0] = 0;
-				if (iswctype(k, wctype(buf))) return !inv;
+				if (iswctype(k, wctype(buf)) ||
+				    iswctype(kfold, wctype(buf)))
+					return !inv;
 			}
 			continue;
 		}
@@ -143,7 +155,7 @@ static int match_bracket(const char *p, int k)
 			if (l < 0) return 0;
 			p += l-1;
 		}
-		if (wc==k) return !inv;
+		if (wc==k || wc==kfold) return !inv;
 	}
 	return inv;
 }
@@ -153,7 +165,7 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 	const char *p, *ptail, *endpat;
 	const char *s, *stail, *endstr;
 	size_t pinc, sinc, tailcnt=0;
-	int c, k;
+	int c, k, kfold;
 
 	if (flags & FNM_PERIOD) {
 		if (*str == '.' && *pat != '.')
@@ -173,10 +185,11 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 				return (c==END) ? 0 : FNM_NOMATCH;
 			str += sinc;
 			n -= sinc;
+			kfold = flags & FNM_CASEFOLD ? casefold(k) : k;
 			if (c == BRACKET) {
-				if (!match_bracket(pat, k))
+				if (!match_bracket(pat, k, kfold))
 					return FNM_NOMATCH;
-			} else if (c != QUESTION && k != c) {
+			} else if (c != QUESTION && k != c && kfold != c) {
 				return FNM_NOMATCH;
 			}
 			pat+=pinc;
@@ -217,7 +230,7 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 	 * On illegal sequences we may get it wrong, but in that case
 	 * we necessarily have a matching failure anyway. */
 	for (s=endstr; s>str && tailcnt; tailcnt--) {
-		if (s[-1] < 128U) s--;
+		if (s[-1] < 128U || MB_CUR_MAX==1) s--;
 		else while ((unsigned char)*--s-0x80U<0x40 && s>str);
 	}
 	if (tailcnt) return FNM_NOMATCH;
@@ -233,10 +246,11 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 			break;
 		}
 		s += sinc;
+		kfold = flags & FNM_CASEFOLD ? casefold(k) : k;
 		if (c == BRACKET) {
-			if (!match_bracket(p-pinc, k))
+			if (!match_bracket(p-pinc, k, kfold))
 				return FNM_NOMATCH;
-		} else if (c != QUESTION && k != c) {
+		} else if (c != QUESTION && k != c && kfold != c) {
 			return FNM_NOMATCH;
 		}
 	}
@@ -261,10 +275,11 @@ static int fnmatch_internal(const char *pat, size_t m, const char *str, size_t n
 			k = str_next(s, endstr-s, &sinc);
 			if (!k)
 				return FNM_NOMATCH;
+			kfold = flags & FNM_CASEFOLD ? casefold(k) : k;
 			if (c == BRACKET) {
-				if (!match_bracket(p-pinc, k))
+				if (!match_bracket(p-pinc, k, kfold))
 					break;
-			} else if (c != QUESTION && k != c) {
+			} else if (c != QUESTION && k != c && kfold != c) {
 				break;
 			}
 			s += sinc;

@@ -1,3 +1,8 @@
+// Copyright 2010 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //"use strict";
 
 // LLVM => JavaScript compiler, main entry point
@@ -123,6 +128,15 @@ if (typeof print === 'undefined') {
 
 DEBUG_MEMORY = false;
 
+// Polyfilling
+
+if (!String.prototype.startsWith) {
+  String.prototype.startsWith = function(searchString, position) {
+    position = position || 0;
+    return this.indexOf(searchString, position) === position;
+  };
+}
+
 // Basic utilities
 
 load('utility.js');
@@ -152,8 +166,8 @@ if (settings_file) {
 
 
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
-EXPORTED_GLOBALS = set(EXPORTED_GLOBALS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
+IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
 
 // TODO: Implement support for proper preprocessing, e.g. "#if A || B" and "#if defined(A) || defined(B)" to
 // avoid needing this here.
@@ -166,22 +180,13 @@ DEAD_FUNCTIONS = numberedSet(DEAD_FUNCTIONS);
 
 RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
-if (NO_BROWSER) {
-  DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.filter(function(func) { return func !== '$Browser' });
-}
-
 // Output some info and warnings based on settings
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-if (!BOOTSTRAPPING_STRUCT_INFO) {
+if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
   // Load struct and define information.
-  //try {
-    var temp = JSON.parse(read(STRUCT_INFO));
-  //} catch(e) {
-  //  printErr('cannot load struct info at ' + STRUCT_INFO + ' : ' + e + ', trying in current dir');
-  //  temp = JSON.parse(read('struct_info.compiled.json'));
-  //}
+  var temp = JSON.parse(read(STRUCT_INFO));
   C_STRUCTS = temp.structs;
   C_DEFINES = temp.defines;
 } else {
@@ -196,6 +201,19 @@ load('parseTools.js');
 load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
 Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
+
+// State computations
+
+ENVIRONMENT_MAY_BE_WEB    = !ENVIRONMENT || ENVIRONMENT === 'web';
+ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENT === 'worker';
+ENVIRONMENT_MAY_BE_NODE   = !ENVIRONMENT || ENVIRONMENT === 'node';
+ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENT === 'shell';
+
+ENVIRONMENT_MAY_BE_WEB_OR_WORKER = ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER;
+
+if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)) {
+  throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';
+}
 
 //===============================
 // Main
@@ -219,11 +237,12 @@ try {
   }
 } catch(err) {
   if (err.toString().indexOf('Aborting compilation due to previous errors') != -1) {
-    // Compiler failed on user error, print out the error message.
-    printErr(err + ' | ' + err.stack);
+    // Compiler failed on user error, don't print the stacktrace in this case.
+    printErr(err);
   } else {
     // Compiler failed on internal compiler error!
-    printErr('Internal compiler error in src/compiler.js! Please raise a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('Internal compiler error in src/compiler.js!');
+    printErr('Please create a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
   }
 
   if (ENVIRONMENT_IS_NODE) {

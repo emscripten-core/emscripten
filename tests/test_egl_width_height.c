@@ -1,3 +1,10 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <EGL/egl.h>
 
@@ -35,6 +42,6 @@ int main(int argc, char *argv[])
     {
         result = 1;
     }
-    REPORT_RESULT();
+    REPORT_RESULT(result);
 #endif
 }

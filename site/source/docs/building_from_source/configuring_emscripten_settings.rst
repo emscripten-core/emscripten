@@ -27,7 +27,7 @@ The settings file is created the first time a user runs :ref:`emcc <emccdoc>` (o
 	You should get a ``Welcome to Emscripten!`` message. Behind the scenes, Emscripten generates a file called ``.emscripten`` in your home folder.
 	
 	
-Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java) and infer the location of the ``EMSCRIPTEN_ROOT`` (where :ref:`emcc <emccdoc>` is located) from the location of the command prompt. 
+Emscripten makes a "best guess" at the correct locations for tools and updates the file appropriately. Where possible it will look for "system" apps (like Python and Java).
 
 The file will probably not include the link to :term:`Fastcomp` (``LLVM_ROOT``) as a manual source build can create this anywhere.
 
@@ -49,14 +49,14 @@ Compiler configuration file-format
 
 .. note:: While the syntax is identical, the appearance of the default **.emscripten** file created by *emcc* is quite different than that created by :ref:`emsdk <compiler-configuration-file>`. This is because *emsdk* manages multiple target environments, and where possible hard codes the locations of those tools when a new environment is activated. The default file, by contrast, is managed by the user — and is designed to make that task as easy as possible.
 
-The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user cloned Emscripten to the **C:/Users/username/Documents/GitHub/emscripten** directory, then the file would have the line: ::
+The file simply assigns paths to a number of *variables* representing the main tools used by Emscripten. For example, if the user installed python to the **C:/Python27/** directory, then the file might have the line: ::
 
-	EMSCRIPTEN_ROOT = 'C:/Users/username/Documents/GitHub/emscripten'
+	PTYHON = 'C:\\Python27\\python2.exe'
 	
 
 The default *emcc* configuration file often gets the paths from environment variables if defined. If no variable is defined the system will also attempt to find "system executables". For example:  ::
 
-	PYTHON = os.path.expanduser(os.getenv('PYTHON') or 'C:\\Python27\\python2.exe')
+	PYTHON = os.path.expanduser(os.getenv('PYTHON', 'C:\\Python27\\python2.exe'))
 
 You can find out the other variable names from the default *.emscripten* file or the :ref:`example here <compiler-configuration-file>`. 
 
@@ -70,18 +70,11 @@ The compiler configuration file can be edited with the text editor of your choic
    
 	::
    
-		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM') or '/home/ubuntu/a-path/emscripten-fastcomp/build/bin')'
+		LLVM_ROOT = 'os.path.expanduser(os.getenv('LLVM', '/home/ubuntu/a-path/emscripten-fastcomp/build/bin'))'
 
 	.. note:: Use forward slashes!
 
 #. Edit the variable ``TEMP_DIR`` to point to a valid path on your local system, e.g. ``TEMP_DIR = '/tmp'`` (``TEMP_DIR = 'c:/tmp'`` on Windows), and create that folder on the local filesystem if it doesn't exist.
-
-#. You *may* need to edit the variable ``EMSCRIPTEN_ROOT`` to point to the Emscripten root folder, e.g.:
-   
-	::
-   
-		EMSCRIPTEN_ROOT = os.path.expanduser(os.getenv('EMSCRIPTEN') or '/home/ubuntu/yourpath/emscripten') # directory
- 
 
 .. comment .. The settings are now correct in the configuration file, but the paths and environment variables are not set in the command prompt/terminal. **HamishW** Follow up with Jukka on this.
  

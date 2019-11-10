@@ -2,6 +2,11 @@
 # It teaches CMake about the Emscripten compiler, so that CMake can generate makefiles
 # from CMakeLists.txt that invoke emcc.
 
+# At the moment this required minimum version is not exact (i.e. we do not know of a feature that needs CMake 3.0.0 specifically)
+# It is possible that CMake 3.0.0 is too old and will not actually work. If you do find such a case, please report it at Emscripten
+# bug tracker to revise the minimum requirement. See also https://github.com/juj/emsdk/issues/108
+cmake_minimum_required(VERSION 3.0.0)
+
 # To use this toolchain file with CMake, invoke CMake with the following command line parameters
 # cmake -DCMAKE_TOOLCHAIN_FILE=<EmscriptenRoot>/cmake/Modules/Platform/Emscripten.cmake
 #       -DCMAKE_BUILD_TYPE=<Debug|RelWithDebInfo|Release|MinSizeRel>
@@ -41,7 +46,10 @@ endif()
 
 # In order for check_function_exists() detection to work, we must signal it to pass an additional flag, which causes the compilation
 # to abort if linking results in any undefined symbols. The CMake detection mechanism depends on the undefined symbol error to be raised.
-set(CMAKE_REQUIRED_FLAGS "-s ERROR_ON_UNDEFINED_SYMBOLS=1")
+# Disable wasm in cmake checks so that (1) we do not depend on wasm support just for configuration (perhaps the user does not intend
+# to build to wasm; using asm.js only depends on js which we need anyhow), and (2) we don't have issues with a separate .wasm file
+# on the side, async startup, etc..
+set(CMAKE_REQUIRED_FLAGS "-s WASM=0")
 
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if ("${EMSCRIPTEN_ROOT_PATH}" STREQUAL "")
@@ -64,12 +72,9 @@ endif()
 # Normalize, convert Windows backslashes to forward slashes or CMake will crash.
 get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 
-if (NOT CMAKE_MODULE_PATH)
-	set(CMAKE_MODULE_PATH "")
-endif()
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
-set(CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system")
+list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}/system")
 
 if (CMAKE_HOST_WIN32)
 	set(EMCC_SUFFIX ".bat")
@@ -93,10 +98,84 @@ if ("${CMAKE_RANLIB}" STREQUAL "")
 	set(CMAKE_RANLIB "${EMSCRIPTEN_ROOT_PATH}/emranlib${EMCC_SUFFIX}" CACHE FILEPATH "Emscripten ranlib")
 endif()
 
-# Don't do compiler autodetection, since we are cross-compiling.
-include(CMakeForceCompiler)
-CMAKE_FORCE_C_COMPILER("${CMAKE_C_COMPILER}" Clang)
-CMAKE_FORCE_CXX_COMPILER("${CMAKE_CXX_COMPILER}" Clang)
+# Don't allow CMake to autodetect the compiler, since it does not understand Emscripten.
+# Pass -DEMSCRIPTEN_FORCE_COMPILERS=OFF to disable (sensible mostly only for testing/debugging purposes).
+option(EMSCRIPTEN_FORCE_COMPILERS "Force C/C++ compiler" ON)
+if (EMSCRIPTEN_FORCE_COMPILERS)
+
+	# Detect version of the 'emcc' executable. Note that for CMake, we tell it the version of the Clang compiler and not the version of Emscripten,
+	# because CMake understands Clang better.
+	if (NOT CMAKE_C_COMPILER_VERSION) # Toolchain script is interpreted multiple times, so don't rerun the check if already done before.
+		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
+		if (NOT _cmake_compiler_result EQUAL 0)
+			message(FATAL_ERROR "Failed to fetch compiler version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
+		endif()
+		if (NOT "${_cmake_compiler_output}" MATCHES "[Ee]mscripten")
+			message(FATAL_ERROR "System LLVM compiler cannot be used to build with Emscripten! Check Emscripten's LLVM toolchain location in .emscripten configuration file, and make sure to point CMAKE_C_COMPILER to where emcc is located. (was pointing to \"${CMAKE_C_COMPILER}\")")
+		endif()
+		string(REGEX MATCH "clang version ([0-9\\.]+)" _dummy_unused "${_cmake_compiler_output}")
+		if (NOT CMAKE_MATCH_1)
+			message(FATAL_ERROR "Failed to regex parse Clang compiler version from version string: ${_cmake_compiler_output}")
+		endif()
+
+		set(CMAKE_C_COMPILER_VERSION "${CMAKE_MATCH_1}")
+		set(CMAKE_CXX_COMPILER_VERSION "${CMAKE_MATCH_1}")
+		if (${CMAKE_C_COMPILER_VERSION} VERSION_LESS 3.9.0)
+			message(WARNING "CMAKE_C_COMPILER version looks too old. Was ${CMAKE_C_COMPILER_VERSION}, should be at least 3.9.0.")
+		endif()
+	endif()
+
+	# Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
+	if (NOT EMSCRIPTEN_VERSION)
+		execute_process(COMMAND "${CMAKE_C_COMPILER}" "-v" RESULT_VARIABLE _cmake_compiler_result ERROR_VARIABLE _cmake_compiler_output OUTPUT_QUIET)
+		if (NOT _cmake_compiler_result EQUAL 0)
+			message(FATAL_ERROR "Failed to fetch Emscripten version information with command \"'${CMAKE_C_COMPILER}' -v\"! Process returned with error code ${_cmake_compiler_result}.")
+		endif()
+		string(REGEX MATCH "emcc \\(.*\\) ([0-9\\.]+)" _dummy_unused "${_cmake_compiler_output}")
+		if (NOT CMAKE_MATCH_1)
+			message(FATAL_ERROR "Failed to regex parse Emscripten compiler version from version string: ${_cmake_compiler_output}")
+		endif()
+
+		set(EMSCRIPTEN_VERSION "${CMAKE_MATCH_1}")
+	endif()
+
+	set(CMAKE_C_COMPILER_ID_RUN TRUE)
+	set(CMAKE_C_COMPILER_FORCED TRUE)
+	set(CMAKE_C_COMPILER_WORKS TRUE)
+	set(CMAKE_C_COMPILER_ID Clang)
+	set(CMAKE_C_STANDARD_COMPUTED_DEFAULT 11)
+
+	set(CMAKE_CXX_COMPILER_ID_RUN TRUE)
+	set(CMAKE_CXX_COMPILER_FORCED TRUE)
+	set(CMAKE_CXX_COMPILER_WORKS TRUE)
+	set(CMAKE_CXX_COMPILER_ID Clang)
+	set(CMAKE_CXX_STANDARD_COMPUTED_DEFAULT 98)
+
+	set(CMAKE_C_PLATFORM_ID "emscripten")
+	set(CMAKE_CXX_PLATFORM_ID "emscripten")
+
+	if ("${CMAKE_VERSION}" VERSION_LESS "3.8")
+		set(CMAKE_C_COMPILE_FEATURES "c_function_prototypes;c_restrict;c_variadic_macros;c_static_assert")
+		set(CMAKE_C90_COMPILE_FEATURES "c_function_prototypes")
+		set(CMAKE_C99_COMPILE_FEATURES "c_restrict;c_variadic_macros")
+		set(CMAKE_C11_COMPILE_FEATURES "c_static_assert")
+
+		set(CMAKE_CXX_COMPILE_FEATURES "cxx_template_template_parameters;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+		set(CMAKE_CXX98_COMPILE_FEATURES "cxx_template_template_parameters")
+		set(CMAKE_CXX11_COMPILE_FEATURES "cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates")
+		set(CMAKE_CXX14_COMPILE_FEATURES "cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+	else()
+		set(CMAKE_C_COMPILE_FEATURES "c_std_90;c_function_prototypes;c_std_99;c_restrict;c_variadic_macros;c_std_11;c_static_assert")
+		set(CMAKE_C90_COMPILE_FEATURES "c_std_90;c_function_prototypes")
+		set(CMAKE_C99_COMPILE_FEATURES "c_std_99;c_restrict;c_variadic_macros")
+		set(CMAKE_C11_COMPILE_FEATURES "c_std_11;c_static_assert")
+
+		set(CMAKE_CXX_COMPILE_FEATURES "cxx_std_98;cxx_template_template_parameters;cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates;cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates;cxx_std_17")
+		set(CMAKE_CXX98_COMPILE_FEATURES "cxx_std_98;cxx_template_template_parameters")
+		set(CMAKE_CXX11_COMPILE_FEATURES "cxx_std_11;cxx_alias_templates;cxx_alignas;cxx_alignof;cxx_attributes;cxx_auto_type;cxx_constexpr;cxx_decltype;cxx_decltype_incomplete_return_types;cxx_default_function_template_args;cxx_defaulted_functions;cxx_defaulted_move_initializers;cxx_delegating_constructors;cxx_deleted_functions;cxx_enum_forward_declarations;cxx_explicit_conversions;cxx_extended_friend_declarations;cxx_extern_templates;cxx_final;cxx_func_identifier;cxx_generalized_initializers;cxx_inheriting_constructors;cxx_inline_namespaces;cxx_lambdas;cxx_local_type_template_args;cxx_long_long_type;cxx_noexcept;cxx_nonstatic_member_init;cxx_nullptr;cxx_override;cxx_range_for;cxx_raw_string_literals;cxx_reference_qualified_functions;cxx_right_angle_brackets;cxx_rvalue_references;cxx_sizeof_member;cxx_static_assert;cxx_strong_enums;cxx_thread_local;cxx_trailing_return_types;cxx_unicode_literals;cxx_uniform_initialization;cxx_unrestricted_unions;cxx_user_literals;cxx_variadic_macros;cxx_variadic_templates")
+		set(CMAKE_CXX14_COMPILE_FEATURES "cxx_std_14;cxx_aggregate_default_initializers;cxx_attribute_deprecated;cxx_binary_literals;cxx_contextual_conversions;cxx_decltype_auto;cxx_digit_separators;cxx_generic_lambdas;cxx_lambda_init_captures;cxx_relaxed_constexpr;cxx_return_type_deduction;cxx_variable_templates")
+	endif()
+endif()
 
 # To find programs to execute during CMake run time with find_program(), e.g. 'git' or so, we allow looking
 # into system paths.
@@ -114,12 +193,24 @@ set(CMAKE_SYSTEM_INCLUDE_PATH "${EMSCRIPTEN_ROOT_PATH}/system/include")
 # but if these are adjusted, ${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake will fail, since it depends on being able to compile output files with predefined names.
 #SET(CMAKE_LINK_LIBRARY_SUFFIX "")
 #SET(CMAKE_STATIC_LIBRARY_PREFIX "")
-#SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
 #SET(CMAKE_SHARED_LIBRARY_PREFIX "")
-#SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
-SET(CMAKE_EXECUTABLE_SUFFIX ".js")
 #SET(CMAKE_FIND_LIBRARY_PREFIXES "")
 #SET(CMAKE_FIND_LIBRARY_SUFFIXES ".bc")
+#SET(CMAKE_SHARED_LIBRARY_SUFFIX ".bc")
+
+option(EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES "If set, static library targets generate LLVM bitcode files (.bc). If disabled (default), UNIX ar archives (.a) are generated." OFF)
+if (EMSCRIPTEN_GENERATE_BITCODE_STATIC_LIBRARIES)
+	SET(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+
+	SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_C_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+	SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_CXX_COMPILER> -o <TARGET> <LINK_FLAGS> <OBJECTS>")
+else()
+	# Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
+	SET(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+	SET(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
+endif()
+
+SET(CMAKE_EXECUTABLE_SUFFIX ".js")
 
 SET(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
 SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
@@ -130,10 +221,6 @@ SET(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
 
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
-
-# Specify the program to use when building static libraries. Force Emscripten-related command line options to clang.
-set(CMAKE_C_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
-set(CMAKE_CXX_CREATE_STATIC_LIBRARY "<CMAKE_AR> rc <TARGET> <LINK_FLAGS> <OBJECTS>")
 
 # Set a global EMSCRIPTEN variable that can be used in client CMakeLists.txt to detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE BOOL "If true, we are targeting Emscripten output.")
@@ -186,18 +273,11 @@ set(link_js_counter 1)
 
 # Internal function: Do not call from user CMakeLists.txt files. Use one of em_link_js_library()/em_link_pre_js()/em_link_post_js() instead.
 function(em_add_tracked_link_flag target flagname)
-	get_target_property(props ${target} LINK_FLAGS)
-	if(NOT props)
-	    set(props "")
-	endif()
 
 	# User can input list of JS files either as a single list, or as variable arguments to this function, so iterate over varargs, and treat each
 	# item in varargs as a list itself, to support both syntax forms.
 	foreach(jsFileList ${ARGN})
 		foreach(jsfile ${jsFileList})
-			# Add link command to the given JS file.
-			set(props "${props} ${flagname} \"${jsfile}\"")
-			
 			# If the user edits the JS file, we want to relink the emscripten application, but unfortunately it is not possible to make a link step
 			# depend directly on a source file. Instead, we must make a dummy no-op build target on that source file, and make the project depend on
 			# that target.
@@ -215,10 +295,16 @@ function(em_add_tracked_link_flag target flagname)
 			add_custom_command(OUTPUT ${dummy_c_name} COMMAND ${CMAKE_COMMAND} -E touch ${dummy_c_name} DEPENDS ${jsfile})
 			target_link_libraries(${target} ${dummy_lib_name})
 
+			# Link the js-library to the target
+			# When a linked library starts with a "-" cmake will just add it to the linker command line as it is.
+			# The advantage of doing it this way is that the js-library will also be automatically linked to targets
+			# that depend on this target.
+			get_filename_component(js_file_absolute_path "${jsfile}" ABSOLUTE )
+			target_link_libraries(${target} "${flagname} \"${js_file_absolute_path}\"")
+
 			math(EXPR link_js_counter "${link_js_counter} + 1")
 		endforeach()
 	endforeach()
-	set_target_properties(${target} PROPERTIES LINK_FLAGS "${props}")
 endfunction()
 
 # This function links a (list of ) .js library file(s) to the given CMake project.

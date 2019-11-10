@@ -1,18 +1,20 @@
 #!/usr/bin/env python2
+# Copyright 2011 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
-'''
-see emmaken.py
-'''
-
-import os, subprocess, sys
+"""See emmaken.py
+"""
+import os
+import subprocess
+import sys
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-def path_from_root(*pathelems):
-  return os.path.join(__rootpath__, *pathelems)
-sys.path += [path_from_root('')]
-from tools.shared import *
+sys.path.append(__rootpath__)
 
-emmaken = path_from_root('tools', 'emmaken.py')
+from tools import shared  # noqa
+
+emmaken = shared.path_from_root('tools', 'emmaken.py')
 os.environ['EMMAKEN_CXX'] = '1'
-exit(subprocess.call([PYTHON, emmaken] + sys.argv[1:]))
-
+sys.exit(subprocess.call([shared.PYTHON, emmaken] + sys.argv[1:]))

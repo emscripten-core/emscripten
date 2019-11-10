@@ -8,7 +8,8 @@ interface Parent {
   void parentFunc();
   [Const] Parent getAsConst();
   VoidPtr voidStar(VoidPtr something);
-
+  boolean getBoolean();
+  attribute long attr;
   readonly attribute long immutableAttr;
 };
 
@@ -44,6 +45,18 @@ interface Child2JS {
   void virtualFunc4(long x);
 };
 
+interface VirtualBase {
+  void func();
+  void constFunc();
+};
+
+[JSImplementation="VirtualBase"]
+interface ConcreteJS {
+  void ConcreteJS();
+  void func();
+  [Const] void constFunc();
+};
+
 // Part 2
 
 interface StringUser {
@@ -75,6 +88,8 @@ interface Inner {
   void Inner();
   long get();
   [Operator="*=", Ref] Inner mul(float x);
+  [Operator="[]"] long getAsArray(long x);
+  [Operator="+="] void incInPlace([Const, Ref] Inner i);
 };
 
 enum AnEnum {
@@ -126,3 +141,17 @@ interface ArrayClass {
   [Value] attribute StructInArray[] struct_array;
   attribute StructInArray[] struct_ptr_array;
 };
+
+interface ReceiveArrays {
+  void ReceiveArrays();
+
+  void giveMeArrays(float[] vertices, long[] triangles, long num);
+};
+
+interface StoreArray {
+  void StoreArray();
+
+  void setArray([Const] long[] array);
+  long getArrayValue(long index);
+};
+

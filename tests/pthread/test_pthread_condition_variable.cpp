@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -30,11 +35,11 @@ void *inc_count(void *t)
       pthread_cond_signal(&count_threshold_cv);
  //     printf("inc_count(): thread %ld, count = %d  Threshold reached.\n", 
  //            my_id, count);
-      EM_ASM_INT( { Module['print']('inc_count(): thread ' + $0 + ', count = ' + $1 + ', Threshold reached.'); }, my_id, count);
+      EM_ASM(out('inc_count(): thread ' + $0 + ', count = ' + $1 + ', Threshold reached.'), my_id, count);
       }
 //    printf("inc_count(): thread %ld, count = %d, unlocking mutex\n", 
 //	   my_id, count);
-    EM_ASM_INT( { Module['print']('inc_count(): thread ' + $0 + ', count = ' + $1 + ', unlocking mutex.'); }, my_id, count);
+    EM_ASM(out('inc_count(): thread ' + $0 + ', count = ' + $1 + ', unlocking mutex.'), my_id, count);
     pthread_mutex_unlock(&count_mutex);
 
     /* Do some "work" so threads can alternate on mutex lock */
@@ -48,7 +53,7 @@ void *watch_count(void *t)
   long my_id = (long)t;
 
 //  printf("Starting watch_count(): thread %ld\n", my_id);
-  EM_ASM_INT( { Module['print']('Starting watch_count(): thread ' + $0); }, my_id);
+  EM_ASM(out('Starting watch_count(): thread ' + $0), my_id);
 
   /*
   Lock mutex and wait for signal.  Note that the pthread_cond_wait 
@@ -61,10 +66,10 @@ void *watch_count(void *t)
   while (count<COUNT_LIMIT) {
     pthread_cond_wait(&count_threshold_cv, &count_mutex);
 //    printf("watch_count(): thread %ld Condition signal received.\n", my_id);
-    EM_ASM_INT( { Module['print']('watch_count(): thread ' + $0 + ' Condition signal received.'); }, my_id);
+    EM_ASM(out('watch_count(): thread ' + $0 + ' Condition signal received.'), my_id);
     count += 125;
 //    printf("watch_count(): thread %ld count now = %d.\n", my_id, count);
-    EM_ASM_INT( { Module['print']('watch_count(): thread ' + $0 + ', count now = ' + $1); }, my_id, count);
+    EM_ASM(out('watch_count(): thread ' + $0 + ', count now = ' + $1), my_id, count);
     }
   pthread_mutex_unlock(&count_mutex);
   pthread_exit(NULL);
@@ -102,8 +107,7 @@ int main (int argc, char *argv[])
   pthread_mutex_destroy(&count_mutex);
   pthread_cond_destroy(&count_threshold_cv);
 #ifdef REPORT_RESULT
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 #endif
   pthread_exit(NULL);
 }

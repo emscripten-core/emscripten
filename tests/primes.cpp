@@ -1,5 +1,10 @@
-#include<stdio.h>
-#include<math.h>
+// Copyright 2014 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
+#include <stdio.h>
+#include <math.h>
 int main(int argc, char **argv) {
   int arg = argc > 1 ? argv[1][0] - '0' : 3;
   switch(arg) {

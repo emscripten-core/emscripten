@@ -1,6 +1,7 @@
 #include <string.h>
 #include <regex.h>
 #include <stdio.h>
+#include "locale_impl.h"
 
 /* Error message strings for error codes listed in `regex.h'.  This list
    needs to be in sync with the codes listed there, naturally. */
@@ -31,5 +32,6 @@ size_t regerror(int e, const regex_t *restrict preg, char *restrict buf, size_t 
 	const char *s;
 	for (s=messages; e && *s; e--, s+=strlen(s)+1);
 	if (!*s) s++;
+	s = LCTRANS_CUR(s);
 	return 1+snprintf(buf, size, "%s", s);
 }

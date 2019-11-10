@@ -1,8 +1,15 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include<emscripten/emscripten.h>
+/*
+ * Copyright 2015 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <emscripten/emscripten.h>
 #define GLFW_INCLUDE_ES2 
-#include<GL/glfw.h>
+#include <GL/glfw.h>
 
 int main() {
     printf("main function started\n");
@@ -19,8 +26,7 @@ int main() {
         }
     }
 #ifdef REPORT_RESULT  
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
     return EXIT_SUCCESS;
 }

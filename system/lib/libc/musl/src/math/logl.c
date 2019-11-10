@@ -166,4 +166,10 @@ long double logl(long double x)
 	z = z + e * C1; /* This sum has an error of 1/2 lsb. */
 	return z;
 }
+#elif LDBL_MANT_DIG == 113 && LDBL_MAX_EXP == 16384
+// TODO: broken implementation to make things compile
+long double logl(long double x)
+{
+	return log(x);
+}
 #endif

@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <SDL.h>
 #include <emscripten.h>
 
@@ -21,16 +26,16 @@ static void main_loop(void)
         EM_ASM({
             Module.the_ctx = Module.SDL2.ctx;
             Module.the_image = Module.SDL2.image;
-            Module.print('start with ' + [Module.the_ctx, Module.the_image]);
+            out('start with ' + [Module.the_ctx, Module.the_image]);
             assert(!!Module.the_ctx && (typeof Module.the_ctx === 'object'), 'typeof ctx');
             assert(!!Module.the_image && (typeof Module.the_image === 'object'), 'typeof image');
-            Module.print('set values');
+            out('set values');
         });
     } else if (runs > 1) {
-        EM_ASM_ARGS({
+        EM_ASM({
             assert(Module.the_ctx === Module.SDL2.ctx, 'ctx');
             assert(Module.the_image === Module.SDL2.image, 'image');
-            Module.print('check ok ' + $0);
+            out('check ok ' + $0);
         }, runs);
     }
 
@@ -43,8 +48,7 @@ static void main_loop(void)
     runs++;
     if (runs >= TOTAL_RUNS) {
         emscripten_cancel_main_loop();
-        int result = 1;
-        REPORT_RESULT();
+        REPORT_RESULT(1);
     }
 }
 

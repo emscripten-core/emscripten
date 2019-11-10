@@ -1,7 +1,12 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <iostream>
 #include <emscripten.h>
-#include <html5.h>
+#include <emscripten/html5.h>
 
 using namespace std;
 
@@ -32,15 +37,13 @@ void mainLoop() {
   if (seen >= 10) {
     emscripten_cancel_main_loop();
     cout << "Success.\n";
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
     return;
   }
   if (counter >= 100) {
     emscripten_cancel_main_loop();
     cout << "FAIL\n";
-    int result = 9999;
-    REPORT_RESULT();
+    REPORT_RESULT(9999);
     return;
   }
 }

@@ -61,14 +61,21 @@ FILE *open_wmemstream(wchar_t **bufp, size_t *sizep)
 {
 	FILE *f;
 	struct cookie *c;
+	wchar_t *buf;
+
 	if (!(f=malloc(sizeof *f + sizeof *c))) return 0;
+	if (!(buf=malloc(sizeof *buf))) {
+		free(f);
+		return 0;
+	}
 	memset(f, 0, sizeof *f + sizeof *c);
 	f->cookie = c = (void *)(f+1);
 
 	c->bufp = bufp;
 	c->sizep = sizep;
-	c->pos = c->len = c->space = 0;
-	c->buf = 0;
+	c->pos = c->len = c->space = *sizep = 0;
+	c->buf = *bufp = buf;
+	*buf = 0;
 
 	f->flags = F_NORD;
 	f->fd = -1;
@@ -81,11 +88,5 @@ FILE *open_wmemstream(wchar_t **bufp, size_t *sizep)
 
 	if (!libc.threaded) f->lock = -1;
 
-	OFLLOCK();
-	f->next = libc.ofl_head;
-	if (libc.ofl_head) libc.ofl_head->prev = f;
-	libc.ofl_head = f;
-	OFLUNLOCK();
-
-	return f;
+	return __ofl_add(f);
 }

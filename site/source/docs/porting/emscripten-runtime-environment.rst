@@ -4,7 +4,7 @@
 Emscripten Runtime Environment
 ==============================
 
-The Emscripten runtime environment is different to that expected by most C/C++ applications. Emscripten works hard to abstract and mitigate these differences, so that in general code can be compiled with little or no change. 
+The Emscripten runtime environment is different to that expected by most C/C++ applications. Emscripten works hard to abstract and mitigate these differences, so that in general code can be compiled with little or no change.
 
 This article expands on some of the differences and the resulting :ref:`api-limitations`, and outlines the few changes you may need to make to your C/C++ code.
 
@@ -26,7 +26,7 @@ File Systems
 
 A lot of C/C++ code uses the synchronous file system APIs in *libc* and *libcxx* to access code in the local file system. This is problematic because the browser prevents code from directly accessing files on the host system, and because JavaScript only supports asynchronous file access outside of web workers.
 
-Emscripten provides an implementation of *libc* and *libcxx* and a *virtual file system* so that normal C/C++ code can be compiled and run without change. Most developers need only specify the set of files to be :ref:`packaged <packaging-files>` for preloading into the virtual file system at runtime. 
+Emscripten provides an implementation of *libc* and *libcxx* and a *virtual file system* so that normal C/C++ code can be compiled and run without change. Most developers need only specify the set of files to be :ref:`packaged <packaging-files>` for preloading into the virtual file system at runtime.
 
 .. note:: Using a virtual file system bypasses the limitations listed above. The file data is packaged at compile time and downloaded into the file system using *asynchronous* JavaScript APIs before the compiled code is allowed to run. The compiled code then makes "file" calls that are really just calls into program memory.
 
@@ -55,58 +55,58 @@ Implementing an asynchronous main loop in C/C++
 
 The standard solution for this problem is to define a C function that performs one iteration of your main loop (not including the "delay"). For a native build this function can be called in an infinite loop, leaving the behaviour effectively unchanged.
 
-Within Emscripten compiled code we use :c:func:`emscripten_set_main_loop` to get the environment to call this same function at a specified frequency. The iteration is still run "infinitely" but now other code can run between iterations and the browser does not hang. 
+Within Emscripten compiled code we use :c:func:`emscripten_set_main_loop` to get the environment to call this same function at a specified frequency. The iteration is still run "infinitely" but now other code can run between iterations and the browser does not hang.
 
-.. todo:: Check this statement out: (just call it from JavaScript, all you need is an underscore at the beginning of the name), 
+.. todo:: Check this statement out: (just call it from JavaScript, all you need is an underscore at the beginning of the name),
 
 Typically you will have a small section with ``#ifdef __EMSCRIPTEN__`` for the two cases. For example:
 
 .. code-block:: cpp
 
-	int main() {
-	...
-	#ifdef __EMSCRIPTEN__
-	  // void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
-	  emscripten_set_main_loop(one_iter, 60, 1);
-	#else
-	  while (1) {
-	    one_iter();
-	    // Delay to keep frame rate constant (using SDL)
-	    SDL_Delay(time_to_next_frame());
-	  }
-	#endif
-	}
+  int main() {
+  ...
+  #ifdef __EMSCRIPTEN__
+    // void emscripten_set_main_loop(em_callback_func func, int fps, int simulate_infinite_loop);
+    emscripten_set_main_loop(one_iter, 60, 1);
+  #else
+    while (1) {
+      one_iter();
+      // Delay to keep frame rate constant (using SDL)
+      SDL_Delay(time_to_next_frame());
+    }
+  #endif
+  }
 
-	// The "main loop" function.
-	void one_iter() {
-	  // process input
-	  // render to screen
-	}
+  // The "main loop" function.
+  void one_iter() {
+    // process input
+    // render to screen
+  }
 
-	
+
 .. note:: When using SDL you will probably need to set the main loop. You should also note:
 
-	- The current Emscripten implementation of ``SDL_QUIT`` will work if you use :c:func:`emscripten_set_main_loop`. As the page is shut, it will force a final direct call to the main loop, giving it a chance to notice the ``SDL_QUIT`` event. If you do not use a main loop, your app will close before you have had an opportunity to notice this event. 
-	- There are limitations to what you can do as the page shuts (in ``onunload``). Some actions like showing alerts are banned by browsers at this point.
+  - The current Emscripten implementation of ``SDL_QUIT`` will work if you use :c:func:`emscripten_set_main_loop`. As the page is shut, it will force a final direct call to the main loop, giving it a chance to notice the ``SDL_QUIT`` event. If you do not use a main loop, your app will close before you have had an opportunity to notice this event.
+  - There are limitations to what you can do as the page shuts (in ``onunload``). Some actions like showing alerts are banned by browsers at this point.
 
 
 Execution lifecycle
 ===================
 
-When an Emscripten-compiled application is loaded, it starts by preparing data in the ``preloading`` phase. Files you marked for :ref:`preloading <emcc-preload-file>` (using ``emcc --preload-file``, or manually from JavaScript with :js:func:`FS.createPreloadedFile`) are set up at this stage. 
+When an Emscripten-compiled application is loaded, it starts by preparing data in the ``preloading`` phase. Files you marked for :ref:`preloading <emcc-preload-file>` (using ``emcc --preload-file``, or manually from JavaScript with :js:func:`FS.createPreloadedFile`) are set up at this stage.
 
-You can add additional operations with :js:func:`addRunDependency`, which is a counter of all dependencies to be executed before compiled code can run. As these are completed you can call :js:func:`removeRunDependency` to remove the completed dependencies. 
+You can add additional operations with :js:func:`addRunDependency`, which is a counter of all dependencies to be executed before compiled code can run. As these are completed you can call :js:func:`removeRunDependency` to remove the completed dependencies.
 
 .. note:: Generally it is not necessary to add additional operations — preloading is suitable for almost all use cases.
 
-When all dependencies are met, Emscripten will call ``run()``, which proceeds to call your ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency. 
+When all dependencies are met, Emscripten will call ``run()``, which proceeds to call your ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency.
 
 You can affect the operation of the main loop in several ways:
 
-- 
-	:c:func:`emscripten_push_main_loop_blocker` adds a function that **blocks** the main loop until the blocker completes. 
+-
+  :c:func:`emscripten_push_main_loop_blocker` adds a function that **blocks** the main loop until the blocker completes.
 
-	This is useful, for example, to manage loading new game levels. After a level completes, you can push blockers for each action involved (unpacking the file, generate the data structures, etc.) When all the blockers have completed the main loop will resume and the game should run the new level. You can also use this function in conjunction with :c:func:`emscripten_set_main_loop_expected_blockers` to keep the user informed of progress.
+  This is useful, for example, to manage loading new game levels. After a level completes, you can push blockers for each action involved (unpacking the file, generate the data structures, etc.) When all the blockers have completed the main loop will resume and the game should run the new level. You can also use this function in conjunction with :c:func:`emscripten_set_main_loop_expected_blockers` to keep the user informed of progress.
 
 - :c:func:`emscripten_pause_main_loop` pauses the main loop, and :c:func:`emscripten_resume_main_loop` resumes it. These are low level (less recommended) alternatives to the blocker functions.
 
@@ -120,13 +120,13 @@ The :ref:`browser execution environment reference (emscripten.h) <emscripten-h-b
 Emscripten memory representation
 ================================
 
-Emscripten's memory model is known as :term:`Typed Arrays Mode 2`. It represents memory using a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.)  
+Emscripten's memory model is known as :term:`Typed Arrays Mode 2`. It represents memory using a single `typed array <https://developer.mozilla.org/en-US/docs/Web/JavaScript/Typed_arrays>`_, with different *views* providing access to different types (:js:data:`HEAPU32` for 32-bit unsigned integers, etc.)
 
-.. note:: *Typed Arrays Mode 2* is the *only* memory model supported by the :ref:`Fastcomp <LLVM-Backend>` compiler, and it is the *default* memory model for the :ref:`old compiler <original-compiler-core>`. 
+.. note:: *Typed Arrays Mode 2* is the *only* memory model supported by the :ref:`Fastcomp <LLVM-Backend>` compiler, and it is the *default* memory model for the :ref:`old compiler <original-compiler-core>`.
 
-	Compared to other models tried by the project, it can be used for a broad range of arbitrary compiled code, and is relatively fast.  
+  Compared to other models tried by the project, it can be used for a broad range of arbitrary compiled code, and is relatively fast.
 
-The model lays out items in memory in the same way as with normal C and C++, and as a result it uses the same amount of memory. 
+The model lays out items in memory in the same way as with normal C and C++, and as a result it uses the same amount of memory.
 
 This model allows you to use code that violates the :term:`load-store consistency` assumption. Since the different views show the same data, you can (say) write a 32-bit integer, then read a byte from the middle, and it will work just like in a native build of C or C++ on most platforms.
 

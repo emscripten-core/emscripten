@@ -90,7 +90,7 @@ float powf(float x, float y)
 			return 1.0f;
 		else if (ix > 0x3f800000)  /* (|x|>1)**+-inf = inf,0 */
 			return hy >= 0 ? y : 0.0f;
-		else if (ix != 0)          /* (|x|<1)**+-inf = 0,inf if x!=0 */
+		else                       /* (|x|<1)**+-inf = 0,inf */
 			return hy >= 0 ? 0.0f: -y;
 	}
 	if (iy == 0x3f800000)    /* y is +-1 */

@@ -1,11 +1,16 @@
+/*
+ * Copyright 2013 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
 #include <stdio.h>
 #include <SDL.h>
 #include <SDL_ttf.h>
 
 int main()
 {
-    int result = 0;
-
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
 
@@ -26,8 +31,7 @@ int main()
     }
 
 #ifdef __EMSCRIPTEN__
-    result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
 #endif
 }
 

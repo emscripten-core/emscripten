@@ -1,12 +1,18 @@
-import subprocess, tempfile, os, sys, shutil, json
-from subprocess import Popen, PIPE, STDOUT
+#!/usr/bin/env python
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
+import tempfile, os, sys, shutil, json, re
 
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 def path_from_root(*pathelems):
   return os.path.join(__rootpath__, *pathelems)
 sys.path += [path_from_root('')]
-import tools.shared
-from tools.shared import *
+from tools.shared import PYTHON, WINDOWS, CLANG_CPP, EMCC, PIPE
+from tools.shared import Popen, get_clang_native_args, get_clang_native_env
+
 
 temp_dir = tempfile.mkdtemp()
 
@@ -70,9 +76,12 @@ print ' - The slow script dialog in Firefox is disabled.'
 print ' - Make sure that all Firefox debugging, profiling etc. add-ons that might impact performance are disabled (Firebug, Geckoprofiler, ...).'
 print ''
 print 'Once the test has finished, close the browser application to continue.'
-html_results = Popen([PYTHON, path_from_root('emrun'), '--browser=' + browser, out_file], stdout=PIPE, stderr=PIPE).communicate()
+cmd = [PYTHON, path_from_root('emrun'), '--safe_firefox_profile', '--browser=' + browser, out_file]
+print ' '.join(cmd)
+html_results = Popen(cmd, stdout=PIPE, stderr=PIPE).communicate()
 
 if not html_results or not html_results[0].strip():
+    print html_results[1]
     print 'Running Firefox Nightly failed! Please rerun with the command line parameter --browser=/path/to/firefox/nightly/firefox'
     sys.exit(1)
 
@@ -94,15 +103,16 @@ browser_info = '<br/>'.join([line for line in browser_info.strip().split('\n') i
 shutil.rmtree(temp_dir)
 
 native_results = json.loads(native_results[0])
+benchmark_results = benchmark_results[benchmark_results.index('{'):benchmark_results.rindex('}')+1]
 html_results = json.loads(benchmark_results)
 
 native_workload = native_results['workload']
 html_workload = html_results['workload']
 
 html = '''<html><head></head><body><h1>SSE1 JavaScript Benchmark</h1>
-<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
-<script src="http://code.highcharts.com/highcharts.js"></script>
-<script src="http://code.highcharts.com/modules/exporting.js"></script><b>System Info:</b><br/>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"></script>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/exporting.js"></script><b>System Info:</b><br/>
 ''' + system_info[0].replace('\n', '<br/>') + '''
 <b>Native Clang Compiler:</b><br/>
 ''' + native_info[1].replace('\n', '<br/>') + '''
@@ -117,11 +127,11 @@ charts_native = {}
 charts_html = {}
 for result in native_results['results']:
 	ch = result['chart']
-	if not ch in charts_native: charts_native[ch] = []
+	if ch not in charts_native: charts_native[ch] = []
 	charts_native[ch] += [result]
 for result in html_results['results']:
 	ch = result['chart']
-	if not ch in charts_html: charts_html[ch] = []
+	if ch not in charts_html: charts_html[ch] = []
 	charts_html[ch] += [result]
 
 def find_result_in_category(results, category):

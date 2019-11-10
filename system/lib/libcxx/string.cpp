@@ -13,17 +13,17 @@
 #include "cerrno"
 #include "limits"
 #include "stdexcept"
-#ifdef _LIBCPP_MSVCRT
-#include "support/win32/support.h"
-#endif // _LIBCPP_MSVCRT
 #include <stdio.h>
+
+// XXX EMSCRIPTEN: Recent versions of clang generates warning in as_integer.
+#pragma clang diagnostic ignored "-Wtautological-compare"
 
 _LIBCPP_BEGIN_NAMESPACE_STD
 
-template class __basic_string_common<true>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS __basic_string_common<true>;
 
-template class basic_string<char>;
-template class basic_string<wchar_t>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS basic_string<char>;
+template class _LIBCPP_CLASS_TEMPLATE_INSTANTIATION_VIS basic_string<wchar_t>;
 
 template
     string
@@ -39,8 +39,8 @@ void throw_helper( const string& msg )
 #ifndef _LIBCPP_NO_EXCEPTIONS
     throw T( msg );
 #else
-    printf("%s\n", msg.c_str());
-    abort();
+    fprintf(stderr, "%s\n", msg.c_str());
+    _VSTD::abort();
 #endif
 }
 
@@ -63,7 +63,7 @@ inline
 V
 as_integer_helper(const string& func, const S& str, size_t* idx, int base, F f)
 {
-    typename S::value_type* ptr;
+    typename S::value_type* ptr = nullptr;
     const typename S::value_type* const p = str.c_str();
     typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
@@ -180,7 +180,7 @@ inline
 V
 as_float_helper(const string& func, const S& str, size_t* idx, F f )
 {
-    typename S::value_type* ptr;
+    typename S::value_type* ptr = nullptr;
     const typename S::value_type* const p = str.c_str();
     typename remove_reference<decltype(errno)>::type errno_save = errno;
     errno = 0;
@@ -430,7 +430,7 @@ get_swprintf()
 #ifndef _LIBCPP_MSVCRT
     return swprintf;
 #else
-    return static_cast<int (__cdecl*)(wchar_t* __restrict, size_t, const wchar_t*__restrict, ...)>(swprintf);
+    return static_cast<int (__cdecl*)(wchar_t* __restrict, size_t, const wchar_t*__restrict, ...)>(_snwprintf);
 #endif
 }
 

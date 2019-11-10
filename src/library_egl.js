@@ -1,12 +1,21 @@
 /*
- The EGL implementation supports only one EGLNativeDisplayType, the EGL_DEFAULT_DISPLAY.
- This native display type returns the only supported EGLDisplay handle with the magic value 62000.
- There is only a single EGLConfig configuration supported, that has the magic value 62002.
- The implementation only allows a single EGLContext to be created, that has the magic value of 62004. (multiple creations silently return this same context)
- The implementation only creates a single EGLSurface, a handle with the magic value of 62006. (multiple creations silently return the same surface)
-*/ 
- 
+ * Copyright 2012 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * The EGL implementation supports only one EGLNativeDisplayType, the
+ * EGL_DEFAULT_DISPLAY.  This native display type returns the only supported
+ * EGLDisplay handle with the magic value 62000. There is only a single
+ * EGLConfig configuration supported, that has the magic value 62002.  The
+ * implementation only allows a single EGLContext to be created, that has the
+ * magic value of 62004. (multiple creations silently return this same context)
+ * The implementation only creates a single EGLSurface, a handle with the magic
+ * value of 62006. (multiple creations silently return the same surface)
+ */
+
 var LibraryEGL = {
+  $EGL__deps: ['$Browser'],
   $EGL: {
     // This variable tracks the success status of the most recently invoked EGL function call.
     errorCode: 0x3000 /* EGL_SUCCESS */,
@@ -14,6 +23,10 @@ var LibraryEGL = {
     currentContext: 0 /* EGL_NO_CONTEXT */,
     currentReadSurface: 0 /* EGL_NO_SURFACE */,
     currentDrawSurface: 0 /* EGL_NO_SURFACE */,
+    alpha: false,
+    depth:     true, /*not EGL default, compat with earlier emscripten*/
+    stencil:   true, /*not EGL default, compat with earlier emscripten*/
+    antialias: true, /*not EGL default, compat with earlier emscripten*/
 
     stringCache: {},
     
@@ -26,7 +39,31 @@ var LibraryEGL = {
         EGL.setErrorCode(0x3008 /* EGL_BAD_DISPLAY */);
         return 0;
       }
-      // TODO: read attribList.
+
+      // read attribList.
+      for(;;) {
+        var param = {{{ makeGetValue('attribList', '0', 'i32') }}};
+        if (param == 0x3021 /*EGL_ALPHA_SIZE*/) {
+          var alphaSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.alpha = (alphaSize > 0);
+        } else if (param == 0x3025 /*EGL_DEPTH_SIZE*/) {
+          var depthSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.depth = (depthSize > 0);
+        } else if (param == 0x3026 /*EGL_STENCIL_SIZE*/) {
+          var stencilSize = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.stencil = (stencilSize > 0);
+        } else if (param == 0x3031 /*EGL_SAMPLES*/) {
+          var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.antialias = (samples > 0);
+        } else if (param == 0x3032 /*EGL_SAMPLE_BUFFERS*/) {
+          var samples = {{{ makeGetValue('attribList', '4', 'i32') }}};
+          EGL.antialias = (samples == 1);
+        } else if (param == 0x3038 /*EGL_NONE*/) {
+            break;
+        }
+        attribList += 8;
+      }
+
       if ((!config || !config_size) && !numConfigs) {
         EGL.setErrorCode(0x300C /* EGL_BAD_PARAMETER */);
         return 0;
@@ -282,13 +319,21 @@ var LibraryEGL = {
     }
     if (glesContextVersion != 2) {
 #if GL_ASSERTIONS
-      Module.printErr('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
+      err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
 #endif
       EGL.setErrorCode(0x3005 /* EGL_BAD_CONFIG */);
       return 0; /* EGL_NO_CONTEXT */
     }
 
-    _glutInitDisplayMode(0xB2 /* GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_MULTISAMPLE | GLUT_STENCIL */);
+    // convert configuration to GLUT flags
+    var displayMode = 0x0000; /*GLUT_RGB/GLUT_RGBA*/
+    displayMode |= 0x0002; /*GLUT_DOUBLE*/
+    if (EGL.alpha)     displayMode |= 0x0008; /*GLUT_ALPHA*/
+    if (EGL.depth)     displayMode |= 0x0010; /*GLUT_DEPTH*/
+    if (EGL.stencil)   displayMode |= 0x0020; /*GLUT_STENCIL*/
+    if (EGL.antialias) displayMode |= 0x0080; /*GLUT_MULTISAMPLE*/
+
+    _glutInitDisplayMode(displayMode);
     EGL.windowID = _glutCreateWindow();
     if (EGL.windowID != 0) {
       EGL.setErrorCode(0x3000 /* EGL_SUCCESS */);

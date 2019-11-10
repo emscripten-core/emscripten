@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
@@ -14,7 +19,11 @@
 #endif
 #endif
 
+#ifdef __SSE__
 #include <xmmintrin.h>
+#endif
+
+int ENVIRONMENT_IS_WEB = 0;
 
 // h: 0,360
 // s: 0,1
@@ -146,6 +155,7 @@ unsigned long long ComputeMandelbrot(float *srcReal, float *srcImag, uint32_t *d
   return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
 
+#ifdef __SSE__
 // Not strictly correct anyzero_ps, but faster, and depends on that color alpha channel is always either 0xFF or 0.
 int anyzero_ps(__m128 m)
 {
@@ -153,7 +163,7 @@ int anyzero_ps(__m128 m)
   m = _mm_and_ps(m, y);
   __m128 z = _mm_movehl_ps(m, m);
   m = _mm_and_ps(m, z);
-  return _mm_ucomieq_ss(m, _mm_setzero_ps());
+  return _mm_ucomige_ss(m, m);
 }
 
 int any_ps(__m128 m)
@@ -161,17 +171,18 @@ int any_ps(__m128 m)
   __m128 y = _mm_shuffle_ps(m, m, _MM_SHUFFLE(2,3,0,1));
   m = _mm_or_ps(m, y);
   __m128 z = _mm_movehl_ps(m, m);
-  m = _mm_or_ps(m, z);  
-  return _mm_ucomineq_ss(m, _mm_setzero_ps());
+  m = _mm_or_ps(m, z);
+  return !_mm_ucomige_ss(m, m);
 }
 
-int xnotzero_ss(__m128 m) { return _mm_ucomineq_ss(m, _mm_setzero_ps()); }
-int ynotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(1,1,1,1)), _mm_setzero_ps()); }
-int znotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_movehl_ps(m, m), _mm_setzero_ps()); }
-int wnotzero_ss(__m128 m) { return _mm_ucomineq_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(3,3,3,3)), _mm_setzero_ps()); }
+int xnan_ss(__m128 m) { return !_mm_ucomige_ss(m, m); }
+int ynan_ss(__m128 m) { return xnan_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(1,1,1,1))); }
+int znan_ss(__m128 m) { return xnan_ss(_mm_movehl_ps(m, m)); }
+int wnan_ss(__m128 m) { return xnan_ss(_mm_shuffle_ps(m, m, _MM_SHUFFLE(3,3,3,3))); }
 
 unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_t *dst, int strideSrc, int strideDst, int x, int y, int yIncr, int w, int h, float left, float top, float incrX, float incrY, unsigned int numItersBefore, unsigned int numIters)
 {
+  const __m128 four = _mm_set1_ps(4.f);
   for(int Y = y; Y < h; Y += yIncr)
   {
     float *sr = (float*)((uintptr_t)srcReal + strideSrc * Y) + x;
@@ -179,7 +190,6 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
     uint32_t *d = (uint32_t*)((uintptr_t)dst + strideDst * Y) + x;
     float imag = top + Y * incrY;
     __m128 Imag = _mm_set1_ps(imag);
-    __m128 four = _mm_set1_ps(4.f);
     for(int X = 0; X < w; X += 4)
     {
       float real = left + (x + X) * incrX;
@@ -222,10 +232,10 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
             if (any_ps(divergedNow))
             {
               uint32_t color = ColorMap(numItersBefore + i);
-              if (xnotzero_ss(divergedNow)) d[X] = color;
-              if (ynotzero_ss(divergedNow)) d[X+1] = color;
-              if (znotzero_ss(divergedNow)) d[X+2] = color;
-              if (wnotzero_ss(divergedNow)) d[X+3] = color;
+              if (xnan_ss(divergedNow)) d[X] = color;
+              if (ynan_ss(divergedNow)) d[X+1] = color;
+              if (znan_ss(divergedNow)) d[X+2] = color;
+              if (wnan_ss(divergedNow)) d[X+3] = color;
 //              _mm_storeu_ps((float*)d+X, _mm_or_ps(old, diverged));
             }
             /*
@@ -249,6 +259,7 @@ unsigned long long ComputeMandelbrot_SSE(float *srcReal, float *srcImag, uint32_
   }
   return (unsigned long long)((h-y)/yIncr)*w*numIters;
 }
+#endif
 
 const int W = 512;
 const int H = 512;
@@ -277,6 +288,9 @@ pthread_t thread[MAX_NUM_THREADS];
 double timeSpentInMandelbrot[MAX_NUM_THREADS] = {};
 unsigned long long numIters[MAX_NUM_THREADS] = {};
 
+uint32_t numThreadsRunning = 0;
+uint32_t maxThreadsRunning = 1;
+
 bool use_sse = true;
 
 int tasksDone = 0;
@@ -285,6 +299,11 @@ int tasksPending[MAX_NUM_THREADS] = {};
 void *mandelbrot_thread(void *arg)
 {
   int idx = (int)arg;
+  emscripten_atomic_add_u32(&numThreadsRunning, 1);
+
+  char threadName[32];
+  sprintf(threadName, "Worker %d", idx);
+  emscripten_set_thread_name(pthread_self(), threadName);
 
   for(;;)
   {
@@ -292,9 +311,19 @@ void *mandelbrot_thread(void *arg)
     emscripten_atomic_store_u32(&tasksPending[idx], 0);
     double t0 = emscripten_get_now();
     int ni;
+#ifdef TEST_THREAD_PROFILING
+    // If building as part of the harness, do silly things that show up in --threadprofiler,
+    // such as sleeping and proxied file i/o ops
+    usleep(2000);
+    FILE *handle = fopen("a.txt", "w");
+    fputs("hello", handle);
+    fclose(handle);
+#endif
+#ifdef __SSE__
     if (use_sse)
       ni = ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
+#endif
       ni = ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, 0, idx, numTasks, W, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     //emscripten_atomic_add_u32(&numIters, ni);
     double t1 = emscripten_get_now();
@@ -316,16 +345,18 @@ double prevT = 0;
 
 void register_tasks()
 {
-    numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
+    numTasks = EM_ASM_INT(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
 
 #ifdef SINGLETHREADED
   // Single-threaded
   for(int i = 0; i < numTasks; ++i)
   {
     double t0 = emscripten_get_now();
+#ifdef __SSE__
     if (use_sse)
       numIters[0] += ComputeMandelbrot_SSE(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     else
+#endif
       numIters[0] += ComputeMandelbrot(mandelReal, mandelImag, outputImage, sizeof(float)*W, sizeof(uint32_t)*W, W*i/numTasks, 0, 1, W/numTasks, H, left, top, incrX, incrY, numItersDoneOnCanvas, numItersPerFrame);
     double t1 = emscripten_get_now();
     timeSpentInMandelbrot[0] += t1-t0;
@@ -333,9 +364,9 @@ void register_tasks()
 #else
   emscripten_atomic_fence();
 
-  numTasks = EM_ASM_INT_V(return parseInt(document.getElementById('num_threads').value));
+  numTasks = EM_ASM_INT(return (typeof document !== 'undefined' && document.getElementById('num_threads')) ? parseInt(document.getElementById('num_threads').value) : 1);
   if (numTasks < 1) numTasks = 1;
-  if (numTasks > MAX_NUM_THREADS) numTasks = MAX_NUM_THREADS;
+  if (numTasks > emscripten_num_logical_cores()) numTasks = emscripten_num_logical_cores();
 
   // Register tasks.
   emscripten_atomic_store_u32(&tasksDone, 0);
@@ -354,10 +385,10 @@ void wait_tasks()
   // Wait for each task to finish.
   for(;;)
   {
-    int td = tasksDone;
+    int td = emscripten_atomic_load_u32(&tasksDone);
     if (td >= numTasks)
       break;
-    emscripten_futex_wait(&tasksDone, td, INFINITY);
+    emscripten_futex_wait(&tasksDone, td, 1);
     emscripten_main_thread_process_queued_calls();
   }
 #endif
@@ -365,36 +396,50 @@ void wait_tasks()
 
 void main_tick()
 {
+#ifndef SINGLETHREADED
+  const int threadsRunning = emscripten_atomic_load_u32(&numThreadsRunning);
+  if (threadsRunning < maxThreadsRunning) return;
+#endif
+
   wait_tasks();
   numItersDoneOnCanvas += numItersPerFrame;
+
+#if defined(TEST_THREAD_PROFILING) && defined(REPORT_RESULT)
+  if (numItersDoneOnCanvas > 50000)
+  {
+    REPORT_RESULT(0);
+  }
+#endif
 
   double t = emscripten_get_now();
   double dt = t - prevT;
 
 #ifndef NO_SDL
-  SDL_Event event;
-  while (SDL_PollEvent(&event)) {
-    switch(event.type) {
-      case SDL_KEYDOWN:
-        switch (event.key.keysym.sym) {
-          case SDLK_RIGHT: hScroll = 1.f; break;
-          case SDLK_LEFT: hScroll = -1.f; break;
-          case SDLK_DOWN: vScroll = 1.f; break;
-          case SDLK_UP: vScroll = -1.f; break;
-          case SDLK_a: zoom = -1.f; break;
-          case SDLK_z: zoom = 1.f; break;
-          }
-        break;
-      case SDL_KEYUP:
-        switch (event.key.keysym.sym) {
-          case SDLK_RIGHT: 
-          case SDLK_LEFT: hScroll = 0.f; break;
-          case SDLK_DOWN: 
-          case SDLK_UP: vScroll = 0.f; break;
-          case SDLK_a:
-          case SDLK_z: zoom = 0.f; break;
-          }
-        break;
+  if (ENVIRONMENT_IS_WEB) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+      switch(event.type) {
+        case SDL_KEYDOWN:
+          switch (event.key.keysym.sym) {
+            case SDLK_RIGHT: hScroll = 1.f; break;
+            case SDLK_LEFT: hScroll = -1.f; break;
+            case SDLK_DOWN: vScroll = 1.f; break;
+            case SDLK_UP: vScroll = -1.f; break;
+            case SDLK_a: zoom = -1.f; break;
+            case SDLK_z: zoom = 1.f; break;
+            }
+          break;
+        case SDL_KEYUP:
+          switch (event.key.keysym.sym) {
+            case SDLK_RIGHT: 
+            case SDLK_LEFT: hScroll = 0.f; break;
+            case SDLK_DOWN: 
+            case SDLK_UP: vScroll = 0.f; break;
+            case SDLK_a:
+            case SDLK_z: zoom = 0.f; break;
+            }
+          break;
+      }
     }
   }
 #endif
@@ -426,7 +471,7 @@ void main_tick()
   }
 
 #ifndef NO_SDL
-  if (numItersDoneOnCanvas >= minItersBeforeDisplaying)
+  if (ENVIRONMENT_IS_WEB && numItersDoneOnCanvas >= minItersBeforeDisplaying)
   {
     if (SDL_MUSTLOCK(screen)) SDL_LockSurface(screen);
     memcpy(screen->pixels, outputImage, sizeof(outputImage));
@@ -435,7 +480,7 @@ void main_tick()
   }
 #endif
 
-  int new_use_sse = EM_ASM_INT_V(return document.getElementById('use_sse').checked);
+  int new_use_sse = EM_ASM_INT(return (typeof document !== 'undefined' && document.getElementById('use_sse')) ? document.getElementById('use_sse').checked : false);
 
   if (numItersDoneOnCanvas >= minItersBeforeDisplaying || new_use_sse != use_sse)
   {
@@ -451,7 +496,15 @@ void main_tick()
   }
   use_sse = new_use_sse;
 
-  numItersPerFrame = EM_ASM_INT_V(return parseInt(document.getElementById('updates_per_frame').value););
+  numItersPerFrame = EM_ASM_INT({
+    if (typeof location !== 'undefined') {
+      var updatesPerFrame = (new RegExp("[\\?&]updates=([^&#]*)")).exec(location.href);
+      if (updatesPerFrame) return updatesPerFrame[1];
+    }
+    if (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 1) return parseInt(Module.arguments[0]);
+    if (typeof document !== 'undefined' && document.getElementById('updates_per_frame')) return parseInt(document.getElementById('updates_per_frame').value);
+    return 50;
+  });
   if (numItersPerFrame < 10) numItersPerFrame = 10;
   if (numItersPerFrame > 50000) numItersPerFrame = 50000;
 
@@ -497,12 +550,15 @@ void main_tick()
     }
     double cpuUsageSeconds = mbTime/1000.0;
     double cpuUsageRatio = mbTime * 100.0 / (t-lastFPSPrint);
-    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersNum, suffix, fps, cpuUsageRatio);
+
+    if (ENVIRONMENT_IS_WEB) {
+      sprintf(str, "%.3f%s iterations/second. FPS: %.2f. CPU usage: %.2f%%", itersNum, suffix, fps, cpuUsageRatio);
 //    sprintf(str, "%.3f%s iterations/second. FPS: %.2f. Zoom: %f", itersNum, suffix, fps, 1.f / (incrX < incrY ? incrX : incrY));
-    char str2[256];
-    sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
-    emscripten_run_script_string(str2);
-    //EM_ASM({document.getElementById('performance').innerHTML = $0;}, str);
+      char str2[256];
+      sprintf(str2, "document.getElementById('performance').innerHTML = '%s';", str);
+      emscripten_run_script_string(str2);
+      //EM_ASM({document.getElementById('performance').innerHTML = $0;}, str);
+    }
     printf("%.2f msecs/frame, FPS: %.2f. %f iters/second. Time spent in Mandelbrot: %f secs. (%.2f%%)\n", msecsPerFrame, fps, itersPerSecond,
       cpuUsageSeconds, cpuUsageRatio);
     lastFPSPrint = t;
@@ -514,13 +570,20 @@ void main_tick()
 
 int main(int argc, char** argv)
 {
-  SDL_Init(SDL_INIT_VIDEO);
-  screen = SDL_SetVideoMode(W, H, 32, SDL_SWSURFACE);
+  ENVIRONMENT_IS_WEB = EM_ASM_INT(return ENVIRONMENT_IS_WEB);
+
+#ifndef NO_SDL
+  if (ENVIRONMENT_IS_WEB) {
+    SDL_Init(SDL_INIT_VIDEO);
+    screen = SDL_SetVideoMode(W, H, 32, SDL_SWSURFACE);
+  }
+#endif
   for(int i = 0; i < W*H; ++i)
     outputImage[i] = 0x00000000;
 
 #ifndef SINGLETHREADED
-  for(int i = 0; i < MAX_NUM_THREADS; ++i)
+  maxThreadsRunning = emscripten_num_logical_cores() < MAX_NUM_THREADS ? emscripten_num_logical_cores() : MAX_NUM_THREADS;
+  for(int i = 0; i < maxThreadsRunning; ++i)
   {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -531,10 +594,28 @@ int main(int argc, char** argv)
   }
 #endif
 
+#ifndef SINGLETHREADED
+  emscripten_set_thread_name(pthread_self(), "Mandelbrot main");
+#endif
+
+#ifndef NO_SDL
   EM_ASM("SDL.defaults.copyOnLock = false; SDL.defaults.discardOnLock = true; SDL.defaults.opaqueFrontBuffer = false;");
+#endif
 
   register_tasks();
-  emscripten_set_main_loop(main_tick, 0, 0);
+  if (ENVIRONMENT_IS_WEB) {
+    emscripten_set_main_loop(main_tick, 0, 0);
+  } else {
+    int numTotalFrames = EM_ASM_INT(return (typeof Module !== 'undefined' && Module.arguments && Module.arguments.length >= 2) ? parseInt(Module.arguments[1]) : 1000);
+    printf("Rendering %d frames of Mandelbrot. Invoke \"node|js mandelbrot.js numItersPerFrame numFrames\" to configure.\n", numTotalFrames);
+    double t0 = emscripten_get_now();
+    for(int i = 0; i < numTotalFrames; ++i) {
+      main_tick();
+    }
+    double t1 = emscripten_get_now();
+    printf("Rendered %d frames (%d total iterations) of Mandelbrot.\n", numTotalFrames, numItersDoneOnCanvas);
+    printf("Total time: %f seconds, or %f seconds/frame, or %f seconds/iteration.\n", (t1-t0)/1000.0, (t1-t0)/(1000.0*numTotalFrames), (t1-t0)/(1000.0*numItersDoneOnCanvas));
+  }
 
   return 0;
 }

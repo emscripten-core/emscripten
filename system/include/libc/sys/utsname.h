@@ -7,8 +7,7 @@ extern "C" {
 
 #include <features.h>
 
-struct utsname
-{
+struct utsname {
 	char sysname[65];
 	char nodename[65];
 	char release[65];

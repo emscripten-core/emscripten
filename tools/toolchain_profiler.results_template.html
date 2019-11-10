@@ -1,0 +1,616 @@
+<!--
+The MIT License (MIT)
+
+Copyright (c) 2013 bill@bunkat.com
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+-->
+
+<!--
+
+d3.js swimlane chart example adapted to use in Emscripten from http://bl.ocks.org/bunkat/1962173
+
+-->
+
+<html><head>
+<meta charset="UTF-8">
+<title>Emscripten toolchain profiler results</title>
+<script src="https://d3js.org/d3.v3.min.js"></script>
+<style>
+.chart { shape-rendering: crispEdges; }
+.mini text { font: 9px sans-serif; }
+.main text { font: 12px sans-serif; }
+.month text { text-anchor: start; }
+.todayLine { stroke: blue; stroke-width: 1.5; }
+.axis line, .axis path { stroke: black; }
+.miniItem { stroke-width: 6; }
+.future { stroke: gray; fill: #ddd; }
+.past { stroke: green; }
+.brush .extent { stroke: gray; fill: blue; fill-opacity: .165; }
+</style>
+</head><body>
+
+<p>Show only blocks that took at least <input id='hideBlocksSmallerThan' value='10'></input> msecs (0=show all).<input type='button' value='Refresh' onclick='refresh()'></input> To zoom in, grab with mouse from either the far left or right ends of the blue/purple background rectangle, and drag the selection area smaller.
+
+<script type="text/javascript">
+
+function getValueOfParam(param) {
+  var e = location.search.substr(1).split('&');
+  for(var i in e) {
+    var p = e[i].split('=');
+    if (p.length == 2 && p[0] == param) return p[1];
+  }
+}
+
+if (location.search.indexOf('hideBlocksSmallerThan') != -1) {
+  document.getElementById('hideBlocksSmallerThan').value = parseInt(getValueOfParam('hideBlocksSmallerThan'));
+}
+
+function refresh() {
+  var hideBlocksSmallerThan = parseInt(document.getElementById('hideBlocksSmallerThan').value);
+  var url = window.location.href;
+  if (url.indexOf('?') != -1) url = url.split('?')[0]
+  window.location.href = url + '?hideBlocksSmallerThan=' + hideBlocksSmallerThan;
+}
+
+// Dataset elements for d3.js: 'lanes' specify the rows, 'items' specify the individual blocks on the lanes.
+var lanes = [];
+var items = [];
+
+function pathBasename(absPath) {
+  return absPath.substr(Math.max(absPath.lastIndexOf('\\'), absPath.lastIndexOf('/'))+1);
+}
+
+function findPositionalParams(cmdLine, argsTakingParams) {
+  var np = [];
+  for(var i = 1; i < cmdLine.length; ++i) {
+    var perhapsKey = cmdLine[i-1];
+    var value = cmdLine[i];
+    if (value[0] != '-' && value[0] != '@' && argsTakingParams.indexOf(perhapsKey) == -1) {
+      np.push(value);
+    }
+  }
+  return np;
+}
+
+function cmdLineBasename(cmdLine) {
+  var cmd = cmdLine[0];
+  cmdname = pathBasename(cmd);
+
+  // cmdline could be '/path/to/node --param /path/to/file/to/run', in which case
+  // we want to return 'run' as the interesting command that was executed
+  if (cmdname.indexOf('node') == 0 || cmdname.indexOf('python') == 0) {
+    var positionalParams = findPositionalParams(cmdLine, []);
+    if (positionalParams.length > 0) cmdLineBasename(positionalParams);
+  }
+  return cmdname;
+}
+
+function findValueOfParam(cmdLine, key) {
+  var i = cmdLine.indexOf(key);
+  if (i != -1) return cmdLine[i+1];
+}
+
+function findInterestingParams(cmdLine, interestingParams) {
+  p = [];
+  for(var i in interestingParams) {
+    if (cmdLine.indexOf(interestingParams[i]) != -1)
+      p.push(interestingParams[i]);
+  }
+  return p;
+}
+
+function startsWith(str, substr) {
+  return str.indexOf(substr) == 0;
+}
+
+// A heuristic approach to finding print-worthy elements from a given command line array.
+function findInterestingBits(cmdLine) {
+  var basename = cmdLineBasename(cmdLine);
+  if (startsWith(basename, 'em++') || startsWith(basename, 'emcc')) {
+    src = findValueOfParam(cmdLine, '-c');
+    if (src) src = '-c ' + pathBasename(src);
+    else {
+      src = findValueOfParam(cmdLine, '-o');
+      if (src) src = '-o ' + pathBasename(src);
+    }
+    return [basename, src];
+  } else if (startsWith(basename, 'clang') || startsWith(basename, 'clang++')) {
+    var posParams = findPositionalParams(cmdLine, ['-target', '-o']);
+    for(var i = 0; i < posParams.length; ++i) {
+      if (posParams[i].indexOf('.c') != -1 && (posParams[i].indexOf('/') != -1 || posParams[i].indexOf('\\') != -1))
+        posParams[i] = pathBasename(posParams[i]);
+    }
+    var out = findValueOfParam(cmdLine, '-o');
+    if (out) out = '-o ' + pathBasename(out);
+    if (cmdLine.length <= 3) return [basename].concat(cmdLine.slice(1));
+    return [basename].concat(posParams).concat([out]);
+  } else if (startsWith(basename, 'llvm-ar') || startsWith(basename, 'optimizer') || startsWith(basename, 'asm2wasm') || startsWith(basename, 'wasm-as')) {
+    for(var i = 0; i < cmdLine.length; ++i) {
+      if (cmdLine[i].indexOf('/') != -1 || cmdLine[i].indexOf('\\') != -1)
+        cmdLine[i] = pathBasename(cmdLine[i]);
+    }
+    return cmdLine;
+  } else if (startsWith(basename, 'opt')) {
+    var interestingParams = findInterestingParams(cmdLine, ['-O0', '-O1', '-O2', '-O3', '-Os', '-Oz'])
+    var out = findValueOfParam(cmdLine, '-o');
+    if (out) out = '-o ' + pathBasename(out);
+    return [basename].concat(interestingParams).concat([out]);
+  } else if (startsWith(basename, 'llvm-nm')) {
+    var posParams = findPositionalParams(cmdLine, []);
+    for(var i = 0; i < posParams.length; ++i) {
+      if (posParams[i].indexOf('/') != -1 || posParams[i].indexOf('\\') != -1)
+        posParams[i] = pathBasename(posParams[i]);
+    }
+    return [basename].concat(posParams);
+  } else if (startsWith(basename, 'llc')) {
+    var interestingParams = findInterestingParams(cmdLine, ['-O0', '-O1', '-O2', '-O3', '-Os', '-Oz'])
+    var posParams = findPositionalParams(cmdLine, ['-o']);
+    for(var i = 0; i < posParams.length; ++i) {
+      if (posParams[i].indexOf('/') != -1 || posParams[i].indexOf('\\') != -1)
+        posParams[i] = pathBasename(posParams[i]);
+    }
+    var ret = [basename].concat(interestingParams).concat(posParams);
+    var out = findValueOfParam(cmdLine, '-o');
+    if (out) {
+      out = '-o ' + pathBasename(out);
+      if (out.indexOf('tmp') != 0)
+        ret.concat([out]);
+    }
+    return ret;
+  } else if (startsWith(basename, 'compiler.js')) {
+    var posParams = findPositionalParams(cmdLine, []);
+    var interestingParams = [];
+    for(var i = 1; i < posParams.length; ++i) {
+      if (posParams[i].indexOf('/') != -1 || posParams[i].indexOf('\\') != -1)
+        posParams[i] = pathBasename(posParams[i]);
+      interestingParams.push(posParams[i]);
+    }
+    return [basename].concat(interestingParams);
+  } else if (startsWith(basename, 'js-optimizer.js')) {
+    var posParams = findPositionalParams(cmdLine, []);
+    var interestingParams = [];
+    for(var i = 1; i < posParams.length; ++i) {
+      if (posParams[i].indexOf('/') != -1 || posParams[i].indexOf('\\') != -1)
+        posParams[i] = pathBasename(posParams[i]);
+      if (posParams[i].indexOf('tmp') != 0)
+        interestingParams.push(posParams[i]);
+    }
+    return [basename].concat(interestingParams);
+  } else {
+    return [basename];
+  }
+}
+
+// Time extents of the times on the swimlane
+var firstStartTime = Infinity;
+var lastEndTime = -Infinity;
+
+function createSwimlaneChart(data) {
+  var itemsByPid = {};
+
+  var t0 = Infinity;
+  for(var i in data) {
+    t0 = Math.min(t0, data[i].time)
+    lastEndTime = Math.max(lastEndTime, data[i].time);
+  }
+  firstStartTime = t0;
+
+  var itemsOrdered = [];
+
+  var itemStackByPid = {};
+  function pushItemToStack(item, pid) {
+    if (!itemStackByPid[pid]) itemStackByPid[pid] = [item];
+    else {
+      var parent = topOnStack(pid);
+      if (parent) {
+        parent.children.push(item);
+      }
+      itemStackByPid[pid].push(item);
+    }
+  }
+  function topOnStack(pid) {
+    if (!itemStackByPid[pid]) return null;
+    return itemStackByPid[pid][itemStackByPid[pid].length-1];
+  }
+  function popItemFromStack(item, pid) {
+    var stack = itemStackByPid[pid];
+    for(var i = stack.length-1; i >= 0; --i)
+      if (stack[i] === item) {
+        stack.splice(i, 1);
+        return;
+      }
+  }
+
+  var startOrder = 0; // Tiebreaker for sorting predicate
+  for(var i in data) {
+    var d = data[i];
+    if (d.op === 'start') { // A top-level tool process has started
+      itemsByPid[d.pid] = {
+        pid: d.pid,
+        start: (d.time - t0)*1000,
+        end: null,
+        startOrder: startOrder++,
+        cmdLine: d.cmdLine,
+        cmd: findInterestingBits(d.cmdLine).join(' '),
+        color: d3.rgb('#80ff80'),
+        parent: null,
+        children: []
+      };
+      pushItemToStack(itemsByPid[d.pid], d.pid);
+    } else if (d.op === 'exit') { // A top-level tool process has finished
+      if (itemsByPid[d.pid]) {
+        itemsByPid[d.pid].end = (d.time - t0)*1000;
+        d.end = (d.time - t0)*1000;
+        itemsOrdered.push(itemsByPid[d.pid]);
+        popItemFromStack(itemsByPid[d.pid], d.pid);
+        delete itemsByPid[d.pid];
+      } else {
+        console.error('"exit" record seen for PID ' + d.pid + ', but no corresponding "start" record present!');
+      }
+    } else if (d.op === 'spawn') { // A subprocess was spawned
+      itemsByPid[d.targetPid] = {
+        parentPid: d.pid,
+        pid: d.targetPid,
+        start: (d.time - t0)*1000,
+        end: null,
+        startOrder: startOrder++,
+        cmdLine: d.cmdLine,
+        cmd: findInterestingBits(d.cmdLine).join(' '),
+        color: d3.rgb('#80ff80'),
+        parent: topOnStack(d.pid),
+        children: []
+      };
+      pushItemToStack(itemsByPid[d.targetPid], d.pid);
+      pushItemToStack(itemsByPid[d.targetPid], d.targetPid);
+    } else if (d.op === 'finish') { // A subprocess has finished
+      if (itemsByPid[d.targetPid]) {
+        itemsByPid[d.targetPid].end = (d.time - t0)*1000;
+        itemsOrdered.push(itemsByPid[d.targetPid]);
+        popItemFromStack(itemsByPid[d.targetPid], d.pid);
+        popItemFromStack(itemsByPid[d.targetPid], d.targetPid);
+        delete itemsByPid[d.targetPid];
+      } else {
+        console.error('"finish" record seen for PID ' + d.targetPid + ', but no corresponding "spawn" record present!');
+      }
+    } else if (d.op === 'enterBlock') { // A custom profiling block has been stepped into
+      var id = d.pid + '-' + d.name + '-' + d.subprocessPid;
+      itemsByPid[id] = {
+        pid: d.pid,
+        start: (d.time - t0)*1000,
+        end: null,
+        startOrder: startOrder++,
+        cmd: d.name,
+        color: d3.rgb('#8080ff'),
+        parent: topOnStack(d.pid),
+        children: []
+      };
+      pushItemToStack(itemsByPid[id], d.pid);
+    } else if (d.op === 'exitBlock') { // A custom profiling block has been exited
+      var id = d.pid + '-' + d.name + '-' + d.subprocessPid;
+      if (itemsByPid[id]) {
+        itemsByPid[id].end = (d.time - t0)*1000;
+        itemsOrdered.push(itemsByPid[id]);
+        popItemFromStack(itemsByPid[id], d.pid);
+        delete itemsByPid[id];
+      } else {
+        console.error('"exitBlock" record seen for PID "' + id + '", but no corresponding "enterBlock" record present!');
+      }
+    }
+  }
+
+  // Need to have siblings in proceeding time order so that they appear on the lanes correctly.
+  for(var i in itemsByPid) itemsOrdered.push(itemsByPid[i]);
+  itemsOrdered.sort(function(a, b) { if (a.start == b.start) return a.startOrder - b.startOrder; else return a.start - b.start;});
+
+  // Specifies for each lane (row) how far to the right it is used.
+  var laneOccupancy = [];
+  var lanes = [];
+
+  // Tests whether the whole tree of items, with its root/parent node 'item', fits if
+  // the root 'item' is placed on lane index 'lane' (and the children placed on the subsequent lanes underneath)
+  function itemHierarchyFitsRootedOnLane(item, lane) {
+    var i = item;
+    while(i && lane < laneOccupancy.length) {
+      if (i.start < laneOccupancy[lane]) return false;
+      ++lane;
+      i = i.children[0];
+    }
+    return true;
+  }
+  function fitLaneHierarchy(item) {
+    var parent = item.parent;
+    var highestLaneAllowed = 0;
+    // Child should never be drawn on the same or above lane as its parent.
+    if (parent && !parent.visualBlock) {
+      console.error('Item "' + item.cmd + '" will possibly show up detached from its parent chain, because its parent "' + parent.cmd + '" was hidden from view.');
+    }
+    if (parent && parent.visualBlock) highestLaneAllowed = parent.visualBlock.lane+1;
+    for(var lane = highestLaneAllowed; lane < laneOccupancy.length; ++lane) {
+      if (itemHierarchyFitsRootedOnLane(item, lane)) {
+        laneOccupancy[lane] = item.visualEnd;
+        return lane;
+      }
+    }
+    laneOccupancy.push(item.visualEnd);
+    lanes.push({
+      id: laneOccupancy.length-1,
+      label: laneOccupancy.length-1
+    });
+    return laneOccupancy.length-1;
+  }
+
+  // Filter items that took too little time and should not be displayed.
+  var hideBlocksSmallerThan = parseInt(document.getElementById('hideBlocksSmallerThan').value);
+  for(var i = 0; i < itemsOrdered.length; ++i) {
+    var p = itemsOrdered[i];
+    var duration = p.end - p.start;
+    if (duration < hideBlocksSmallerThan) { // Should this be hidden?
+      // removing this node, so connect the parent and children.
+      var parent = p.parent;
+      var children = p.children;
+
+      // Disconnect this node from the child list of its parent, and root up all children of this
+      // to be children of the parent, but be careful to preserve position, i.e. the children should
+      // appear in the place in array where the current node was.
+      if (parent) {
+        var parentIdx = parent.children.indexOf(p);
+        if (parentIdx < 0) throw 'internal error: inconsistent tree structure!';
+        var head = parent.children.slice(0, parentIdx);
+        var tail = parent.children.slice(parentIdx + 1, parent.children.length);
+        parent.children = head.concat(children).concat(tail);
+      }
+
+      // Update the parent node of each child.
+      for(var c in children) children[c].parent = parent;
+
+      itemsOrdered.splice(i, 1);
+      --i;
+    }
+  }
+
+  var id = 0;
+  for(var i in itemsOrdered) {
+    var p = itemsOrdered[i];
+
+    var label = '(' + (p.end - p.start).toFixed(0) + 'ms) ' + p.cmd;
+    p.visualEnd = Math.max(p.end, p.start + label.length*14);
+    var laneIndex = fitLaneHierarchy(p);
+
+    var item = {
+      class: 'past',
+      desc: 'Description',
+      start: p.start,
+      end: p.end,
+      id: id,
+      lane: laneIndex,
+      cmdLine: p.cmdLine,
+      cmd: p.cmd,
+      color: p.color,
+      label: label
+    };
+    p.visualBlock = item;
+    items.push(item);
+    ++id;
+  }
+
+  var margin = {top: 20, right: 15, bottom: 15, left: 60};
+  var width = document.body.clientWidth - margin.left - margin.right - 50;
+  var height = lanes.length * 30;
+  var miniHeight = lanes.length*7;
+  var mainHeight = height - miniHeight - 50;
+
+  var x = d3.scale.linear().domain([
+            d3.min(items, function(d) { return d.start; }),
+            d3.max(items, function(d) { return d.end; })])
+    .range([0, width]);
+
+  var x1 = d3.scale.linear().range([0, width]);
+
+  var ext = d3.extent(lanes, function(d) { return d.id; });
+  var y1 = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, mainHeight]);
+  var y2 = d3.scale.linear().domain([ext[0], ext[1] + 1]).range([0, miniHeight]);
+
+  var chart = d3.select('body')
+    .append('svg:svg')
+    .attr('width', width + margin.right + margin.left)
+    .attr('height', height + margin.top + margin.bottom)
+    .attr('class', 'chart');
+
+  chart.append('defs').append('clipPath')
+    .attr('id', 'clip')
+    .append('rect')
+    .attr('width', width)
+    .attr('height', mainHeight);
+
+  var mini = chart.append('g')
+    .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')')
+    .attr('width', width)
+    .attr('height', miniHeight)
+    .attr('class', 'mini');
+
+  var main = chart.append('g')
+    .attr('transform', 'translate(' + margin.left + ',' + (margin.top + miniHeight + 20) + ')')
+    .attr('width', width)
+    .attr('height', mainHeight)
+    .attr('class', 'main');
+
+  // draw the lanes for the main chart
+  main.append('g').selectAll('.laneLines')
+    .data(lanes)
+    .enter().append('line')
+    .attr('x1', 0)
+    .attr('y1', function(d) { return d3.round(y1(d.id)) + 0.5; })
+    .attr('x2', width)
+    .attr('y2', function(d) { return d3.round(y1(d.id)) + 0.5; })
+    .attr('stroke', function(d) { return d.label === '' ? 'white' : 'lightgray' });
+
+  main.append('g').selectAll('.laneText')
+    .data(lanes)
+    .enter().append('text')
+    .text(function(d) { return d.label; })
+    .attr('x', -10)
+    .attr('y', function(d) { return y1(d.id + .5); })
+    .attr('dy', '0.5ex')
+    .attr('text-anchor', 'end')
+    .attr('class', 'laneText');
+
+  // draw the lanes for the mini chart
+  mini.append('g').selectAll('.laneLines')
+    .data(lanes)
+    .enter().append('line')
+    .attr('x1', 0)
+    .attr('y1', function(d) { return d3.round(y2(d.id)) + 0.5; })
+    .attr('x2', width)
+    .attr('y2', function(d) { return d3.round(y2(d.id)) + 0.5; })
+    .attr('stroke', function(d) { return d.label === '' ? 'white' : 'lightgray' });
+
+  mini.append('g').selectAll('.laneText')
+    .data(lanes)
+    .enter().append('text')
+    .text(function(d) { return d.label; })
+    .attr('x', -10)
+    .attr('y', function(d) { return y2(d.id + .5); })
+    .attr('dy', '0.5ex')
+    .attr('text-anchor', 'end')
+    .attr('class', 'laneText');
+
+  // draw the x axis
+
+  var xDateAxis = d3.svg.axis()
+    .scale(x)
+    .orient('bottom')
+    .tickFormat(function(e) { return e + ' ms' })
+    .tickSize(6, 0, 0);
+
+  var x1DateAxis = d3.svg.axis()
+    .scale(x1)
+    .orient('bottom')
+    .tickFormat(function(e) { return e + ' ms' })
+    .tickSize(6, 0, 0);
+
+  main.append('g')
+    .attr('transform', 'translate(0,' + mainHeight + ')')
+    .attr('class', 'main axis')
+    .call(x1DateAxis);
+
+  mini.append('g')
+    .attr('transform', 'translate(0,' + miniHeight + ')')
+    .attr('class', 'axis')
+    .call(xDateAxis);
+
+  // draw the items
+  var itemRects = main.append('g')
+    .attr('clip-path', 'url(#clip)');
+
+  // generates a single path for each item class in the mini display
+  // ugly - but draws mini 2x faster than append lines or line generator
+  // is there a better way to do a bunch of lines as a single path with d3?
+  function getPaths(items) {
+    var paths = {}, d, offset = .5 * y2(1) + 0.5, result = [];
+    for (var i = 0; i < items.length; i++) {
+      d = items[i];
+      if (!paths[d.class]) paths[d.class] = '';
+      paths[d.class] += ['M',x(d.start),(y2(d.lane) + offset),'H',x(d.end)].join(' ');
+    }
+
+    for (var className in paths) {
+      result.push({class: className, path: paths[className]});
+    }
+
+    return result;
+  }
+
+  mini.append('g').selectAll('miniItems')
+    .data(getPaths(items))
+    .enter().append('path')
+    .attr('class', function(d) { return 'miniItem ' + d.class; })
+    .attr('d', function(d) { return d.path; });
+
+  // draw the selection area
+  var brush = d3.svg.brush()
+    .x(x)
+    .extent([
+         d3.min(items, function(d) { return d.start; }),
+         d3.max(items, function(d) { return d.end; })])
+    .on("brush", display);
+
+  mini.append('g')
+    .attr('class', 'x brush')
+    .call(brush)
+    .selectAll('rect')
+      .attr('y', 1)
+      .attr('height', miniHeight - 1);
+
+  mini.selectAll('rect.background').remove();
+  display();
+
+  function display () {
+    var minExtent = Math.max(0, brush.extent()[0]);
+    var maxExtent = Math.min(lastEndTime, brush.extent()[1]);
+    var visItems = items.filter(function (d) { return d.start < maxExtent && d.end > minExtent});
+
+    mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
+    x1.domain([minExtent, maxExtent]);
+    main.select('.main.axis').call(x1DateAxis);
+
+    // upate the item rects
+    var rects = itemRects.selectAll('rect')
+      .data(visItems, function (d) { return d.id; })
+      .attr('x', function(d) { return x1(d.start); })
+      .attr('width', function(d) { return x1(d.end) - x1(d.start); });
+
+    rects.enter().append('rect')
+      .attr('x', function(d) { return x1(d.start); })
+      .attr('y', function(d) { return y1(d.lane) + .1 * y1(1) + 0.5; })
+      .attr('width', function(d) { return x1(d.end) - x1(d.start); })
+      .attr('height', function(d) { return .8 * y1(1); })
+      .attr('class', function(d) { return 'mainItem ' + d.class; })
+      .attr('fill', function(d) { return d.color; });
+
+    rects.exit().remove();
+
+    // update the item labels
+    var labels = itemRects.selectAll('text')
+      .data(visItems, function (d) { return d.id; })
+      .attr('x', function(d) { return x1(Math.max(d.start, minExtent)) + 2; });
+
+    labels.enter().append('text')
+      .text(function (d) { return d.label; })
+      .attr('x', function(d) { return x1(Math.max(d.start, minExtent)) + 2; })
+      .attr('y', function(d) { return y1(d.lane) + .4 * y1(1) + 6.5; })
+      .attr('text-anchor', 'start')
+      .attr('class', 'itemLabel');
+
+    labels.exit().remove();
+  }
+}
+
+var xhr = new XMLHttpRequest();
+xhr.onreadystatechange = function() {
+  if (xhr.readyState == 4 && (xhr.status == 200 || xhr.status == 0)) {
+    createSwimlaneChart(JSON.parse(xhr.responseText));
+  }
+};
+xhr.open("GET", {{{results_log_file}}}, true);
+xhr.send();
+
+</script>
+</body>
+</html>

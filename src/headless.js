@@ -1,3 +1,7 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
 
 //== HEADLESS ==//
 
@@ -145,8 +149,8 @@ var document = {
       case 'div': {
         return {
           appendChild: function() {},
-          requestFullScreen: function() {
-            return document.getElementById('canvas').requestFullScreen();
+          requestFullscreen: function() {
+            return document.getElementById('canvas').requestFullscreen();
           },
         };
       }
@@ -177,7 +181,7 @@ var document = {
     appendChild: function(){},
   },
   exitPointerLock: function(){},
-  cancelFullScreen: function(){},
+  exitFullscreen: function(){},
 };
 var alert = function(x) {
   print(x);
@@ -284,11 +288,13 @@ var screen = { // XXX these values may need to be adjusted
   availWidth: 2100,
   availHeight: 1283,
 };
-var console = {
-  log: function(x) {
-    print(x);
-  },
-};
+if (typeof console === "undefined") {
+  console = {
+    log: function(x) {
+      print(x);
+    }
+  };
+}
 var MozBlobBuilder = function() {
   this.data = new Uint8Array(0);
   this.append = function(buffer) {

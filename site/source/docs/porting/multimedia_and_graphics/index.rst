@@ -9,7 +9,7 @@ This section contains articles about Emscripten's support for graphics and audio
 
 .. toctree::
    :maxdepth: 1
-   
+
    EGL-Support-in-Emscripten
    OpenGL-support
-   
+

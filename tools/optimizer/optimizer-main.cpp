@@ -1,3 +1,8 @@
+// Copyright 2015 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 //==============================================================================
 // Optimizer tool. This is meant to be run after the emscripten compiler has
 // finished generating code. These optimizations are done on the generated
@@ -12,6 +17,8 @@
 #include "optimizer.h"
 
 #include <string.h> // only use this for param checking
+
+using namespace cashew;
 
 int main(int argc, char **argv) {
   // Read directives

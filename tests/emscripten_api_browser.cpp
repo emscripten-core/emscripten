@@ -1,9 +1,14 @@
-#include<stdio.h>
-#include<math.h>
-#include<stdlib.h>
-#include<SDL.h>
-#include<emscripten.h>
-#include<assert.h>
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
+#include <stdio.h>
+#include <math.h>
+#include <stdlib.h>
+#include <SDL.h>
+#include <emscripten.h>
+#include <assert.h>
 
 int last = 0;
 
@@ -38,8 +43,7 @@ void argey(void* arg) {
   printf("argey: %d\n", counter);
   if (counter == 5) {
     emscripten_cancel_main_loop();
-    int result = 1;
-    REPORT_RESULT();
+    REPORT_RESULT(1);
   }
 }
 
@@ -86,8 +90,7 @@ void second(void *arg) {
 }
 
 void never() {
-  int result = 0;
-  REPORT_RESULT();
+  REPORT_RESULT(0);
 }
 
 int main() {
@@ -96,7 +99,7 @@ int main() {
   printf("frist! %d\n", last);
 
   double ratio = emscripten_get_device_pixel_ratio();
-  double ratio2 = EM_ASM_DOUBLE_V({
+  double ratio2 = EM_ASM_DOUBLE({
     return window.devicePixelRatio || 1.0;
   });
 

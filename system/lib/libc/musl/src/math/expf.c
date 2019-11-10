@@ -39,6 +39,8 @@ float expf(float x)
 
 	/* special cases */
 	if (hx >= 0x42aeac50) {  /* if |x| >= -87.33655f or NaN */
+		if (hx > 0x7f800000) /* NaN */
+			return x;
 		if (hx >= 0x42b17218 && !sign) {  /* x >= 88.722839f */
 			/* overflow */
 			x *= 0x1p127f;

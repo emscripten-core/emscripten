@@ -1,14 +1,22 @@
 #!/usr/bin/env python2
+# Copyright 2014 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
 
 '''
 Tool to manage building of various useful things, such as libc, libc++, native optimizer, as well as fetch and build ports like zlib and sdl2
 '''
 
-import os, sys
-import tools.shared as shared
+from __future__ import print_function
+import logging
+import os
+import sys
+
+from tools import shared
 
 if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
-  print '''
+  print('''
 Emscripten System Builder Tool
 ==============================
 
@@ -26,15 +34,21 @@ Available operations and tasks:
 
   build libc
         libc-mt
+        libc-extras
+        struct_info
+        emmalloc
+        emmalloc_debug
         dlmalloc
+        dlmalloc_debug
         dlmalloc_threadsafe
+        dlmalloc_threadsafe_debug
         pthreads
         libcxx
         libcxx_noexcept
         libcxxabi
         gl
-        struct_info
         native_optimizer
+        binaryen
         bullet
         freetype
         libpng
@@ -42,8 +56,12 @@ Available operations and tasks:
         sdl2
         sdl2-image
         sdl2-ttf
+        sdl2-net
         vorbis
         zlib
+        cocos2d
+        wasm-libc
+        wasm_compiler_rt
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
 
@@ -56,71 +74,125 @@ do that, run
 
 and set up the location to the native optimizer in ~/.emscripten
 
-'''
+''')
   sys.exit(0)
 
+C_BARE = '''
+        int main() {}
+      '''
+C_WITH_STDLIB = '''
+        #include <string.h>
+        int main() {
+          return int(strchr("str", 'c'));
+        }
+      '''
+C_WITH_MALLOC = '''
+        #include <string.h>
+        #include <stdlib.h>
+        int main() {
+          return int(malloc(10)) + int(strchr("str", 'c'));
+        }
+      '''
+CXX_WITH_STDLIB = '''
+        #include <iostream>
+        int main() {
+          std::cout << "hello";
+          return 0;
+        }
+      '''
+
+SYSTEM_TASKS = ['compiler-rt', 'libc', 'libc-mt', 'libc-extras', 'emmalloc', 'emmalloc_debug', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'dlmalloc_debug', 'dlmalloc_threadsafe_debug', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'html5']
+USER_TASKS = ['al', 'gl', 'binaryen', 'bullet', 'freetype', 'icu', 'libpng', 'ogg', 'sdl2', 'sdl2-gfx', 'sdl2-image', 'sdl2-ttf', 'sdl2-net', 'vorbis', 'zlib']
+
 temp_files = shared.configuration.get_temp_files()
+logger = logging.getLogger(__file__)
 
 def build(src, result_libs, args=[]):
-  temp = temp_files.get('.cpp').name
-  open(temp, 'w').write(src)
-  temp_js = temp_files.get('.js').name
-  shared.Building.emcc(temp, args, output_filename=temp_js)
+  # build in order to generate the libraries
+  # do it all in a temp dir where everything will be cleaned up
+  temp_dir = temp_files.get_dir()
+  cpp = os.path.join(temp_dir, 'src.cpp')
+  open(cpp, 'w').write(src)
+  temp_js = os.path.join(temp_dir, 'out.js')
+  shared.Building.emcc(cpp, args, output_filename=temp_js)
+
+  # verify
   assert os.path.exists(temp_js), 'failed to build file'
-  for lib in result_libs:
-    assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
+  if result_libs:
+    for lib in result_libs:
+      assert os.path.exists(shared.Cache.get_path(lib)), 'not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib))
+
 
 def build_port(port_name, lib_name, params):
-  build('''
-    int main() {}
-  ''', [os.path.join('ports-builds', port_name, lib_name)], params)
+  build(C_BARE, [os.path.join('ports-builds', port_name, lib_name)] if lib_name else None, params)
 
-operation = sys.argv[1]
 
-if operation == 'build':
+def main():
+  operation = sys.argv[1]
+  if operation != 'build':
+    logger.error('unfamiliar operation: ' + operation)
+    return 1
+
+  auto_tasks = False
   tasks = sys.argv[2:]
+  if 'SYSTEM' in tasks:
+    tasks = SYSTEM_TASKS
+    auto_tasks = True
   if 'ALL' in tasks:
-    tasks = ['libc', 'libc-mt', 'dlmalloc', 'dlmalloc_threadsafe', 'pthreads', 'libcxx', 'libcxx_noexcept', 'libcxxabi', 'gl', 'struct_info', 'bullet', 'freetype', 'libpng', 'ogg', 'sdl2', 'sdl2-image', 'vorbis', 'zlib']
-    if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
-      print 'Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.'
-    elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
-      print 'Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.'
+    tasks = SYSTEM_TASKS + USER_TASKS
+    auto_tasks = True
+  if auto_tasks:
+    if shared.Settings.WASM_BACKEND:
+      skip_tasks = {'libc-mt', 'dlmalloc_threadsafe', 'dlmalloc_threadsafe_debug', 'pthreads'}
+      print('Skipping building of %s, because WebAssembly does not support pthreads.' % ', '.join(skip_tasks))
+      tasks = [x for x in tasks if x not in skip_tasks]
     else:
-      tasks += ['native_optimizer']
+      if os.environ.get('EMSCRIPTEN_NATIVE_OPTIMIZER'):
+        print('Skipping building of native-optimizer since environment variable EMSCRIPTEN_NATIVE_OPTIMIZER is present and set to point to a prebuilt native optimizer path.')
+      elif hasattr(shared, 'EMSCRIPTEN_NATIVE_OPTIMIZER'):
+        print('Skipping building of native-optimizer since .emscripten config file has set EMSCRIPTEN_NATIVE_OPTIMIZER to point to a prebuilt native optimizer path.')
+      else:
+        tasks += ['native_optimizer']
+    print('Building targets: %s' % ' '.join(tasks))
   for what in tasks:
-    shared.logging.info('building and verifying ' + what)
-    if what in ('libc', 'dlmalloc'):
+    logger.info('building and verifying ' + what)
+    if what == 'compiler-rt':
       build('''
-        #include <string.h>
-        #include <stdlib.h>
         int main() {
-          return int(malloc(10)) + int(strchr("str", 'c'));
+          double _Complex a, b, c;
+          c = a / b;
+          return 0;
         }
-      ''', ['libc.bc', 'dlmalloc.bc'])
-    elif what in ('libc-mt', 'pthreads', 'dlmalloc_threadsafe'):
+      ''', ['compiler-rt.a'])
+    elif what == 'libc':
+      build(C_WITH_MALLOC, ['libc.bc'])
+    elif what == 'libc-extras':
       build('''
-        #include <string.h>
-        #include <stdlib.h>
+        extern char **environ;
         int main() {
-          return int(malloc(10)) + int(strchr("str", 'c'));
+          return (int)environ;
         }
-      ''', ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1'])
+      ''', ['libc-extras.bc'])
+    elif what == 'struct_info':
+      build(C_BARE, ['generated_struct_info.json'])
+    elif what == 'emmalloc':
+      build(C_WITH_MALLOC, ['emmalloc.bc'], ['-s', 'MALLOC="emmalloc"'])
+    elif what == 'emmalloc_debug':
+      build(C_WITH_MALLOC, ['emmalloc_debug.bc'], ['-s', 'MALLOC="emmalloc"', '-g'])
+    elif what == 'dlmalloc':
+      build(C_WITH_MALLOC, ['dlmalloc.bc'], ['-s', 'MALLOC="dlmalloc"'])
+    elif what == 'dlmalloc_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_debug.bc'], ['-g', '-s', 'MALLOC="dlmalloc"'])
+    elif what == 'dlmalloc_threadsafe_debug':
+      build(C_WITH_MALLOC, ['dlmalloc_threadsafe_debug.bc'], ['-g', '-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what in ('dlmalloc_threadsafe', 'libc-mt', 'pthreads'):
+      build(C_WITH_MALLOC, ['libc-mt.bc', 'dlmalloc_threadsafe.bc', 'pthreads.bc'], ['-s', 'USE_PTHREADS=1', '-s', 'MALLOC="dlmalloc"'])
+    elif what == 'wasm-libc':
+      build(C_WITH_STDLIB, ['wasm-libc.bc'], ['-s', 'WASM=1'])
     elif what == 'libcxx':
-      build('''
-        #include <iostream>
-        int main() {
-          std::cout << "hello";
-          return 0;
-        }
-      ''', ['libcxx.a'])
+      build(CXX_WITH_STDLIB, ['libcxx.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     elif what == 'libcxx_noexcept':
-      build('''
-        #include <iostream>
-        int main() {
-          std::cout << "hello";
-          return 0;
-        }
-      ''', ['libcxx_noexcept.a'], ['-s', 'DISABLE_EXCEPTION_CATCHING=1'])
+      build(CXX_WITH_STDLIB, ['libcxx_noexcept.a'])
     elif what == 'libcxxabi':
       build('''
         struct X { int x; virtual void a() {} };
@@ -138,14 +210,32 @@ if operation == 'build':
           return int(emscripten_GetProcAddress("waka waka"));
         }
       ''', ['gl.bc'])
-    elif what == 'struct_info':
-      build('''
-        int main() {}
-      ''', ['struct_info.compiled.json'])
     elif what == 'native_optimizer':
+      build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
+    elif what == 'wasm_compiler_rt':
+      if shared.Settings.WASM_BACKEND:
+        build(C_BARE, ['wasm_compiler_rt.a'], ['-s', 'WASM=1'])
+      else:
+        logger.warning('wasm_compiler_rt not built when using JSBackend')
+    elif what == 'html5':
       build('''
-        int main() {}
-      ''', ['optimizer.exe'], ['-O2'])
+        #include <stdlib.h>
+        #include "emscripten/key_codes.h"
+        int main() {
+          return emscripten_compute_dom_pk_code(NULL);
+        }
+
+      ''', ['html5.bc'])
+    elif what == 'al':
+      build('''
+        #include "AL/al.h"
+        int main() {
+          alGetProcAddress(0);
+          return 0;
+        }
+      ''', ['al.bc'])
+    elif what == 'icu':
+      build_port('icu', 'libicuuc.bc', ['-s', 'USE_ICU=1'])
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bullet':
@@ -158,19 +248,33 @@ if operation == 'build':
       build_port('libpng', 'libpng.bc', ['-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'])
     elif what == 'sdl2':
       build_port('sdl2', 'libsdl2.bc', ['-s', 'USE_SDL=2'])
+    elif what == 'sdl2-gfx':
+      build_port('sdl2-gfx', 'libsdl2_gfx.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'USE_SDL_GFX=2'])
     elif what == 'sdl2-image':
       build_port('sdl2-image', 'libsdl2_image.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
+    elif what == 'sdl2-net':
+      build_port('sdl2-net', 'libsdl2_net.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
+    elif what == 'harfbuzz':
+      build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', 'libsdl2_ttf.bc', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
+    elif what == 'binaryen':
+      build_port('binaryen', None, ['-s', 'WASM=1'])
+    elif what == 'cocos2d':
+      build_port('cocos2d', None, ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     else:
-      shared.logging.error('unfamiliar build target: ' + what)
+      logger.error('unfamiliar build target: ' + what)
       sys.exit(1)
 
-    shared.logging.info('...success')
+    logger.info('...success')
+  return 0
 
-else:
-  shared.logging.error('unfamiliar operation: ' + operation)
-  sys.exit(1)
 
+if __name__ == '__main__':
+  try:
+    sys.exit(main())
+  except KeyboardInterrupt:
+    logger.warning("KeyboardInterrupt")
+    sys.exit(1)

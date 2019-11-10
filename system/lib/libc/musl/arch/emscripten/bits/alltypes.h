@@ -1,6 +1,6 @@
-#define _Addr int
-#define _Int64 long long
-#define _Reg int
+#define _Addr __PTRDIFF_TYPE__
+#define _Int64 __INT64_TYPE__
+#define _Reg __PTRDIFF_TYPE__
 
 #if __GNUC__ >= 3
 #if defined(__NEED_va_list) && !defined(__DEFINED_va_list)
@@ -83,35 +83,38 @@ typedef long suseconds_t;
 
 
 #if defined(__NEED_pthread_attr_t) && !defined(__DEFINED_pthread_attr_t)
-typedef struct { union { int __i[9]; unsigned __s[9]; } __u; } pthread_attr_t;
+#ifdef __EMSCRIPTEN__
+// For canvas transfer implementation in Emscripten, use an extra 11th control field
+// to pass a pointer to a string denoting the WebGL canvases to transfer.
+typedef struct { union { int __i[11]; volatile int __vi[11]; unsigned __s[11]; } __u; } pthread_attr_t;
+#else
+typedef struct { union { int __i[10]; volatile int __vi[10]; unsigned __s[10]; } __u; } pthread_attr_t;
+#endif
 #define __DEFINED_pthread_attr_t
 #endif
 
 #if defined(__NEED_pthread_mutex_t) && !defined(__DEFINED_pthread_mutex_t)
-#ifdef __EMSCRIPTEN__
-// For mutex implementation in Emscripten, need to use an extra seventh control field
-// to hold a temporary futex wait & wake location, designated as mutex->_m_addr.
-typedef struct { union { int __i[7]; void *__p[7]; } __u; } pthread_mutex_t;
-#else
-typedef struct { union { int __i[6]; void *__p[6]; } __u; } pthread_mutex_t;
-#endif
+typedef struct { union { int __i[7]; volatile int __vi[7]; volatile void *__p[7]; } __u; } pthread_mutex_t;
+typedef pthread_mutex_t mtx_t;
 #define __DEFINED_pthread_mutex_t
 #endif
 
 #if defined(__NEED_pthread_cond_t) && !defined(__DEFINED_pthread_cond_t)
-typedef struct { union { int __i[12]; void *__p[12]; } __u; } pthread_cond_t;
+typedef struct { union { int __i[12]; volatile int __vi[12]; void *__p[12]; } __u; } pthread_cond_t;
+typedef pthread_cond_t cnd_t;
 #define __DEFINED_pthread_cond_t
 #endif
 
 #if defined(__NEED_pthread_rwlock_t) && !defined(__DEFINED_pthread_rwlock_t)
-typedef struct { union { int __i[8]; void *__p[8]; } __u; } pthread_rwlock_t;
+typedef struct { union { int __i[8]; volatile int __vi[8]; void *__p[8]; } __u; } pthread_rwlock_t;
 #define __DEFINED_pthread_rwlock_t
 #endif
 
 #if defined(__NEED_pthread_barrier_t) && !defined(__DEFINED_pthread_barrier_t)
-typedef struct { union { int __i[5]; void *__p[5]; } __u; } pthread_barrier_t;
+typedef struct { union { int __i[5]; volatile int __vi[5]; void *__p[5]; } __u; } pthread_barrier_t;
 #define __DEFINED_pthread_barrier_t
 #endif
+
 
 #if defined(__NEED_size_t) && !defined(__DEFINED_size_t)
 typedef unsigned _Addr size_t;
@@ -250,6 +253,10 @@ typedef unsigned int fsfilcnt_t;
 #define __DEFINED_fsfilcnt_t
 #endif
 
+#if defined(__NEED_wint_t) && !defined(__DEFINED_wint_t)
+typedef unsigned wint_t;
+#define __DEFINED_wint_t
+#endif
 
 #if defined(__NEED_wctype_t) && !defined(__DEFINED_wctype_t)
 typedef unsigned long wctype_t;
@@ -366,6 +373,12 @@ typedef struct { unsigned __attr[2]; } pthread_rwlockattr_t;
 #if defined(__NEED_FILE) && !defined(__DEFINED_FILE)
 typedef struct _IO_FILE FILE;
 #define __DEFINED_FILE
+#endif
+
+
+#if defined(__NEED_mbstate_t) && !defined(__DEFINED_mbstate_t)
+typedef struct __mbstate_t { unsigned __opaque1, __opaque2; } mbstate_t;
+#define __DEFINED_mbstate_t
 #endif
 
 

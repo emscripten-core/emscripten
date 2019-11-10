@@ -1,3 +1,8 @@
+// Copyright 2012 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 
@@ -39,12 +44,10 @@ int main(int argc, char *argv[])
       printf("In current environment, the GLES2 implementation IS NOT standard conforming! "
            "GL_SHADER_COMPILER == GL_FALSE and GL_NUM_SHADER_BINARY_FORMATS == 0! "
            "In GLES2 spec, either compiling shaders or binary shaders must be supported! (Section 2.10 - Vertex Shaders)\n");
-      int result = 0;
-      REPORT_RESULT();
+      REPORT_RESULT(0);
    } else {
       assert(numShaderBinaryFormats == 0);
-      int result = 1;
-      REPORT_RESULT();
+      REPORT_RESULT(1);
    }
    return 0;
 }

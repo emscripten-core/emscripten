@@ -1,3 +1,8 @@
+# Copyright 2015 The Emscripten Authors.  All rights reserved.
+# Emscripten is available under two separate licenses, the MIT license and the
+# University of Illinois/NCSA Open Source License.  Both these licenses can be
+# found in the LICENSE file.
+
 import os, shutil, logging, subprocess, sys, stat
 
 TAG = 'version_1'
@@ -6,7 +11,7 @@ def get(ports, settings, shared):
   if settings.USE_OGG == 1:
     ports.fetch_project('ogg', 'https://github.com/emscripten-ports/ogg/archive/' + TAG + '.zip', 'Ogg-' + TAG)
     def create():
-      logging.warning('building port: ogg')
+      logging.info('building port: ogg')
       ports.clear_project_build('vorbis')
      
       source_path = os.path.join(ports.get_dir(), 'ogg', 'Ogg-' + TAG)

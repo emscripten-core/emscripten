@@ -1,5 +1,6 @@
 #include <locale.h>
 #include <langinfo.h>
+#include "locale_impl.h"
 #include "libc.h"
 
 static const char c_time[] =
@@ -32,36 +33,37 @@ char *__nl_langinfo_l(nl_item item, locale_t loc)
 	int idx = item & 65535;
 	const char *str;
 
-	if (item == CODESET) return "UTF-8";
+	if (item == CODESET) return MB_CUR_MAX==1 ? "ASCII" : "UTF-8";
 	
 	switch (cat) {
 	case LC_NUMERIC:
-		if (idx > 1) return NULL;
+		if (idx > 1) return "";
 		str = c_numeric;
 		break;
 	case LC_TIME:
-		if (idx > 0x31) return NULL;
+		if (idx > 0x31) return "";
 		str = c_time;
 		break;
 	case LC_MONETARY:
-		if (idx > 0) return NULL;
+		if (idx > 0) return "";
 		str = "";
 		break;
 	case LC_MESSAGES:
-		if (idx > 3) return NULL;
+		if (idx > 3) return "";
 		str = c_messages;
 		break;
 	default:
-		return NULL;
+		return "";
 	}
 
 	for (; idx; idx--, str++) for (; *str; str++);
+	if (cat != LC_NUMERIC && *str) str = LCTRANS(str, cat, loc);
 	return (char *)str;
 }
 
 char *__nl_langinfo(nl_item item)
 {
-	return __nl_langinfo_l(item, 0);
+	return __nl_langinfo_l(item, CURRENT_LOCALE);
 }
 
 weak_alias(__nl_langinfo, nl_langinfo);

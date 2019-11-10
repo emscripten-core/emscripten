@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $NODEFS__deps: ['$FS', '$PATH'],
   $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
@@ -5,6 +10,27 @@ mergeInto(LibraryManager.library, {
     isWindows: false,
     staticInit: function() {
       NODEFS.isWindows = !!process.platform.match(/^win/);
+      var flags = process["binding"]("constants");
+      // Node.js 4 compatibility: it has no namespaces for constants
+      if (flags["fs"]) {
+        flags = flags["fs"];
+      }
+      NODEFS.flagsForNodeMap = {
+        "{{{ cDefine('O_APPEND') }}}": flags["O_APPEND"],
+        "{{{ cDefine('O_CREAT') }}}": flags["O_CREAT"],
+        "{{{ cDefine('O_EXCL') }}}": flags["O_EXCL"],
+        "{{{ cDefine('O_RDONLY') }}}": flags["O_RDONLY"],
+        "{{{ cDefine('O_RDWR') }}}": flags["O_RDWR"],
+        "{{{ cDefine('O_DSYNC') }}}": flags["O_SYNC"],
+        "{{{ cDefine('O_TRUNC') }}}": flags["O_TRUNC"],
+        "{{{ cDefine('O_WRONLY') }}}": flags["O_WRONLY"]
+      };
+    },
+    bufferFrom: function (arrayBuffer) {
+      // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
+      // Buffer.from before 4.5 was just a method inherited from Uint8Array
+      // Buffer.alloc has been added with Buffer.from together, so check it instead
+      return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
     },
     mount: function (mount) {
       assert(ENVIRONMENT_IS_NODE);
@@ -24,9 +50,9 @@ mergeInto(LibraryManager.library, {
       try {
         stat = fs.lstatSync(path);
         if (NODEFS.isWindows) {
-          // On Windows, directories return permission bits 'rw-rw-rw-', even though they have 'rwxrwxrwx', so
-          // propagate write bits to execute bits.
-          stat.mode = stat.mode | ((stat.mode & 146) >> 1);
+          // Node.js on Windows never represents permission bit 'x', so
+          // propagate read bits to execute bits
+          stat.mode = stat.mode | ((stat.mode & 292) >> 2);
         }
       } catch (e) {
         if (!e.code) throw e;
@@ -46,36 +72,21 @@ mergeInto(LibraryManager.library, {
     },
     // This maps the integer permission modes from http://linux.die.net/man/3/open
     // to node.js-specific file open permission strings at http://nodejs.org/api/fs.html#fs_fs_open_path_flags_mode_callback
-    flagsToPermissionStringMap: {
-      0/*O_RDONLY*/: 'r',
-      1/*O_WRONLY*/: 'r+',
-      2/*O_RDWR*/: 'r+',
-      64/*O_CREAT*/: 'r',
-      65/*O_WRONLY|O_CREAT*/: 'r+',
-      66/*O_RDWR|O_CREAT*/: 'r+',
-      129/*O_WRONLY|O_EXCL*/: 'rx+',
-      193/*O_WRONLY|O_CREAT|O_EXCL*/: 'rx+',
-      514/*O_RDWR|O_TRUNC*/: 'w+',
-      577/*O_WRONLY|O_CREAT|O_TRUNC*/: 'w',
-      578/*O_CREAT|O_RDWR|O_TRUNC*/: 'w+',
-      705/*O_WRONLY|O_CREAT|O_EXCL|O_TRUNC*/: 'wx',
-      706/*O_RDWR|O_CREAT|O_EXCL|O_TRUNC*/: 'wx+',
-      1024/*O_APPEND*/: 'a',
-      1025/*O_WRONLY|O_APPEND*/: 'a',
-      1026/*O_RDWR|O_APPEND*/: 'a+',
-      1089/*O_WRONLY|O_CREAT|O_APPEND*/: 'a',
-      1090/*O_RDWR|O_CREAT|O_APPEND*/: 'a+',
-      1153/*O_WRONLY|O_EXCL|O_APPEND*/: 'ax',
-      1154/*O_RDWR|O_EXCL|O_APPEND*/: 'ax+',
-      1217/*O_WRONLY|O_CREAT|O_EXCL|O_APPEND*/: 'ax',
-      1218/*O_RDWR|O_CREAT|O_EXCL|O_APPEND*/: 'ax+',
-      4096/*O_RDONLY|O_DSYNC*/: 'rs',
-      4098/*O_RDWR|O_DSYNC*/: 'rs+'
-    },
-    flagsToPermissionString: function(flags) {
-      flags &= ~0100000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
-      if (flags in NODEFS.flagsToPermissionStringMap) {
-        return NODEFS.flagsToPermissionStringMap[flags];
+    flagsForNode: function(flags) {
+      flags &= ~0x200000 /*O_PATH*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~0x800 /*O_NONBLOCK*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~0x8000 /*O_LARGEFILE*/; // Ignore this flag from musl, otherwise node.js fails to open the file.
+      flags &= ~0x80000 /*O_CLOEXEC*/; // Some applications may pass it; it makes no sense for a single process.
+      var newFlags = 0;
+      for (var k in NODEFS.flagsForNodeMap) {
+        if (flags & k) {
+          newFlags |= NODEFS.flagsForNodeMap[k];
+          flags ^= k;
+        }
+      }
+
+      if (!flags) {
+        return newFlags;
       } else {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
@@ -218,7 +229,7 @@ mergeInto(LibraryManager.library, {
         var path = NODEFS.realPath(stream.node);
         try {
           if (FS.isFile(stream.node.mode)) {
-            stream.nfd = fs.openSync(path, NODEFS.flagsToPermissionString(stream.flags));
+            stream.nfd = fs.openSync(path, NODEFS.flagsForNode(stream.flags));
           }
         } catch (e) {
           if (!e.code) throw e;
@@ -236,32 +247,20 @@ mergeInto(LibraryManager.library, {
         }
       },
       read: function (stream, buffer, offset, length, position) {
-        if (length === 0) return 0; // node errors on 0 length reads
-        // FIXME this is terrible.
-        var nbuffer = new Buffer(length);
-        var res;
+        // Node.js < 6 compatibility: node errors on 0 length reads
+        if (length === 0) return 0;
         try {
-          res = fs.readSync(stream.nfd, nbuffer, 0, length, position);
+          return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
-        if (res > 0) {
-          for (var i = 0; i < res; i++) {
-            buffer[offset + i] = nbuffer[i];
-          }
-        }
-        return res;
       },
       write: function (stream, buffer, offset, length, position) {
-        // FIXME this is terrible.
-        var nbuffer = new Buffer(buffer.subarray(offset, offset + length));
-        var res;
         try {
-          res = fs.writeSync(stream.nfd, nbuffer, 0, length, position);
+          return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
           throw new FS.ErrnoError(ERRNO_CODES[e.code]);
         }
-        return res;
       },
       llseek: function (stream, offset, whence) {
         var position = offset;

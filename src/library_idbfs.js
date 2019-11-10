@@ -1,3 +1,8 @@
+// Copyright 2013 The Emscripten Authors.  All rights reserved.
+// Emscripten is available under two separate licenses, the MIT license and the
+// University of Illinois/NCSA Open Source License.  Both these licenses can be
+// found in the LICENSE file.
+
 mergeInto(LibraryManager.library, {
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
   $IDBFS: {
@@ -41,6 +46,9 @@ mergeInto(LibraryManager.library, {
         req = IDBFS.indexedDB().open(name, IDBFS.DB_VERSION);
       } catch (e) {
         return callback(e);
+      }
+      if (!req) {
+        return callback("Unable to connect to IndexedDB");
       }
       req.onupgradeneeded = function(e) {
         var db = e.target.result;
@@ -109,26 +117,30 @@ mergeInto(LibraryManager.library, {
       IDBFS.getDB(mount.mountpoint, function(err, db) {
         if (err) return callback(err);
 
-        var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
-        transaction.onerror = function(e) {
-          callback(this.error);
-          e.preventDefault();
-        };
+        try {
+          var transaction = db.transaction([IDBFS.DB_STORE_NAME], 'readonly');
+          transaction.onerror = function(e) {
+            callback(this.error);
+            e.preventDefault();
+          };
 
-        var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
-        var index = store.index('timestamp');
+          var store = transaction.objectStore(IDBFS.DB_STORE_NAME);
+          var index = store.index('timestamp');
 
-        index.openKeyCursor().onsuccess = function(event) {
-          var cursor = event.target.result;
+          index.openKeyCursor().onsuccess = function(event) {
+            var cursor = event.target.result;
 
-          if (!cursor) {
-            return callback(null, { type: 'remote', db: db, entries: entries });
-          }
+            if (!cursor) {
+              return callback(null, { type: 'remote', db: db, entries: entries });
+            }
 
-          entries[cursor.primaryKey] = { timestamp: cursor.key };
+            entries[cursor.primaryKey] = { timestamp: cursor.key };
 
-          cursor.continue();
-        };
+            cursor.continue();
+          };
+        } catch (e) {
+          return callback(e);
+        }
       });
     },
     loadLocalEntry: function(path, callback) {
@@ -158,7 +170,7 @@ mergeInto(LibraryManager.library, {
         if (FS.isDir(entry.mode)) {
           FS.mkdir(path, entry.mode);
         } else if (FS.isFile(entry.mode)) {
-          FS.writeFile(path, entry.contents, { encoding: 'binary', canOwn: true });
+          FS.writeFile(path, entry.contents, { canOwn: true });
         } else {
           return callback(new Error('node type not supported'));
         }
