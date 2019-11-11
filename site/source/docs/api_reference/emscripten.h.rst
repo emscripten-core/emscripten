@@ -1220,14 +1220,6 @@ Sleeping
   there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
   on the stack (that's how it looks in the C source code).
 
-.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
-
-  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
-  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
-  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
-
-  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
-
 Network
 -------
 
@@ -1307,9 +1299,13 @@ Typedefs
 Functions
 ---------
 
-.. c:function:: void emscripten_sleep(unsigned int ms)
+.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
 
-    Sleep for `ms` milliseconds.
+  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
+  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
+  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
+  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
 
 .. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
 
