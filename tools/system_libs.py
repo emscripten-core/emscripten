@@ -36,6 +36,20 @@ def glob_in_path(path_components, glob_pattern, excludes=()):
   return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
 
 
+def get_all_files_under(dirname):
+  for path, subdirs, files in os.walk(dirname):
+    for name in files:
+      yield os.path.join(path, name)
+
+
+def dir_is_newer(dir_a, dir_b):
+  assert os.path.exists(dir_a)
+  assert os.path.exists(dir_b)
+  newest_a = max([os.path.getmtime(x) for x in get_all_files_under(dir_a)])
+  newest_b = max([os.path.getmtime(x) for x in get_all_files_under(dir_b)])
+  return newest_a < newest_b
+
+
 def get_cflags(force_object_files=False):
   flags = []
   if force_object_files:
@@ -1535,6 +1549,10 @@ class Ports(object):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
+    # EMCC_LOCAL_PORTS: A hacky way to use a local directory for a port. This
+    #                   is not tested but can be useful for debugging
+    #                   changes to a port.
+    #
     # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
     # for testing. This env var should be in format
     #     name=dir,name=dir
@@ -1560,13 +1578,17 @@ class Ports(object):
               logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
               sys.exit(1)
             subdir = port.SUBDIR
-            logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
-            shared.try_delete(fullname)
-            shutil.copytree(path, os.path.join(fullname, subdir))
-            Ports.clear_project_build(name)
+            target = os.path.join(fullname, subdir)
+            if os.path.exists(target) and not dir_is_newer(path, target):
+              logger.warning('not grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ') as the destination ' + target + ' is newer (run emcc --clear-ports if that is incorrect)')
+            else:
+              logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+              shared.try_delete(fullname)
+              shutil.copytree(path, target)
+              Ports.clear_project_build(name)
+            return
       finally:
         shared.Cache.release_cache_lock()
-      return
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
