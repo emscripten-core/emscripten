@@ -6202,6 +6202,27 @@ int main() {
             self.assertContained('''compile with  -s ALLOW_MEMORY_GROWTH=1 ''', output)
             self.assertContained('''compile with  -s ABORTING_MALLOC=0 ''', output)
 
+  def test_failing_growth_2gb(self):
+    create_test_file('test.cpp', r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+void* out;
+int main() {
+  while (1) {
+    puts("loop...");
+    out = malloc(1024 * 1024);
+    if (!out) {
+      puts("done");
+      return 0;
+    }
+  }
+}
+''')
+
+    run_process([PYTHON, EMCC, '-O1', 'test.cpp', '-s', 'ALLOW_MEMORY_GROWTH'])
+    self.assertContained('done', run_js('a.out.js'))
+
   def test_libcxx_minimal(self):
     create_test_file('vector.cpp', r'''
 #include <vector>
@@ -6497,11 +6518,11 @@ main()
     self.assertContained('Ok', out)
 
   def test_dlopen_rtld_global(self):
-    # TODO: wasm support. this test checks RTLD_GLOBAL where a module is loaded
-    #       before the module providing a global it needs is. in asm.js we use JS
-    #       to create a redirection function. In wasm we just have wasm, so we
-    #       need to introspect the wasm module. Browsers may add that eventually,
-    #       or we could ship a little library that does it.
+    # This test checks RTLD_GLOBAL where a module is loaded
+    # before the module providing a global it needs is. in asm.js we use JS
+    # to create a redirection function. In wasm we just have wasm, so we
+    # need to introspect the wasm module. Browsers may add that eventually,
+    # or we could ship a little library that does it.
     create_test_file('hello1.c', r'''
 #include <stdio.h>
 
@@ -6564,6 +6585,59 @@ main(int argc,char** argv)
     self.assertContained('Hello2', out)
     self.assertContained('hello1_val by hello1:3', out)
     self.assertContained('hello1_val by hello2:3', out)
+
+  @no_fastcomp()
+  def test_main_module_without_exceptions_message(self):
+    # A side module that needs exceptions needs a main module with that
+    # support enabled; show a clear message in that case.
+    create_test_file('side.cpp', r'''
+      #include <exception>
+      #include <stdio.h>
+
+      extern "C" void test_throw() {
+        try {
+          throw 42;
+        } catch(int x) {
+          printf("catch %d.\n", x);
+          return;
+        }
+        puts("bad location");
+      }
+    ''')
+    create_test_file('main.cpp', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <stdlib.h>
+      #include <string.h>
+      #include <dlfcn.h>
+
+      typedef void (*voidf)();
+
+      int main() {
+        void* h = dlopen ("libside.wasm", RTLD_NOW|RTLD_GLOBAL);
+        assert(h);
+        voidf f = (voidf)dlsym(h, "test_throw");
+        assert(f);
+        f();
+        return 0;
+      }
+      ''')
+    run_process([PYTHON, EMCC, '-o', 'libside.wasm', 'side.cpp', '-s', 'SIDE_MODULE=1', '-fexceptions'])
+
+    def build_main(args):
+      print(args)
+      with env_modify({'EMCC_FORCE_STDLIBS': 'libc++abi'}):
+        run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1', '-s', 'EXPORT_ALL',
+                     '--embed-file', 'libside.wasm'] + args)
+
+    build_main([])
+    out = run_js('a.out.js', assert_returncode=None, stderr=STDOUT)
+    self.assertContained('Exception catching is disabled, this exception cannot be caught.', out)
+    self.assertContained('note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support', out)
+
+    build_main(['-fexceptions'])
+    out = run_js('a.out.js')
+    self.assertContained('catch 42', out)
 
   def test_debug_asmLastOpts(self):
     create_test_file('src.c', r'''
@@ -7284,7 +7358,6 @@ int main() {
       print(first, second, third)
       assert first < second and second < third, [first, second, third]
 
-  @no_wasm_backend('ctor evaller disabled, see https://github.com/emscripten-core/emscripten/issues/9527')
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
@@ -7304,10 +7377,15 @@ mergeInto(LibraryManager.library, {
   int main() {}
       ''')
       err = run_process([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-      self.assertContained('external_thing', err) # the failing call should be mentioned
-      if not wasm and not self.is_wasm_backend(): # asm.js will show a stack trace
-        self.assertContained('ctorEval.js', err) # with a stack trace
-      self.assertContained('ctor_evaller: not successful', err) # with logging
+      if self.is_wasm_backend():
+        # disabled in the wasm backend
+        self.assertContained('Ctor evalling in the wasm backend is disabled', err)
+        self.assertNotContained('ctor_evaller: not successful', err) # with logging
+      else:
+        self.assertContained('external_thing', err) # the failing call should be mentioned
+        if not wasm and not self.is_wasm_backend(): # asm.js will show a stack trace
+          self.assertContained('ctorEval.js', err) # with a stack trace
+        self.assertContained('ctor_evaller: not successful', err) # with logging
 
   def test_override_js_execution_environment(self):
     create_test_file('main.cpp', r'''
@@ -9780,6 +9858,34 @@ Module.wasmBinary has been replaced with plain wasmBinary
 Module.arguments has been replaced with plain arguments_
 ''', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
 
+  def test_em_asm_duplicate_strings(self):
+    # We had a regression where tow different EM_ASM strings from two diffferent
+    # object files were de-duplicated in wasm-emscripten-finalize.  This used to
+    # work when we used zero-based index for store the JS strings, but once we
+    # switched to absolute addresses the string needs to exist twice in the JS
+    # file.
+    create_test_file('foo.c', '''
+      #include <emscripten.h>
+      void foo() {
+        EM_ASM({ console.log('Hello, world!'); });
+      }
+    ''')
+    create_test_file('main.c', '''
+      #include <emscripten.h>
+
+      void foo();
+
+      int main() {
+        foo();
+        EM_ASM({ console.log('Hello, world!'); });
+        return 0;
+      }
+    ''')
+    run_process([PYTHON, EMCC, '-c', 'foo.c'])
+    run_process([PYTHON, EMCC, '-c', 'main.c'])
+    run_process([PYTHON, EMCC, 'foo.o', 'main.o'])
+    self.assertContained('Hello, world!\nHello, world!\n', run_js('a.out.js'))
+
   def test_em_asm_strict_c(self):
     create_test_file('src.c', '''
       #include <emscripten/em_asm.h>
@@ -9901,3 +10007,14 @@ int main() {
 }
 ''')
     run_process([PYTHON, EMCC, 'pthread.c'])
+
+  def test_preprocess_stdin(self):
+    create_test_file('temp.h', '#include <string>')
+    outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
+    outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
+    self.assertTextDataIdentical(outputStdin, outputFile)
+
+  def test_compile_stdin(self):
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
+    self.assertContained('hello, world!', run_js('a.out.js'))

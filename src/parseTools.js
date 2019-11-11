@@ -1320,11 +1320,13 @@ function makeStructuralReturn(values, inAsm) {
 }
 
 function makeThrow(what) {
-  if (ASSERTIONS) {
-    return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
-  } else {
-  return 'throw ' + what + ';';
+  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING == 1) {
+    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."';
+    if (MAIN_MODULE) {
+      what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+    }
   }
+  return 'throw ' + what + ';';
 }
 
 function makeSignOp(value, type, op, force, ignore) {
