@@ -16,7 +16,7 @@ def get(ports, settings, shared):
 
   ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
                       TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True, sha512hash=HASH)
-  libname = ports.get_lib_name('harfbuzz' + ('-mt' if settings.USE_PTHREADS else ''))
+  libname = ports.get_lib_name('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
     logging.info('building port: harfbuzz')
