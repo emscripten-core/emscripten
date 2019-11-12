@@ -724,6 +724,9 @@ mergeInto(LibraryManager.library, {
             asyncFinalizers.forEach(function(func) {
               func(asyncWasmReturnValue);
             });
+            Asyncify.sleepCallbacks.forEach(function(func) {
+              func();
+            });
           }
         });
         reachedAfterCallback = true;
