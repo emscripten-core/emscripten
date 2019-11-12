@@ -572,6 +572,7 @@ mergeInto(LibraryManager.library, {
     exportCallStack: [],
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    sleepCallbacks: [], // functions to call every time we sleep
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
