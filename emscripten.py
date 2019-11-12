@@ -2333,6 +2333,11 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     cmd.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
     cmd.append('--standalone-wasm')
+  # When we dynamically link our JS loader adds functions from wasm modules to
+  # the table. It must add the original versions of them, not legalized ones,
+  # so that indirect calls have the right type, so export those.
+  if shared.Settings.RELOCATABLE:
+    cmd.append('--pass-arg=legalize-js-interface-export-originals')
   shared.print_compiler_stage(cmd)
   stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
   if write_source_map:
