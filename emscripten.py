@@ -1798,7 +1798,9 @@ def create_fp_accessors(metadata):
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
                  'from a system library, try to build the MAIN_MODULE with '
                  'EMCC_FORCE_STDLIBS=XX in the environment");')
-    # the name of the original function before JS legalization, if we legalized
+    # the name of the original function. this is generally the normal function
+    # name, unless it is legalized, in which case the export is the legalized
+    # version, and the original provided by orig$X
     original = mangled[1:]
     if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
       original = 'orig$' + original
