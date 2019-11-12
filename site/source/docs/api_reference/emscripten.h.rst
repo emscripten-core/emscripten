@@ -166,9 +166,7 @@ Defines
 
 .. c:macro:: EM_ASM_INT(code, ...)
 
-  EM_ASM_DOUBLE(code, ...)
-
-  These two functions behave like EM_ASM, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
+  This macro, as well as the :c:macro:`EM_ASM_DOUBLE` one, behave like :c:macro:`EM_ASM`, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
 
   .. code-block:: none
 
@@ -184,13 +182,19 @@ Defines
 
     char *str = (char*)EM_ASM_INT({
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
-      var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
+      var lengthBytes = lengthBytesUTF8(jsString)+1;
+      // 'jsString.length' would return the length of the string as UTF-16
+      // units, but Emscripten C strings operate as UTF-8.
       var stringOnWasmHeap = _malloc(lengthBytes);
       stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
     printf("UTF8 string says: %s\n", str);
     free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
+
+.. c:macro:: EM_ASM_DOUBLE(code, ...)
+
+  Similar to :c:macro:`EM_ASM_INT` but for a ``double`` return value.
 
 
 Calling JavaScript From C/C++
