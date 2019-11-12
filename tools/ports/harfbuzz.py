@@ -16,7 +16,6 @@ def get(ports, settings, shared):
 
   ports.fetch_project('harfbuzz', 'https://github.com/harfbuzz/harfbuzz/releases/download/' +
                       TAG + '/harfbuzz-' + TAG + '.tar.bz2', 'harfbuzz-' + TAG, is_tarbz2=True, sha512hash=HASH)
-  libname = ports.get_lib_name('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
     logging.info('building port: harfbuzz')
@@ -48,7 +47,7 @@ def get(ports, settings, shared):
     shared.Building.make(['make', '-j%d' % shared.Building.get_num_cores(), '-C' + dest_path, 'install'])
     return os.path.join(dest_path, 'libharfbuzz.a')
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
 
 
 def clear(ports, shared):
