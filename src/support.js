@@ -500,7 +500,9 @@ function loadWebAssemblyModule(binary, flags) {
           return obj[prop] = function() {
             if (!fp) {
               var f = resolveSymbol(name, 'function');
-              fp = addFunction(f, sig);
+              if (NAMED_GLOBALS['g$' + name]) {
+                fp = setFunction(f, sig, NAMED_GLOBALS['g$' + name]);
+              } else fp = addFunction(f, sig);
             }
             return fp;
           };
@@ -807,6 +809,26 @@ function addFunction(func, sig) {
 
 #endif // EMULATED_FUNCTION_POINTERS == 0
 #endif // WASM_BACKEND
+}
+
+// Add a wasm function to the table.
+function setFunction(func, sig, idx) {
+  var table = wasmTable;
+
+  // Insert new element
+  try {
+    // Attempting to call this with JS function will cause of table.set() to fail
+    table.set(idx, func);
+  } catch (err) {
+    if (!err instanceof TypeError) {
+      throw err;
+    }
+    assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction');
+    var wrapped = convertJsFunctionToWasm(func, sig);
+    table.set(idx, wrapped);
+  }
+
+  return idx;
 }
 
 function removeFunction(index) {

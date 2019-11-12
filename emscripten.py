@@ -1793,6 +1793,7 @@ def create_fp_accessors(metadata):
       continue
     _, name, sig = fullname.split('$')
     mangled = asmjs_mangle(name)
+    funcIdx = 'g$' + mangled[1:]
     side = 'parent' if shared.Settings.SIDE_MODULE else ''
     assertion = ('\n  assert(%sModule["%s"] || typeof %s !== "undefined", "external function `%s` is missing.' % (side, mangled, mangled, name) +
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
@@ -1805,14 +1806,48 @@ Module['%(full)s'] = function() {
   var func = Module['%(mangled)s'];
   if (!func)
     func = %(mangled)s;
-  var fp = addFunction(func, '%(sig)s');
+  var fp = setFunction(func, '%(sig)s', NAMED_GLOBALS['%(funcIdx)s']);
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig, 'funcIdx': funcIdx})
 
   return '\n'.join(accessors)
 
+
+def create_dl_accessors(metadata):
+  if not shared.Settings.RELOCATABLE:
+    return ''
+
+  # Create `dl$XXX` handlers for setting the functions to their respective slots
+  # and calling the target function.
+  # SIDE_MODULEs still use the fp$XXX handlers.
+  accessors = []
+  for fullname in metadata['declares']:
+    if not fullname.startswith('dl$'):
+      continue
+    _, name, sig = fullname.split('$')
+    mangled = asmjs_mangle(name)
+    funcIdx = 'g$' + mangled[1:]
+    side = 'parent' if shared.Settings.SIDE_MODULE else ''
+    assertion = ('\n  assert(%sModule["%s"] || typeof %s !== "undefined", "external function `%s` is missing.' % (side, mangled, mangled, name) +
+                 'perhaps a side module was not linked in? if this symbol was expected to arrive '
+                 'from a system library, try to build the MAIN_MODULE with '
+                 'EMCC_FORCE_STDLIBS=XX in the environment");')
+
+    accessors.append('''
+Module['%(full)s'] = function() {
+  %(assert)s
+  var func = Module['%(mangled)s'];
+  if (!func)
+    func = %(mangled)s;
+  var fp = setFunction(func, '%(sig)s', NAMED_GLOBALS['%(funcIdx)s']);
+  func.apply(null, arguments);
+  return fp;
+}
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig, 'funcIdx': funcIdx})
+
+  return '\n'.join(accessors)
 
 def create_named_globals(metadata):
   if not shared.Settings.RELOCATABLE:
@@ -2646,6 +2681,7 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   receiving += create_named_globals(metadata)
   receiving += create_fp_accessors(metadata)
+  receiving += create_dl_accessors(metadata)
   module = []
   module.append('var asmGlobalArg = {};\n')
   if shared.Settings.USE_PTHREADS and not shared.Settings.WASM:
