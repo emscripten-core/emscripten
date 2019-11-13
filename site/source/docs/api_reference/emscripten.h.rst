@@ -151,7 +151,9 @@ Defines
 
     EM_ASM(console.log('hello ' + UTF8ToString($0)), "world!");
 
-    In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly. ::
+  In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly.
+
+  .. code-block:: none
 
     int arr[2] = { 30, 45 };
     EM_ASM({
@@ -164,9 +166,7 @@ Defines
 
 .. c:macro:: EM_ASM_INT(code, ...)
 
-  EM_ASM_DOUBLE(code, ...)
-
-  These two functions behave like EM_ASM, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
+  This macro, as well as the :c:macro:`EM_ASM_DOUBLE` one, behave like :c:macro:`EM_ASM`, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
 
   .. code-block:: none
 
@@ -176,17 +176,25 @@ Defines
 
     int y = EM_ASM_INT(return TOTAL_MEMORY);
 
-    Strings can be returned back to C from JavaScript, but one needs to be careful about memory management. ::
+  Strings can be returned back to C from JavaScript, but one needs to be careful about memory management.
+
+  .. code-block:: none
 
     char *str = (char*)EM_ASM_INT({
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
-      var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
+      var lengthBytes = lengthBytesUTF8(jsString)+1;
+      // 'jsString.length' would return the length of the string as UTF-16
+      // units, but Emscripten C strings operate as UTF-8.
       var stringOnWasmHeap = _malloc(lengthBytes);
       stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
     printf("UTF8 string says: %s\n", str);
     free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
+
+.. c:macro:: EM_ASM_DOUBLE(code, ...)
+
+  Similar to :c:macro:`EM_ASM_INT` but for a ``double`` return value.
 
 
 Calling JavaScript From C/C++
@@ -1220,14 +1228,6 @@ Sleeping
   there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
   on the stack (that's how it looks in the C source code).
 
-.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
-
-  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
-  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
-  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
-
-  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
-
 Network
 -------
 
@@ -1307,9 +1307,13 @@ Typedefs
 Functions
 ---------
 
-.. c:function:: void emscripten_sleep(unsigned int ms)
+.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
 
-    Sleep for `ms` milliseconds.
+  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
+  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
+  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
+  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
 
 .. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
 
