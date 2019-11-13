@@ -230,11 +230,17 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  if (typeof print !== 'undefined') {
-    // Prefer to use print/printErr where they exist, as they usually work better.
-    if (typeof console === 'undefined') console = {};
-    console.log = print;
-    console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
+  // Add polyfill for console object for JS shells that don't have this builtin (jsc)
+  if (typeof console === 'undefined') {
+    console = { log: print };
+  }
+
+  // Add polyfill for shells that have `console.log` but not `warn` or `error` (spidermonkey)
+  if (typeof console.warn === 'undefined') {
+    console.warn = typeof printErr !== 'undefined' ? printErr : print;
+  }
+  if (typeof console.error === 'undefined') {
+    console.error = typeof printErr !== 'undefined' ? printErr : print;
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
