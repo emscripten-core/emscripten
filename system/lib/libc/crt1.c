@@ -22,7 +22,7 @@ extern void __wasm_call_ctors(void) __attribute__((weak));
 extern int main(int argc, char** argv) __attribute__((weak));
 
 // If main() uses argc/argv, then no __original_main is emitted, and then
-// this defintiion is used, which loads those values and sends them to main.
+// this definition is used, which loads those values and sends them to main.
 // If main() does not use argc/argv, then the compiler emits __original_main
 // and this definition is not necessary, which avoids the wasi calls for
 // getting the args.
