@@ -8199,21 +8199,27 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O3':                 (['-O3'],
+    'O3':                 ('mem.c', ['-O3'],
                            3, [], [], 6100,  2,  3,  5),         # noqa
     # argc/argv support code etc. is in the wasm
-    'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
-                           3, [], [], 6309,  3,  3,  4),         # noqa
+    'O3_standalone':      ('mem.c', ['-O3', '-s', 'STANDALONE_WASM'],
+                           3, [], [], 6309,  3,  3,  5),         # noqa
+    # without argc/argv, no support code for them is emitted
+    'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
+                           1, [], [], 6309,  1,  3,  5),         # noqa
+    # without main, no support code for argc/argv is emitted either
+    'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM'],
+                           0, [], [], 6309,  0,  3,  4),         # noqa
     # Growth support code is in JS, no significant change in the wasm
-    'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
+    'O3_grow':            ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
                            3, [], [], 6098,  2,  3,  5),         # noqa
     # Growth support code is in the wasm
-    'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           4, [], [], 6449,  4,  3,  5),         # noqa
+    'O3_grow_standalone': ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
+                           4, [], [], 6449,  4,  3,  6),         # noqa
   })
   @no_fastcomp()
-  def test_metadce_mem(self, *args):
-    self.run_metadce_test('mem.c', *args)
+  def test_metadce_mem(self, filename, *args):
+    self.run_metadce_test(filename, *args)
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
