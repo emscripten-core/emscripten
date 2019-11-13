@@ -2355,6 +2355,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     # initializer?
     if shared.Settings.RELOCATABLE:
       cmd.append('--global-base=0')
+      table_base = '1' if shared.Settings.WASM_BACKEND else '0'
+      cmd.append('--table-base=%s' % table_base)
     else:
       cmd.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.SAFE_STACK:
