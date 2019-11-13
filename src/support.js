@@ -499,7 +499,7 @@ function loadWebAssemblyModule(binary, flags) {
           assert(parts.length == 3)
           var name = parts[1];
           var sig = parts[2];
-          var legalized = sig.indexOf('j') >= 0;
+          var legalized = sig.indexOf('j') >= 0; // check for i64s
           var fp = 0;
           return obj[prop] = function() {
             if (!fp) {

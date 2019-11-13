@@ -1798,12 +1798,11 @@ def create_fp_accessors(metadata):
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
                  'from a system library, try to build the MAIN_MODULE with '
                  'EMCC_FORCE_STDLIBS=XX in the environment");')
-    # the name of the original function. this is generally the normal function
+    # the name of the original function is generally the normal function
     # name, unless it is legalized, in which case the export is the legalized
     # version, and the original provided by orig$X
-    original = mangled[1:]
     if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
-      original = 'orig$' + original
+      name = 'orig$' + name
 
     accessors.append('''
 Module['%(full)s'] = function() {
@@ -1812,13 +1811,13 @@ Module['%(full)s'] = function() {
   var func = Module['asm']['%(original)s'];
   // If there is no wasm function, this may be a JS library function or
   // something from another module.
-  if (!func) Module['%(mangled)s'];
+  if (!func) func = Module['%(mangled)s'];
   if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': original, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig})
 
   return '\n'.join(accessors)
 
