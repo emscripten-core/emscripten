@@ -2212,7 +2212,11 @@ void *getBindBuffer() {
     self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
   def test_openal_error(self):
-    for args in [[], ['--closure', '1']]:
+    for args in [
+      [],
+      ['-lopenal','-s', 'STRICT'],
+      ['--closure', '1']
+    ]:
       print(args)
       self.btest('openal_error.c', expected='1', args=args)
 
