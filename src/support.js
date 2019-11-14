@@ -436,7 +436,10 @@ function loadWebAssemblyModule(binary, flags) {
     // b) Symbols from loaded modules are not always added to the global Module.
     var moduleLocal = {};
 
-    var resolveSymbol = function(sym, type) {
+    var resolveSymbol = function(sym, type, legalized) {
+      if (legalized) {
+        sym = 'orig$' + sym;
+      }
 #if WASM_BACKEND
       sym = '_' + sym;
 #endif
@@ -496,10 +499,11 @@ function loadWebAssemblyModule(binary, flags) {
           assert(parts.length == 3)
           var name = parts[1];
           var sig = parts[2];
+          var legalized = sig.indexOf('j') >= 0; // check for i64s
           var fp = 0;
           return obj[prop] = function() {
             if (!fp) {
-              var f = resolveSymbol(name, 'function');
+              var f = resolveSymbol(name, 'function', legalized);
               fp = addFunction(f, sig);
             }
             return fp;
