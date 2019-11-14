@@ -37,14 +37,12 @@ _Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCK_PROCESS_CPUTIME_ID, "mus
 _Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCK_THREAD_CPUTIME_ID, "must match");
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp) {
-  // Receive ms for now, as the wasi spec says nothing about this, and JS
-  // naturally has ms precision.
-  __wasi_timestamp_t ms;
-  if (__wasi_clock_time_get(clk_id, 0, &ms) != __WASI_ESUCCESS) {
+  __wasi_timestamp_t raw;
+  if (__wasi_clock_time_get(clk_id, 0, &raw) != __WASI_ESUCCESS) {
     return -1;
   }
-  tp->tv_sec = ms / 1000;
-  tp->tv_nsec = (ms % 1000) * 1000 * 1000;
+  tp->tv_sec = raw / (1000 * 1000 * 1000);
+  tp->tv_nsec = raw % (1000 * 1000 * 1000);
   return __WASI_ESUCCESS;
 }
 

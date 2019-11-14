@@ -103,6 +103,7 @@ var WasiLibrary = {
     }
     // Return ms for now, as the wasi spec says nothing about this, and JS
     // naturally has ms precision.
+    // XXX this is wrong, see the C side
     {{{ makeSetValue('ptime', 0, 'now >>> 0', 'i32') }}};
     {{{ makeSetValue('ptime', 4, '(now / Math.pow(2, 32)) >>> 0', 'i32') }}};
     return 0;
