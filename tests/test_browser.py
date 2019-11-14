@@ -2214,7 +2214,7 @@ void *getBindBuffer() {
   def test_openal_error(self):
     for args in [
       [],
-      ['-lopenal','-s', 'STRICT'],
+      ['-lopenal', '-s', 'STRICT'],
       ['--closure', '1']
     ]:
       print(args)
