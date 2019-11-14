@@ -89,6 +89,24 @@ var WasiLibrary = {
 #endif
     return 0;
   },
+
+  clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
+  clock_time_get: function(clk_id, precision, ptime) {
+    var now;
+    if (clk_id === {{{ cDefine('__WASI_CLOCK_REALTIME') }}}) {
+      now = Date.now();
+    } else if (clk_id === {{{ cDefine('__WASI_CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+      now = _emscripten_get_now();
+    } else {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    // Return ms for now, as the wasi spec says nothing about this, and JS
+    // naturally has ms precision.
+    {{{ makeSetValue('ptime', 0, 'now >>> 0', 'i32') }}};
+    {{{ makeSetValue('ptime', 4, '(now / Math.pow(2, 32)) >>> 0', 'i32') }}};
+    return 0;
+  },
 };
 
 // Fallback for cases where the wasi_unstable.name prefixing fails,

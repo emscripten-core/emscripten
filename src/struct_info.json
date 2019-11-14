@@ -1572,7 +1572,11 @@
             "__WASI_FILETYPE_CHARACTER_DEVICE",
             "__WASI_FILETYPE_DIRECTORY",
             "__WASI_FILETYPE_REGULAR_FILE",
-            "__WASI_FILETYPE_SYMBOLIC_LINK"
+            "__WASI_FILETYPE_SYMBOLIC_LINK",
+            "__WASI_CLOCK_REALTIME",
+            "__WASI_CLOCK_MONOTONIC",
+            "__WASI_CLOCK_PROCESS_CPUTIME_ID",
+            "__WASI_CLOCK_THREAD_CPUTIME_ID"
         ]
     },
     {

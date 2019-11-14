@@ -2314,6 +2314,7 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_standalone_wasm
   def test_time(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_time')
     for tz in ['EST+05EDT', 'UTC+0']:
