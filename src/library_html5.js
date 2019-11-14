@@ -1533,15 +1533,6 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
-    if (__currentFullscreenStrategy.canvasResizedCallback) {
-#if USE_PTHREADS
-        if (__currentFullscreenStrategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(__currentFullscreenStrategy.canvasResizedCallbackTargetThread, __currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
-        else
-#endif
-      {{{ makeDynCall('iiii') }}}(__currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
-      __currentFullscreenStrategy = 0;
-    }
-
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

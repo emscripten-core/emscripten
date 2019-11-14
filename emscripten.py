@@ -1798,18 +1798,26 @@ def create_fp_accessors(metadata):
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
                  'from a system library, try to build the MAIN_MODULE with '
                  'EMCC_FORCE_STDLIBS=XX in the environment");')
+    # the name of the original function is generally the normal function
+    # name, unless it is legalized, in which case the export is the legalized
+    # version, and the original provided by orig$X
+    if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
+      name = 'orig$' + name
 
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
-  var func = Module['%(mangled)s'];
-  if (!func)
-    func = %(mangled)s;
+  // Use the wasm function itself, for the table.
+  var func = Module['asm']['%(original)s'];
+  // If there is no wasm function, this may be a JS library function or
+  // something from another module.
+  if (!func) func = Module['%(mangled)s'];
+  if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig})
 
   return '\n'.join(accessors)
 
@@ -2267,15 +2275,9 @@ def remove_trailing_zeros(memfile):
 
 
 def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
-  wasm_emscripten_finalize = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-emscripten-finalize')
-  wasm_dis = os.path.join(shared.Building.get_binaryen_bin(), 'wasm-dis')
-
   def debug_copy(src, dst):
     if DEBUG:
       shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
-      if src[-2:] == '.o' or src[-5:] == '.wasm':
-        tmp = dst + '.wast'
-        shared.check_call([wasm_dis, src, '-o', os.path.join(shared.CANONICAL_TEMP_DIR, tmp)])
 
   basename = shared.unsuffixed(outfile.name)
   wasm = basename + '.wasm'
@@ -2294,22 +2296,21 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     shared.check_call(sourcemap_cmd)
     debug_copy(base_source_map, 'base_wasm.map')
 
-  cmd = [wasm_emscripten_finalize, base_wasm, '-o', wasm]
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  cmd += ['--detect-features']
+  args = ['--detect-features']
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
-    cmd.append('-g')
+    args.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
-    cmd.append('--no-legalize-javascript-ffi')
+    args.append('--no-legalize-javascript-ffi')
   if write_source_map:
-    cmd.append('--input-source-map=' + base_source_map)
-    cmd.append('--output-source-map=' + wasm + '.map')
-    cmd.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
+    args.append('--input-source-map=' + base_source_map)
+    args.append('--output-source-map=' + wasm + '.map')
+    args.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
-    cmd.append('--separate-data-segments=' + memfile)
+    args.append('--separate-data-segments=' + memfile)
   if shared.Settings.SIDE_MODULE:
-    cmd.append('--side-module')
+    args.append('--side-module')
   else:
     # --global-base is used by wasm-emscripten-finalize to calculate the size
     # of the static data used.  The argument we supply here needs to match the
@@ -2319,15 +2320,23 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     # TODO(sbc): Can we remove this argument infer this from the segment
     # initializer?
     if shared.Settings.RELOCATABLE:
-      cmd.append('--global-base=0')
+      args.append('--global-base=0')
     else:
-      cmd.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
+      args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
   if shared.Settings.SAFE_STACK:
-    cmd.append('--check-stack-overflow')
+    args.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
-    cmd.append('--standalone-wasm')
-  shared.print_compiler_stage(cmd)
-  stdout = shared.check_call(cmd, stdout=subprocess.PIPE).stdout
+    args.append('--standalone-wasm')
+  # When we dynamically link our JS loader adds functions from wasm modules to
+  # the table. It must add the original versions of them, not legalized ones,
+  # so that indirect calls have the right type, so export those.
+  if shared.Settings.RELOCATABLE:
+    args.append('--pass-arg=legalize-js-interface-export-originals')
+  stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
+                                                infile=base_wasm,
+                                                outfile=wasm,
+                                                args=args,
+                                                stdout=subprocess.PIPE)
   if write_source_map:
     debug_copy(wasm + '.map', 'post_finalize.map')
   debug_copy(wasm, 'post_finalize.wasm')
