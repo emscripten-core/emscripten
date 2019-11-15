@@ -150,6 +150,27 @@ def also_with_impure_standalone_wasm(func):
   return decorated
 
 
+# Similar to also_with_standalone_wasm, but suitable for tests that can *only*
+# run in a wasm VM, or in non-standalone mode, but not in standalone mode with
+# our JS.
+def also_with_only_standalone_wasm(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+      print('standalone (only; no js runtimes)')
+      self.set_setting('STANDALONE_WASM', 1)
+      js_engines = shared.JS_ENGINES
+      try:
+        shared.JS_ENGINES = []
+        func(self)
+      finally:
+        shared.JS_ENGINES = js_engines
+
+  return decorated
+
+
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
@@ -2314,7 +2335,6 @@ The current type of b is: 9
     src = open(path_from_root('tests', 'termios', 'test_tcgetattr.c')).read()
     self.do_run(src, 'success', force_c=True)
 
-  @also_with_standalone_wasm
   def test_time(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_time')
     for tz in ['EST+05EDT', 'UTC+0']:
@@ -5342,6 +5362,7 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  @also_with_only_standalone_wasm
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))

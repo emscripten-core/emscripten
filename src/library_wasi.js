@@ -91,7 +91,7 @@ var WasiLibrary = {
   },
 
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
-  clock_time_get: function(clk_id, precision, ptime) {
+  clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
     var now;
     if (clk_id === {{{ cDefine('__WASI_CLOCK_REALTIME') }}}) {
       now = Date.now();
@@ -101,11 +101,26 @@ var WasiLibrary = {
       ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    // Return ms for now, as the wasi spec says nothing about this, and JS
-    // naturally has ms precision.
-    // XXX this is wrong, see the C side
-    {{{ makeSetValue('ptime', 0, 'now >>> 0', 'i32') }}};
-    {{{ makeSetValue('ptime', 4, '(now / Math.pow(2, 32)) >>> 0', 'i32') }}};
+    // "now" is in ms, and wasi times are in ns.
+    var nsec = Math.round(now * 1000 * 1000);
+    {{{ makeSetValue('ptime', 0, 'nsec >>> 0', 'i32') }}};
+    {{{ makeSetValue('ptime', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
+    return 0;
+  },
+
+  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
+  clock_res_get: function(clk_id, presolution) {
+    var nsec;
+    if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
+      nsec = 1000 * 1000; // educated guess that it's milliseconds
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+      nsec = _emscripten_get_now_res();
+    } else {
+      ___setErrNo({{{ cDefine('EINVAL') }}});
+      return -1;
+    }
+    {{{ makeSetValue('ptime', 0, 'nsec >>> 0', 'i32') }}};
+    {{{ makeSetValue('ptime', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
     return 0;
   },
 };

@@ -723,6 +723,11 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    # Allowed files from blacklisted modules
+      libc_files += files_in_path(
+          path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
+          filenames=['clock_settime.c'])
+
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
       libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))

@@ -2595,6 +2595,7 @@ class Building(object):
       'fd_fdstat_get',
       'fd_sync',
       'proc_exit',
+      'clock_res_get',
       'clock_time_get',
     ])
     for item in graph:
