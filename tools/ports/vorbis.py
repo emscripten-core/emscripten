@@ -17,22 +17,35 @@ def get(ports, settings, shared):
 
   ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
   libname = ports.get_lib_name('libvorbis')
+  libnamefile = ports.get_lib_name('libvorbisfile')
+  libnameenc = ports.get_lib_name('libvorbisenc')
 
-  def create():
-    logging.info('building port: vorbis')
+  def create(library):
+    def internal_create():
+      logging.info('building port: vorbis')
 
-    source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
-    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis')
+      source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
+      dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis')
 
-    shutil.rmtree(dest_path, ignore_errors=True)
-    shutil.copytree(source_path, dest_path)
+      if not create.recreated_tree:
+        logging.info('recreating tree %s %s %s' % (library, source_path, dest_path))
+        shutil.rmtree(dest_path, onerror=lambda func, path, info: logging.info('rmtree error %s %s' % (path, info)))
+        shutil.copytree(source_path, dest_path)
+        create.recreated_tree = True
 
-    final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
-                     ['-s', 'USE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
-    return final
+      final = os.path.join(dest_path, library)
+      excluded_files = ['psytune', 'barkmel', 'tone', 'misc']
+      if library == libnamefile or library == libname:
+        excluded_files.append('vorbisenc')
+      if library == libnameenc or library == libname:
+        excluded_files.append('vorbisfile')
+      ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
+                       ['-s', 'USE_OGG=1'], excluded_files)
+      return final
+    return internal_create
 
-  return [shared.Cache.get(libname, create)]
+  create.recreated_tree = False
+  return [shared.Cache.get(libname, create(libname)), shared.Cache.get(libnamefile, create(libnamefile)), shared.Cache.get(libnameenc, create(libnameenc))]
 
 
 def clear(ports, shared):
