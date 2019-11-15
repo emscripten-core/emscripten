@@ -29,7 +29,7 @@ def get(ports, settings, shared):
 
       if not create.recreated_tree:
         logging.info('recreating tree %s %s %s' % (library, source_path, dest_path))
-        shutil.rmtree(dest_path, onerror=lambda func, path, info: logging.info('rmtree error %s %s' % (path, info)))
+        shutil.rmtree(dest_path, ignore_errors=True)
         shutil.copytree(source_path, dest_path)
         create.recreated_tree = True
 
