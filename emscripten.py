@@ -1842,8 +1842,7 @@ Module['%(full)s'] = function() {
   if (!func)
     func = %(mangled)s;
   var fp = setFunction(func, '%(sig)s', NAMED_GLOBALS['%(funcIdx)s']);
-  func.apply(null, arguments);
-  return fp;
+  return func.apply(null, arguments);
 }
 ''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig, 'funcIdx': funcIdx})
 
