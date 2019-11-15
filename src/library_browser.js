@@ -8,8 +8,7 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { err("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead."); Module["requestFullScreen"] = Module["requestFullscreen"]; Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
-                     'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
@@ -418,14 +417,6 @@ var LibraryBrowser = {
       } else {
         canvasContainer.requestFullscreen();
       }
-    },
-
-    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
-        err('Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.');
-        Browser.requestFullScreen = function(lockPointer, resizeCanvas, vrDevice) {
-          return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
-        }
-        return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
     },
 
     exitFullscreen: function() {
