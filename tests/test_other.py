@@ -8634,7 +8634,7 @@ end
 
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty 
-    # archives (which inherantly don't have indexes).
+    # archives (which inherently don't have indexes).
     run_process([PYTHON, EMAR, 'crS', 'libfoo.a'])
     run_process([PYTHON, EMCC, '-Werror', 'libfoo.a', path_from_root('tests', 'hello_world.c')])
 
@@ -8650,7 +8650,7 @@ end
     if self.is_wasm_backend():
       stderr = self.expect_fail([PYTHON, EMCC, '-s', 'NO_AUTO_ARCHIVE_INDEXES', 'libfoo.a', 'hello_world.o'])
       self.assertContained('libfoo.a: archive has no index; run ranlib to add one', stderr)
-    # The default bahviour is to add archive indexes automatically.
+    # The default behavior is to add archive indexes automatically.
     run_process([PYTHON, EMCC, 'libfoo.a', 'hello_world.o'])
 
   def test_flag_aliases(self):
