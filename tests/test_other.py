@@ -9240,6 +9240,22 @@ ok.
   def test_getprotobyname(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
 
+  def test_socketpair(self):
+    self.do_run(r'''
+      #include <sys/socket.h>
+      #include <stdio.h>
+      int main() {
+        int fd[2];
+        int err;
+        err = socketpair(AF_INET, SOCK_STREAM, 0, fd);
+        if (err != 0) {
+          perror("socketpair error");
+          return 1;
+        }
+        puts("unexpected success.");
+      }
+    ''', 'socketpair error: Function not implemented', assert_returncode=None)
+
   def test_link(self):
     self.do_run(r'''
 #include <netdb.h>
