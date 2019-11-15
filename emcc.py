@@ -3106,7 +3106,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that wasm2js handles the symbol map itself (as it manipulates and then
   # replaces the wasm with js)
-  if intermediate_debug_info and not shared.Settings.WASM2JS:
+  if options.emit_symbol_map and not shared.Settings.WASM2JS:
     shared.Building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
