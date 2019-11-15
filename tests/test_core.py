@@ -3893,9 +3893,15 @@ ok
       #include <stdio.h>
       #include <stdint.h>
       extern int64_t sidey();
+      int64_t testAdd(int64_t a) {
+        return a + 1;
+      }
+      typedef int64_t (*testAddHandler)(int64_t);
+      testAddHandler h = &testAdd;
       int main() {
         printf("other says %lld.\n", sidey());
-        return 0;
+        int64_t r = h(42);
+        printf("my fp says: %lld.\n", r);
       }
     ''', '''
       #include <stdint.h>
@@ -3905,7 +3911,7 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.')
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.')
 
   @needs_dlfcn
   def test_dylink_class(self):
