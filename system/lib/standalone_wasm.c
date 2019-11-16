@@ -47,7 +47,7 @@ int clock_gettime(clockid_t clk_id, struct timespec *tp) {
   }
   tp->tv_sec = now / NSEC_PER_SEC;
   tp->tv_nsec = now % NSEC_PER_SEC;
-  return __WASI_ESUCCESS;
+  return 0;
 }
 
 int clock_getres(clockid_t clk_id, struct timespec *tp) {
