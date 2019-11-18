@@ -75,6 +75,7 @@
   "bind": ["htonl", "htons", "ntohs"],
   "connect": ["htonl", "htons", "ntohs"],
   "socket": ["htonl", "htons", "ntohs"],
+  "socketpair": ["htons", "ntohs"],
   "sleep": ["usleep"],
   "recv": ["htons"],
   "send": ["htons"],
