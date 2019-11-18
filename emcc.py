@@ -1284,6 +1284,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
       forced_stdlibs.append('libc++abi')
 
+    if shared.Settings.FULL_ES3:
+      shared.Settings.FULL_ES2 = 1
+
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
 
