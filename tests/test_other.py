@@ -8633,7 +8633,7 @@ end
     run_process([PYTHON, EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
   def test_archive_empty(self):
-    # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty 
+    # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
     # archives (which inherently don't have indexes).
     run_process([PYTHON, EMAR, 'crS', 'libfoo.a'])
     run_process([PYTHON, EMCC, '-Werror', 'libfoo.a', path_from_root('tests', 'hello_world.c')])
