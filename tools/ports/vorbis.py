@@ -16,9 +16,9 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libvorbis')
-  libnamefile = ports.get_lib_name('libvorbisfile')
-  libnameenc = ports.get_lib_name('libvorbisenc')
+  lib_name = ports.get_lib_name('libvorbis')
+  lib_name_file = ports.get_lib_name('libvorbisfile')
+  lib_name_enc = ports.get_lib_name('libvorbisenc')
 
   def create(library):
     def internal_create():
@@ -35,9 +35,9 @@ def get(ports, settings, shared):
 
       final = os.path.join(dest_path, library)
       excluded_files = ['psytune', 'barkmel', 'tone', 'misc']
-      if library == libnamefile or library == libname:
+      if library == lib_name_file or library == lib_name:
         excluded_files.append('vorbisenc')
-      if library == libnameenc or library == libname:
+      if library == lib_name_enc or library == lib_name:
         excluded_files.append('vorbisfile')
       ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
                        ['-s', 'USE_OGG=1'], excluded_files)
@@ -45,7 +45,7 @@ def get(ports, settings, shared):
     return internal_create
 
   create.recreated_tree = False
-  return [shared.Cache.get(libname, create(libname)), shared.Cache.get(libnamefile, create(libnamefile)), shared.Cache.get(libnameenc, create(libnameenc))]
+  return [shared.Cache.get(lib_name, create(lib_name)), shared.Cache.get(lib_name_file, create(lib_name_file)), shared.Cache.get(lib_name_enc, create(lib_name_enc))]
 
 
 def clear(ports, shared):
