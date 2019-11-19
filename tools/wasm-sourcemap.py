@@ -58,7 +58,7 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
-    result = name
+    result = name.replace('\\', '/').replace('//', '/')
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:

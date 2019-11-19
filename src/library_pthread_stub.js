@@ -104,7 +104,16 @@ var LibraryPThreadStub = {
   _pthread_cleanup_pop__sig: 'v',
   _pthread_cleanup_pop: 'pthread_cleanup_pop',
 
-  pthread_sigmask: function() { return 0; },
+  // pthread_sigmask - examine and change mask of blocked signals
+  pthread_sigmask: function(how, set, oldset) {
+    err('pthread_sigmask() is not supported: this is a no-op.');
+    return 0;
+  },
+
+  pthread_atfork: function(prepare, parent, child) {
+    err('fork() is not supported: pthread_atfork is a no-op.');
+    return 0;
+  },
 
   pthread_rwlock_init: function() { return 0; },
   pthread_rwlock_destroy: function() { return 0; },

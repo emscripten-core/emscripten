@@ -150,6 +150,17 @@ def also_with_impure_standalone_wasm(func):
   return decorated
 
 
+def node_pthreads(f):
+  def decorated(self):
+    self.set_setting('USE_PTHREADS', 1)
+    if not self.is_wasm_backend():
+      self.skipTest('node pthreads only supported on wasm backend')
+    if not self.get_setting('WASM'):
+      self.skipTest("pthreads doesn't work in non-wasm yet")
+    f(self, js_engines=[NODE_JS + ['--experimental-wasm-threads', '--experimental-wasm-bulk-memory']])
+  return decorated
+
+
 # A simple check whether the compiler arguments cause optimization.
 def is_optimizing(args):
   return '-O' in str(args) and '-O0' not in args
@@ -1430,6 +1441,10 @@ int main() {
   return 0;
 }
 ''', 'bugfree code')
+
+  @also_with_standalone_wasm
+  def test_ctors_no_main(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
   def test_class(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_class')
@@ -3878,9 +3893,15 @@ ok
       #include <stdio.h>
       #include <stdint.h>
       extern int64_t sidey();
+      int64_t testAdd(int64_t a) {
+        return a + 1;
+      }
+      typedef int64_t (*testAddHandler)(int64_t);
+      testAddHandler h = &testAdd;
       int main() {
         printf("other says %lld.\n", sidey());
-        return 0;
+        int64_t r = h(42);
+        printf("my fp says: %lld.\n", r);
       }
     ''', '''
       #include <stdint.h>
@@ -3890,7 +3911,7 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.')
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.')
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -6741,6 +6762,7 @@ return malloc(size);
     self.emcc_args += ['--tracing']
     self.do_run_in_out_file_test('tests', 'core', 'test_tracing')
 
+  @no_wasm_backend('https://github.com/emscripten-core/emscripten/issues/9527')
   def test_eval_ctors(self):
     if '-O2' not in str(self.emcc_args) or '-O1' in str(self.emcc_args):
       self.skipTest('need js optimizations')
@@ -8377,8 +8399,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')
-    self.emcc_args.remove('-Werror')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
+
+  @node_pthreads
+  def test_pthreads_create(self, js_engines):
+    def test():
+      self.do_run_in_out_file_test('tests', 'core', 'pthread', 'create',
+                                   js_engines=js_engines)
+    test()
+
+    # with a pool, we can synchronously depend on workers being available
+    self.set_setting('PTHREAD_POOL_SIZE', '2')
+    self.emcc_args += ['-DPOOL']
+    test()
 
 
 # Generate tests for everything

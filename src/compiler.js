@@ -193,9 +193,15 @@ Runtime.QUANTUM_SIZE = 4;
 
 var ENVIRONMENTS = ENVIRONMENT.split(',');
 ENVIRONMENT_MAY_BE_WEB    = !ENVIRONMENT || ENVIRONMENTS.indexOf('web') >= 0;
-ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENTS.indexOf('worker') >= 0;
 ENVIRONMENT_MAY_BE_NODE   = !ENVIRONMENT || ENVIRONMENTS.indexOf('node') >= 0;
 ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENTS.indexOf('shell') >= 0;
+
+// The worker case also includes Node.js workers when pthreads are
+// enabled and Node.js is one of the supported environments for the build to
+// run on. Node.js workers are detected as a combination of
+// ENVIRONMENT_IS_WORKER and ENVIRONMENT_HAS_NODE.
+ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENTS.indexOf('worker') >= 0 ||
+                            (ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS);
 
 if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)) {
   throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';

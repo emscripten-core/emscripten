@@ -65,6 +65,13 @@ upgrade from fastcomp to upstream:
     LLVM optimization passes by default, even if using LLVM IR in object files;
     for that you must pass ``--llvm-lto 1``.
 
+  * Another thing you might notice is that fastcomp's link stage is able to
+    perform some types of link time optimization by default that the LLVM
+    backend requires flags for (for example,
+    `propagate the "noexcept" property <https://github.com/emscripten-core/emscripten/issues/9817#issuecomment-553459496>`_),
+    which can have an impact on performance. Building with LTO in the wasm
+    backend can achieve similar things, see the previous bullet point.
+
 * `wasm-ld`, the linker used by the wasm backend, requires libraries (`.a`
   archives) to contain symbol indexes.  This matches the behaviour the native
   GNU linker.  While `emar` will create such indexes by default, native tools
