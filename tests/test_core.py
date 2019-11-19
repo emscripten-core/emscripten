@@ -5937,7 +5937,7 @@ return malloc(size);
       self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
 
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-    self.set_setting('EXPORTED_FUNCTIONS', self.get_setting('EXPORTED_FUNCTIONS') + ['_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free', '_callback'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
       print("disabling inlining") # without registerize (which -g disables), we generate huge amounts of code
       self.set_setting('INLINING_LIMIT', 50)
@@ -6882,7 +6882,7 @@ int main() {
   std::cout << txtTestString.data() << std::endl;
   return 0;
 }
-      ''', '''std_string(const char* s)
+      ''', '''std_string(const char* s) 
 someweirdtext
 212121
 212121
