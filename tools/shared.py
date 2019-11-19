@@ -2913,15 +2913,19 @@ class Building(object):
     # if we are emitting a source map, every time we load and save the wasm
     # we must tell binaryen to update it
     emit_source_map = Settings.DEBUG_LEVEL == 4 and outfile
-    if use_source_map(options):
-      cmd += ['--input-source-map=' + infile + '.map']
+    print(tool, emit_source_map, Settings.DEBUG_LEVEL, outfile)
+    if emit_source_map:
+      print('waka')
+      if tool == 'wasm-opt':
+        cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
       cmd += ['--output-source-map-url=' + Settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map']
       # Remove any debug info sections, as the source map has the info
-      cmd += ['--strip-debug']
+      if tool == 'wasm-opt':
+        cmd += ['--strip-debug']
     # if we are preserving dwarf all the way through the pipeline, we must use
     # the wtmaps utility to update that info
-    preserve_dwarf = Settings.DEBUG_LEVEL == 3 and Settings.WASM_BACKEND and outfile
+    preserve_dwarf = False # Settings.DEBUG_LEVEL == 3 and Settings.WASM_BACKEND and outfile
     if preserve_dwarf:
       # We are emitting the maximum amount of debug info; in the wasm backend,
       # our wasm file contains DWARF sections. Keep them valid through
