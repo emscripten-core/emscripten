@@ -219,6 +219,22 @@ mergeInto(LibraryManager.library, {
     );
   },
 
+  emscripten_fiber_create: function() {
+    throw 'emscripten_fiber_create is not implemented for fastcomp ASYNCIFY';
+  },
+  emscripten_fiber_create_from_current_context: function() {
+    throw 'emscripten_fiber_create_from_current_context is not implemented for fastcomp ASYNCIFY';
+  },
+  emscripten_fiber_recycle: function() {
+    throw 'emscripten_fiber_recycle is not implemented for fastcomp ASYNCIFY';
+  },
+  emscripten_fiber_free: function() {
+    throw 'emscripten_fiber_free is not implemented for fastcomp ASYNCIFY';
+  },
+  emscripten_fiber_swap: function() {
+    throw 'emscripten_fiber_swap is not implemented for fastcomp ASYNCIFY';
+  },
+
 #else // !WASM_BACKEND && ASYNCIFY
 
 #if EMTERPRETIFY_ASYNC
@@ -544,6 +560,22 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  emscripten_fiber_create: function() {
+    throw 'emscripten_fiber_create is not implemented for EMTERPRETIFY_ASYNC';
+  },
+  emscripten_fiber_create_from_current_context: function() {
+    throw 'emscripten_fiber_create_from_current_context is not implemented for EMTERPRETIFY_ASYNC';
+  },
+  emscripten_fiber_recycle: function() {
+    throw 'emscripten_fiber_recycle is not implemented for EMTERPRETIFY_ASYNC';
+  },
+  emscripten_fiber_free: function() {
+    throw 'emscripten_fiber_free is not implemented for EMTERPRETIFY_ASYNC';
+  },
+  emscripten_fiber_swap: function() {
+    throw 'emscripten_fiber_swap is not implemented for EMTERPRETIFY_ASYNC';
+  },
+
 #else // EMTERPRETIFY_ASYNC
 
 #if WASM_BACKEND && ASYNCIFY
@@ -828,6 +860,158 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  /*
+   * Layout of an ASYNCIFY Fiber structure
+   *
+   *  0 Asyncify context (Asyncify.currData)
+   *  4 STACKTOP
+   *  8 STACK_MAX
+   * 12 STACK_BASE
+   */
+  $Fibers: {
+    swapCounter: 0,     // HACK; see emscripten_fiber_swap
+    continuations: {},  // fiber pointer -> JS continuation function mapping
+  },
+
+  emscripten_fiber_create__sig: 'iiiii',
+  emscripten_fiber_create__deps: ['$Fibers', 'malloc'],
+  emscripten_fiber_create: function(funcptr, userdata, stack, stack_size) {
+    var fib = _malloc(16);
+
+    // init Asyncify context to null
+    {{{ makeSetValue('fib', 0, 0, 'i32') }}};
+
+    // stack grows down on the WASM backend, so base is at the top
+    var fstack_base = stack + stack_size;
+    var fstack_max = stack;
+
+    // init stack pointers
+    {{{ makeSetValue('fib',  4, 'fstack_base', 'i32') }}};
+    {{{ makeSetValue('fib',  8, 'fstack_max',  'i32') }}};
+    {{{ makeSetValue('fib', 12, 'fstack_base', 'i32') }}};
+
+    // init continuation (call user-supplied function on first entry)
+    Fibers.continuations[fib] = function() {
+#if STACK_OVERFLOW_CHECK
+      writeStackCookie();
+#endif
+      {{{ makeDynCall('vi') }}}(funcptr, userdata);
+    };
+
+    return fib;
+  },
+
+  emscripten_fiber_create_from_current_context__sig: 'i',
+  emscripten_fiber_create_from_current_context__deps: ['$Fibers', 'malloc'],
+  emscripten_fiber_create_from_current_context: function() {
+    var fib = _malloc(16);
+
+    {{{ makeSetValue('fib',  8, 'STACK_MAX',  'i32') }}};
+    {{{ makeSetValue('fib', 12, 'STACK_BASE', 'i32') }}};
+
+    // NOTE: We don't need to initialize the other fields, because swapping will
+    // overwrite them anyway. We can not swap into this fiber without swapping
+    // out of it first anyway, because we'd need a continuation function.
+    //
+    // It may be possible to support this by doing an Asyncify.handleSleep here
+    // just to capture the wakeUp callback, but I'm not sure if it's a useful
+    // thing to support.
+
+    return fib;
+  },
+
+  emscripten_fiber_recycle__sig: 'viii',
+  emscripten_fiber_recycle__deps: ["$Fibers"],
+  emscripten_fiber_recycle: function(fib, funcptr, userdata) {
+    {{{ makeSetValue('fib', 0, 0, 'i32') }}};
+
+    var fstack_base = {{{ makeGetValue('fib', 12, 'i32') }}};
+    {{{ makeSetValue('fib', 4, 'fstack_base', 'i32') }}};
+
+    Fibers.continuations[fib] = function() {
+#if STACK_OVERFLOW_CHECK
+      writeStackCookie();
+#endif
+      {{{ makeDynCall('vi') }}}(funcptr, userdata);
+    };
+  },
+
+  emscripten_fiber_free__sig: 'vi',
+  emscripten_fiber_free__deps: ['$Fibers', 'free'],
+  emscripten_fiber_free: function(fib) {
+    delete Fibers.continuations[fib];
+    _free(fib);
+  },
+
+  emscripten_fiber_swap__sig: 'vii',
+  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
+  emscripten_fiber_swap: function(f_old, f_new) {
+    return Asyncify.handleSleep(function(wakeUp) {
+      var swap = function() {
+        /*
+         * save caller context
+         */
+
+        var asyncify_context = Asyncify.currData;
+        {{{ makeSetValue('f_old', 0, 'asyncify_context', 'i32') }}};
+
+        var stack_ptr = stackSave();
+        {{{ makeSetValue('f_old', 4, 'stack_ptr', 'i32') }}};
+
+        Fibers.continuations[f_old] = wakeUp;
+
+        /*
+         * restore callee context
+         */
+
+        Asyncify.currData = {{{ makeGetValue('f_new', 0, 'i32') }}};
+        STACK_MAX = {{{ makeGetValue('f_new', 8, 'i32') }}};
+        STACK_BASE = {{{ makeGetValue('f_new', 12, 'i32') }}};
+        stack_ptr = {{{ makeGetValue('f_new', 4, 'i32') }}};
+        stackRestore(stack_ptr);
+
+        Fibers.current = f_new;
+        Fibers.continuations[f_new]();
+      };
+
+      /*
+       * HACK: The only reason why we must use an actual async callback here is
+       * to unwind the JS call stack. Otherwise, it will keep building up with
+       * each context switch, and eventually overflow after a couple thousands.
+       *
+       * However, doing so on every switch is EXCRUCIATINGLY slow and absolutely
+       * unacceptable. Thus the compromise: we handle most context switches the
+       * 'fast' way (relatively speaking), but every Nth switch we take the
+       * performance hit to drop the call stack.
+       *
+       * Unfortunately, there is probably no universally optimal N: it depends
+       * a lot on the VM's call stack size and the application. 1000 seems to be
+       * a reasonable conservative estimate, at least for V8 in Node and Chrome.
+       * Generally, you probably want to keep this value as high as possible
+       * until you start hitting call stack overflows. It might make sense to
+       * expose this as a setting (TODO?)
+       */
+      if (Fibers.swapCounter == 1000) {
+        Fibers.swapCounter = 0;
+        Asyncify.afterUnwind = null;
+        setTimeout(swap);
+      } else {
+        Fibers.swapCounter++;
+        Asyncify.afterUnwind = swap;
+      }
+    });
+  },
+
+  emscripten_coroutine_create: function() {
+    throw 'emscripten_coroutine_create has been removed. Please use the Fibers API';
+  },
+  emscripten_coroutine_next: function() {
+    throw 'emscripten_coroutine_next has been removed. Please use the Fibers API';
+  },
+  emscripten_yield: function() {
+    throw 'emscripten_yield has been removed. Please use the Fibers API';
+  },
+
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
@@ -849,6 +1033,21 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_scan_registers: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
+  },
+  emscripten_fiber_create: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_create';
+  },
+  emscripten_fiber_create_from_current_context: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_create_from_current_context';
+  },
+  emscripten_fiber_recycle: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_recycle';
+  },
+  emscripten_fiber_free: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_free';
+  },
+  emscripten_fiber_swap: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC

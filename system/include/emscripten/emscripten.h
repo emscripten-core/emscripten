@@ -255,6 +255,20 @@ typedef void (*em_scan_func)(void*, void*);
 void emscripten_scan_registers(em_scan_func func);
 void emscripten_scan_stack(em_scan_func func);
 
+/* Deprecated and not available in upstream backend; use Fibers instead */
+typedef void * emscripten_coroutine;
+emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
+int emscripten_coroutine_next(emscripten_coroutine);
+void emscripten_yield(void);
+
+/* Upstream backend + Asyncify only */
+typedef void * emscripten_fiber;
+emscripten_fiber emscripten_fiber_create(em_arg_callback_func func, void *arg, void *stack, int stack_size);
+emscripten_fiber emscripten_fiber_create_from_current_context(void);
+void emscripten_fiber_recycle(emscripten_fiber fiber, em_arg_callback_func func, void *arg);
+void emscripten_fiber_free(emscripten_fiber fiber);
+void emscripten_fiber_swap(emscripten_fiber old_fiber, emscripten_fiber new_fiber);
+
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */
@@ -265,11 +279,6 @@ void emscripten_sleep_with_yield(unsigned int ms);
 #else
 #define emscripten_sleep SDL_Delay
 #endif
-
-typedef void * emscripten_coroutine;
-emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
-int emscripten_coroutine_next(emscripten_coroutine);
-void emscripten_yield(void);
 
 #ifdef __cplusplus
 }
