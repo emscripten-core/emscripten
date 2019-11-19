@@ -605,18 +605,6 @@ var LibraryGLFW = {
 #endif
     },
 
-    requestFullscreen: function() {
-      var RFS = Module["canvas"]['requestFullscreen'] ||
-                Module["canvas"]['mozRequestFullScreen'] ||
-                Module["canvas"]['webkitRequestFullScreen'] ||
-                (function() {});
-      RFS.apply(Module["canvas"], []);
-    },
-
-    exitFullscreen: function() {
-      Browser.exitFullscreen();
-    },
-
     getTime: function() {
       return _emscripten_get_now() / 1000;
     },
@@ -955,9 +943,9 @@ var LibraryGLFW = {
 
       if (GLFW.active.id == win.id) {
         if (width == screen.width && height == screen.height) {
-          GLFW.requestFullscreen();
+          Browser.requestFullscreen();
         } else {
-          GLFW.exitFullscreen();
+          Browser.exitFullscreen();
           Browser.setCanvasSize(width, height);
           win.width = width;
           win.height = height;
@@ -987,7 +975,7 @@ var LibraryGLFW = {
       if (width <= 0 || height <= 0) return 0;
 
       if (monitor) {
-        GLFW.requestFullscreen();
+        Browser.requestFullscreen();
       } else {
         Browser.setCanvasSize(width, height);
       }
