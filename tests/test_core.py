@@ -3590,6 +3590,7 @@ ok
 
   @needs_dlfcn
   def test_dylink_function_pointer_equality(self):
+    self.maybe_closure()
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
