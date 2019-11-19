@@ -2864,8 +2864,6 @@ class Building(object):
 
     return library_files
 
-  counter = 0
-
   @staticmethod
   def emit_wasm_source_map(wasm_file, map_file):
     sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
@@ -2910,9 +2908,6 @@ class Building(object):
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
       cmd += ['--output-source-map-url=' + Settings.SOURCE_MAP_BASE + os.path.basename(Settings.WASM_BINARY_FILE) + '.map']
-      # remove any dwarf debug info sections, as the source map has the info
-      if tool == 'wasm-opt':
-        cmd += ['--strip-dwarf']
 
     if stdout is not None:
       return run_process(cmd, stdout=stdout).stdout
