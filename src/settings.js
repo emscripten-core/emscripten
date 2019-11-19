@@ -848,8 +848,16 @@ var LINKABLE = 0;
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+//   * AUTO_ARCHIVE_INDEXES is disabled.
 // [compile+link]
 var STRICT = 0;
+
+// Automatically attempt to add archive indexes at link time to archives that 
+// don't already have them.  This can heppen when GNU ar or GNU ranlib is used
+// rather than `llvm-ar` or `emar` since the former don't understand the wasm
+// object format.
+// [link]
+var AUTO_ARCHIVE_INDEXES = 1;
 
 // Add "use strict;" to generated JS
 var STRICT_JS = 0;
