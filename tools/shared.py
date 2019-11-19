@@ -2867,13 +2867,6 @@ class Building(object):
   counter = 0
 
   @staticmethod
-  def get_debug_tempfile_name(suffix='.wasm'):
-    ret = '/tmp/emscripten_temp/temp_' + str(Building.counter) + suffix
-    print('emitting ' + ret)
-    Building.counter += 1
-    return ret;
-
-  @staticmethod
   def emit_wasm_source_map(wasm_file, map_file):
     sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
                      wasm_file,
@@ -2920,60 +2913,10 @@ class Building(object):
       # remove any dwarf debug info sections, as the source map has the info
       if tool == 'wasm-opt':
         cmd += ['--strip-dwarf']
-    # if we are preserving dwarf all the way through the pipeline, we must use
-    # the wtmaps utility to update that info
-    preserve_dwarf = False # Settings.DEBUG_LEVEL == 3 and Settings.WASM_BACKEND and outfile
-    if preserve_dwarf:
-      # We are emitting the maximum amount of debug info; in the wasm backend,
-      # our wasm file contains DWARF sections. Keep them valid through
-      # binaryen transformations. First, before running the command generate
-      # an source map that is the identity transformation, i.e., represents
-      # the locations of things before we change anything.
-      temp_files = configuration.get_temp_files()
-      # make sure the input and output files are different, as we will need
-      # them both around for the fixing up of the dwarf info
-      if os.path.abspath(infile) == os.path.abspath(outfile):
-        temp_infile = temp_files.get('.wasm').name
-        shutil.copyfile(infile, temp_infile)
-        infile = temp_infile
-      identity_map = temp_files.get('.map').name
-
-      def emit_wtmaps_map_file(wasm_file, map_file):
-        run_process([os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wtmaps'), wasm_file, '-o', map_file])
-        #shutil.copyfile(wasm_file, Building.get_debug_tempfile_name())
-        #shutil.copyfile(map_file, Building.get_debug_tempfile_name('.map'))
-
-      emit_wtmaps_map_file(infile, identity_map)
-      output_map = outfile + '.map'
-      cmd += ['--input-source-map=' + identity_map]
-      cmd += ['--output-source-map=' + output_map]
-
-    #shutil.copyfile(infile, Building.get_debug_tempfile_name())
 
     if stdout is not None:
-      ret = run_process(cmd, stdout=stdout).stdout
-    else:
-      run_process(cmd)
-      ret = None
-
-    #if outfile:
-    #  shutil.copyfile(outfile, Building.get_debug_tempfile_name())
-    #  shutil.copyfile(output_map, Building.get_debug_tempfile_name('.map'))
-
-    if preserve_dwarf:
-      # The wasm has been modified, and we emitted a new source map. Adjust
-      # the debug info in the new wasm file.
-      # We are emitting the maximum amount of debug info; in the wasm backend,
-      # our wasm file contains DWARF sections. Keep them valid through
-      # binaryen transformations
-      WDWARF_CP = os.path.expanduser('~/Dev/wtmaps-utils/target/debug/wdwarf-cp')
-      temp_wasm = temp_files.get('.wasm').name
-      run_process([WDWARF_CP, infile, '-o', temp_wasm, '-m', output_map, '-w', outfile])
-      shutil.copyfile(temp_wasm, outfile)
-      #shutil.copyfile(outfile, Building.get_debug_tempfile_name())
-      emit_wtmaps_map_file(outfile, output_map)
-
-    return ret
+      return run_process(cmd, stdout=stdout).stdout
+    run_process(cmd)
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):
