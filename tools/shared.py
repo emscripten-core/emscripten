@@ -2909,9 +2909,7 @@ class Building(object):
       cmd += ['--output-source-map=' + outfile + '.map']
       cmd += ['--output-source-map-url=' + Settings.SOURCE_MAP_BASE + os.path.basename(Settings.WASM_BINARY_FILE) + '.map']
 
-    if stdout is not None:
-      return run_process(cmd, stdout=stdout).stdout
-    run_process(cmd)
+    return run_process(cmd, stdout=stdout).stdout
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):
