@@ -1798,18 +1798,26 @@ def create_fp_accessors(metadata):
                  'perhaps a side module was not linked in? if this symbol was expected to arrive '
                  'from a system library, try to build the MAIN_MODULE with '
                  'EMCC_FORCE_STDLIBS=XX in the environment");')
+    # the name of the original function is generally the normal function
+    # name, unless it is legalized, in which case the export is the legalized
+    # version, and the original provided by orig$X
+    if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
+      name = 'orig$' + name
 
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
-  var func = Module['%(mangled)s'];
-  if (!func)
-    func = %(mangled)s;
+  // Use the wasm function itself, for the table.
+  var func = Module['asm']['%(original)s'];
+  // If there is no wasm function, this may be a JS library function or
+  // something from another module.
+  if (!func) func = Module['%(mangled)s'];
+  if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig})
 
   return '\n'.join(accessors)
 
@@ -2308,6 +2316,11 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
+  # When we dynamically link our JS loader adds functions from wasm modules to
+  # the table. It must add the original versions of them, not legalized ones,
+  # so that indirect calls have the right type, so export those.
+  if shared.Settings.RELOCATABLE:
+    args.append('--pass-arg=legalize-js-interface-export-originals')
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
                                                 outfile=wasm,

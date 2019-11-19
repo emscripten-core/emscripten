@@ -6202,6 +6202,27 @@ int main() {
             self.assertContained('''compile with  -s ALLOW_MEMORY_GROWTH=1 ''', output)
             self.assertContained('''compile with  -s ABORTING_MALLOC=0 ''', output)
 
+  def test_failing_growth_2gb(self):
+    create_test_file('test.cpp', r'''
+#include <stdio.h>
+#include <stdlib.h>
+
+void* out;
+int main() {
+  while (1) {
+    puts("loop...");
+    out = malloc(1024 * 1024);
+    if (!out) {
+      puts("done");
+      return 0;
+    }
+  }
+}
+''')
+
+    run_process([PYTHON, EMCC, '-O1', 'test.cpp', '-s', 'ALLOW_MEMORY_GROWTH'])
+    self.assertContained('done', run_js('a.out.js'))
+
   def test_libcxx_minimal(self):
     create_test_file('vector.cpp', r'''
 #include <vector>
@@ -7337,7 +7358,6 @@ int main() {
       print(first, second, third)
       assert first < second and second < third, [first, second, third]
 
-  @no_wasm_backend('ctor evaller disabled, see https://github.com/emscripten-core/emscripten/issues/9527')
   @uses_canonical_tmp
   @with_env_modify({'EMCC_DEBUG': '1'})
   def test_eval_ctors_debug_output(self):
@@ -7357,10 +7377,15 @@ mergeInto(LibraryManager.library, {
   int main() {}
       ''')
       err = run_process([PYTHON, EMCC, 'src.cpp', '--js-library', 'lib.js', '-Oz', '-s', 'WASM=%d' % wasm], stderr=PIPE).stderr
-      self.assertContained('external_thing', err) # the failing call should be mentioned
-      if not wasm and not self.is_wasm_backend(): # asm.js will show a stack trace
-        self.assertContained('ctorEval.js', err) # with a stack trace
-      self.assertContained('ctor_evaller: not successful', err) # with logging
+      if self.is_wasm_backend():
+        # disabled in the wasm backend
+        self.assertContained('Ctor evalling in the wasm backend is disabled', err)
+        self.assertNotContained('ctor_evaller: not successful', err) # with logging
+      else:
+        self.assertContained('external_thing', err) # the failing call should be mentioned
+        if not wasm and not self.is_wasm_backend(): # asm.js will show a stack trace
+          self.assertContained('ctorEval.js', err) # with a stack trace
+        self.assertContained('ctor_evaller: not successful', err) # with logging
 
   def test_override_js_execution_environment(self):
     create_test_file('main.cpp', r'''
@@ -8146,7 +8171,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1520, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'],  174, [], [], 517336, None, 1729, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
   })
   @no_fastcomp()
@@ -8174,21 +8199,27 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O3':                 (['-O3'],
+    'O3':                 ('mem.c', ['-O3'],
                            3, [], [], 6100,  2,  3,  5),         # noqa
     # argc/argv support code etc. is in the wasm
-    'O3_standalone':      (['-O3', '-s', 'STANDALONE_WASM'],
-                           3, [], [], 6309,  3,  3,  4),         # noqa
+    'O3_standalone':      ('mem.c', ['-O3', '-s', 'STANDALONE_WASM'],
+                           3, [], [], 6309,  3,  3,  5),         # noqa
+    # without argc/argv, no support code for them is emitted
+    'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
+                           1, [], [], 6309,  1,  3,  5),         # noqa
+    # without main, no support code for argc/argv is emitted either
+    'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM'],
+                           0, [], [], 6309,  0,  3,  4),         # noqa
     # Growth support code is in JS, no significant change in the wasm
-    'O3_grow':            (['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
+    'O3_grow':            ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
                            3, [], [], 6098,  2,  3,  5),         # noqa
     # Growth support code is in the wasm
-    'O3_grow_standalone': (['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           4, [], [], 6449,  4,  3,  5),         # noqa
+    'O3_grow_standalone': ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
+                           4, [], [], 6449,  4,  3,  6),         # noqa
   })
   @no_fastcomp()
-  def test_metadce_mem(self, *args):
-    self.run_metadce_test('mem.c', *args)
+  def test_metadce_mem(self, filename, *args):
+    self.run_metadce_test(filename, *args)
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
@@ -8601,12 +8632,25 @@ end
     create_test_file('file1', ' ')
     run_process([PYTHON, EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
+  def test_archive_empty(self):
+    # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
+    # archives (which inherently don't have indexes).
+    run_process([PYTHON, EMAR, 'crS', 'libfoo.a'])
+    run_process([PYTHON, EMCC, '-Werror', 'libfoo.a', path_from_root('tests', 'hello_world.c')])
+
   def test_archive_no_index(self):
     create_test_file('foo.c', 'int foo = 1;')
     run_process([PYTHON, EMCC, '-c', 'foo.c'])
     run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
     # The `S` flag means don't add an archive index
     run_process([PYTHON, EMAR, 'crS', 'libfoo.a', 'foo.o'])
+    # The llvm backend (link GNU ld and lld) doesn't support linking archives with no index.
+    # However we have logic that will automatically add indexes (unless running with
+    # NO_AUTO_ARCHIVE_INDEXES).
+    if self.is_wasm_backend():
+      stderr = self.expect_fail([PYTHON, EMCC, '-s', 'NO_AUTO_ARCHIVE_INDEXES', 'libfoo.a', 'hello_world.o'])
+      self.assertContained('libfoo.a: archive has no index; run ranlib to add one', stderr)
+    # The default behavior is to add archive indexes automatically.
     run_process([PYTHON, EMCC, 'libfoo.a', 'hello_world.o'])
 
   def test_flag_aliases(self):
@@ -9208,6 +9252,22 @@ ok.
 
   def test_getprotobyname(self):
     self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
+
+  def test_socketpair(self):
+    self.do_run(r'''
+      #include <sys/socket.h>
+      #include <stdio.h>
+      int main() {
+        int fd[2];
+        int err;
+        err = socketpair(AF_INET, SOCK_STREAM, 0, fd);
+        if (err != 0) {
+          perror("socketpair error");
+          return 1;
+        }
+        puts("unexpected success.");
+      }
+    ''', 'socketpair error: Function not implemented', assert_returncode=None)
 
   def test_link(self):
     self.do_run(r'''
@@ -9833,6 +9893,34 @@ Module.wasmBinary has been replaced with plain wasmBinary
 Module.arguments has been replaced with plain arguments_
 ''', run_js('a.out.js', assert_returncode=None, stderr=PIPE))
 
+  def test_em_asm_duplicate_strings(self):
+    # We had a regression where tow different EM_ASM strings from two diffferent
+    # object files were de-duplicated in wasm-emscripten-finalize.  This used to
+    # work when we used zero-based index for store the JS strings, but once we
+    # switched to absolute addresses the string needs to exist twice in the JS
+    # file.
+    create_test_file('foo.c', '''
+      #include <emscripten.h>
+      void foo() {
+        EM_ASM({ console.log('Hello, world!'); });
+      }
+    ''')
+    create_test_file('main.c', '''
+      #include <emscripten.h>
+
+      void foo();
+
+      int main() {
+        foo();
+        EM_ASM({ console.log('Hello, world!'); });
+        return 0;
+      }
+    ''')
+    run_process([PYTHON, EMCC, '-c', 'foo.c'])
+    run_process([PYTHON, EMCC, '-c', 'main.c'])
+    run_process([PYTHON, EMCC, 'foo.o', 'main.o'])
+    self.assertContained('Hello, world!\nHello, world!\n', run_js('a.out.js'))
+
   def test_em_asm_strict_c(self):
     create_test_file('src.c', '''
       #include <emscripten/em_asm.h>
@@ -9954,3 +10042,14 @@ int main() {
 }
 ''')
     run_process([PYTHON, EMCC, 'pthread.c'])
+
+  def test_preprocess_stdin(self):
+    create_test_file('temp.h', '#include <string>')
+    outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
+    outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
+    self.assertTextDataIdentical(outputStdin, outputFile)
+
+  def test_compile_stdin(self):
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
+    self.assertContained('hello, world!', run_js('a.out.js'))

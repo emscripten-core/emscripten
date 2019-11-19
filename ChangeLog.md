@@ -17,6 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.3: 11/14/2019
+------------------
+
+v1.39.2: 11/06/2019
+------------------
  - Archives with missing indexes will now have ranlib run on them automatically
    at link time.  This avoid linker errors when using GNU ar to build archive
    files.

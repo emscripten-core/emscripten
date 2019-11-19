@@ -477,11 +477,14 @@ def do_emscripten(infile, memfile):
 
 
 def ensure_archive_index(archive_file):
-  # Fastcomp linking works without archive indexes
-  if not shared.Settings.WASM_BACKEND:
+  # Fastcomp linking works without archive indexes.
+  if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
   stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE).stdout
   stdout = stdout.strip()
+  # Ignore empty archives
+  if not stdout:
+    return
   if stdout.startswith('Archive map\n') or stdout.startswith('Archive index\n'):
     return
   shared.warning('%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
@@ -1003,7 +1006,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # TODO(sbc): Pass this and other flags through when using lld
         # link_flags.append((i, arg))
         newargs[i] = ''
-
+      elif arg == '-':
+        input_files.append((i, arg))
+        newargs[i] = ''
     newargs = [a for a in newargs if a]
 
     if has_dash_c or has_dash_S:
@@ -1113,6 +1118,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
+      shared.Settings.AUTO_ARCHIVE_INDEXES = 0
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1
@@ -3100,7 +3106,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that wasm2js handles the symbol map itself (as it manipulates and then
   # replaces the wasm with js)
-  if intermediate_debug_info and not shared.Settings.WASM2JS:
+  if options.emit_symbol_map and not shared.Settings.WASM2JS:
     shared.Building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 

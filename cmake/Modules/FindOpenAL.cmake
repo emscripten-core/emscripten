@@ -15,10 +15,9 @@ if (NOT OPENAL_FOUND)
 	# ... but the stock FindOpenAL.cmake would have returned this.
 	#SET(OPENAL_INCLUDE_DIR "${EMSCRIPTEN_ROOT_PATH}/system/include/AL")
 
-	# No library to link against for OpenAL, this is picked up automatically by library_openal.js,
-	# but need to report something, or CMake thinks we failed in the search.
-	SET(OPENAL_LIBRARY "nul")
-	SET(OPENAL_LIB "")
+	# Returning "-lopenal" is now considered mandatory
+	SET(OPENAL_LIBRARY "-lopenal")
+	SET(OPENAL_LIB "-lopenal")
 
 	set(CMAKE_INCLUDE_PATH ${CMAKE_INCLUDE_PATH} "${EMSCRIPTEN_ROOT_PATH}/system/include" "${EMSCRIPTEN_ROOT_PATH}/system/include/AL")
 
