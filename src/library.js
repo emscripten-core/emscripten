@@ -802,9 +802,11 @@ LibraryManager.library = {
     name = UTF8ToString(name);
     if (!ENV.hasOwnProperty(name)) return 0;
 
-    if (_getenv.ret) _free(_getenv.ret);
-    _getenv.ret = allocateUTF8(ENV[name]);
-    return _getenv.ret;
+    // Use 1 location for each name.  Use an ES6 map
+    if (!_getenv.ret) _getenv.ret = new Map()
+    if (_getenv.ret.has(name)) _free(_getenv.ret.get(name));
+    _getenv.ret.set(name, allocateUTF8(ENV[name]));
+    return _getenv.ret.get(name);
   },
   // Alias for sanitizers which intercept getenv.
   emscripten_get_env: 'getenv',
