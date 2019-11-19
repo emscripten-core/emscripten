@@ -721,8 +721,8 @@ function convertJsFunctionToWasm(func, sig) {
   // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
   var module = new WebAssembly.Module(bytes);
   var instance = new WebAssembly.Instance(module, {
-    e: {
-      f: func
+    'e': {
+      'f': func
     }
   });
   var wrappedFunc = instance.exports.f;
