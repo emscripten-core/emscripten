@@ -438,7 +438,7 @@ var LibraryPThread = {
               worker.onmessage({ data: data });
             });
             worker.on('error', function(data) {
-              worker.onerror(data.err);
+              worker.onerror(data);
             });
             worker.on('exit', function(data) {
               console.log('worker exited - TODO: update the worker queue?');
