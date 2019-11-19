@@ -3035,15 +3035,19 @@ class JS(object):
 
   @staticmethod
   def legalize_sig(sig):
-    ret = [sig[0]]
+    legal = [sig[0]]
+    # a return of i64 is legalized into an i32 (and the high bits are
+    # accessible on the side through getTempRet0).
+    if legal[0] == 'j':
+      legal[0] = 'i'
+    # a parameter of i64 is legalized into i32, i32
     for s in sig[1:]:
       if s != 'j':
-        ret.append(s)
+        legal.append(s)
       else:
-        # an i64 is legalized into i32, i32
-        ret.append('i')
-        ret.append('i')
-    return ''.join(ret)
+        legal.append('i')
+        legal.append('i')
+    return ''.join(legal)
 
   @staticmethod
   def is_legal_sig(sig):
