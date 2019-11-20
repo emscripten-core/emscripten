@@ -2910,7 +2910,7 @@ class Building(object):
 
     ret = run_process(cmd, stdout=stdout).stdout
     if outfile:
-      Building.debug_copy(outfile, 'rbc.%s.wasm' % tool)
+      Building.debug_copy(outfile, '%s.wasm' % tool)
     return ret
 
   @staticmethod
