@@ -1891,11 +1891,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      if need_llvm_debug_info(options):
-        newargs.append('-g')
-
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if options.debug_level >= 3 and not shared.Settings.WASM:
+      if options.debug_level >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
         newargs.append('-fno-discard-value-names')
 
       def is_link_flag(flag):
@@ -2640,10 +2637,25 @@ def parse_args(newargs):
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('-g'):
-      requested_level = newargs[i][2:] or '3'
-      options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       options.requested_debug = newargs[i]
-      newargs[i] = ''
+      requested_level = newargs[i][2:] or '3'
+      if requested_level == 'line-tables-only':
+        # line-tables-only means function names and source positions, and no
+        # other debug info. keep that flag for the clang frontend to emit
+        # corresponding DWARF info.
+        # set the emscripten debug level to 3 so that we do not remove that
+        # debug info during link (during compile, this does not make a
+        # difference).
+        options.debug_level = 3
+      else:
+        # the -gX value is the debug level (-g1, -g2, etc.)
+        options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
+        # if we don't need to preserve LLVM debug info, do not keep this flag
+        # for clang
+        if options.debug_level < 3:
+          newargs[i] = ''
+        else:
+          newargs[i] = '-g'
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       options.debug_level = max(options.debug_level, 2)
       options.profiling = True

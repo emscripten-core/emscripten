@@ -2329,6 +2329,31 @@ int f() {
         else:
           self.assertIn('strip-debug', err)
 
+  @no_fastcomp()
+  def test_debuginfo_line_tables_only(self):
+    def test(do_compile):
+      do_compile([])
+      no_size = os.path.getsize('a.out.wasm')
+      do_compile(['-gline-tables-only'])
+      line_size = os.path.getsize('a.out.wasm')
+      do_compile(['-g'])
+      full_size = os.path.getsize('a.out.wasm')
+      self.assertLess(no_size, line_size)
+      self.assertLess(line_size, full_size)
+
+    def compile_directly(compile_args):
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + compile_args)
+
+    test(compile_directly)
+
+    def compile_to_object_first(compile_args):
+      # compile with the specified args
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + compile_args + ['-c', '-o', 'a.o'])
+      # link with debug info
+      run_process([PYTHON, EMCC, 'a.o', '-g'])
+
+    test(compile_to_object_first)
+
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
   def test_scons(self):
