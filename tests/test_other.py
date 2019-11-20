@@ -2339,7 +2339,9 @@ int f() {
       do_compile(['-g'])
       full_size = os.path.getsize('a.out.wasm')
       self.assertLess(no_size, line_size)
-      self.assertLess(line_size, full_size)
+      # currently we don't support full debug info anyhow, so line tables
+      # is all we have
+      self.assertEqual(line_size, full_size)
 
     def compile_directly(compile_args):
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + compile_args)
