@@ -2907,8 +2907,10 @@ class Building(object):
     if emit_source_map:
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
-      # remove any dwarf debug info sections, as the source map has the info,
-      # so they are not needed (and may be very large)
+    if outfile and tool == 'wasm-opt':
+      # remove any dwarf debug info sections, as currently we are not able to
+      # properly update it anyhow, and in the case of source maps, we have
+      # that info in the map anyhow
       cmd += ['--strip-dwarf']
 
     return run_process(cmd, stdout=stdout).stdout
