@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove deprecated `requestFullScreen` method from `library_browser.js`, please
+  use `requestFullscreen` (without the capital S).
+- Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
+- Remove deprecated `requestFullScreen` and `cancelFullScreen`from `library_glfw.js`
 
 v1.39.3: 11/14/2019
 ------------------
