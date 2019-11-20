@@ -18,7 +18,6 @@ import subprocess
 import re
 import time
 import logging
-import shutil
 import pprint
 from collections import OrderedDict
 
