@@ -8216,6 +8216,10 @@ int main() {
     # Growth support code is in the wasm
     'O3_grow_standalone': ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
                            4, [], [], 6449,  4,  3,  6),         # noqa
+    # without argc/argv, no support code for them is emitted, even with lto
+    'O3_standalone_narg_flto':
+                          ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
+                           1, [], [], 6309,  1,  3,  5),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, filename, *args):
