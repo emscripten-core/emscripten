@@ -2865,6 +2865,14 @@ class Building(object):
     return library_files
 
   @staticmethod
+  def emit_wasm_source_map(wasm_file, map_file):
+    sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
+                     wasm_file,
+                     '--dwarfdump=' + LLVM_DWARFDUMP,
+                     '-o',  map_file]
+    check_call(sourcemap_cmd)
+
+  @staticmethod
   def get_binaryen_feature_flags():
     # start with the MVP features, add the rest as needed
     ret = ['--mvp-features']
@@ -2893,10 +2901,14 @@ class Building(object):
     if '--detect-features' not in cmd:
       cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
-    if stdout is not None:
-      return run_process(cmd, stdout=stdout).stdout
-    else:
-      run_process(cmd)
+    # if we are emitting a source map, every time we load and save the wasm
+    # we must tell binaryen to update it
+    emit_source_map = Settings.DEBUG_LEVEL == 4 and outfile
+    if emit_source_map:
+      cmd += ['--input-source-map=' + infile + '.map']
+      cmd += ['--output-source-map=' + outfile + '.map']
+
+    return run_process(cmd, stdout=stdout).stdout
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):

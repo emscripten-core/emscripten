@@ -2284,29 +2284,20 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   base_wasm = infile
   debug_copy(infile, 'base.wasm')
 
+  args = ['--detect-features']
+
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
-    base_source_map = base_wasm + '.map'
-    sourcemap_cmd = [shared.PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
-                     base_wasm,
-                     '--dwarfdump=' + shared.LLVM_DWARFDUMP,
-                     '-o',  base_source_map]
-    if not shared.Settings.SOURCE_MAP_BASE:
-      logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
-    shared.check_call(sourcemap_cmd)
-    debug_copy(base_source_map, 'base_wasm.map')
+    shared.Building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
+    debug_copy(base_wasm + '.map', 'base_wasm.map')
+    args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  args = ['--detect-features']
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
     args.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
     args.append('--no-legalize-javascript-ffi')
-  if write_source_map:
-    args.append('--input-source-map=' + base_source_map)
-    args.append('--output-source-map=' + wasm + '.map')
-    args.append('--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map')
   if not shared.Settings.MEM_INIT_IN_WASM:
     args.append('--separate-data-segments=' + memfile)
   if shared.Settings.SIDE_MODULE:
