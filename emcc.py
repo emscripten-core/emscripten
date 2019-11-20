@@ -3158,6 +3158,7 @@ function(%(EXPORT_NAME)s) {
       # document.currentScript, so a simple export declaration is enough.
       src = 'var %s=%s' % (shared.Settings.EXPORT_NAME, src)
     else:
+      script_url_node = ""
       # When MODULARIZE this JS may be executed later,
       # after document.currentScript is gone, so we save it.
       # (when MODULARIZE_INSTANCE, an instance is created
@@ -3170,8 +3171,6 @@ function(%(EXPORT_NAME)s) {
         script_url = "typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined"
         if shared.Settings.target_environment_may_be('node'):
           script_url_node = "if (typeof __filename !== 'undefined') _scriptDir = _scriptDir || __filename;"
-        else:
-          script_url_node = ""
       src = '''
 var %(EXPORT_NAME)s = (function() {
   var _scriptDir = %(script_url)s;
