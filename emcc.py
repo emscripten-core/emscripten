@@ -1821,6 +1821,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+      newargs.append('-g')
 
     if options.tracing:
       if shared.Settings.ALLOW_MEMORY_GROWTH:
