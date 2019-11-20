@@ -18,7 +18,6 @@ import subprocess
 import re
 import time
 import logging
-import shutil
 import pprint
 from collections import OrderedDict
 
@@ -2275,21 +2274,17 @@ def remove_trailing_zeros(memfile):
 
 
 def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
-  def debug_copy(src, dst):
-    if DEBUG:
-      shutil.copyfile(src, os.path.join(shared.CANONICAL_TEMP_DIR, dst))
-
   basename = shared.unsuffixed(outfile.name)
   wasm = basename + '.wasm'
   base_wasm = infile
-  debug_copy(infile, 'base.wasm')
+  shared.Building.debug_copy(infile, 'base.wasm')
 
   args = ['--detect-features']
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
     shared.Building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
-    debug_copy(base_wasm + '.map', 'base_wasm.map')
+    shared.Building.debug_copy(base_wasm + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
@@ -2329,8 +2324,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
                                                 args=args,
                                                 stdout=subprocess.PIPE)
   if write_source_map:
-    debug_copy(wasm + '.map', 'post_finalize.map')
-  debug_copy(wasm, 'post_finalize.wasm')
+    shared.Building.debug_copy(wasm + '.map', 'post_finalize.map')
+  shared.Building.debug_copy(wasm, 'post_finalize.wasm')
 
   if not shared.Settings.MEM_INIT_IN_WASM:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,

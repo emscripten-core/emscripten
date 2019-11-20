@@ -2913,11 +2913,22 @@ class Building(object):
       # that info in the map anyhow
       cmd += ['--strip-dwarf']
 
-    return run_process(cmd, stdout=stdout).stdout
+    ret = run_process(cmd, stdout=stdout).stdout
+    if outfile:
+      Building.debug_copy(outfile, '%s.wasm' % tool)
+    return ret
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):
     return Building.run_binaryen_command('wasm-opt', *args, **kwargs)
+
+  debug_copy_counter = 0
+
+  @staticmethod
+  def debug_copy(src, dst):
+    if DEBUG:
+      shutil.copyfile(src, os.path.join(CANONICAL_TEMP_DIR, 'emdebug-%d-%s' % (Building.debug_copy_counter, dst)))
+      Building.debug_copy_counter += 1
 
 
 # compatibility with existing emcc, etc. scripts
