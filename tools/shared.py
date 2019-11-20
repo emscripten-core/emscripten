@@ -2912,9 +2912,7 @@ class Building(object):
       # so they are not needed (and may be very large)
       cmd += ['--strip-dwarf']
 
-    if stdout is not None:
-      return run_process(cmd, stdout=stdout).stdout
-    run_process(cmd)
+    return run_process(cmd, stdout=stdout).stdout
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):
