@@ -2284,14 +2284,16 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   base_wasm = infile
   debug_copy(infile, 'base.wasm')
 
+  args = ['--detect-features']
+
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
     shared.Building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
     debug_copy(base_wasm + '.map', 'base_wasm.map')
+    args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
   # (which matches what llvm+lld has given us)
-  args = ['--detect-features']
   if shared.Settings.DEBUG_LEVEL >= 2 or shared.Settings.PROFILING_FUNCS or shared.Settings.EMIT_SYMBOL_MAP or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST:
     args.append('-g')
   if shared.Settings.LEGALIZE_JS_FFI != 1:
