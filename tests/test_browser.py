@@ -1866,7 +1866,10 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_threads
   def test_emscripten_main_loop_settimeout(self):
-    for args in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1']]:
+    for args in [
+      [],
+      ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'STRICT'] # test pthreads + STRICT mode as well
+    ]:
       self.btest('emscripten_main_loop_settimeout.cpp', '1', args=args)
 
   @requires_threads
