@@ -3694,7 +3694,7 @@ def is_int(s):
   try:
     int(s)
     return True
-  except:
+  except ValueError:
     return False
 
 
