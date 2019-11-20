@@ -725,7 +725,7 @@ function convertJsFunctionToWasm(func, sig) {
       'f': func
     }
   });
-  var wrappedFunc = instance.exports.f;
+  var wrappedFunc = instance.exports['f'];
   return wrappedFunc;
 #endif // WASM2JS
 }
