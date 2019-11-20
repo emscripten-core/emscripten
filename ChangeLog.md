@@ -24,16 +24,16 @@ v1.39.3: 11/14/2019
 v1.39.2: 11/06/2019
 ------------------
  - Archives with missing indexes will now have ranlib run on them automatically
-   at link time.  This avoid linker errors when using GNU ar to build archive
+   at link time.  This avoids linker errors when using GNU ar to build archive
    files.
  - `ERROR_ON_MISSING_LIBRARIES` now also applies to internal symbols that start
    with `emscripten_`.  Prior to this change such missing symbols would result
-   in a runtime error, not they are reported at compile time.
+   in a runtime error, now they are reported at compile time.
  - Pthread blocking on the main thread will now warn in the console. If
    `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
  - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
    but without blocking.
- - New function emscripten_has_asyncify()
+ - New function `emscripten_has_asyncify()`.
  - Add support for pthreads in Node.js, using Node Workers. See #9745
 
 v1.39.1: 10/30/2019
@@ -87,11 +87,11 @@ v1.38.46: 09/25/2019
 --------------------
  - Rename libpthreads to libpthread to match its normal name on other platforms.
    This change should be completely internal to emscripten.
- - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+ - Remove redundant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
    node as the compiler engine so just use a single `NODE_JS` option for that.
  - Module.abort is no longer exported by default. It can be exported in the normal
    way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
-   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
+   the past, forgetting to export it will show a clear error in `ASSERTIONS` mode.
  - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
@@ -222,7 +222,7 @@ v1.38.33: 05/23/2019
 
 v1.38.32: SKIPPED
 -----------------
- - The transition from the old to the new CI occured around here. To avoid
+ - The transition from the old to the new CI occurred around here. To avoid
    ambiguity while both CIs were still generating builds, we just tagged a new
    one (1.38.33) on the new CI and skipped 1.38.32.
  - The transition also moves all builds and downloads away from the old
