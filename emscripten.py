@@ -2277,14 +2277,14 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   basename = shared.unsuffixed(outfile.name)
   wasm = basename + '.wasm'
   base_wasm = infile
-  shared.Building.debug_copy(infile, 'base.wasm')
+  shared.Building.save_intermediate(infile, 'base.wasm')
 
   args = ['--detect-features']
 
   write_source_map = shared.Settings.DEBUG_LEVEL >= 4
   if write_source_map:
     shared.Building.emit_wasm_source_map(base_wasm, base_wasm + '.map')
-    shared.Building.debug_copy(base_wasm + '.map', 'base_wasm.map')
+    shared.Building.save_intermediate(base_wasm + '.map', 'base_wasm.map')
     args += ['--output-source-map-url=' + shared.Settings.SOURCE_MAP_BASE + os.path.basename(shared.Settings.WASM_BINARY_FILE) + '.map']
 
   # tell binaryen to look at the features section, and if there isn't one, to use MVP
@@ -2324,8 +2324,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
                                                 args=args,
                                                 stdout=subprocess.PIPE)
   if write_source_map:
-    shared.Building.debug_copy(wasm + '.map', 'post_finalize.map')
-  shared.Building.debug_copy(wasm, 'post_finalize.wasm')
+    shared.Building.save_intermediate(wasm + '.map', 'post_finalize.map')
+  shared.Building.save_intermediate(wasm, 'post_finalize.wasm')
 
   if not shared.Settings.MEM_INIT_IN_WASM:
     # we have a separate .mem file. binaryen did not strip any trailing zeros,

@@ -2920,20 +2920,22 @@ class Building(object):
 
     ret = run_process(cmd, stdout=stdout).stdout
     if outfile:
-      Building.debug_copy(outfile, '%s.wasm' % tool)
+      Building.save_intermediate(outfile, '%s.wasm' % tool)
     return ret
 
   @staticmethod
   def run_wasm_opt(*args, **kwargs):
     return Building.run_binaryen_command('wasm-opt', *args, **kwargs)
 
-  debug_copy_counter = 0
+  save_intermediate_counter = 0
 
   @staticmethod
-  def debug_copy(src, dst):
+  def save_intermediate(src, dst):
     if DEBUG:
-      shutil.copyfile(src, os.path.join(CANONICAL_TEMP_DIR, 'emdebug-%d-%s' % (Building.debug_copy_counter, dst)))
-      Building.debug_copy_counter += 1
+      dst = 'emcc-%d-%s' % (Building.save_intermediate_counter, dst)
+      Building.save_intermediate_counter += 1
+      logger.debug('saving debug copy %s' % dst)
+      shutil.copyfile(src, os.path.join(CANONICAL_TEMP_DIR, dst))
 
 
 # compatibility with existing emcc, etc. scripts
