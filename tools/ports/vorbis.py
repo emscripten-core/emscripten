@@ -16,41 +16,23 @@ def get(ports, settings, shared):
     return []
 
   ports.fetch_project('vorbis', 'https://github.com/emscripten-ports/vorbis/archive/' + TAG + '.zip', 'Vorbis-' + TAG, sha512hash=HASH)
-  lib_name = ports.get_lib_name('libvorbis')
-  lib_name_file = ports.get_lib_name('libvorbisfile')
-  lib_name_enc = ports.get_lib_name('libvorbisenc')
+  libname = ports.get_lib_name('libvorbis')
 
-  def create(library):
-    def internal_create():
-      logging.info('building port: vorbis')
+  def create():
+    logging.info('building port: vorbis')
 
-      source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
-      dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis')
+    source_path = os.path.join(ports.get_dir(), 'vorbis', 'Vorbis-' + TAG)
+    dest_path = os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis')
 
-      if not create.recreated_tree:
-        logging.info('recreating tree %s %s %s' % (library, source_path, dest_path))
-        shutil.rmtree(dest_path, ignore_errors=True)
-        shutil.copytree(source_path, dest_path)
-        create.recreated_tree = True
+    shutil.rmtree(dest_path, ignore_errors=True)
+    shutil.copytree(source_path, dest_path)
 
-      final = os.path.join(dest_path, library)
+    final = os.path.join(dest_path, libname)
+    ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
+                     ['-s', 'USE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
+    return final
 
-      if library == lib_name:
-        excluded_files = ['psytune', 'barkmel', 'tone', 'misc']
-        ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
-                         ['-s', 'USE_OGG=1'], excluded_files)
-      if library == lib_name_file:
-        ports.build_port(os.path.join(dest_path, 'lib', 'vorbisfile.c'), final, [os.path.join(dest_path, 'include')],
-                         ['-s', 'USE_OGG=1'])
-      if library == lib_name_enc:
-        ports.build_port(os.path.join(dest_path, 'lib', 'vorbisenc.c'), final, [os.path.join(dest_path, 'include')],
-                         ['-s', 'USE_OGG=1'])
-
-      return final
-    return internal_create
-
-  create.recreated_tree = False
-  return [shared.Cache.get(lib_name, create(lib_name)), shared.Cache.get(lib_name_file, create(lib_name_file)), shared.Cache.get(lib_name_enc, create(lib_name_enc))]
+  return [shared.Cache.get(libname, create)]
 
 
 def clear(ports, shared):
@@ -65,7 +47,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_VORBIS == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis', 'include')]
+    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer', 'include')]
   return args
 
 

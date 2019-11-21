@@ -1494,20 +1494,14 @@ class Ports(object):
   @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
     srcs = []
-    include_commands = []
-    if os.path.isfile(src_path):
-      srcs = [src_path]
-      include_commands = ['-I' + os.path.dirname(src_path)]
-    else:
-      include_commands = ['-I' + src_path]
-      for root, dirs, files in os.walk(src_path, topdown=False):
-        if any((excluded in root) for excluded in exclude_dirs):
-          continue
-        for f in files:
-          ext = os.path.splitext(f)[1]
-          if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
-              srcs.append(os.path.join(root, f))
-
+    for root, dirs, files in os.walk(src_path, topdown=False):
+      if any((excluded in root) for excluded in exclude_dirs):
+        continue
+      for f in files:
+        ext = os.path.splitext(f)[1]
+        if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
+          srcs.append(os.path.join(root, f))
+    include_commands = ['-I' + src_path]
     for include in includes:
       include_commands.append('-I' + include)
 
