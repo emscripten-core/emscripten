@@ -34,13 +34,18 @@ def get(ports, settings, shared):
         create.recreated_tree = True
 
       final = os.path.join(dest_path, library)
-      excluded_files = ['psytune', 'barkmel', 'tone', 'misc']
-      if library == lib_name_file or library == lib_name:
-        excluded_files.append('vorbisenc')
-      if library == lib_name_enc or library == lib_name:
-        excluded_files.append('vorbisfile')
-      ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
-                       ['-s', 'USE_OGG=1'], excluded_files)
+
+      if library == lib_name:
+        excluded_files = ['psytune', 'barkmel', 'tone', 'misc']
+        ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
+                         ['-s', 'USE_OGG=1'], excluded_files)
+      if library == lib_name_file:
+        ports.build_port(os.path.join(dest_path, 'lib', 'vorbisfile.c'), final, [os.path.join(dest_path, 'include')],
+                         ['-s', 'USE_OGG=1'])
+      if library == lib_name_enc:
+        ports.build_port(os.path.join(dest_path, 'lib', 'vorbisenc.c'), final, [os.path.join(dest_path, 'include')],
+                         ['-s', 'USE_OGG=1'])
+
       return final
     return internal_create
 
