@@ -2219,7 +2219,11 @@ var LibraryJSEvents = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
-  emscripten_webgl_do_create_context__deps: ['$GL', '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
+  // This code is called from the main proxying logic, which has a big switch
+  // for all the messages, one of which is this GL-using one. This won't be
+  // called if GL is not linked in, but also make sure to not add a dep on
+  // GL unnecessarily from here, as that would cause a linker error.
+  emscripten_webgl_do_create_context__deps: maybeAddGLDep(['$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget']),
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
