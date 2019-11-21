@@ -182,14 +182,14 @@ def save_intermediate(name, suffix='js'):
   if isinstance(final, list):
     logger.debug('(not saving intermediate %s because deferring linking)' % name)
     return
-  shared.Building.debug_copy(final, name + '.' + suffix)
+  shared.Building.save_intermediate(final, name + '.' + suffix)
 
 
 def save_intermediate_with_wasm(name, wasm_binary):
   if not DEBUG:
     return
   save_intermediate(name) # save the js
-  shared.Building.debug_copy(wasm_binary, name + '.wasm')
+  shared.Building.save_intermediate(wasm_binary, name + '.wasm')
 
 
 class TimeLogger(object):
@@ -2938,7 +2938,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
       # save the asm.js input
-      shared.Building.debug_copy(asm_target, 'asmjs.js')
+      shared.Building.save_intermediate(asm_target, 'asmjs.js')
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
     if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
       exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
@@ -3011,7 +3011,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     if DEBUG:
-      shared.Building.debug_copy(wasm_binary_target, 'pre-byn.wasm')
+      shared.Building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
     args = options.binaryen_passes
     shared.Building.run_wasm_opt(wasm_binary_target,
                                  wasm_binary_target,
@@ -3030,7 +3030,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
-      shared.Building.debug_copy(wasm_binary_target, 'pre-ctors.wasm')
+      shared.Building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
