@@ -2338,23 +2338,30 @@ int f() {
       line_size = os.path.getsize('a.out.wasm')
       do_compile(['-g'])
       full_size = os.path.getsize('a.out.wasm')
-      self.assertLess(no_size, line_size)
-      # currently we don't support full debug info anyhow, so line tables
-      # is all we have
-      self.assertEqual(line_size, full_size)
+      return (no_size, line_size, full_size)
 
-    def compile_directly(compile_args):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + compile_args)
+    def compile_to_object(compile_args):
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.out.wasm'] + compile_args)
 
-    test(compile_directly)
+    no_size, line_size, full_size = test(compile_to_object)
 
-    def compile_to_object_first(compile_args):
+    self.assertLess(no_size, line_size)
+    # currently we don't support full debug info anyhow, so line tables
+    # is all we have
+    self.assertEqual(line_size, full_size)
+
+    def compile_to_executable(compile_args):
       # compile with the specified args
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + compile_args + ['-c', '-o', 'a.o'])
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.o'] + compile_args)
       # link with debug info
       run_process([PYTHON, EMCC, 'a.o', '-g'])
 
-    test(compile_to_object_first)
+    no_size, line_size, full_size = test(compile_to_executable)
+
+    # currently we strip all debug info from the final wasm anyhow, until
+    # we have full dwarf support
+    self.assertEqual(no_size, line_size)
+    self.assertEqual(line_size, full_size)
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
