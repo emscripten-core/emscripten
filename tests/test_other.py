@@ -8921,10 +8921,9 @@ int main() {
     shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'a.cpp')
     filenames = [
       filename,
-      os.path.abspath(filename)
-    ]
-    if not WINDOWS:
+      os.path.abspath(filename),
       filenames.append('./' + filename)
+    ]
     for curr in filenames:
       print(curr)
       run_process([PYTHON, EMCC, curr, '-g4'])

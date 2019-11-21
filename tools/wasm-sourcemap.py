@@ -39,6 +39,7 @@ def parse_args():
   parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
+  parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
   return parser.parse_args()
 
 
@@ -243,11 +244,10 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
-def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
+def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, base_path):
   sources = []
   sources_content = [] if collect_sources else None
   mappings = []
-
   sources_map = {}
   last_address = 0
   last_source_id = 0
@@ -263,7 +263,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
     if column == 0:
       column = 1
     address = entry['address'] + code_section_offset
-    file_name = os.path.relpath(entry['file'])
+    file_name = os.path.relpath(os.path.abspath(entry['file']), base_path)
     source_name = prefixes.sources.resolve(file_name)
     if source_name not in sources_map:
       source_id = len(sources)
@@ -311,7 +311,7 @@ def main():
   prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
 
   logger.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
+  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources, options.basepath)
   with open(options.output, 'w') as outfile:
     json.dump(map, outfile, separators=(',', ':'))
 

@@ -2871,10 +2871,14 @@ class Building(object):
 
   @staticmethod
   def emit_wasm_source_map(wasm_file, map_file):
+    # source file paths must be relative to the location of the map (which is
+    # emitted alongside the wasm)
+    base_path = os.path.dirname(os.path.abspath(Settings.WASM_BINARY_FILE))
     sourcemap_cmd = [PYTHON, path_from_root('tools', 'wasm-sourcemap.py'),
                      wasm_file,
                      '--dwarfdump=' + LLVM_DWARFDUMP,
-                     '-o',  map_file]
+                     '-o',  map_file,
+                     '--basepath=' + base_path]
     check_call(sourcemap_cmd)
 
   @staticmethod
