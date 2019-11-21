@@ -47,7 +47,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_VORBIS == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer', 'include')]
+    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis', 'include')]
   return args
 
 
