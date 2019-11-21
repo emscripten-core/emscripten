@@ -774,6 +774,9 @@ class crt1(MuslInternalLibrary):
   def can_use(self):
     return shared.Settings.STANDALONE_WASM
 
+  def can_build(self):
+    return not shared.Settings.WASM_BACKEND
+
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
