@@ -775,7 +775,7 @@ class crt1(MuslInternalLibrary):
     return shared.Settings.STANDALONE_WASM
 
   def can_build(self):
-    return not shared.Settings.WASM_BACKEND
+    return shared.Settings.WASM_BACKEND
 
 
 class libc_extras(MuslInternalLibrary):
