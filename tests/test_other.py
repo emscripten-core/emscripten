@@ -8918,6 +8918,7 @@ int main() {
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
+  @no_fastcomp()
   def test_wasm_sourcemap_relative_paths(self):
     def test(infile, source_map_added_dir=''):
       expected_source_map_path = os.path.join(source_map_added_dir, 'a.cpp')
