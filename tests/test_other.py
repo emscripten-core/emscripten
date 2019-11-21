@@ -8917,18 +8917,25 @@ int main() {
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
   def test_wasm_sourcemap_relative_paths(self):
-    filename = 'a.cpp'
-    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'a.cpp')
-    filenames = [
-      filename,
-      os.path.abspath(filename),
-      filenames.append('./' + filename)
-    ]
-    for curr in filenames:
-      print(curr)
-      run_process([PYTHON, EMCC, curr, '-g4'])
-      with open('a.out.wasm.map', 'r') as f:
-        self.assertIn('"a.cpp"', str(f.read()))
+    def test(infile, source_map_added_dir=''):
+      expected_source_map_path = os.path.join(source_map_added_dir, 'a.cpp')
+      print(infile, expected_source_map_path)
+      shutil.copyfile(path_from_root('tests', 'hello_123.c'), infile)
+      infiles = [
+        infile,
+        os.path.abspath(infile),
+        './' + infile
+      ]
+      for curr in infiles:
+        print('  ', curr)
+        run_process([PYTHON, EMCC, curr, '-g4'])
+        with open('a.out.wasm.map', 'r') as f:
+          self.assertIn('"%s"' % expected_source_map_path, str(f.read()))
+
+    test('a.cpp')
+
+    os.mkdir('inner')
+    test(os.path.join('inner', 'a.cpp'), 'inner')
 
   def test_wasm_producers_section(self):
     # no producers section by default
