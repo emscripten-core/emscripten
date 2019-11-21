@@ -1795,7 +1795,13 @@ keydown(100);keyup(100); // trigger the end
                  args=args)
 
   @requires_graphics_hardware
-  def test_gles2_emulation(self):
+  @parameterized({
+    'normal': (['-s', 'FULL_ES2=1'],),
+    # Enabling FULL_ES3 also enables ES2 automatically
+    'full_es3': (['-s', 'FULL_ES3=1'],)
+  })
+  def test_gles2_emulation(self, args):
+    print(args)
     shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'basemap.tga'), 'basemap.tga')
     shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_10', 'MultiTexture', 'lightmap.tga'), 'lightmap.tga')
     shutil.copyfile(path_from_root('tests', 'glbook', 'Chapter_13', 'ParticleSystem', 'smoke.tga'), 'smoke.tga')
@@ -1817,13 +1823,12 @@ keydown(100);keyup(100); // trigger the end
                        path_from_root('tests', 'glbook', 'Common', 'esShader.c'),
                        path_from_root('tests', 'glbook', 'Common', 'esShapes.c'),
                        path_from_root('tests', 'glbook', 'Common', 'esTransform.c'),
-                       '-s', 'FULL_ES2=1', '-lGL', '-lEGL', '-lX11',
-                       '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'])
+                       '-lGL', '-lEGL', '-lX11',
+                       '--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga', '--preload-file', 'smoke.tga'] + args)
 
   @requires_graphics_hardware
   def test_clientside_vertex_arrays_es3(self):
-    # NOTE: Should FULL_ES3=1 imply client-side vertex arrays? The emulation needs FULL_ES2=1 for now.
-    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'USE_WEBGL2=1', '-s', 'FULL_ES2=1', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
+    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'USE_WEBGL2=1', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
