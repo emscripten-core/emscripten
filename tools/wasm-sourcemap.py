@@ -271,12 +271,10 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       # source map file itself is, so the browser can find it. however, if they
       # have no shared prefix (like one is /a/b and the other /c/d) then we
       # would not end up with anything more useful (like ../../c/d), so avoid
-      # that
+      # that (a shared prefix of size 1, like '/', is useless)
       abs_file_name = os.path.abspath(file_name)
-      print(abs_file_name, base_path, os.path.commonprefix([abs_file_name, base_path]))
-      if os.path.commonprefix([abs_file_name, base_path]):
+      if len(os.path.commonprefix([abs_file_name, base_path])) > 1:
         file_name = os.path.relpath(abs_file_name, base_path)
-    print('waka', entry['file'], '  becomes  ', file_name, '  due to  ', base_path)
     source_name = prefixes.sources.resolve(file_name)
     if source_name not in sources_map:
       source_id = len(sources)
