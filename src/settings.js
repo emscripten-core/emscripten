@@ -441,6 +441,7 @@ var USE_WEBGL2 = 0;
 var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
+// This automatically turns out FULL_ES2.
 var FULL_ES3 = 0;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
