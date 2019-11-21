@@ -8895,7 +8895,8 @@ int main() {
                     '--dwarfdump-output',
                     path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm.dump'),
                     '-o', 'a.out.wasm.map',
-                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm')]
+                    path_from_root('tests', 'other', 'wasm_sourcemap', 'foo.wasm'),
+                    '--basepath=' + os.getcwd()]
     run_process(wasm_map_cmd)
     output = open('a.out.wasm.map').read()
     # has "sources" entry with file (includes also `--prefix =wasm-src:///` replacement)
@@ -8910,7 +8911,8 @@ int main() {
                     '--dwarfdump-output',
                     path_from_root('tests', 'other', 'wasm_sourcemap_dead', 't.wasm.dump'),
                     '-o', 'a.out.wasm.map',
-                    path_from_root('tests', 'other', 'wasm_sourcemap_dead', 't.wasm')]
+                    path_from_root('tests', 'other', 'wasm_sourcemap_dead', 't.wasm'),
+                    '--basepath=' + os.getcwd()]
     run_process(wasm_map_cmd, stdout=PIPE, stderr=PIPE)
     output = open('a.out.wasm.map').read()
     # has only two entries

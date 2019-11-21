@@ -263,7 +263,11 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
     if column == 0:
       column = 1
     address = entry['address'] + code_section_offset
-    file_name = os.path.relpath(os.path.abspath(entry['file']), base_path)
+    file_name = entry['file']
+    # TODO: support relative path resolvement with collect_sources. for now,
+    #       emcc does not use that flag, so it's not urgent
+    if not collect_sources:
+      file_name = os.path.relpath(os.path.abspath(file_name), base_path)
     source_name = prefixes.sources.resolve(file_name)
     if source_name not in sources_map:
       source_id = len(sources)
