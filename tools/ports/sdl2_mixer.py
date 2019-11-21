@@ -31,9 +31,9 @@ def get(ports, settings, shared):
     os.symlink(dest_path, os.path.join(dest_path, 'SDL2'))
 
     final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'src'), final, [], ['-DOGG_MUSIC'], ['dynamic_flac', 'dynamic_fluidsynth', 'dynamic_mod', 'dynamic_modplug', 'dynamic_mp3',
-                                                                     'dynamic_ogg', 'fluidsynth', 'load_mp3', 'music_cmd', 'music_flac', 'music_mad',
-                                                                     'music_mod', 'music_modplug'])
+    ports.build_port(os.path.join(dest_path, 'src'), final, [], ['-DOGG_MUSIC'], ['dynamic_flac', 'dynamic_fluidsynth', 'dynamic_mod', 'dynamic_modplug',
+                                                                                  'dynamic_mp3', 'dynamic_ogg', 'fluidsynth', 'load_mp3', 'music_cmd',
+                                                                                  'music_flac', 'music_mad', 'music_mod', 'music_modplug'])
     return final
 
   return [shared.Cache.get(libname, create)]
