@@ -264,17 +264,14 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
-    # TODO: support relative path resolvement with collect_sources. for now,
-    #       emcc does not use that flag, so it's not urgent
-    if not collect_sources:
-      # prefer to emit a relative path to the base path, which is where the
-      # source map file itself is, so the browser can find it. however, if they
-      # have no shared prefix (like one is /a/b and the other /c/d) then we
-      # would not end up with anything more useful (like ../../c/d), so avoid
-      # that (a shared prefix of size 1, like '/', is useless)
-      abs_file_name = os.path.abspath(file_name)
-      if len(os.path.commonprefix([abs_file_name, base_path])) > 1:
-        file_name = os.path.relpath(abs_file_name, base_path)
+    # prefer to emit a relative path to the base path, which is where the
+    # source map file itself is, so the browser can find it. however, if they
+    # have no shared prefix (like one is /a/b and the other /c/d) then we
+    # would not end up with anything more useful (like ../../c/d), so avoid
+    # that (a shared prefix of size 1, like '/', is useless)
+    abs_file_name = os.path.abspath(file_name)
+    if len(os.path.commonprefix([abs_file_name, base_path])) > 1:
+      file_name = os.path.relpath(abs_file_name, base_path)
     source_name = prefixes.sources.resolve(file_name)
     if source_name not in sources_map:
       source_id = len(sources)
