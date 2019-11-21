@@ -1674,6 +1674,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.SAFE_HEAP:
             passes += ['--safe-heap']
           passes += ['--post-emscripten']
+          # always inline __original_main into main, as otherwise it makes debugging confusing,
+          # and doing so is never bad for code size
+          passes += ['--inline-main']
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
           if options.opt_level > 0 or options.shrink_level > 0:

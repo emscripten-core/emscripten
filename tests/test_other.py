@@ -8192,7 +8192,7 @@ int main() {
 
   @parameterized({
     'O0': ([],       9, [], ['waka'], 22185,  8,  17, 57), # noqa
-    'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 31), # noqa
+    'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
     'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  4, [], [],        1963,  4,   2, 12), # noqa
@@ -8240,7 +8240,7 @@ int main() {
                            3, [], [], 6309,  3,  3,  5),         # noqa
     # without argc/argv, no support code for them is emitted
     'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           1, [], [], 6309,  1,  3,  5),         # noqa
+                           1, [], [], 6309,  1,  3,  4),         # noqa
     # without main, no support code for argc/argv is emitted either
     'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM'],
                            0, [], [], 6309,  0,  3,  4),         # noqa
