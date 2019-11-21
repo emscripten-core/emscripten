@@ -8241,7 +8241,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'g4': ('-g4', [
       "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
       'in main ',
-      '/src.cpp:3:8'
+      'src.cpp:3:8'
     ]),
   })
   @no_fastcomp('ubsan not supported on fastcomp')
