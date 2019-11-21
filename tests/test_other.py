@@ -8909,6 +8909,21 @@ int main() {
     # has only two entries
     self.assertRegexpMatches(output, r'"mappings":\s*"[A-Za-z0-9+/]+,[A-Za-z0-9+/]+"')
 
+  def test_wasm_sourcemap_relative_paths(self):
+    filename = 'a.cpp'
+    shutil.copyfile(path_from_root('tests', 'hello_123.c'), 'a.cpp')
+    filenames = [
+      filename,
+      os.path.abspath(filename)
+    ]
+    if not WINDOWS:
+      filenames.append('./' + filename)
+    for curr in filenames:
+      print(curr)
+      run_process([PYTHON, EMCC, curr, '-g4'])
+      with open('a.out.wasm.map', 'r') as f:
+        self.assertIn('"a.cpp"', str(f.read()))
+
   def test_wasm_producers_section(self):
     # no producers section by default
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])

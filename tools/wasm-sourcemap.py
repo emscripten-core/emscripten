@@ -263,7 +263,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
     if column == 0:
       column = 1
     address = entry['address'] + code_section_offset
-    file_name = entry['file']
+    file_name = os.path.relpath(entry['file'])
     source_name = prefixes.sources.resolve(file_name)
     if source_name not in sources_map:
       source_id = len(sources)
