@@ -1373,6 +1373,10 @@ Typedefs
 
     typedef void (*em_scan_func)(void*, void*)
 
+.. c:type:: emscripten_fiber
+
+    A handle to the structure used by fiber supporting functions.
+
 Functions
 ---------
 
@@ -1409,6 +1413,60 @@ Functions
     not happen at all.
 
   .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
+
+.. c:function:: emscripten_fiber emscripten_fiber_create(em_arg_callback_func func, void *arg, void *stack, int stack_size)
+
+    Creates a new fiber context. Fibers are light cooperative threads of
+    execution that can be used to implement stackful coroutines.
+
+    `func` is the fiber's entry point. It will be called with the argument `arg`
+    in the fiber's context when it's first entered.
+
+    `stack` must point to a pre-allocated memory region that will be used as the
+    fiber's stack. `stack_size` is the size of that region in bytes. `stack`
+    should be aligned to at least 16 bytes.
+
+ .. note:: If `func` returns, the entire program will end, as if `main`
+    had returned. To avoid this, you can use `emscripten_fiber_swap` to jump to
+    another fiber.
+
+.. c:function:: emscripten_fiber emscripten_fiber_create_from_current_context()
+
+    Creates a new fiber that represents the current execution context. This is
+    needed in order to switch back from a fiber into the main context.
+
+ .. warning:: The fiber returned by this function is incomplete and can not be
+    switched into immediately. You must first switch to another fiber, passing
+    this one as the first argument to `emscripten_fiber_swap`. This will
+    complete the continuation, allowing you to switch back to it later.
+
+.. c:function:: void emscripten_fiber_free(emscripten_fiber fiber)
+
+    Frees memory and any JS-side bookkeeping associated with `fiber`. This does
+    not free the stack, that is your responsibility. It also does not "stop" or
+    corrupt a "running" fiber, as the fiber struct essentially only represents
+    a continuation.
+
+.. c:function:: void emscripten_fiber_swap(emscripten_fiber old_fiber, emscripten_fiber new_fiber)
+
+    Switches the execution context to the one represented by `new_fiber`
+
+    `old_fiber` is updated with the current context just before the switch, such
+    as that switching back into it via another `emscripten_fiber_swap` would
+    appear to return from the original `emscripten_fiber_swap`.
+
+    If `old_fiber` == `new_fiber` or any of them is `NULL`, the behavior is
+    undefined.
+
+.. c:function:: void emscripten_fiber_recycle(emscripten_fiber fiber, em_arg_callback_func func, void *arg)
+
+    Re-initializes a fiber with a new entry point. The stack space is reused,
+    and the stack pointer is reset to the base of the stack.
+
+    This can be used instead of a `emscripten_fiber_free` /
+    `emscripten_fiber_create` pair to avoid unnecessary memory reallocations if
+    you have a fiber that you no longer need (such as a finished one).
+
 
 ABI functions
 =============
