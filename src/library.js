@@ -4097,7 +4097,7 @@ LibraryManager.library = {
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
-    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everyhing up to these from the output.
+    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everything up to these from the output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;

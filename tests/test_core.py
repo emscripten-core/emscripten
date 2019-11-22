@@ -3896,12 +3896,19 @@ ok
       int64_t testAdd(int64_t a) {
         return a + 1;
       }
+      int64_t testAddB(int a) {
+        return a + 1;
+      }
       typedef int64_t (*testAddHandler)(int64_t);
       testAddHandler h = &testAdd;
+      typedef int64_t (*testAddBHandler)(int);
+      testAddBHandler hb = &testAddB;
       int main() {
         printf("other says %lld.\n", sidey());
         int64_t r = h(42);
         printf("my fp says: %lld.\n", r);
+        int64_t rb = hb(42);
+        printf("my second fp says: %lld.\n", r);
       }
     ''', '''
       #include <stdint.h>
@@ -3911,7 +3918,7 @@ ok
         x = 18 - x;
         return x;
       }
-    ''', 'other says -1311768467750121224.\nmy fp says: 43.')
+    ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
   def test_dylink_class(self):

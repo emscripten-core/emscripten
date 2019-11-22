@@ -170,10 +170,6 @@ UBSAN_SANITIZERS = {
 }
 
 
-class Intermediate(object):
-  counter = 0
-
-
 # this function uses the global 'final' variable, which contains the current
 # final output file. if a method alters final, and calls this method, then it
 # must modify final globally (i.e. it can't receive final as a param and
@@ -183,20 +179,17 @@ class Intermediate(object):
 def save_intermediate(name, suffix='js'):
   if not DEBUG:
     return
-  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.%s' % (Intermediate.counter, name, suffix))
   if isinstance(final, list):
     logger.debug('(not saving intermediate %s because deferring linking)' % name)
     return
-  shutil.copyfile(final, name)
-  Intermediate.counter += 1
+  shared.Building.save_intermediate(final, name + '.' + suffix)
 
 
 def save_intermediate_with_wasm(name, wasm_binary):
   if not DEBUG:
     return
   save_intermediate(name) # save the js
-  name = os.path.join(shared.get_emscripten_temp_dir(), 'emcc-%d-%s.wasm' % (Intermediate.counter - 1, name))
-  shutil.copyfile(wasm_binary, name)
+  shared.Building.save_intermediate(wasm_binary, name + '.wasm')
 
 
 class TimeLogger(object):
@@ -477,11 +470,14 @@ def do_emscripten(infile, memfile):
 
 
 def ensure_archive_index(archive_file):
-  # Fastcomp linking works without archive indexes
-  if not shared.Settings.WASM_BACKEND:
+  # Fastcomp linking works without archive indexes.
+  if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
   stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE).stdout
   stdout = stdout.strip()
+  # Ignore empty archives
+  if not stdout:
+    return
   if stdout.startswith('Archive map\n') or stdout.startswith('Archive index\n'):
     return
   shared.warning('%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
@@ -1115,6 +1111,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
+      shared.Settings.AUTO_ARCHIVE_INDEXES = 0
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1
@@ -1283,6 +1280,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.DEMANGLE_SUPPORT:
       shared.Settings.EXPORTED_FUNCTIONS += ['___cxa_demangle']
       forced_stdlibs.append('libc++abi')
+
+    if shared.Settings.FULL_ES3:
+      shared.Settings.FULL_ES2 = 1
 
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
@@ -1817,6 +1817,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
+      newargs.append('-g')
 
     if options.tracing:
       if shared.Settings.ALLOW_MEMORY_GROWTH:
@@ -1887,11 +1888,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug("running (for precompiled headers): " + clang_compiler + ' ' + ' '.join(args))
         return run_process([clang_compiler] + args, check=False).returncode
 
-      if need_llvm_debug_info(options):
-        newargs.append('-g')
-
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if options.debug_level >= 3 and not shared.Settings.WASM:
+      if options.debug_level >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
         newargs.append('-fno-discard-value-names')
 
       def is_link_flag(flag):
@@ -1995,8 +1993,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if file_ending.endswith(SOURCE_ENDINGS):
               temp_file = temp_files[pos][1]
               logger.debug('optimizing %s', input_file)
-              # if DEBUG:
-              #   shutil.copyfile(temp_file, os.path.join(shared.configuration.CANONICAL_TEMP_DIR, 'to_opt.bc')) # useful when LLVM opt aborts
               new_temp_file = in_temp(unsuffixed(uniquename(temp_file)) + '.o')
               # after optimizing, lower intrinsics to libc calls so that our linking code
               # will find them (otherwise, llvm.cos.f32() will not link in cosf(), and
@@ -2636,10 +2632,26 @@ def parse_args(newargs):
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('-g'):
-      requested_level = newargs[i][2:] or '3'
-      options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
       options.requested_debug = newargs[i]
-      newargs[i] = ''
+      requested_level = newargs[i][2:] or '3'
+      if is_int(requested_level):
+        # the -gX value is the debug level (-g1, -g2, etc.)
+        options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
+        # if we don't need to preserve LLVM debug info, do not keep this flag
+        # for clang
+        if options.debug_level < 3:
+          newargs[i] = ''
+        else:
+          # until we support full DWARF info, limit the clang frontend to just
+          # emit line tables, which can be represented in source maps
+          newargs[i] = '-gline-tables-only'
+      else:
+        # a non-integer level can be something like -gline-tables-only. keep
+        # the flag for the clang frontend to emit the appropriate DWARF info.
+        # set the emscripten debug level to 3 so that we do not remove that
+        # debug info during link (during compile, this does not make a
+        # difference).
+        options.debug_level = 3
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
       options.debug_level = max(options.debug_level, 2)
       options.profiling = True
@@ -2930,6 +2942,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                 optimizer):
   global final
   logger.debug('using binaryen')
+  if use_source_map(options) and not shared.Settings.SOURCE_MAP_BASE:
+    logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   binaryen_bin = shared.Building.get_binaryen_bin()
   # whether we need to emit -g (function name debug info) in the final wasm
   debug_info = options.debug_level >= 2 or options.profiling_funcs
@@ -2941,7 +2955,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if not shared.Settings.WASM_BACKEND:
     if DEBUG:
       # save the asm.js input
-      shared.safe_copy(asm_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(asm_target)))
+      shared.Building.save_intermediate(asm_target, 'asmjs.js')
     cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
     if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
       exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
@@ -3014,14 +3028,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
     if DEBUG:
-      shared.safe_copy(wasm_binary_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_binary_target) + '.pre-byn'))
+      shared.Building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
     args = options.binaryen_passes
-    if use_source_map(options):
-      args += ['--input-source-map=' + wasm_source_map_target]
-      args += ['--output-source-map=' + wasm_source_map_target]
-      args += ['--output-source-map-url=' + options.source_map_base + os.path.basename(wasm_binary_target) + '.map']
-      if DEBUG:
-        shared.safe_copy(wasm_source_map_target, os.path.join(shared.get_emscripten_temp_dir(), os.path.basename(wasm_source_map_target) + '.pre-byn'))
     shared.Building.run_wasm_opt(wasm_binary_target,
                                  wasm_binary_target,
                                  args=args,
@@ -3039,7 +3047,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
     if DEBUG:
-      save_intermediate_with_wasm('pre-eval-ctors', wasm_binary_target)
+      shared.Building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
@@ -3674,6 +3682,14 @@ def validate_arg_level(level_string, max_level, err_msg, clamp=False):
   if not 0 <= level <= max_level:
     raise Exception(err_msg)
   return level
+
+
+def is_int(s):
+  try:
+    int(s)
+    return True
+  except ValueError:
+    return False
 
 
 if __name__ == '__main__':
