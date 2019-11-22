@@ -1125,9 +1125,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE:
       exit_with_error('cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time')
 
-    if options.use_closure_compiler and not shared.Settings.DYNAMIC_EXECUTION:
-      exit_with_error('cannot have both NO_DYNAMIC_EXECUTION and closure compiler enabled at the same time')
-
     if options.emrun:
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('--emrun is not compatible with -s MINIMAL_RUNTIME=1')
