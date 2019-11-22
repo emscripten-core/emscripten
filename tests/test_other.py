@@ -4112,11 +4112,6 @@ int main(int argc, char **argv) {
     assert 'new Function' not in src
     try_delete('a.out.js')
 
-    # Test that -s DYNAMIC_EXECUTION=0 and --closure 1 are not allowed together.
-    self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
-                      '-s', 'DYNAMIC_EXECUTION=0', '--closure', '1'])
-    try_delete('a.out.js')
-
     # Test that -s DYNAMIC_EXECUTION=1 and -s RELOCATABLE=1 are not allowed together.
     self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1',
                       '-s', 'DYNAMIC_EXECUTION=0', '-s', 'RELOCATABLE=1'])
