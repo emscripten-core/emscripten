@@ -1,7 +1,6 @@
   read_ = function shell_read(filename, binary) {
-    var ret;
 #if SUPPORT_BASE64_EMBEDDING
-    ret = tryParseAsDataURI(filename);
+    var ret = tryParseAsDataURI(filename);
     if (ret) {
       return binary ? ret : ret.toString();
     }

@@ -720,7 +720,12 @@ var SyscallsLibrary = {
 
         return bytesRead;
       }
-      default: abort('unsupported socketcall syscall ' + call);
+      default: {
+#if SYSCALL_DEBUG
+        err('    (socketcall: ' + call + ')');
+#endif
+        return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
+      }
     }
   },
   __syscall104: function(which, varargs) { // setitimer
