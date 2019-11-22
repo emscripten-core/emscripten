@@ -766,11 +766,16 @@ class crt1(MuslInternalLibrary):
   src_dir = ['system', 'lib', 'libc']
   src_files = ['crt1.c']
 
+  force_object_files = True
+
   def get_ext(self):
     return '.o'
 
   def can_use(self):
     return shared.Settings.STANDALONE_WASM
+
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
 
 
 class libc_extras(MuslInternalLibrary):
