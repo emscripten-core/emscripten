@@ -605,6 +605,8 @@ mergeInto(LibraryManager.library, {
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
+    trampoline: null,
+    trampolineRunning: false,
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
@@ -669,6 +671,18 @@ mergeInto(LibraryManager.library, {
                     Asyncify.afterUnwind();
                     Asyncify.afterUnwind = null;
                   }
+                  if (Asyncify.trampoline && !Asyncify.trampolineRunning) {
+                    Asyncify.trampolineRunning = true;
+                    do {
+                      var jump = Asyncify.trampoline;
+                      Asyncify.trampoline = null;
+#if ASYNCIFY_DEBUG >= 2
+                      err("ASYNCIFY: trampoline jump ->", jump, new Error().stack);
+#endif
+                      jump();
+                    } while (Asyncify.trampoline);
+                    Asyncify.trampolineRunning = false;
+                  }
                 }
               }
             };
@@ -701,7 +715,7 @@ mergeInto(LibraryManager.library, {
       Asyncify.dataInfo[ptr] = null;
     },
 
-    handleSleep: function(startAsync) {
+    handleSleep: function(startAsync, preserveBrowserLoop) {
       if (ABORT) return;
       noExitRuntime = true;
 #if ASYNCIFY_DEBUG
@@ -730,7 +744,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
-          if (Browser.mainLoop.func) {
+          if (Browser.mainLoop.func && !preserveBrowserLoop) {
             Browser.mainLoop.resume();
           }
           var start = Asyncify.dataInfo[Asyncify.currData].bottomOfCallStack;
@@ -768,7 +782,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
-          if (Browser.mainLoop.func) {
+          if (Browser.mainLoop.func && !preserveBrowserLoop) {
             Browser.mainLoop.pause();
           }
         }
@@ -869,7 +883,6 @@ mergeInto(LibraryManager.library, {
    * 12 STACK_BASE
    */
   $Fibers: {
-    swapCounter: 0,     // HACK; see emscripten_fiber_swap
     continuations: {},  // fiber pointer -> JS continuation function mapping
   },
 
@@ -947,7 +960,7 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(f_old, f_new) {
     return Asyncify.handleSleep(function(wakeUp) {
-      var swap = function() {
+      Asyncify.afterUnwind = function() {
         /*
          * save caller context
          */
@@ -960,46 +973,24 @@ mergeInto(LibraryManager.library, {
 
         Fibers.continuations[f_old] = wakeUp;
 
-        /*
-         * restore callee context
-         */
+#if ASSERTIONS
+        assert(!Asyncify.trampoline);
+#endif
 
-        Asyncify.currData = {{{ makeGetValue('f_new', 0, 'i32') }}};
-        STACK_MAX = {{{ makeGetValue('f_new', 8, 'i32') }}};
-        STACK_BASE = {{{ makeGetValue('f_new', 12, 'i32') }}};
-        stack_ptr = {{{ makeGetValue('f_new', 4, 'i32') }}};
-        stackRestore(stack_ptr);
+        Asyncify.trampoline = function() {
+          /*
+           * restore callee context
+           */
 
-        Fibers.current = f_new;
-        Fibers.continuations[f_new]();
+          Asyncify.currData = {{{ makeGetValue('f_new', 0, 'i32') }}};
+          STACK_MAX = {{{ makeGetValue('f_new', 8, 'i32') }}};
+          STACK_BASE = {{{ makeGetValue('f_new', 12, 'i32') }}};
+          stack_ptr = {{{ makeGetValue('f_new', 4, 'i32') }}};
+          stackRestore(stack_ptr);
+          Fibers.continuations[f_new]();
+        };
       };
-
-      /*
-       * HACK: The only reason why we must use an actual async callback here is
-       * to unwind the JS call stack. Otherwise, it will keep building up with
-       * each context switch, and eventually overflow after a couple thousands.
-       *
-       * However, doing so on every switch is EXCRUCIATINGLY slow and absolutely
-       * unacceptable. Thus the compromise: we handle most context switches the
-       * 'fast' way (relatively speaking), but every Nth switch we take the
-       * performance hit to drop the call stack.
-       *
-       * Unfortunately, there is probably no universally optimal N: it depends
-       * a lot on the VM's call stack size and the application. 1000 seems to be
-       * a reasonable conservative estimate, at least for V8 in Node and Chrome.
-       * Generally, you probably want to keep this value as high as possible
-       * until you start hitting call stack overflows. It might make sense to
-       * expose this as a setting (TODO?)
-       */
-      if (Fibers.swapCounter == 1000) {
-        Fibers.swapCounter = 0;
-        Asyncify.afterUnwind = null;
-        setTimeout(swap);
-      } else {
-        Fibers.swapCounter++;
-        Asyncify.afterUnwind = swap;
-      }
-    });
+    }, true);
   },
 
   emscripten_coroutine_create: function() {
