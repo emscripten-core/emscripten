@@ -8253,7 +8253,7 @@ int main() {
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
-                           1, [], [], 6309,  1,  3,  5),         # noqa
+                           1, [], [], 6309,  1,  3,  4),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, filename, *args):
