@@ -28,15 +28,16 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
-    os.symlink(dest_path, os.path.join(dest_path, 'SDL2'))
 
     final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'src'), final, [], ['-DOGG_MUSIC'], ['dynamic_flac', 'dynamic_fluidsynth', 'dynamic_mod', 'dynamic_modplug',
-                                                                                  'dynamic_mp3', 'dynamic_ogg', 'fluidsynth', 'load_mp3', 'music_cmd',
-                                                                                  'music_flac', 'music_mad', 'music_mod', 'music_modplug'])
+    ports.build_port(dest_path, final, [], ['-DOGG_MUSIC', '-s', 'USE_VORBIS=1'],
+                     ['dynamic_flac', 'dynamic_fluidsynth', 'dynamic_mod', 'dynamic_modplug', 'dynamic_mp3',
+                      'dynamic_ogg', 'fluidsynth', 'load_mp3', 'music_cmd', 'music_flac', 'music_mad', 'music_mod',
+                      'music_modplug', 'playmus.c', 'playwave.c'],
+                     ['external', 'native_midi'])
     return final
 
-  return [shared.Cache.get(libname, create)]
+  return [shared.Cache.get(libname, create, what='port')]
 
 
 def clear(ports, shared):
