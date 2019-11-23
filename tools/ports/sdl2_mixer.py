@@ -28,6 +28,8 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
+    # necessary for proper including of SDL_mixer.h
+    os.symlink(dest_path, os.path.join(dest_path, 'SDL2'))
 
     final = os.path.join(dest_path, libname)
     ports.build_port(dest_path, final, [], ['-DOGG_MUSIC', '-s', 'USE_VORBIS=1'],
