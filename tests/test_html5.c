@@ -420,6 +420,11 @@ int main()
 		  ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED);
   TEST_RESULT(emscripten_get_window_title);
 
+  int width, height;
+  emscripten_get_screen_size(&width, &height);
+  ret = (width && height) ? EMSCRIPTEN_RESULT_SUCCESS : EMSCRIPTEN_RESULT_FAILED;
+  TEST_RESULT(emscripten_get_screen_size);
+
   /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means.
      Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
   EM_ASM(noExitRuntime = true);
