@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/websocket.h>
+#include <assert.h>
 
 EM_BOOL WebSocketOpen(int eventType, const EmscriptenWebSocketOpenEvent *e, void *userData)
 {
@@ -73,7 +74,8 @@ int main()
 	EmscriptenWebSocketCreateAttributes attr;
 	emscripten_websocket_init_create_attributes(&attr);
 
-	attr.url = "ws://localhost:8088";
+	const char *url = "ws://localhost:8088/";
+	attr.url = url;
 
 	EMSCRIPTEN_WEBSOCKET_T socket = emscripten_websocket_new(&attr);
 	if (socket <= 0)
@@ -81,6 +83,11 @@ int main()
 		printf("WebSocket creation failed, error code %d!\n", (EMSCRIPTEN_RESULT)socket);
 		exit(1);
 	}
+
+	int urlLength = 0;
+	EMSCRIPTEN_RESULT res = emscripten_websocket_get_url_length(socket, &urlLength);
+	assert(res == EMSCRIPTEN_RESULT_SUCCESS);
+	assert(urlLength == strlen(url));
 
 	emscripten_websocket_set_onopen_callback(socket, (void*)42, WebSocketOpen);
 	emscripten_websocket_set_onclose_callback(socket, (void*)43, WebSocketClose);
