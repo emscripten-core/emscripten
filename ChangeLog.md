@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Default DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR to 1.
 - Remove deprecated `requestFullScreen` method from `library_browser.js`, please
   use `requestFullscreen` (without the capital S).
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
