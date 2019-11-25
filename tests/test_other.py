@@ -8965,7 +8965,7 @@ T6:(else) !ASSERTIONS""", output)
 const Module = require("./module");
 Module().then((module_instance) => {
   module_instance._main();
-}
+});
 '''
     if not os.path.exists('subdir'):
       os.mkdir('subdir')
