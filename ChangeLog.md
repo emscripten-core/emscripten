@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Default DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR to 1.
 
 v1.39.4: 12/03/2019
 -------------------
