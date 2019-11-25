@@ -8967,7 +8967,7 @@ Module().then((module) => {
   module._main();
 }
 '''
-    with open(os.path.join('subdir', moduleLoader), 'w', encoding='utf-8') as f:
+    with open(os.path.join('subdir', moduleLoader), 'w+', encoding='utf-8') as f:
       f.write(moduleLoaderContents)
 
     # build hello_world.c
