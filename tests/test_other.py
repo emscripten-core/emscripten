@@ -8967,12 +8967,12 @@ Module().then((module) => {
   module._main();
 }
 '''
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
     with open(os.path.join('subdir', moduleLoader), 'w+', encoding='utf-8') as f:
       f.write(moduleLoaderContents)
 
     # build hello_world.c
-    if not os.path.exists('subdir'):
-      os.mkdir('subdir')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE=1', '-s', "ENVIRONMENT='worker','node'", '-s', "EXPORTED_FUNCTIONS=['_main']"])
 
     # run the module
