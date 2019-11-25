@@ -1381,6 +1381,23 @@ var LibraryBrowser = {
     exit(status);
   },
 
+  emscripten_get_window_title__proxy: 'sync',
+  emscripten_get_window_title__sig: 'iv',
+  emscripten_get_window_title: function() {
+    var buflen = 256;
+
+    if (!_emscripten_get_window_title.buffer) {
+      _emscripten_get_window_title.buffer = _malloc(buflen);
+    }
+
+    writeAsciiToMemory(
+      document.title.slice(0, buflen - 1),
+      _emscripten_get_window_title.buffer
+    );
+
+    return _emscripten_get_window_title.buffer;
+  },
+
   emscripten_set_window_title__proxy: 'sync',
   emscripten_set_window_title__sig: 'vi',
   emscripten_set_window_title: function(title) {

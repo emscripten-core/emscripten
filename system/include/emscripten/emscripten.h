@@ -134,6 +134,7 @@ extern void emscripten_force_exit(int status);
 
 double emscripten_get_device_pixel_ratio(void);
 
+char *emscripten_get_window_title();
 void emscripten_set_window_title(const char *);
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
