@@ -512,6 +512,7 @@ var SyscallsLibrary = {
   __syscall97: function(which, varargs) { // setpriority
     return -{{{ cDefine('EPERM') }}};
   },
+#if PROXY_POSIX_SOCKETS == 0
   __syscall102__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
   __syscall102: function(which, varargs) { // socketcall
     var call = SYSCALLS.get(), socketvararg = SYSCALLS.get();
@@ -728,6 +729,7 @@ var SyscallsLibrary = {
       }
     }
   },
+#endif // ~PROXY_POSIX_SOCKETS==0
   __syscall104: function(which, varargs) { // setitimer
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1393,8 +1395,16 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
 #else
+#if PROXY_POSIX_SOCKETS
+    // close() is a tricky function because it can be used to close both regular file descriptors
+    // and POSIX network socket handles, hence an implementation would need to track for each
+    // file descriptor which kind of item it is. To simplify, when using PROXY_POSIX_SOCKETS
+    // option, use shutdown() to close a socket, and this function should behave like a no-op.
+    warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
+#else
 #if ASSERTIONS
     abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
 #endif
 #endif
     return 0;

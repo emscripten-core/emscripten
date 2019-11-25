@@ -255,6 +255,20 @@ def main():
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
+    elif what == 'libsockets':
+      build('''
+        #include <sys/socket.h>
+        int main() {
+          return socket(0,0,0);
+        }
+      ''', [libname('libsockets')])
+    elif what == 'libsockets_proxy':
+      build('''
+        #include <sys/socket.h>
+        int main() {
+          return socket(0,0,0);
+        }
+      ''', [libname('libsockets_proxy')], ['-s', 'PROXY_POSIX_SOCKETS=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

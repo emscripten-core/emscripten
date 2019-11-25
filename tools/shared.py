@@ -2854,7 +2854,8 @@ class Building(object):
       'X11': 'library_xlib.js',
       'SDL': 'library_sdl.js',
       'stdc++': '',
-      'uuid': 'library_uuid.js'
+      'uuid': 'library_uuid.js',
+      'websocket': 'library_websocket.js'
     }
     library_files = []
     if library_name in js_system_libraries:
