@@ -1617,7 +1617,7 @@ var SUPPORT_LONGJMP = 1;
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
 // there is no "Module.canvas" object, no magic "null" default handling, and DOM element
 // 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
 
 // Specifies whether the generated .html file is run through html-minifier. The set of
 // optimization passes run by html-minifier depends on debug and optimization levels. In
