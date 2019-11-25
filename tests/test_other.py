@@ -8962,9 +8962,9 @@ T6:(else) !ASSERTIONS""", output)
     # create module loader script
     moduleLoader = 'moduleLoader.js'
     moduleLoaderContents = '''
-const module = require("./module");
-Module().then((module) => {
-  module._main();
+const Module = require("./module");
+Module().then((module_instance) => {
+  module_instance._main();
 }
 '''
     if not os.path.exists('subdir'):
