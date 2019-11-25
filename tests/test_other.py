@@ -8973,7 +8973,7 @@ Module().then((module) => {
       f.write(moduleLoaderContents)
 
     # build hello_world.c
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE=1', '-s', "ENVIRONMENT='worker','node'", '-s', "EXPORTED_FUNCTIONS=['_main']"])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE=1', '-s', 'ENVIRONMENT=worker,node', '-s', 'EXPORTED_FUNCTIONS=["_main"]'])
 
     # run the module
     ret = run_process(NODE_JS + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
