@@ -120,6 +120,7 @@ var LibraryWebGL2 = {
         return HEAP16;
       case 0x1403 /* GL_UNSIGNED_SHORT */:
       case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
+      case 0x8364 /* GL_UNSIGNED_SHORT_5_6_5_REV */:
       case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
       case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
       case 0x8D61 /* GL_HALF_FLOAT_OES */:
