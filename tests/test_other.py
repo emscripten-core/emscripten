@@ -8958,6 +8958,7 @@ T6:(else) !ASSERTIONS""", output)
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
+  @no_fastcomp('node pthreads only supported on wasm backend')
   def test_node_js_pthread_module(self):
     # create module loader script
     moduleLoader = 'moduleLoader.js'
@@ -8976,7 +8977,7 @@ Module().then((module_instance) => {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE=1', '-s', 'ENVIRONMENT=worker,node', '-s', 'EXPORTED_FUNCTIONS=["_main"]'])
 
     # run the module
-    ret = run_process(NODE_JS, '--experimental-wasm-threads', [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
+    ret = run_process(NODE_JS + ['--experimental-wasm-threads'] + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   def test_is_bitcode(self):
