@@ -8963,9 +8963,10 @@ T6:(else) !ASSERTIONS""", output)
     # create module loader script
     moduleLoader = 'moduleLoader.js'
     moduleLoaderContents = '''
-const Module = require("./module");
-Module().then((module_instance) => {
-  module_instance._main();
+const test_module = require("./module");
+test_module().then((test_module_instance) => {
+  test_module_instance._main();
+  process.exit(0);
 });
 '''
     if not os.path.exists('subdir'):
@@ -8974,7 +8975,7 @@ Module().then((module_instance) => {
       f.write(moduleLoaderContents)
 
     # build hello_world.c
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE=1', '-s', 'ENVIRONMENT=worker,node', '-s', 'EXPORTED_FUNCTIONS=["_main"]'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('subdir', 'module.js'), '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=2', '-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=test_module', '-s', 'ENVIRONMENT=worker,node'])
 
     # run the module
     ret = run_process(NODE_JS + ['--experimental-wasm-threads'] + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
