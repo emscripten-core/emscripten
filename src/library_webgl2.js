@@ -144,6 +144,7 @@ var LibraryWebGL2 = {
       0x1402 /* GL_SHORT */: 1,
       0x1403 /* GL_UNSIGNED_SHORT */: 1,
       0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 1,
+      0x8364 /* GL_UNSIGNED_SHORT_5_6_5_REV */: 1,
       0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 1,
       0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 1,
       0x8D61 /* GL_HALF_FLOAT_OES */: 1,
