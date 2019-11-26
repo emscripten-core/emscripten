@@ -74,7 +74,13 @@ class Prefixes:
 # SourceMapPrefixes contains resolver for file names that are:
 #  - "sources" is for names that output to source maps JSON
 #  - "load" is for paths that used to load source text
-SourceMapPrefixes = namedtuple('SourceMapPrefixes', 'sources, load')
+class SourceMapPrefixes:
+  def __init__(self, sources, load):
+    self.sources = sources
+    self.load = load
+
+  def provided(self):
+    return bool(self.sources.prefixes or self.load.prefixes)
 
 
 def encode_vlq(n):
@@ -264,15 +270,13 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
-    # prefer to emit a relative path to the base path, which is where the
-    # source map file itself is, so the browser can find it. however, if they
-    # have no shared prefix (like one is /a/b and the other /c/d) then we
-    # would not end up with anything more useful (like ../../c/d), so avoid
-    # that (a shared prefix of size 1, like '/', is useless)
-    abs_file_name = os.path.abspath(file_name)
-    if len(os.path.commonprefix([abs_file_name, base_path])) > 1:
-      file_name = os.path.relpath(abs_file_name, base_path)
-    source_name = prefixes.sources.resolve(file_name)
+    # if prefixes were provided, we use that; otherwise, we emit a relative
+    # path
+    if prefixes.provided():
+      source_name = prefixes.sources.resolve(file_name)
+    else:
+      file_name = os.path.relpath(os.path.abspath(file_name), base_path)
+      source_name = file_name
     if source_name not in sources_map:
       source_id = len(sources)
       sources_map[source_name] = source_id
