@@ -17,7 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Default DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR to 1. See #9895.
+- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
   With this change the old deprecated HTML5 API event target lookup behavior is
   disabled. There is no "Module.canvas" object, no magic "null" default handling,
   and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
