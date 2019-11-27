@@ -250,6 +250,10 @@ commands:
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
+          name: install sockets test suite prerequisites
+          command: |
+            npm install ws -g
+      - run:
           name: run sockets tests
           environment:
             EMTEST_LACKS_SOUND_HARDWARE: "1"
