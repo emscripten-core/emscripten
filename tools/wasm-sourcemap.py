@@ -11,7 +11,7 @@ sections from a wasm file.
 """
 
 import argparse
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 import json
 import logging
 from math import floor, log
