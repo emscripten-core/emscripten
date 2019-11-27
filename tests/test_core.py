@@ -72,6 +72,20 @@ def bleeding_edge_wasm_backend(f):
   return decorated
 
 
+# without EMTEST_ALL_ENGINES set we only run tests in a single VM by
+# default. in some tests we know that cross-VM differences may happen and
+# so are worth testing, and they should be marked with this decorator
+def all_engines(f):
+  def decorated(self):
+    old = self.use_all_engines
+    self.use_all_engines = True
+    try:
+      f(self)
+    finally:
+      self.use_all_engines = old
+  return decorated
+
+
 def no_emterpreter(f):
   assert callable(f)
   return skip_if(f, 'is_emterpreter')
@@ -3889,6 +3903,7 @@ ok
       }
     ''', 'other says 175a1ddee82b8c31.')
 
+  @all_engines
   @needs_dlfcn
   def test_dylink_i64_b(self):
     self.dylink_test(r'''

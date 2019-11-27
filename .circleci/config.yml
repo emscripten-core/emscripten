@@ -27,9 +27,12 @@ commands:
             # we are trying to test.
             rm -Rf emscripten
             echo "import os" >> ~/.emscripten
-            echo "V8_ENGINE = os.path.expanduser('~/.jsvu/v8')" >> ~/.emscripten
+            # test v8 with --wasm-staging which enables new features. we use v8
+            # as a "bleeding edge" shell here, basically, with node being the
+            # primary shell (which we run without any special flags)
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
-            echo "if os.path.exists(V8_ENGINE): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
+            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
