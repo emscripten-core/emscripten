@@ -27,7 +27,7 @@ commands:
             # we are trying to test.
             rm -Rf emscripten
             echo "import os" >> ~/.emscripten
-            echo "V8_ENGINE = os.path.expanduser('~/.jsvu/v8')" >> ~/.emscripten
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
             echo "if os.path.exists(V8_ENGINE): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
