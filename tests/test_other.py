@@ -8171,7 +8171,8 @@ int main() {
 
   @parameterized({
     'noexcept': (['-O2'],                 19, [], ['waka'], 218988, 17, 33, None), # noqa
-    'except':   (['-O2', '-fexceptions'], 52, [], ['waka'], 408060, 46, 46, None), # noqa
+    # exceptions increases code size significantly
+    'except':   (['-O2', '-fexceptions'], 52, [], ['waka'], 279827, 46, 46, None), # noqa
   })
   @no_fastcomp()
   def test_metadce_cxx(self, *args):
