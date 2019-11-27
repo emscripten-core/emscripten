@@ -669,6 +669,24 @@ function convertJsFunctionToWasm(func, sig) {
   return func;
 #else // WASM2JS
 
+  // If the type reflection proposal is available, use the new
+  // "WebAssembly.Function" constructor.
+  // Otherwise, construct a minimal wasm module importing the JS function and
+  // reexporting it.
+  if (typeof WebAssembly.Function == "function") {
+    var typeNames = {
+      'i': 'i32',
+      'j': 'i64',
+      'f': 'f32',
+      'd': 'f64'
+    };
+    var type = {
+      parameters: sig.slice(1).split().map(c => typeNames[c]),
+      results: [typeNames[sig[0]]]
+    };
+    return new WebAssembly.Function(type, func);
+  }
+
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
   var typeSection = [
