@@ -81,6 +81,8 @@ SUPPORTED_LINKER_FLAGS = (
 )
 
 UNSUPPORTED_LLD_LINKER_FLAGS = (
+    '-bind_at_load',
+    '-soname',
 )
 
 
