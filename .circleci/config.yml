@@ -252,6 +252,9 @@ commands:
       - run:
           name: install sockets test suite prerequisites
           command: |
+            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+            tar -xf node-v12.13.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
             npm install ws -g
       - run:
           name: run sockets tests
