@@ -139,7 +139,7 @@ class BackgroundServerProcess(object):
 
 
 def NodeJsWebSocketEchoServerProcess():
-  return BackgroundServerProcess([NODE_JS, path_from_root('tests', 'websocket', 'nodejs_websocket_echo_server.js')])
+  return BackgroundServerProcess(NODE_JS + [path_from_root('tests', 'websocket', 'nodejs_websocket_echo_server.js')])
 
 
 def PythonTcpEchoServerProcess(port):
@@ -458,7 +458,7 @@ class sockets(BrowserCore):
   # N.B. running this test requires 'npm install ws' in Emscripten root directory
   def test_websocket_send(self):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest(os.path.join('websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-s', 'NO_EXIT_RUNTIME=1', '-s', 'WEBSOCKET_DEBUG=1'])
+      self.btest(path_from_root('tests', 'websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-s', 'NO_EXIT_RUNTIME=1', '-s', 'WEBSOCKET_DEBUG=1'])
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
   def test_posix_proxy_sockets(self):
