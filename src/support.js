@@ -679,7 +679,7 @@ function convertJsFunctionToWasm(func, sig) {
     };
     var type = {
       parameters: sig.slice(1).split().map(c => typeNames[c]),
-      results: [typeNames[sig[0]]]
+      results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
     };
     return new WebAssembly.Function(type, func);
   }
