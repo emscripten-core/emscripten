@@ -8174,7 +8174,7 @@ int main() {
     # exceptions increases code size significantly
     'except':   (['-O2', '-fexceptions'],    52, [], ['waka'], 279827, 46, 46, None), # noqa
     # exceptions does not pull in demangling by default, which increases code size
-    'except':   (['-O2', '-fexceptions',
+    'mangle':   (['-O2', '-fexceptions',
                   '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028, 46, 47, None), # noqa
   })
   @no_fastcomp()
