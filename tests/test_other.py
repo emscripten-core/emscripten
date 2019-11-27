@@ -8169,10 +8169,14 @@ int main() {
   def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
+  @parameterized({
+    'noexcept': (['-O2'],                 19, [], ['waka'], 218988, 17, 33, None), # noqa
+    'except':   (['-O2', '-fexceptions'], 52, [], ['waka'], 408060, 46, 46, None), # noqa
+  })
   @no_fastcomp()
-  def test_metadce_cxx(self):
+  def test_metadce_cxx(self, *args):
     # test on libc++: see effects of emulated function pointers
-    self.run_metadce_test('hello_libcxx.cpp', ['-O2'], 19, [], ['waka'], 226582, 17, 33, None) # noqa
+    self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
     'normal': (['-O2'], 40, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
