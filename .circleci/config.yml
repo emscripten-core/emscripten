@@ -255,7 +255,7 @@ commands:
             wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
             tar -xf node-v12.13.0-linux-x64.tar.xz
             export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
-            npm install ws -g
+            npm install ws
       - run:
           name: run sockets tests
           environment:
