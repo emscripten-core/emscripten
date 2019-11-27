@@ -661,9 +661,6 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 
 #if WASM
 // Wraps a JS function as a wasm function with a given signature.
-// In the future, we may get a WebAssembly.Function constructor. Until then,
-// we create a wasm module that takes the JS function as an import with a given
-// signature, and re-exports that as a wasm function.
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
   return func;
@@ -673,7 +670,7 @@ function convertJsFunctionToWasm(func, sig) {
   // "WebAssembly.Function" constructor.
   // Otherwise, construct a minimal wasm module importing the JS function and
   // re-exporting it.
-  if (typeof WebAssembly.Function == "function") {
+  if (typeof WebAssembly.Function === "function") {
     var typeNames = {
       'i': 'i32',
       'j': 'i64',
