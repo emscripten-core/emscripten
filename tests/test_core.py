@@ -3914,10 +3914,13 @@ ok
       }
     ''', '''
       #include <stdint.h>
+      extern int64_t testAdd(int64_t a);
+      extern int64_t testAddB(int a);
       int64_t sidey() {
         volatile int64_t x = 0x12345678abcdef12LL;
         x += x % 17;
-        x = 18 - x;
+        x = testAddB(16) - x;
+        x = testAdd(x);
         return x;
       }
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
