@@ -120,7 +120,7 @@ def get(ports, settings, shared):
       c = os.path.join(dest_path_src, src)
       o = os.path.join(dest_path_src, src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, c,
+      commands.append([shared.PYTHON, shared.EMCC, '-c', c,
                        # specify the defined symbols as the Regal Makefiles does for Emscripten+Release
                        # the define logic for other symbols will be handled automatically by Regal headers (SYS_EMSCRIPTEN, SYS_EGL, SYS_ES2, etc.)
                        '-DNDEBUG',

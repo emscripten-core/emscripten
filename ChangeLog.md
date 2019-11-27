@@ -21,6 +21,7 @@ Current Trunk
   use `requestFullscreen` (without the capital S).
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
 - Remove deprecated `requestFullScreen` and `cancelFullScreen`from `library_glfw.js`
+- Fix SDL2_mixer support for ogg vorbis. See #9849
 
 v1.39.3: 11/14/2019
 ------------------
