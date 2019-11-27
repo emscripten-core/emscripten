@@ -672,7 +672,7 @@ function convertJsFunctionToWasm(func, sig) {
   // If the type reflection proposal is available, use the new
   // "WebAssembly.Function" constructor.
   // Otherwise, construct a minimal wasm module importing the JS function and
-  // reexporting it.
+  // re-exporting it.
   if (typeof WebAssembly.Function == "function") {
     var typeNames = {
       'i': 'i32',
