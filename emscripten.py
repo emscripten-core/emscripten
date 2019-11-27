@@ -1806,10 +1806,11 @@ def create_fp_accessors(metadata):
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
-  // Use the wasm function itself, for the table.
+  // Use the original wasm function itself, for the table, from the main module.
   var func = Module['asm']['%(original)s'];
-  // If there is no wasm function, this may be a JS library function or
-  // something from another module.
+  // Try an original version from a side module.
+  if (!func) func = Module['_%(original)s'];
+  // Otherwise, look for a regular function or JS library function.
   if (!func) func = Module['%(mangled)s'];
   if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
