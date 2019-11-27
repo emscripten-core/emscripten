@@ -80,18 +80,7 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-SUPPORTED_LLD_LINKER_FLAG_PREFIXES = (
-    '-l',
-    '-L',
-    '--trace-symbol',
-    '-debug',
-    '--export')
-
-SUPPORTED_LLD_LINKER_FLAGS = (
-    '--no-check-features',
-    '--trace',
-    '--no-threads',
-    '-mllvm'
+UNSUPPORTED_LLD_LINKER_FLAGS = (
 )
 
 
@@ -1203,16 +1192,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
 
     def is_supported_link_flag(f):
-      if f in SUPPORTED_LINKER_FLAGS:
-        return True
       if using_lld:
-        # Add flags here to allow -Wl, options to be passed all the way through
-        # to the linker.
-        if any(f.startswith(prefix) for prefix in SUPPORTED_LLD_LINKER_FLAG_PREFIXES):
-          return True
-        if f in SUPPORTED_LLD_LINKER_FLAGS:
+        if not any(f.startswith(prefix) for prefix in UNSUPPORTED_LLD_LINKER_FLAGS):
           return True
       else:
+        if f in SUPPORTED_LINKER_FLAGS:
+          return True
         # Silently ignore -l/-L flags when not using lld.  If using lld allow
         # them to pass through the linker
         if f.startswith('-l') or f.startswith('-L'):
