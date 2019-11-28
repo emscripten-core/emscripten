@@ -1073,16 +1073,19 @@ function createWasm() {
         // Include the V8 version in the cache name, so that we don't try to
         // load cached code from another version, which fails silently (it seems
         // to load ok, but we do actually recompile the binary every time).
-        var cachedName = wasmBinaryFile + '.' + v8.cachedDataVersionTag() + '.cached';
-        var hasCached = nodeFS.existsSync(cachedName);
+        var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+#if expectToReceiveOnModule('locateFile')
+        cachedCodeFile = locateFile(cachedCodeFile);
+#endif
+        var hasCached = nodeFS.existsSync(cachedCodeFile);
         if (hasCached) {
 #if RUNTIME_LOGGING
           err('NODE_CODE_CACHING: loading module');
 #endif
           try {
-            module = v8.deserialize(nodeFS.readFileSync(cachedName));
+            module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
           } catch (e) {
-            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (please delete ' + cachedName + ')');
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (please delete ' + cachedCodeFile + ')');
           }
 err(module);
         }
@@ -1095,7 +1098,7 @@ err(module);
 #if RUNTIME_LOGGING
           err('NODE_CODE_CACHING: saving module');
 #endif
-          nodeFS.writeFileSync(cachedName, v8.serialize(module));
+          nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
         }
       }
 #else // NODE_CODE_CACHING
