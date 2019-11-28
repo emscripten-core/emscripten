@@ -127,6 +127,15 @@ var LibraryWebGL2 = {
         return HEAPU16;
       case 0x1404 /* GL_INT */:
         return HEAP32;
+      case 0x1406 /* GL_FLOAT */:
+        return HEAPF32;
+      default:
+#if GL_ASSERTIONS
+        err('GL_INVALID_PARAMETER error in _heapObjectForWebGLType! Specified GL color format type=0x' + type.toString(16) + ' is not supported!');
+#endif
+        // Do not record a GL error, since the users of _heapObjectForWebGLType will call out to a WebGL function, so browser will record an error.
+        // Because of the ensuing error, we can return an arbitrary type from here. Choose to return the HEAPU32 type since most of the enumerant
+        // values are of this type: (that way Closure compiler might be able to fold these away)
       case 0x1405 /* GL_UNSIGNED_INT */:
       case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
       case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
@@ -134,8 +143,6 @@ var LibraryWebGL2 = {
       case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
       case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
         return HEAPU32;
-      case 0x1406 /* GL_FLOAT */:
-        return HEAPF32;
     }
   },
 
