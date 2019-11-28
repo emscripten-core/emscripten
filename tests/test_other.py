@@ -9036,7 +9036,8 @@ test_module().then((test_module_instance) => {
   process.exit(0);
 });
 '''
-    os.makedirs('subdir', exist_ok=True)
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
     create_test_file(os.path.join('subdir', moduleLoader), moduleLoaderContents)
 
     # build hello_world.c
