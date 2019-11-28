@@ -730,7 +730,7 @@ var NODERAWFS = 0;
 //    https://github.com/nodejs/node/issues/18265#issuecomment-471237531
 //  * This option requires WASM_ASYNC_COMPILATION=0 (we load and save code
 //    in the sync compilation path for simplicity).
-var NODE_CODE_CACHING = 1;
+var NODE_CODE_CACHING = 0;
 
 // Functions that are explicitly exported. These functions are kept alive
 // through LLVM dead code elimination, and also made accessible outside of the

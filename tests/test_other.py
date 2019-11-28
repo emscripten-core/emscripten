@@ -8770,8 +8770,8 @@ end
 
   def test_node_code_caching(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
-                '-s', 'NODE_CODE_CACHING',
-                '-s', 'WASM_ASYNC_COMPILATION=0'])
+                 '-s', 'NODE_CODE_CACHING',
+                 '-s', 'WASM_ASYNC_COMPILATION=0'])
 
     def get_cached():
       cached = glob.glob('a.out.wasm.*.cached')
