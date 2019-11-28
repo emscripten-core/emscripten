@@ -795,6 +795,7 @@ mergeInto(LibraryManager.library, {
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
+        noExitRuntime = false;
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach(function(func) {
           func();
@@ -987,6 +988,8 @@ mergeInto(LibraryManager.library, {
           STACK_BASE = {{{ makeGetValue('f_new', 12, 'i32') }}};
           stack_ptr = {{{ makeGetValue('f_new', 4, 'i32') }}};
           stackRestore(stack_ptr);
+
+          noExitRuntime = false;
           Fibers.continuations[f_new]();
         };
       };
