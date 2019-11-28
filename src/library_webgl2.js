@@ -86,27 +86,19 @@ var LibraryWebGL2 = {
 
   glCompressedTexImage3D__sig: 'viiiiiiiii',
   glCompressedTexImage3D: function(target, level, internalFormat, width, height, depth, border, imageSize, data) {
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      if (GLctx.currentPixelUnpackBufferBinding) {
-        GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
-      } else {
-        GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
-      }
+    if (GLctx.currentPixelUnpackBufferBinding) {
+      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, imageSize, data);
     } else {
-      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+      GLctx['compressedTexImage3D'](target, level, internalFormat, width, height, depth, border, HEAPU8, data, imageSize);
     }
   },
 
   glCompressedTexSubImage3D__sig: 'viiiiiiiiiii',
   glCompressedTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data) {
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      if (GLctx.currentPixelUnpackBufferBinding) {
-        GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
-      } else {
-        GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
-      }
+    if (GLctx.currentPixelUnpackBufferBinding) {
+      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, imageSize, data);
     } else {
-      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, data ? {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}} : null);
+      GLctx['compressedTexSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, HEAPU8, data, imageSize);
     }
   },
 
@@ -821,11 +813,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform1uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform1uiv(GL.uniforms[location], HEAPU32, value>>2, count);
-    } else {
-      GLctx.uniform1uiv(GL.uniforms[location], {{{ makeHEAPView('U32', 'value', 'value+count*4') }}});
-    }
+    GLctx.uniform1uiv(GL.uniforms[location], HEAPU32, value>>2, count);
   },
 
   glUniform2uiv__sig: 'viii',
@@ -834,11 +822,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform2uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform2uiv(GL.uniforms[location], HEAPU32, value>>2, count*2);
-    } else {
-      GLctx.uniform2uiv(GL.uniforms[location], {{{ makeHEAPView('U32', 'value', 'value+count*8') }}});
-    }
+    GLctx.uniform2uiv(GL.uniforms[location], HEAPU32, value>>2, count*2);
   },
 
   glUniform3uiv__sig: 'viii',
@@ -847,11 +831,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform3uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform3uiv(GL.uniforms[location], HEAPU32, value>>2, count*3);
-    } else {
-      GLctx.uniform3uiv(GL.uniforms[location], {{{ makeHEAPView('U32', 'value', 'value+count*12') }}});
-    }
+    GLctx.uniform3uiv(GL.uniforms[location], HEAPU32, value>>2, count*3);
   },
 
   glUniform4uiv__sig: 'viii',
@@ -860,11 +840,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniform4uiv', 'location');
     assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniform4uiv(GL.uniforms[location], HEAPU32, value>>2, count*4);
-    } else {
-      GLctx.uniform4uiv(GL.uniforms[location], {{{ makeHEAPView('U32', 'value', 'value+count*16') }}});
-    }
+    GLctx.uniform4uiv(GL.uniforms[location], HEAPU32, value>>2, count*4);
   },
 
   glUniformMatrix2x3fv__sig: 'viiii',
@@ -873,11 +849,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix2x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
-    } else {
-      GLctx.uniformMatrix2x3fv(GL.uniforms[location], !!transpose, {{{ makeHEAPView('F32', 'value', 'value+count*24') }}});
-    }
+    GLctx.uniformMatrix2x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix3x2fv__sig: 'viiii',
@@ -886,11 +858,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix3x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
-    } else {
-      GLctx.uniformMatrix3x2fv(GL.uniforms[location], !!transpose, {{{ makeHEAPView('F32', 'value', 'value+count*24') }}});
-    }
+    GLctx.uniformMatrix3x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*6);
   },
 
   glUniformMatrix2x4fv__sig: 'viiii',
@@ -899,11 +867,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix2x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix2x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
-    } else {
-      GLctx.uniformMatrix2x4fv(GL.uniforms[location], !!transpose, {{{ makeHEAPView('F32', 'value', 'value+count*32') }}});
-    }
+    GLctx.uniformMatrix2x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix4x2fv__sig: 'viiii',
@@ -912,11 +876,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x2fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix4x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
-    } else {
-      GLctx.uniformMatrix4x2fv(GL.uniforms[location], !!transpose, {{{ makeHEAPView('F32', 'value', 'value+count*32') }}});
-    }
+    GLctx.uniformMatrix4x2fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*8);
   },
 
   glUniformMatrix3x4fv__sig: 'viiii',
@@ -925,11 +885,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix3x4fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix3x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
-    } else {
-      GLctx.uniformMatrix3x4fv(GL.uniforms[location], !!transpose, {{{ makeHEAPView('F32', 'value', 'value+count*48') }}});
-    }
+    GLctx.uniformMatrix3x4fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glUniformMatrix4x3fv__sig: 'viiii',
@@ -938,11 +894,7 @@ var LibraryWebGL2 = {
     GL.validateGLObjectID(GL.uniforms, location, 'glUniformMatrix4x3fv', 'location');
     assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
 #endif
-    if (GL.currentContext.supportsWebGL2EntryPoints) { // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
-      GLctx.uniformMatrix4x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
-    } else {
-      GLctx.uniformMatrix4x3fv(GL.uniforms[location], !!transpose, {{{ makeHEAPView('F32', 'value', 'value+count*48') }}});
-    }
+    GLctx.uniformMatrix4x3fv(GL.uniforms[location], !!transpose, HEAPF32, value>>2, count*12);
   },
 
   glVertexAttribI4iv__sig: 'vii',

@@ -495,6 +495,12 @@ var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
 // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
 
+// Specifies the oldest version of Chrome to target. E.g. a value -s OLDEST_SUPPORTED_CHROME_VERSION=58 would mean that Emscripten generates library code that would
+// contain polyfills and backwards compatibility for Chrome >= 58 and newer. Set this to a small value to target old browsers, and to a high value to reduce code size
+// by dropping polyfill support for older browsers. Default to 0 to mean "all Chrome versions" (although in practice a large number of features require a specific much
+// newer Chrome version, e.g. Wasm or WebGL 2)
+var OLDEST_SUPPORTED_CHROME_VERSION = 0;
+
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
 var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 
