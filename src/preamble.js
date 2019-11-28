@@ -1022,9 +1022,9 @@ function createWasm() {
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
       });
       return result;
-#else
+#else // USE_OFFSET_CONVERTER
       return WebAssembly.instantiate(binary, info);
-#endif
+#endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
@@ -1067,7 +1067,40 @@ function createWasm() {
     var binary;
     try {
       binary = getBinary();
+#if NODE_CODE_CACHING
+      if (ENVIRONMENT_HAS_NODE) {
+        var v8 = require('v8');
+        // Include the V8 version in the cache name, so that we don't try to
+        // load cached code from another version, which fails silently (it seems
+        // to load ok, but we do actually recompile the binary every time).
+        var cachedName = wasmBinaryFile + '.' + v8.cachedDataVersionTag() + '.cached';
+        var hasCached = nodeFS.existsSync(cachedName);
+        if (hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: loading module');
+#endif
+          try {
+            module = v8.deserialize(nodeFS.readFileSync(cachedName));
+          } catch (e) {
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (please delete ' + cachedName + ')');
+          }
+err(module);
+        }
+      }
+      if (!module) {
+        module = new WebAssembly.Module(binary);
+      }
+      if (ENVIRONMENT_HAS_NODE) {
+        if (!hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: saving module');
+#endif
+          nodeFS.writeFileSync(cachedName, v8.serialize(module));
+        }
+      }
+#else // NODE_CODE_CACHING
       module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
       instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);

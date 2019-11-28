@@ -8768,6 +8768,29 @@ end
     err = self.expect_fail(base + ['--embed-files', 'somefile'])
     assert expected in err
 
+  def test_node_code_caching(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
+                '-s', 'NODE_CODE_CACHING',
+                '-s', 'WASM_ASYNC_COMPILATION=0'])
+
+    def get_cached():
+      cached = glob.glob('a.out.wasm.*.cached')
+      if not cached:
+        return None
+      assert len(cached) == 1
+      return cached[0]
+
+    # running the program makes it cache the code
+    assert not get_cached()
+    self.assertEqual('hello, world!', run_js('a.out.js').strip())
+    assert get_cached()
+
+    # hard to test it actually uses it to speed itself up, but test that it
+    # does try to deserialize it at least
+    with open(get_cached(), 'w') as f:
+      f.write('waka waka')
+    self.assertContained('NODE_CODE_CACHING: failed to deserialize, bad cache file?', run_js('a.out.js', stderr=PIPE, full_output=True))
+
   def test_autotools_shared_check(self):
     env = os.environ.copy()
     env['LC_ALL'] = 'C'
