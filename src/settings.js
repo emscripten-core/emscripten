@@ -730,6 +730,9 @@ var NODERAWFS = 0;
 //    https://github.com/nodejs/node/issues/18265#issuecomment-471237531
 //  * This option requires WASM_ASYNC_COMPILATION=0 (we load and save code
 //    in the sync compilation path for simplicity).
+//  * The default location of the .cached files is alongside the wasm binary,
+//    as mentioned earlier. If that is in a read-only directory, you may need
+//    to place them elsewhere. You can use the locateFile() hook to do so.
 var NODE_CODE_CACHING = 0;
 
 // Functions that are explicitly exported. These functions are kept alive
