@@ -1074,9 +1074,7 @@ function createWasm() {
         // load cached code from another version, which fails silently (it seems
         // to load ok, but we do actually recompile the binary every time).
         var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
-#if expectToReceiveOnModule('locateFile')
         cachedCodeFile = locateFile(cachedCodeFile);
-#endif
         var hasCached = nodeFS.existsSync(cachedCodeFile);
         if (hasCached) {
 #if RUNTIME_LOGGING

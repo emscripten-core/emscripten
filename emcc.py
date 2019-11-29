@@ -1806,7 +1806,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
-        exit_with_error('NODE_CODE_CACHING requires async compilation (WASM_ASYNC_COMPILATION=0)')
+        exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
       if not shared.Settings.target_environment_may_be('node'):
         exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
 
