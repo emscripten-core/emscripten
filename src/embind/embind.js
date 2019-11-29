@@ -892,7 +892,7 @@ var LibraryEmbind = {
         throwBindingError("argTypes array size mismatch! Must at least get return value and 'this' types!");
     }
 
-    var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
+    var isInstanceMethod = (argTypes[1] !== null && classType !== null);
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
 // TODO: This omits argument count check - enable only at -O3 or similar.
@@ -917,50 +917,205 @@ var LibraryEmbind = {
 #if DYNAMIC_EXECUTION == 0
     var expectedArgCount = argCount - 2;
     var argsWired = new Array(expectedArgCount);
-    var invokerFuncArgs = [];
+
+    var invokerOffset = isInstanceMethod ? 2 : 1;
+    var invokerFuncArgs = new Array(expectedArgCount + invokerOffset);
+    invokerFuncArgs[0] = cppTargetFunc;
+
     var destructors = [];
-    return function() {
-      if (arguments.length !== expectedArgCount) {
-        throwBindingError('function ' + humanName + ' called with ' +
-          arguments.length + ' arguments, expected ' + expectedArgCount +
-          ' args!');
-      }
+
+    var thisWired;
+    var setup = function(self) {
 #if EMSCRIPTEN_TRACING
       Module.emscripten_trace_enter_context('embind::' + humanName);
 #endif
       destructors.length = 0;
-      var thisWired;
-      invokerFuncArgs.length = isClassMethodFunc ? 2 : 1;
-      invokerFuncArgs[0] = cppTargetFunc;
-      if (isClassMethodFunc) {
-        thisWired = argTypes[1].toWireType(destructors, this);
-        invokerFuncArgs[1] = thisWired;
+      if (isInstanceMethod) {
+        invokerFuncArgs[1] = thisWired =
+            argTypes[1].toWireType(destructors, self);
       }
-      for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
-        invokerFuncArgs.push(argsWired[i]);
-      }
-
-      var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
-
-      if (needsDestructorStack) {
+    };
+    var cleanup;
+    if (needsDestructorStack) {
+      cleanup = function() {
         runDestructors(destructors);
-      } else {
-        for (var i = isClassMethodFunc ? 1 : 2; i < argTypes.length; i++) {
-          var param = i === 1 ? thisWired : argsWired[i - 2];
-          if (argTypes[i].destructorFunction !== null) {
-            argTypes[i].destructorFunction(param);
+#if EMSCRIPTEN_TRACING
+        Module.emscripten_trace_exit_context();
+#endif
+      };
+    } else {
+      cleanup = function() {
+        if (isInstanceMethod && argTypes[1].destructorFunction !== null) {
+          argTypes[1].destructorFunction(thisWired);
+        }
+        for (var i = 0; i < argsWired.length; i++) {
+          if (argTypes[2 + i].destructorFunction !== null) {
+            argTypes[2 + i].destructorFunction(argsWired[i]);
           }
         }
-      }
-
 #if EMSCRIPTEN_TRACING
-      Module.emscripten_trace_exit_context();
+        Module.emscripten_trace_exit_context();
 #endif
-
-      if (returns) {
-        return argTypes[0].fromWireType(rv);
+      };
+    }
+    var prepareArg = function(index, arg) {
+      invokerFuncArgs[invokerOffset + index] = argsWired[index] =
+          argTypes[2 + index].toWireType(destructors, arg);
+    };
+    switch (expectedArgCount) {
+      case 0:
+        return function() {
+          setup(this);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 1:
+        return function(arg0) {
+          setup(this);
+          prepareArg(0, arg0);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 2:
+        return function(arg0, arg1) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 3:
+        return function(arg0, arg1, arg2) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 4:
+        return function(arg0, arg1, arg2, arg3) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 5:
+        return function(arg0, arg1, arg2, arg3, arg4) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 6:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 7:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          prepareArg(6, arg6);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 8:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          prepareArg(6, arg6); prepareArg(7, arg7);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 9:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 10:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8,
+                        arg9) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          prepareArg(9, arg9);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 11:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8,
+                        arg9, arg10) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          prepareArg(9, arg9); prepareArg(10, arg10);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      case 12:
+        return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8,
+                        arg9, arg10) {
+          setup(this);
+          prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
+          prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          prepareArg(9, arg9); prepareArg(10, arg10); prepareArg(11, arg11);
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+      default:
+        var warned = false;
+        return function() {
+          if (!warned) {
+            console.warn(
+                "Function " + humanName + " has " + expectedArgCount +
+                " arguments,  and will generate garbage on each call." +
+                " Consider refactoring it to fewer than 13 arguments.");
+            warned = true;
+          }
+          setup(this);
+          for (var i = 0; i < expectedArgCount; ++i) {
+            argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
+            invokerFuncArgs[i + invokerOffset] = argsWired[i];
+          }
+          var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+          cleanup();
+          return returns ? argTypes[0].fromWireType(rv) : undefined;
+        };
+    }
+    return function() {
+      setup();
+      for (var i = 0; i < expectedArgCount; ++i) {
+        argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
+        invokerFuncArgs[i + invokerOffset] = argsWired[i];
       }
+      var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
+      cleanup();
+      return returns ? argTypes[0].fromWireType(rv) : undefined;
     };
 #else
     var argsList = "";
@@ -1004,7 +1159,7 @@ var LibraryEmbind = {
         args2.push(argTypes[i+2]);
     }
 
-    if (isClassMethodFunc) {
+    if (isInstanceMethod) {
         argsListWired = "thisWired" + (argsListWired.length > 0 ? ", " : "") + argsListWired;
     }
 
@@ -1014,7 +1169,7 @@ var LibraryEmbind = {
     if (needsDestructorStack) {
         invokerFnBody += "runDestructors(destructors);\n";
     } else {
-        for(var i = isClassMethodFunc?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
+        for(var i = isInstanceMethod?1:2; i < argTypes.length; ++i) { // Skip return value at index 0 - it's not deleted here. Also skip class type if not a method.
             var paramName = (i === 1 ? "thisWired" : ("arg"+(i - 2)+"Wired"));
             if (argTypes[i].destructorFunction !== null) {
                 invokerFnBody += paramName+"_dtor("+paramName+"); // "+argTypes[i].name+"\n";
@@ -1050,13 +1205,93 @@ var LibraryEmbind = {
 
     function makeDynCaller(dynCall) {
 #if DYNAMIC_EXECUTION == 0
-      var argCache = [rawFunction];
-      return function() {
-          argCache.length = arguments.length + 1;
-          for (var i = 0; i < arguments.length; i++) {
-            argCache[i + 1] = arguments[i];
-          }
-          return dynCall.apply(null, argCache);
+      switch (signature.length) {
+        case 0:
+          return function() {
+            return dynCall.call(null, rawFunction);
+          };
+        case 1:
+          return function(a0) {
+            return dynCall.call(null, rawFunction, a0);
+          };
+        case 2:
+          return function(a0, a1) {
+            return dynCall.call(null, rawFunction, a0, a1);
+          };
+        case 3:
+          return function(a0, a1, a2) {
+            return dynCall.call(null, rawFunction, a0, a1, a2);
+          };
+        case 4:
+          return function(a0, a1, a2, a3) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3);
+          };
+        case 5:
+          return function(a0, a1, a2, a3, a4) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4);
+          };
+        case 6:
+          return function(a0, a1, a2, a3, a4, a5) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5);
+          };
+        case 7:
+          return function(a0, a1, a2, a3, a4, a5, a6) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6);
+          };
+        case 8:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7);
+          };
+        case 9:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7, a8) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7, a8);
+          };
+        case 10:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7, a8, a9);
+          };
+        case 11:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7, a8, a9, a10);
+          };
+        case 12:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7, a8, a9, a10, a11);
+          };
+        case 13:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7, a8, a9, a10, a11, a12);
+          };
+        case 14:
+          return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12,
+                         a13) {
+            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+                                a7, a8, a9, a10, a11, a12, a13);
+          };
+        default:
+          var argCache = new Array(signature.length + 1);
+          argCache[0] = rawFunction;
+          var warned = false;
+          return function() {
+            if (!warned) {
+              console.warn(
+                  "Function ", rawFunction, " takes " + signature.length +
+                  " arguments, and will generate garbage on each invocation. " +
+                  " Consider refactoring it to fewer than 15 arguments.");
+              warned = true;
+            }
+            argCache.length = arguments.length + 1;
+            for (var i = 0; i < arguments.length; i++) {
+              argCache[i + 1] = arguments[i];
+            }
+            return dynCall.apply(null, argCache);
+          };
       };
 #else
         var args = [];
