@@ -707,12 +707,23 @@ mergeInto(LibraryManager.library, {
       Asyncify.dataInfo[ptr] = {
         bottomOfCallStack: bottomOfCallStack
       };
+#if ASYNCIFY_DEBUG >= 2
+      err('ASYNCIFY: dataInfo after allocateData('+ptr+'):', Asyncify.dataInfo);
+#endif
       return ptr;
     },
 
     freeData: function(ptr) {
+#if ASYNCIFY_DEBUG >= 2
+      if (Asyncify.dataInfo[ptr] === undefined) {
+        err('ASYNCIFY: called freeData on unknown pointer', ptr, new Error().stack);
+      }
+#endif
       _free(ptr);
-      Asyncify.dataInfo[ptr] = null;
+      delete Asyncify.dataInfo[ptr];
+#if ASYNCIFY_DEBUG >= 2
+      err('ASYNCIFY: dataInfo after freeData('+ptr+'):', Asyncify.dataInfo);
+#endif
     },
 
     handleSleep: function(startAsync, preserveBrowserLoop) {
@@ -920,6 +931,7 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_create_from_current_context: function() {
     var fib = _malloc(16);
 
+    {{{ makeSetValue('fib',  0, 0, 'i32') }}};
     {{{ makeSetValue('fib',  8, 'STACK_MAX',  'i32') }}};
     {{{ makeSetValue('fib', 12, 'STACK_BASE', 'i32') }}};
 
@@ -937,6 +949,13 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_recycle__sig: 'viii',
   emscripten_fiber_recycle__deps: ["$Fibers"],
   emscripten_fiber_recycle: function(fib, funcptr, userdata) {
+    var async_ctx = {{{ makeGetValue('fib', 0, 'i32') }}};
+
+    // this may be undefined when async_ctx == 0, or when recycling the 'current' fiber
+    if (Asyncify.dataInfo[async_ctx] !== undefined) {
+      Asyncify.freeData(async_ctx);
+    }
+
     {{{ makeSetValue('fib', 0, 0, 'i32') }}};
 
     var fstack_base = {{{ makeGetValue('fib', 12, 'i32') }}};
@@ -951,8 +970,15 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_fiber_free__sig: 'vi',
-  emscripten_fiber_free__deps: ['$Fibers', 'free'],
+  emscripten_fiber_free__deps: ['$Asyncify', '$Fibers', 'free'],
   emscripten_fiber_free: function(fib) {
+    var async_ctx = {{{ makeGetValue('fib', 0, 'i32') }}};
+
+    // this may be undefined when async_ctx == 0, or when freeing the 'current' fiber
+    if (Asyncify.dataInfo[async_ctx] !== undefined) {
+      Asyncify.freeData(async_ctx);
+    }
+
     delete Fibers.continuations[fib];
     _free(fib);
   },
@@ -984,6 +1010,9 @@ mergeInto(LibraryManager.library, {
            */
 
           Asyncify.currData = {{{ makeGetValue('f_new', 0, 'i32') }}};
+#if ASSERTIONS
+          assert(!Asyncify.currData || Asyncify.dataInfo[Asyncify.currData] !== undefined);
+#endif
           STACK_MAX = {{{ makeGetValue('f_new', 8, 'i32') }}};
           STACK_BASE = {{{ makeGetValue('f_new', 12, 'i32') }}};
           stack_ptr = {{{ makeGetValue('f_new', 4, 'i32') }}};
