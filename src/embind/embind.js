@@ -896,7 +896,7 @@ var LibraryEmbind = {
 
     // Free functions with signature "void function()" do not need an invoker that marshalls between wire types.
 // TODO: This omits argument count check - enable only at -O3 or similar.
-//    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isClassMethodFunc) {
+//    if (ENABLE_UNSAFE_OPTS && argCount == 2 && argTypes[0].name == "void" && !isInstanceMethod) {
 //       return FUNCTION_TABLE[fn];
 //    }
 
@@ -1149,7 +1149,7 @@ var LibraryEmbind = {
     args2.push(Module);
 #endif
 
-    if (isClassMethodFunc) {
+    if (isInstanceMethod) {
         invokerFnBody += "var thisWired = classParam.toWireType("+dtorStack+", this);\n";
     }
 
