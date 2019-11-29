@@ -1057,7 +1057,7 @@ var LibraryEmbind = {
           setup(this);
           prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
           prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
-          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg8);
           prepareArg(9, arg9);
           var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
           cleanup();
@@ -1069,7 +1069,7 @@ var LibraryEmbind = {
           setup(this);
           prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
           prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
-          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg8);
           prepareArg(9, arg9); prepareArg(10, arg10);
           var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
           cleanup();
@@ -1081,7 +1081,7 @@ var LibraryEmbind = {
           setup(this);
           prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
           prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
-          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg7);
+          prepareArg(6, arg6); prepareArg(7, arg7); prepareArg(8, arg8);
           prepareArg(9, arg9); prepareArg(10, arg10); prepareArg(11, arg11);
           var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
           cleanup();
