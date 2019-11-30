@@ -124,7 +124,7 @@ commands:
       - run:
           name: install pulseaudio
           command: |
-            sudo apt install --yes pulseaudio-utils
+            apt install --yes pulseaudio-utils
       - run:
           name: download firefox
           command: |
