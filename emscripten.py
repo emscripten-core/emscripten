@@ -2643,22 +2643,14 @@ asm["%(e)s"] = function() {%(assertions)s
         arglist = ", ".join(["a%d" % i for i in range(len(dyncall.group(1)))])
         receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
-  return Module["asm"]["%(e)s"].call(null, %(arglist)s)
+  return Module["asm"]["%(e)s"](%(arglist)s)
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions, 'arglist': arglist})
       elif e in known_arg_counts:
-        n = known_arg_counts[e]
-        if n == 0:
-          receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
-  return Module["asm"]["%(e)s"].call(null)
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-        else:
-          arglist = ', '.join(['a%d' % i for i in range(n)])
-          receiving.append('''\
+        arglist = ', '.join(['a%d' % i for i in range(known_arg_counts[e])])
+        receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
-  return Module["asm"]["%(e)s"].call(null, %(arglist)s)
+  return Module["asm"]["%(e)s"](%(arglist)s)
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions, 'arglist': arglist})
       else:
