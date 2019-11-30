@@ -59,7 +59,6 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
-    result = name.replace('\\', '/').replace('//', '/')
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:
@@ -270,6 +269,8 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
+    # normalize between OSes
+    file_name = file_name.replace('\\', '/').replace('//', '/')
     # if prefixes were provided, we use that; otherwise, we emit a relative
     # path
     if prefixes.provided():
