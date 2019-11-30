@@ -8945,7 +8945,7 @@ int main() {
     test('a.cpp')
 
     os.mkdir('inner')
-    test(os.path.join('inner', 'a.cpp'), 'inner')
+    test('inner/a.cpp', 'inner')
 
   def test_wasm_producers_section(self):
     # no producers section by default
