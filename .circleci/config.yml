@@ -192,7 +192,9 @@ commands:
           name: run tests
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
-            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_LACKS_SOUND_HARDWARE: "0"
+            SDL_AUDIODRIVER: "pulseaudio"
+            PULSE_SINK: 0
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
@@ -211,6 +213,7 @@ commands:
             EXTRA_AUTOSTART=$TMPDIR/autostart startx /usr/bin/openbox-session -- $DISPLAY -config ~/.config/X11/xorg.conf -nolisten tcp &
             cat $TMPDIR/fifo > /dev/null # wait until $EXTRA_AUTOSTART is spawned, which indicates the end of Openbox initialization
             rm -r $TMPDIR
+            pactl list sinks short
             python3 tests/runner.py browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_webgl_offscreen_canvas_in_pthread skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread skip:browser.test_glut_glutget
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
