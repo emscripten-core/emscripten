@@ -1142,6 +1142,9 @@ var WASM_BACKEND = 0;
 // [compile+link]
 var WASM_OBJECT_FILES = 1;
 
+// Whether to enable LLVM's experimental support for reference types.
+var REFERENCE_TYPES = 0;
+
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";

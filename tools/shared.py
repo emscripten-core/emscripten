@@ -1824,6 +1824,9 @@ class Building(object):
     # and https://bugs.llvm.org/show_bug.cgi?id=39488
     args += ['-disable-lsr']
 
+    if Settings.REFERENCE_TYPES:
+      args += ['-mattr=reference-types']
+
     return args
 
   @staticmethod
