@@ -8928,7 +8928,9 @@ int main() {
   @no_fastcomp()
   def test_wasm_sourcemap_relative_paths(self):
     def test(infile, source_map_added_dir=''):
-      expected_source_map_path = os.path.join(source_map_added_dir, 'a.cpp')
+      expected_source_map_path = 'a.cpp'
+      if source_map_added_dir:
+        expected_source_map_path = source_map_added_dir + '/' + expected_source_map_path
       print(infile, expected_source_map_path)
       shutil.copyfile(path_from_root('tests', 'hello_123.c'), infile)
       infiles = [
