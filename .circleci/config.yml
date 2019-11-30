@@ -122,6 +122,10 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - run:
+          name: install pulseaudio
+          command: |
+            sudo apt install --yes pulseaudio-utils
+      - run:
           name: download firefox
           command: |
             wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
