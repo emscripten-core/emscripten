@@ -14,7 +14,7 @@
 jmp_buf jb;
 
 __attribute__((noinline)) void foo(int64_t x) {
-  printf("foo: %lld.\n", x);
+  printf("foo: %" PRId64 ".\n", x);
   longjmp(jb, 1);
 }
 
@@ -28,7 +28,7 @@ int main()
     foo((uint64_t)-1);
     return 0;
   } else {
-    printf("bar: %lld.\n", bar());
+    printf("bar: %" PRId64 ".\n", bar());
     return 1;
   }
 }
