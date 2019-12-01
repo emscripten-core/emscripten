@@ -5,6 +5,8 @@
  * found in the LICENSE file.
  */
 
+#define __STDC_FORMAT_MACROS
+#include <inttypes.h>
 #include <stdlib.h>
 #include <setjmp.h>
 #include <stdio.h>
