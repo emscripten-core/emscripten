@@ -2672,8 +2672,7 @@ class Building(object):
     logger.debug('minifying wasm imports and exports')
     # run the pass
     out = Building.run_wasm_opt(wasm_file, wasm_file,
-                                #['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
-                                ['--minify-imports'],
+                                ['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
                                 debug=debug_info,
                                 stdout=PIPE)
     # get the mapping
