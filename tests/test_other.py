@@ -9531,7 +9531,7 @@ int main () {
       (opts, hello_world_sources, {'a.html': 968, 'a.js': 604, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 881, 'a.js': 5035, 'a.asm.js': 11094, 'a.mem': 321}),
       (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 5083, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6192, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6136, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
