@@ -1077,7 +1077,7 @@ var LibraryEmbind = {
         };
       case 12:
         return function(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8,
-                        arg9, arg10) {
+                        arg9, arg10, arg11) {
           setup(this);
           prepareArg(0, arg0); prepareArg(1, arg1); prepareArg(2, arg2);
           prepareArg(3, arg3); prepareArg(4, arg4); prepareArg(5, arg5);
