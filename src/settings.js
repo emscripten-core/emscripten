@@ -208,6 +208,9 @@ var WARN_UNALIGNED = 0;
 //           all modern browsers, including Firefox, Chrome and Safari, but in IE is only
 //           present in IE11 and above. Therefore if you need to support legacy versions of
 //           IE, you should not enable PRECISE_F32 1 or 2.
+// This setting is only meaningful with the fastcomp backend.
+// With upstream backend and WASM=0, JS output always uses Math.fround for consistent
+// behavior with WebAssembly.
 var PRECISE_F32 = 0;
 
 // Whether to allow autovectorized SIMD code
