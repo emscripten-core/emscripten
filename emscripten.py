@@ -2643,7 +2643,7 @@ asm["%(e)s"] = function() {%(assertions)s
         sig = dyncall.group(1)
         # 64-bit numbers get 2 args
         arg_count = len(sig) + sig.count('j')
-        arglist = ", ".join(["a%d" % i for i in xrange(arg_count)])
+        arglist = ", ".join(["a%d" % i for i in range(arg_count)])
         receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
   return Module["asm"]["%(e)s"](%(arglist)s)
