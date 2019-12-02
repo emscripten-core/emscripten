@@ -110,97 +110,6 @@ var LibraryWebGL2 = {
     }
   },
 
-  _heapObjectForWebGLType: function(type) {
-    switch(type) {
-      case 0x1400 /* GL_BYTE */:
-        return HEAP8;
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-        return HEAPU8;
-      case 0x1402 /* GL_SHORT */:
-        return HEAP16;
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-      case 0x140B /* GL_HALF_FLOAT */:
-        return HEAPU16;
-      case 0x1404 /* GL_INT */:
-        return HEAP32;
-      case 0x1406 /* GL_FLOAT */:
-        return HEAPF32;
-      default:
-#if GL_ASSERTIONS
-        err('GL_INVALID_PARAMETER error in _heapObjectForWebGLType! Specified GL color format type=0x' + type.toString(16) + ' is not supported!');
-#endif
-        // Do not record a GL error, since the users of _heapObjectForWebGLType will call out to a WebGL function, so browser will record an error.
-        // Because of the ensuing error, we can return an arbitrary type from here. Choose to return the HEAPU32 type since most of the enumerant
-        // values are of this type: (that way Closure compiler might be able to fold these away)
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
-        return HEAPU32;
-    }
-  },
-
-#if MINIMAL_RUNTIME && GL_ASSERTIONS
-  _heapAccessShiftForWebGLType__deps: ['$warnOnce'],
-#endif
-  _heapAccessShiftForWebGLType: function (type) {
-#if GL_ASSERTIONS
-    switch(type)
-    {
-      case 0x1400 /* GL_BYTE */:
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-      case 0x1402 /* GL_SHORT */:
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-      case 0x140B /* GL_HALF_FLOAT */:
-      case 0x1404 /* GL_INT */:
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8 */:
-      case 0x1406 /* GL_FLOAT */:
-        break;
-      default:
-        warnOnce('GL_INVALID_ENUM in _heapAccessShiftForWebGLType: type=0x' + type.toString(16) + ' (not reported again for this type)');
-    }
-#endif
-    // Break down the actual type lookup to smaller and more efficient form than a sparse switch case.
-
-    // Uint8 array shifts: 0x1400 /* GL_BYTE */ and 0x1401 /* GL_UNSIGNED_BYTE */
-    if (type < 0x1402) return 0;
-
-    // Uint16 array shifts:
-    if (type < 0x1404 // type == 0x1402 /* GL_SHORT */ || type == 0x1403 /* GL_UNSIGNED_SHORT */
-      || type == 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */
-      || type == 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */
-      || type == 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */
-      || type == 0x8D61 /* GL_HALF_FLOAT_OES */
-      || type == 0x140B /* GL_HALF_FLOAT */)
-      return 1;
-
-    // All the rest are Uint32 array shifts. Avoid referring to them one by one for smallest code size.
-    // 0x1404 /* GL_INT */: 2,
-    // 0x1406 /* GL_FLOAT */: 2,
-    // 0x1405 /* GL_UNSIGNED_INT */: 2,
-    // 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */: 2,
-    // 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 2,
-    // 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 2,
-    // 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 2,
-    // 0x84FA /* GL_UNSIGNED_INT_24_8 */: 2
-    return 2;
-  },
-
   glGetBufferParameteri64v__sig: 'viii',
   glGetBufferParameteri64v: function(target, value, data) {
     if (!data) {
@@ -244,24 +153,26 @@ var LibraryWebGL2 = {
   },
 
   glTexImage3D__sig: 'viiiiiiiiii',
-  glTexImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'],
+  glTexImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'],
   glTexImage3D: function(target, level, internalFormat, width, height, depth, border, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, pixels);
-    } else if (pixels != 0) {
-      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, __heapObjectForWebGLType(type), pixels >> __heapAccessShiftForWebGLType(type));
+    } else if (pixels) {
+      var heap = __heapObjectForWebGLType(type);
+      GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
     } else {
       GLctx['texImage3D'](target, level, internalFormat, width, height, depth, border, format, type, null);
     }
   },
 
   glTexSubImage3D__sig: 'viiiiiiiiiii',
-  glTexSubImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'],
+  glTexSubImage3D__deps: ['_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'],
   glTexSubImage3D: function(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
-    } else if (pixels != 0) {
-      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, __heapObjectForWebGLType(type), pixels >> __heapAccessShiftForWebGLType(type));
+    } else if (pixels) {
+      var heap = __heapObjectForWebGLType(type);
+      GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
     } else {
       GLctx['texSubImage3D'](target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
