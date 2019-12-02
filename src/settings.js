@@ -1646,9 +1646,6 @@ var ASAN_SHADOW_SIZE = 33554432;
 // entries across function boundaries.
 var USE_OFFSET_CONVERTER = 0;
 
-// Browser version identifier that represents that the given browser is not to be supported at all.
-const TARGET_NOT_SUPPORTED = Infinity;
-
 // Specifies the oldest major version of Firefox to target. I.e. all Firefox versions >= OLDEST_SUPPORTED_FIREFOX_VERSION
 // are desired to work. Pass -s OLDEST_SUPPORTED_FIREFOX_VERSION=majorVersion to drop support for Firefox versions older than
 // < majorVersion.
