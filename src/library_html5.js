@@ -377,7 +377,7 @@ var LibraryJSEvents = {
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect'],
+  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '_specialEventTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
@@ -403,14 +403,10 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
     }
 #endif
-    if (target) {
-      var rect = __getBoundingClientRect(target);
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
-    } else { // No specific target passed, return 0.
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
-    }
+    var rect = __specialEventTargets.indexOf(target) < 0 ? __getBoundingClientRect(target) : {'left':0,'top':0};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
+
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
       // https://github.com/emscripten-core/emscripten/pull/4997
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
