@@ -8928,7 +8928,9 @@ int main() {
   @no_fastcomp()
   def test_wasm_sourcemap_relative_paths(self):
     def test(infile, source_map_added_dir=''):
-      expected_source_map_path = os.path.join(source_map_added_dir, 'a.cpp')
+      expected_source_map_path = 'a.cpp'
+      if source_map_added_dir:
+        expected_source_map_path = source_map_added_dir + '/' + expected_source_map_path
       print(infile, expected_source_map_path)
       shutil.copyfile(path_from_root('tests', 'hello_123.c'), infile)
       infiles = [
@@ -8945,7 +8947,7 @@ int main() {
     test('a.cpp')
 
     os.mkdir('inner')
-    test(os.path.join('inner', 'a.cpp'), 'inner')
+    test('inner/a.cpp', 'inner')
 
   def test_wasm_producers_section(self):
     # no producers section by default
@@ -9036,7 +9038,8 @@ test_module().then((test_module_instance) => {
   process.exit(0);
 });
 '''
-    os.makedirs('subdir', exist_ok=True)
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
     create_test_file(os.path.join('subdir', moduleLoader), moduleLoaderContents)
 
     # build hello_world.c

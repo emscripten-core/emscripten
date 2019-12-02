@@ -363,11 +363,16 @@ var LibraryGL = {
           break;
         default:
 #if USE_WEBGL2
-          if (GL.currentContext.version >= 2 && (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */)) {
-            sizeBytes = 4;
-            break;
-          } else {
-            // else fall through
+          if (GL.currentContext.version >= 2) {
+            if (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */) {
+              sizeBytes = 4;
+              break;
+            } else if (dataType == 0x140B /* GL_HALF_FLOAT */) {
+              sizeBytes = 2;
+              break;
+            } else {
+              // else fall through
+            }
           }
 #endif
           console.error('Invalid vertex attribute data type GLenum ' + dataType + ' passed to GL function!');

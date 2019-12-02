@@ -59,7 +59,6 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
-    result = name.replace('\\', '/').replace('//', '/')
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:
@@ -250,6 +249,10 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
+def normalize_path(path):
+  return path.replace('\\', '/').replace('//', '/')
+
+
 def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, base_path):
   sources = []
   sources_content = [] if collect_sources else None
@@ -270,12 +273,14 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, bas
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
+    file_name = normalize_path(file_name)
     # if prefixes were provided, we use that; otherwise, we emit a relative
     # path
     if prefixes.provided():
       source_name = prefixes.sources.resolve(file_name)
     else:
       file_name = os.path.relpath(os.path.abspath(file_name), base_path)
+      file_name = normalize_path(file_name)
       source_name = file_name
     if source_name not in sources_map:
       source_id = len(sources)
