@@ -1208,70 +1208,70 @@ var LibraryEmbind = {
       switch (signature.length) {
         case 0:
           return function() {
-            return dynCall.call(null, rawFunction);
+            return dynCall(rawFunction);
           };
         case 1:
           return function(a0) {
-            return dynCall.call(null, rawFunction, a0);
+            return dynCall(rawFunction, a0);
           };
         case 2:
           return function(a0, a1) {
-            return dynCall.call(null, rawFunction, a0, a1);
+            return dynCall(rawFunction, a0, a1);
           };
         case 3:
           return function(a0, a1, a2) {
-            return dynCall.call(null, rawFunction, a0, a1, a2);
+            return dynCall(rawFunction, a0, a1, a2);
           };
         case 4:
           return function(a0, a1, a2, a3) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3);
+            return dynCall(rawFunction, a0, a1, a2, a3);
           };
         case 5:
           return function(a0, a1, a2, a3, a4) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4);
+            return dynCall(rawFunction, a0, a1, a2, a3, a4);
           };
         case 6:
           return function(a0, a1, a2, a3, a4, a5) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5);
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5);
           };
         case 7:
           return function(a0, a1, a2, a3, a4, a5, a6) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6);
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6);
           };
         case 8:
           return function(a0, a1, a2, a3, a4, a5, a6, a7) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7);
           };
         case 9:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8);
           };
         case 10:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9);
           };
         case 11:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10);
           };
         case 12:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10, a11);
           };
         case 13:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10, a11, a12);
           };
         case 14:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12,
                          a13) {
-            return dynCall.call(null, rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10, a11, a12, a13);
           };
         default:
