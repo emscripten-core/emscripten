@@ -209,22 +209,6 @@ If manually bisecting:
     self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
     self.run_browser('page.html', None, '/report_result?1')
 
-  def build_native_lzma(self):
-    lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
-    if os.path.isfile(lzma_native) and os.access(lzma_native, os.X_OK):
-      return
-
-    cwd = os.getcwd()
-    try:
-      os.chdir(path_from_root('third_party', 'lzma.js'))
-      # On Windows prefer using MinGW make if it exists, otherwise fall back to hoping we have cygwin make.
-      if WINDOWS and Building.which('mingw32-make'):
-        run_process(['doit.bat'])
-      else:
-        run_process(['sh', './doit.sh'])
-    finally:
-      os.chdir(cwd)
-
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
     open(absolute_src_path, 'w').write('''load me right before running the code please''')
