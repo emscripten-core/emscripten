@@ -446,7 +446,7 @@ function loadWebAssemblyModule(binary, flags) {
 #if WASM_BACKEND
         sym = '_' + sym;
 #endif
-        var resolved = Module[sym];
+        resolved = Module[sym];
         if (!resolved) {
           resolved = moduleLocal[sym];
         }
