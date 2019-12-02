@@ -1646,6 +1646,31 @@ var ASAN_SHADOW_SIZE = 33554432;
 // entries across function boundaries.
 var USE_OFFSET_CONVERTER = 0;
 
+// Browser version identifier that represents that the given browser is not to be supported at all.
+const TARGET_NOT_SUPPORTED = Infinity;
+
+// Specifies the oldest major version of Firefox to target. I.e. all Firefox versions >= OLDEST_SUPPORTED_FIREFOX_VERSION
+// are desired to work. Pass -s OLDEST_SUPPORTED_FIREFOX_VERSION=majorVersion to drop support for Firefox versions older than
+// < majorVersion.
+var OLDEST_SUPPORTED_FIREFOX_VERSION = 0;
+
+// Specifies the oldest version of desktop Safari to target. Version is encoded in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
+var OLDEST_SUPPORTED_SAFARI_VERSION = 0;
+
+// Specifies the oldest version of mobile iOS Safari to target. Version is encoded in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
+var OLDEST_SUPPORTED_IOS_SAFARI_VERSION = 0;
+
+// Specifies the oldest version of Internet Explorer to target. E.g. pass -s OLDEST_SUPPORTED_IE_VERSION = 11 to drop support
+// for IE 10 and older.
+var OLDEST_SUPPORTED_IE_VERSION = 0;
+
+// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based flavor) to target. E.g. pass -s OLDEST_SUPPORTED_EDGE_VERSION=40
+// to drop support for EdgeHTML 39 and older.
+var OLDEST_SUPPORTED_EDGE_VERSION = 0;
+
+// Specifies the oldest version of Chrome. E.g. pass -s OLDEST_SUPPORTED_CHROME_VERSION=58 to drop support for Chrome 57 and older.
+var OLDEST_SUPPORTED_CHROME_VERSION = 0;
+
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
