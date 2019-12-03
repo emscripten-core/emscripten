@@ -1083,7 +1083,9 @@ function createWasm() {
           try {
             module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
           } catch (e) {
-            err('NODE_CODE_CACHING: failed to deserialize, bad cache file? (please delete ' + cachedCodeFile + ')');
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file?');
+            // Save the new compiled code when we have it.
+            hasCached = false;
           }
 err(module);
         }

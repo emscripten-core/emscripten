@@ -8777,19 +8777,24 @@ end
       cached = glob.glob('a.out.wasm.*.cached')
       if not cached:
         return None
-      assert len(cached) == 1
+      self.assertEqual(len(cached), 1)
       return cached[0]
 
     # running the program makes it cache the code
-    assert not get_cached()
+    self.assertFalse(get_cached())
     self.assertEqual('hello, world!', run_js('a.out.js').strip())
-    assert get_cached()
+    self.assertTrue(get_cached())
 
     # hard to test it actually uses it to speed itself up, but test that it
     # does try to deserialize it at least
     with open(get_cached(), 'w') as f:
       f.write('waka waka')
-    self.assertContained('NODE_CODE_CACHING: failed to deserialize, bad cache file?', run_js('a.out.js', stderr=PIPE, full_output=True))
+    ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
+    self.assertContained(ERROR, run_js('a.out.js', stderr=PIPE, full_output=True))
+    # we cached proper code after showing that error
+    with open(get_cached()) as f:
+      self.assertEqual(f.read().count('waka'), 0)
+    self.assertNotContained(ERROR, run_js('a.out.js', stderr=PIPE, full_output=True))
 
   def test_autotools_shared_check(self):
     env = os.environ.copy()
