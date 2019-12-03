@@ -2635,20 +2635,18 @@ asm["%(e)s"] = function() {%(assertions)s
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
+      arg_count = -1
       # We can determine the explicit argument count for dynCall functions.
       dyncall = re.match(r"dynCall_([dfijv]+)", e)
       if dyncall:
         sig = dyncall.group(1)
         # 64-bit numbers get 2 args
         arg_count = len(sig) + sig.count('j')
-        arglist = ", ".join(["a%d" % i for i in range(arg_count)])
-        receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
-  return Module["asm"]["%(e)s"](%(arglist)s)
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions, 'arglist': arglist})
       elif e in known_arg_counts:
-        arglist = ', '.join(['a%d' % i for i in range(known_arg_counts[e])])
+        arg_count = known_arg_counts[e];
+
+      if arg_count > -1:
+        arglist = ", ".join(["a%d" % i for i in range(arg_count)])
         receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
   return Module["asm"]["%(e)s"](%(arglist)s)
@@ -2662,6 +2660,7 @@ var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   return '\n'.join(receiving) + '\n'
+
 
 
 def create_module_wasm(sending, receiving, invoke_funcs, metadata):
