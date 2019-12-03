@@ -8228,7 +8228,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1601, [], [], 226403, None, 108, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1605, [], [], 226403, None, 108, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
@@ -8951,7 +8951,9 @@ int main() {
   @no_fastcomp()
   def test_wasm_sourcemap_relative_paths(self):
     def test(infile, source_map_added_dir=''):
-      expected_source_map_path = os.path.join(source_map_added_dir, 'a.cpp')
+      expected_source_map_path = 'a.cpp'
+      if source_map_added_dir:
+        expected_source_map_path = source_map_added_dir + '/' + expected_source_map_path
       print(infile, expected_source_map_path)
       shutil.copyfile(path_from_root('tests', 'hello_123.c'), infile)
       infiles = [
@@ -8968,7 +8970,7 @@ int main() {
     test('a.cpp')
 
     os.mkdir('inner')
-    test(os.path.join('inner', 'a.cpp'), 'inner')
+    test('inner/a.cpp', 'inner')
 
   def test_wasm_producers_section(self):
     # no producers section by default
@@ -9059,7 +9061,8 @@ test_module().then((test_module_instance) => {
   process.exit(0);
 });
 '''
-    os.makedirs('subdir', exist_ok=True)
+    if not os.path.exists('subdir'):
+      os.mkdir('subdir')
     create_test_file(os.path.join('subdir', moduleLoader), moduleLoaderContents)
 
     # build hello_world.c
@@ -9549,9 +9552,9 @@ int main () {
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 981, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 968, 'a.js': 604, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 881, 'a.js': 5035, 'a.asm.js': 11094, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 5083, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 6192, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_webgl_sources, {'a.html': 881, 'a.js': 4918, 'a.asm.js': 11139, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 4874, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 5507, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True

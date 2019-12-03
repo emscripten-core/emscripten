@@ -189,20 +189,6 @@ var LibraryJSEvents = {
     },
 #endif
 
-    getBoundingClientRectOrZeros: function(target) {
-      return target.getBoundingClientRect ? target.getBoundingClientRect() : { left: 0, top: 0 };
-    },
-
-    pageScrollPos: function() {
-      if (pageXOffset > 0 || pageYOffset > 0) {
-        return [pageXOffset, pageYOffset];
-      }
-      if (typeof document.documentElement.scrollLeft !== 'undefined' || typeof document.documentElement.scrollTop !== 'undefined') {
-        return [document.documentElement.scrollLeft, document.documentElement.scrollTop];
-      }
-      return [document.body.scrollLeft|0, document.body.scrollTop|0];
-    },
-
     getNodeNameForTarget: function(target) {
       if (!target) return '';
       if (target == window) return '#window';
@@ -381,11 +367,17 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
+  // Outline access to function .getBoundingClientRect() since it is a long string. Closure compiler does not outline access to it by itself, but it can inline access if
+  // there is only one caller to this function.
+  _getBoundingClientRect: function(e) {
+    return e.getBoundingClientRect();
+  },
+
   // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
   // eventStruct: the structure to populate.
   // e: The JS mouse event to read data from.
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
-  _fillMouseEventData__deps: ['$JSEvents'],
+  _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '_specialEventTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
@@ -403,7 +395,7 @@ var LibraryJSEvents = {
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
-      var rect = Module['canvas'].getBoundingClientRect();
+      var rect = __getBoundingClientRect(Module['canvas']);
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasX, 'e.clientX - rect.left', 'i32') }}};
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, 'e.clientY - rect.top', 'i32') }}};
     } else { // Canvas is not initialized, return 0.
@@ -411,14 +403,10 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
     }
 #endif
-    if (target) {
-      var rect = JSEvents.getBoundingClientRectOrZeros(target);
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
-    } else { // No specific target passed, return 0.
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, '0', 'i32') }}};
-      {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, '0', 'i32') }}};
-    }
+    var rect = __specialEventTargets.indexOf(target) < 0 ? __getBoundingClientRect(target) : {'left':0,'top':0};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
+
     // wheel and mousewheel events contain wrong screenX/screenY on chrome/opera
       // https://github.com/emscripten-core/emscripten/pull/4997
     // https://bugs.chromium.org/p/chromium/issues/detail?id=699956
@@ -643,22 +631,21 @@ var LibraryJSEvents = {
         // causing a new scroll, etc..
         return;
       }
-      var scrollPos = JSEvents.pageScrollPos();
-
 #if USE_PTHREADS
       var uiEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} ) : JSEvents.uiEvent;
 #else
       var uiEvent = JSEvents.uiEvent;
 #endif
+      var b = document.body; // Take document.body to a variable, Closure compiler does not outline access to it on its own.
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'innerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'innerHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'outerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'outerHeight', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset', 'i32') }}};
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
@@ -1142,14 +1129,19 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  JSEvents_resizeCanvasForFullscreen__deps: ['_registerRestoreOldStyle', '_get_canvas_element_size', '_setLetterbox', '_set_canvas_element_size'],
+  JSEvents_resizeCanvasForFullscreen__deps: ['_registerRestoreOldStyle', '_get_canvas_element_size', '_setLetterbox', '_set_canvas_element_size', '_getBoundingClientRect'],
   JSEvents_resizeCanvasForFullscreen: function(target, strategy) {
     var restoreOldStyle = __registerRestoreOldStyle(target);
     var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
     var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
-    var rect = target.getBoundingClientRect();
+    var rect = __getBoundingClientRect(target);
+#if LEGACY_VM_SUPPORT
     var windowedCssWidth = rect.right - rect.left;
     var windowedCssHeight = rect.bottom - rect.top;
+#else
+    var windowedCssWidth = rect.width; // .getBoundingClientRect(element).width & .height do not work on IE 8 and older, IE 9+ is required
+    var windowedCssHeight = rect.height;
+#endif
     var canvasSize = __get_canvas_element_size(target);
     var windowedRttWidth = canvasSize[0];
     var windowedRttHeight = canvasSize[1];
@@ -1821,7 +1813,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _registerTouchEventCallback__deps: ['$JSEvents', '_findEventTarget'],
+  _registerTouchEventCallback__deps: ['$JSEvents', '_findEventTarget', '_getBoundingClientRect'],
   _registerTouchEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
 #if USE_PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
@@ -1861,9 +1853,9 @@ var LibraryJSEvents = {
       {{{ makeSetValue('ptr', C_STRUCTS.EmscriptenTouchEvent.metaKey, 'e.metaKey', 'i32') }}};
       ptr += {{{ C_STRUCTS.EmscriptenTouchEvent.touches }}}; // Advance to the start of the touch array.
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
-      var canvasRect = Module['canvas'] ? Module['canvas'].getBoundingClientRect() : undefined;
+      var canvasRect = Module['canvas'] ? __getBoundingClientRect(Module['canvas']) : undefined;
 #endif
-      var targetRect = JSEvents.getBoundingClientRectOrZeros(target);
+      var targetRect = __getBoundingClientRect(target);
       var numTouches = 0;
       for(var i in touches) {
         var t = touches[i];
@@ -2814,7 +2806,7 @@ var LibraryJSEvents = {
 
   emscripten_get_element_css_size__proxy: 'sync',
   emscripten_get_element_css_size__sig: 'iiii',
-  emscripten_get_element_css_size__deps: ['$JSEvents', '_findEventTarget'],
+  emscripten_get_element_css_size__deps: ['$JSEvents', '_findEventTarget', '_getBoundingClientRect'],
   emscripten_get_element_css_size: function(target, width, height) {
 #if DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     target = __findEventTarget(target);
@@ -2823,14 +2815,15 @@ var LibraryJSEvents = {
 #endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
-    if (target.getBoundingClientRect) {
-      var rect = target.getBoundingClientRect();
-      {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
-      {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
-    } else {
-      {{{ makeSetValue('width', '0', 'target.clientWidth', 'double') }}};
-      {{{ makeSetValue('height', '0', 'target.clientHeight', 'double') }}};
-    }
+    var rect = __getBoundingClientRect(target);
+#if LEGACY_VM_SUPPORT
+    {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
+    {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
+#else
+    // N.b. .getBoundingClientRect(element).width & .height do not exist on IE 8, so IE 9+ is needed.
+    {{{ makeSetValue('width', '0', 'rect.width', 'double') }}};
+    {{{ makeSetValue('height', '0', 'rect.height', 'double') }}};
+#endif
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
