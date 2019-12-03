@@ -3072,9 +3072,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
     final = shared.Building.apply_wasm_memory_growth(final)
 
-  # Do not do inter wasm and js minification for dynamic linking because it prevents us from using the
-  # exported wasm functions from Module["asm"] directly which gives faster startup and runtime performance
-  if options.opt_level >= 2 and options.debug_level <= 2 and not shared.Settings.RELOCATABLE:
+  if options.opt_level >= 2 and options.debug_level <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
     save_intermediate_with_wasm('preclean', wasm_binary_target)
