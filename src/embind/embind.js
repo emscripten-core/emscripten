@@ -1107,16 +1107,6 @@ var LibraryEmbind = {
           return returns ? argTypes[0].fromWireType(rv) : undefined;
         };
     }
-    return function() {
-      setup();
-      for (var i = 0; i < expectedArgCount; ++i) {
-        argsWired[i] = argTypes[i + 2].toWireType(destructors, arguments[i]);
-        invokerFuncArgs[i + invokerOffset] = argsWired[i];
-      }
-      var rv = cppInvokerFunc.apply(null, invokerFuncArgs);
-      cleanup();
-      return returns ? argTypes[0].fromWireType(rv) : undefined;
-    };
 #else
     var argsList = "";
     var argsListWired = "";
