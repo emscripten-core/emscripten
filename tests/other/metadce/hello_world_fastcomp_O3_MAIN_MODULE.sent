@@ -437,6 +437,7 @@ __inet_pton4_raw
 __inet_pton6
 __inet_pton6_raw
 __isLeapYear
+__maybeCStringToJsString
 __memory_base
 __polyfill_set_immediate
 __pthread_cleanup_pop
