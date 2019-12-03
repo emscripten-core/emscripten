@@ -1135,8 +1135,13 @@ var LibraryJSEvents = {
     var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
     var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
     var rect = __getBoundingClientRect(target);
+#if LEGACY_VM_SUPPORT
+    var windowedCssWidth = rect.right - rect.left;
+    var windowedCssHeight = rect.bottom - rect.top;
+#else
     var windowedCssWidth = rect.width; // .getBoundingClientRect(element).width & .height do not work on IE 8 and older, IE 9+ is required
     var windowedCssHeight = rect.height;
+#endif
     var canvasSize = __get_canvas_element_size(target);
     var windowedRttWidth = canvasSize[0];
     var windowedRttHeight = canvasSize[1];
@@ -2811,9 +2816,14 @@ var LibraryJSEvents = {
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     var rect = __getBoundingClientRect(target);
+#if LEGACY_VM_SUPPORT
+    {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
+    {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
+#else
     // N.b. .getBoundingClientRect(element).width & .height do not exist on IE 8, so IE 9+ is needed.
     {{{ makeSetValue('width', '0', 'rect.width', 'double') }}};
     {{{ makeSetValue('height', '0', 'rect.height', 'double') }}};
+#endif
 
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
