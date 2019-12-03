@@ -142,8 +142,7 @@ def get(ports, settings, shared):
 
 
 def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libregal'))
-
+  return
 
 def process_dependencies(settings):
   if settings.USE_REGAL == 1:
