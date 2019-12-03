@@ -2606,16 +2606,15 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-# It's best to avoid the use of "arguments" in generated JavaScript, as it
-# throws off garbage. Adding known argument counts to this table of receiving
-# functions will generate code with explicit argument lists.
-known_arg_counts = {
-  'stackSave': 0,
-  'stackRestore': 1,
-}
-
-
 def create_receiving_wasm(exports):
+  # It's best to avoid the use of "arguments" in generated JavaScript, as it
+  # throws off garbage. Adding known argument counts to this table of receiving
+  # functions will generate code with explicit argument lists.
+  known_arg_counts = {
+    'stackSave': 0,
+    'stackRestore': 1,
+  }
+
   receiving = []
   runtime_assertions = ''
   if shared.Settings.ASSERTIONS:
