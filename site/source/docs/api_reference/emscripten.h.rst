@@ -196,6 +196,33 @@ Defines
 
   Similar to :c:macro:`EM_ASM_INT` but for a ``double`` return value.
 
+.. c:macro:: MAIN_THREAD_EM_ASM(code, ...)
+
+   This behaves like :c:macro:`EM_ASM`, but does the call on the main thread. This is
+   useful in a pthreads build, when you want to interact with the DOM from a
+   pthread; this basically proxies the call for you.
+
+   This call is proxied in a synchronous way to the main thread, that is,
+   execution will resume after the main thread has finished running the JS.
+   Synchronous proxying also makes it possible to return a value, see the next
+   two variants.
+
+.. c:macro:: MAIN_THREAD_EM_ASM_INT(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns an ``int`` value.
+
+.. c:macro:: MAIN_THREAD_EM_ASM_DOUBLE(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a ``double`` value.
+
+.. c:macro:: MAIN_THREAD_ASYNC_EM_ASM(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but is proxied in an
+  **asynchronous** way, that is, the main thread will receive a request to run
+  the code, and will run it when it can; the worker will not wait for that.
+  (Note that if this is called on the main thread, then there is nothing to
+  proxy, and the JS is executed immediately and synchronously.)
+
 
 Calling JavaScript From C/C++
 =============================
