@@ -2606,62 +2606,36 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-# It's best to avoid the use of "arguments" in generated JavaScript, as it
-# throws off garbage. Adding known argument counts to this table of receiving
-# functions will generate code with explicit argument lists.
-known_arg_counts = {
-  'stackSave': 0,
-  'stackRestore': 1,
-}
-
-
 def create_receiving_wasm(exports):
   receiving = []
-  if not shared.Settings.ASSERTIONS:
-    runtime_assertions = ''
-  else:
+  if shared.Settings.ASSERTIONS:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
+    # Assert on the runtime being in a valid state when calling into compiled
+    # code, and then replace the asserting wrapper with the implementation on
+    # the fly. The only exceptions are some support code.
     for e in exports:
-      receiving.append('''\
+        receiving.append('''\
 var real_%(mangled)s = asm["%(e)s"];
 asm["%(e)s"] = function() {%(assertions)s
-  return real_%(mangled)s.apply(null, arguments);
+  asm["%(e)s"] = real_%(mangled)s;
+  return asm["%(e)s"].apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    for e in exports:
-      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
   else:
+    runtime_assertions = ''
+
+  if shared.Settings.SWAPPABLE_ASM_MODULE:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      # We can determine the explicit argument count for dynCall functions.
-      dyncall = re.match(r"dynCall_([dfijv]+)", e)
-      if dyncall:
-        sig = dyncall.group(1)
-        # 64-bit numbers get 2 args
-        arg_count = len(sig) + sig.count('j')
-        arglist = ", ".join(["a%d" % i for i in range(arg_count)])
-        receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
-  return Module["asm"]["%(e)s"](%(arglist)s)
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions, 'arglist': arglist})
-      elif e in known_arg_counts:
-        arglist = ', '.join(['a%d' % i for i in range(known_arg_counts[e])])
-        receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
-  return Module["asm"]["%(e)s"](%(arglist)s)
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions, 'arglist': arglist})
-      else:
-        receiving.append('''\
+      receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
-  return Module["asm"]["%(e)s"].apply(null, arguments)
+  %(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"];
+  return %(mangled)s.apply(null, arguments)
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+  else:
+    for e in exports:
+      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
 
   return '\n'.join(receiving) + '\n'
 
