@@ -25,6 +25,7 @@ v1.39.4: 12/03/2019
 - Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
 - Remove deprecated `requestFullScreen` and `cancelFullScreen`from `library_glfw.js`
 - Fix SDL2_mixer support for ogg vorbis. See #9849
+- Various source maps fixes, see #9926 #9882 #9837 #9814
 
 v1.39.3: 11/14/2019
 ------------------
