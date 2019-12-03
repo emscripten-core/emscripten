@@ -2662,7 +2662,6 @@ var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
   return '\n'.join(receiving) + '\n'
 
 
-
 def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   invoke_wrappers = create_invoke_wrappers(invoke_funcs)
   receiving += create_named_globals(metadata)
