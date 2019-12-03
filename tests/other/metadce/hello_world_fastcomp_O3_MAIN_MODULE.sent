@@ -403,6 +403,7 @@ ___wasi_proc_exit
 __addDays
 __arraySum
 __battery
+__colorChannelsInGlTextureFormat
 __computeUnpackAlignedImageSize
 __emscripten_do_request_fullscreen
 __emscripten_push_main_loop_blocker
@@ -426,6 +427,8 @@ __findEventTarget
 __formatString
 __get_canvas_element_size
 __glGenObject
+__heapAccessShiftForWebGLHeap
+__heapObjectForWebGLType
 __hideEverythingExceptGivenElement
 __inet_ntop4_raw
 __inet_ntop6_raw

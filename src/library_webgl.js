@@ -16,40 +16,44 @@ var LibraryGL = {
   _tempFixedLengthArray: [],
 
   _heapObjectForWebGLType: function(type) {
+    // Micro-optimization for size: Subtract lowest GL enum number (0x1400/* GL_BYTE */) from type to compare
+    // smaller values for the heap, for shorter generated code size.
+    // Also the type HEAPU16 is not tested for explicitly, but any unrecognized type will return out HEAPU16.
+    // (since most types are HEAPU16)
     type -= 0x1400;
 #if USE_WEBGL2
-    if (type == 0x1400 - 0x1400/* GL_BYTE */) return HEAP8;
+    if (type == {{{ 0x1400 - 0x1400/* GL_BYTE */ }}}) return HEAP8;
 #endif
 
-    if (type == 0x1401 - 0x1400/* GL_UNSIGNED_BYTE */) return HEAPU8;
+    if (type == {{{ 0x1401 - 0x1400/* GL_UNSIGNED_BYTE */ }}}) return HEAPU8;
 
 #if USE_WEBGL2
-    if (type == 0x1402 - 0x1400/* GL_SHORT */) return HEAP16;
+    if (type == {{{ 0x1402 - 0x1400/* GL_SHORT */ }}}) return HEAP16;
 #endif
 
-    if (type == 0x1404 - 0x1400/* GL_INT */) return HEAP32;
+    if (type == {{{ 0x1404 - 0x1400/* GL_INT */ }}}) return HEAP32;
 
-    if (type == 0x1406 - 0x1400/* GL_FLOAT */) return HEAPF32;
+    if (type == {{{ 0x1406 - 0x1400/* GL_FLOAT */ }}}) return HEAPF32;
 
-    if (type == 0x1405 - 0x1400 /* GL_UNSIGNED_INT */
-      || type == 0x84FA - 0x1400 /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */
+    if (type == {{{ 0x1405 - 0x1400 /* GL_UNSIGNED_INT */ }}}
+      || type == {{{ 0x84FA - 0x1400 /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */ }}}
 #if USE_WEBGL2
-      || type == 0x8368 - 0x1400 /* GL_UNSIGNED_INT_2_10_10_10_REV */
-      || type == 0x8C3B - 0x1400 /* GL_UNSIGNED_INT_10F_11F_11F_REV */
-      || type == 0x8C3E - 0x1400 /* GL_UNSIGNED_INT_5_9_9_9_REV */
+      || type == {{{ 0x8368 - 0x1400 /* GL_UNSIGNED_INT_2_10_10_10_REV */ }}}
+      || type == {{{ 0x8C3B - 0x1400 /* GL_UNSIGNED_INT_10F_11F_11F_REV */ }}}
+      || type == {{{ 0x8C3E - 0x1400 /* GL_UNSIGNED_INT_5_9_9_9_REV */ }}}
 #endif
       )
       return HEAPU32;
 
 #if GL_ASSERTIONS
-      if (type != 0x1403 - 0x1400 /* GL_UNSIGNED_SHORT */
+      if (type != {{{ 0x1403 - 0x1400 /* GL_UNSIGNED_SHORT */ }}}
 #if USE_WEBGL2
-        && type != 0x140B - 0x1400 /* GL_HALF_FLOAT */
+        && type != {{{ 0x140B - 0x1400 /* GL_HALF_FLOAT */ }}}
 #endif
-        && type != 0x8033 - 0x1400 /* GL_UNSIGNED_SHORT_4_4_4_4 */
-        && type != 0x8034 - 0x1400 /* GL_UNSIGNED_SHORT_5_5_5_1 */
-        && type != 0x8363 - 0x1400 /* GL_UNSIGNED_SHORT_5_6_5 */
-        && type != 0x8D61 - 0x1400 /* GL_HALF_FLOAT_OES */) {
+        && type != {{{ 0x8033 - 0x1400 /* GL_UNSIGNED_SHORT_4_4_4_4 */ }}}
+        && type != {{{ 0x8034 - 0x1400 /* GL_UNSIGNED_SHORT_5_5_5_1 */ }}}
+        && type != {{{ 0x8363 - 0x1400 /* GL_UNSIGNED_SHORT_5_6_5 */ }}}
+        && type != {{{ 0x8D61 - 0x1400 /* GL_HALF_FLOAT_OES */ }}}) {
         err('Invalid WebGL type 0x' + (type+0x1400).toString() + ' passed to _heapObjectForWebGLType!');
       }
 #endif
@@ -1419,19 +1423,19 @@ var LibraryGL = {
     var colorChannels = {
       // 0x1902 /* GL_DEPTH_COMPONENT */ - 0x1902: 1,
       // 0x1906 /* GL_ALPHA */ - 0x1902: 1,
-      5 /* 0x1907 (GL_RGB) - 0x1902 */: 3,
-      6 /* 0x1908 (GL_RGBA) - 0x1902 */: 4,
+      {{{ 0x1907 /* GL_RGB */ - 0x1902 }}}: 3,
+      {{{ 0x1908 /* GL_RGBA */ - 0x1902 }}}: 4,
       // 0x1909 /* GL_LUMINANCE */ - 0x1902: 1,
-      8 /* 0x190A (GL_LUMINANCE_ALPHA) - 0x1902 */: 2,
-      29502 /* 0x8C40 (GL_SRGB_EXT) - 0x1902 */: 3,
-      29504 /* 0x8C42 (GL_SRGB_ALPHA_EXT) - 0x1902 */: 4,
+      {{{ 0x190A /*GL_LUMINANCE_ALPHA*/ - 0x1902 }}}: 2,
+      {{{ 0x8C40 /*(GL_SRGB_EXT)*/ - 0x1902 }}}: 3,
+      {{{ 0x8C42 /*(GL_SRGB_ALPHA_EXT*/ - 0x1902 }}}: 4,
 #if USE_WEBGL2
       // 0x1903 /* GL_RED */ - 0x1902: 1,
-      26917 /* 0x8227 (GL_RG) - 0x1902 */: 2,
-      26918 /* 0x8228 (GL_RG_INTEGER) - 0x1902 */: 2,
+      {{{ 0x8227 /*GL_RG*/ - 0x1902 }}}: 2,
+      {{{ 0x8228 /*GL_RG_INTEGER*/ - 0x1902 }}}: 2,
       // 0x8D94 /* GL_RED_INTEGER */ - 0x1902: 1,
-      29846 /* 0x8D98 (GL_RGB_INTEGER) - 0x1902 */: 3,
-      29847 /* 0x8D99 (GL_RGBA_INTEGER) - 0x1902 */: 4
+      {{{ 0x8D98 /*GL_RGB_INTEGER*/ - 0x1902 }}}: 3,
+      {{{ 0x8D99 /*GL_RGBA_INTEGER*/ - 0x1902 }}}: 4
 #endif
     };
 #if GL_ASSERTIONS

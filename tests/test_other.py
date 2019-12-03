@@ -8228,7 +8228,7 @@ int main() {
                       4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1601, [], [], 226403, None, 108, None), # noqa
+    'main_module_1': (['-O3', '-s', 'MAIN_MODULE=1'], 1604, [], [], 226403, None, 108, None), # noqa
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
   })
   @no_wasm_backend()
@@ -9529,7 +9529,7 @@ int main () {
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 981, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 968, 'a.js': 604, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 881, 'a.js': 4918, 'a.asm.js': 11094, 'a.mem': 321}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 881, 'a.js': 4918, 'a.asm.js': 11139, 'a.mem': 321}),
       (opts, hello_webgl_sources, {'a.html': 857, 'a.js': 4874, 'a.wasm': 8841}),
       (opts, hello_webgl2_sources, {'a.html': 857, 'a.js': 5507, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
