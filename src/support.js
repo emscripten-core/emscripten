@@ -751,16 +751,27 @@ function convertJsFunctionToWasm(func, sig) {
 // Add a wasm function to the table.
 function addFunctionWasm(func, sig) {
   var table = wasmTable;
-  var ret = table.length;
+  var ret = null;
 
-  // Grow the table
-  try {
-    table.grow(1);
-  } catch (err) {
-    if (!err instanceof RangeError) {
-      throw err;
+  // Find a free slot.
+  for (var i = 0; i < table.length; ++i) {
+    if (table.get(i) === null) {
+      ret = i;
+      break;
     }
-    throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
+  }
+
+  if (ret === null) {
+    // Grow the table
+    try {
+      table.grow(1);
+      ret = table.length - 1;
+    } catch (err) {
+      if (!err instanceof RangeError) {
+        throw err;
+      }
+      throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
+    }
   }
 
   // Insert new element
@@ -780,7 +791,8 @@ function addFunctionWasm(func, sig) {
 }
 
 function removeFunctionWasm(index) {
-  // TODO(sbc): Look into implementing this to allow re-using of table slots
+  var table = wasmTable;
+  table.set(index, null);
 }
 #endif
 
@@ -1015,4 +1027,3 @@ var Atomics_load = Atomics.load;
 var Atomics_store = Atomics.store;
 var Atomics_compareExchange = Atomics.compareExchange;
 #endif
-
