@@ -2617,23 +2617,23 @@ known_arg_counts = {
 
 def create_receiving_wasm(exports):
   receiving = []
+  runtime_assertions = ''
   if shared.Settings.ASSERTIONS:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # Assert on the runtime being in a valid state when calling into compiled
-    # code, and then replace the asserting wrapper with the implementation on
-    # the fly. The only exceptions are some support code.
+    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
+    # some support code
     for e in exports:
       receiving.append('''\
 var real_%(mangled)s = asm["%(e)s"];
 asm["%(e)s"] = function() {%(assertions)s
-  asm["%(e)s"] = real_%(mangled)s;
-  return asm["%(e)s"].apply(null, arguments);
+  return real_%(mangled)s.apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-  else:
-    runtime_assertions = ''
 
-  if shared.Settings.SWAPPABLE_ASM_MODULE:
+  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+    for e in exports:
+      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
+  else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
       # We can determine the explicit argument count for dynCall functions.
