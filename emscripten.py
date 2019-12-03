@@ -2614,7 +2614,7 @@ def create_receiving_wasm(exports):
     # code, and then replace the asserting wrapper with the implementation on
     # the fly. The only exceptions are some support code.
     for e in exports:
-        receiving.append('''\
+      receiving.append('''\
 var real_%(mangled)s = asm["%(e)s"];
 asm["%(e)s"] = function() {%(assertions)s
   asm["%(e)s"] = real_%(mangled)s;
