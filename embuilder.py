@@ -245,6 +245,8 @@ def main():
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':
       build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
+    elif what == 'harfbuzz-mt':
+      build_port('harfbuzz-mt', 'libharfbuzz-mt.a', ['-s', 'USE_HARFBUZZ=1', '-s', 'USE_PTHREADS=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', libname('libSDL2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
