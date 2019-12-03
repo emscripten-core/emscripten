@@ -863,6 +863,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # If not = is specified default to 1
           if '=' not in key:
             key += '=1'
+
+          # Special handling of browser version targets. A version -1 means that the specific version
+          # is not supported at all. Replace those with Infinity to make it possible to compare e.g.
+          # #if OLDEST_SUPPORTED_FIREFOX_VERSION < 68
+          try:
+            if key.startswith('OLDEST_SUPPORTED_') and int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=Infinity'
+          except Exception:
+            pass
+
           settings_changes.append(key)
           newargs[i] = newargs[i + 1] = ''
           if key == 'WASM_BACKEND=1':

@@ -10145,3 +10145,16 @@ int main() {
     with open(path_from_root('tests', 'hello_world.cpp')) as f:
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+  # Test that passing -s OLDEST_SUPPORTED_X_VERSION=-1 on the command line will result in browser X being not supported at all.
+  # I.e. -s OLDEST_SUPPORTED_X_VERSION=-1 is equal to -s OLDEST_SUPPORTED_X_VERSION=Infinity
+  def test_drop_support_for_browser(self):
+    # Test that -1 means "not supported"
+    run_process([PYTHON, EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'OLDEST_SUPPORTED_IE_VERSION=-1'])
+    self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
+    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
+
+    # Also test if someone wants to pass Infinity explicitly
+    run_process([PYTHON, EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'OLDEST_SUPPORTED_IE_VERSION=Infinity'])
+    self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
+    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())

@@ -8,6 +8,10 @@
 
 //"use strict";
 
+// Internal constant: Represents a preprocessor constant value for a browser/shell version that is not supported at all.
+// Used e.g. in form "#if OLDEST_SUPPORTED_IE_VERSION != TARGET_NOT_SUPPORTED" to test if any version of IE should be suported.
+var TARGET_NOT_SUPPORTED = Infinity;
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
