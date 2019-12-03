@@ -2643,7 +2643,7 @@ asm["%(e)s"] = function() {%(assertions)s
         # 64-bit numbers get 2 args
         arg_count = len(sig) + sig.count('j')
       elif e in known_arg_counts:
-        arg_count = known_arg_counts[e];
+        arg_count = known_arg_counts[e]
 
       if arg_count > -1:
         arglist = ", ".join(["a%d" % i for i in range(arg_count)])
