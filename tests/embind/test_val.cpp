@@ -44,7 +44,7 @@ void ensure_js(string js_code)
 {
   js_code.append(";");
   const char* js_code_pointer = js_code.c_str();
-  ensure(EM_ASM_({
+  ensure(EM_ASM_INT({
     var js_code = UTF8ToString($0);
     return eval(js_code);
   }, js_code_pointer));

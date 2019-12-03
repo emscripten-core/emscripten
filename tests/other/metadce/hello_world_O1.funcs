@@ -4,11 +4,11 @@ $__errno_location
 $__fwritex
 $__growWasmMemory
 $__lockfile
-$__original_main
 $__overflow
 $__stdio_write
 $__towrite
 $__unlockfile
+$__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc

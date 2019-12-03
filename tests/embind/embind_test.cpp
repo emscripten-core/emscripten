@@ -1846,6 +1846,12 @@ EMSCRIPTEN_BINDINGS(tests) {
         .function<void(ValHolder&, const val&)>("setValFunctor", std::bind(&valholder_set_value_mixin, _1, _2))
         .property("val", &ValHolder::getVal, &ValHolder::setVal)
         .property("val_readonly", &ValHolder::getVal)
+        .property("readonly_function_val", std::function<val(const ValHolder&)>(&valholder_get_value_mixin))
+        .property("function_val", std::function<val(const ValHolder&)>(&valholder_get_value_mixin),
+                                  std::function<void(ValHolder&, const val&)>(&valholder_set_value_mixin))
+        .property<val>("readonly_functor_val", std::bind(&valholder_get_value_mixin, _1))
+        .property<val>("functor_val", std::bind(&valholder_get_value_mixin, _1),
+                                      std::bind(&valholder_set_value_mixin, _1, _2))
         .class_function("makeConst", &ValHolder::makeConst, allow_raw_pointer<ret_val>())
         .class_function("makeValHolder", &ValHolder::makeValHolder)
         .class_function("some_class_method", &ValHolder::some_class_method)

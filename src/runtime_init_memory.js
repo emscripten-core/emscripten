@@ -2,12 +2,8 @@
 // memory is created in the wasm, not in JS.)
 #if USE_PTHREADS
 if (ENVIRONMENT_IS_PTHREAD) {
-#if MODULARIZE && WASM
-  // In pthreads mode the wasmMemory and others are received in an onmessage, and that
-  // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
-  // it to a local so it can be used normally.
   wasmMemory = Module['wasmMemory'];
-#endif
+  buffer = Module['buffer'];
 } else {
 #endif // USE_PTHREADS
 #if WASM
@@ -35,7 +31,13 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
     });
 #if USE_PTHREADS
-    assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+    if (!(wasmMemory.buffer instanceof SharedArrayBuffer)) {
+      err('requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+      if (ENVIRONMENT_HAS_NODE) {
+        console.log('(on node you may need: --experimental-wasm-threads --experimental-wasm-bulk-memory and also use a recent version)');
+      }
+      throw Error('bad memory');
+    }
 #endif
   }
 
@@ -77,7 +79,9 @@ updateGlobalBufferAndViews(buffer);
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
+#if !STANDALONE_WASM // in standalone mode the value is in the wasm
 HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
+#endif // !STANDALONE_WASM
 #if USE_PTHREADS
 }
 #endif

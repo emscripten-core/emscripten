@@ -193,16 +193,6 @@ var LibraryJSEvents = {
       return target.getBoundingClientRect ? target.getBoundingClientRect() : { left: 0, top: 0 };
     },
 
-    pageScrollPos: function() {
-      if (pageXOffset > 0 || pageYOffset > 0) {
-        return [pageXOffset, pageYOffset];
-      }
-      if (typeof document.documentElement.scrollLeft !== 'undefined' || typeof document.documentElement.scrollTop !== 'undefined') {
-        return [document.documentElement.scrollLeft, document.documentElement.scrollTop];
-      }
-      return [document.body.scrollLeft|0, document.body.scrollTop|0];
-    },
-
     getNodeNameForTarget: function(target) {
       if (!target) return '';
       if (target == window) return '#window';
@@ -643,22 +633,21 @@ var LibraryJSEvents = {
         // causing a new scroll, etc..
         return;
       }
-      var scrollPos = JSEvents.pageScrollPos();
-
 #if USE_PTHREADS
       var uiEvent = targetThread ? _malloc( {{{ C_STRUCTS.EmscriptenUiEvent.__size__ }}} ) : JSEvents.uiEvent;
 #else
       var uiEvent = JSEvents.uiEvent;
 #endif
+      var b = document.body; // Take document.body to a variable, Closure compiler does not outline access to it on its own.
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.detail, 'e.detail', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'document.body.clientWidth', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'document.body.clientHeight', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientWidth, 'b.clientWidth', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.documentBodyClientHeight, 'b.clientHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerWidth, 'innerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowInnerHeight, 'innerHeight', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterWidth, 'outerWidth', 'i32') }}};
       {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.windowOuterHeight, 'outerHeight', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'scrollPos[0]', 'i32') }}};
-      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'scrollPos[1]', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollTop, 'pageXOffset', 'i32') }}};
+      {{{ makeSetValue('uiEvent', C_STRUCTS.EmscriptenUiEvent.scrollLeft, 'pageYOffset', 'i32') }}};
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, uiEvent, userData);
       else
@@ -1533,15 +1522,6 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
-    if (__currentFullscreenStrategy.canvasResizedCallback) {
-#if USE_PTHREADS
-        if (__currentFullscreenStrategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(__currentFullscreenStrategy.canvasResizedCallbackTargetThread, __currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
-        else
-#endif
-      {{{ makeDynCall('iiii') }}}(__currentFullscreenStrategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, __currentFullscreenStrategy.canvasResizedCallbackUserData);
-      __currentFullscreenStrategy = 0;
-    }
-
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -2228,7 +2208,11 @@ var LibraryJSEvents = {
   emscripten_webgl_commit_frame: 'emscripten_webgl_do_commit_frame',
 #endif
 
-  emscripten_webgl_do_create_context__deps: ['$GL', '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
+  // This code is called from the main proxying logic, which has a big switch
+  // for all the messages, one of which is this GL-using one. This won't be
+  // called if GL is not linked in, but also make sure to not add a dep on
+  // GL unnecessarily from here, as that would cause a linker error.
+  emscripten_webgl_do_create_context__deps: maybeAddGLDep(['$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget']),
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
@@ -2289,7 +2273,7 @@ var LibraryJSEvents = {
     }
 
 #if OFFSCREENCANVAS_SUPPORT
-    canvas = canvas.offscreenCanvas;
+    if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
 
 #if GL_DEBUG
     if (typeof OffscreenCanvas !== 'undefined' && canvas instanceof OffscreenCanvas) console.log('emscripten_webgl_create_context: Creating an OffscreenCanvas-based WebGL context on target "' + targetStr + '"');

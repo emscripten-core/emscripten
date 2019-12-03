@@ -31,7 +31,7 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
       command = [shared.PYTHON, shared.EMCC]
-      command += [os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, src)]
+      command += ['-c', os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, src)]
       command += ['-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
       commands.append(command)
       o_s.append(o)

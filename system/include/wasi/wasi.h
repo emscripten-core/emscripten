@@ -269,10 +269,11 @@ typedef uint64_t __wasi_timestamp_t;
 
 typedef uint64_t __wasi_userdata_t;
 
+// XXX EMSCRIPTEN https://github.com/WebAssembly/WASI/pull/106
 typedef uint8_t __wasi_whence_t;
-#define __WASI_WHENCE_CUR (UINT8_C(0))
-#define __WASI_WHENCE_END (UINT8_C(1))
-#define __WASI_WHENCE_SET (UINT8_C(2))
+#define __WASI_WHENCE_SET (UINT8_C(0))
+#define __WASI_WHENCE_CUR (UINT8_C(1))
+#define __WASI_WHENCE_END (UINT8_C(2))
 
 typedef uint8_t __wasi_preopentype_t;
 #define __WASI_PREOPENTYPE_DIR              (UINT8_C(0))

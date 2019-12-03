@@ -41,6 +41,7 @@ def get(ports, settings, shared):
       shared.safe_ensure_dirs(os.path.dirname(o))
       command = [shared.PYTHON,
                  shared.EMCC,
+                 '-c',
                  os.path.join(cocos2dx_root, 'proj.emscripten', src),
                  '-Wno-overloaded-virtual',
                  '-Wno-deprecated-declarations',

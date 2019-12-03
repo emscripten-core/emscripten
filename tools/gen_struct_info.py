@@ -97,7 +97,7 @@ QUIET = (__name__ != '__main__')
 
 def show(msg):
   if shared.DEBUG or not QUIET:
-    sys.stderr.write('gen_struct_info: ' + msg + '\n')
+    sys.stderr.write('gen_struct_info: %s\n' % msg)
 
 
 # Try to load pycparser.
@@ -344,8 +344,6 @@ def gen_inspect_code(path, struct, code):
 
 
 def inspect_code(headers, cpp_opts, structs, defines):
-  show('Generating C code...')
-
   code = ['#include <stdio.h>', '#include <stddef.h>']
   # Include all the needed headers.
   for path in headers:
@@ -378,9 +376,10 @@ def inspect_code(headers, cpp_opts, structs, defines):
 
   # Write the source code to a temporary file.
   src_file = tempfile.mkstemp('.c')
-  js_file = tempfile.mkstemp('.js')
-
+  show('Generating C code... ' + src_file[1])
   os.write(src_file[0], shared.asbytes('\n'.join(code)))
+
+  js_file = tempfile.mkstemp('.js')
 
   # Close all unneeded FDs.
   os.close(src_file[0])
@@ -407,27 +406,26 @@ def inspect_code(headers, cpp_opts, structs, defines):
   if not shared.Settings.WASM_OBJECT_FILES:
     cmd += ['-s', 'WASM_OBJECT_FILES=0']
 
+  show(cmd)
   try:
-    try:
-      subprocess.check_call(cmd, env=safe_env)
-    except subprocess.CalledProcessError:
-      sys.stderr.write('FAIL: Compilation failed!\n')
-      sys.exit(1)
+    subprocess.check_call(cmd, env=safe_env)
+  except subprocess.CalledProcessError:
+    sys.stderr.write('FAIL: Compilation failed!\n')
+    sys.exit(1)
 
-    # Run the compiled program.
-    show('Calling generated program...')
-    try:
-      info = shared.run_js(js_file[1]).splitlines()
-    except subprocess.CalledProcessError:
-      sys.stderr.write('FAIL: Running the generated program failed!\n')
-      sys.exit(1)
+  # Run the compiled program.
+  show('Calling generated program... ' + js_file[1])
+  try:
+    info = shared.run_js(js_file[1]).splitlines()
+  except subprocess.CalledProcessError:
+    sys.stderr.write('FAIL: Running the generated program failed!\n')
+    sys.exit(1)
 
-  finally:
-    # Remove all temporary files.
-    os.unlink(src_file[1])
+  # Remove all temporary files.
+  os.unlink(src_file[1])
 
-    if os.path.exists(js_file[1]):
-      os.unlink(js_file[1])
+  if os.path.exists(js_file[1]):
+    os.unlink(js_file[1])
 
   # Parse the output of the program into a dict.
   return parse_c_output(info)
