@@ -908,7 +908,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native, cflags=self.get_emcc_args())
+                         cache_name, env_init=env_init, native=native, cflags=emcc_args)
 
   def clear(self):
     for name in os.listdir(self.get_dir()):
@@ -1182,6 +1182,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       test_index += 1
 
   def get_freetype_library(self):
+    self.emcc_args.append('-Wno-misleading-indentation')
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
