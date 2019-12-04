@@ -133,9 +133,14 @@ var LibraryGL = {
       GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
 #endif
 #if GL_POOL_TEMP_BUFFERS
-      GL.miniTempBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
+      var miniTempFloatBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
       for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
-        GL.miniTempBufferViews[i] = GL.miniTempBuffer.subarray(0, i+1);
+        GL.miniTempBufferFloatViews[i] = miniTempFloatBuffer.subarray(0, i+1);
+      }
+
+      var miniTempIntBuffer = new Int32Array(GL.MINI_TEMP_BUFFER_SIZE);
+      for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
+        GL.miniTempBufferIntViews[i] = miniTempIntBuffer.subarray(0, i+1);
       }
 #endif
     },
@@ -161,8 +166,8 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     // Mini temp buffer
     MINI_TEMP_BUFFER_SIZE: 256,
-    miniTempBuffer: null,
-    miniTempBufferViews: [0], // index i has the view of size i+1
+    miniTempBufferFloatViews: [0], // index i has the view of size i+1
+    miniTempBufferIntViews: [0], // index i has the view of size i+1
 #endif
 
 #if FULL_ES2 || LEGACY_GL_EMULATION
@@ -2168,7 +2173,22 @@ var LibraryGL = {
     }
 #endif
 
-    GLctx.uniform1iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*4') }}});
+#if GL_POOL_TEMP_BUFFERS
+    if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      var view = GL.miniTempBufferIntViews[count-1];
+      for (var i = 0; i < count; ++i) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
+      }
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('32', 'value', 'value+count*4') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
+#endif
+    }
+    GLctx.uniform1iv(GL.uniforms[location], view);
   },
 
   glUniform2iv__sig: 'viii',
@@ -2185,7 +2205,23 @@ var LibraryGL = {
     }
 #endif
 
-    GLctx.uniform2iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*8') }}});
+#if GL_POOL_TEMP_BUFFERS
+    if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      var view = GL.miniTempBufferIntViews[2*count-1];
+      for (var i = 0; i < 2*count; i += 2) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
+      }
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('32', 'value', 'value+count*8') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
+#endif
+    }
+    GLctx.uniform2iv(GL.uniforms[location], view);
   },
 
   glUniform3iv__sig: 'viii',
@@ -2202,7 +2238,24 @@ var LibraryGL = {
     }
 #endif
 
-    GLctx.uniform3iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*12') }}});
+#if GL_POOL_TEMP_BUFFERS
+    if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      var view = GL.miniTempBufferIntViews[3*count-1];
+      for (var i = 0; i < 3*count; i += 3) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'i32') }}};
+      }
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('32', 'value', 'value+count*12') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
+#endif
+    }
+    GLctx.uniform3iv(GL.uniforms[location], view);
   },
 
   glUniform4iv__sig: 'viii',
@@ -2219,7 +2272,25 @@ var LibraryGL = {
     }
 #endif
 
-    GLctx.uniform4iv(GL.uniforms[location], {{{ makeHEAPView('32', 'value', 'value+count*16') }}});
+#if GL_POOL_TEMP_BUFFERS
+    if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
+      // avoid allocation when uploading few enough uniforms
+      var view = GL.miniTempBufferIntViews[4*count-1];
+      for (var i = 0; i < 4*count; i += 4) {
+        view[i] = {{{ makeGetValue('value', '4*i', 'i32') }}};
+        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'i32') }}};
+        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'i32') }}};
+        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'i32') }}};
+      }
+    } else
+#endif
+    {
+      var view = {{{ makeHEAPView('32', 'value', 'value+count*16') }}};
+#if WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG
+      if (GL.currentContext.cannotHandleOffsetsInUniformArrayViews) view = new Int32Array(view);
+#endif
+    }
+    GLctx.uniform4iv(GL.uniforms[location], view);
   },
 
   glUniform1fv__sig: 'viii',
@@ -2239,7 +2310,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[count-1];
+      var view = GL.miniTempBufferFloatViews[count-1];
       for (var i = 0; i < count; ++i) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
       }
@@ -2271,7 +2342,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (2*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[2*count-1];
+      var view = GL.miniTempBufferFloatViews[2*count-1];
       for (var i = 0; i < 2*count; i += 2) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2304,7 +2375,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (3*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[3*count-1];
+      var view = GL.miniTempBufferFloatViews[3*count-1];
       for (var i = 0; i < 3*count; i += 3) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2338,7 +2409,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[4*count-1];
+      var view = GL.miniTempBufferFloatViews[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2373,7 +2444,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[4*count-1];
+      var view = GL.miniTempBufferFloatViews[4*count-1];
       for (var i = 0; i < 4*count; i += 4) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2408,7 +2479,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (9*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[9*count-1];
+      var view = GL.miniTempBufferFloatViews[9*count-1];
       for (var i = 0; i < 9*count; i += 9) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
@@ -2448,7 +2519,7 @@ var LibraryGL = {
 #if GL_POOL_TEMP_BUFFERS
     if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
-      var view = GL.miniTempBufferViews[16*count-1];
+      var view = GL.miniTempBufferFloatViews[16*count-1];
       for (var i = 0; i < 16*count; i += 16) {
         view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
         view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
