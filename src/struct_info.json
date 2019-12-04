@@ -1512,6 +1512,9 @@
             "EM_PROXIED_SYSCALL",
             "EM_PROXIED_CREATE_CONTEXT",
             "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
+            "EM_PROXIED_JS_FUNCTION",
+            "EM_QUEUED_CALL_MAX_ARGS",
+            "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_THREAD_STATUS_NOTSTARTED",
             "EM_THREAD_STATUS_RUNNING",
             "EM_THREAD_STATUS_SLEEPING",
@@ -1563,6 +1566,23 @@
         "structs": {
             "libc": [
               "global_locale"
+            ]
+        },
+        "defines": [
+            "__WASI_FILETYPE_CHARACTER_DEVICE",
+            "__WASI_FILETYPE_DIRECTORY",
+            "__WASI_FILETYPE_REGULAR_FILE",
+            "__WASI_FILETYPE_SYMBOLIC_LINK"
+        ]
+    },
+    {
+        "file": "wasi/wasi.h",
+        "structs": {
+            "__wasi_fdstat_t": [
+                "fs_filetype",
+                "fs_flags",
+                "fs_rights_base",
+                "fs_rights_inheriting"
             ]
         },
         "defines": []

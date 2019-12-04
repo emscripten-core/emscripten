@@ -31,7 +31,7 @@ from subprocess import CalledProcessError
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] != 'make':
+  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
     print('''
   emmake is a helper for make, setting various environment
   variables so that emcc etc. are used. Typical usage:
@@ -41,12 +41,15 @@ def run():
   (but you can run any command instead of make)
 
   ''', file=sys.stderr)
+    return 1
 
   try:
     shared.Building.make(sys.argv[1:])
   except CalledProcessError as e:
-    sys.exit(e.returncode)
+    return e.returncode
+
+  return 0
 
 
 if __name__ == '__main__':
-  run()
+  sys.exit(run())

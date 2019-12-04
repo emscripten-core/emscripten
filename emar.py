@@ -34,7 +34,10 @@ if __name__ == '__main__':
 # Main run() function
 #
 def run():
-  args = substitute_response_files(sys.argv)
+  try:
+    args = substitute_response_files(sys.argv)
+  except IOError as e:
+    shared.exit_with_error(e)
   newargs = [shared.LLVM_AR] + args[1:]
 
   to_delete = []
@@ -43,7 +46,7 @@ def run():
   # 'ar x libfoo.a'.
   if len(newargs) > 3:
     cmd = newargs[1]
-    if 'r' in cmd:
+    if 'r' in cmd or 'q' in cmd:
       # We are adding files to the archive.
       # Normally the output file is then arg 2, except in the case were the
       # a or b modifiers are used in which case its arg 3.
@@ -52,35 +55,24 @@ def run():
       else:
         out_arg_index = 2
 
-      contents = set()
-      if os.path.exists(newargs[out_arg_index]):
-        cmd = [shared.LLVM_AR, 't', newargs[out_arg_index]]
-        output = shared.check_call(cmd, stdout=shared.PIPE).stdout
-        contents.update(output.split('\n'))
-
       # Add a hash to colliding basename, to make them unique.
       for j in range(out_arg_index + 1, len(newargs)):
         orig_name = newargs[j]
         full_name = os.path.abspath(orig_name)
         dirname = os.path.dirname(full_name)
         basename = os.path.basename(full_name)
-        if basename not in contents:
-          contents.add(basename)
-          continue
+
         h = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
         parts = basename.split('.')
         parts[0] += '_' + h
         newname = '.'.join(parts)
         full_newname = os.path.join(dirname, newname)
-        assert not os.path.exists(full_newname)
         try:
           shutil.copyfile(orig_name, full_newname)
           newargs[j] = full_newname
           to_delete.append(full_newname)
-          contents.add(newname)
-        except:
+        except Exception:
           # it is ok to fail here, we just don't get hashing
-          contents.add(basename)
           pass
 
     if shared.DEBUG:
@@ -93,11 +85,10 @@ def run():
   if shared.DEBUG:
     print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
 
-  try:
-    return shared.run_process(newargs, stdin=sys.stdin, check=False).returncode
-  finally:
-    for d in to_delete:
-      shared.try_delete(d)
+  rtn = shared.run_process(newargs, stdin=sys.stdin, check=False).returncode
+  for d in to_delete:
+    shared.try_delete(d)
+  return rtn
 
 
 if __name__ == '__main__':

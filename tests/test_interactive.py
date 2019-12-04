@@ -16,15 +16,21 @@ from tools.shared import Popen, EMCC, PYTHON, WINDOWS, Building
 
 class interactive(BrowserCore):
   @classmethod
-  def setUpClass(self):
-    super(interactive, self).setUpClass()
-    self.browser_timeout = 60
+  def setUpClass(cls):
+    super(interactive, cls).setUpClass()
+    cls.browser_timeout = 60
     print()
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()
 
   def test_html5_fullscreen(self):
     self.btest(path_from_root('tests', 'test_html5_fullscreen.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1', '-s', 'EXPORTED_FUNCTIONS=["_requestFullscreen","_enterSoftFullscreen","_main"]', '--shell-file', path_from_root('tests', 'test_html5_fullscreen.html')])
+
+  def test_html5_emscripten_exit_with_escape(self):
+    self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', args=['-DEXIT_WITH_F'])
+
+  def test_html5_emscripten_exit_fullscreen(self):
+    self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1')
 
   def test_html5_mouse(self):
     self.btest(path_from_root('tests', 'test_html5_mouse.c'), expected='0', args=['-s', 'DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1'])
@@ -199,6 +205,7 @@ class interactive(BrowserCore):
     self.btest('test_glfw_pointerlock.c', expected='1', args=['-s', 'USE_GLFW=3'])
 
   def test_glut_fullscreen(self):
+    self.skipTest('looks broken')
     self.btest('glut_fullscreen.c', expected='1', args=['-lglut', '-lGL'])
 
   def test_cpuprofiler_memoryprofiler(self):

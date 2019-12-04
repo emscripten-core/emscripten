@@ -172,4 +172,11 @@ void ProcessThreads(SuspendedThreadsList const &suspended_threads,
 
 } // namespace __lsan
 
+extern "C" void __lsan_disable_in_this_thread() {
+  __lsan::DisableInThisThread();
+}
+
+extern "C" void __lsan_enable_in_this_thread() {
+  __lsan::EnableInThisThread();
+}
 #endif // CAN_SANITIZE_LEAKS && SANITIZER_EMSCRIPTEN

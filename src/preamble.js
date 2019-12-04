@@ -14,9 +14,16 @@ out = err = function(){};
 #endif
 
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
+{{{ makeModuleReceiveWithVar('noExitRuntime') }}}
 
-#if WASM2JS
+#if MAYBE_WASM2JS && !WASM2JS
+if (Module['doWasm2JS']) {
+#endif
+#if MAYBE_WASM2JS
 #include "wasm2js.js"
+#endif
+#if MAYBE_WASM2JS && !WASM2JS
+}
 #endif
 
 #if WASM
@@ -35,12 +42,35 @@ if (typeof WebAssembly !== 'object') {
 
 var wasmMemory;
 
-// Potentially used for direct table calls.
-var wasmTable;
+// In fastcomp asm.js, we don't need a wasm Table at all.
+// In the wasm backend, we polyfill the WebAssembly object,
+// so this creates a (non-native-wasm) table for us.
+#if WASM_BACKEND || WASM
+var wasmTable = new WebAssembly.Table({
+  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+#if WASM_BACKEND
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+#else
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif
+#endif // WASM_BACKEND
+  'element': 'anyfunc'
+});
+#endif // WASM_BACKEND || WASM
 
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
+// Only workers actually use these field, but we refer to them from
+// library_pthread (which exists on all threads) so this definition is useful
+// to avoid accessing the global scope.
+var threadInfoStruct = 0;
+var selfThreadId = 0;
+var __performance_now_clock_drift = 0;
+#if WASM_BACKEND
+var tempDoublePtr = 0;
+#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -129,15 +159,34 @@ function ccall(ident, returnType, argTypes, args, opts) {
       });
     });
   }
-#else // EMTERPRETIFY_ASYNC
-#if ASSERTIONS
-  assert(!(opts && opts.async), 'async call is only supported with Emterpretify for now, see #9029');
 #endif
-#endif // EMTERPRETIFY_ASYNC
+#if ASYNCIFY && WASM_BACKEND
+  var asyncMode = opts && opts.async;
+  var runningAsync = typeof Asyncify === 'object' && Asyncify.currData;
+  var prevRunningAsync = typeof Asyncify === 'object' && Asyncify.asyncFinalizers.length > 0; 
+#if ASSERTIONS
+  assert(!asyncMode || !prevRunningAsync, 'Cannot have multiple async ccalls in flight at once');
+#endif
+  // Check if we started an async operation just now.
+  if (runningAsync && !prevRunningAsync) {
+    // If so, the WASM function ran asynchronous and unwound its stack.
+    // We need to return a Promise that resolves the return value
+    // once the stack is rewound and execution finishes.
+#if ASSERTIONS
+    assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+#endif
+    return new Promise(function(resolve) {
+      Asyncify.asyncFinalizers.push(function(ret) {
+        if (stack !== 0) stackRestore(stack);
+        resolve(convertReturnValue(ret));
+      });
+    });
+  }
+#endif
 
   ret = convertReturnValue(ret);
   if (stack !== 0) stackRestore(stack);
-#if EMTERPRETIFY_ASYNC
+#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
   // If this is an async ccall, ensure we return a promise
   if (opts && opts.async) return Promise.resolve(ret);
 #endif
@@ -264,8 +313,6 @@ function getMemory(size) {
 
 #include "runtime_strings.js"
 
-#include "runtime_stack_trace.js"
-
 // Memory management
 
 var PAGE_SIZE = 16384;
@@ -299,27 +346,24 @@ var HEAP,
 /** @type {Float64Array} */
   HEAPF64;
 
-function updateGlobalBufferViews() {
-  Module['HEAP8'] = HEAP8 = new Int8Array(buffer);
-  Module['HEAP16'] = HEAP16 = new Int16Array(buffer);
-  Module['HEAP32'] = HEAP32 = new Int32Array(buffer);
-  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buffer);
-  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buffer);
-  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buffer);
-  Module['HEAPF32'] = HEAPF32 = new Float32Array(buffer);
-  Module['HEAPF64'] = HEAPF64 = new Float64Array(buffer);
+function updateGlobalBufferAndViews(buf) {
+  buffer = buf;
+  Module['HEAP8'] = HEAP8 = new Int8Array(buf);
+  Module['HEAP16'] = HEAP16 = new Int16Array(buf);
+  Module['HEAP32'] = HEAP32 = new Int32Array(buf);
+  Module['HEAPU8'] = HEAPU8 = new Uint8Array(buf);
+  Module['HEAPU16'] = HEAPU16 = new Uint16Array(buf);
+  Module['HEAPU32'] = HEAPU32 = new Uint32Array(buf);
+  Module['HEAPF32'] = HEAPF32 = new Float32Array(buf);
+  Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
 
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}},
     DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}},
-    DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}};
+    DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
 
 #if ASSERTIONS
 assert(STACK_BASE % 16 === 0, 'stack must start aligned');
@@ -327,6 +371,28 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+
+  // At the 'load' stage of Worker startup, we are just loading this script
+  // but not ready to run yet. At 'run' we receive proper values for the stack
+  // etc. and can launch a pthread. Set some fake values there meanwhile to
+  // catch bugs, then set the real values in applyStackValues later.
+#if ASSERTIONS || SAFE_STACK
+  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
+#endif
+
+  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
+    STACK_BASE = stackBase;
+    STACKTOP = stackTop;
+    STACK_MAX = stackMax;
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
+#endif
+  };
+
+  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
+  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
+  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 
@@ -368,7 +434,7 @@ if (ENVIRONMENT_IS_WEB) {
 
 #if USE_PTHREADS
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
-  xhr = new XMLHttpRequest();
+  var xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
   xhr.send();
   setTimeout(function() { window.close() }, 2000);
@@ -378,87 +444,15 @@ if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') 
 
 #include "runtime_sab_polyfill.js"
 
-#if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
-#if MODULARIZE && WASM
-  // In pthreads mode the wasmMemory and others are received in an onmessage, and that
-  // onmessage then loadScripts us, sending wasmMemory etc. on Module. Here we recapture
-  // it to a local so it can be used normally.
-  wasmMemory = Module['wasmMemory'];
-#endif
-} else {
-#endif // USE_PTHREADS
-#if WASM
-
-#if expectToReceiveOnModule('wasmMemory')
-  if (Module['wasmMemory']) {
-    wasmMemory = Module['wasmMemory'];
-  } else
-#endif
-  {
-    wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
-#if ALLOW_MEMORY_GROWTH
-#if WASM_MEM_MAX != -1
-      ,
-      'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE
-#endif
-#else
-      ,
-      'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
-#endif // ALLOW_MEMORY_GROWTH
-#if USE_PTHREADS
-      ,
-      'shared': true
-#endif
-    });
-#if USE_PTHREADS
-    assert(wasmMemory.buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-#endif
-  }
-
-#else // WASM
-
-  if (Module['buffer']) {
-    buffer = Module['buffer'];
-  }
-#ifdef USE_PTHREADS
-  else if (typeof SharedArrayBuffer !== 'undefined') {
-    buffer = new SharedArrayBuffer(INITIAL_TOTAL_MEMORY);
-  }
-#endif
-  else {
-    buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
-  }
-#endif // WASM
-#if USE_PTHREADS
-}
-#endif
-
-#if WASM
-if (wasmMemory) {
-  buffer = wasmMemory.buffer;
-}
-#endif
-
-// If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically provide the memory length with Module['TOTAL_MEMORY'].
-INITIAL_TOTAL_MEMORY = buffer.byteLength;
-#ifdef ASSERTIONS && WASM
-assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#ifdef ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
-assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
-#endif
-#endif
-updateGlobalBufferViews();
-
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;
-#if USE_PTHREADS
-}
-#endif
+// In standalone mode, the wasm creates the memory, and the user can't provide it.
+#if STANDALONE_WASM
+#if ASSERTIONS
+assert(!Module['wasmMemory']);
+#endif // ASSERTIONS
+#else // !STANDALONE_WASM
+// In non-standalone/normal mode, we create the memory here.
+#include "runtime_init_memory.js"
+#endif // !STANDALONE_WASM
 
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
@@ -703,6 +697,49 @@ Module["preloadedAudios"] = {}; // maps url to audio data
 Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 #endif
 
+#if EMTERPRETIFY_ASYNC && ASSERTIONS
+var abortDecorators = [];
+#endif
+
+function abort(what) {
+#if expectToReceiveOnModule('onAbort')
+  if (Module['onAbort']) {
+    Module['onAbort'](what);
+  }
+#endif
+
+#if USE_PTHREADS
+  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+#endif
+  what += '';
+  out(what);
+  err(what);
+
+  ABORT = true;
+  EXITSTATUS = 1;
+
+#if ASSERTIONS == 0
+  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+#else
+  var output = 'abort(' + what + ') at ' + stackTrace();
+#if EMTERPRETIFY_ASYNC
+  abortDecorators.forEach(function(decorator) {
+    output = decorator(output, what);
+  });
+#endif
+  what = output;
+#endif // ASSERTIONS
+
+  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+  // exception, which means we'd run destructors on it. We need the error to
+  // simply make the program stop.
+#if WASM
+  throw new WebAssembly.RuntimeError(what);
+#else
+  throw what;
+#endif
+}
+
 #if RELOCATABLE
 {{{
 (function() {
@@ -754,6 +791,10 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 
 var memoryInitializer = null;
 
+#if MEMORYPROFILER
+#include "memoryprofiler.js"
+#endif
+
 #if USE_PTHREADS && PTHREAD_HINT_NUM_CORES < 0
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
   addRunDependency('pthreads_querycores');
@@ -791,7 +832,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 });
 #endif
 
-#if PTHREAD_POOL_SIZE > 0
+#if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_DELAY_LOAD != 1
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
@@ -888,98 +929,11 @@ var wasmOffsetConverter;
 
 // Create the wasm instance.
 // Receives the wasm imports, returns the exports.
-function createWasm(env) {
-#if WASM2JS || AUTODEBUG
-  // wasm2js legalization of i64 support code may require these
-  // autodebug may also need them
-  env['setTempRet0'] = setTempRet0;
-  env['getTempRet0'] = getTempRet0;
-#endif
-#if AUTODEBUG
-  env['log_execution'] = function(loc) {
-    console.log('log_execution ' + loc);
-  };
-  env['get_i32'] = function(loc, index, value) {
-    console.log('get_i32 ' + [loc, index, value]);
-    return value;
-  };
-  env['get_i64'] = function(loc, index, low, high) {
-    console.log('get_i64 ' + [loc, index, low, high]);
-    env['setTempRet0'](high);
-    return low;
-  };
-  env['get_f32'] = function(loc, index, value) {
-    console.log('get_f32 ' + [loc, index, value]);
-    return value;
-  };
-  env['get_f64'] = function(loc, index, value) {
-    console.log('get_f64 ' + [loc, index, value]);
-    return value;
-  };
-  env['set_i32'] = function(loc, index, value) {
-    console.log('set_i32 ' + [loc, index, value]);
-    return value;
-  };
-  env['set_i64'] = function(loc, index, low, high) {
-    console.log('set_i64 ' + [loc, index, low, high]);
-    env['setTempRet0'](high);
-    return low;
-  };
-  env['set_f32'] = function(loc, index, value) {
-    console.log('set_f32 ' + [loc, index, value]);
-    return value;
-  };
-  env['set_f64'] = function(loc, index, value) {
-    console.log('set_f64 ' + [loc, index, value]);
-    return value;
-  };
-  env['load_ptr'] = function(loc, bytes, offset, ptr) {
-    console.log('load_ptr ' + [loc, bytes, offset, ptr]);
-    return ptr;
-  };
-  env['load_val_i32'] = function(loc, value) {
-    console.log('load_val_i32 ' + [loc, value]);
-    return value;
-  };
-  env['load_val_i64'] = function(loc, low, high) {
-    console.log('load_val_i64 ' + [loc, low, high]);
-    env['setTempRet0'](high);
-    return low;
-  };
-  env['load_val_f32'] = function(loc, value) {
-    console.log('loaload_val_i32d_ptr ' + [loc, value]);
-    return value;
-  };
-  env['load_val_f64'] = function(loc, value) {
-    console.log('load_val_f64 ' + [loc, value]);
-    return value;
-  };
-  env['store_ptr'] = function(loc, bytes, offset, ptr) {
-    console.log('store_ptr ' + [loc, bytes, offset, ptr]);
-    return ptr;
-  };
-  env['store_val_i32'] = function(loc, value) {
-    console.log('store_val_i32 ' + [loc, value]);
-    return value;
-  };
-  env['store_val_i64'] = function(loc, low, high) {
-    console.log('store_val_i64 ' + [loc, low, high]);
-    env['setTempRet0'](high);
-    return low;
-  };
-  env['store_val_f32'] = function(loc, value) {
-    console.log('loastore_val_i32d_ptr ' + [loc, value]);
-    return value;
-  };
-  env['store_val_f64'] = function(loc, value) {
-    console.log('store_val_f64 ' + [loc, value]);
-    return value;
-  };
-#endif
-
+function createWasm() {
   // prepare imports
   var info = {
-    'env': env
+    'env': asmLibraryArg,
+    'wasi_unstable': asmLibraryArg
 #if WASM_BACKEND == 0
     ,
     'global': {
@@ -995,10 +949,23 @@ function createWasm(env) {
   // performing other necessary setup
   function receiveInstance(instance, module) {
     var exports = instance.exports;
+#if RELOCATABLE
+    exports = relocateExports(exports, GLOBAL_BASE, 0);
+#endif
 #if WASM_BACKEND && ASYNCIFY
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
+#if STANDALONE_WASM
+    // In pure wasm mode the memory is created in the wasm (not imported), and
+    // then exported.
+    // TODO: do not create a Memory earlier in JS
+    wasmMemory = exports['memory'];
+    updateGlobalBufferAndViews(wasmMemory.buffer);
+#if ASSERTIONS
+    writeStackCookie();
+#endif
+#endif
 #if USE_PTHREADS
     // Keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
@@ -1049,10 +1016,15 @@ function createWasm(env) {
   function instantiateArrayBuffer(receiver) {
     return getBinaryPromise().then(function(binary) {
 #if USE_OFFSET_CONVERTER
-      wasmOffsetConverter = new WasmOffsetConverter(binary);
-      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-#endif
+      var result = WebAssembly.instantiate(binary, info);
+      result.then(function (instance) {
+        wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
+        {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+      });
+      return result;
+#else
       return WebAssembly.instantiate(binary, info);
+#endif
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
@@ -1067,16 +1039,16 @@ function createWasm(env) {
         !isDataURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
+        var result = WebAssembly.instantiateStreaming(response, info);
 #if USE_OFFSET_CONVERTER
         // This doesn't actually do another request, it only copies the Response object.
         // Copying lets us consume it independently of WebAssembly.instantiateStreaming.
-        response.clone().arrayBuffer().then(function (buffer) {
-          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(buffer));
+        Promise.all([response.clone().arrayBuffer(), result]).then(function (results) {
+          wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(results[0]), results[1].module);
           {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
         });
 #endif
-        return WebAssembly.instantiateStreaming(response, info)
-          .then(receiveInstantiatedSource, function(reason) {
+        return result.then(receiveInstantiatedSource, function(reason) {
             // We expect the most common failure cause to be a bad MIME type for the binary,
             // in which case falling back to ArrayBuffer instantiation should work.
             err('wasm streaming compile failed: ' + reason);
@@ -1095,12 +1067,12 @@ function createWasm(env) {
     var binary;
     try {
       binary = getBinary();
-#if USE_OFFSET_CONVERTER
-      wasmOffsetConverter = new WasmOffsetConverter(binary);
-      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
-#endif
       module = new WebAssembly.Module(binary);
       instance = new WebAssembly.Instance(module, info);
+#if USE_OFFSET_CONVERTER
+      wasmOffsetConverter = new WasmOffsetConverter(binary, module);
+      {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
+#endif
     } catch (e) {
       var str = e.toString();
       err('failed to compile wasm module: ' + str);
@@ -1146,54 +1118,10 @@ function createWasm(env) {
   return Module['asm']; // exports were assigned here
 #endif
 }
-
-// Provide an "asm.js function" for the application, called to "link" the asm.js module. We instantiate
-// the wasm module at that time, and it receives imports and provides exports and so forth, the app
-// doesn't need to care that it is wasm or asm.js.
-
-Module['asm'] = function(global, env, providedBuffer) {
-  // memory was already allocated (so js could use the buffer)
-  env['memory'] = wasmMemory
-#if MODULARIZE && USE_PTHREADS
-  // Pthreads assign wasmMemory in their worker startup. In MODULARIZE mode, they cannot assign inside the
-  // Module scope, so lookup via Module as well.
-  || Module['wasmMemory']
-#endif
-  ;
-  // import table
-  env['table'] = wasmTable = new WebAssembly.Table({
-    'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#if !ALLOW_TABLE_GROWTH
-#if WASM_BACKEND
-    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
-#else
-    'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
-#endif
-#endif // WASM_BACKEND
-    'element': 'anyfunc'
-  });
-  // With the wasm backend __memory_base and __table_base and only needed for
-  // relocatable output.
-#if RELOCATABLE || !WASM_BACKEND
-  env['__memory_base'] = {{{ GLOBAL_BASE }}}; // tell the memory segments where to place themselves
-#if WASM_BACKEND
-  env['__stack_pointer'] = STACK_BASE;
-  // We reserve slot 0 in the table for the NULL function pointer.
-  // This means the __table_base for the main module (even in dynamic linking)
-  // is always 1.
-  env['__table_base'] = 1;
-#else
-  // table starts at 0 by default (even in dynamic linking, for the main module)
-  env['__table_base'] = 0;
-#endif
 #endif
 
-  var exports = createWasm(env);
-#if ASSERTIONS
-  assert(exports, 'binaryen setup failed (no wasm support?)');
-#endif
-  return exports;
-};
+#if WASM && !WASM_BACKEND // fastcomp wasm support: create an asm.js-like funciton
+Module['asm'] = createWasm;
 #endif
 
 // Globals used by JS i64 conversions

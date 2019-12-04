@@ -15,6 +15,55 @@ var LibraryGL = {
   _tempFixedLengthArray__postset: 'for (var i = 0; i < 32; i++) __tempFixedLengthArray.push(new Array(i));',
   _tempFixedLengthArray: [],
 
+  _heapObjectForWebGLType: function(type) {
+    // Micro-optimization for size: Subtract lowest GL enum number (0x1400/* GL_BYTE */) from type to compare
+    // smaller values for the heap, for shorter generated code size.
+    // Also the type HEAPU16 is not tested for explicitly, but any unrecognized type will return out HEAPU16.
+    // (since most types are HEAPU16)
+    type -= 0x1400;
+#if USE_WEBGL2
+    if (type == {{{ 0x1400 - 0x1400/* GL_BYTE */ }}}) return HEAP8;
+#endif
+
+    if (type == {{{ 0x1401 - 0x1400/* GL_UNSIGNED_BYTE */ }}}) return HEAPU8;
+
+#if USE_WEBGL2
+    if (type == {{{ 0x1402 - 0x1400/* GL_SHORT */ }}}) return HEAP16;
+#endif
+
+    if (type == {{{ 0x1404 - 0x1400/* GL_INT */ }}}) return HEAP32;
+
+    if (type == {{{ 0x1406 - 0x1400/* GL_FLOAT */ }}}) return HEAPF32;
+
+    if (type == {{{ 0x1405 - 0x1400 /* GL_UNSIGNED_INT */ }}}
+      || type == {{{ 0x84FA - 0x1400 /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */ }}}
+#if USE_WEBGL2
+      || type == {{{ 0x8368 - 0x1400 /* GL_UNSIGNED_INT_2_10_10_10_REV */ }}}
+      || type == {{{ 0x8C3B - 0x1400 /* GL_UNSIGNED_INT_10F_11F_11F_REV */ }}}
+      || type == {{{ 0x8C3E - 0x1400 /* GL_UNSIGNED_INT_5_9_9_9_REV */ }}}
+#endif
+      )
+      return HEAPU32;
+
+#if GL_ASSERTIONS
+      if (type != {{{ 0x1403 - 0x1400 /* GL_UNSIGNED_SHORT */ }}}
+#if USE_WEBGL2
+        && type != {{{ 0x140B - 0x1400 /* GL_HALF_FLOAT */ }}}
+#endif
+        && type != {{{ 0x8033 - 0x1400 /* GL_UNSIGNED_SHORT_4_4_4_4 */ }}}
+        && type != {{{ 0x8034 - 0x1400 /* GL_UNSIGNED_SHORT_5_5_5_1 */ }}}
+        && type != {{{ 0x8363 - 0x1400 /* GL_UNSIGNED_SHORT_5_6_5 */ }}}
+        && type != {{{ 0x8D61 - 0x1400 /* GL_HALF_FLOAT_OES */ }}}) {
+        err('Invalid WebGL type 0x' + (type+0x1400).toString() + ' passed to _heapObjectForWebGLType!');
+      }
+#endif
+    return HEAPU16;
+  },
+
+  _heapAccessShiftForWebGLHeap: function(heap) {
+    return 31 - Math.clz32(heap.BYTES_PER_ELEMENT);
+  },
+
   $GL__postset: 'var GLctx; GL.init()',
   $GL: {
 #if GL_DEBUG
@@ -363,11 +412,16 @@ var LibraryGL = {
           break;
         default:
 #if USE_WEBGL2
-          if (GL.currentContext.version >= 2 && (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */)) {
-            sizeBytes = 4;
-            break;
-          } else {
-            // else fall through
+          if (GL.currentContext.version >= 2) {
+            if (dataType == 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */ || dataType == 0x8D9F /* GL_INT_2_10_10_10_REV */) {
+              sizeBytes = 4;
+              break;
+            } else if (dataType == 0x140B /* GL_HALF_FLOAT */) {
+              sizeBytes = 2;
+              break;
+            } else {
+              // else fall through
+            }
           }
 #endif
           console.error('Invalid vertex attribute data type GLenum ' + dataType + ' passed to GL function!');
@@ -508,12 +562,50 @@ var LibraryGL = {
       canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
       if (!ctx) {
         err('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
+        return 0;
       }
+#else
+      if (!ctx) return 0;
 #endif
+
+      var handle = GL.registerContext(ctx, webGLContextAttributes);
+
 #if TRACE_WEBGL_CALLS
-      if (ctx) GL.hookWebGL(ctx);
+      GL.hookWebGL(ctx);
 #endif
-      return ctx ? GL.registerContext(ctx, webGLContextAttributes) : 0;
+
+#if GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
+      function disableHalfFloatExtensionIfBroken(ctx) {
+        var t = ctx.createTexture();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, t);
+        for (var i = 0; i < 8 && ctx.getError(); ++i) /*no-op*/;
+        var ext = ctx.getExtension('OES_texture_half_float');
+        if (!ext) return; // no half-float extension - nothing needed to fix.
+        // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do not allow uploading pixel data to half float textures,
+        // rendering them useless.
+        // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+        // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
+        ctx.texImage2D(0x0de1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
+        var broken = ctx.getError();
+        ctx.bindTexture(0x0de1/*GL_TEXTURE_2D*/, null);
+        ctx.deleteTexture(t);
+        if (broken) {
+          ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
+          ctx.getSupportedExtensions = function() {
+#if GL_ASSERTIONS
+            warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
+#endif
+            // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+            return (this.realGetSupportedExtensions() || []).filter(function(ext) {
+              return ext.indexOf('texture_half_float') == -1;
+            });
+          }
+        }
+      }
+      disableHalfFloatExtensionIfBroken(ctx);
+#endif
+
+      return handle;
     },
 
 #if OFFSCREEN_FRAMEBUFFER
@@ -938,7 +1030,10 @@ var LibraryGL = {
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",
                                              "WEBGL_compressed_texture_etc", "WEBGL_compressed_texture_astc", "EXT_color_buffer_float",
-                                             "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2"];
+                                             "WEBGL_compressed_texture_s3tc_srgb", "EXT_disjoint_timer_query_webgl2",
+                                             // Old style prefixed forms of extensions (but still currently used on e.g. iPhone Xs as
+                                             // tested on iOS 12.4.1):
+                                             "WEBKIT_WEBGL_compressed_texture_pvrtc"];
 
       function shouldEnableAutomatically(extension) {
         var ret = false;
@@ -950,14 +1045,12 @@ var LibraryGL = {
         return ret;
       }
 
-      var exts = GLctx.getSupportedExtensions();
-      if (exts && exts.length > 0) {
-        GLctx.getSupportedExtensions().forEach(function(ext) {
-          if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
-            GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
-          }
-        });
-      }
+      var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+      exts.forEach(function(ext) {
+        if (automaticallyEnabledExtensions.indexOf(ext) != -1) {
+          GLctx.getExtension(ext); // Calling .getExtension enables that extension permanently, no need to store the return value to be enabled.
+        }
+      });
     },
 
     // In WebGL, uniforms in a shader program are accessed through an opaque object type 'WebGLUniformLocation'.
@@ -1031,15 +1124,11 @@ var LibraryGL = {
     var ret;
     switch(name_) {
       case 0x1F03 /* GL_EXTENSIONS */:
-        var exts = GLctx.getSupportedExtensions();
-        var gl_exts = [];
-        for (var i = 0; i < exts.length; ++i) {
-          gl_exts.push(exts[i]);
+        var exts = GLctx.getSupportedExtensions() || []; // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          gl_exts.push("GL_" + exts[i]);
+        exts = exts.concat(exts.map(function(e) { return "GL_" + e; }));
 #endif
-        }
-        ret = stringToNewUTF8(gl_exts.join(' '));
+        ret = stringToNewUTF8(exts.join(' '));
         break;
       case 0x1F00 /* GL_VENDOR */:
       case 0x1F01 /* GL_RENDERER */:
@@ -1142,16 +1231,13 @@ var LibraryGL = {
           return;
         }
 #endif
-        var exts = GLctx.getSupportedExtensions();
-        if (exts === null) {
-          ret = 0;
-        } else {
+        // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
+        var exts = GLctx.getSupportedExtensions() || [];
 #if GL_EXTENSIONS_IN_PREFIXED_FORMAT
-          ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
+        ret = 2 * exts.length; // each extension is duplicated, first in unprefixed WebGL form, and then a second time with "GL_" prefix.
 #else
-          ret = exts.length;
+        ret = exts.length;
 #endif
-        }
         break;
       case 0x821B: // GL_MAJOR_VERSION
       case 0x821C: // GL_MINOR_VERSION
@@ -1331,118 +1417,57 @@ var LibraryGL = {
     return height * alignedRowSize;
   },
 
-  _colorChannelsInGlTextureFormat: {
-    0x1906 /* GL_ALPHA */: 1,
-    0x1909 /* GL_LUMINANCE */: 1,
-    0x1902 /* GL_DEPTH_COMPONENT */: 1,
-    0x190A /* GL_LUMINANCE_ALPHA */: 2,
-    0x1907 /* GL_RGB */: 3,
-    0x8C40 /* GL_SRGB_EXT */: 3,
-    0x1908 /* GL_RGBA */: 4,
-    0x8C42 /* GL_SRGB_ALPHA_EXT */: 4,
+  _colorChannelsInGlTextureFormat: function(format) {
+    // Micro-optimizations for size: map format to size by subtracting smallest enum value (0x1902) from all values first.
+    // Also omit the most common size value (1) from the list, which is assumed by formats not on the list.
+    var colorChannels = {
+      // 0x1902 /* GL_DEPTH_COMPONENT */ - 0x1902: 1,
+      // 0x1906 /* GL_ALPHA */ - 0x1902: 1,
+      {{{ 0x1907 /* GL_RGB */ - 0x1902 }}}: 3,
+      {{{ 0x1908 /* GL_RGBA */ - 0x1902 }}}: 4,
+      // 0x1909 /* GL_LUMINANCE */ - 0x1902: 1,
+      {{{ 0x190A /*GL_LUMINANCE_ALPHA*/ - 0x1902 }}}: 2,
+      {{{ 0x8C40 /*(GL_SRGB_EXT)*/ - 0x1902 }}}: 3,
+      {{{ 0x8C42 /*(GL_SRGB_ALPHA_EXT*/ - 0x1902 }}}: 4,
 #if USE_WEBGL2
-    0x1903 /* GL_RED */: 1,
-    0x8D94 /* GL_RED_INTEGER */: 1,
-    0x8227 /* GL_RG */: 2,
-    0x8228 /* GL_RG_INTEGER*/: 2,
-    0x8D98 /* GL_RGB_INTEGER */: 3,
-    0x8D99 /* GL_RGBA_INTEGER */: 4
+      // 0x1903 /* GL_RED */ - 0x1902: 1,
+      {{{ 0x8227 /*GL_RG*/ - 0x1902 }}}: 2,
+      {{{ 0x8228 /*GL_RG_INTEGER*/ - 0x1902 }}}: 2,
+      // 0x8D94 /* GL_RED_INTEGER */ - 0x1902: 1,
+      {{{ 0x8D98 /*GL_RGB_INTEGER*/ - 0x1902 }}}: 3,
+      {{{ 0x8D99 /*GL_RGBA_INTEGER*/ - 0x1902 }}}: 4
 #endif
+    };
+#if GL_ASSERTIONS
+    if (!colorChannels[format - 0x1902]
+      && format != 0x1902 /* GL_DEPTH_COMPONENT */
+      && format != 0x1906 /* GL_ALPHA */
+      && format != 0x1909 /* GL_LUMINANCE */
+      && format != 0x1903 /* GL_RED */
+      && format != 0x8D94 /* GL_RED_INTEGER */) {
+      err('Invalid format=0x' + format.toString(16) + ' passed to function _colorChannelsInGlTextureFormat()!');
+    }
+#endif
+    return colorChannels[format - 0x1902]||1;
   },
 
-  _sizeOfGlTextureElementType: {
-    0x1401 /* GL_UNSIGNED_BYTE */: 1,
-    0x1403 /* GL_UNSIGNED_SHORT */: 2,
-    0x8D61 /* GL_HALF_FLOAT_OES */: 2,
-    0x1405 /* GL_UNSIGNED_INT */: 4,
-    0x1406 /* GL_FLOAT */: 4,
-    0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */: 4,
-    0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */: 2,
-    0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */: 2,
-    0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */: 2,
-#if USE_WEBGL2
-    0x1400 /* GL_BYTE */: 1,
-    0x140B /* GL_HALF_FLOAT */: 2,
-    0x1402 /* GL_SHORT */: 2,
-    0x1404 /* GL_INT */: 4,
-    0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */: 4,
-    0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */: 4,
-    0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */: 4,
-#endif
-  },
-
-  $emscriptenWebGLGetTexPixelData__deps: ['_computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '_sizeOfGlTextureElementType'],
+  $emscriptenWebGLGetTexPixelData__deps: ['_computeUnpackAlignedImageSize', '_colorChannelsInGlTextureFormat', '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'],
   $emscriptenWebGLGetTexPixelData: function(type, format, width, height, pixels, internalFormat) {
-    var sizePerPixel = __colorChannelsInGlTextureFormat[format] * __sizeOfGlTextureElementType[type];
-    if (!sizePerPixel) {
-      GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-      if (!__colorChannelsInGlTextureFormat[format]) err('GL_INVALID_ENUM due to unknown format in glTex[Sub]Image/glReadPixels, format: ' + format);
-      else err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type + ', format: ' + format);
-#endif
-      return;
-    }
+    var heap = __heapObjectForWebGLType(type);
+    var shift = __heapAccessShiftForWebGLHeap(heap);
+    var byteSize = 1<<shift;
+    var sizePerPixel = __colorChannelsInGlTextureFormat(format) * byteSize;
     var bytes = __computeUnpackAlignedImageSize(width, height, sizePerPixel, GL.unpackAlignment);
-    var end = pixels + bytes;
-    switch(type) {
-#if USE_WEBGL2
-      case 0x1400 /* GL_BYTE */:
-        return HEAP8.subarray(pixels, end);
-#endif
-      case 0x1401 /* GL_UNSIGNED_BYTE */:
-        return HEAPU8.subarray(pixels, end);
-#if USE_WEBGL2
-      case 0x1402 /* GL_SHORT */:
 #if GL_ASSERTIONS
-        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
+    assert((pixels >> shift) << shift == pixels, 'Pointer to texture data passed to texture get function must be aligned to the byte size of the pixel type!');
 #endif
-        return HEAP16.subarray(pixels>>1, end>>1);
-      case 0x1404 /* GL_INT */:
-#if GL_ASSERTIONS
-        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
-#endif
-        return HEAP32.subarray(pixels>>2, end>>2);
-#endif
-      case 0x1406 /* GL_FLOAT */:
-#if GL_ASSERTIONS
-        assert((pixels & 3) == 0, 'Pointer to float data passed to texture get function must be aligned to four bytes!');
-#endif
-        return HEAPF32.subarray(pixels>>2, end>>2);
-      case 0x1405 /* GL_UNSIGNED_INT */:
-      case 0x84FA /* GL_UNSIGNED_INT_24_8_WEBGL/GL_UNSIGNED_INT_24_8 */:
-#if USE_WEBGL2
-      case 0x8C3E /* GL_UNSIGNED_INT_5_9_9_9_REV */:
-      case 0x8368 /* GL_UNSIGNED_INT_2_10_10_10_REV */:
-      case 0x8C3B /* GL_UNSIGNED_INT_10F_11F_11F_REV */:
-#endif
-#if GL_ASSERTIONS
-        assert((pixels & 3) == 0, 'Pointer to integer data passed to texture get function must be aligned to four bytes!');
-#endif
-        return HEAPU32.subarray(pixels>>2, end>>2);
-      case 0x1403 /* GL_UNSIGNED_SHORT */:
-      case 0x8363 /* GL_UNSIGNED_SHORT_5_6_5 */:
-      case 0x8033 /* GL_UNSIGNED_SHORT_4_4_4_4 */:
-      case 0x8034 /* GL_UNSIGNED_SHORT_5_5_5_1 */:
-      case 0x8D61 /* GL_HALF_FLOAT_OES */:
-#if USE_WEBGL2
-      case 0x140B /* GL_HALF_FLOAT */:
-#endif
-#if GL_ASSERTIONS
-        assert((pixels & 1) == 0, 'Pointer to int16 data passed to texture get function must be aligned to two bytes!');
-#endif
-        return HEAPU16.subarray(pixels>>1, end>>1);
-      default:
-        GL.recordError(0x0500); // GL_INVALID_ENUM
-#if GL_ASSERTIONS
-        err('GL_INVALID_ENUM in glTex[Sub]Image/glReadPixels, type: ' + type);
-#endif
-    }
+    return heap.subarray(pixels >> shift, pixels + bytes >> shift);
   },
 
   glTexImage2D__sig: 'viiiiiiiii',
   glTexImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
+                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'
 #endif
   ],
   glTexImage2D: function(target, level, internalFormat, width, height, border, format, type, pixels) {
@@ -1469,8 +1494,9 @@ var LibraryGL = {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
-      } else if (pixels != 0) {
-        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
+      } else if (pixels) {
+        var heap = __heapObjectForWebGLType(type);
+        GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
       } else {
         GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, null);
       }
@@ -1483,7 +1509,7 @@ var LibraryGL = {
   glTexSubImage2D__sig: 'viiiiiiiii',
   glTexSubImage2D__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                          , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
+                          , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'
 #endif
   ],
   glTexSubImage2D: function(target, level, xoffset, yoffset, width, height, format, type, pixels) {
@@ -1500,8 +1526,9 @@ var LibraryGL = {
       // WebGL 2 provides new garbage-free entry points to call to WebGL. Use those always when possible.
       if (GLctx.currentPixelUnpackBufferBinding) {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-      } else if (pixels != 0) {
-        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
+      } else if (pixels) {
+        var heap = __heapObjectForWebGLType(type);
+        GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
       } else {
         GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, null);
       }
@@ -1516,7 +1543,7 @@ var LibraryGL = {
   glReadPixels__sig: 'viiiiiii',
   glReadPixels__deps: ['$emscriptenWebGLGetTexPixelData'
 #if USE_WEBGL2
-                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLType'
+                       , '_heapObjectForWebGLType', '_heapAccessShiftForWebGLHeap'
 #endif
   ],
   glReadPixels: function(x, y, width, height, format, type, pixels) {
@@ -1525,7 +1552,8 @@ var LibraryGL = {
       if (GLctx.currentPixelPackBufferBinding) {
         GLctx.readPixels(x, y, width, height, format, type, pixels);
       } else {
-        GLctx.readPixels(x, y, width, height, format, type, __heapObjectForWebGLType(type), pixels >> (__heapAccessShiftForWebGLType[type]|0));
+        var heap = __heapObjectForWebGLType(type);
+        GLctx.readPixels(x, y, width, height, format, type, heap, pixels >> __heapAccessShiftForWebGLHeap(heap));
       }
       return;
     }

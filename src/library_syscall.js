@@ -116,6 +116,9 @@ mergeInto(LibraryManager.library, {
       var node;
       var lookup = FS.lookupPath(path, { follow: true });
       node = lookup.node;
+      if (!node) {
+        return -{{{ cDefine('ENOENT') }}};
+      }
       var perms = '';
       if (amode & {{{ cDefine('R_OK') }}}) perms += 'r';
       if (amode & {{{ cDefine('W_OK') }}}) perms += 'w';
@@ -190,8 +193,10 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    getStreamFromFD: function() {
-      var stream = FS.getStream(SYSCALLS.get());
+    getStreamFromFD: function(fd) {
+      // TODO: when all syscalls use wasi, can remove the next line
+      if (fd === undefined) fd = SYSCALLS.get();
+      var stream = FS.getStream(fd);
       if (!stream) throw new FS.ErrnoError({{{ cDefine('EBADF') }}});
 #if SYSCALL_DEBUG
       err('    (stream: "' + stream.path + '")');

@@ -10,16 +10,6 @@
 #include <bits/errno.h>
 #include <stdlib.h>
 
-#if !defined(TEST_OFFSCREEN_CANVAS)
-// Defining EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES to empty string will cause no canvases to be transferred.
-#define EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES ""
-#elif TEST_OFFSCREEN_CANVAS == 1
-// Specifying #canvas should take Module.canvas to be transferred
-#define EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES "#canvas"
-#elif TEST_OFFSCREEN_CANVAS == 2
-// Leaving EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES undefined will also transfer the default Module.canvas object
-#endif
-
 int main()
 {
   if (!emscripten_supports_offscreencanvas())
@@ -32,7 +22,6 @@ int main()
   }
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.explicitSwapControl = EM_TRUE;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   printf("Created context with handle %u\n", (unsigned int)ctx);
   emscripten_webgl_make_context_current(ctx);
@@ -44,11 +33,13 @@ int main()
     color += 0.01;
     glClearColor(color, 0, 0, 1);
     glClear(GL_COLOR_BUFFER_BIT);
-    EMSCRIPTEN_RESULT r = emscripten_webgl_commit_frame();
-    assert(r == EMSCRIPTEN_RESULT_SUCCESS);
 
+#if ASYNCIFY
+    emscripten_sleep(16);
+#else
     double now = emscripten_get_now();
     while(emscripten_get_now() - now < 16) /*no-op*/;
+#endif
   }
 
   emscripten_webgl_make_context_current(0);

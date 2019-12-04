@@ -29,9 +29,11 @@
   "freelocale": ["free"],
   "nl_langinfo": ["malloc"],
   "inet_ntoa": ["malloc"],
-  "gethostbyname": ["malloc", "free", "htons"],
-  "gethostbyname_r": ["malloc", "free", "htons"],
+  "gethostbyname": ["malloc", "free", "htons", "ntohs"],
+  "gethostbyname_r": ["malloc", "free", "htons", "ntohs"],
   "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
+  "getnameinfo": ["htons", "ntohs"],
+  "getpeername": ["htons", "ntohs"],
   "_inet_ntop6_raw": ["ntohs"],
   "_read_sockaddr": ["ntohs"],
   "freeaddrinfo": ["free"],
@@ -73,6 +75,7 @@
   "bind": ["htonl", "htons", "ntohs"],
   "connect": ["htonl", "htons", "ntohs"],
   "socket": ["htonl", "htons", "ntohs"],
+  "socketpair": ["htons", "ntohs"],
   "sleep": ["usleep"],
   "recv": ["htons"],
   "send": ["htons"],
@@ -89,6 +92,7 @@
   "stringToNewUTF8": ["malloc"],
   "_embind_register_std_string": ["malloc", "free"],
   "_embind_register_std_wstring": ["malloc", "free"],
-  "__syscall192": ["emscripten_builtin_memalign"]
+  "__syscall192": ["emscripten_builtin_memalign"],
+  "pthread_create": ["malloc", "free"]
 }
 

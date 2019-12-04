@@ -62,4 +62,4 @@ _PC_FILESIZEBITS: 64
 errno: 0
 
 (invalid): -1
-errno: 22
+errno: 28

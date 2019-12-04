@@ -314,6 +314,42 @@ function loadDynamicLibrary(lib, flags) {
 }
 
 #if WASM
+// Applies relocations to exported things.
+function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
+  var relocated = {};
+
+  for (var e in exports) {
+    var value = exports[e];
+    if (typeof value === 'object') {
+      // a breaking change in the wasm spec, globals are now objects
+      // https://github.com/WebAssembly/mutable-global/issues/1
+      value = value.value;
+    }
+    if (typeof value === 'number') {
+      // relocate it - modules export the absolute value, they can't relocate before they export
+#if EMULATE_FUNCTION_POINTER_CASTS
+      // it may be a function pointer
+      if (e.substr(0, 3) == 'fp$' && typeof exports[e.substr(3)] === 'function') {
+        value = value + tableBase;
+      } else {
+#endif
+        value = value + memoryBase;
+#if EMULATE_FUNCTION_POINTER_CASTS
+      }
+#endif
+    }
+    relocated[e] = value;
+    if (moduleLocal) {
+#if WASM_BACKEND
+      moduleLocal['_' + e] = value;
+#else
+      moduleLocal[e] = value;
+#endif
+    }
+  }
+  return relocated;
+}
+
 // Loads a side module from binary data
 function loadWebAssemblyModule(binary, flags) {
   var int32View = new Uint32Array(new Uint8Array(binary.subarray(0, 24)).buffer);
@@ -400,16 +436,24 @@ function loadWebAssemblyModule(binary, flags) {
     // b) Symbols from loaded modules are not always added to the global Module.
     var moduleLocal = {};
 
-    var resolveSymbol = function(sym, type) {
+    var resolveSymbol = function(sym, type, legalized) {
+      if (legalized) {
+        sym = 'orig$' + sym;
+      }
+
+      var resolved = Module["asm"][sym];
+      if (!resolved) {
 #if WASM_BACKEND
-      sym = '_' + sym;
+        sym = '_' + sym;
 #endif
-      var resolved = Module[sym];
-      if (!resolved)
-        resolved = moduleLocal[sym];
+        resolved = Module[sym];
+        if (!resolved) {
+          resolved = moduleLocal[sym];
+        }
 #if ASSERTIONS
-      assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+        assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
 #endif
+     }
       return resolved;
     }
 
@@ -459,11 +503,12 @@ function loadWebAssemblyModule(binary, flags) {
           assert(parts.length == 3)
           var name = parts[1];
           var sig = parts[2];
+          var legalized = sig.indexOf('j') >= 0; // check for i64s
           var fp = 0;
           return obj[prop] = function() {
             if (!fp) {
-              var f = resolveSymbol(name, 'function');
-              fp = addFunctionWasm(f, sig);
+              var f = resolveSymbol(name, 'function', legalized);
+              fp = addFunction(f, sig);
             }
             return fp;
           };
@@ -481,13 +526,15 @@ function loadWebAssemblyModule(binary, flags) {
         };
       }
     };
+    var proxy = new Proxy(env, proxyHandler);
     var info = {
       global: {
         'NaN': NaN,
         'Infinity': Infinity,
       },
       'global.Math': Math,
-      env: new Proxy(env, proxyHandler),
+      env: proxy,
+      wasi_unstable: proxy,
       'asm2wasm': asm2wasmImports
     };
 #if ASSERTIONS
@@ -498,7 +545,6 @@ function loadWebAssemblyModule(binary, flags) {
 #endif
 
     function postInstantiation(instance, moduleLocal) {
-      var exports = {};
 #if ASSERTIONS
       // the table should be unchanged
       assert(table === originalTable);
@@ -512,33 +558,7 @@ function loadWebAssemblyModule(binary, flags) {
         assert(table.get(tableBase + i) !== undefined, 'table entry was not filled in');
       }
 #endif
-      for (var e in instance.exports) {
-        var value = instance.exports[e];
-        if (typeof value === 'object') {
-          // a breaking change in the wasm spec, globals are now objects
-          // https://github.com/WebAssembly/mutable-global/issues/1
-          value = value.value;
-        }
-        if (typeof value === 'number') {
-          // relocate it - modules export the absolute value, they can't relocate before they export
-#if EMULATE_FUNCTION_POINTER_CASTS
-          // it may be a function pointer
-          if (e.substr(0, 3) == 'fp$' && typeof instance.exports[e.substr(3)] === 'function') {
-            value = value + tableBase;
-          } else {
-#endif
-            value = value + memoryBase;
-#if EMULATE_FUNCTION_POINTER_CASTS
-          }
-#endif
-        }
-        exports[e] = value;
-#if WASM_BACKEND
-        moduleLocal['_' + e] = value;
-#else
-        moduleLocal[e] = value;
-#endif
-      }
+      var exports = relocateExports(instance.exports, memoryBase, tableBase, moduleLocal);
       // initialize the module
       var init = exports['__post_instantiate'];
       if (init) {
@@ -645,13 +665,31 @@ var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});
 
 #if WASM
 // Wraps a JS function as a wasm function with a given signature.
-// In the future, we may get a WebAssembly.Function constructor. Until then,
-// we create a wasm module that takes the JS function as an import with a given
-// signature, and re-exports that as a wasm function.
 function convertJsFunctionToWasm(func, sig) {
 #if WASM2JS
   return func;
 #else // WASM2JS
+
+  // If the type reflection proposal is available, use the new
+  // "WebAssembly.Function" constructor.
+  // Otherwise, construct a minimal wasm module importing the JS function and
+  // re-exporting it.
+  if (typeof WebAssembly.Function === "function") {
+    var typeNames = {
+      'i': 'i32',
+      'j': 'i64',
+      'f': 'f32',
+      'd': 'f64'
+    };
+    var type = {
+      parameters: [],
+      results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
+    };
+    for (var i = 1; i < sig.length; ++i) {
+      type.parameters.push(typeNames[sig[i]]);
+    }
+    return new WebAssembly.Function(type, func);
+  }
 
   // The module is static, with the exception of the type section, which is
   // generated based on the signature passed in.
@@ -705,11 +743,11 @@ function convertJsFunctionToWasm(func, sig) {
   // This accepts an import (at "e.f"), that it reroutes to an export (at "f")
   var module = new WebAssembly.Module(bytes);
   var instance = new WebAssembly.Instance(module, {
-    e: {
-      f: func
+    'e': {
+      'f': func
     }
   });
-  var wrappedFunc = instance.exports.f;
+  var wrappedFunc = instance.exports['f'];
   return wrappedFunc;
 #endif // WASM2JS
 }
@@ -753,10 +791,13 @@ function removeFunctionWasm(index) {
 // 'sig' parameter is required for the llvm backend but only when func is not
 // already a WebAssembly function.
 function addFunction(func, sig) {
+#if ASSERTIONS
+  assert(typeof func !== 'undefined');
 #if ASSERTIONS == 2
   if (typeof sig === 'undefined') {
     err('warning: addFunction(): You should provide a wasm function signature string as a second argument. This is not necessary for asm.js and asm2wasm, but can be required for the LLVM wasm backend, so it is recommended for full portability.');
   }
+#endif // ASSERTIONS == 2
 #endif // ASSERTIONS
 
 #if WASM_BACKEND

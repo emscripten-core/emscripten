@@ -45,8 +45,11 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
+#if MEMORYPROFILER
+    , DYNAMIC_BASE = {{{ getQuoted('DYNAMIC_BASE') }}}
+#endif
 #if USES_DYNAMIC_ALLOC
-    , DYNAMICTOP_PTR = {{{ makeStaticAlloc(4) }}}
+    , DYNAMICTOP_PTR = {{{ DYNAMICTOP_PTR }}};
 #endif
     ;
 
@@ -117,6 +120,20 @@ HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
 #endif
 
+#if WASM
+var wasmTable = new WebAssembly.Table({
+  'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#if !ALLOW_TABLE_GROWTH
+#if WASM_BACKEND
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}} + {{{ RESERVED_FUNCTION_POINTERS }}},
+#else
+  'maximum': {{{ getQuoted('WASM_TABLE_SIZE') }}},
+#endif
+#endif // WASM_BACKEND
+  'element': 'anyfunc'
+});
+#endif // WASM
+
 #include "runtime_stack_check.js"
 
 #if ASSERTIONS
@@ -132,5 +149,9 @@ var runtimeExited = false;
 #include "runtime_math.js"
 
 var memoryInitializer = null;
+
+#if MEMORYPROFILER
+#include "memoryprofiler.js"
+#endif
 
 // === Body ===

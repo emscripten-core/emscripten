@@ -121,6 +121,19 @@ that is:
 [site_repo]: https://github.com/kripken/emscripten-site
 
 
+Updating the `emcc.py` help text
+--------------------------------
+
+`emcc --help` output is generated from the main documentation under `site/`,
+so it is the same as shown on the website, but it is rendered to text. After
+updating `emcc.rst` in a PR, the following should be done:
+
+1. In your emscripten repo checkout, enter `site`.
+2. Run `make clean` (without this, it may not emit the right output).
+2. Run `make text`.
+3. Add the changes to your PR.
+
+
 Packaging Emscripten
 --------------------
 
@@ -192,9 +205,6 @@ the `.emscripten` file, which it does at the `activate step.) Some of the
 key values in that file include:
 
  * `LLVM_ROOT`: The path to the LLVM binaries.
- * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` there).
+ * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` under there; note that
+    despite the name this differs from `LLVM_ROOT` which points directly to the binaries).
  * `NODE_JS`: The path to Node.js, which is needed internally.
- * `TEMP_DIR`: The default temp directory.
- * `COMPILER_ENGINE`: The VM used internally for the JS compiler. Normally this should be `NODE_JS`.
- * `JS_ENGINES`: The full list of JS engines (or just `[NODE_JS]`). Used in the test suite.
-

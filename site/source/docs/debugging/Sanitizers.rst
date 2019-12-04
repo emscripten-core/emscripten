@@ -4,6 +4,14 @@
 Debugging with Sanitizers
 =========================
 
+.. warning::
+
+  Sanitizers can only be used with the upstream wasm backend. If you are
+  using fastcomp, you need to upgrade before sanitizers will work.
+  See here__ for instructions.
+
+__ https://v8.dev/blog/emscripten-llvm-wasm#testing
+
 .. _sanitizer_ubsan:
 
 Undefined Behaviour Sanitizer
@@ -127,6 +135,8 @@ you will receive an error message that looks something like:
   compile with  -s ALLOW_MEMORY_GROWTH=1  which allows increasing the size at
   runtime, or (3) if you want malloc to return NULL (0) instead of this abort,
   compile with  -s ABORTING_MALLOC=0
+
+ASan fully supports multi-thread environments.
 
 Examples
 --------
@@ -322,3 +332,40 @@ can cause traps. Hence, it is not enabled by default.
         (longjmp and C++ exceptions *are* supported)
   SUMMARY: AddressSanitizer: stack-use-after-return (a.out.wasm+0xd8f)
   ...
+
+Configuration
+-------------
+
+ASan can be configured via a ``--pre-js`` file:
+
+.. code-block:: javascript
+
+  Module.ASAN_OPTIONS = 'option1=a:option2=b';
+
+For example, put the above snippet with your options into ``asan_options.js``,
+and compile with ``--pre-js asan_options.js``.
+
+For standalone LSan, use ``Module.LSAN_OPTIONS`` instead.
+
+For a detailed understanding of the flags, see the `ASan documentation`__.
+Please be warned that most flag combinations are not tested and may or may not
+work.
+
+__ https://github.com/google/sanitizers/wiki/AddressSanitizerFlags#run-time-flags
+
+Disabling ``malloc``/``free`` Stack Traces
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In a program that uses ``malloc``/``free`` (or their C++ equivalent,
+``operator new``/``operator delete``) very frequently, taking a stack trace at
+all invocations to ``malloc``/``free`` can be very expensive. As a result, if
+you find your program to be very slow when using ASan, you can try using the
+option ``malloc_context_size=0``, like this:
+
+.. code-block:: javascript
+
+  Module.ASAN_OPTIONS = 'malloc_context_size=0';
+
+This prevents ASan from reporting the location of memory leaks, as well as
+offer insight into where the memory for a heap-based memory error originated,
+but may provide tremendous speed ups.

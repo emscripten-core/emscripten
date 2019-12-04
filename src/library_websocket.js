@@ -109,6 +109,7 @@ var LibraryWebSocket = {
 #endif
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
+    HEAPU32[urlLength>>2] = lengthBytesUTF8(socket.url);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 

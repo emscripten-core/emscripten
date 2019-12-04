@@ -106,6 +106,7 @@ extern struct ps_strings *__ps_strings;
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten/threading.h>
 #include <math.h>
+#include <wasi/wasi.h>
 #endif
 
 extern char **environ;
@@ -207,7 +208,11 @@ int internal_mprotect(void *addr, uptr length, int prot) {
 #endif
 
 uptr internal_close(fd_t fd) {
+#ifdef __EMSCRIPTEN__
+  return __wasi_fd_close(fd);
+#else
   return internal_syscall(SYSCALL(close), fd);
+#endif
 }
 
 uptr internal_open(const char *filename, int flags) {
@@ -434,7 +439,6 @@ uptr internal_rename(const char *oldpath, const char *newpath) {
 
 uptr internal_sched_yield() {
 #if SANITIZER_EMSCRIPTEN
-  Report("WARNING: sched_yield doesn't do anything on emscripten");
   return 0;
 #else
   return internal_syscall(SYSCALL(sched_yield));

@@ -51,7 +51,7 @@ extern "C" {
 #define EMSCRIPTEN_FETCH_SYNCHRONOUS 64
 
 // If specified, it will be possible to call emscripten_fetch_wait() on the fetch
-// to test or wair for its completion.
+// to test or wait for its completion.
 #define EMSCRIPTEN_FETCH_WAITABLE 128
 
 struct emscripten_fetch_t;

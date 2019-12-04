@@ -44,9 +44,12 @@ def get(ports, settings, shared):
     if 'png' in settings.SDL2_IMAGE_FORMATS:
       defs += ['-s', 'USE_LIBPNG=1']
 
+    if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+      defs += ['-s', 'USE_LIBJPEG=1']
+
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_image', src + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
+      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)
@@ -66,6 +69,8 @@ def process_dependencies(settings):
     settings.USE_SDL = 2
   if 'png' in settings.SDL2_IMAGE_FORMATS:
     settings.USE_LIBPNG = 1
+  if 'jpg' in settings.SDL2_IMAGE_FORMATS:
+    settings.USE_LIBJPEG = 1
 
 
 def process_args(ports, args, settings, shared):

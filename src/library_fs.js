@@ -540,6 +540,13 @@ mergeInto(LibraryManager.library, {
       });
     },
     mount: function(type, opts, mountpoint) {
+#if ASSERTIONS
+      if (typeof type === 'string') {
+        // The filesystem was not included, and instead we have an error
+        // message stored in the variable.
+        throw type;
+      }
+#endif
       var root = mountpoint === '/';
       var pseudo = !mountpoint;
       var node;
@@ -1117,7 +1124,7 @@ mergeInto(LibraryManager.library, {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
-      if (whence != 0 /* SEEK_SET */ && whence != 1 /* SEEK_CUR */ && whence != 2 /* SEEK_END */) {
+      if (whence != {{{ cDefine('SEEK_SET') }}} && whence != {{{ cDefine('SEEK_CUR') }}} && whence != {{{ cDefine('SEEK_END') }}}) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
@@ -1433,11 +1440,16 @@ mergeInto(LibraryManager.library, {
 #else
         this.message = 'FS error';
 #endif
-        // Node.js compatibility: assigning on this.stack fails on Node 4 (but fixed on Node 8)
-        if (this.stack) Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
-#if ASSERTIONS && !MINIMAL_RUNTIME // TODO: Migrate demangling support to a JS library, and add deps to it here to enable demangle in MINIMAL_RUNTIME
-        if (this.stack) this.stack = demangleAll(this.stack);
-#endif
+
+#if ASSERTIONS && !MINIMAL_RUNTIME
+        // Try to get a maximally helpful stack trace. On Node.js, getting Error.stack
+        // now ensures it shows what we want.
+        if (this.stack) {
+          // Define the stack property for Node.js 4, which otherwise errors on the next line.
+          Object.defineProperty(this, "stack", { value: (new Error).stack, writable: true });
+          this.stack = demangleAll(this.stack);
+        }
+#endif // ASSERTIONS
       };
       FS.ErrnoError.prototype = new Error();
       FS.ErrnoError.prototype.constructor = FS.ErrnoError;

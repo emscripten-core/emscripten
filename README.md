@@ -2,14 +2,27 @@
 
 [![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/incoming)
 
-Emscripten is an [LLVM](https://en.wikipedia.org/wiki/LLVM)-to-JavaScript compiler. It takes LLVM bitcode - which can be generated
-from C/C++, using `llvm-gcc` (DragonEgg) or `clang`, or any other language that can be
-converted into LLVM - and compiles that into JavaScript, which can be run on the web (or
-anywhere else JavaScript can run).
-
-Links to **demos**, **tutorial**, **FAQ**, etc: <https://github.com/emscripten-core/emscripten/wiki>
-
 Main project page: <http://emscripten.org>
+
+Overview
+--------
+
+Emscripten compiles C and C++ to [WebAssembly](https://webassembly.org/) using
+[LLVM](https://en.wikipedia.org/wiki/LLVM) and
+[Binaryen](https://github.com/WebAssembly/binaryen/). Emscripten output can run
+on the Web, in Node.js, and in
+[wasm runtimes](https://v8.dev/blog/emscripten-standalone-wasm#running-in-wasm-runtimes).
+
+Emscripten provides Web support for popular portable APIs such as OpenGL and
+SDL2, allowing complex graphical native applications to be ported, such as
+the [Unity game engine](https://docs.unity3d.com/Manual/webgl-gettingstarted.html)
+and [Google Earth](https://blog.chromium.org/2019/06/webassembly-brings-google-earth-to-more.html).
+It can probably port your codebase, too!
+
+While Emscripten mostly focuses on compiling C and C++ using
+[Clang](https://clang.llvm.org/), it can be integrated with other LLVM-using
+compilers (for example, Rust has Emscripten integration, with the
+`wasm32-unknown-emscripten` and `asmjs-unknown-emscripten` targets).
 
 License
 -------

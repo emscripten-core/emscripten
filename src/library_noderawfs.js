@@ -5,7 +5,7 @@
 
 mergeInto(LibraryManager.library, {
   $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS'],
-  $NODERAWFS__postset: 'if (ENVIRONMENT_IS_NODE) {' +
+  $NODERAWFS__postset: 'if (ENVIRONMENT_HAS_NODE) {' +
     'var _wrapNodeError = function(func) { return function() { try { return func.apply(this, arguments) } catch (e) { if (!e.code) throw e; throw new FS.ErrnoError(ERRNO_CODES[e.code]); } } };' +
     'var VFS = Object.assign({}, FS);' +
     'for (var _key in NODERAWFS) FS[_key] = _wrapNodeError(NODERAWFS[_key]);' +
@@ -70,11 +70,11 @@ mergeInto(LibraryManager.library, {
         return VFS.llseek(stream, offset, whence);
       }
       var position = offset;
-      if (whence === 1) {  // SEEK_CUR.
+      if (whence === {{{ cDefine('SEEK_CUR') }}}) {
         position += stream.position;
-      } else if (whence === 2) {  // SEEK_END.
+      } else if (whence === {{{ cDefine('SEEK_END') }}}) {
         position += fs.fstatSync(stream.nfd).size;
-      } else if (whence !== 0) {  // SEEK_SET.
+      } else if (whence !== {{{ cDefine('SEEK_SET') }}}) {
         throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
       }
 

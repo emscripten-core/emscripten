@@ -220,8 +220,8 @@ var LibraryEmVal = {
     }
     if (typeof global === 'object' && testGlobal(global)) {
       $$$embind_global$$$ = global;
-    } else if (typeof window === 'object' && testGlobal(window)) {
-      $$$embind_global$$$ = window;
+    } else if (typeof self === 'object' && testGlobal(self)) {
+      $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
     }
     if (typeof $$$embind_global$$$ === 'object') {
       return $$$embind_global$$$;
@@ -455,6 +455,18 @@ var LibraryEmVal = {
     return object instanceof constructor;
   },
   
+  _emval_is_number__deps: ['$requireHandle'],
+  _emval_is_number: function(handle) {
+    handle = requireHandle(handle);
+    return typeof handle === 'number';
+  },
+
+  _emval_is_string__deps: ['$requireHandle'],
+  _emval_is_string: function(handle) {
+    handle = requireHandle(handle);
+    return typeof handle === 'string';
+  },
+
   _emval_in__deps: ['$requireHandle'],
   _emval_in: function(item, object) {
     item = requireHandle(item);
