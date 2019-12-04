@@ -846,7 +846,6 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled.
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
