@@ -10,6 +10,10 @@ import shutil
 TAG = 'version_7'
 HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
 
+def get_lib_name(ports, settings):
+  return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else '') +
+                            ('-noexcept' if settings.DISABLE_EXCEPTION_CATCHING else ''))
+
 
 def get(ports, settings, shared):
   if settings.USE_REGAL != 1:
@@ -17,8 +21,6 @@ def get(ports, settings, shared):
 
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else '') + (
-    '-noexcept' if settings.DISABLE_EXCEPTION_CATCHING else ''))
 
   def create():
     logging.info('building port: regal')
@@ -134,17 +136,15 @@ def get(ports, settings, shared):
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'regal', libname)
+    final = os.path.join(ports.get_build_dir(), 'regal', get_lib_name(ports, settings))
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
 
 
 def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libregal' +
-                                             ('-mt' if shared.Settings.USE_PTHREADS else '') +
-                                             ('-noexcept' if shared.Settings.DISABLE_EXCEPTION_CATCHING else '')))
+  shared.Cache.erase_file(get_lib_name(ports, shared.Settings)
 
 
 def process_dependencies(settings):
