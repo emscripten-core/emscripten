@@ -47,7 +47,7 @@ int main() {
         wakeUp(total);
       }, 0);
     };
-    AsyncFSImpl.llseek = function(fd, offset_high, offset_low, result, whence, wakeUp) {
+    AsyncFSImpl.llseek = function(fd, offset_high, offset_low, whence, wakeUp) {
       setTimeout(function() {
         wakeUp(0);
       }, 0);

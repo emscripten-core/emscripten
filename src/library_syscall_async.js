@@ -117,19 +117,28 @@ var SyscallsLibraryAsync = {
 
   fd_write: function(fd, iov, iovcnt, pnum) {
     return Asyncify.handleSleep(function(wakeUp) {
-      AsyncFSImpl.writev(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
+      AsyncFSImpl.writev(fd, AsyncFS.getIovs(iov, iovcnt), function(result) {
+        {{{ makeSetValue('pnum', 0, 'result', 'i32') }}}
+        wakeUp();
+      });
     });
   },
 
   fd_read: function(fd, iov, iovcnt, pnum) {
     return Asyncify.handleSleep(function(wakeUp) {
-      AsyncFSImpl.readv(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
+      AsyncFSImpl.readv(fd, AsyncFS.getIovs(iov, iovcnt), function(result) {
+        {{{ makeSetValue('pnum', 0, 'result', 'i32') }}}
+        wakeUp();
+      });
     });
   },
 
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
     return Asyncify.handleSleep(function(wakeUp) {
-      AsyncFSImpl.llseek(fd, offset_high, offset_low, newOffset, whence, wakeUp);
+      AsyncFSImpl.llseek(fd, offset_high, offset_low, whence, function(result) {
+        {{{ makeSetValue('newOffset', 0, 'result', 'i32') }}}
+        wakeUp();
+      });
     });
   },
 

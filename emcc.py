@@ -1720,7 +1720,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             if shared.Settings.USE_PTHREADS:
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
             if shared.Settings.ASYNCFS:
-              shared.Settings.ASYNCIFY_IMPORTS += ['__syscall*', 'fd_read', 'fd_write', 'fd_seek', 'fd_close']
+              shared.Settings.ASYNCIFY_IMPORTS += ['__syscall*', 'wasi_unstable.fd_read', 'wasi_unstable.fd_write', 'wasi_unstable.fd_seek', 'wasi_unstable.fd_close']
             if shared.Settings.ASYNCIFY_IMPORTS:
               # return the full import name, including module. The name may
               # already have a module prefix; if not, we assume it is "env".
