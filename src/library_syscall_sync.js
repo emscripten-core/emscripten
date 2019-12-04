@@ -89,17 +89,6 @@ var SyscallsSyncLibrary = {
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
-  __syscall6: function(which, varargs) { // close
-    var stream = SYSCALLS.getStreamFromFD();
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    FS.close(stream);
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
-    return 0;
-  },
   __syscall9: function(which, varargs) { // link
     var oldpath = SYSCALLS.get(), newpath = SYSCALLS.get();
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
@@ -511,7 +500,12 @@ var SyscallsSyncLibrary = {
 
         return bytesRead;
       }
-      default: abort('unsupported socketcall syscall ' + call);
+      default: {
+#if SYSCALL_DEBUG
+        err('    (socketcall: ' + call + ')');
+#endif
+        return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
+      }
     }
   },
   __syscall104: function(which, varargs) { // setitimer
@@ -519,52 +513,6 @@ var SyscallsSyncLibrary = {
   },
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
-  },
-#if EMTERPRETIFY_ASYNC
-  __syscall118__deps: ['$EmterpreterAsync'],
-#endif
-  __syscall118: function(which, varargs) { // fsync
-    var stream = SYSCALLS.getStreamFromFD();
-#if EMTERPRETIFY_ASYNC
-    return EmterpreterAsync.handle(function(resume) {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        resume(function() { return 0 });
-        return;
-      }
-      mount.type.syncfs(mount, false, function(err) {
-        if (err) {
-          resume(function() { return -{{{ cDefine('EIO') }}} });
-          return;
-        }
-        resume(function() { return 0 });
-      });
-    });
-#else
-#if WASM_BACKEND && ASYNCIFY
-    return Asyncify.handleSleep(function(wakeUp) {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        wakeUp(0);
-        return;
-      }
-      mount.type.syncfs(mount, false, function(err) {
-        if (err) {
-          wakeUp(function() { return -{{{ cDefine('EIO') }}} });
-          return;
-        }
-        wakeUp(0);
-      });
-    });
-#else
-    if (stream.stream_ops && stream.stream_ops.fsync) {
-      return -stream.stream_ops.fsync(stream);
-    }
-    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // WASM_BACKEND && ASYNCIFY
-#endif // EMTERPRETIFY_ASYNC
   },
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
@@ -596,29 +544,6 @@ var SyscallsSyncLibrary = {
   __syscall133: function(which, varargs) { // fchdir
     var stream = SYSCALLS.getStreamFromFD();
     FS.chdir(stream.path);
-    return 0;
-  },
-  __syscall140: function(which, varargs) { // llseek
-    var stream = SYSCALLS.getStreamFromFD(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var HIGH_OFFSET = 0x100000000; // 2^32
-    // use an unsigned operator on low and shift high by 32-bits
-    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
-
-    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
-    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
-    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
-      return -{{{ cDefine('EOVERFLOW') }}};
-    }
-
-    FS.llseek(stream, offset, whence);
-    {{{ makeSetValue('result', '0', 'stream.position', 'i64') }}};
-    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
     return 0;
   },
   __syscall142: function(which, varargs) { // newselect
@@ -710,43 +635,6 @@ var SyscallsSyncLibrary = {
     if (!info) return 0;
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
     return 0;
-  },
-  __syscall145: function(which, varargs) { // readv
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    return SYSCALLS.doReadv(stream, iov, iovcnt);
-  },
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  $flush_NO_FILESYSTEM: function() {
-    // flush anything remaining in the buffers during shutdown
-    var fflush = Module["_fflush"];
-    if (fflush) fflush(0);
-    var buffers = SYSCALLS.buffers;
-    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
-    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
-  },
-  __syscall146__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
-  __syscall146__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
-#endif
-#endif
-  __syscall146: function(which, varargs) { // writev
-#if SYSCALLS_REQUIRE_FILESYSTEM
-    var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    return SYSCALLS.doWritev(stream, iov, iovcnt);
-#else
-    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
-    var stream = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-    var ret = 0;
-    for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
-      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
-      for (var j = 0; j < len; j++) {
-        SYSCALLS.printChar(stream, HEAPU8[ptr+j]);
-      }
-      ret += len;
-    }
-    return ret;
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall147__deps: ['$PROCINFO'],
   __syscall147: function(which, varargs) { // getsid
@@ -1242,6 +1130,144 @@ var SyscallsSyncLibrary = {
 #endif
     return 0;
   },
+
+  // WASI (WebAssembly System Interface) I/O support.
+  // This is the set of syscalls that use the FS etc. APIs. The rest is in
+  // library_wasi.js.
+
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  $flush_NO_FILESYSTEM: function() {
+    // flush anything remaining in the buffers during shutdown
+    var fflush = Module["_fflush"];
+    if (fflush) fflush(0);
+    var buffers = SYSCALLS.buffers;
+    if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
+    if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
+  },
+  fd_write__deps: ['$flush_NO_FILESYSTEM'],
+#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
+  fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
+#endif
+#endif
+  fd_write: function(fd, iov, iovcnt, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var num = SYSCALLS.doWritev(stream, iov, iovcnt);
+#else
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+    var num = 0;
+    for (var i = 0; i < iovcnt; i++) {
+      var ptr = {{{ makeGetValue('iov', 'i*8', 'i32') }}};
+      var len = {{{ makeGetValue('iov', 'i*8 + 4', 'i32') }}};
+      for (var j = 0; j < len; j++) {
+        SYSCALLS.printChar(fd, HEAPU8[ptr+j]);
+      }
+      num += len;
+    }
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
+  fd_close: function(fd) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    FS.close(stream);
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
+    return 0;
+  },
+  fd_read: function(fd, iov, iovcnt, pnum) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var num = SYSCALLS.doReadv(stream, iov, iovcnt);
+    {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+    return 0;
+  },
+  fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    var HIGH_OFFSET = 0x100000000; // 2^32
+    // use an unsigned operator on low and shift high by 32-bits
+    var offset = offset_high * HIGH_OFFSET + (offset_low >>> 0);
+
+    var DOUBLE_LIMIT = 0x20000000000000; // 2^53
+    // we also check for equality since DOUBLE_LIMIT + 1 == DOUBLE_LIMIT
+    if (offset <= -DOUBLE_LIMIT || offset >= DOUBLE_LIMIT) {
+      return -{{{ cDefine('EOVERFLOW') }}};
+    }
+
+    FS.llseek(stream, offset, whence);
+    {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
+    if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
+    return 0;
+  },
+  fd_fdstat_get: function(fd, pbuf) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+    // All character devices are terminals (other things a Linux system would
+    // assume is a character device, like the mouse, we have special APIs for).
+    var type = stream.tty ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} :
+               FS.isDir(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_DIRECTORY') }}} :
+               FS.isLink(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_SYMBOLIC_LINK') }}} :
+               {{{ cDefine('__WASI_FILETYPE_REGULAR_FILE') }}};
+    {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, '?', 'i64') }}};
+    // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_inheriting, '?', 'i64') }}};
+    return 0;
+  },
+#if EMTERPRETIFY_ASYNC
+  fd_sync__deps: ['$EmterpreterAsync'],
+#endif
+  fd_sync: function(fd) {
+    var stream = SYSCALLS.getStreamFromFD(fd);
+#if EMTERPRETIFY_ASYNC
+    return EmterpreterAsync.handle(function(resume) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        resume(function() { return 0 });
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          resume(function() { return {{{ cDefine('EIO') }}} });
+          return;
+        }
+        resume(function() { return 0 });
+      });
+    });
+#else
+#if WASM_BACKEND && ASYNCIFY
+    return Asyncify.handleSleep(function(wakeUp) {
+      var mount = stream.node.mount;
+      if (!mount.type.syncfs) {
+        // We write directly to the file system, so there's nothing to do here.
+        wakeUp(0);
+        return;
+      }
+      mount.type.syncfs(mount, false, function(err) {
+        if (err) {
+          wakeUp(function() { return {{{ cDefine('EIO') }}} });
+          return;
+        }
+        wakeUp(0);
+      });
+    });
+#else
+    if (stream.stream_ops && stream.stream_ops.fsync) {
+      return -stream.stream_ops.fsync(stream);
+    }
+    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
+#endif // WASM_BACKEND && ASYNCIFY
+#endif // EMTERPRETIFY_ASYNC
+  },
 };
 
 if (SYSCALL_DEBUG) {
@@ -1597,17 +1623,48 @@ if (SYSCALL_DEBUG) {
   }
 }
 
+var WASI_SYSCALLS = set([
+  'fd_write',
+  'fd_close',
+  'fd_read',
+  'fd_seek',
+  'fd_fdstat_get',
+  'fd_sync',
+]);
+
+// Fallback for cases where the wasi_unstable.name prefixing fails,
+// and we have the full name from C. This happens in fastcomp which
+// lacks the attribute to set the import module and base names.
+if (!WASM_BACKEND) {
+  for (var x in WASI_SYSCALLS) {
+    SyscallsSyncLibrary['__wasi_' + x] = x;
+  }
+}
+
 for (var x in SyscallsSyncLibrary) {
+  var which = null; // if this is a musl syscall, its number
   var m = /^__syscall(\d+)$/.exec(x);
-  if (!m) continue;
-  var which = +m[1];
+  var wasi = false;
+  if (m) {
+    which = +m[1];
+  } else if (x in WASI_SYSCALLS) {
+    wasi = true;
+  } else {
+    continue;
+  }
   var t = SyscallsSyncLibrary[x];
   if (typeof t === 'string') continue;
   t = t.toString();
   var pre = '', post = '';
-  pre += 'SYSCALLS.varargs = varargs;\n';
+  if (which) {
+    pre += 'SYSCALLS.varargs = varargs;\n';
+  }
 #if SYSCALL_DEBUG
-  pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  if (which) {
+    pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
+  } else {
+    pre += "err('syscall! " + x + "');\n";
+  }
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";
@@ -1626,8 +1683,13 @@ for (var x in SyscallsSyncLibrary) {
   "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
   "  canWarn = false;\n";
 #endif
+  if (wasi) {
+    handler += "  return e.errno;\n";
+  } else {
+    // Musl syscalls are negated.
+    handler += "  return -e.errno;\n";
+  }
   handler +=
-  "  return -e.errno;\n" +
   "}\n";
   post = handler + post;
 
@@ -1658,11 +1720,6 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.forEach(function(func) {
   if (!m) return;
   var which = +m[1];
   switcher += '    case ' + which + ': return ___syscall' + which + '(which, varargs);\n';
-});
-switcher +=
-  '    default: throw "surprising proxied syscall: " + which;\n' +
-  '  }\n' +
-  '}\n';
 SyscallsSyncLibrary.emscripten_syscall = eval('(' + switcher + ')');
 #endif
 
