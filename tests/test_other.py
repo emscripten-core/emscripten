@@ -423,7 +423,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   @parameterized({
     'c': [EMCC],
     'cxx': [EMXX]})
-  def test_emcc_5(self):
+  def test_emcc_5(self, compiler):
     # asm.js optimization levels
     for params, test, text in [
       (['-O2'], lambda generated: 'function addRunDependency' in generated, 'shell has unminified utilities'),
