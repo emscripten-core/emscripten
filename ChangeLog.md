@@ -22,7 +22,11 @@ Current Trunk
   disabled. There is no "Module.canvas" object, no magic "null" default handling,
   and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
   of referring to DOM IDs. For more information see:
-  https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ
+  <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
+- WASI API updated to from `wasi_unstable` to `wasi_snapshot_preview1` this
+  is mostly an implementation detail but if you use `WASI_STANDALONE` it means
+  that the output of emscripten now requires a runtime with
+  `wasi_snapshot_preview1` support.
 
 v1.39.4: 12/03/2019
 -------------------

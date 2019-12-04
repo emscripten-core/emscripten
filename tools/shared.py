@@ -2610,7 +2610,7 @@ class Building(object):
     ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
-        item['import'][0] = 'wasi_unstable'
+        item['import'][0] = Settings.WASI_MODULE_NAME
     if Settings.WASM_BACKEND:
       # wasm backend's imports are prefixed differently inside the wasm
       for item in graph:

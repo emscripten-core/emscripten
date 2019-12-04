@@ -534,7 +534,7 @@ function loadWebAssemblyModule(binary, flags) {
       },
       'global.Math': Math,
       env: proxy,
-      wasi_unstable: proxy,
+      {{{ WASI_MODULE_NAME }}}: proxy,
       'asm2wasm': asm2wasmImports
     };
 #if ASSERTIONS

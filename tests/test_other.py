@@ -8048,8 +8048,9 @@ int main() {
       return
 
     expected_content = open(filename).read()
-    self.assertTextDataIdentical(expected_content, contents,
-                                 "Run with EMTEST_REBASELINE=1 to automatically update expectations")
+    message = ("Content mismach in: %s\n" % filename +
+               "Run with EMTEST_REBASELINE=1 to automatically update expectations")
+    self.assertTextDataIdentical(expected_content, contents, message)
 
   def run_metadce_test(self, filename, args, expected_sent, expected_exists,
                        expected_not_exists, expected_size, expected_imports,

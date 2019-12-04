@@ -106,7 +106,7 @@ extern struct ps_strings *__ps_strings;
 #if SANITIZER_EMSCRIPTEN
 #include <emscripten/threading.h>
 #include <math.h>
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 #endif
 
 extern char **environ;
