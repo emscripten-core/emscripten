@@ -29,31 +29,10 @@ var SyscallsLibraryAsync = {
     },
   },
 
-  __syscall3: function(which, varargs) { // read
-    return AsyncFS.handle(varargs, function(wakeUp) {
-      var fd = SYSCALLS.get(), buf = SYSCALLS.get(), count = SYSCALLS.get();
-      AsyncFSImpl.readv(fd, [{ ptr: buf, len: count }], wakeUp);
-    });
-  },
-
-  __syscall4: function(which, varargs) { // write
-    return AsyncFS.handle(varargs, function(wakeUp) {
-      var fd = SYSCALLS.get(), buf = SYSCALLS.get(), count = SYSCALLS.get();
-      AsyncFSImpl.writev(fd, [{ ptr: buf, len: count }], wakeUp);
-    });
-  },
-
   __syscall5: function(which, varargs) { // open
     return AsyncFS.handle(varargs, function(wakeUp) {
       var pathname = SYSCALLS.getStr(), flags = SYSCALLS.get(), mode = SYSCALLS.get(); // optional TODO
       AsyncFSImpl.open(pathname, flags, mode, wakeUp);
-    });
-  },
-
-  __syscall6: function(which, varargs) { // close
-    return AsyncFS.handle(varargs, function(wakeUp) {
-      var fd = SYSCALLS.get();
-      AsyncFSImpl.close(fd, wakeUp);
     });
   },
 
@@ -89,27 +68,6 @@ var SyscallsLibraryAsync = {
     return AsyncFS.handle(varargs, function(wakeUp) {
       var fd = SYSCALLS.get();
       AsyncFSImpl.fsync(fd, wakeUp);
-    });
-  },
-
-  __syscall140: function(which, varargs) { // llseek
-    return AsyncFS.handle(varargs, function(wakeUp) {
-      var fd = SYSCALLS.get(), offset_high = SYSCALLS.get(), offset_low = SYSCALLS.get(), result = SYSCALLS.get(), whence = SYSCALLS.get();
-      AsyncFSImpl.llseek(fd, offset_high, offset_low, result, whence, wakeUp);
-    });
-  },
-
-  __syscall145: function(which, varargs) { // readv
-    return AsyncFS.handle(varargs, function(wakeUp) {
-      var fd = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-      AsyncFSImpl.readv(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
-    });
-  },
-
-  __syscall146: function(which, varargs) { // writev
-    return AsyncFS.handle(varargs, function(wakeUp) {
-      var fd = SYSCALLS.get(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get();
-      AsyncFSImpl.writev(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
     });
   },
 
@@ -155,6 +113,32 @@ var SyscallsLibraryAsync = {
     });
   },
 
+  // WASI
+
+  fd_write: function(fd, iov, iovcnt, pnum) {
+    return Asyncify.handleSleep(function(wakeUp) {
+      AsyncFSImpl.writev(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
+    });
+  },
+
+  fd_read: function(fd, iov, iovcnt, pnum) {
+    return Asyncify.handleSleep(function(wakeUp) {
+      AsyncFSImpl.readv(fd, AsyncFS.getIovs(iov, iovcnt), wakeUp);
+    });
+  },
+
+  fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
+    return Asyncify.handleSleep(function(wakeUp) {
+      AsyncFSImpl.llseek(fd, offset_high, offset_low, newOffset, whence, wakeUp);
+    });
+  },
+
+  fd_close: function(fd) {
+    return Asyncify.handleSleep(function(wakeUp) {
+      AsyncFSImpl.close(fd, wakeUp);
+    });
+  },
+  
   // TODO all other syscalls that make sense to add
 };
 
