@@ -527,15 +527,14 @@ var LibraryGL = {
 #endif
 
 #if USE_WEBGL2 && MIN_CHROME_VERSION <= 57
-      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome did not actually implement the new WebGL 2 functions.
-      //      Those are supported only in Chrome 58 and newer. For Chrome 57 (and older), disable WebGL 2 support altogether.
+      // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome 57 did not actually implement
+      // the new garbage free WebGL 2 entry points that take an offset and a length to an existing heap (instead of having to
+      // create a completely new heap view). In Chrome the entry points only were added in to Chrome 58 and newer. For
+      // Chrome 57 (and older), disable WebGL 2 support altogether.
       function getChromeVersion() {
         var chromeVersion = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
         if (chromeVersion) return chromeVersion[2]|0;
         // If not chrome, fall through to return undefined. (undefined <= integer will yield false)
-      }
-      if (getChromeVersion() <= 57) {
-        WebGL2RenderingContext = undefined;
       }
 #endif
 
@@ -563,7 +562,14 @@ var LibraryGL = {
 
       var ctx = 
 #if USE_WEBGL2
-        (webGLContextAttributes.majorVersion > 1) ? canvas.getContext("webgl2", webGLContextAttributes) :
+        (webGLContextAttributes.majorVersion > 1)
+        ?
+#if MIN_CHROME_VERSION <= 57
+          !(getChromeVersion() <= 57) && canvas.getContext("webgl2", webGLContextAttributes)
+#else
+          canvas.getContext("webgl2", webGLContextAttributes)
+#endif
+        :
 #endif
         (canvas.getContext("webgl", webGLContextAttributes)
           // https://caniuse.com/#feat=webgl

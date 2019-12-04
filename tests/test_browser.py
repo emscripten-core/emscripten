@@ -2612,7 +2612,7 @@ Module["preRun"].push(function () {
 
   def test_webgl2(self):
     for opts in [
-      [],
+      ['-s', 'MIN_CHROME_VERSION=0'],
       ['-O2', '-g1', '--closure', '1', '-s', 'WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1'],
       ['-s', 'FULL_ES2=1'],
     ]:
