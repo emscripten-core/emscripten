@@ -2071,14 +2071,13 @@ class Building(object):
     # Finish link
     # tolerate people trying to link a.so a.so etc.
     actual_files = unique_ordered(actual_files)
-
-    if not just_calculate:
-      logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
-      Building.link_llvm(actual_files, target)
-      return target
-    else:
+    if just_calculate:
       # just calculating; return the link arguments which is the final list of files to link
       return actual_files
+
+    logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
+    Building.link_llvm(actual_files, target)
+    return target
 
   @staticmethod
   def get_command_with_possible_response_file(cmd):
@@ -2922,7 +2921,7 @@ class Building(object):
       # that info in the map anyhow
       cmd += ['--strip-dwarf']
 
-    ret = run_process(cmd, stdout=stdout).stdout
+    ret = check_call(cmd, stdout=stdout).stdout
     if outfile:
       Building.save_intermediate(outfile, '%s.wasm' % tool)
     return ret
