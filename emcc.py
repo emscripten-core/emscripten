@@ -866,9 +866,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
           # Special handling of browser version targets. A version -1 means that the specific version
           # is not supported at all. Replace those with Infinity to make it possible to compare e.g.
-          # #if OLDEST_SUPPORTED_FIREFOX_VERSION < 68
+          # #if MIN_FIREFOX_VERSION < 68
           try:
-            if key.startswith('OLDEST_SUPPORTED_') and int(key.split('=')[1]) < 0:
+            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
               key = key.split('=')[0] + '=Infinity'
           except Exception:
             pass

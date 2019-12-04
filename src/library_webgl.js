@@ -554,7 +554,7 @@ var LibraryGL = {
 #endif
         (canvas.getContext("webgl", webGLContextAttributes)
           // https://caniuse.com/#feat=webgl
-#if OLDEST_SUPPORTED_IE_VERSION <= 10 || OLDEST_SUPPORTED_EDGE_VERSION <= 18 || OLDEST_SUPPORTED_FIREFOX_VERSION <= 23 || OLDEST_SUPPORTED_CHROME_VERSION <= 32 || OLDEST_SUPPORTED_SAFARI_VERSION <= 70101
+#if MIN_IE_VERSION <= 10 || MIN_EDGE_VERSION <= 18 || MIN_FIREFOX_VERSION <= 23 || MIN_CHROME_VERSION <= 32 || MIN_SAFARI_VERSION <= 70101
           || canvas.getContext("experimental-webgl", webGLContextAttributes)
 #endif
           );
