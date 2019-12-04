@@ -1720,6 +1720,11 @@ DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.forEach(function(func) {
   if (!m) return;
   var which = +m[1];
   switcher += '    case ' + which + ': return ___syscall' + which + '(which, varargs);\n';
+});
+switcher +=
+  '    default: throw "surprising proxied syscall: " + which;\n' +
+  '  }\n' +
+  '}\n';
 SyscallsSyncLibrary.emscripten_syscall = eval('(' + switcher + ')');
 #endif
 
