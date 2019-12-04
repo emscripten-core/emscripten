@@ -10,6 +10,7 @@ import shutil
 TAG = 'version_7'
 HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
 
+
 def get_lib_name(ports, settings):
   return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else '') +
                             ('-noexcept' if settings.DISABLE_EXCEPTION_CATCHING else ''))
