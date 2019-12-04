@@ -138,7 +138,7 @@ var SyscallsLibraryAsync = {
       AsyncFSImpl.close(fd, wakeUp);
     });
   },
-  
+
   // TODO all other syscalls that make sense to add
 };
 
