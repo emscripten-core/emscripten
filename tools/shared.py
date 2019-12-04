@@ -2541,7 +2541,7 @@ class Building(object):
         if not Settings.STANDALONE_WASM and \
            not Settings.AUTODEBUG and \
            not Settings.ASSERTIONS and \
-           not Settings.SIDE_MODULE and \
+           not Settings.RELOCATABLE and \
            emitting_js and \
            not Settings.ASYNCIFY_LAZY_LOAD_CODE and \
            not Settings.WASM2JS:
