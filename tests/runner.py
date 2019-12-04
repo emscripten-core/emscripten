@@ -214,6 +214,11 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+def ensure_dir(dirname):
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+
 def limit_size(string, maxbytes=800 * 20, maxlines=100):
   lines = string.splitlines()
   if len(lines) > maxlines:
@@ -440,8 +445,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if not os.path.exists(self.working_dir):
-        os.makedirs(self.working_dir)
+      ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
@@ -873,8 +877,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_build_dir(self):
     ret = os.path.join(self.get_dir(), 'building')
-    if not os.path.exists(ret):
-      os.makedirs(ret)
+    ensure_dir(ret)
     return ret
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
