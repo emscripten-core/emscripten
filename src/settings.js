@@ -1654,9 +1654,6 @@ var MIN_FIREFOX_VERSION = 0;
 // Specifies the oldest version of desktop Safari to target. Version is encoded in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
 var MIN_SAFARI_VERSION = 0;
 
-// Specifies the oldest version of mobile iOS Safari to target. Version is encoded in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
-var MIN_IOS_SAFARI_VERSION = 0;
-
 // Specifies the oldest version of Internet Explorer to target. E.g. pass -s MIN_IE_VERSION = 11 to drop support
 // for IE 10 and older.
 var MIN_IE_VERSION = 0;
