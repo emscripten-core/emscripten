@@ -526,12 +526,13 @@ var LibraryGL = {
       webGLContextAttributes['preserveDrawingBuffer'] = true;
 #endif
 
-#if USE_WEBGL2 && OLDEST_SUPPORTED_CHROME_VERSION <= 57
+#if USE_WEBGL2 && MIN_CHROME_VERSION <= 57
       // BUG: Workaround Chrome WebGL 2 issue: the first shipped versions of WebGL 2 in Chrome did not actually implement the new WebGL 2 functions.
       //      Those are supported only in Chrome 58 and newer. For Chrome 57 (and older), disable WebGL 2 support altogether.
       function getChromeVersion() {
-        var raw = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
-        return raw ? parseInt(raw[2], 10) : false;
+        var chromeVersion = navigator.userAgent.match(/Chrom(e|ium)\/([0-9]+)\./);
+        if (chromeVersion) return chromeVersion[2]|0;
+        // If not chrome, fall through to return undefined. (undefined <= integer will yield false)
       }
       if (getChromeVersion() <= 57) {
         WebGL2RenderingContext = undefined;
