@@ -1449,7 +1449,7 @@ Functions
 
 .. c:function:: void emscripten_fiber_swap(emscripten_fiber old_fiber, emscripten_fiber new_fiber)
 
-    Switches the execution context to the one represented by `new_fiber`
+    Switches the execution context to the one represented by `new_fiber`.
 
     `old_fiber` is updated with the current context just before the switch, such
     as that switching back into it via another `emscripten_fiber_swap` would

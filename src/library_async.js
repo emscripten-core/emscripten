@@ -900,40 +900,40 @@ mergeInto(LibraryManager.library, {
 
   emscripten_fiber_create__sig: 'iiiii',
   emscripten_fiber_create__deps: ['$Fibers', 'malloc'],
-  emscripten_fiber_create: function(funcptr, userdata, stack, stack_size) {
-    var fib = _malloc(16);
+  emscripten_fiber_create: function(entryPoint, userData, stack, stackSize) {
+    var fiber = _malloc(16);
 
     // init Asyncify context to null
-    {{{ makeSetValue('fib', 0, 0, 'i32') }}};
+    {{{ makeSetValue('fiber', 0, 0, 'i32') }}};
 
     // stack grows down on the WASM backend, so base is at the top
-    var fstack_base = stack + stack_size;
-    var fstack_max = stack;
+    var stackBase = stack + stackSize;
+    var stackMax = stack;
 
     // init stack pointers
-    {{{ makeSetValue('fib',  4, 'fstack_base', 'i32') }}};
-    {{{ makeSetValue('fib',  8, 'fstack_max',  'i32') }}};
-    {{{ makeSetValue('fib', 12, 'fstack_base', 'i32') }}};
+    {{{ makeSetValue('fiber',  4, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber',  8, 'stackMax',  'i32') }}};
+    {{{ makeSetValue('fiber', 12, 'stackBase', 'i32') }}};
 
     // init continuation (call user-supplied function on first entry)
-    Fibers.continuations[fib] = function() {
+    Fibers.continuations[fiber] = function() {
 #if STACK_OVERFLOW_CHECK
       writeStackCookie();
 #endif
-      {{{ makeDynCall('vi') }}}(funcptr, userdata);
+      {{{ makeDynCall('vi') }}}(entryPoint, userData);
     };
 
-    return fib;
+    return fiber;
   },
 
   emscripten_fiber_create_from_current_context__sig: 'i',
   emscripten_fiber_create_from_current_context__deps: ['$Fibers', 'malloc'],
   emscripten_fiber_create_from_current_context: function() {
-    var fib = _malloc(16);
+    var fiber = _malloc(16);
 
-    {{{ makeSetValue('fib',  0, 0, 'i32') }}};
-    {{{ makeSetValue('fib',  8, 'STACK_MAX',  'i32') }}};
-    {{{ makeSetValue('fib', 12, 'STACK_BASE', 'i32') }}};
+    {{{ makeSetValue('fiber',  0, 0, 'i32') }}};
+    {{{ makeSetValue('fiber',  8, 'STACK_MAX',  'i32') }}};
+    {{{ makeSetValue('fiber', 12, 'STACK_BASE', 'i32') }}};
 
     // NOTE: We don't need to initialize the other fields, because swapping will
     // overwrite them anyway. We can not swap into this fiber without swapping
@@ -943,62 +943,62 @@ mergeInto(LibraryManager.library, {
     // just to capture the wakeUp callback, but I'm not sure if it's a useful
     // thing to support.
 
-    return fib;
+    return fiber;
   },
 
   emscripten_fiber_recycle__sig: 'viii',
   emscripten_fiber_recycle__deps: ["$Fibers"],
-  emscripten_fiber_recycle: function(fib, funcptr, userdata) {
-    var async_ctx = {{{ makeGetValue('fib', 0, 'i32') }}};
+  emscripten_fiber_recycle: function(fiber, entryPoint, userData) {
+    var asyncifyContext = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
-    // this may be undefined when async_ctx == 0, or when recycling the 'current' fiber
-    if (Asyncify.dataInfo[async_ctx] !== undefined) {
-      Asyncify.freeData(async_ctx);
+    // this may be undefined when asyncifyContext == 0, or when recycling the 'current' fiber
+    if (Asyncify.dataInfo[asyncifyContext] !== undefined) {
+      Asyncify.freeData(asyncifyContext);
     }
 
-    {{{ makeSetValue('fib', 0, 0, 'i32') }}};
+    {{{ makeSetValue('fiber', 0, 0, 'i32') }}};
 
-    var fstack_base = {{{ makeGetValue('fib', 12, 'i32') }}};
-    {{{ makeSetValue('fib', 4, 'fstack_base', 'i32') }}};
+    var stackBase = {{{ makeGetValue('fiber', 12, 'i32') }}};
+    {{{ makeSetValue('fiber', 4, 'stackBase', 'i32') }}};
 
-    Fibers.continuations[fib] = function() {
+    Fibers.continuations[fiber] = function() {
 #if STACK_OVERFLOW_CHECK
       writeStackCookie();
 #endif
-      {{{ makeDynCall('vi') }}}(funcptr, userdata);
+      {{{ makeDynCall('vi') }}}(entryPoint, userData);
     };
   },
 
   emscripten_fiber_free__sig: 'vi',
   emscripten_fiber_free__deps: ['$Asyncify', '$Fibers', 'free'],
-  emscripten_fiber_free: function(fib) {
-    var async_ctx = {{{ makeGetValue('fib', 0, 'i32') }}};
+  emscripten_fiber_free: function(fiber) {
+    var asyncifyContext = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
-    // this may be undefined when async_ctx == 0, or when freeing the 'current' fiber
-    if (Asyncify.dataInfo[async_ctx] !== undefined) {
-      Asyncify.freeData(async_ctx);
+    // this may be undefined when asyncifyContext == 0, or when freeing the 'current' fiber
+    if (Asyncify.dataInfo[asyncifyContext] !== undefined) {
+      Asyncify.freeData(asyncifyContext);
     }
 
-    delete Fibers.continuations[fib];
-    _free(fib);
+    delete Fibers.continuations[fiber];
+    _free(fiber);
   },
 
   emscripten_fiber_swap__sig: 'vii',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
-  emscripten_fiber_swap: function(f_old, f_new) {
+  emscripten_fiber_swap: function(oldFiber, newFiber) {
     return Asyncify.handleSleep(function(wakeUp) {
       Asyncify.afterUnwind = function() {
         /*
          * save caller context
          */
 
-        var asyncify_context = Asyncify.currData;
-        {{{ makeSetValue('f_old', 0, 'asyncify_context', 'i32') }}};
+        var asyncifyContext = Asyncify.currData;
+        {{{ makeSetValue('oldFiber', 0, 'asyncifyContext', 'i32') }}};
 
-        var stack_ptr = stackSave();
-        {{{ makeSetValue('f_old', 4, 'stack_ptr', 'i32') }}};
+        var stackPointer = stackSave();
+        {{{ makeSetValue('oldFiber', 4, 'stackPointer', 'i32') }}};
 
-        Fibers.continuations[f_old] = wakeUp;
+        Fibers.continuations[oldFiber] = wakeUp;
 
 #if ASSERTIONS
         assert(!Asyncify.trampoline);
@@ -1009,17 +1009,17 @@ mergeInto(LibraryManager.library, {
            * restore callee context
            */
 
-          Asyncify.currData = {{{ makeGetValue('f_new', 0, 'i32') }}};
+          Asyncify.currData = {{{ makeGetValue('newFiber', 0, 'i32') }}};
 #if ASSERTIONS
           assert(!Asyncify.currData || Asyncify.dataInfo[Asyncify.currData] !== undefined);
 #endif
-          STACK_MAX = {{{ makeGetValue('f_new', 8, 'i32') }}};
-          STACK_BASE = {{{ makeGetValue('f_new', 12, 'i32') }}};
-          stack_ptr = {{{ makeGetValue('f_new', 4, 'i32') }}};
-          stackRestore(stack_ptr);
+          STACK_MAX = {{{ makeGetValue('newFiber', 8, 'i32') }}};
+          STACK_BASE = {{{ makeGetValue('newFiber', 12, 'i32') }}};
+          var stackPointer = {{{ makeGetValue('newFiber', 4, 'i32') }}};
+          stackRestore(stackPointer);
 
           noExitRuntime = false;
-          Fibers.continuations[f_new]();
+          Fibers.continuations[newFiber]();
         };
       };
     }, true);
