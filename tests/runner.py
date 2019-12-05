@@ -1185,6 +1185,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       test_index += 1
 
   def get_freetype_library(self):
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
