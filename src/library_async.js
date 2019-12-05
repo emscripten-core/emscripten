@@ -726,7 +726,7 @@ mergeInto(LibraryManager.library, {
 #endif
     },
 
-    handleSleep: function(startAsync, preserveBrowserLoop) {
+    handleSleep: function(startAsync, isNotYielding) {
       if (ABORT) return;
       noExitRuntime = true;
 #if ASYNCIFY_DEBUG
@@ -755,7 +755,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
-          if (Browser.mainLoop.func && !preserveBrowserLoop) {
+          if (Browser.mainLoop.func && !isNotYielding) {
             Browser.mainLoop.resume();
           }
           var start = Asyncify.dataInfo[Asyncify.currData].bottomOfCallStack;
@@ -793,7 +793,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
-          if (Browser.mainLoop.func && !preserveBrowserLoop) {
+          if (Browser.mainLoop.func && !isNotYielding) {
             Browser.mainLoop.pause();
           }
         }
@@ -807,10 +807,13 @@ mergeInto(LibraryManager.library, {
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
         noExitRuntime = false;
-        // Call all sleep callbacks now that the sleep-resume is all done.
-        Asyncify.sleepCallbacks.forEach(function(func) {
-          func();
-        });
+
+        if (!isNotYielding) {
+          // Call all sleep callbacks now that the sleep-resume is all done.
+          Asyncify.sleepCallbacks.forEach(function(func) {
+            func();
+          });
+        }
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
