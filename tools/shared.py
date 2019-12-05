@@ -169,6 +169,13 @@ class Py2CompletedProcess:
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
+  """Runs a subpocess returning the exit code.
+
+  By default this function will raise an exception on failure.  Therefor this should only be
+  used if you want to cratch such failures.  For most subprocess failures should fatal and you
+  should use the `check_call` wrapper below instead.
+  """
+
   kw.setdefault('universal_newlines', True)
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
@@ -191,6 +198,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 
 def check_call(cmd, *args, **kw):
+  """Like `run_process` above but treat failures as fatal and exit_with_error."""
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
