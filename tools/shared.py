@@ -172,8 +172,8 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   """Runs a subpocess returning the exit code.
 
   By default this function will raise an exception on failure.  Therefor this should only be
-  used if you want to cratch such failures.  For most subprocess failures should fatal and you
-  should use the `check_call` wrapper below instead.
+  used if you want to handle such failures.  For most subprocesses, failures are not recoverable
+  and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
 
   kw.setdefault('universal_newlines', True)
