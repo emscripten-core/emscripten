@@ -1243,6 +1243,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
+      # Support all old browser versions
+      shared.Settings.MIN_FIREFOX_VERSION = 0
+      shared.Settings.MIN_SAFARI_VERSION = 0
+      shared.Settings.MIN_IE_VERSION = 0
+      shared.Settings.MIN_EDGE_VERSION = 0
+      shared.Settings.MIN_CHROME_VERSION = 0
+
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM and not shared.Settings.WASM2JS:
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 0
