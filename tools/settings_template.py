@@ -33,7 +33,10 @@ NODE_JS = os.path.expanduser(os.getenv('NODE', '{{{ NODE }}}')) # executable
 
 JAVA = 'java' # executable
 
-# CLOSURE_COMPILER = '..' # define this to not use the bundled version
+# To install Closure compiler, either
+# a) install via emsdk with "emsdk install closure-compiler-20191111-64bit" (check if there is an updated version with emsdk list)
+# or b) install via npm with "npm install -g google-closure-compiler@20191111.0.0" (or just npm install -g google-closure-compiler to get a newer version)
+CLOSURE_COMPILER = 'google-closure-compiler' + ('.cmd' if os.name == 'nt' else '')
 
 ################################################################################
 #

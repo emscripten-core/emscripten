@@ -233,34 +233,6 @@ class sanity(RunnerCore):
         elif 'runner.py' not in ' '.join(command):
           self.assertContained('ERROR', output) # sanity check should fail
 
-  def test_closure_compiler(self):
-    CLOSURE_FATAL = 'fatal: closure compiler'
-    CLOSURE_WARNING = 'does not exist'
-
-    # Sanity check should find closure
-    restore_and_set_up()
-    output = self.check_working(EMCC)
-    self.assertNotContained(CLOSURE_FATAL, output)
-    self.assertNotContained(CLOSURE_WARNING, output)
-
-    # Append a bad path for closure, will warn
-    f = open(CONFIG_FILE, 'a')
-    f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
-    f.close()
-    output = self.check_working(EMCC, CLOSURE_WARNING)
-
-    # And if you actually try to use the bad path, will be fatal
-    f = open(CONFIG_FILE, 'a')
-    f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
-    f.close()
-    output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], CLOSURE_FATAL)
-
-    # With a working path, all is well
-    restore_and_set_up()
-    try_delete('a.out.js')
-    output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], '')
-    self.assertExists('a.out.js', output)
-
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
 

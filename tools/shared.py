@@ -380,9 +380,6 @@ def parse_config_file():
   if not JS_ENGINES:
     JS_ENGINES = [NODE_JS]
 
-  if CLOSURE_COMPILER is None:
-    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
-
   if JAVA is None:
     logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
     JAVA = 'java'
@@ -530,15 +527,22 @@ def check_node_version():
 
 
 def check_closure_compiler():
-  try:
-    run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-  except Exception:
-    warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
-    return False
   if not os.path.exists(CLOSURE_COMPILER):
     warning('Closure compiler (%s) does not exist, check the paths in %s', CLOSURE_COMPILER, EM_CONFIG)
     return False
-  return True
+  try:
+    proc = subprocess.Popen([CLOSURE_COMPILER, '--version'], stdout=PIPE, stderr=PIPE)
+    output = proc.communicate()
+    if 'Closure Compiler (http://github.com/google/closure-compiler)' in output[0]:
+      return True
+
+    warning('Unrecognized Closure compiler --version output:')
+    warning(output[0])
+    warning(output[1])
+  except Exception as e:
+    warning('Closure compiler ("%s --version") did not execute properly!' % CLOSURE_COMPILER)
+    warning(e)
+  return False
 
 
 def get_emscripten_version(path):
@@ -580,11 +584,6 @@ def perform_sanify_checks():
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-  # Sanity check passed!
-  with ToolchainProfiler.profile_block('sanity closure compiler'):
-    if not check_closure_compiler():
-      warning('closure compiler will not be available')
 
 
 def check_sanity(force=False):
@@ -2427,8 +2426,8 @@ class Building(object):
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
-        logger.error('Cannot run closure compiler')
-        raise Exception('closure compiler check failed')
+        logger.error('google-closure-compiler executable was not found: Cannot run closure compiler')
+        raise Exception('closure compiler lookup failed')
 
       # Closure annotations file contains suppressions and annotations to different symbols
       CLOSURE_ANNOTATIONS = [path_from_root('src', 'closure-annotations.js')]
@@ -2472,20 +2471,24 @@ class Building(object):
 
       # Web environment specific externs
       if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
-        BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
-        BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-        BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                           if name.endswith('.js')]
-        CLOSURE_EXTERNS += BROWSER_EXTERNS
+        try:
+          BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+          BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+          BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                             if name.endswith('.js')]
+          CLOSURE_EXTERNS += BROWSER_EXTERNS
+        except Exception:
+          # Currently we do not actually have any browser-externs files, so above will throw as
+          # git does not keep empty directories in repositories. But in future we are likely to add
+          # some, so keep this code around.
+          logger.debug('No browser-externs files found')
+          pass
 
-      # Something like this (adjust memory as needed):
-      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
       outfile = filename + '.cc.js'
-      args = [JAVA,
-              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
-              '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-              '--language_in', 'ECMASCRIPT5']
+
+      args = [CLOSURE_COMPILER]
+      args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
+               '--language_in', 'ECMASCRIPT5']
       for a in CLOSURE_ANNOTATIONS:
         args += ['--js', a]
       for e in CLOSURE_EXTERNS:
