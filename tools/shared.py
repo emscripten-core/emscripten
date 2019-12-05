@@ -169,6 +169,13 @@ class Py2CompletedProcess:
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
+  """Runs a subpocess returning the exit code.
+
+  By default this function will raise an exception on failure.  Therefor this should only be
+  used if you want to handle such failures.  For most subprocesses, failures are not recoverable
+  and should be fatal.  In those cases the `check_call` wrapper should be preferred.
+  """
+
   kw.setdefault('universal_newlines', True)
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
@@ -191,6 +198,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
 
 def check_call(cmd, *args, **kw):
+  """Like `run_process` above but treat failures as fatal and exit_with_error."""
   try:
     return run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
@@ -2071,14 +2079,13 @@ class Building(object):
     # Finish link
     # tolerate people trying to link a.so a.so etc.
     actual_files = unique_ordered(actual_files)
-
-    if not just_calculate:
-      logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
-      Building.link_llvm(actual_files, target)
-      return target
-    else:
+    if just_calculate:
       # just calculating; return the link arguments which is the final list of files to link
       return actual_files
+
+    logger.debug('emcc: Building.linking: %s to %s', actual_files, target)
+    Building.link_llvm(actual_files, target)
+    return target
 
   @staticmethod
   def get_command_with_possible_response_file(cmd):
@@ -2922,7 +2929,7 @@ class Building(object):
       # that info in the map anyhow
       cmd += ['--strip-dwarf']
 
-    ret = run_process(cmd, stdout=stdout).stdout
+    ret = check_call(cmd, stdout=stdout).stdout
     if outfile:
       Building.save_intermediate(outfile, '%s.wasm' % tool)
     return ret
