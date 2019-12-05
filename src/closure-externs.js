@@ -920,12 +920,18 @@ var worker;
  * @param {Object} message
  */
 var onmessage = function(message) {};
+var onmessageerror = function() {};
 
 /**
  * @param {string} type
  * @param {!Function} listener
  */
 var addEventListener = function (type, listener) {};
+
+/**
+ * @type {Function}
+ */
+var close;
 
 // Fetch.js/Fetch Worker
 

@@ -425,6 +425,7 @@ __fillVisibilityChangeEventData
 __findCanvasEventTarget
 __findEventTarget
 __formatString
+__getBoundingClientRect
 __get_canvas_element_size
 __glGenObject
 __heapAccessShiftForWebGLHeap

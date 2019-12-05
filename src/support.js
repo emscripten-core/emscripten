@@ -440,16 +440,20 @@ function loadWebAssemblyModule(binary, flags) {
       if (legalized) {
         sym = 'orig$' + sym;
       }
-#if WASM_BACKEND
-      sym = '_' + sym;
-#endif
-      var resolved = Module[sym];
+
+      var resolved = Module["asm"][sym];
       if (!resolved) {
-        resolved = moduleLocal[sym];
-      }
-#if ASSERTIONS
-      assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#if WASM_BACKEND
+        sym = '_' + sym;
 #endif
+        resolved = Module[sym];
+        if (!resolved) {
+          resolved = moduleLocal[sym];
+        }
+#if ASSERTIONS
+        assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
+     }
       return resolved;
     }
 

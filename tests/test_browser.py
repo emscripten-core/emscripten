@@ -20,10 +20,10 @@ import unittest
 import webbrowser
 import zlib
 
-from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized
+from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
-from tools.shared import try_delete, Building, run_process, run_js
+from tools.shared import try_delete, run_process, run_js
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -209,22 +209,6 @@ If manually bisecting:
     self.compile_btest([src, '--pre-js', path_from_root('src', 'emscripten-source-map.min.js'), '-g4', '-o', 'page.html', '-s', 'DEMANGLE_SUPPORT=1', '-s', 'WASM=0'])
     self.run_browser('page.html', None, '/report_result?1')
 
-  def build_native_lzma(self):
-    lzma_native = path_from_root('third_party', 'lzma.js', 'lzma-native')
-    if os.path.isfile(lzma_native) and os.access(lzma_native, os.X_OK):
-      return
-
-    cwd = os.getcwd()
-    try:
-      os.chdir(path_from_root('third_party', 'lzma.js'))
-      # On Windows prefer using MinGW make if it exists, otherwise fall back to hoping we have cygwin make.
-      if WINDOWS and Building.which('mingw32-make'):
-        run_process(['doit.bat'])
-      else:
-        run_process(['sh', './doit.sh'])
-    finally:
-      os.chdir(cwd)
-
   def test_preload_file(self):
     absolute_src_path = os.path.join(self.get_dir(), 'somefile.txt').replace('\\', '/')
     open(absolute_src_path, 'w').write('''load me right before running the code please''')
@@ -275,8 +259,7 @@ If manually bisecting:
       ("some@@file.txt@other.txt", "other.txt"),
       ("some@@file.txt@some@@otherfile.txt", "some@otherfile.txt")]
 
-    for test in test_cases:
-      (srcpath, dstpath) = test
+    for srcpath, dstpath in test_cases:
       print('Testing', srcpath, dstpath)
       make_main(dstpath)
       self.compile_btest(['main.cpp', '--preload-file', srcpath, '-o', 'page.html'])
@@ -303,9 +286,9 @@ If manually bisecting:
 
     # Test subdirectory handling with asset packaging.
     try_delete('assets')
-    os.makedirs('assets/sub/asset1/'.replace('\\', '/'))
-    os.makedirs('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
-    os.makedirs('assets/sub/asset2/'.replace('\\', '/'))
+    ensure_dir('assets/sub/asset1/'.replace('\\', '/'))
+    ensure_dir('assets/sub/asset1/.git'.replace('\\', '/')) # Test adding directory that shouldn't exist.
+    ensure_dir('assets/sub/asset2/'.replace('\\', '/'))
     create_test_file('assets/sub/asset1/file1.txt', '''load me right before running the code please''')
     create_test_file('assets/sub/asset1/.git/shouldnt_be_embedded.txt', '''this file should not get embedded''')
     create_test_file('assets/sub/asset2/file2.txt', '''load me right before running the code please''')
@@ -360,10 +343,7 @@ If manually bisecting:
     # Should still work with -o subdir/..
 
     make_main('somefile.txt') # absolute becomes relative
-    try:
-      os.mkdir('dirrey')
-    except OSError:
-      pass
+    ensure_dir('dirrey')
     self.compile_btest(['main.cpp', '--preload-file', absolute_src_path, '-o', 'dirrey/page.html'])
     self.run_browser('dirrey/page.html', 'You should see |load me right before|.', '/report_result?1')
 
@@ -394,10 +374,7 @@ If manually bisecting:
 
     d = 'dir with ' + tricky_part
     abs_d = os.path.join(self.get_dir(), d)
-    try:
-      os.mkdir(abs_d)
-    except OSError:
-      pass
+    ensure_dir(abs_d)
     txt = 'file with ' + tricky_part + '.txt'
     abs_txt = os.path.join(abs_d, txt)
     open(abs_txt, 'w').write('load me right before')
@@ -539,7 +516,7 @@ If manually bisecting:
 
   def test_multifile(self):
     # a few files inside a directory
-    os.makedirs(os.path.join('subdirr', 'moar'))
+    ensure_dir(os.path.join('subdirr', 'moar'))
     create_test_file(os.path.join('subdirr', 'data1.txt'), '1214141516171819')
     create_test_file(os.path.join('subdirr', 'moar', 'data2.txt'), '3.14159265358979')
     create_test_file('main.cpp', self.with_report_result(r'''
@@ -580,9 +557,8 @@ If manually bisecting:
 
   def test_custom_file_package_url(self):
     # a few files inside a directory
-    self.clear()
-    os.makedirs('subdirr')
-    os.makedirs('cdn')
+    ensure_dir('subdirr')
+    ensure_dir('cdn')
     create_test_file(os.path.join('subdirr', 'data1.txt'), '1214141516171819')
     # change the file package base dir to look in a "cdn". note that normally
     # you would add this in your own custom html file etc., and not by
@@ -1377,16 +1353,14 @@ keydown(100);keyup(100); // trigger the end
 
   def test_fs_workerfs_package(self):
     create_test_file('file1.txt', 'first')
-    if not os.path.exists('sub'):
-      os.makedirs('sub')
+    ensure_dir('sub')
     open(os.path.join('sub', 'file2.txt'), 'w').write('second')
     run_process([PYTHON, FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', os.path.join('sub', 'file2.txt'), '--separate-metadata', '--js-output=files.js'])
     self.btest(os.path.join('fs', 'test_workerfs_package.cpp'), '1', args=['-lworkerfs.js', '--proxy-to-worker', '-lworkerfs.js'])
 
   def test_fs_lz4fs_package(self):
     # generate data
-    self.clear()
-    os.mkdir('subdir')
+    ensure_dir('subdir')
     create_test_file('file1.txt', '0123456789' * (1024 * 128))
     open(os.path.join('subdir', 'file2.txt'), 'w').write('1234567890' * (1024 * 128))
     random_data = bytearray(random.randint(0, 255) for x in range(1024 * 128 * 10 + 1))
@@ -1848,7 +1822,7 @@ keydown(100);keyup(100); // trigger the end
     # check using file packager to another dir
     self.clear()
     setup()
-    os.mkdir('sub')
+    ensure_dir('sub')
     run_process([PYTHON, FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
     shutil.copyfile(os.path.join('sub', 'test.data'), 'test.data')
     self.btest('emscripten_api_browser2.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_set']''', '-s', 'FORCE_FILESYSTEM=1'])
@@ -2221,7 +2195,11 @@ void *getBindBuffer() {
     self.btest('gl_error.c', expected='1', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL'])
 
   def test_openal_error(self):
-    for args in [[], ['--closure', '1']]:
+    for args in [
+      [],
+      ['-lopenal', '-s', 'STRICT'],
+      ['--closure', '1']
+    ]:
       print(args)
       self.btest('openal_error.c', expected='1', args=args)
 
@@ -2743,7 +2721,7 @@ Module["preRun"].push(function () {
       run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
       # put pre.js first, then the file packager data, so locateFile is there for the file loading code
       self.compile_btest(['src.cpp', '-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-s', 'FORCE_FILESYSTEM=1', '-s', 'WASM=' + str(wasm)])
-      os.mkdir('sub')
+      ensure_dir('sub')
       if wasm:
         shutil.move('page.wasm', os.path.join('sub', 'page.wasm'))
       else:
@@ -3316,7 +3294,6 @@ window.close = function() {
     # check that safe-heap machinery does not cause errors in async operations
     self.btest('emterpreter_async_sleep2_safeheap.cpp', '17', args=['-s', 'EMTERPRETIFY=1', '-s', 'EMTERPRETIFY_ASYNC=1', '-Oz', '-profiling', '-s', 'SAFE_HEAP=1', '-s', 'ASSERTIONS=1', '-s', 'EMTERPRETIFY_WHITELIST=["_main","_callback","_fix"]', '-s', 'EXIT_RUNTIME=1'])
 
-  @no_wasm_backend('emterpretify - yield-specific')
   @requires_sound_hardware
   def test_sdl_audio_beep_sleep(self):
     self.btest('sdl_audio_beep_sleep.cpp', '1', args=['-Os', '-s', 'ASSERTIONS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-profiling', '-s', 'SAFE_HEAP=1', '-lSDL'] + self.get_async_args(), timeout=90)
@@ -3852,8 +3829,7 @@ window.close = function() {
   @no_wasm_backend('uses js')
   @requires_threads
   def test_pthread_custom_pthread_main_url(self):
-    self.clear()
-    os.makedirs('cdn')
+    ensure_dir('cdn')
     create_test_file('main.cpp', self.with_report_result(r'''
       #include <stdio.h>
       #include <string.h>
@@ -4218,8 +4194,7 @@ window.close = function() {
 
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
-    self.clear()
-    os.makedirs('cdn')
+    ensure_dir('cdn')
     create_test_file('shell2.html', open(path_from_root('src', 'shell.html')).read().replace('var Module = {', 'var Module = { locateFile: function(filename) { if (filename == "test.wasm") return "cdn/test.wasm"; else return filename; }, '))
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
     self.compile_btest(['src.cpp', '--shell-file', 'shell2.html', '-s', 'WASM=1', '-o', 'test.html'])
@@ -4454,7 +4429,7 @@ window.close = function() {
   @requires_threads
   def test_asmfs_hello_file(self):
     # Test basic file loading and the valid character set for files.
-    os.mkdir('dirrey')
+    ensure_dir('dirrey')
     shutil.copyfile(path_from_root('tests', 'asmfs', 'hello_file.txt'), os.path.join(self.get_dir(), 'dirrey', 'hello file !#$%&\'()+,-.;=@[]^_`{}~ %%.txt'))
     self.btest('asmfs/hello_file.cpp', expected='0', args=['-s', 'ASMFS=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
@@ -4703,8 +4678,7 @@ window.close = function() {
     create_test_file('test.c', self.with_report_result(src))
     self.compile_btest(['test.c', '-o', 'test.html', '-O3'])
 
-    if not os.path.exists('subdir'):
-      os.mkdir('subdir')
+    ensure_dir('subdir')
     shutil.move('test.js', os.path.join('subdir', 'test.js'))
     shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
     src = open('test.html').read()
@@ -4726,8 +4700,7 @@ window.close = function() {
       print(args)
       # compile the code with the modularize feature and the preload-file option enabled
       self.compile_btest(['test.c', '-o', 'test.js', '-O3'] + args)
-      if not os.path.exists('subdir'):
-        os.mkdir('subdir')
+      ensure_dir('subdir')
       shutil.move('test.js', os.path.join('subdir', 'test.js'))
       shutil.move('test.wasm', os.path.join('subdir', 'test.wasm'))
       for creation in creations:
@@ -4758,8 +4731,7 @@ window.close = function() {
     ]:
       print(path, args, creation)
       filesystem_path = os.path.join('.', *path)
-      if not os.path.exists(filesystem_path):
-        os.makedirs(filesystem_path)
+      ensure_dir(filesystem_path)
       # compile the code with the modularize feature and the preload-file option enabled
       self.compile_btest(['test.c', '-o', 'test.js'] + args)
       shutil.move('test.js', os.path.join(filesystem_path, 'test.js'))
