@@ -1132,7 +1132,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if options.use_closure_compiler:
       shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
-      if not shared.check_closure_compiler():
+      if not shared.check_java_closure_compiler():
         exit_with_error('fatal: closure compiler is not configured correctly')
       # when we emit asm.js, closure 2 would break that, so warn (note that
       # with wasm2js in the wasm backend, we don't emit asm.js anyhow)

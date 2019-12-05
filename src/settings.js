@@ -224,6 +224,12 @@ var SIMD = 0;
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
+// If set to 1 and Closure is enabled, uses JavaScript version of Closure compiler
+// instead of the Java version of the compiler. JS version of Closure compiler
+// can be somewhat slower than the Java version, but does not require installing
+// Java.
+var USE_JS_CLOSURE_COMPILER = 0;
+
 // If set to 1, each asm.js/wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
 // However, this does increase code size (especially if you have many such
