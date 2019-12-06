@@ -1538,6 +1538,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # consider it a user export, i.e., one which can never be removed).
       shared.Building.user_requested_exports += ['dynCall_ii']
 
+      if shared.Settings.MINIMAL_RUNTIME:
+        shared.Building.user_requested_exports += ['exit']
+
       if shared.Settings.PROXY_TO_PTHREAD:
         shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
 
@@ -1554,7 +1557,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # can access them:
 
         # general threading variables:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread', 'ExitStatus']
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread']
+
+        # To keep code size to minimum, MINIMAL_RUNTIME does not utilize the global ExitStatus
+        # object, only regular runtime has it.
+        if not shared.Settings.MINIMAL_RUNTIME:
+          shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
         # stack check:
         if shared.Settings.STACK_OVERFLOW_CHECK:
@@ -1920,9 +1928,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME:
       if shared.Settings.EMTERPRETIFY:
         exit_with_error('-s EMTERPRETIFY=1 is not supported with -s MINIMAL_RUNTIME=1')
-
-      if shared.Settings.USE_PTHREADS:
-        exit_with_error('-s USE_PTHREADS=1 is not yet supported with -s MINIMAL_RUNTIME=1')
 
       if shared.Settings.PRECISE_F32 == 2:
         exit_with_error('-s PRECISE_F32=2 is not supported with -s MINIMAL_RUNTIME=1')

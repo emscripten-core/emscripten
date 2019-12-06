@@ -17,7 +17,7 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 var Module = {};
 
 // These modes need to assign to these variables because of how scoping works in them.
-#if EXPORT_ES6 || MODULARIZE
+#if (EXPORT_ES6 || MODULARIZE) && !MINIMAL_RUNTIME
 var PThread;
 var HEAPU32;
 #endif
@@ -40,6 +40,7 @@ function threadAlert() {
 var err = threadPrintErr;
 this.alert = threadAlert;
 
+#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
 // When using postMessage to send an object, it is processed by the structured clone algorithm.
 // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
 // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
@@ -52,8 +53,9 @@ function resetPrototype(constructor, attrs) {
   }
   return object;
 }
+#endif
 
-#if WASM
+#if WASM && !MINIMAL_RUNTIME
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
   // We can just use sync instantiation in the worker.
@@ -81,23 +83,42 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+#if !WASM_BACKEND
+      // Initialize the thread-local field(s):
+#if MINIMAL_RUNTIME
+      var imports = {};
+#endif
+#endif
+
       // Initialize the global "process"-wide fields:
+#if !MINIMAL_RUNTIME
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
-      Module['DYNAMICTOP_PTR'] = e.data.DYNAMICTOP_PTR;
+#endif
+
+#if USES_DYNAMIC_ALLOC
+      {{{ makeAsmGlobalAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
+#endif
 
 #if WASM
       // Module and memory were sent from main thread
+#if MINIMAL_RUNTIME
+      Module['wasm'] = e.data.wasmModule;
+#else
       Module['wasmModule'] = e.data.wasmModule;
-      Module['wasmMemory'] = e.data.wasmMemory;
+#endif
+
+      {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
+
 #if LOAD_SOURCE_MAP
       wasmSourceMapData = e.data.wasmSourceMap;
 #endif
 #if USE_OFFSET_CONVERTER
       wasmOffsetData = e.data.wasmOffsetConverter;
 #endif
-      Module['buffer'] = Module['wasmMemory'].buffer;
-#else
-      Module['buffer'] = e.data.buffer;
+
+      {{{ makeAsmGlobalAccessInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
+#else // asm.js:
+      {{{ makeAsmGlobalAccessInPthread('buffer') }}} = e.data.buffer;
 
 #if SEPARATE_ASM
       // load the separated-out asm.js
@@ -113,7 +134,9 @@ this.onmessage = function(e) {
 
 #endif
 
+#if !MINIMAL_RUNTIME
       Module['ENVIRONMENT_IS_PTHREAD'] = true;
+#endif
 
 #if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
@@ -131,11 +154,24 @@ this.onmessage = function(e) {
         URL.revokeObjectURL(objectUrl);
       }
 #if MODULARIZE && !MODULARIZE_INSTANCE
+#if MINIMAL_RUNTIME
+      Module = {{{ EXPORT_NAME }}}(imports);
+#else
       Module = {{{ EXPORT_NAME }}}(Module);
 #endif
+#endif
+#if !MINIMAL_RUNTIME
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
-      postMessage({ cmd: 'loaded' });
+#endif
+
+#if MINIMAL_RUNTIME && WASM
+      Module['wasmInstance'].then(() => {
+#endif
+        postMessage({ cmd: 'loaded' });
+#if MINIMAL_RUNTIME && WASM
+      });
+#endif
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
       PThread.receiveObjectTransfer(e.data);
@@ -152,7 +188,10 @@ this.onmessage = function(e) {
       // (+/- 0.1msecs in testing).
       Module['__performance_now_clock_drift'] = performance.now() - e.data.time;
       threadInfoStruct = e.data.threadInfoStruct;
-      Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0); // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+
+      // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
+      {{{ makeAsmGlobalAccessInPthread('__register_pthread_ptr') }}}(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
       // Establish the stack frame for this thread in global scope
@@ -169,7 +208,7 @@ this.onmessage = function(e) {
       assert(selfThreadId);
       assert(parentThreadId);
       assert(top != 0);
-      assert(e.data.stackSize > 0);
+      assert(max != 0);
 #if WASM_BACKEND
       assert(top > max);
 #else
@@ -179,10 +218,14 @@ this.onmessage = function(e) {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpaceInJsModule'](top, max);
 #if WASM_BACKEND
-      Module['_emscripten_tls_init']();
+      {{{ makeAsmGlobalAccessInPthread('_emscripten_tls_init') }}}();
 #endif
+#if STACK_OVERFLOW_CHECK
+      {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
+#endif
+
       PThread.receiveObjectTransfer(e.data);
-      PThread.setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
+      PThread.setThreadStatus({{{ makeAsmGlobalAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -192,10 +235,10 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
+        var result = {{{ makeAsmGlobalAccessInPthread('dynCall_ii') }}}(e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
-        Module['checkStackCookie']();
+        {{{ makeAsmGlobalAccessInPthread('checkStackCookie') }}}();
 #endif
         // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
@@ -204,7 +247,13 @@ this.onmessage = function(e) {
         if (ex === 'Canceled!') {
           PThread.threadCancel();
         } else if (ex != 'unwind') {
+#if MINIMAL_RUNTIME
+          // ExitStatus not present in MINIMAL_RUNTIME
+          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+#else
           Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+#endif
+
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
@@ -213,11 +262,16 @@ this.onmessage = function(e) {
           }
 #endif
           Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
+#if MINIMAL_RUNTIME
+          throw e; // ExitStatus not present in MINIMAL_RUNTIME
+#else
           if (!(ex instanceof Module['ExitStatus'])) throw ex;
+#endif
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
           out('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+#endif
 #endif
         }
       }

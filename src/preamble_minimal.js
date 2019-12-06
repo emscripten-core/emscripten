@@ -12,7 +12,11 @@ function assert(condition, text) {
 #endif
 
 function abort(what) {
+#if ASSERTIONS
+  throw new Error(what);
+#else
   throw what;
+#endif
 }
 
 var tempRet0 = 0;
@@ -50,12 +54,16 @@ Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
 #include "runtime_sab_polyfill.js"
 
 #if USE_PTHREADS
+var STATIC_BASE = {{{ GLOBAL_BASE }}};
+
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 
 var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
     TOTAL_STACK = {{{ TOTAL_STACK }}},
+#if !USE_PTHREADS
     STATIC_BASE = {{{ GLOBAL_BASE }}},
+#endif
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
     STACK_MAX = {{{ getQuoted('STACK_MAX') }}}
@@ -82,6 +90,15 @@ var wasmMemory = new WebAssembly.Memory({
 #endif
   });
 
+var buffer = wasmMemory.buffer;
+
+#if USE_PTHREADS
+}
+#if ASSERTIONS
+assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+#endif
+#endif
+
 var wasmTable = new WebAssembly.Table({
   'initial': {{{ getQuoted('WASM_TABLE_SIZE') }}},
 #if !ALLOW_TABLE_GROWTH
@@ -93,12 +110,6 @@ var wasmTable = new WebAssembly.Table({
 #endif // WASM_BACKEND
   'element': 'anyfunc'
 });
-
-var buffer = wasmMemory.buffer;
-
-#if USE_PTHREADS && ASSERTIONS
-assert(buffer instanceof SharedArrayBuffer, 'requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
-#endif
 
 #else
 
@@ -116,14 +127,20 @@ var buffer = new ArrayBuffer({{{ TOTAL_MEMORY }}});
 
 #if ASSERTIONS
 var WASM_PAGE_SIZE = 65536;
-assert(STACK_BASE % 16 === 0, 'stack must start aligned');
-assert(({{{ getQuoted('DYNAMIC_BASE') }}}) % 16 === 0, 'heap must start aligned');
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+assert(STACK_BASE % 16 === 0, 'stack must start aligned to 16 bytes, STACK_BASE==' + STACK_BASE);
+assert(({{{ getQuoted('DYNAMIC_BASE') }}}) % 16 === 0, 'heap must start aligned to 16 bytes, DYNAMIC_BASE==' + {{{ getQuoted('DYNAMIC_BASE') }}});
 assert({{{ TOTAL_MEMORY }}} >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ TOTAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 assert({{{ TOTAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
 #if WASM_MEM_MAX != -1
 assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
 #endif
 assert(buffer.byteLength === {{{ TOTAL_MEMORY }}});
+#if USE_PTHREADS
+}
+#endif
 #endif // ASSERTIONS
 
 #if ALLOW_MEMORY_GROWTH
@@ -157,10 +174,20 @@ var HEAPF64 = new Float64Array(buffer);
 #endif
 
 #if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
+
+#if USE_PTHREADS
+if (!ENVIRONMENT_IS_PTHREAD) {
+#endif
+
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
 HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
+
+#if USE_PTHREADS
+}
+#endif
+
 #endif
 
 #if SINGLE_FILE && !WASM && !WASM_BACKEND
@@ -169,7 +196,11 @@ HEAPU8.set(base64Decode('{{{ getQuoted("BASE64_MEMORY_INITIALIZER") }}}'), GLOBA
 #endif
 
 #if USES_DYNAMIC_ALLOC
-HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
+  HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
+#endif
+
+#if USE_PTHREADS
+}
 #endif
 
 #include "runtime_stack_check.js"

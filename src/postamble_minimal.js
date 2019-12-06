@@ -118,6 +118,10 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 // Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
+#if USE_PTHREADS
+// Store the Wasm instance to be able to post it to pthreads.
+Module['wasmInstance'] =
+#endif
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
@@ -132,13 +136,15 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 // output object will have an output.instance and output.module objects. But if Module['wasm']
 // is an already compiled WebAssembly module, then output is the WebAssembly instance itself.
 // Depending on the build mode, Module['wasm'] can mean a different thing.
-#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION || USE_PTHREADS
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
 // Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming & instantiateStreaming.
 // Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming & instantiateStreaming.
 // Node.js and Safari do not support compileStreaming or instantiateStreaming.
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-  asm = output.instance ? output.instance.exports : output.exports;
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || USE_PTHREADS
+  // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In that case, 'output' is a WebAssembly.Instance.
+  // In main thread, Module['wasm'] is either a typed array or a fetch stream. In that case, 'output.instance' is the WebAssembly.Instance.
+  var asm = (output.instance || output).exports;
 #else
   asm = output.exports;
 #endif
@@ -153,8 +159,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
   /*** ASM_MODULE_EXPORTS ***/
 #endif
+
   initRuntime(asm);
+#if PTHREAD_POOL_SIZE
+  if (!ENVIRONMENT_IS_PTHREAD) PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, ready);
+  else ready();
+#else
   ready();
+#endif
 })
 #if ASSERTIONS
 .catch(function(error) {
@@ -167,8 +179,15 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 
 // Initialize asm.js (synchronous)
 initRuntime(asm);
+
+#if PTHREAD_POOL_SIZE
+if (!ENVIRONMENT_IS_PTHREAD) PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, ready);
+else ready();
+#else
 ready();
+#endif
 
 #endif
 
 {{GLOBAL_VARS}}
+

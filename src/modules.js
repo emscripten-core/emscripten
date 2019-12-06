@@ -87,6 +87,10 @@ var LibraryManager = {
       libraries.push('library_browser.js');
     }
 
+    if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
+      libraries.push('library_webgl.js');
+    }
+
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
@@ -472,9 +476,12 @@ function exportRuntime() {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    var threadExports = ['PThread', 'ExitStatus', '_pthread_self'];
+    var threadExports = ['PThread', '_pthread_self'];
     if (WASM) {
       threadExports.push('wasmMemory');
+    }
+    if (!MINIMAL_RUNTIME) {
+      threadExports.push('ExitStatus');
     }
 
     threadExports.forEach(function(x) {
@@ -512,11 +519,16 @@ function exportRuntime() {
       }
     }
   }
-  return runtimeElements.map(function(name) {
+  function removeEmptyElements(x) {
+    return x.filter(function(e) {
+      return e != null;
+    })
+  }
+  return removeEmptyElements(runtimeElements.map(function(name) {
     return maybeExport(name);
-  }).join('\n') + runtimeNumbers.map(function(name) {
+  })).join('\n') + removeEmptyElements(runtimeNumbers.map(function(name) {
     return maybeExportNumber(name);
-  }).join('\n');
+  })).join('\n');
 }
 
 var PassManager = {

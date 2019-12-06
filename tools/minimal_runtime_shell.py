@@ -62,6 +62,9 @@ def generate_minimal_runtime_load_statement(target_basename):
     if download_wasm:
       files_to_load += [download_wasm]
 
+  if shared.Settings.MODULARIZE and shared.Settings.USE_PTHREADS:
+    modularize_imports += ["worker: '{{{ PTHREAD_WORKER_FILE }}}'"]
+
   # Download Wasm2JS code if target browser does not support WebAssembly
   if shared.Settings.WASM == 2:
     if shared.Settings.MODULARIZE:
@@ -132,9 +135,14 @@ def generate_minimal_runtime_load_statement(target_basename):
     # script load from direct script() load to a binary() load so we can still
     # immediately start the download, but can control when we add the script to the
     # DOM.
+    if shared.Settings.USE_PTHREADS:
+      script_load = "script(url)";
+    else:
+      script_load = "script(url).then(() => { URL.revokeObjectURL(url) });";
+
     files_to_load[0] = "binary('%s')" % (target_basename + '.js')
     then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
-                        "script(url).then(() => { URL.revokeObjectURL(url) });"]
+                        script_load]
 
   # Add in binary() XHR loader if used:
   if any("binary(" in s for s in files_to_load + then_statements):
@@ -171,6 +179,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   shell = shell.replace('{{{ EXPORT_NAME }}}', shared.Settings.EXPORT_NAME)
+  shell = shell.replace('{{{ PTHREAD_WORKER_FILE }}}', shared.Settings.PTHREAD_WORKER_FILE)
 
   # In SINGLE_FILE build, embed the main .js file into the .html output
   if shared.Settings.SINGLE_FILE:

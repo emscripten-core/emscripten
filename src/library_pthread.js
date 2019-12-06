@@ -389,7 +389,11 @@ var LibraryPThread = {
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
         'wasmMemory': wasmMemory,
-        'wasmModule': wasmModule,
+#if MINIMAL_RUNTIME
+        wasmModule: Module['wasm'],
+#else
+        wasmModule: wasmModule,
+#endif
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
 #endif
@@ -400,17 +404,23 @@ var LibraryPThread = {
         'buffer': HEAPU8.buffer,
         'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
 #endif
+#if !MINIMAL_RUNTIME
         'DYNAMIC_BASE': DYNAMIC_BASE,
+#endif
         'DYNAMICTOP_PTR': DYNAMICTOP_PTR
       });
     },
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker: function() {
+#if MINIMAL_RUNTIME
+      var pthreadMainJs = Module['worker'];
+#else
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
+#endif
 #if PTHREADS_DEBUG
       out('Allocating a new web worker from ' + pthreadMainJs);
 #endif
@@ -769,17 +779,21 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  emscripten_check_blocking_allowed: function() {
 #if ASSERTIONS
+  emscripten_check_blocking_allowed: function() {
     assert(ENVIRONMENT_IS_WEB);
     warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
-#endif
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
     abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #endif
   },
+#endif
 
-  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_check_blocking_allowed'],
+  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait',
+#if ASSERTIONS
+  'emscripten_check_blocking_allowed'
+#endif
+  ],
   _emscripten_do_pthread_join: function(thread, status, block) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
@@ -805,9 +819,11 @@ var LibraryPThread = {
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
 
+#if ASSERTIONS
     if (block && ENVIRONMENT_IS_WEB) {
       _emscripten_check_blocking_allowed();
     }
+#endif
 
     for (;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
