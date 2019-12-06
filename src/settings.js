@@ -853,7 +853,6 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled.
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
@@ -1634,7 +1633,7 @@ var SUPPORT_LONGJMP = 1;
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
 // there is no "Module.canvas" object, no magic "null" default handling, and DOM element
 // 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
 
 // Specifies whether the generated .html file is run through html-minifier. The set of
 // optimization passes run by html-minifier depends on debug and optimization levels. In
