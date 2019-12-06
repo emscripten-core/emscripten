@@ -46,6 +46,9 @@
 // libraries and other support code, so all flags are either link or
 // compile+link.
 //
+// The [fastomp-only] annotation means that a flag only affects code generation
+// in fastcomp.
+//
 
 // Tuning
 
@@ -131,6 +134,7 @@ var ABORTING_MALLOC = 1;
 // If 1, generated a version of memcpy() and memset() that unroll their
 // copy sizes. If 0, optimizes for size instead to generate a smaller memcpy.
 // This flag only has effect when targeting asm.js.
+// [fastomp-only]
 var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 
 // If false, we abort with an error if we try to allocate more memory than
@@ -182,6 +186,7 @@ var GLOBAL_BASE = -1;
 // load-store will make JS engines alter it if it is being stored to a typed
 // array for security reasons. That will 'fix' the number from being a NaN or an
 // infinite number.
+// [fastomp-only]
 var DOUBLE_MODE = 1;
 
 // Warn at compile time about instructions that LLVM tells us are not fully
@@ -208,7 +213,7 @@ var WARN_UNALIGNED = 0;
 //           all modern browsers, including Firefox, Chrome and Safari, but in IE is only
 //           present in IE11 and above. Therefore if you need to support legacy versions of
 //           IE, you should not enable PRECISE_F32 1 or 2.
-// This setting is only meaningful with the fastcomp backend.
+// [fastomp-only]
 // With upstream backend and WASM=0, JS output always uses Math.fround for consistent
 // behavior with WebAssembly.
 var PRECISE_F32 = 0;
@@ -247,11 +252,11 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 var INLINING_LIMIT = 0;
 
 // Run aggressiveVariableElimination in js-optimizer.js
+// [fastomp-only]
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0;
 
 // Whether to simplify ifs in js-optimizer.js
-
-// Generated code debugging options
+// [fastomp-only]
 var SIMPLIFY_IFS = 1;
 
 // Check each write to the heap, for example, this will give a clear
@@ -274,6 +279,7 @@ var RESERVED_FUNCTION_POINTERS = 0;
 // Whether to allow function pointers to alias if they have a different type.
 // This can greatly decrease table sizes in asm.js, but can break code that
 // compares function pointers across different types.
+// [fastomp-only]
 var ALIASING_FUNCTION_POINTERS = 0;
 
 // asm.js: By default we implement function pointers using asm.js function
@@ -294,6 +300,7 @@ var ALIASING_FUNCTION_POINTERS = 0;
 // efficient. When enabling emulation, we also use the Table *outside* the wasm
 // module, exactly as when emulating in asm.js, just replacing the plain JS
 // array with a Table.
+// [fastomp-only]
 var EMULATED_FUNCTION_POINTERS = 0;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
@@ -586,7 +593,7 @@ var ASYNCIFY_IMPORTS = [
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'wasi_unstable.fd_sync', '__wasi_fd_sync',
+  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
 ];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
@@ -749,7 +756,6 @@ var EXPORT_FUNCTION_TABLES = 0;
 // Remembers the values of these settings, and makes them accessible
 // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
-
 var RETAIN_COMPILER_SETTINGS = 0;
 
 // JS library elements (C functions implemented in JS) that we include by
@@ -847,7 +853,6 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled.
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
@@ -994,12 +999,14 @@ var USE_ES6_IMPORT_META = 1;
 var BENCHMARK = 0;
 
 // If 1, generate code in asm.js format. If 2, emits the same code except for
-// omitting 'use asm'
+// omitting 'use asm'.
+// [fastomp-only]
 var ASM_JS = 1;
 
 // If 1, will finalize the final emitted code, including operations that prevent
 // later js optimizer passes from running, like converting +5 into 5.0 (the js
 // optimizer sees 5.0 as just 5).
+// [fastomp-only]
 var FINALIZE_ASM_JS = 1;
 
 // If 1, then all exports from the asm/wasm module will be accessed indirectly,
@@ -1012,6 +1019,7 @@ var FINALIZE_ASM_JS = 1;
 var SWAPPABLE_ASM_MODULE = 0;
 
 // see emcc --separate-asm
+// [fastomp-only]
 var SEPARATE_ASM = 0;
 
 // JS library functions on this list are not converted to JS, and calls to them
@@ -1049,7 +1057,8 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// Runs tools/emterpretify on the compiler output
+// Runs tools/emterpretify on the compiler output.
+// [fastomp-only]
 var EMTERPRETIFY = 0;
 
 // If defined, a file to write bytecode to, otherwise the default is to embed it
@@ -1059,18 +1068,22 @@ var EMTERPRETIFY = 0;
 // Module.emterpreterFile contains an ArrayBuffer with the bytecode, when the
 // code loads.  Note: You might need to quote twice in the shell, something like
 // -s 'EMTERPRETIFY_FILE="waka"'
+// [fastomp-only]
 var EMTERPRETIFY_FILE = '';
 
 // Functions to not emterpret, that is, to run normally at full speed
+// [fastomp-only]
 var EMTERPRETIFY_BLACKLIST = [];
 
 // If this contains any functions, then only the functions in this list are
 // emterpreted (as if all the rest are blacklisted; this overrides the
 // BLACKLIST)
+// [fastomp-only]
 var EMTERPRETIFY_WHITELIST = [];
 
 // Allows sync code in the emterpreter, by saving the call stack, doing an async
 // delay, and resuming it
+// [fastomp-only]
 var EMTERPRETIFY_ASYNC = 0;
 
 // Performs a static analysis to suggest which functions should be run in the
@@ -1078,10 +1091,12 @@ var EMTERPRETIFY_ASYNC = 0;
 // called in the EMTERPRETIFY_ASYNC option.  After showing the suggested list,
 // compilation will halt. You can apply the provided list as an emcc argument
 // when compiling later.
+// [fastomp-only]
 var EMTERPRETIFY_ADVISE = 0;
 
 // If you have additional custom synchronous functions, add them to this list
 // and the advise mode will include them in its analysis.
+// [fastomp-only]
 var EMTERPRETIFY_SYNCLIST = [];
 
 // whether js opts will be run, after the main compiler
@@ -1169,7 +1184,7 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 //   allow: allow creating operations that can trap. this is the most
 //          compact, as we just emit a single wasm operation, with no
 //          guards to trapping values, and also often the fastest.
-// This setting is only meaningfull with the fastcomp backend.
+// [fastomp-only]
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for
@@ -1352,9 +1367,6 @@ var PTHREADS_DEBUG = 0;
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
-var MAX_GLOBAL_ALIGN = -1; // received from the backend
-var IMPLEMENTED_FUNCTIONS = []; // received from the backend
-
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++ or LLVM
 // types, but end up identical at the asm.js level (all pointers are the same as
@@ -1362,6 +1374,8 @@ var IMPLEMENTED_FUNCTIONS = []; // received from the backend
 //
 // This option is quite slow to run, as it processes and hashes all methods in
 // the codebase in multiple passes.
+//
+// [fastomp-only]
 var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
@@ -1403,9 +1417,11 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 var EVAL_CTORS = 0;
 
 // see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
+// [fastomp-only]
 var CYBERDWARF = 0;
 
 // Path to the CyberDWARF debug file passed to the compiler
+// [fastomp-only]
 var BUNDLED_CD_DEBUG_FILE = "";
 
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
@@ -1456,10 +1472,6 @@ var FETCH = 0;
 // with the wasm backend, like waiting or IndexedDB.
 // Currently will always be set to 0 on WASM backend.
 var USE_FETCH_WORKER = 1;
-
-// Internal: name of the file containing the Fetch *.fetch.js, if relevant
-// Do not set yourself.
-var FETCH_WORKER_FILE = '';
 
 // If set to 1, uses the multithreaded filesystem that is implemented within the
 // asm.js module, using emscripten_fetch. Implies -s FETCH=1.
@@ -1621,7 +1633,7 @@ var SUPPORT_LONGJMP = 1;
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
 // there is no "Module.canvas" object, no magic "null" default handling, and DOM element
 // 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
 
 // Specifies whether the generated .html file is run through html-minifier. The set of
 // optimization passes run by html-minifier depends on debug and optimization levels. In

@@ -18,7 +18,7 @@ int isatty(int fd)
 	// All character devices are terminals (other things a Linux system would
 	// assume is a character device, like the mouse, we have special APIs for).
 	if (statbuf.fs_filetype != __WASI_FILETYPE_CHARACTER_DEVICE) {
-		errno = __WASI_ENOTTY;
+		errno = __WASI_ERRNO_NOTTY;
 		return 0;
 	}
 

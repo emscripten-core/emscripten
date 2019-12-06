@@ -281,12 +281,6 @@ var LibraryJSEvents = {
 #else
     var domElement = __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
 #endif
-#if ASSERTIONS
-    // TODO: Remove this check in the future, or move it to some kind of debugging mode, because it may be perfectly fine behavior
-    // for one to query an event target to test if any DOM element with given CSS selector exists. However for a migration period
-    // from old lookup over to new, it is very useful to get diagnostics messages related to a lookup failing.
-    if (!domElement) err('No DOM element was found with CSS selector "' + __maybeCStringToJsString(target) + '"');
-#endif
     return domElement;
   },
 
@@ -295,15 +289,26 @@ var LibraryJSEvents = {
   _findCanvasEventTarget: function(target) {
     target = __maybeCStringToJsString(target);
 
-    // First look up if there exists an OffscreenCanvas with the given name.
-    var offscreenCanvas;
-    // TODO: Once Module['canvas'] is removed, clean up the following line:
-    if (target == '#canvas') offscreenCanvas = GL.offscreenCanvases['canvas'];
-    if (!offscreenCanvas) offscreenCanvas = GL.offscreenCanvases[target] || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0]); // First looks up by DOM ID ("#myCanvasElement"), second looks up by DOM element name (first found element of type <canvas>)
-    if (offscreenCanvas) return offscreenCanvas;
+    // When compiling with OffscreenCanvas support and looking up a canvas to target,
+    // we first look up if the target Canvas has been transferred to OffscreenCanvas use.
+    // These transfers are represented/tracked by GL.offscreenCanvases object, which contain
+    // the OffscreenCanvas element for each regular Canvas element that has been transferred.
 
+    // Note that each pthread/worker have their own set of GL.offscreenCanvases. That is,
+    // when an OffscreenCanvas is transferred from a pthread/main thread to another pthread,
+    // it will move in the GL.offscreenCanvases array between threads. Hence GL.offscreenCanvases
+    // represents the set of OffscreenCanvases owned by the current calling thread.
+
+    // First check out the list of OffscreenCanvases by CSS selector ID ('#myCanvasID')
+    return GL.offscreenCanvases[target.substr(1)] // Remove '#' prefix
+    // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
+    // OffscreenCanvas that we can find.
+     || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
+    // If that is not found either, query via the regular DOM selector.
 #if USE_PTHREADS
-    return (typeof document !== 'undefined') ? document.querySelector(target) : null;
+     || (typeof document !== 'undefined' && document.querySelector(target));
+#else
+     || document.querySelector(target);
 #endif
   },
 #else

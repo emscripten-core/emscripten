@@ -24,6 +24,16 @@ Current Trunk
   Note that going forwards we will use these settings in more places, so if
   you do need very old legacy browser support, you may need to set either
   `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
+- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
+  With this change the old deprecated HTML5 API event target lookup behavior is
+  disabled. There is no "Module.canvas" object, no magic "null" default handling,
+  and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
+  of referring to DOM IDs. For more information see:
+  <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
+- WASI API updated to from `wasi_unstable` to `wasi_snapshot_preview1` this
+  is mostly an implementation detail but if you use `WASI_STANDALONE` it means
+  that the output of emscripten now requires a runtime with
+  `wasi_snapshot_preview1` support.
 
 v1.39.4: 12/03/2019
 -------------------
