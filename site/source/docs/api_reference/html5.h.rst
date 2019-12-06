@@ -2392,3 +2392,9 @@ Functions
 .. c:function:: void emscripten_throw_string(const char *utf8String)
 
   Invokes JavaScript throw statement and throws a string.
+
+.. c:function:: void emscripten_unwind_stack(void)
+
+  Throws a JavaScript exception that unwinds the stack and yields execution
+  back to the browser event loop. This function does not return execution
+  back to calling code.

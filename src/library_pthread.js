@@ -962,7 +962,7 @@ var LibraryPThread = {
       // the entire application.
       process.exit(status);
     }
-    throw 'pthread_exit';
+    throw 'unwind';
 #endif
   },
 

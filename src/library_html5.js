@@ -3131,6 +3131,10 @@ var LibraryJSEvents = {
     throw UTF8ToString(str);
   },
 
+  emscripten_unwind_stack: function() {
+    throw 'unwind';
+  },
+
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio__sig: 'd',
   emscripten_get_device_pixel_ratio: function() {
