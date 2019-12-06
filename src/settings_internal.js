@@ -70,3 +70,12 @@ var DYNAMIC_BASE = -1;
 
 // -Werror was specified on the command line.
 var WARNINGS_ARE_ERRORS = 0;
+
+// Maximum seen global alignment; received from the backend.
+var MAX_GLOBAL_ALIGN = -1;
+
+// List of functions implemented in compiled code; received from the backend.
+var IMPLEMENTED_FUNCTIONS = [];
+
+// Name of the file containing the Fetch *.fetch.js, if relevant
+var FETCH_WORKER_FILE = '';
