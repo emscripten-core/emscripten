@@ -1121,6 +1121,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
       shared.Settings.AUTO_ARCHIVE_INDEXES = 0
+      shared.Settings.DISABLE_DEPRECATED_TIMESTAMP_IN_HTML5_EVENTS = 1
 
     if AUTODEBUG:
       shared.Settings.AUTODEBUG = 1

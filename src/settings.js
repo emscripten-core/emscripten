@@ -1571,6 +1571,11 @@ var SUPPORT_LONGJMP = 1;
 // selectors, instead of referring to DOM IDs.
 var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
 
+// If set to 1, disables setting the timestamp field in HTML5 events. (Call
+// emscripten_get_now() or emscripten_performance_now() to get a timestamp
+// yourself if desirable.)
+var DISABLE_DEPRECATED_TIMESTAMP_IN_HTML5_EVENTS = 0;
+
 // Specifies whether the generated .html file is run through html-minifier. The
 // set of optimization passes run by html-minifier depends on debug and
 // optimization levels. In -g2 and higher, no minification is performed. In -g1,
