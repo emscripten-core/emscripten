@@ -1500,79 +1500,34 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 
-//==============================
-// Internal use only, from here
-//==============================
+// Specifies the oldest major version of Firefox to target. I.e. all Firefox
+// versions >= MIN_FIREFOX_VERSION
+// are desired to work. Pass -s MIN_FIREFOX_VERSION=majorVersion to drop support
+// for Firefox versions older than < majorVersion.
+// Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+var MIN_FIREFOX_VERSION = 65;
 
-// Specifies a list of Emscripten-provided JS libraries to link against.
-// (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
-var SYSTEM_JS_LIBRARIES = [];
+// Specifies the oldest version of desktop Safari to target. Version is encoded
+// in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
+// Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0
+// Mojave
+var MIN_SAFARI_VERSION = 120000;
 
-// This will contain the emscripten version. You should not modify this. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
-var EMSCRIPTEN_VERSION = '';
+// Specifies the oldest version of Internet Explorer to target. E.g. pass -s
+// MIN_IE_VERSION = 11 to drop support for IE 10 and older.
+// Internet Explorer is at end of life and does not support WebAssembly
+var MIN_IE_VERSION = -1;
 
-// This will contain the optimization level (-Ox). You should not modify this.
-var OPT_LEVEL = 0;
+// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based
+// flavor) to target. E.g. pass -s MIN_EDGE_VERSION=40 to drop support for
+// EdgeHTML 39 and older.
+// Edge 44.17763 was released on November 13, 2018
+var MIN_EDGE_VERSION = 44;
 
-// Will be set to 0 if -fno-rtti is used on the command line.
-var USE_RTTI = 1;
-
-// This will contain the debug level (-gx). You should not modify this.
-var DEBUG_LEVEL = 0;
-
-// Whether we are profiling functions. You should not modify this.
-var PROFILING_FUNCS = 0;
-
-// Whether we are emitting a symbol map. You should not modify this.
-var EMIT_SYMBOL_MAP = 0;
-
-// tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
-// List of function explictly exported by user on the command line.
-var USER_EXPORTED_FUNCTIONS = [];
-
-// name of the file containing wasm text, if relevant
-var WASM_TEXT_FILE = '';
-
-// name of the file containing wasm binary, if relevant
-var WASM_BINARY_FILE = '';
-
-// name of the file containing asm.js code, if relevant
-var ASMJS_CODE_FILE = '';
-
-// name of the file containing the pthread *.worker.js, if relevant
-var PTHREAD_WORKER_FILE = '';
-
-// Base URL the source mapfile, if relevant
-var SOURCE_MAP_BASE = '';
-
-var MEM_INIT_IN_WASM = 0;
-
-// If set to 1, src/base64Utils.js will be included in the bundle.
-// This is set internally when needed (SINGLE_FILE)
-var SUPPORT_BASE64_EMBEDDING = 0;
-
-// the possible environments the code may run in.
-var ENVIRONMENT_MAY_BE_WEB = 1;
-var ENVIRONMENT_MAY_BE_WORKER = 1;
-var ENVIRONMENT_MAY_BE_NODE = 1;
-var ENVIRONMENT_MAY_BE_SHELL = 1;
-
-// passes information to emscripten.py about whether to minify
-// JS -> asm.js import names. Controlled by optimization level, enabled
-// at -O1 and higher, but disabled at -g2 and higher.
-var MINIFY_ASMJS_IMPORT_NAMES = 0;
-
-// the total static allocation, that is, how much to bump the start of memory
-// for static globals. received from the backend, and possibly increased due
-// to JS static allocations
-var STATIC_BUMP = -1;
-
-// the total initial wasm table size.
-var WASM_TABLE_SIZE = 0;
+// Specifies the oldest version of Chrome. E.g. pass -s MIN_CHROME_VERSION=58 to
+// drop support for Chrome 57 and older.
+// Chrome 75.0.3770 was released on 2019-06-04
+var MIN_CHROME_VERSION = 75;
 
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little
@@ -1581,16 +1536,83 @@ var WASM_TABLE_SIZE = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
-// Internal: Tracks whether Emscripten should link in exception throwing (C++ 'throw')
-// support library. This does not need to be set directly, but pass -fno-exceptions
-// to the build disable exceptions support. (This is basically -fno-exceptions, but
-// checked at final link time instead of individual .cpp file compile time)
-// If the program *does* contain throwing code (some source files were not compiled
-// with `-fno-exceptions`), and this flag is set at link time, then you will get
-// errors on undefined symbols, as the exception throwing code is not linked in. If
-// so you should either unset the option (if you do want exceptions) or fix the
-// compilation of the source files so that indeed no exceptions are used).
+// If true, uses minimal sized runtime without POSIX features, Module,
+// preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.
+// Enable this setting to target the smallest code size possible.  Set
+// MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These
+// opts are quite hacky, and work around limitations in Closure and other parts
+// of the build system, so they may not work in all generated programs (But can
+// be useful for really small programs)
+var MINIMAL_RUNTIME = 0;
+
+// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
+// enable this. If you are not using dynamic allocations, can set this to 0 to
+// save code size. This setting is ignored when building with -s
+// MINIMAL_RUNTIME=0.
+var USES_DYNAMIC_ALLOC = 1;
+
+// Advanced manual dead code elimination: Specifies the set of runtime JS
+// functions that should be imported to the asm.js/wasm module.  Remove elements
+// from this list to make build smaller if some of these are not needed.  In
+// Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
+// able to remove these, but if you are targeting asm.js or doing a -O2 build or
+// lower, then this can be beneficial.
+var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
+
+// If true, compiler supports setjmp() and longjmp(). If false, these APIs are
+// not available.  If you are using C++ exceptions, but do not need
+// setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
+// code size and performance when catching exceptions.
+var SUPPORT_LONGJMP = 1;
+
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior.
+// When enabled, there is no "Module.canvas" object, no magic "null" default
+// handling, and DOM element 'target' parameters are taken to refer to CSS
+// selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
+
+// Specifies whether the generated .html file is run through html-minifier. The
+// set of optimization passes run by html-minifier depends on debug and
+// optimization levels. In -g2 and higher, no minification is performed. In -g1,
+// minification is done, but whitespace is retained. Minification requires at
+// least -O1 or -Os to be used. Pass -s MINIFY_HTML=0 to explicitly choose to
+// disable HTML minification altogether.
+var MINIFY_HTML = 1;
+
+// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
+// you run wasm2js *later* on the wasm, and you can pick between running the
+// normal wasm or that wasm2js code. For details of how to do that, see the
+// test_maybe_wasm2js test.  This option can be useful for debugging and
+// bisecting.
+var MAYBE_WASM2JS = 0;
+
+// The size of our shadow memory.
+// By default, we have 32 MiB. This supports 256 MiB of real memory.
+var ASAN_SHADOW_SIZE = 33554432;
+
+// Internal: Tracks whether Emscripten should link in exception throwing (C++
+// 'throw') support library. This does not need to be set directly, but pass
+// -fno-exceptions to the build disable exceptions support. (This is basically
+// -fno-exceptions, but checked at final link time instead of individual .cpp
+// file compile time) If the program *does* contain throwing code (some source
+// files were not compiled with `-fno-exceptions`), and this flag is set at link
+// time, then you will get errors on undefined symbols, as the exception
+// throwing code is not linked in. If so you should either unset the option (if
+// you do want exceptions) or fix the compilation of the source files so that
+// indeed no exceptions are used).
+// TODO(sbc): Move to settings_internal (current blocked due to use in test
+// code).
 var DISABLE_EXCEPTION_THROWING = 0;
+
+// Whether we should use the offset converter.  This is needed for older
+// versions of v8 (<7.7) that does not give the hex module offset into wasm
+// binary in stack traces, as well as for avoiding using source map entries
+// across function boundaries.
+var USE_OFFSET_CONVERTER = 0;
+
+//===========================================
+// Internal, used for testing only, from here
+//===========================================
 
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
@@ -1602,81 +1624,9 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // that are generated. This allows minifying extra bit of asm.js code from unused
 // runtime code, if you know some of these are not needed.
 // (think of this as advanced manual DCE)
+// TODO(sbc): Move to settings_internal (current blocked due to use in test
+// code).
 var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
-
-// If true, uses minimal sized runtime without POSIX features, Module, preRun/preInit/etc.,
-// Emscripten built-in XHR loading or library_browser.js. Enable this setting to target
-// the smallest code size possible.
-// Set MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These opts are
-// quite hacky, and work around limitations in Closure and other parts of the build system, so
-// they may not work in all generated programs (But can be useful for really small programs)
-var MINIMAL_RUNTIME = 0;
-
-// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(), enable this. If you
-// are not using dynamic allocations, can set this to 0 to save code size. This setting is
-// ignored when building with -s MINIMAL_RUNTIME=0.
-var USES_DYNAMIC_ALLOC = 1;
-
-// Advanced manual dead code elimination:
-// Specifies the set of runtime JS functions that should be imported to the asm.js/wasm module.
-// Remove elements from this list to make build smaller if some of these are not needed.
-// In Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is able to
-// remove these, but if you are targeting asm.js or doing a -O2 build or lower, then this can
-// be beneficial.
-var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
-
-// If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
-// If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
-// this to 0 to save a little bit of code size and performance when catching exceptions.
-var SUPPORT_LONGJMP = 1;
-
-// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
-// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
-// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
-
-// Specifies whether the generated .html file is run through html-minifier. The set of
-// optimization passes run by html-minifier depends on debug and optimization levels. In
-// -g2 and higher, no minification is performed. In -g1, minification is done, but whitespace
-// is retained. Minification requires at least -O1 or -Os to be used. Pass -s MINIFY_HTML=0
-// to explicitly choose to disable HTML minification altogether.
-var MINIFY_HTML = 1;
-
-// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets you
-// run wasm2js *later* on the wasm, and you can pick between running the normal
-// wasm or that wasm2js code. For details of how to do that, see the test_maybe_wasm2js
-// test.
-// This option can be useful for debugging and bisecting.
-var MAYBE_WASM2JS = 0;
-
-// The size of our shadow memory.
-// By default, we have 32 MiB. This supports 256 MiB of real memory.
-var ASAN_SHADOW_SIZE = 33554432;
-
-// Whether we should use the offset converter.
-// This is needed for older versions of v8 (<7.7) that does not give the hex module offset
-// into wasm binary in stack traces, as well as for avoiding using source map
-// entries across function boundaries.
-var USE_OFFSET_CONVERTER = 0;
-
-// Specifies the oldest major version of Firefox to target. I.e. all Firefox versions >= MIN_FIREFOX_VERSION
-// are desired to work. Pass -s MIN_FIREFOX_VERSION=majorVersion to drop support for Firefox versions older than
-// < majorVersion.
-var MIN_FIREFOX_VERSION = 65; // Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
-
-// Specifies the oldest version of desktop Safari to target. Version is encoded in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
-var MIN_SAFARI_VERSION = 120000; // Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0 Mojave
-
-// Specifies the oldest version of Internet Explorer to target. E.g. pass -s MIN_IE_VERSION = 11 to drop support
-// for IE 10 and older.
-var MIN_IE_VERSION = -1; // Internet Explorer is at end of life and does not support WebAssembly
-
-// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based flavor) to target. E.g. pass -s MIN_EDGE_VERSION=40
-// to drop support for EdgeHTML 39 and older.
-var MIN_EDGE_VERSION = 44; // Edge 44.17763 was released on November 13, 2018
-
-// Specifies the oldest version of Chrome. E.g. pass -s MIN_CHROME_VERSION=58 to drop support for Chrome 57 and older.
-var MIN_CHROME_VERSION = 75; // Chrome 75.0.3770 was released on 2019-06-04
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
