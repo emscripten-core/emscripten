@@ -73,3 +73,11 @@ var WARNINGS_ARE_ERRORS = 0;
 
 // Temporary setting to force generation and preservation of full DWARF debug info
 var FULL_DWARF = 0;
+// Maximum seen global alignment; received from the backend.
+var MAX_GLOBAL_ALIGN = -1;
+
+// List of functions implemented in compiled code; received from the backend.
+var IMPLEMENTED_FUNCTIONS = [];
+
+// Name of the file containing the Fetch *.fetch.js, if relevant
+var FETCH_WORKER_FILE = '';
