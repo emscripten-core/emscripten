@@ -863,6 +863,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # If not = is specified default to 1
           if '=' not in key:
             key += '=1'
+
+          # Special handling of browser version targets. A version -1 means that the specific version
+          # is not supported at all. Replace those with Infinity to make it possible to compare e.g.
+          # #if MIN_FIREFOX_VERSION < 68
+          try:
+            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=Infinity'
+          except Exception:
+            pass
+
           settings_changes.append(key)
           newargs[i] = newargs[i + 1] = ''
           if key == 'WASM_BACKEND=1':
@@ -1232,6 +1242,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
+
+      # Support all old browser versions
+      shared.Settings.MIN_FIREFOX_VERSION = 0
+      shared.Settings.MIN_SAFARI_VERSION = 0
+      shared.Settings.MIN_IE_VERSION = 0
+      shared.Settings.MIN_EDGE_VERSION = 0
+      shared.Settings.MIN_CHROME_VERSION = 0
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM and not shared.Settings.WASM2JS:

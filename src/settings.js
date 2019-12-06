@@ -498,6 +498,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
+//  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 // You can also configure the above options individually.
 var LEGACY_VM_SUPPORT = 0;
 
@@ -1645,6 +1646,25 @@ var ASAN_SHADOW_SIZE = 33554432;
 // into wasm binary in stack traces, as well as for avoiding using source map
 // entries across function boundaries.
 var USE_OFFSET_CONVERTER = 0;
+
+// Specifies the oldest major version of Firefox to target. I.e. all Firefox versions >= MIN_FIREFOX_VERSION
+// are desired to work. Pass -s MIN_FIREFOX_VERSION=majorVersion to drop support for Firefox versions older than
+// < majorVersion.
+var MIN_FIREFOX_VERSION = 65; // Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+
+// Specifies the oldest version of desktop Safari to target. Version is encoded in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
+var MIN_SAFARI_VERSION = 120000; // Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0 Mojave
+
+// Specifies the oldest version of Internet Explorer to target. E.g. pass -s MIN_IE_VERSION = 11 to drop support
+// for IE 10 and older.
+var MIN_IE_VERSION = -1; // Internet Explorer is at end of life and does not support WebAssembly
+
+// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based flavor) to target. E.g. pass -s MIN_EDGE_VERSION=40
+// to drop support for EdgeHTML 39 and older.
+var MIN_EDGE_VERSION = 44; // Edge 44.17763 was released on November 13, 2018
+
+// Specifies the oldest version of Chrome. E.g. pass -s MIN_CHROME_VERSION=58 to drop support for Chrome 57 and older.
+var MIN_CHROME_VERSION = 75; // Chrome 75.0.3770 was released on 2019-06-04
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
