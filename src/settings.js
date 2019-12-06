@@ -1407,9 +1407,6 @@ var CYBERDWARF = 0;
 // Path to the CyberDWARF debug file passed to the compiler
 var BUNDLED_CD_DEBUG_FILE = "";
 
-// Temporary setting to force generation and preservation of full DWARF debug info
-var FULL_DWARF = 0;
-
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
 // Enabled by default, set this to 0 to disable.
 // If set to 2, we assume TextDecoder is present and usable, and do not emit
