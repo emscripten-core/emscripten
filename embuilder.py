@@ -132,7 +132,7 @@ def build_port(port_name, lib_name, params):
 def main():
   global force
   parser = argparse.ArgumentParser(description=__doc__, usage="%(prog)s [operation] [targets ...]",
-      add_help=False)
+                                   add_help=False)
   parser.add_argument('--help', '-h', action='store_true', help='print help message')
   parser.add_argument('--lto', action='store_true', help='build bitcode object for LTO')
   parser.add_argument('--pic', action='store_true',
@@ -140,7 +140,7 @@ def main():
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
   parser.add_argument('operation')
-  parser.add_argument('targets', nargs='+') #argparse.REMAINDER)
+  parser.add_argument('targets', nargs='+')
   args = parser.parse_args()
 
   if args.help:
