@@ -2670,7 +2670,7 @@ def parse_args(newargs):
           # setting to avoid stripping it out later.
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
-          logger.warning('gforce_dwarf is a temporary option that will eventually disappear')
+          shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
