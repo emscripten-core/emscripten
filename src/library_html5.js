@@ -114,7 +114,9 @@ var LibraryJSEvents = {
     // Stores objects representing each currently registered JS event handler.
     eventHandlers: [],
 
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
+#endif
 
     // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
     removeAllHandlersOnTarget: function(target, eventTypeString) {
@@ -244,7 +246,11 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
       allowsDeferredCalls: JSEvents.isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
+#else
+      allowsDeferredCalls: true,
+#endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: keyEventHandlerFunc,
@@ -448,8 +454,10 @@ var LibraryJSEvents = {
       handlerFunc: mouseEventHandlerFunc,
       useCapture: useCapture
     };
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     // In IE, mousedown events don't either allow deferred calls to be run!
     if (JSEvents.isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
+#endif
     JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
@@ -1294,6 +1302,7 @@ var LibraryJSEvents = {
   // Add letterboxes to a fullscreen element in a cross-browser way.
   _setLetterbox__deps: ['$JSEvents'],
   _setLetterbox: function(element, topBottom, leftRight) {
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     if (JSEvents.isInternetExplorer()) {
       // Cannot use padding on IE11, because IE11 computes padding in addition to the size, unlike
       // other browsers, which treat padding to be part of the size.
@@ -1304,10 +1313,13 @@ var LibraryJSEvents = {
       element.style.marginLeft = element.style.marginRight = leftRight + 'px';
       element.style.marginTop = element.style.marginBottom = topBottom + 'px';
     } else {
+#endif
       // Cannot use margin to specify letterboxes in FF or Chrome, since those ignore margins in fullscreen mode.
       element.style.paddingLeft = element.style.paddingRight = leftRight + 'px';
       element.style.paddingTop = element.style.paddingBottom = topBottom + 'px';
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     }
+#endif
   },
 
   _currentFullscreenStrategy: {},
