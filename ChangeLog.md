@@ -17,6 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add fine-grained options for specific legacy browser support,
+  `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
+  `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`
+  option sets all of them to 0, that is, maximal backwards compatibility.
+  Note that going forwards we will use these settings in more places, so if
+  you do need very old legacy browser support, you may need to set either
+  `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
 
 v1.39.4: 12/03/2019
 -------------------
