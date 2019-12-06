@@ -933,7 +933,7 @@ function createWasm() {
   // prepare imports
   var info = {
     'env': asmLibraryArg,
-    'wasi_unstable': asmLibraryArg
+    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #if WASM_BACKEND == 0
     ,
     'global': {

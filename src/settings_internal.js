@@ -81,3 +81,5 @@ var IMPLEMENTED_FUNCTIONS = [];
 
 // Name of the file containing the Fetch *.fetch.js, if relevant
 var FETCH_WORKER_FILE = '';
+
+var WASI_MODULE_NAME = "wasi_snapshot_preview1";
