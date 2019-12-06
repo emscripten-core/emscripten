@@ -416,10 +416,6 @@ function exportRuntime() {
     'makeBigInt',
     'dynCall',
     'getCompilerSetting',
-    'stackSave',
-    'stackRestore',
-    'stackAlloc',
-    'establishStackSpace',
     'print',
     'printErr',
     'getTempRet0',
@@ -431,12 +427,18 @@ function exportRuntime() {
   if (!MINIMAL_RUNTIME) {
     runtimeElements.push('Pointer_stringify');
     runtimeElements.push('warnOnce');
+    runtimeElements.push('stackSave');
+    runtimeElements.push('stackRestore');
+    runtimeElements.push('stackAlloc');
+    runtimeElements.push('establishStackSpace');
   }
 
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-    runtimeElements.push('abortStackOverflow');
+    if (!MINIMAL_RUNTIME) {
+      runtimeElements.push('abortStackOverflow');
+    }
   }
 
   if (USE_PTHREADS) {

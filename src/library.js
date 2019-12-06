@@ -1288,6 +1288,7 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME
+  $abortStackOverflow__deps: ['$stackSave'],
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },

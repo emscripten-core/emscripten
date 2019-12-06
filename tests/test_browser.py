@@ -3335,6 +3335,13 @@ window.close = function() {
   def test_async_bad_whitelist(self):
     self.btest('browser/async_bad_whitelist.cpp', '0', args=['-s', 'ASYNCIFY', '-s', 'ASYNCIFY_WHITELIST=["waka"]', '--profiling'])
 
+  # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s MODULARIZE=1 as well.
+  @no_wasm_backend('MINIMAL_RUNTIME not yet for wasm backend')
+  def test_minimal_runtime_modularize(self):
+    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+    self.compile_btest(['src.cpp', '-o', 'test.html', '-s', 'MODULARIZE=1', '-s', 'MINIMAL_RUNTIME=1'])
+    self.run_browser('test.html', None, '/report_result?0')
+
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2'], ['-O2', '--closure', '1']]:
@@ -4054,6 +4061,15 @@ window.close = function() {
 
   def test_custom_messages_proxy(self):
     self.btest(path_from_root('tests', 'custom_messages_proxy.c'), expected='1', args=['--proxy-to-worker', '--shell-file', path_from_root('tests', 'custom_messages_proxy_shell.html'), '--post-js', path_from_root('tests', 'custom_messages_proxy_postjs.js')])
+
+  # Tests that when building with -s MINIMAL_RUNTIME=1, the build can use -s WASM=0 --separate-asm as well.
+  @no_wasm_backend('asm.js')
+  def test_minimal_runtime_separate_asm(self):
+    for opts in [['-s', 'MINIMAL_RUNTIME=1']]:
+      print(opts)
+      create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'browser_test_hello_world.c')).read()))
+      self.compile_btest(['src.cpp', '-o', 'test.html', '-s', 'WASM=0', '--separate-asm'] + opts)
+      self.run_browser('test.html', None, '/report_result?0')
 
   @no_wasm_backend('asm.js')
   def test_separate_asm(self):
