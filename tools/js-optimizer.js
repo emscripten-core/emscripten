@@ -5149,6 +5149,20 @@ function growableHeap(ast) {
           }
           default: {}
         }
+      } else if (node[1] === true && node[2][0] === 'name') {
+        heap = node[2][1];
+        if (heap[0] === 'H') {
+          // Don't transform setup of the arrays.
+          switch (heap) {
+            case 'HEAP8':  case 'HEAPU8':
+            case 'HEAP16': case 'HEAPU16':
+            case 'HEAP32': case 'HEAPU32':
+            case 'HEAPF32': case 'HEAPF64': {
+              return null;
+            }
+            default: {}
+          }
+        }
       }
     } else if (type === 'sub') {
       var target = node[1][1];
@@ -5181,6 +5195,40 @@ function growableHeap(ast) {
           }
           case 'HEAPF64': {
             return ['call', ['name', 'GROWABLE_HEAP_LOAD_F64'], [ptr]];
+          }
+          default: {}
+        }
+      }
+    } else if (type === 'name' && node.length > 1) {
+      var target = node[1];
+      if (target[0] === 'H') {
+        // heap access
+        heap = target;
+        // GROWABLE_HEAP_I8()
+        switch (heap) {
+          case 'HEAP8': {
+            return ['call', ['name', 'GROWABLE_HEAP_I8'], []];
+          }
+          case 'HEAPU8': {
+            return ['call', ['name', 'GROWABLE_HEAP_U8'], []];
+          }
+          case 'HEAP16': {
+            return ['call', ['name', 'GROWABLE_HEAP_I16'], []];
+          }
+          case 'HEAPU16': {
+            return ['call', ['name', 'GROWABLE_HEAP_U16'], []];
+          }
+          case 'HEAP32': {
+            return ['call', ['name', 'GROWABLE_HEAP_I32'], []];
+          }
+          case 'HEAPU32': {
+            return ['call', ['name', 'GROWABLE_HEAP_U32'], []];
+          }
+          case 'HEAPF32': {
+            return ['call', ['name', 'GROWABLE_HEAP_F32'], []];
+          }
+          case 'HEAPF64': {
+            return ['call', ['name', 'GROWABLE_HEAP_F64'], []];
           }
           default: {}
         }
