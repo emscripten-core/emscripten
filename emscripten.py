@@ -2224,7 +2224,28 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
 
-  forwarded_json = json.loads(forwarded_data)
+    forwarded_json = json.loads(forwarded_data)
+
+    forwarded_json = json.loads(forwarded_data)
+    library_fns = forwarded_json['Functions']['libraryFunctions']
+    library_fns_list = []
+    for name in library_fns:
+      library_fns_list.append(name.encode('utf-8'))
+
+    print('forwarded_json:' + str(library_fns_list))
+    libraryfile = infile + '.libfile'
+    with open(libraryfile, 'w') as f:
+      f.write(str(library_fns_list))
+  else:
+    libraryfile = []
+
+  metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG, libraryfile)
+
+  update_settings_glue(metadata, DEBUG)
+
+  if shared.Settings.SIDE_MODULE:
+    return
+
   # For the wasm backend the implementedFunctions from compiler.js should
   # alwasys be empty. This only gets populated for __asm function when using
   # the JS backend.
@@ -2318,7 +2339,7 @@ def remove_trailing_zeros(memfile):
     f.write(mem_data[:end])
 
 
-def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
+def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG, libraryfile):
   basename = shared.unsuffixed(outfile.name)
   wasm = basename + '.wasm'
   base_wasm = infile
@@ -2365,6 +2386,9 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
     args.append('--pass-arg=legalize-js-interface-export-originals')
   if shared.Settings.FULL_DWARF:
     args.append('--dwarf')
+
+  if shared.Settings.MAIN_MODULE:
+    args.append('--pass-arg=library-file@%s' % libraryfile)
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
                                                 outfile=wasm,
