@@ -2652,7 +2652,7 @@ def parse_args(newargs):
           # Force clang to generate full debug info using -g. Set the FULL_DWARF
           # setting to avoid stripping it out later.
           newargs[i] = '-g'
-          shared.Settings.FULL_DWARF=1
+          shared.Settings.FULL_DWARF = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
