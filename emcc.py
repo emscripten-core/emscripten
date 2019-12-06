@@ -2648,7 +2648,7 @@ def parse_args(newargs):
           # emit line tables, which can be represented in source maps
           newargs[i] = '-gline-tables-only'
       else:
-        if requested_level.startswith('dwarf'):
+        if requested_level.startswith('force_dwarf'):
           # Force clang to generate full debug info using -g. Set the FULL_DWARF
           # setting to avoid stripping it out later.
           newargs[i] = '-g'

@@ -2360,8 +2360,8 @@ int f() {
   @no_fastcomp()
   def test_force_dwarf(self):
     def compile_with_dwarf(args, output):
-      # Test that the -gdwarf flag forces enabling dwarf info in object files and linked wasm
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-gdwarf'] + args)
+      # Test that the -gforce_dwarf flag forces enabling dwarf info in object files and linked wasm
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-gforce_dwarf'] + args)
 
     def verify(output):
       info = run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
