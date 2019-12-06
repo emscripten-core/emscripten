@@ -10,9 +10,10 @@ interested in helping out!
 
 .. tip:: The information will be less relevant if you're just using Emscripten, but may still be of interest.
 
+.. _developers-guide-setting-up:
 
-Getting Binaries
-================
+Setting up
+==========
 
 For contributing to core Emscripten code, such as ``emcc.py``, you don't need to
 build any binaries as ``emcc.py`` is in Python, and the core JS generation is
