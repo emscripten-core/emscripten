@@ -102,6 +102,7 @@
 -------- T glFenceSync
 -------- T glFinish
 -------- T glFlush
+-------- T glFlushMappedBufferRange
 -------- T glFramebufferRenderbuffer
 -------- T glFramebufferTexture2D
 -------- T glFramebufferTextureLayer
@@ -127,6 +128,7 @@
 -------- T glGetBooleanv
 -------- T glGetBufferParameteri64v
 -------- T glGetBufferParameteriv
+-------- T glGetBufferPointerv
 -------- T glGetError
 -------- T glGetFloatv
 -------- T glGetFragDataLocation
@@ -189,6 +191,7 @@
 -------- T glIsVertexArrayOES
 -------- T glLineWidth
 -------- T glLinkProgram
+-------- T glMapBufferRange
 -------- T glPauseTransformFeedback
 -------- T glPixelStorei
 -------- T glPolygonOffset
@@ -260,6 +263,7 @@
 -------- T glUniformMatrix4fv
 -------- T glUniformMatrix4x2fv
 -------- T glUniformMatrix4x3fv
+-------- T glUnmapBuffer
 -------- T glUseProgram
 -------- T glValidateProgram
 -------- T glVertexAttrib1f

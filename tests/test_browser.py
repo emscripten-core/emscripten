@@ -4258,7 +4258,12 @@ window.close = function() {
   # Tests that -s OFFSCREEN_FRAMEBUFFER=1 rendering works.
   @requires_graphics_hardware
   def test_webgl_offscreen_framebuffer(self):
-    self.btest('webgl_draw_triangle.c', '0', args=['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'])
+    # Tests all the different possible versions of libgl
+    for threads in [[], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD']]:
+      for version in [[], ['-s', 'FULL_ES3'], ['-s', 'FULL_ES3']]:
+        args = ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1'] + threads + version
+        print('with args: %s' % str(args))
+        self.btest('webgl_draw_triangle.c', '0', args=args)
 
   # Tests that VAOs can be used even if WebGL enableExtensionsByDefault is set to 0.
   @requires_graphics_hardware
