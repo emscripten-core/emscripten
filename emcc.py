@@ -789,7 +789,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return '-O0' not in opts
 
   def need_llvm_debug_info(options):
-    return options.debug_level >= 3 or shared.Settings.CYBERDWARF
+    return options.debug_level >= 3 or shared.Settings.CYBERDWARF or shared.Settings.FULL_DWARF
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
@@ -2665,6 +2665,12 @@ def parse_args(newargs):
           # emit line tables, which can be represented in source maps
           newargs[i] = '-gline-tables-only'
       else:
+        if requested_level.startswith('force_dwarf'):
+          # Force clang to generate full debug info using -g. Set the FULL_DWARF
+          # setting to avoid stripping it out later.
+          newargs[i] = '-g'
+          shared.Settings.FULL_DWARF = 1
+          shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that

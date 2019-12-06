@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
-from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR
+from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR, LLVM_DWARFDUMP
 from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
@@ -2356,6 +2356,22 @@ int f() {
     # we have full dwarf support
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
+
+  @no_fastcomp()
+  def test_force_dwarf(self):
+    def compile_with_dwarf(args, output):
+      # Test that the -gforce_dwarf flag forces enabling dwarf info in object files and linked wasm
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-gforce_dwarf'] + args)
+
+    def verify(output):
+      info = run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
+      self.assertIn('DW_TAG_subprogram', info) # Ensure there's a subprogram entry in .debug_info
+      self.assertIn('debug_line[0x', info) # Ensure there's a line table
+
+    compile_with_dwarf(['-c'], 'a.o')
+    verify('a.o')
+    compile_with_dwarf([], 'a.js')
+    verify('a.wasm')
 
   @unittest.skipIf(not scons_path, 'scons not found in PATH')
   @with_env_modify({'EMSCRIPTEN_ROOT': path_from_root()})
