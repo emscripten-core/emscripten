@@ -1277,7 +1277,6 @@
               "which"
             ],
             "EmscriptenMouseEvent": [
-              "timestamp",
               "screenX",
               "screenY",
               "clientX",
@@ -1318,14 +1317,12 @@
               "id"
             ],
             "EmscriptenDeviceOrientationEvent": [
-              "timestamp",
               "alpha",
               "beta",
               "gamma",
               "absolute"
             ],
             "EmscriptenDeviceMotionEvent": [
-              "timestamp",
               "accelerationX",
               "accelerationY",
               "accelerationZ",

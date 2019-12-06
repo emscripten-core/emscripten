@@ -198,11 +198,6 @@ var LibraryJSEvents = {
       return (target && target.nodeName) ? target.nodeName : '';
     },
 
-    tick: function() {
-      if (window['performance'] && window['performance']['now']) return window['performance']['now']();
-      else return Date.now();
-    },
-
     fullscreenEnabled: function() {
       return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
     },
@@ -390,7 +385,6 @@ var LibraryJSEvents = {
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
   _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '_specialEventTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
@@ -766,7 +760,6 @@ var LibraryJSEvents = {
 
   _fillDeviceOrientationEventData__deps: ['$JSEvents'],
   _fillDeviceOrientationEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
@@ -838,7 +831,6 @@ var LibraryJSEvents = {
     a = a || {};
     ag = ag || {};
     rr = rr || {};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};
