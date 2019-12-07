@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 
 TAG = 'version_18'
 HASH = '3a677c06d693c1568543eeb9179f9211a8c482738dab4400ccbc39aabe0cd1e57085e63ba1c25e9faefda1e06046d3b528298c96bb20c132b7c80e2e0aba972c'
