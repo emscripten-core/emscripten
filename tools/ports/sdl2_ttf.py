@@ -18,11 +18,8 @@ def get(ports, settings, shared):
   libname = ports.get_lib_name('libSDL2_ttf')
 
   def create():
-    sdl_ttf_h = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, 'SDL_ttf.h')
-
-    shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'include'))
-    shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include'))
-    shutil.copy2(sdl_ttf_h, os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2'))
+    src_root = os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG)
+    ports.install_headers(src_root, target='SDL2')
 
     srcs = ['SDL_ttf.c']
     commands = []
@@ -30,9 +27,9 @@ def get(ports, settings, shared):
 
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_ttf', src + '.o')
-      command = [shared.PYTHON, shared.EMCC]
-      command += ['-c', os.path.join(ports.get_dir(), 'sdl2_ttf', 'SDL2_ttf-' + TAG, src)]
-      command += ['-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
+      command = [shared.PYTHON, shared.EMCC,
+                '-c', os.path.join(src_root, src),
+                '-O2', '-s', 'USE_SDL=2', '-s', 'USE_FREETYPE=1', '-o', o, '-w']
       commands.append(command)
       o_s.append(o)
 
