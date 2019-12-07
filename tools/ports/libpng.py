@@ -29,6 +29,7 @@ def get(ports, settings, shared):
     shutil.copytree(source_path, dest_path)
 
     open(os.path.join(dest_path, 'pnglibconf.h'), 'w').write(pnglibconf_h)
+    ports.install_headers(dest_path)
 
     final = os.path.join(ports.get_build_dir(), 'libpng', libname)
     ports.build_port(dest_path, final, flags=['-s', 'USE_ZLIB=1'], exclude_files=['pngtest'], exclude_dirs=['scripts', 'contrib'])
@@ -49,7 +50,6 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_LIBPNG == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'libpng')]
   return args
 
 

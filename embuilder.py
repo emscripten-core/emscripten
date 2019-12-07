@@ -18,9 +18,7 @@ import sys
 from tools import shared
 from tools.system_libs import Library
 
-C_BARE = '''
-        int main() {}
-      '''
+C_BARE = 'int main() {}'
 
 SYSTEM_LIBRARIES = Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
@@ -125,8 +123,8 @@ def build(src, result_libs, args=[]):
       shared.exit_with_error('not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib)))
 
 
-def build_port(port_name, lib_name, params):
-  build(C_BARE, [lib_name] if lib_name else [], params)
+def build_port(port_name, lib_name, params, extra_source=''):
+  build(extra_source + '\n' + C_BARE, [lib_name] if lib_name else [], params)
 
 
 def main():
@@ -215,7 +213,7 @@ def main():
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'icu':
-      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'])
+      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'], '#include "unicode/ustring.h"')
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bzip2':
