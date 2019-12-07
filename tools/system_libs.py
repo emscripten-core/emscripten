@@ -1509,18 +1509,18 @@ class Ports(object):
       target = os.path.basename(src_dir)
     dest = os.path.join(Ports.get_include_dir(), target)
     shared.try_delete(dest)
-    print('installing headers: ' + dest)
+    logger.debug('installing headers: ' + dest)
     shutil.copytree(src_dir, dest)
 
   @staticmethod
   def install_headers(src_dir, pattern="*.h", target=None):
-    print("install_headers")
+    logger.debug("install_headers")
     dest = Ports.get_include_dir()
     if target:
       dest = os.path.join(dest, target)
       shared.safe_ensure_dirs(dest)
     for f in glob.glob(os.path.join(src_dir, pattern)):
-      print(os.path.join(dest, os.path.basename(f)))
+      logger.debug(os.path.join(dest, os.path.basename(f)))
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
