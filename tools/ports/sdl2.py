@@ -29,12 +29,11 @@ def get(ports, settings, shared):
 
     # copy includes to a location so they can be used as 'SDL2/'
     source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
-    dest_include_path = ports.get_include_dir()
-    shared.try_delete(dest_include_path)
-    shutil.copytree(source_include_path, os.path.join(dest_include_path, 'SDL2'))
+    ports.install_headers(source_include_path, target='SDL2')
 
     # write out an SDL_config.h file, that configure would normally emit
-    open(os.path.join(dest_include_path, 'SDL2', 'SDL_config.h'), 'w').write(sdl_config_h)
+    dest_include_path = os.path.join(ports.get_include_dir(), 'SDL2')
+    open(os.path.join(dest_include_path, 'SDL_config.h'), 'w').write(sdl_config_h)
 
     # build
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_hints.c SDL_log.c atomic/SDL_atomic.c
@@ -79,7 +78,7 @@ def get(ports, settings, shared):
       shared.safe_ensure_dirs(os.path.dirname(o))
       command = [shared.PYTHON, shared.EMCC,
                  '-c', os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'src', src),
-                 '-o', o, '-I' + os.path.join(dest_include_path, 'SDL2'),
+                 '-o', o, '-I' + dest_include_path,
                  '-O2', '-DUSING_GENERATED_CONFIG_H', '-w']
       if settings.USE_PTHREADS:
         command += ['-s', 'USE_PTHREADS']
