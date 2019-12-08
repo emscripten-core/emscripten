@@ -3615,9 +3615,15 @@ def minify_html(filename, options):
     return
 
   logger.debug('minifying HTML file ' + filename)
+  env = os.environ.copy()
+  env['PATH'] = env['PATH'] + os.pathsep + shared.get_node_directory()
   size_before = os.path.getsize(filename)
   start_time = time.time()
-  run_process(shared.NODE_JS + [shared.path_from_root('third_party', 'html-minifier', 'cli.js'), filename, '-o', filename] + opts)
+  try:
+    run_process([shared.path_from_root('node_modules', '.bin', 'html-minifier-terser' + ('.cmd' if WINDOWS else '')), filename, '-o', filename] + opts, env=env)
+  except OSError:
+    logger.error('html-minifier-terser was not found! Please run "npm install" in Emscripten root directory to set up npm depenendencies!')
+    sys.exit(1)
 
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
