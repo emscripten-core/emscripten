@@ -3497,35 +3497,6 @@ def minify_html(filename, options):
   start_time = time.time()
   run_process(shared.NODE_JS + [shared.path_from_root('third_party', 'html-minifier', 'cli.js'), filename, '-o', filename] + opts)
 
-  # html-minifier does not minify JavaScript. After minification, run a JS minifier on all script blocks in the file.
-  temp_files = shared.configuration.get_temp_files()
-  html_with_js = open(filename, 'r').read()
-  output_html = ''
-  pos = 0
-  while pos < len(html_with_js):
-    script_pos = html_with_js.find('<script>', pos)
-    if script_pos == -1:
-      output_html += html_with_js[pos:]
-      break
-    script_end = html_with_js.find('</script>', script_pos)
-    if script_end == -1:
-      output_html += html_with_js[pos:]
-      break
-    js_code = html_with_js[script_pos + len('<script>'):script_end]
-    temp = temp_files.get('.js').name
-    open(temp, 'w').write(js_code)
-
-    # TODO: Use a better minifier, but for now whitespace minification is fine.
-    minified_js_code = shared.check_output(shared.NODE_JS + [shared.path_from_root('tools', 'acorn-optimizer.js'), temp, 'minifyWhitespace'])
-
-    output_html += html_with_js[pos:script_pos]
-    output_html += '<script>'
-    output_html += minified_js_code
-    output_html += '</script>'
-    pos = script_end + len('</script>')
-
-  open(filename, 'w').write(output_html)
-
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before

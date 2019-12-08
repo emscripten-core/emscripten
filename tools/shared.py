@@ -207,15 +207,6 @@ def check_call(cmd, *args, **kw):
     exit_with_error("'%s' failed: %s", ' '.join(cmd), str(e))
 
 
-# Returns stdout by running command with universal_newlines=True
-def check_output(cmd, universal_newlines=True, *args, **kwargs):
-  if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, universal_newlines=universal_newlines, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
-  else:
-    # check_output is considered as an old API so prefer subprocess.run if possible
-    return subprocess.check_output(cmd, universal_newlines=universal_newlines, *args, **kwargs)
-
-
 def generate_config(path, first_time=False):
   # Note: repr is used to ensure the paths are escaped correctly on Windows.
   # The full string is replaced so that the template stays valid Python.
