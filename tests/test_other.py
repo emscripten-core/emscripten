@@ -2077,7 +2077,7 @@ int f() {
           assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
-    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals']
+    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap']
     for input, expected, passes in [
 
       (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
@@ -2172,6 +2172,8 @@ int f() {
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emittedJSPreservesParens.js'), open(path_from_root('tests', 'optimizer', 'emittedJSPreservesParens-output.js')).read(),
        ['asm']),
+      (path_from_root('tests', 'optimizer', 'test-growableHeap.js'), open(path_from_root('tests', 'optimizer', 'test-growableHeap-output.js')).read(),
+       ['growableHeap']),
     ]:
       print(input, passes)
 
