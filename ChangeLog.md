@@ -17,6 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Removed `timestamp` field from mouse, wheel, devicemotion and deviceorientation
+  events. The presence of a `timestamp` on these events was slightly arbitrary,
+  and populating this field caused a small profileable overhead that all users
+  might not care about. It is easy to get a timestamp of an event by calling
+  `emscripten_get_now()` or `emscripten_performance_now()` inside the event
+  handler function of any event.
 - Add fine-grained options for specific legacy browser support,
   `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
   `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`
