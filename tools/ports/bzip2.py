@@ -14,7 +14,7 @@ def get(ports, settings, shared):
   if settings.USE_BZIP2 != 1:
     return []
 
-  ports.fetch_project('bzip2', 'https://downloads.sourceforge.net/project/bzip2/bzip2-1.0.6.tar.gz', 'bzip2-1.0.6', sha512hash=HASH)
+  ports.fetch_project('bzip2', 'https://sourceware.org/pub/bzip2/bzip2-1.0.6.tar.gz', 'bzip2-1.0.6', sha512hash=HASH)
 
   def create():
     ports.clear_project_build('bzip2')
@@ -37,7 +37,7 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'bzip2', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w', ])
+      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(dest_path, src), '-O2', '-o', o, '-I' + dest_path, '-w', ])
       o_s.append(o)
     ports.run_commands(commands)
 

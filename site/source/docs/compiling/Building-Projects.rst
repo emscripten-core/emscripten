@@ -324,7 +324,17 @@ It is also worth looking at the build scripts in the `ammo.js <https://github.co
 Troubleshooting
 ===============
 
-- Make sure to use bitcode-aware *llvm-ar* instead of *ar* (which may discard code). *emmake* and *emconfigure* set the AR environment variable correctly, but a build system might incorrectly hardcode *ar*.
+- Make sure to use ``emar`` (which calls ``llvm-ar``), as the system ``ar`` may
+  not support our object files. ``emmake`` and ``emconfigure`` set the AR
+  environment variable correctly, but a build system might incorrectly hardcode
+  ``ar``.
+- Similarly, using the system ``ranlib`` instead of ``emranlib`` (which calls
+  ``llvm-ranlib``) may lead to problems, like not supporting our object files
+  and removing the index, leading to
+  ``archive has no index; run ranlib to add one`` from ``wasm-ld``. Again, using
+  ``emmake``/``emconfigure`` should avoid this by setting the env var RANLIB,
+  but a build system might have it hardcoded, or require you to
+  `pass an option <https://github.com/emscripten-core/emscripten/issues/9705#issuecomment-548199052>`_.
 -
   The compilation error ``multiply defined symbol`` indicates that the project has linked a particular static library multiple times. The project will need to be changed so that the problem library is linked only once.
 

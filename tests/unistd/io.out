@@ -78,3 +78,8 @@ seek: 0
 read after write: 37
 errno: 0
 final: wri4567890wri\0\0\0\0ite\0\0\0writeme\0\0write
+
+seek: 0
+read after write: 37
+errno: 0
+final: wri4567890wri\0\0\0\0ite\0\0\0writeme\0\0write

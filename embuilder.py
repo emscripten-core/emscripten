@@ -240,7 +240,7 @@ def main():
     elif what == 'sdl2-net':
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
-      build_port('sdl2-mixer', 'libSDL2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+      build_port('sdl2-mixer', libname('libSDL2_mixer'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':

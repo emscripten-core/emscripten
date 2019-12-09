@@ -148,13 +148,6 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     Destructor. **HamishW**-Replace with further description or delete comment.
 
 
-  .. cpp:function:: val(const val& v)
-
-    **HamishW**-Replace with description.
-
-    :param const val& v: **HamishW**-Replace with description.
-
-
   .. cpp:function:: val& operator=(val&& v)
 
     **HamishW**-Replace with description.

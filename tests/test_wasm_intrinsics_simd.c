@@ -50,32 +50,25 @@ void TESTFN i8x16_store(void *ptr, v128_t vec) {
 }
 v128_t TESTFN i8x16_const(void) {
   return wasm_i8x16_const(
-      (int8_t)1, (int8_t)2, (int8_t)3, (int8_t)4,
-      (int8_t)5, (int8_t)6, (int8_t)7, (int8_t)8,
-      (int8_t)9, (int8_t)10, (int8_t)11, (int8_t)12,
-      (int8_t)13, (int8_t)14, (int8_t)15, (int8_t)16
-  );
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16);
 }
 v128_t TESTFN i16x8_const(void) {
-  return wasm_i16x8_const(
-      (int16_t)1, (int16_t)2, (int16_t)3, (int16_t)4,
-      (int16_t)5, (int16_t)6, (int16_t)7, (int16_t)8
-  );
+  return wasm_i16x8_const(1, 2, 3, 4, 5, 6, 7, 8);
 }
 v128_t TESTFN i32x4_const(void) {
-  return wasm_i32x4_const((int32_t)1, (int32_t)2, (int32_t)3, (int32_t)4);
+  return wasm_i32x4_const(1, 2, 3, 4);
 }
 v128_t TESTFN f32x4_const(void) {
-  return wasm_f32x4_const(1.f, 2.f, 3.f, 4.f);
+  return wasm_f32x4_const(1, 2, 3, 4);
 }
 
 #ifdef __wasm_unimplemented_simd128__
 
 v128_t TESTFN i64x2_const(void) {
-  return wasm_i64x2_const((int64_t)1, (int64_t)2);
+  return wasm_i64x2_const(1, 2);
 }
 v128_t TESTFN f64x2_const(void) {
-  return wasm_f64x2_const(1., 2.);
+  return wasm_f64x2_const(1, 2);
 }
 
 #endif // __wasm_unimplemented_sidm128__
@@ -118,6 +111,15 @@ v128_t TESTFN i8x16_shuffle_interleave_bytes(v128_t x, v128_t y) {
 v128_t TESTFN i32x4_shuffle_reverse(v128_t vec) {
   return wasm_v8x16_shuffle(vec, vec, 12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
 }
+
+#ifdef __wasm_unimplemented_simd128__
+
+v128_t TESTFN v8x16_swizzle(v128_t x, v128_t y) {
+  return wasm_v8x16_swizzle(x, y);
+}
+
+#endif // __wasm_unimplemented_simd128__
+
 v128_t TESTFN i8x16_splat(int32_t x) {
   return wasm_i8x16_splat(x);
 }
@@ -885,6 +887,20 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     i8x16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
   );
   expect_vec(i32x4_shuffle_reverse((v128_t)i32x4(1, 2, 3, 4)), i32x4(4, 3, 2, 1));
+
+#ifdef  __wasm_unimplemented_simd128__
+
+  expect_vec(
+    v8x16_swizzle(
+      (v128_t)i8x16(0xf0, 0xf1, 0xf2, 0xf3, 0xf4, 0xf5, 0xf6, 0xf7,
+                    0xf8, 0xf9, 0xfa, 0xfb, 0xfc, 0xfd, 0xfe, 0xff),
+      (v128_t)i8x16(0, 4, 8, 12, 16, 255, 129, 128, 127, 17, 15, 13, 12, 8, 4, 0)
+    ),
+    i8x16(0xf0, 0xf4, 0xf8, 0xfc, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0xff, 0xfd, 0xfc, 0xf8, 0xf4, 0xf0)
+  );
+
+#endif // __wasm_unimplemented_simd128__
 
   // i8x16 lane accesses
   expect_vec(i8x16_splat(5), i8x16(5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5));
