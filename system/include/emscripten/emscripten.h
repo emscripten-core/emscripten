@@ -262,7 +262,7 @@ int emscripten_coroutine_next(emscripten_coroutine);
 void emscripten_yield(void);
 
 /* Upstream backend + Asyncify only */
-typedef void * emscripten_fiber;
+typedef struct emscripten_fiber_s *emscripten_fiber;  // NOTE: not a real pointer; this is a handle to a JS object
 emscripten_fiber emscripten_fiber_create(em_arg_callback_func func, void *arg, void *stack, int stack_size);
 emscripten_fiber emscripten_fiber_create_from_current_context(void);
 void emscripten_fiber_recycle(emscripten_fiber fiber, em_arg_callback_func func, void *arg);
