@@ -798,7 +798,10 @@ f.close()
       includes = stderr[start:end]
       includes = [i.strip() for i in includes.splitlines()[1:-1]]
       for i in includes:
-        self.assertContained(path_from_root('system'), i)
+        if shared.Cache.dirname in i:
+          self.assertContained(shared.Cache.dirname, i)
+        else:
+          self.assertContained(path_from_root('system'), i)
 
     err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-v'], stderr=PIPE).stderr
     verify_includes(err)

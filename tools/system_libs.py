@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
+import glob
 import hashlib
 import itertools
 import json
@@ -1495,6 +1496,32 @@ class Ports(object):
   @staticmethod
   def get_lib_name(name):
     return shared.static_library_name(name)
+
+  @staticmethod
+  def get_include_dir():
+    dirname = shared.Cache.get_path('include')
+    shared.safe_ensure_dirs(dirname)
+    return dirname
+
+  @staticmethod
+  def install_header_dir(src_dir, target=None):
+    if not target:
+      target = os.path.basename(src_dir)
+    dest = os.path.join(Ports.get_include_dir(), target)
+    shared.try_delete(dest)
+    logger.debug('installing headers: ' + dest)
+    shutil.copytree(src_dir, dest)
+
+  @staticmethod
+  def install_headers(src_dir, pattern="*.h", target=None):
+    logger.debug("install_headers")
+    dest = Ports.get_include_dir()
+    if target:
+      dest = os.path.join(dest, target)
+      shared.safe_ensure_dirs(dest)
+    for f in glob.glob(os.path.join(src_dir, pattern)):
+      logger.debug(os.path.join(dest, os.path.basename(f)))
+      shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
