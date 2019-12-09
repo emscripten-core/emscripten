@@ -17,7 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- All ports not install their headers into a shared directory under
+- All ports now install their headers into a shared directory under
   `EM_CACHE`.  This should not really be a user visible change although one
   side effect is that once a give ports is built its headers are then
   universally accessible, just like the library is universally available as
