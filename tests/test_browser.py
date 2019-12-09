@@ -1506,6 +1506,13 @@ keydown(100);keyup(100); // trigger the end
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
+  def test_sdl_ogl_defaultmatrixmode(self):
+    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
+    self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
+               args=['--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               message='You should see an image with gray at the top.')
+
+  @requires_graphics_hardware
   def test_sdl_ogl_p(self):
     # Immediate mode with pointers
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
