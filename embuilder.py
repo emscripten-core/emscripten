@@ -123,7 +123,7 @@ def main():
                       help='build relocatable objects for suitable for dynamic linking')
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
-  parser.add_argument('operation', help='currnetly only "build" is supported')
+  parser.add_argument('operation', help='currently only "build" is supported')
   parser.add_argument('targets', nargs='+', help='see above')
   args = parser.parse_args()
 
