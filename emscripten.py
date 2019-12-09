@@ -2206,6 +2206,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
+<<<<<<< HEAD
 
   metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG)
 
@@ -2226,13 +2227,17 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
     forwarded_json = json.loads(forwarded_data)
 
+=======
+  if shared.Settings.MAIN_MODULE:
+    glue, forwarded_data = compile_settings(compiler_engine, temp_files)
+>>>>>>> Generate JS lib functions
     forwarded_json = json.loads(forwarded_data)
     library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
     for name in library_fns:
       library_fns_list.append(name.encode('utf-8'))
 
-    print('forwarded_json:' + str(library_fns_list))
+    #print('forwarded_json:' + str(library_fns_list))
     libraryfile = infile + '.libfile'
     with open(libraryfile, 'w') as f:
       f.write(str(library_fns_list))
@@ -2246,6 +2251,18 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   if shared.Settings.SIDE_MODULE:
     return
 
+  if DEBUG:
+    logger.debug('emscript: js compiler glue')
+
+  if DEBUG:
+    t = time.time()
+  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
+
+  if DEBUG:
+    logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
+    t = time.time()
+
+  forwarded_json = json.loads(forwarded_data)
   # For the wasm backend the implementedFunctions from compiler.js should
   # alwasys be empty. This only gets populated for __asm function when using
   # the JS backend.
@@ -2327,6 +2344,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   module = None
 
   outfile.close()
+
 
 
 def remove_trailing_zeros(memfile):
