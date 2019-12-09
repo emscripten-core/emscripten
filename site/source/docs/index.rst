@@ -6,26 +6,37 @@
 Emscripten Documentation
 ========================
 
-
-This comprehensive documentation set contains everything you need to know to use Emscripten.
+This comprehensive documentation set contains everything you need to know to use
+Emscripten.
 
 **Getting started:**
 
-- :ref:`introducting-emscripten-index` explains what Emscripten does, why it is needed, its limitations and its licensing. It will help you understand whether Emscripten is the right tool for you.
-- :ref:`getting-started-index` walks you through downloading, installing and using the Emscripten SDK.
+- :ref:`introducting-emscripten-index` explains what Emscripten does, why it is
+  needed, its limitations and its licensing. It will help you understand whether
+  Emscripten is the right tool for you.
+- :ref:`getting-started-index` walks you through downloading, installing and
+  using the Emscripten SDK.
 
 **Emscripten Fundamentals:**
 
-- :ref:`integrating-porting-index` illustrates the main differences between the native and Emscripten runtime environments, and explains the changes you need to make to prepare your C/C++ code for the Web.
-- :ref:`Optimizing-Code` shows how to optimise your code for size and performance.
-- :ref:`Optimizing-WebGL` gives tips for how to maximize WebGL rendering performance for your page.
-- :ref:`compiling-and-running-projects-index` demonstrates how to integrate Emscripten into your existing project build system.
+- :ref:`integrating-porting-index` illustrates the main differences between the
+  native and Emscripten runtime environments, and explains the changes you need
+  to make to prepare your C/C++ code for the Web.
+- :ref:`Optimizing-Code` shows how to optimise your code for size and
+  performance.
+- :ref:`Optimizing-WebGL` gives tips for how to maximize WebGL rendering
+  performance for your page.
+- :ref:`compiling-and-running-projects-index` demonstrates how to integrate
+  Emscripten into your existing project build system.
 
 **Contributing:**
 
-- :ref:`contributing-to-emscripten-index` explains how you can contribute to the project.
-- :ref:`installing-from-source` explains how to build Emscripten from sources on GitHub (this is useful for contributors).
-- :ref:`about-this-site` describes the documentation tools and writing conventions used to create this site.
+- :ref:`contributing-to-emscripten-index` explains how you can contribute to the
+  project.
+- :ref:`installing-from-source` explains how to build Emscripten from sources on
+  GitHub (this is useful for contributors).
+- :ref:`about-this-site` describes the documentation tools and writing
+  conventions used to create this site.
 
 **Reference:**
 

@@ -4,7 +4,9 @@
 Emscripten Toolchain Requirements
 =================================
 
-The instructions below list the main tools and dependencies in an Emscripten environment, along with instructions on how to test which dependencies are installed.
+The instructions below list the main tools and dependencies in an Emscripten
+environment, along with instructions on how to test which dependencies are
+installed.
 
 .. tip:: The :ref:`SDK <sdk-download-and-install>` provides the **easiest** and **most reliable** method for getting, using, updating and managing Emscripten environments. If you're using the SDK you won't *need* these instructions — they are provided for information only.
 
@@ -20,7 +22,9 @@ What you'll need
 Emscripten tools and dependencies
 ---------------------------------
 
-In general a complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`.
+In general a complete Emscripten environment requires the following tools. First
+test to see if they are already installed using the :ref:`instructions below
+<toolchain-test-which-dependencies-are-installed>`.
 
   - :term:`Node.js` (0.8 or above; 0.10.17 or above to run websocket-using servers in node):
   - :term:`Python` 2.7.12 or above, or Python 3.5 or above (Python 2.7.0 or newer may also work, but is known to have SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)
@@ -39,7 +43,8 @@ In general a complete Emscripten environment requires the following tools. First
 Compiler toolchain
 ------------------
 
-When building Emscripten from source code, whether "manually" or using the SDK, you will need a *compiler toolchain*:
+When building Emscripten from source code, whether "manually" or using the SDK,
+you will need a *compiler toolchain*:
 
 - Windows: Install `Visual Studio 2017 <http://go.microsoft.com/?linkid=9709949>`_ and `cmake <http://www.cmake.org/cmake/resources/software.html>`_.
 
@@ -74,7 +79,8 @@ When building Emscripten from source code, whether "manually" or using the SDK, 
 Test which tools are installed
 ==============================
 
-Some of the tools are pre-installed on the various platforms (for example, Python is always available on Linux builds).
+Some of the tools are pre-installed on the various platforms (for example,
+Python is always available on Linux builds).
 
 You can check which tools are already present using the following commands:
 
@@ -104,4 +110,3 @@ You can check which tools are already present using the following commands:
 
   # Check for cmake
   cmake
-

@@ -4,7 +4,9 @@
 Bug Reporting
 =============
 
-All bugs should be filed in the GitHub `main <https://github.com/emscripten-core/emscripten>`_ Emscripten repository `Issue Tracker <https://github.com/emscripten-core/emscripten/issues?state=open>`_.
+All bugs should be filed in the GitHub `main
+<https://github.com/emscripten-core/emscripten>`_ Emscripten repository `Issue
+Tracker <https://github.com/emscripten-core/emscripten/issues?state=open>`_.
 
 Please supply as much relevant information as possible, including:
 
@@ -20,9 +22,13 @@ Please supply as much relevant information as possible, including:
 LLVM, wasm-ld, clang, Binaryen bugs
 ===================================
 
-If uncertain, bugs can always be posted to the `main repository <https://github.com/emscripten-core/emscripten>`_. But if you are sure a bug is in an upstream project, you can file it there:
+If uncertain, bugs can always be posted to the `main repository
+<https://github.com/emscripten-core/emscripten>`_. But if you are sure a bug is
+in an upstream project, you can file it there:
 
-- `LLVM bug tracker <https://bugs.llvm.org/>`_ . For most issues use the "libraries" product and the "Backend: WebAssembly" component. For wasm-ld issues, use "lld" and "wasm".
+- `LLVM bug tracker <https://bugs.llvm.org/>`_ . For most issues use the
+  "libraries" product and the "Backend: WebAssembly" component. For wasm-ld
+  issues, use "lld" and "wasm".
 - `Binaryen bug tracker <https://github.com/WebAssembly/binaryen/issues>`_
 
 Pull requests must (of course) go to the proper repository.
@@ -33,7 +39,8 @@ Pull requests must (of course) go to the proper repository.
 Site and documentation bugs
 ===========================
 
-Documentation (site) bugs should be filed in the same `Issue Tracker <https://github.com/emscripten-core/emscripten/issues?state=open>`_.
+Documentation (site) bugs should be filed in the same `Issue Tracker
+<https://github.com/emscripten-core/emscripten/issues?state=open>`_.
 
 Include relevant information including:
 

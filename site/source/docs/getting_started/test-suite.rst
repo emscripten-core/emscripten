@@ -4,27 +4,35 @@
 Emscripten Test Suite
 =====================
 
-Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to pass on the master branch (and almost always on the incoming branch). In addition to correctness tests, there are also benchmarks that you can run.
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten
+functionality. These tests are an excellent resource for developers as they
+provide practical examples of most features, and are known to pass on the master
+branch (and almost always on the incoming branch). In addition to correctness
+tests, there are also benchmarks that you can run.
 
-This article explains how to run the test and benchmark suite, and provides an overview of what tests are available.
+This article explains how to run the test and benchmark suite, and provides an
+overview of what tests are available.
 
 Setting up
 ==========
 
-To run the tests, you need an emscripten setup, as it will run ``emcc`` and other
-commands. See the :ref:`developer's guide <developers-guide-setting-up>` for
-how best to do that.
+To run the tests, you need an emscripten setup, as it will run ``emcc`` and
+other commands. See the :ref:`developer's guide <developers-guide-setting-up>`
+for how best to do that.
 
 Running tests
 =============
 
-Run the test suite runner (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) with no arguments to see the help message:
+Run the test suite runner (`tests/runner.py
+<https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_)
+with no arguments to see the help message:
 
 .. code-block:: bash
 
     python tests/runner.py
 
-The tests are divided into *modes*. You can run either an entire mode or an individual test, or use wildcards to run some tests in some modes. For example:
+The tests are divided into *modes*. You can run either an entire mode or an
+individual test, or use wildcards to run some tests in some modes. For example:
 
 .. code-block:: bash
 
@@ -43,13 +51,20 @@ The tests are divided into *modes*. You can run either an entire mode or an indi
   # run all tests in a specific mode (here, asm.js -O1)
   python tests/runner.py asm1
 
-The *core* test modes (``asm*`` and ``binaryen*``, defined in ``tests/test_core.py``) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
+The *core* test modes (``asm*`` and ``wasm*``, defined in
+``tests/test_core.py``) let you run a specific test in either asm.js or wasm,
+and with different optimization flags. There are also non-core test modes, that
+run tests in more special manner (in particular, in those tests it is not
+possible to say "run the test with a different optimization flag" - that is what
+the core tests are for). The non-core test modes include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
  * `sockets`: Networking tests that run in a browser.
- * `interactive`: Browser tests that are not fully automated, and require user interaction (these should be automated eventually).
- * `sanity`: Tests for emscripten setting itself up. This modifies your `.emscripten` file temporarily.
+ * `interactive`: Browser tests that are not fully automated, and require user
+   interaction (these should be automated eventually).
+ * `sanity`: Tests for emscripten setting itself up. This modifies your
+   `.emscripten` file temporarily.
  * `benchmark`: Runs benchmarks, measuring speed and code size.
 
 The wildcards we mentioned above work for non-core test modes too, for example:
@@ -91,12 +106,22 @@ You can run a random subset of the test suite, using something like
 
     python tests/runner.py random100
 
-Replace ``100`` with another number as you prefer. This will run that number of random tests, and tell you the statistical likelihood of almost all the test suite passing assuming those tests do. This works just like election surveys do - given a small sample, we can predict fairly well that so-and-so percent of the public will vote for candidate A. In our case, the "candidates" are pass or fail, and we can predict how much of the test suite will pass given that sample. Assuming the sample tests all pass, we can say with high likelihood that most of the test suite will in fact pass. (Of course, this is no guarantee, and even a single test failure is serious, however, this gives a quick estimate that your patch does not cause significant and obvious breakage.)
+Replace ``100`` with another number as you prefer. This will run that number of
+random tests, and tell you the statistical likelihood of almost all the test
+suite passing assuming those tests do. This works just like election surveys do:
+given a small sample, we can predict fairly well that so-and-so percent of the
+public will vote for candidate A. In our case, the "candidates" are pass or
+fail, and we can predict how much of the test suite will pass given that sample.
+Assuming the sample tests all pass, we can say with high likelihood that most of
+the test suite will in fact pass. (Of course, this is no guarantee, and even a
+single test failure is serious, however, this gives a quick estimate that your
+patch does not cause significant and obvious breakage.)
 
 Important Tests
 ===============
 
-When you want to run the entire test suite locally, these are the important commands:
+When you want to run the entire test suite locally, these are the important
+commands:
 
 .. code-block:: bash
 
@@ -124,19 +149,23 @@ When you want to run the entire test suite locally, these are the important comm
 Benchmarking
 ============
 
-Emscripten has a benchmark suite that measures both speed and code size. To run it, do:
+Emscripten has a benchmark suite that measures both speed and code size. To run
+it, do:
 
 .. code-block:: bash
 
   # Run all benchmarks
   python tests/runner.py benchmark
 
-Usually you will want to customize the python in `tests/test_benchmark.py` to run the benchmarks you want, see ``benchmarkers`` in the source code.
+Usually you will want to customize the python in `tests/test_benchmark.py` to
+run the benchmarks you want, see ``benchmarkers`` in the source code.
 
 Debugging test failures
 =======================
 
-Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it emits debug output and intermediate files (the files go in **/tmp/emscripten_temp/**):
+Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it
+emits debug output and intermediate files (the files go in
+**/tmp/emscripten_temp/**):
 
 .. code-block:: bash
 
@@ -152,7 +181,10 @@ Setting the :ref:`debugging-EMCC_DEBUG` is useful for debugging tests, as it emi
   EMCC_DEBUG=2 python tests/runner.py test_hello_world
 
 
-You can also specify ``EMTEST_SAVE_DIR=1`` in the environment to save the temporary directory that the test runner uses into **/tmp/emscripten_test/**. This is a test suite-specific feature, and is useful for tests that create temporary files.
+You can also specify ``EMTEST_SAVE_DIR=1`` in the environment to save the
+temporary directory that the test runner uses into **/tmp/emscripten_test/**.
+This is a test suite-specific feature, and is useful for tests that create
+temporary files.
 
-The :ref:`Debugging` topic provides more guidance on how to debug Emscripten-generated code.
-
+The :ref:`Debugging` topic provides more guidance on how to debug
+Emscripten-generated code.

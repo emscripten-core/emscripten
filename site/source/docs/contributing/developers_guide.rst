@@ -77,7 +77,8 @@ which will ping them. (If that happens, sorry! Sometimes things get missed.)
 Compiler overview
 =================
 
-The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that manages the entire compilation process:
+The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
+manages the entire compilation process:
 
 - **emcc** calls :term:`Clang` to compile C++ and ``wasm-ld`` to link it. It
   builds and integrates with the Emscripten system libraries, both the
@@ -104,5 +105,3 @@ See also
 
 - :ref:`Debugging`
 - :ref:`Building-Projects`
-
-

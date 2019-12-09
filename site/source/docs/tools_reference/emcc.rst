@@ -4,7 +4,9 @@
 Emscripten Compiler Frontend (emcc)
 ===================================
 
-The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten compiler from the command line. It is effectively a drop-in replacement for a standard compiler like *gcc* or *clang*.
+The Emscripten Compiler Frontend (``emcc``) is used to call the Emscripten
+compiler from the command line. It is effectively a drop-in replacement for a
+standard compiler like *gcc* or *clang*.
 
 
 Command line syntax
@@ -14,9 +16,12 @@ Command line syntax
 
   emcc [options] file...
 
-(Note that you will need ``./emcc`` if you want to run emcc from your current directory.)
+(Note that you will need ``./emcc`` if you want to run emcc from your current
+directory.)
 
-The input file(s) can be either source code files that *Clang* can handle (C or C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable form.
+The input file(s) can be either source code files that *Clang* can handle (C or
+C++), LLVM bitcode in binary form, or LLVM assembly files in human-readable
+form.
 
 
 Arguments
@@ -40,7 +45,8 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-O0:
 
 ``-O0``
-  No optimizations (default). This is the recommended setting for starting to port a project, as it includes various assertions.
+  No optimizations (default). This is the recommended setting for starting to
+  port a project, as it includes various assertions.
 
   This and other optimization settings are meaningful both during compile and
   during link. During compile it affects LLVM optimizations, and during link it
@@ -51,7 +57,11 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-O1:
 
 ``-O1``
-  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this removes various runtime assertions in JS and also runs the Binaryen optimizer (that makes link slower, so even if you compiled with a higher optimization level, you may want to link with ``-O0`` for fast incremental builds).
+  Simple optimizations. During the compile step these include LLVM ``-O1``
+  optimizations. During the link step this removes various runtime assertions in
+  JS and also runs the Binaryen optimizer (that makes link slower, so even if
+  you compiled with a higher optimization level, you may want to link with
+  ``-O0`` for fast incremental builds).
 
 .. _emcc-O2:
 
@@ -70,12 +80,14 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-Os:
 
 ``-Os``
-  Like ``-O3``, but focuses more on code size (and may make tradeoffs with speed). This can affect both wasm and JavaScript.
+  Like ``-O3``, but focuses more on code size (and may make tradeoffs with
+  speed). This can affect both wasm and JavaScript.
 
 .. _emcc-Oz:
 
 ``-Oz``
-  Like ``-Os``, but reduces code size even further, and may take longer to run. This can affect both wasm and JavaScript.
+  Like ``-Os``, but reduces code size even further, and may take longer to run.
+  This can affect both wasm and JavaScript.
 
   .. note:: For more tips on optimizing your code, see :ref:`Optimizing-Code`.
 
@@ -151,10 +163,16 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-profiling:
 
 ``--profiling``
-  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+  Use reasonable defaults when emitting JavaScript to make the build readable
+  but still useful for profiling. This sets ``-g2`` (preserve whitespace and
+  function names) and may also enable optimizations that affect performance and
+  otherwise might not be performed in ``-g2``.
 
 ``--profiling-funcs``
-  Preserve function names in profiling, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
+  Preserve function names in profiling, but otherwise minify whitespace and
+  names as we normally do in optimized builds. This is useful if you want to
+  look at profiler results based on function names, but do *not* intend to read
+  the emitted code.
 
 ``--tracing``
   Enable the :ref:`Emscripten Tracing API <trace-h>`.
@@ -162,7 +180,8 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-emit-symbol-map:
 
 ``--emit-symbol-map``
-  Save a map file between the minified global names and the original function names. This allows you, for example, to reconstruct meaningful stack traces.
+  Save a map file between the minified global names and the original function
+  names. This allows you, for example, to reconstruct meaningful stack traces.
 
   .. note:: This is only relevant when :term:`minifying` global names, which happens in ``-O2`` and above, and when no ``-g`` option was specified to prevent minification.
 
@@ -181,7 +200,9 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-llvm-opts:
 
 ``--llvm-opts <level>``
-  Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is done when building source files to object files / bitcode). Possible ``level`` values are:
+  Enables LLVM optimizations, relevant when we call the LLVM optimizer (which is
+  done when building source files to object files / bitcode). Possible ``level``
+  values are:
 
     - ``0``: No LLVM optimizations (default in -O0).
     - ``1``: LLVM ``-O1`` optimizations (default in -O1).
@@ -229,9 +250,21 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-pre-js:
 
 ``--pre-js <file>``
-  Specify a file whose contents are added before the emitted code and optimized together with it. Note that this might not literally be the very first thing in the JS output, for example if ``MODULARIZE`` is used (see ``src/settings.js``). If you want that, you can just prepend to the output from emscripten; the benefit of ``--pre-js`` is that it optimizes the code with the rest of the emscripten output, which allows better dead code elimination and minification, and it should only be used for that purpose. In particular, ``--pre-js`` code should not alter the main output from emscripten in ways that could confuse the optimizer, such as using ``--pre-js`` + ``--post-js`` to put all the output in an inner function scope (see ``MODULARIZE`` for that).
+  Specify a file whose contents are added before the emitted code and optimized
+  together with it. Note that this might not literally be the very first thing
+  in the JS output, for example if ``MODULARIZE`` is used (see
+  ``src/settings.js``). If you want that, you can just prepend to the output
+  from emscripten; the benefit of ``--pre-js`` is that it optimizes the code
+  with the rest of the emscripten output, which allows better dead code
+  elimination and minification, and it should only be used for that purpose. In
+  particular, ``--pre-js`` code should not alter the main output from emscripten
+  in ways that could confuse the optimizer, such as using ``--pre-js`` +
+  ``--post-js`` to put all the output in an inner function scope (see
+  ``MODULARIZE`` for that).
 
-  `--pre-js` (but not `--post-js`) is also useful for specifying things on the ``Module`` object, as it appears before the JS looks at ``Module`` (for example, you can define ``Module['print']`` there).
+  `--pre-js` (but not `--post-js`) is also useful for specifying things on the
+  ``Module`` object, as it appears before the JS looks at ``Module`` (for
+  example, you can define ``Module['print']`` there).
 
 .. _emcc-post-js:
 
@@ -241,9 +274,12 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-embed-file:
 
 ``--embed-file <file>``
-  Specify a file (with path) to embed inside the generated JavaScript. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file (with path) to embed inside the generated JavaScript. The path
+  is relative to the current directory at compile time. If a directory is passed
+  here, its entire contents will be embedded.
 
-  For example, if the command includes ``--embed-file dir/file.dat``, then ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
+  For example, if the command includes ``--embed-file dir/file.dat``, then
+  ``dir/file.dat`` must exist relative to the directory where you run *emcc*.
 
   .. note:: Embedding files is much less efficient than :ref:`preloading <emcc-preload-file>` them. You should only use it for small files, in small numbers. Instead use ``--preload-file``, which emits efficient binary data.
 
@@ -252,9 +288,13 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-preload-file:
 
 ``--preload-file <name>``
-  Specify a file to preload before running the compiled code asynchronously. The path is relative to the current directory at compile time. If a directory is passed here, its entire contents will be embedded.
+  Specify a file to preload before running the compiled code asynchronously. The
+  path is relative to the current directory at compile time. If a directory is
+  passed here, its entire contents will be embedded.
 
-  Preloaded files are stored in **filename.data**, where **filename.html** is the main file you are compiling to. To run your code, you will need both the **.html** and the **.data**.
+  Preloaded files are stored in **filename.data**, where **filename.html** is
+  the main file you are compiling to. To run your code, you will need both the
+  **.html** and the **.data**.
 
   .. note:: This option is similar to :ref:`--embed-file <emcc-embed-file>`, except that it is only relevant when generating HTML (it uses asynchronous binary :term:`XHRs <XHR>`), or JavaScript that will be used in a web page.
 
@@ -266,15 +306,20 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-exclude-file:
 
 ``--exclude-file <name>``
-  Files and directories to be excluded from :ref:`--embed-file <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcards (*) are supported.
+  Files and directories to be excluded from :ref:`--embed-file
+  <emcc-embed-file>` and :ref:`--preload-file <emcc-preload-file>`. Wildcards
+  (*) are supported.
 
 ``--use-preload-plugins``
-  Tells the file packager to run preload plugins on the files as they are loaded. This performs tasks like decoding images and audio using the browser's codecs.
+  Tells the file packager to run preload plugins on the files as they are
+  loaded. This performs tasks like decoding images and audio using the browser's
+  codecs.
 
 .. _emcc-shell-file:
 
 ``--shell-file <path>``
-  The path name to a skeleton HTML file used when generating HTML output. The shell file used needs to have this token inside it: ``{{{ SCRIPT }}}``.
+  The path name to a skeleton HTML file used when generating HTML output. The
+  shell file used needs to have this token inside it: ``{{{ SCRIPT }}}``.
 
   .. note::
 
@@ -284,7 +329,10 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-source-map-base:
 
 ``--source-map-base <base-url>``
-  The URL for the location where WebAssembly source maps will be published. When this option is provided, the **.wasm** file is updated to have a ``sourceMappingURL`` section. The resulting URL will have format: ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
+  The URL for the location where WebAssembly source maps will be published. When
+  this option is provided, the **.wasm** file is updated to have a
+  ``sourceMappingURL`` section. The resulting URL will have format:
+  ``<base-url>`` + ``<wasm-file-name>`` + ``.map``.
 
 .. _emcc-minify:
 
@@ -292,33 +340,47 @@ Options that are modified or new in *emcc* are listed below:
   Identical to ``-g1``.
 
 ``--js-transform <cmd>``
-  Specifies a ``<cmd>`` to be called on the generated code before it is optimized. This lets you modify the JavaScript, for example adding or removing some code, in a way that those modifications will be optimized together with the generated code.
+  Specifies a ``<cmd>`` to be called on the generated code before it is
+  optimized. This lets you modify the JavaScript, for example adding or removing
+  some code, in a way that those modifications will be optimized together with
+  the generated code.
 
-  ``<cmd>`` will be called with the file name of the generated code as a parameter. To modify the code, you can read the original data and then append to it or overwrite it with the modified data.
+  ``<cmd>`` will be called with the file name of the generated code as a
+  parameter. To modify the code, you can read the original data and then append
+  to it or overwrite it with the modified data.
 
-  ``<cmd>`` is interpreted as a space-separated list of arguments, for example, ``<cmd>`` of **python processor.py** will cause a Python script to be run.
+  ``<cmd>`` is interpreted as a space-separated list of arguments, for example,
+  ``<cmd>`` of **python processor.py** will cause a Python script to be run.
 
 .. _emcc-bind:
 
 ``--bind``
-  Compiles the source code using the :ref:`embind` bindings to connect C/C++ and JavaScript.
+  Compiles the source code using the :ref:`embind` bindings to connect C/C++ and
+  JavaScript.
 
 ``--ignore-dynamic-linking``
-  Tells the compiler to ignore dynamic linking (the user will need to manually link to the shared libraries later on).
+  Tells the compiler to ignore dynamic linking (the user will need to manually
+  link to the shared libraries later on).
 
-  Normally *emcc* will simply link in code from the dynamic library as though it were statically linked, which will fail if the same dynamic library is linked more than once. With this option, dynamic linking is ignored, which allows the build system to proceed without errors.
+  Normally *emcc* will simply link in code from the dynamic library as though it
+  were statically linked, which will fail if the same dynamic library is linked
+  more than once. With this option, dynamic linking is ignored, which allows the
+  build system to proceed without errors.
 
 .. _emcc-js-library:
 
 ``--js-library <lib>``
-  A JavaScript library to use in addition to those in Emscripten's core libraries (src/library_*).
+  A JavaScript library to use in addition to those in Emscripten's core
+  libraries (src/library_*).
 
 .. _emcc-verbose:
 
 ``-v``
   Turns on verbose output.
 
-  This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` to generate intermediate files for the compiler's various stages. It will also run Emscripten's internal sanity checks on the toolchain, etc.
+  This will pass ``-v`` to *Clang*, and also enable ``EMCC_DEBUG`` to generate
+  intermediate files for the compiler's various stages. It will also run
+  Emscripten's internal sanity checks on the toolchain, etc.
 
   .. tip:: ``emcc -v`` is a useful tool for diagnosing errors. It works with or without other arguments.
 
@@ -340,24 +402,36 @@ Options that are modified or new in *emcc* are listed below:
 ``--clear-cache``
   Manually clears the cache of compiled Emscripten system libraries (libc++, libc++abi, libc).
 
-  This is normally handled automatically, but if you update LLVM in-place (instead of having a different directory for a new version), the caching mechanism can get confused. Clearing the cache can fix weird problems related to cache incompatibilities, like *Clang* failing to link with library files. This also clears other cached data. After the cache is cleared, this process will exit.
+  This is normally handled automatically, but if you update LLVM in-place
+  (instead of having a different directory for a new version), the caching
+  mechanism can get confused. Clearing the cache can fix weird problems related
+  to cache incompatibilities, like *Clang* failing to link with library files.
+  This also clears other cached data. After the cache is cleared, this process
+  will exit.
 
 .. _emcc-clear-ports:
 
 ``--clear-ports``
-  Manually clears the local copies of ports from the Emscripten Ports repos (sdl2, etc.). This also clears the cache, to remove their builds.
+  Manually clears the local copies of ports from the Emscripten Ports repos
+  (sdl2, etc.). This also clears the cache, to remove their builds.
 
-  You should only need to do this if a problem happens and you want all ports that you use to be downloaded and built from scratch. After this operation is complete, this process will exit.
+  You should only need to do this if a problem happens and you want all ports
+  that you use to be downloaded and built from scratch. After this operation is
+  complete, this process will exit.
 
 .. _emcc-show-ports:
 
 ``--show-ports``
-  Shows the list of available projects in the Emscripten Ports repos. After this operation is complete, this process will exit.
+  Shows the list of available projects in the Emscripten Ports repos. After this
+  operation is complete, this process will exit.
 
 .. _emcc-save-bc:
 
 ``--save-bc PATH``
-  When compiling to JavaScript or HTML, this option will save a copy of the bitcode to the specified path. The bitcode will include all files being linked after link-time optimizations have been performed (if any), including standard libraries.
+  When compiling to JavaScript or HTML, this option will save a copy of the
+  bitcode to the specified path. The bitcode will include all files being linked
+  after link-time optimizations have been performed (if any), including standard
+  libraries.
 
 .. _emcc-memory-init-file:
 
@@ -377,36 +451,57 @@ Options that are modified or new in *emcc* are listed below:
 
 
 ``-Wwarn-absolute-paths``
-  Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
+  Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command
+  line directives. This is used to warn against unintentional use of absolute
+  paths, which is sometimes dangerous when referring to nonportable local system
+  headers.
 
 .. _proxy-to-worker:
 
 ``--proxy-to-worker``
-  Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
+  Runs the main application code in a worker, proxying events to it and output
+  from it. If emitting HTML, this emits a **.html** file, and a separate **.js**
+  file containing the JavaScript to be run in a worker. If emitting JavaScript,
+  the target file name contains the part to be run on the main thread, while a
+  second **.js** file with suffix ".worker.js" will contain the worker portion.
 
 .. _emcc-emrun:
 
 ``--emrun``
-  Enables the generated output to be aware of the :ref:`emrun <Running-html-files-with-emrun>` command line tool. This allows ``stdout``, ``stderr`` and ``exit(returncode)`` capture when running the generated application through *emrun*. (This enables `EXIT_RUNTIME=1`, allowing normal runtime exiting with return code passing.)
+  Enables the generated output to be aware of the :ref:`emrun
+  <Running-html-files-with-emrun>` command line tool. This allows ``stdout``,
+  ``stderr`` and ``exit(returncode)`` capture when running the generated
+  application through *emrun*. (This enables `EXIT_RUNTIME=1`, allowing normal
+  runtime exiting with return code passing.)
 
 ``--cpuprofiler``
-  Embeds a simple CPU profiler onto the generated page. Use this to perform cursory interactive performance profiling.
+  Embeds a simple CPU profiler onto the generated page. Use this to perform
+  cursory interactive performance profiling.
 
 ``--memoryprofiler``
-  Embeds a memory allocation tracker onto the generated page. Use this to profile the application usage of the Emscripten HEAP.
+  Embeds a memory allocation tracker onto the generated page. Use this to
+  profile the application usage of the Emscripten HEAP.
 
 ``--threadprofiler``
-  Embeds a thread activity profiler onto the generated page. Use this to profile the application usage of pthreads when targeting multithreaded builds (-s USE_PTHREADS=1/2).
+  Embeds a thread activity profiler onto the generated page. Use this to profile
+  the application usage of pthreads when targeting multithreaded builds (-s
+  USE_PTHREADS=1/2).
 
 .. _emcc-config:
 
 ``--em-config``
-  Specifies the location of the **.emscripten** configuration file for the current compiler run. If not specified, the environment variable ``EM_CONFIG`` is first read for this location. If neither are specified, the default location **~/.emscripten** is used.
+  Specifies the location of the **.emscripten** configuration file for the
+  current compiler run. If not specified, the environment variable ``EM_CONFIG``
+  is first read for this location. If neither are specified, the default
+  location **~/.emscripten** is used.
 
 ``--default-obj-ext .ext``
-  Specifies the file suffix to generate if the location of a directory name is passed to the ``-o`` directive.
+  Specifies the file suffix to generate if the location of a directory name is
+  passed to the ``-o`` directive.
 
-  For example, consider the following command, which will by default generate an output name **dir/a.o**. With ``--default-obj-ext .ext`` the generated file has the custom suffix *dir/a.ext*.
+  For example, consider the following command, which will by default generate an
+  output name **dir/a.o**. With ``--default-obj-ext .ext`` the generated file
+  has the custom suffix *dir/a.ext*.
 
   ::
 
@@ -433,16 +528,24 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-c:
 
 ``-c``
-  Tells *emcc* to generate LLVM bitcode (which can then be linked with other bitcode files), instead of compiling all the way to JavaScript.
+  Tells *emcc* to generate LLVM bitcode (which can then be linked with other
+  bitcode files), instead of compiling all the way to JavaScript.
 
 ``--separate-asm``
-  Emits asm.js in one file, and the rest of the code in another, and emits HTML that loads the asm.js first, in order to reduce memory load during startup. See :ref:`optimizing-code-separating_asm`.
+  Emits asm.js in one file, and the rest of the code in another, and emits HTML
+  that loads the asm.js first, in order to reduce memory load during startup.
+  See :ref:`optimizing-code-separating_asm`.
 
 ``--output_eol windows|linux``
-  Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
+  Specifies the line ending to generate for the text files that are outputted.
+  If "--output_eol windows" is passed, the final output files will have Windows
+  \r\n line endings in them. With "--output_eol linux", the final generated
+  files will be written with Unix \n line endings.
 
 ``--cflags``
-  Prints out the flags ``emcc`` would pass to ``clang`` to compile source code to object/bitcode form. You can use this to invoke clang yourself, and then run ``emcc`` on those outputs just for the final linking+conversion to JS.
+  Prints out the flags ``emcc`` would pass to ``clang`` to compile source code
+  to object/bitcode form. You can use this to invoke clang yourself, and then
+  run ``emcc`` on those outputs just for the final linking+conversion to JS.
 
 .. _emcc-environment-variables:
 
@@ -461,7 +564,11 @@ Environment variables
   - ``EMCC_DEBUG``
   - ``EMCC_CLOSURE_ARGS`` : arguments to be passed to *Closure Compiler*
 
-Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/master/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
+Search for 'os.environ' in `emcc.py
+<https://github.com/emscripten-core/emscripten/blob/master/emcc.py>`_ to see how
+these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces
+the compiler to dump its build and temporary files to a temporary directory
+where they can be reviewed.
 
 
 .. todo:: In case we choose to document them properly in future, below are some of the :ref:`-s <emcc-s-option-value>` options that are documented in the site are listed below. Note that this is not exhaustive by any means:
@@ -477,4 +584,3 @@ Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscript
   - AGGRESSIVE_VARIABLE_ELIMINATION=1
   - -s DISABLE_EXCEPTION_CATCHING=0.
   - INLINING_LIMIT=
-
