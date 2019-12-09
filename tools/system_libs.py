@@ -36,6 +36,20 @@ def glob_in_path(path_components, glob_pattern, excludes=()):
   return [f for f in iglob(os.path.join(srcdir, glob_pattern)) if os.path.basename(f) not in excludes]
 
 
+def get_all_files_under(dirname):
+  for path, subdirs, files in os.walk(dirname):
+    for name in files:
+      yield os.path.join(path, name)
+
+
+def dir_is_newer(dir_a, dir_b):
+  assert os.path.exists(dir_a)
+  assert os.path.exists(dir_b)
+  newest_a = max([os.path.getmtime(x) for x in get_all_files_under(dir_a)])
+  newest_b = max([os.path.getmtime(x) for x in get_all_files_under(dir_b)])
+  return newest_a < newest_b
+
+
 def get_cflags(force_object_files=False):
   flags = []
   if force_object_files:
@@ -71,9 +85,13 @@ def run_commands(commands):
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
-  if libname.endswith('.bc'):
-    shared.Building.link_to_object(inputs, libname)
-  elif libname.endswith('.a'):
+  suffix = os.path.splitext(libname)[1]
+  if suffix in ('.bc', '.o'):
+    if len(inputs) == 1:
+      shutil.copyfile(inputs[0], libname)
+    else:
+      shared.Building.link_to_object(inputs, libname)
+  elif suffix == '.a':
     shared.Building.emar('cr', libname, inputs)
   else:
     raise Exception('unknown suffix ' + libname)
@@ -342,9 +360,9 @@ class Library(object):
 
   def build(self):
     """Builds the library and returns the path to the file."""
-    lib_filename = self.in_temp(self.get_filename())
-    create_lib(lib_filename, self.build_objects())
-    return lib_filename
+    out_filename = self.in_temp(self.get_filename())
+    create_lib(out_filename, self.build_objects())
+    return out_filename
 
   @classmethod
   def _inherit_list(cls, attr):
@@ -623,8 +641,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   # custom standard library. The same for other libc/libm builds.
   cflags = ['-Os', '-fno-builtin']
 
-  # Hide several musl warnings that produce a lot of spam to unit test build server logs.
-  # TODO: When updating musl the next time, feel free to recheck which of their warnings might have been fixed, and which ones of these could be cleaned up.
+  # Hide several musl warnings that produce a lot of spam to unit test build
+  # server logs.  TODO: When updating musl the next time, feel free to recheck
+  # which of their warnings might have been fixed, and which ones of these could
+  # be cleaned up.
   cflags += ['-Wno-return-type', '-Wno-parentheses', '-Wno-ignored-attributes',
              '-Wno-shift-count-overflow', '-Wno-shift-negative-value',
              '-Wno-dangling-else', '-Wno-unknown-pragmas',
@@ -738,6 +758,24 @@ class libc_wasm(MuslInternalLibrary):
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins
     return shared.Settings.WASM
+
+
+class crt1(MuslInternalLibrary):
+  name = 'crt1'
+  cflags = ['-O2']
+  src_dir = ['system', 'lib', 'libc']
+  src_files = ['crt1.c']
+
+  force_object_files = True
+
+  def get_ext(self):
+    return '.o'
+
+  def can_use(self):
+    return shared.Settings.STANDALONE_WASM
+
+  def can_build(self):
+    return shared.Settings.WASM_BACKEND
 
 
 class libc_extras(MuslInternalLibrary):
@@ -939,6 +977,7 @@ class libgl(MTLibrary):
     self.is_legacy = kwargs.pop('is_legacy')
     self.is_webgl2 = kwargs.pop('is_webgl2')
     self.is_ofb = kwargs.pop('is_ofb')
+    self.is_full_es3 = kwargs.pop('is_full_es3')
     super(libgl, self).__init__(**kwargs)
 
   def get_base_name(self):
@@ -949,6 +988,8 @@ class libgl(MTLibrary):
       name += '-webgl2'
     if self.is_ofb:
       name += '-ofb'
+    if self.is_full_es3:
+      name += '-full_es3'
     return name
 
   def get_cflags(self):
@@ -959,11 +1000,13 @@ class libgl(MTLibrary):
       cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
+    if self.is_full_es3:
+      cflags += ['-D__EMSCRIPTEN_FULL_ES3__']
     return cflags
 
   @classmethod
   def vary_on(cls):
-    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb']
+    return super(libgl, cls).vary_on() + ['is_legacy', 'is_webgl2', 'is_ofb', 'is_full_es3']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -971,6 +1014,7 @@ class libgl(MTLibrary):
       is_legacy=shared.Settings.LEGACY_GL_EMULATION,
       is_webgl2=shared.Settings.USE_WEBGL2,
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
+      is_full_es3=shared.Settings.FULL_ES3,
       **kwargs
     )
 
@@ -1185,6 +1229,34 @@ class libstandalonewasm(MuslInternalLibrary):
   cflags = ['-Os']
   src_dir = ['system', 'lib']
 
+  def __init__(self, **kwargs):
+    self.is_mem_grow = kwargs.pop('is_mem_grow')
+    super(libstandalonewasm, self).__init__(**kwargs)
+
+  def get_base_name(self):
+    name = super(libstandalonewasm, self).get_base_name()
+    if self.is_mem_grow:
+      name += '-memgrow'
+    return name
+
+  def get_cflags(self):
+    cflags = super(libstandalonewasm, self).get_cflags()
+    cflags += ['-DNDEBUG']
+    if self.is_mem_grow:
+      cflags += ['-D__EMSCRIPTEN_MEMORY_GROWTH__=1']
+    return cflags
+
+  @classmethod
+  def vary_on(cls):
+    return super(libstandalonewasm, cls).vary_on() + ['is_mem_grow']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super(libstandalonewasm, cls).get_default_variation(
+      is_mem_grow=shared.Settings.ALLOW_MEMORY_GROWTH,
+      **kwargs
+    )
+
   def get_files(self):
     base_files = files_in_path(
         path_components=['system', 'lib'],
@@ -1335,6 +1407,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
       if d not in shared.Settings.EXPORTED_FUNCTIONS:
         shared.Settings.EXPORTED_FUNCTIONS.append(d)
 
+  if shared.Settings.STANDALONE_WASM:
+    add_library(system_libs_map['crt1'])
+
   # Go over libraries to figure out which we must include
   for lib in system_libs:
     if lib.name in already_included:
@@ -1430,7 +1505,7 @@ class Ports(object):
       for f in files:
         ext = os.path.splitext(f)[1]
         if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
-            srcs.append(os.path.join(root, f))
+          srcs.append(os.path.join(root, f))
     include_commands = ['-I' + src_path]
     for include in includes:
       include_commands.append('-I' + include)
@@ -1443,7 +1518,6 @@ class Ports(object):
       objects.append(obj)
 
     run_commands(commands)
-    print('create_lib', output_path)
     create_lib(output_path, objects)
     return output_path
 
@@ -1479,6 +1553,10 @@ class Ports(object):
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = os.path.join(Ports.get_dir(), name)
 
+    # EMCC_LOCAL_PORTS: A hacky way to use a local directory for a port. This
+    #                   is not tested but can be useful for debugging
+    #                   changes to a port.
+    #
     # if EMCC_LOCAL_PORTS is set, we use a local directory as our ports. This is useful
     # for testing. This env var should be in format
     #     name=dir,name=dir
@@ -1504,13 +1582,17 @@ class Ports(object):
               logger.error('port %s lacks .SUBDIR attribute, which we need in order to override it locally, please update it' % name)
               sys.exit(1)
             subdir = port.SUBDIR
-            logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
-            shared.try_delete(fullname)
-            shutil.copytree(path, os.path.join(fullname, subdir))
-            Ports.clear_project_build(name)
+            target = os.path.join(fullname, subdir)
+            if os.path.exists(target) and not dir_is_newer(path, target):
+              logger.warning('not grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ') as the destination ' + target + ' is newer (run emcc --clear-ports if that is incorrect)')
+            else:
+              logger.warning('grabbing local port: ' + name + ' from ' + path + ' to ' + fullname + ' (subdir: ' + subdir + ')')
+              shared.try_delete(fullname)
+              shutil.copytree(path, target)
+              Ports.clear_project_build(name)
+            return
       finally:
         shared.Cache.release_cache_lock()
-      return
 
     if is_tarbz2:
       fullpath = fullname + '.tar.bz2'
@@ -1530,7 +1612,7 @@ class Ports(object):
 
     def retrieve():
       # retrieve from remote server
-      logger.warning('retrieving port: ' + name + ' from ' + url)
+      logger.info('retrieving port: ' + name + ' from ' + url)
       try:
         import requests
         response = requests.get(url)
@@ -1567,7 +1649,7 @@ class Ports(object):
       return bool(re.match(subdir + r'(\\|/|$)', names[0]))
 
     def unpack():
-      logger.warning('unpacking port: ' + name)
+      logger.info('unpacking port: ' + name)
       shared.safe_ensure_dirs(fullname)
 
       # TODO: Someday when we are using Python 3, we might want to change the

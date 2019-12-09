@@ -1,6 +1,6 @@
 List:
-LOGNAME=web_user
 USER=web_user
+LOGNAME=web_user
 PATH=/
 PWD=/
 HOME=/home/web_user

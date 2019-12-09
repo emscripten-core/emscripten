@@ -62,6 +62,15 @@ var wasmTable = new WebAssembly.Table({
 #if USE_PTHREADS
 // For sending to workers.
 var wasmModule;
+// Only workers actually use these field, but we refer to them from
+// library_pthread (which exists on all threads) so this definition is useful
+// to avoid accessing the global scope.
+var threadInfoStruct = 0;
+var selfThreadId = 0;
+var __performance_now_clock_drift = 0;
+#if WASM_BACKEND
+var tempDoublePtr = 0;
+#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -349,10 +358,6 @@ function updateGlobalBufferAndViews(buf) {
   Module['HEAPF64'] = HEAPF64 = new Float64Array(buf);
 }
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
-#endif
-
 var STATIC_BASE = {{{ GLOBAL_BASE }}},
     STACK_BASE = {{{ getQuoted('STACK_BASE') }}},
     STACKTOP = STACK_BASE,
@@ -366,6 +371,28 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
+if (ENVIRONMENT_IS_PTHREAD) {
+
+  // At the 'load' stage of Worker startup, we are just loading this script
+  // but not ready to run yet. At 'run' we receive proper values for the stack
+  // etc. and can launch a pthread. Set some fake values there meanwhile to
+  // catch bugs, then set the real values in applyStackValues later.
+#if ASSERTIONS || SAFE_STACK
+  STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
+#endif
+
+  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
+    STACK_BASE = stackBase;
+    STACKTOP = stackTop;
+    STACK_MAX = stackMax;
+#if SAFE_STACK
+    Module['___set_stack_limit'](STACK_MAX);
+#endif
+  };
+
+  // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
+  // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
+  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 
@@ -407,7 +434,7 @@ if (ENVIRONMENT_IS_WEB) {
 
 #if USE_PTHREADS
 if (typeof SharedArrayBuffer === 'undefined' || typeof Atomics === 'undefined') {
-  xhr = new XMLHttpRequest();
+  var xhr = new XMLHttpRequest();
   xhr.open('GET', 'http://localhost:8888/report_result?skipped:%20SharedArrayBuffer%20is%20not%20supported!');
   xhr.send();
   setTimeout(function() { window.close() }, 2000);
@@ -692,17 +719,25 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
-  var extra = '';
-  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+  var output = 'abort(' + what + ') at ' + stackTrace();
 #if EMTERPRETIFY_ASYNC
   abortDecorators.forEach(function(decorator) {
     output = decorator(output, what);
   });
 #endif
-  throw output;
+  what = output;
 #endif // ASSERTIONS
+
+  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+  // exception, which means we'd run destructors on it. We need the error to
+  // simply make the program stop.
+#if WASM
+  throw new WebAssembly.RuntimeError(what);
+#else
+  throw what;
+#endif
 }
 
 #if RELOCATABLE
@@ -898,7 +933,7 @@ function createWasm() {
   // prepare imports
   var info = {
     'env': asmLibraryArg,
-    'wasi_unstable': asmLibraryArg
+    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #if WASM_BACKEND == 0
     ,
     'global': {
@@ -925,7 +960,8 @@ function createWasm() {
     // In pure wasm mode the memory is created in the wasm (not imported), and
     // then exported.
     // TODO: do not create a Memory earlier in JS
-    updateGlobalBufferAndViews(exports['memory'].buffer);
+    wasmMemory = exports['memory'];
+    updateGlobalBufferAndViews(wasmMemory.buffer);
 #if ASSERTIONS
     writeStackCookie();
 #endif

@@ -1568,6 +1568,23 @@
               "global_locale"
             ]
         },
+        "defines": [
+            "__WASI_FILETYPE_CHARACTER_DEVICE",
+            "__WASI_FILETYPE_DIRECTORY",
+            "__WASI_FILETYPE_REGULAR_FILE",
+            "__WASI_FILETYPE_SYMBOLIC_LINK"
+        ]
+    },
+    {
+        "file": "wasi/api.h",
+        "structs": {
+            "__wasi_fdstat_t": [
+                "fs_filetype",
+                "fs_flags",
+                "fs_rights_base",
+                "fs_rights_inheriting"
+            ]
+        },
         "defines": []
     },
     {

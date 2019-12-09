@@ -214,6 +214,11 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+def ensure_dir(dirname):
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+
 def limit_size(string, maxbytes=800 * 20, maxlines=100):
   lines = string.splitlines()
   if len(lines) > maxlines:
@@ -423,7 +428,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
-    self.emcc_args = []
+    self.emcc_args = ['-Werror']
     self.save_dir = EMTEST_SAVE_DIR
     self.save_JS = False
     self.env = {}
@@ -440,8 +445,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if not os.path.exists(self.working_dir):
-        os.makedirs(self.working_dir)
+      ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
@@ -808,8 +812,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/').replace('//', '/')
-    path2 = path2.replace('\\', '/').replace('//', '/')
+    path1 = path1.replace('\\', '/')
+    path2 = path2.replace('\\', '/')
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -873,8 +877,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_build_dir(self):
     ret = os.path.join(self.get_dir(), 'building')
-    if not os.path.exists(ret):
-      os.makedirs(ret)
+    ensure_dir(ret)
     return ret
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
@@ -1106,9 +1109,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     for engine in js_engines:
       assert type(engine) == list
     for engine in self.banned_js_engines:
-      assert type(engine) == list
-    js_engines = [engine for engine in js_engines if engine and engine[0] not in [banned[0] for banned in self.banned_js_engines if banned]]
-    return js_engines
+      assert type(engine) in (list, type(None))
+    banned = [b[0] for b in self.banned_js_engines if b]
+    return [engine for engine in js_engines if engine and engine[0] not in banned]
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
@@ -1182,6 +1185,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       test_index += 1
 
   def get_freetype_library(self):
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
 
   def get_poppler_library(self):
@@ -1198,6 +1203,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
     self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
@@ -1731,12 +1738,10 @@ def build_library(name,
 
 
 def check_js_engines():
-  total_engines = len(shared.JS_ENGINES)
-  shared.JS_ENGINES = list(filter(jsrun.check_engine, shared.JS_ENGINES))
-  if not shared.JS_ENGINES:
-    print('WARNING: None of the JS engines in JS_ENGINES appears to work.')
-  elif len(shared.JS_ENGINES) < total_engines:
-    print('WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.')
+  working_engines = list(filter(jsrun.check_engine, shared.JS_ENGINES))
+  if len(working_engines) < len(shared.JS_ENGINES):
+    print('Not all the JS engines in JS_ENGINES appears to work.')
+    exit(1)
 
   if EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')

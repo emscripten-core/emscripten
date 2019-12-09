@@ -540,6 +540,13 @@ mergeInto(LibraryManager.library, {
       });
     },
     mount: function(type, opts, mountpoint) {
+#if ASSERTIONS
+      if (typeof type === 'string') {
+        // The filesystem was not included, and instead we have an error
+        // message stored in the variable.
+        throw type;
+      }
+#endif
       var root = mountpoint === '/';
       var pseudo = !mountpoint;
       var node;
@@ -1117,7 +1124,7 @@ mergeInto(LibraryManager.library, {
       if (!stream.seekable || !stream.stream_ops.llseek) {
         throw new FS.ErrnoError({{{ cDefine('ESPIPE') }}});
       }
-      if (whence != 0 /* SEEK_SET */ && whence != 1 /* SEEK_CUR */ && whence != 2 /* SEEK_END */) {
+      if (whence != {{{ cDefine('SEEK_SET') }}} && whence != {{{ cDefine('SEEK_CUR') }}} && whence != {{{ cDefine('SEEK_END') }}}) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       stream.position = stream.stream_ops.llseek(stream, offset, whence);

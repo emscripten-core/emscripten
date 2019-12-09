@@ -3,7 +3,7 @@ version: 2.1
 executors:
   bionic:
     docker:
-      - image: buildpack-deps:bionic
+      - image: emscripten/emscripten-ci
     environment:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
@@ -26,8 +26,13 @@ commands:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
+            echo "import os" >> ~/.emscripten
+            # test v8 with --wasm-staging which enables new features. we use v8
+            # as a "bleeding edge" shell here, basically, with node being the
+            # primary shell (which we run without any special flags)
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
+            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
+            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
@@ -71,6 +76,7 @@ commands:
             - .emscripten_ports/
             - .emscripten
             - vms
+            - .jsvu
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -82,12 +88,6 @@ commands:
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            # openjdk-9 is also available, but hits #7232
-            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
       - run:
           name: run tests
           command: |
@@ -122,20 +122,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake build-essential openjdk-8-jre-headless
-            # preseed packages so that apt-get won't prompt for user input
-            echo "keyboard-configuration keyboard-configuration/layoutcode string us" | debconf-set-selections
-            echo "ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true" | debconf-set-selections
-            apt-get install -q -y dbus-x11 firefox menu openbox ttf-mscorefonts-installer xinit xserver-xorg xserver-xorg-video-dummy
-      - run:
           name: download firefox
           command: |
-            # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
-            # which requires very latest nightly as of Jul 13 2019
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -144,6 +133,7 @@ commands:
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
+            user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
             EOF
       - run:
           name: configure openbox
@@ -203,8 +193,11 @@ commands:
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
             EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1" # looks broken in ff nightly
+            # OffscreenCanvas support is not yet done in Firefox.
+            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # Disable threads as dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled is not yet present on dev edition.
+            EMTEST_LACKS_THREAD_SUPPORT: "1"
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
@@ -229,18 +222,9 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            # install chromium-browser in order to ensure we have most of the
-            # dependecies for chrome.
-            EXTRA_CHROME_DEPS="lsb-release fonts-liberation libappindicator3-1"
-            apt-get install -q -y unzip xvfb chromium-browser openjdk-8-jre-headless $EXTRA_CHROME_DEPS
-      - run:
           name: download chrome
           command: |
-            # TODO: return to using beta once it stabilizes
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
       - run:
           name: run tests
@@ -262,11 +246,6 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake
       - run:
           name: install emsdk
           command: |
@@ -308,25 +287,11 @@ jobs:
     executor: bionic
     steps:
       - checkout
-      - run:
-          name: install sphinx
-          command: |
-            apt-get update -q
-            DEBIAN_FRONTEND=noninteractive apt-get install -q -y sphinx-common
       - run: make -C site html
   flake8:
     executor: bionic
     steps:
       - checkout
-      - run:
-          name: install pip
-          command: |
-            apt-get update -q
-            apt-get install -q -y python-pip python3-pip
-      - run: python2 -m pip install --upgrade pip
-      - run: python3 -m pip install --upgrade pip
-      - run: python2 -m pip install flake8==3.7.8
-      - run: python3 -m pip install flake8==3.7.8
       - run: python2 -m flake8 --show-source --statistics
       - run: python3 -m flake8 --show-source --statistics
   test-other:
@@ -419,24 +384,29 @@ jobs:
   build-upstream-linux:
     executor: bionic
     steps:
-      - run:
-          name: install package dependencies
-          command: |
-            apt-get update -q
-            apt-get install -q -y python3 cmake
       - checkout
       - run:
           name: get wasmer
           command: |
-            curl https://get.wasmer.io -sSfL | sh
+            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
+            tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
-            cp ~/.wasmer/bin/wasmer ~/vms
+            cp bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
             wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
             tar -xf wasmtime-dev-x86_64-linux.tar.xz
             cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
+      - run:
+          name: get v8
+          command: |
+            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+            tar -xf node-v12.13.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            export PATH="${HOME}/.jsvu:${PATH}"
+            jsvu --os=default --engines=v8
       - build-upstream
   test-upstream-wasm0:
     executor: bionic

@@ -8,6 +8,13 @@ Emscripten has a comprehensive test suite, which covers virtually all Emscripten
 
 This article explains how to run the test and benchmark suite, and provides an overview of what tests are available.
 
+Setting up
+==========
+
+To run the tests, you need an emscripten setup, as it will run ``emcc`` and other
+commands. See the :ref:`developer's guide <developers-guide-setting-up>` for
+how best to do that.
+
 Running tests
 =============
 

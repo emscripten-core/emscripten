@@ -9,6 +9,7 @@ native optimizer, as well as fetch and build ports like zlib and sdl2
 """
 
 from __future__ import print_function
+import argparse
 import logging
 import os
 import subprocess
@@ -130,46 +131,50 @@ def build_port(port_name, lib_name, params):
 
 def main():
   global force
+  parser = argparse.ArgumentParser(description=__doc__, usage="%(prog)s [operation] [targets ...]",
+                                   add_help=False)
+  parser.add_argument('--help', '-h', action='store_true', help='print help message')
+  parser.add_argument('--lto', action='store_true', help='build bitcode object for LTO')
+  parser.add_argument('--pic', action='store_true',
+                      help='build relocatable objects for suitable for dynamic linking')
+  parser.add_argument('--force', action='store_true',
+                      help='force rebuild of target (by removing it first)')
+  parser.add_argument('operation')
+  parser.add_argument('targets', nargs='+')
+  args = parser.parse_args()
 
-  if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
+  if args.help:
     print_help()
     return 0
 
-  operation = sys.argv[1]
-  if operation != 'build':
-    shared.exit_with_error('unfamiliar operation: ' + operation)
+  if args.operation != 'build':
+    shared.exit_with_error('unfamiliar operation: ' + args.operation)
 
   # process flags
-
-  args = sys.argv[2:]
-
-  def is_flag(arg):
-    return arg.startswith('--')
 
   # Check sanity so that if settings file has changed, the cache is cleared here.
   # Otherwise, the cache will clear in an emcc process, which is invoked while building
   # a system library into the cache, causing trouble.
   shared.check_sanity()
 
-  for arg in args:
-    if is_flag(arg):
-      arg = arg[2:]
-      if arg == 'lto':
-        shared.Settings.WASM_OBJECT_FILES = 0
-      elif arg == 'pic':
-        shared.Settings.RELOCATABLE = 1
-      elif arg == 'force':
-        force = True
-      # Reconfigure the cache dir to reflect the change
-      shared.reconfigure_cache()
+  if args.lto:
+    shared.Settings.WASM_OBJECT_FILES = 0
+    # Reconfigure the cache dir to reflect the change
+    shared.reconfigure_cache()
 
-  args = [a for a in args if not is_flag(a)]
+  if args.pic:
+    shared.Settings.RELOCATABLE = 1
+    # Reconfigure the cache dir to reflect the change
+    shared.reconfigure_cache()
+
+  if args.force:
+    force = True
 
   # process tasks
   libname = shared.static_library_name
 
   auto_tasks = False
-  tasks = args
+  tasks = args.targets
   if 'SYSTEM' in tasks:
     tasks = SYSTEM_TASKS
     auto_tasks = True
@@ -240,11 +245,13 @@ def main():
     elif what == 'sdl2-net':
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
-      build_port('sdl2-mixer', 'libSDL2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+      build_port('sdl2-mixer', libname('libSDL2_mixer'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':
       build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
+    elif what == 'harfbuzz-mt':
+      build_port('harfbuzz-mt', 'libharfbuzz-mt.a', ['-s', 'USE_HARFBUZZ=1', '-s', 'USE_PTHREADS=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', libname('libSDL2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':

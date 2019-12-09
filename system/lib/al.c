@@ -51,7 +51,7 @@ void* emscripten_GetAlcProcAddress(ALCchar *name) {
   else if (!strcmp(name, "alcGetStringiSOFT")) { return emscripten_alcGetStringiSOFT; }
   else if (!strcmp(name, "alcResetDeviceSOFT")) { return emscripten_alcResetDeviceSOFT; }
 
-  EM_ASM_({
+  EM_ASM({
     err("bad name in alcGetProcAddress: " + UTF8ToString($0));
   }, name);
   return 0;
@@ -136,7 +136,7 @@ void* emscripten_GetAlProcAddress(ALchar *name) {
 
   // Extensions
 
-  EM_ASM_({
+  EM_ASM({
     err("bad name in alGetProcAddress: " + UTF8ToString($0));
   }, name);
   return 0;

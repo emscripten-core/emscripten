@@ -27,7 +27,7 @@ def get(ports, settings, shared):
     ports.clear_project_build('sdl2_ttf')
     ports.clear_project_build('sdl2_gfx')
     # copy includes to a location so they can be used as 'SDL2/'
-    source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR + '', 'include')
+    source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
     dest_include_path = os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2', 'include')
     shared.try_delete(dest_include_path)
     shutil.copytree(source_include_path, dest_include_path)

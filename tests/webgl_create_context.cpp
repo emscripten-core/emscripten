@@ -107,7 +107,7 @@ int main()
     );
     
     assert(emscripten_webgl_get_current_context() == 0);
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("customCanvas", &attrs);
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#customCanvas", &attrs);
     assert(context > 0); // Must have received a valid context.
     EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);
     assert(res == EMSCRIPTEN_RESULT_SUCCESS);
