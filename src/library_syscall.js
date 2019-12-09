@@ -1852,7 +1852,7 @@ var WASI_SYSCALLS = set([
   'fd_sync',
 ]);
 
-// Fallback for cases where the wasi_unstable.name prefixing fails,
+// Fallback for cases where the wasi_interface_version.name prefixing fails,
 // and we have the full name from C. This happens in fastcomp which
 // lacks the attribute to set the import module and base names.
 if (!WASM_BACKEND) {

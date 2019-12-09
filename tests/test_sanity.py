@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
-from runner import create_test_file, no_wasm_backend
+from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs
@@ -61,8 +61,7 @@ def make_fake_clang(filename, version):
   --version writes to stdout (unlike -v which writes to stderr)
   """
   print('make_fake_clang: %s' % filename)
-  if not os.path.exists(os.path.dirname(filename)):
-    os.makedirs(os.path.dirname(filename))
+  ensure_dir(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "clang version %s"\n' % version)
@@ -77,8 +76,7 @@ def make_fake_llc(filename, targets):
   list to stdout.
   """
   print('make_fake_llc: %s' % filename)
-  if not os.path.exists(os.path.dirname(filename)):
-    os.makedirs(os.path.dirname(filename))
+  ensure_dir(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
@@ -354,8 +352,7 @@ class sanity(RunnerCore):
     with open(CONFIG_FILE, 'a') as f:
       f.write('NODE_JS = "' + self.in_dir('fake', 'nodejs') + '"')
 
-    if not os.path.exists('fake'):
-      os.makedirs('fake')
+    ensure_dir('fake')
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
@@ -660,8 +657,7 @@ fi
       # if the tag doesn't match, we retrieve and rebuild
       subdir = os.listdir(os.path.join(PORTS_DIR, 'sdl2'))[0]
       os.rename(os.path.join(PORTS_DIR, 'sdl2', subdir), os.path.join(PORTS_DIR, 'sdl2', 'old-subdir'))
-      if not os.path.exists('old-sub'):
-        os.mkdir('old-sub')
+      ensure_dir('old-sub')
       open(os.path.join('old-sub', 'a.txt'), 'w').write('waka')
       open(os.path.join('old-sub', 'b.txt'), 'w').write('waka')
       with zipfile.ZipFile(os.path.join(PORTS_DIR, 'sdl2.zip'), 'w') as z:
@@ -680,8 +676,7 @@ fi
 
     # Note that the path contains 'd8'.
     test_path = self.in_dir('fake', 'abcd8765')
-    if not os.path.exists(test_path):
-      os.makedirs(test_path)
+    ensure_dir(test_path)
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       jsengines = [('d8',     V8_ENGINE),
