@@ -266,7 +266,7 @@ typedef void * emscripten_fiber;
 emscripten_fiber emscripten_fiber_create(em_arg_callback_func func, void *arg, void *stack, int stack_size);
 emscripten_fiber emscripten_fiber_create_from_current_context(void);
 void emscripten_fiber_recycle(emscripten_fiber fiber, em_arg_callback_func func, void *arg);
-void emscripten_fiber_free(emscripten_fiber fiber);
+void emscripten_fiber_destroy(emscripten_fiber fiber);
 void emscripten_fiber_swap(emscripten_fiber old_fiber, emscripten_fiber new_fiber);
 
 /* ===================================== */

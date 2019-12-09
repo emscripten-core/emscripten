@@ -28,7 +28,7 @@ struct Fiber {
 
     ~Fiber() {
         free(stack);
-        emscripten_fiber_free(context);
+        emscripten_fiber_destroy(context);
         printf("\ndestructor");
     }
 };
@@ -42,7 +42,7 @@ static struct Globals {
     }
 
     ~Globals() {
-        emscripten_fiber_free(main);
+        emscripten_fiber_destroy(main);
         printf("\ndestructor");
     }
 } G;

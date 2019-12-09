@@ -228,8 +228,8 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_recycle: function() {
     throw 'emscripten_fiber_recycle is not implemented for fastcomp ASYNCIFY';
   },
-  emscripten_fiber_free: function() {
-    throw 'emscripten_fiber_free is not implemented for fastcomp ASYNCIFY';
+  emscripten_fiber_destroy: function() {
+    throw 'emscripten_fiber_destroy is not implemented for fastcomp ASYNCIFY';
   },
   emscripten_fiber_swap: function() {
     throw 'emscripten_fiber_swap is not implemented for fastcomp ASYNCIFY';
@@ -569,8 +569,8 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_recycle: function() {
     throw 'emscripten_fiber_recycle is not implemented for EMTERPRETIFY_ASYNC';
   },
-  emscripten_fiber_free: function() {
-    throw 'emscripten_fiber_free is not implemented for EMTERPRETIFY_ASYNC';
+  emscripten_fiber_destroy: function() {
+    throw 'emscripten_fiber_destroy is not implemented for EMTERPRETIFY_ASYNC';
   },
   emscripten_fiber_swap: function() {
     throw 'emscripten_fiber_swap is not implemented for EMTERPRETIFY_ASYNC';
@@ -972,9 +972,9 @@ mergeInto(LibraryManager.library, {
     };
   },
 
-  emscripten_fiber_free__sig: 'vi',
-  emscripten_fiber_free__deps: ['$Asyncify', '$Fibers', 'free'],
-  emscripten_fiber_free: function(fiber) {
+  emscripten_fiber_destroy__sig: 'vi',
+  emscripten_fiber_destroy__deps: ['$Asyncify', '$Fibers', 'free'],
+  emscripten_fiber_destroy: function(fiber) {
     var asyncifyContext = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
     // this may be undefined when asyncifyContext == 0, or when freeing the 'current' fiber
@@ -1069,8 +1069,8 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_recycle: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_recycle';
   },
-  emscripten_fiber_free: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_free';
+  emscripten_fiber_destroy: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_destroy';
   },
   emscripten_fiber_swap: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';

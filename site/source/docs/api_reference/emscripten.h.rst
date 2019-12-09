@@ -1440,7 +1440,7 @@ Functions
     this one as the first argument to `emscripten_fiber_swap`. This will
     complete the continuation, allowing you to switch back to it later.
 
-.. c:function:: void emscripten_fiber_free(emscripten_fiber fiber)
+.. c:function:: void emscripten_fiber_destroy(emscripten_fiber fiber)
 
     Frees memory and any JS-side bookkeeping associated with `fiber`. This does
     not free the stack, that is your responsibility. It also does not "stop" or
@@ -1463,7 +1463,7 @@ Functions
     Re-initializes a fiber with a new entry point. The stack space is reused,
     and the stack pointer is reset to the base of the stack.
 
-    This can be used instead of a `emscripten_fiber_free` /
+    This can be used instead of a `emscripten_fiber_destroy` /
     `emscripten_fiber_create` pair to avoid unnecessary memory reallocations if
     you have a fiber that you no longer need (such as a finished one).
 
