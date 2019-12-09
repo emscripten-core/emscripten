@@ -114,7 +114,9 @@ var LibraryJSEvents = {
     // Stores objects representing each currently registered JS event handler.
     eventHandlers: [],
 
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     isInternetExplorer: function() { return navigator.userAgent.indexOf('MSIE') !== -1 || navigator.appVersion.indexOf('Trident/') > 0; },
+#endif
 
     // Removes all event handlers on the given DOM element of the given type. Pass in eventTypeString == undefined/null to remove all event handlers regardless of the type.
     removeAllHandlersOnTarget: function(target, eventTypeString) {
@@ -196,11 +198,6 @@ var LibraryJSEvents = {
       return (target && target.nodeName) ? target.nodeName : '';
     },
 
-    tick: function() {
-      if (window['performance'] && window['performance']['now']) return window['performance']['now']();
-      else return Date.now();
-    },
-
     fullscreenEnabled: function() {
       return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
     },
@@ -244,7 +241,11 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
       allowsDeferredCalls: JSEvents.isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
+#else
+      allowsDeferredCalls: true,
+#endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: keyEventHandlerFunc,
@@ -275,12 +276,6 @@ var LibraryJSEvents = {
 #else
     var domElement = __specialEventTargets[target] || document.querySelector(__maybeCStringToJsString(target));
 #endif
-#if ASSERTIONS
-    // TODO: Remove this check in the future, or move it to some kind of debugging mode, because it may be perfectly fine behavior
-    // for one to query an event target to test if any DOM element with given CSS selector exists. However for a migration period
-    // from old lookup over to new, it is very useful to get diagnostics messages related to a lookup failing.
-    if (!domElement) err('No DOM element was found with CSS selector "' + __maybeCStringToJsString(target) + '"');
-#endif
     return domElement;
   },
 
@@ -289,15 +284,26 @@ var LibraryJSEvents = {
   _findCanvasEventTarget: function(target) {
     target = __maybeCStringToJsString(target);
 
-    // First look up if there exists an OffscreenCanvas with the given name.
-    var offscreenCanvas;
-    // TODO: Once Module['canvas'] is removed, clean up the following line:
-    if (target == '#canvas') offscreenCanvas = GL.offscreenCanvases['canvas'];
-    if (!offscreenCanvas) offscreenCanvas = GL.offscreenCanvases[target] || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0]); // First looks up by DOM ID ("#myCanvasElement"), second looks up by DOM element name (first found element of type <canvas>)
-    if (offscreenCanvas) return offscreenCanvas;
+    // When compiling with OffscreenCanvas support and looking up a canvas to target,
+    // we first look up if the target Canvas has been transferred to OffscreenCanvas use.
+    // These transfers are represented/tracked by GL.offscreenCanvases object, which contain
+    // the OffscreenCanvas element for each regular Canvas element that has been transferred.
 
+    // Note that each pthread/worker have their own set of GL.offscreenCanvases. That is,
+    // when an OffscreenCanvas is transferred from a pthread/main thread to another pthread,
+    // it will move in the GL.offscreenCanvases array between threads. Hence GL.offscreenCanvases
+    // represents the set of OffscreenCanvases owned by the current calling thread.
+
+    // First check out the list of OffscreenCanvases by CSS selector ID ('#myCanvasID')
+    return GL.offscreenCanvases[target.substr(1)] // Remove '#' prefix
+    // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
+    // OffscreenCanvas that we can find.
+     || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
+    // If that is not found either, query via the regular DOM selector.
 #if USE_PTHREADS
-    return (typeof document !== 'undefined') ? document.querySelector(target) : null;
+     || (typeof document !== 'undefined' && document.querySelector(target));
+#else
+     || document.querySelector(target);
 #endif
   },
 #else
@@ -379,7 +385,6 @@ var LibraryJSEvents = {
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
   _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '_specialEventTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
@@ -448,8 +453,10 @@ var LibraryJSEvents = {
       handlerFunc: mouseEventHandlerFunc,
       useCapture: useCapture
     };
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     // In IE, mousedown events don't either allow deferred calls to be run!
     if (JSEvents.isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
+#endif
     JSEvents.registerOrRemoveHandler(eventHandler);
   },
 
@@ -753,7 +760,6 @@ var LibraryJSEvents = {
 
   _fillDeviceOrientationEventData__deps: ['$JSEvents'],
   _fillDeviceOrientationEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
@@ -825,7 +831,6 @@ var LibraryJSEvents = {
     a = a || {};
     ag = ag || {};
     rr = rr || {};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};
@@ -1294,6 +1299,7 @@ var LibraryJSEvents = {
   // Add letterboxes to a fullscreen element in a cross-browser way.
   _setLetterbox__deps: ['$JSEvents'],
   _setLetterbox: function(element, topBottom, leftRight) {
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     if (JSEvents.isInternetExplorer()) {
       // Cannot use padding on IE11, because IE11 computes padding in addition to the size, unlike
       // other browsers, which treat padding to be part of the size.
@@ -1304,10 +1310,13 @@ var LibraryJSEvents = {
       element.style.marginLeft = element.style.marginRight = leftRight + 'px';
       element.style.marginTop = element.style.marginBottom = topBottom + 'px';
     } else {
+#endif
       // Cannot use margin to specify letterboxes in FF or Chrome, since those ignore margins in fullscreen mode.
       element.style.paddingLeft = element.style.paddingRight = leftRight + 'px';
       element.style.paddingTop = element.style.paddingBottom = topBottom + 'px';
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
     }
+#endif
   },
 
   _currentFullscreenStrategy: {},

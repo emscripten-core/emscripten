@@ -2,7 +2,7 @@
 #define	_UNISTD_H
 
 #ifdef __EMSCRIPTEN__
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 #endif
 
 #ifdef __cplusplus
