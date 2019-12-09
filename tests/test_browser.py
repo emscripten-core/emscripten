@@ -1495,40 +1495,14 @@ keydown(100);keyup(100); // trigger the end
   def test_sdl_ogl_regal(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-fexceptions', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
   def test_sdl_ogl_regal_noexcept(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
     self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1',
-                     '-fno-exceptions', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
-
-  @requires_threads
-  @requires_graphics_hardware
-  def test_sdl_ogl_regal_mt(self):
-    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_PTHREADS=1',
-                     '-fexceptions', '-pthread', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
-
-  @requires_threads
-  @requires_graphics_hardware
-  def test_sdl_ogl_regal_mt_noexcept(self):
-    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('sdl_ogl.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-s', 'USE_PTHREADS=1', '-fno-exceptions',
-                     '-pthread', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
-               message='You should see an image with gray at the top.')
-
-  @requires_graphics_hardware
-  def test_sdl_ogl_defaultmatrixmode(self):
-    shutil.copyfile(path_from_root('tests', 'screenshot.png'), 'screenshot.png')
-    self.btest('sdl_ogl_defaultMatrixMode.c', reference='screenshot-gray-purple.png', reference_slack=1,
-               args=['--minify', '0', '--preload-file', 'screenshot.png', '-s', 'LEGACY_GL_EMULATION=1', '--use-preload-plugins', '-lSDL', '-lGL'],
+               args=['-O2', '--minify', '0', '--preload-file', 'screenshot.png', '-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-fno-exceptions', '-DUSE_REGAL', '--use-preload-plugins', '-lSDL', '-lGL'],
                message='You should see an image with gray at the top.')
 
   @requires_graphics_hardware
@@ -2035,7 +2009,21 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
-    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+
+  @requires_graphics_hardware
+  def test_cubegeom_regal_noexcept(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-fno-exceptions', '-DUSE_REGAL', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_cubegeom_regal_mt(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_cubegeom_regal_mt_noexcept(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-fno-exceptions', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
