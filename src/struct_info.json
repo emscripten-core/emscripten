@@ -1576,7 +1576,7 @@
         ]
     },
     {
-        "file": "wasi/wasi.h",
+        "file": "wasi/api.h",
         "structs": {
             "__wasi_fdstat_t": [
                 "fs_filetype",

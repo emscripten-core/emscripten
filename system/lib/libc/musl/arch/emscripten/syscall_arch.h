@@ -1,4 +1,4 @@
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
 
 #define __SYSCALL_LL_E(x) \

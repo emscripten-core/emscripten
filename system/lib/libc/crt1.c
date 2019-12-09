@@ -12,7 +12,7 @@
 #include <alloca.h>
 #include <stdlib.h>
 #include <sysexits.h>
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 #include <stdio.h>
 
 extern void __wasm_call_ctors(void) __attribute__((weak));
@@ -40,7 +40,7 @@ int __original_main(void) {
 
   /* Get the sizes of the arrays we'll have to create to copy in the args. */
   err = __wasi_args_sizes_get(&argc, &argv_buf_size);
-  if (err != __WASI_ESUCCESS) {
+  if (err != __WASI_ERRNO_SUCCESS) {
     __wasi_proc_exit(EX_OSERR);
   }
 
@@ -48,12 +48,12 @@ int __original_main(void) {
     /* Allocate memory for the array of pointers, adding null terminator. */
     argv = alloca(sizeof(char *) * (argc + 1));
     /* Allocate memory for storing the argument chars. */
-    char *argv_buf = alloca(sizeof(char) * argv_buf_size);
+    uint8_t *argv_buf = alloca(sizeof(char) * argv_buf_size);
     /* Make sure the last pointer in the array is NULL. */
     argv[argc] = NULL;
     /* Fill the argument chars, and the argv array with pointers into those chars. */
-    err = __wasi_args_get(argv, argv_buf);
-    if (err != __WASI_ESUCCESS) {
+    err = __wasi_args_get((uint8_t**)argv, argv_buf);
+    if (err != __WASI_ERRNO_SUCCESS) {
       __wasi_proc_exit(EX_OSERR);
     }
   }

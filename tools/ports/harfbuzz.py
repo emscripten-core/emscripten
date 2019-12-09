@@ -29,7 +29,7 @@ def get(ports, settings, shared):
     freetype_include = os.path.join(freetype_dir, 'include')
     freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
 
-    shared.Building.configure([
+    configure_args = [
       'cmake',
       '-B' + dest_path,
       '-H' + source_path,
@@ -38,11 +38,16 @@ def get(ports, settings, shared):
       '-DFREETYPE_INCLUDE_DIRS=' + freetype_include_dirs,
       '-DFREETYPE_LIBRARY=' + freetype_lib,
       '-DHB_HAVE_FREETYPE=ON'
-    ])
+    ]
+
+    if settings.USE_PTHREADS:
+      configure_args += ['-DCMAKE_CXX_FLAGS="-pthread"']
+
+    shared.Building.configure(configure_args)
     shared.Building.make(['make', '-j%d' % shared.Building.get_num_cores(), '-C' + dest_path, 'install'])
     return os.path.join(dest_path, 'libharfbuzz.a')
 
-  return [shared.Cache.get('libharfbuzz.a', create, what='port')]
+  return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
 
 
 def clear(ports, shared):

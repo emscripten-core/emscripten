@@ -28,8 +28,6 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
-    # necessary for proper including of SDL_mixer.h
-    os.symlink(dest_path, os.path.join(dest_path, 'SDL2'))
 
     final = os.path.join(dest_path, libname)
     ports.build_port(dest_path, final, [], ['-DOGG_MUSIC', '-s', 'USE_VORBIS=1'],
@@ -37,6 +35,13 @@ def get(ports, settings, shared):
                       'fluidsynth', 'load_mp3', 'music_cmd', 'music_flac', 'music_mad', 'music_mod',
                       'music_modplug', 'playmus.c', 'playwave.c'],
                      ['external', 'native_midi', 'timidity'])
+
+    # copy header to a location so it can be used as 'SDL2/'
+    dest_include_path = os.path.join(dest_path, 'include', 'SDL2')
+    os.makedirs(dest_include_path)
+    shutil.copyfile(os.path.join(source_path, 'SDL_mixer.h'),
+                    os.path.join(dest_include_path, 'SDL_mixer.h'))
+
     return final
 
   return [shared.Cache.get(libname, create, what='port')]
@@ -55,7 +60,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL_MIXER == 2:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer')]
+    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer', 'include')]
   return args
 
 
