@@ -1823,24 +1823,32 @@ def create_fp_accessors(metadata):
     # the name of the original function is generally the normal function
     # name, unless it is legalized, in which case the export is the legalized
     # version, and the original provided by orig$X
+    originalAccessor = ''
     if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
       name = 'orig$' + name
+      originalAccessor = ('if (!func) func = Module["_%s"];' % (name))
 
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
   // Use the original wasm function itself, for the table, from the main module.
   var func = Module['asm']['%(original)s'];
+<<<<<<< HEAD
   // Try an original version from a side module.
   if (!func) func = Module['_%(original)s'];
   // Otherwise, look for a regular function or JS library function.
+=======
+  // If there is no wasm function, this may be a JS library function or
+  // something from another module.
+  %(originalAccessor)s
+>>>>>>> Export original version of functions from side module to avoid legalization when making indirect inter-module calls.
   if (!func) func = Module['%(mangled)s'];
   if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig, 'originalAccessor': originalAccessor})
 
   return '\n'.join(accessors)
 
