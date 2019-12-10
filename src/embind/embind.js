@@ -1193,75 +1193,75 @@ var LibraryEmbind = {
   $embind__requireFunction: function(signature, rawFunction) {
     signature = readLatin1String(signature);
 
-    function makeDynCaller(dynCall) {
+    function makeDynCaller(sig) {
 #if DYNAMIC_EXECUTION == 0
       switch (signature.length) {
         case 0:
           return function() {
-            return dynCall(rawFunction);
+            return Module[sig](rawFunction);
           };
         case 1:
           return function(a0) {
-            return dynCall(rawFunction, a0);
+            return Module[sig](rawFunction, a0);
           };
         case 2:
           return function(a0, a1) {
-            return dynCall(rawFunction, a0, a1);
+            return Module[sig](rawFunction, a0, a1);
           };
         case 3:
           return function(a0, a1, a2) {
-            return dynCall(rawFunction, a0, a1, a2);
+            return Module[sig](rawFunction, a0, a1, a2);
           };
         case 4:
           return function(a0, a1, a2, a3) {
-            return dynCall(rawFunction, a0, a1, a2, a3);
+            return Module[sig](rawFunction, a0, a1, a2, a3);
           };
         case 5:
           return function(a0, a1, a2, a3, a4) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4);
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4);
           };
         case 6:
           return function(a0, a1, a2, a3, a4, a5) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5);
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5);
           };
         case 7:
           return function(a0, a1, a2, a3, a4, a5, a6) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6);
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6);
           };
         case 8:
           return function(a0, a1, a2, a3, a4, a5, a6, a7) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7);
           };
         case 9:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8);
           };
         case 10:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9);
           };
         case 11:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10);
           };
         case 12:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10, a11);
           };
         case 13:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10, a11, a12);
           };
         case 14:
           return function(a0, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12,
                          a13) {
-            return dynCall(rawFunction, a0, a1, a2, a3, a4, a5, a6,
+            return Module[sig](rawFunction, a0, a1, a2, a3, a4, a5, a6,
                                 a7, a8, a9, a10, a11, a12, a13);
           };
         default:
@@ -1280,7 +1280,7 @@ var LibraryEmbind = {
             for (var i = 0; i < arguments.length; i++) {
               argCache[i + 1] = arguments[i];
             }
-            return dynCall.apply(null, argCache);
+            return Module[sig].apply(null, argCache);
           };
       };
 #else
@@ -1294,7 +1294,7 @@ var LibraryEmbind = {
         body    += '    return dynCall(rawFunction' + (args.length ? ', ' : '') + args.join(', ') + ');\n';
         body    += '};\n';
 
-        return (new Function('dynCall', 'rawFunction', body))(dynCall, rawFunction);
+        return (new Function('dynCall', 'rawFunction', body))(Module[sig], rawFunction);
 #endif
     }
 
@@ -1313,18 +1313,18 @@ var LibraryEmbind = {
         // This has three main penalties:
         // - dynCall is another function call in the path from JavaScript to C++.
         // - JITs may not predict through the function table indirection at runtime.
-        var dc = Module['dynCall_' + signature];
-        if (dc === undefined) {
+        var sig = 'dynCall_' + signature;
+        if (Module[sig] === undefined) {
             // We will always enter this branch if the signature
             // contains 'f' and PRECISE_F32 is not enabled.
             //
             // Try again, replacing 'f' with 'd'.
             dc = Module['dynCall_' + signature.replace(/f/g, 'd')];
-            if (dc === undefined) {
+            if (Module[sig] === undefined) {
                 throwBindingError("No dynCall invoker for signature: " + signature);
             }
         }
-        fp = makeDynCaller(dc);
+        fp = makeDynCaller(sig);
     }
 
     if (typeof fp !== "function") {

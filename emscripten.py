@@ -2607,14 +2607,6 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
 
 def create_receiving_wasm(exports):
-  # It's best to avoid the use of "arguments" in generated JavaScript, as it
-  # throws off garbage. Adding known argument counts to this table of receiving
-  # functions will generate code with explicit argument lists.
-  known_arg_counts = {
-    'stackSave': 0,
-    'stackRestore': 1,
-  }
-
   receiving = []
   runtime_assertions = ''
   if shared.Settings.ASSERTIONS:
@@ -2635,27 +2627,9 @@ asm["%(e)s"] = function() {%(assertions)s
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      arg_count = -1
-      # We can determine the explicit argument count for dynCall functions.
-      dyncall = re.match(r"dynCall_([dfijv]+)", e)
-      if dyncall:
-        sig = dyncall.group(1)
-        # 64-bit numbers get 2 args
-        arg_count = len(sig) + sig.count('j')
-      elif e in known_arg_counts:
-        arg_count = known_arg_counts[e]
-
-      if arg_count > -1:
-        arglist = ", ".join(["a%d" % i for i in range(arg_count)])
-        receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function(%(arglist)s) {%(assertions)s
-  return Module["asm"]["%(e)s"](%(arglist)s)
-};
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions, 'arglist': arglist})
-      else:
-        receiving.append('''\
+      receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
-  return Module["asm"]["%(e)s"].apply(null, arguments)
+  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
