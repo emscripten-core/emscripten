@@ -68,7 +68,7 @@
   "__cxa_end_catch": ["free"],
   "__cxa_allocate_exception": ["malloc"],
   "__cxa_free_exception": ["free"],
-  "emscripten_log": ["strlen"],
+  "_formatString": ["strlen"],
   "setjmp": ["realloc"],
   "saveSetjmp": ["realloc"],
   "glfwSleep": ["sleep"],

@@ -213,7 +213,7 @@ commands:
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
-    description: "Runs emscripten tests under firefox"
+    description: "Runs emscripten browser tests under chrome"
     steps:
       - checkout
       - attach_workspace:
@@ -238,6 +238,39 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             python3 tests/runner.py browser
+  test-sockets-chrome:
+    description: "Runs emscripten sockets tests under chrome"
+    steps:
+      - checkout
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: download chrome
+          command: |
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            dpkg -i ~/chrome.deb
+      - run:
+          name: install sockets test suite prerequisites
+          command: |
+            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+            tar -xf node-v12.13.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
+            npm install ws
+      - run:
+          name: run sockets tests
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          command: |
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            python tests/runner.py sockets
 
 jobs:
   build:
@@ -309,6 +342,10 @@ jobs:
     executor: bionic
     steps:
       - test-chrome
+  test-sockets-chrome:
+    executor: bionic
+    steps:
+      - test-sockets-chrome
   test-ab:
     executor: bionic
     steps:
@@ -474,6 +511,9 @@ workflows:
           requires:
             - build
       - test-browser-chrome:
+          requires:
+            - build
+      - test-sockets-chrome:
           requires:
             - build
       - test-ab:
