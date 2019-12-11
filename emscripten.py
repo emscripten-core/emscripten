@@ -2237,6 +2237,9 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
 =======
   if shared.Settings.MAIN_MODULE:
+    # Run compile_settings here to retrieve all the JS library functions.
+    # Unfortunately, we need to run it later again to capture the exported functions
+    # from the Wasm
     glue, forwarded_data = compile_settings(compiler_engine, temp_files)
 >>>>>>> Generate JS lib functions
     forwarded_json = json.loads(forwarded_data)
@@ -2245,7 +2248,6 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     for name in library_fns:
       library_fns_list.append(name.encode('utf-8'))
 
-    #print('forwarded_json:' + str(library_fns_list))
     libraryfile = infile + '.libfile'
     with open(libraryfile, 'w') as f:
       f.write(str(library_fns_list))
@@ -2265,7 +2267,6 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   if DEBUG:
     t = time.time()
   glue, forwarded_data = compile_settings(compiler_engine, temp_files)
-
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -2354,7 +2355,6 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   outfile.close()
 
 
-
 def remove_trailing_zeros(memfile):
   with open(memfile, 'rb') as f:
     mem_data = f.read()
@@ -2413,7 +2413,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG, libraryfile):
   if shared.Settings.FULL_DWARF:
     args.append('--dwarf')
 
-  if shared.Settings.MAIN_MODULE:
+  if shared.Settings.MAIN_MODULE and libraryfile:
     args.append('--pass-arg=library-file@%s' % libraryfile)
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
