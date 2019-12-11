@@ -1168,7 +1168,7 @@ class SettingsManager(object):
       # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
-      exec(settings, {'attrs': cls.attrs})
+      exec(settings, {'attrs': cls.attrs, 'TARGET_NOT_SUPPORTED': 0x7FFFFFFF})
 
       settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
