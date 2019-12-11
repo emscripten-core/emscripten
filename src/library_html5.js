@@ -3131,7 +3131,7 @@ var LibraryJSEvents = {
     throw UTF8ToString(str);
   },
 
-  emscripten_unwind_stack: function() {
+  emscripten_unwind_to_js_event_loop: function() {
     throw 'unwind';
   },
 

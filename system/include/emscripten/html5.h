@@ -574,7 +574,7 @@ extern void emscripten_console_error(const char *utf8String);
 extern void emscripten_throw_number(double number);
 extern void emscripten_throw_string(const char *utf8String);
 
-extern void emscripten_unwind_stack(void) __attribute__((noreturn));
+extern void emscripten_unwind_to_js_event_loop(void) __attribute__((noreturn));
 
 #ifdef __cplusplus
 } // ~extern "C"
