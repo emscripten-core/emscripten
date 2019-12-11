@@ -35,6 +35,16 @@ var emscriptenMemoryProfiler = {
   // corresponds to the data added to the VFS with --preload-file.
   sizeOfPreRunAllocatedPtr: {},
 
+  resizeMemorySources: [],
+    // stack: <string>,
+    // begin: <int>,
+    // end: <int>
+
+  sbrkSources: [],
+    // stack: <string>,
+    // begin: <int>,
+    // end: <int>
+
   // Once set to true, preRun is finished and the above array is not touched anymore.
   pagePreRunIsFinished: false,
 
@@ -72,6 +82,46 @@ var emscriptenMemoryProfiler = {
     else return emscriptenMemoryProfiler.truncDec(bytes) + ' B';
   },
 
+  onSbrkGrow: function onSbrkGrow(oldLimit, newLimit) {
+    var self = emscriptenMemoryProfiler;
+    // On first sbrk(), account for the initial size.
+    if (self.sbrkSources.length == 0) {
+      self.sbrkSources.push({
+        stack: "initial heap sbrk limit<br>",
+        begin: 0,
+        end: oldLimit,
+        color: self.sbrkSources.length % 2 ? '#ff0000' : '#ff8080'
+      });
+    }
+    self.sbrkSources.push({
+      stack: self.filterCallstackForHeapResize(new Error().stack.toString()),
+      begin: oldLimit,
+      end: newLimit,
+      color: self.sbrkSources.length % 2 ? '#ff0000' : '#ff8080'
+    });
+    console.log('sbrk: ' + oldLimit + ' ' + newLimit);
+  },
+
+  onMemoryResize: function onMemoryResize(oldSize, newSize) {
+    var self = emscriptenMemoryProfiler;
+    // On first heap resize, account for the initial size.
+    if (self.resizeMemorySources.length == 0) {
+      self.resizeMemorySources.push({
+        stack: "initial heap size<br>",
+        begin: 0,
+        end: oldSize,
+        color: self.resizeMemorySources.length % 2 ? '#ff00ff' : '#ff80ff'
+      });
+    }
+    self.resizeMemorySources.push({
+      stack: self.filterCallstackForHeapResize(new Error().stack.toString()),
+      begin: oldSize,
+      end: newSize,
+      color: self.resizeMemorySources.length % 2 ? '#ff00ff' : '#ff80ff'
+    });
+    console.log('memory resize: ' + oldSize + ' ' + newSize);
+  },
+
   onMalloc: function onMalloc(ptr, size) {
     if (!ptr) return;
     if (emscriptenMemoryProfiler.sizeOfAllocatedPtr[ptr])
@@ -95,7 +145,7 @@ var emscriptenMemoryProfiler = {
     if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
 
     var loc = new Error().stack.toString();
-    if (!self.allocationsAtLoc[loc]) self.allocationsAtLoc[loc] = [0, 0, self.filterCallstack(loc)];
+    if (!self.allocationsAtLoc[loc]) self.allocationsAtLoc[loc] = [0, 0, self.filterCallstackForMalloc(loc)];
     self.allocationsAtLoc[loc][0] += 1;
     self.allocationsAtLoc[loc][1] += size;
     self.allocationSitePtrs[ptr] = loc;
@@ -177,7 +227,7 @@ var emscriptenMemoryProfiler = {
     var div;
     if (!emscriptenMemoryProfiler.memoryprofiler_summary) {
       div = document.createElement("div");
-      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
+      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas><input type='checkbox' id='showHeapResizes' onclick='emscriptenMemoryProfiler.updateUi()'>Display heap and sbrk() resizes.<br/>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
     }
     var populateHtmlBody = function() {
       if (div) document.body.appendChild(div);
@@ -244,6 +294,17 @@ var emscriptenMemoryProfiler = {
     self.drawContext.fillRect(x0, 0, x1 - x0 + 1, self.canvas.height);
   },
 
+  // Fills a rectangle of given height % that overlaps the byte range given.
+  fillRect: function fillRect(startBytes, endBytes, heightPercentage) {
+    var self = emscriptenMemoryProfiler;
+    var startPixels = self.bytesToPixelsRoundedDown(startBytes);
+    var endPixels = self.bytesToPixelsRoundedUp(endBytes);
+
+    var x0 = (startPixels / self.canvas.height) | 0;
+    var x1 = (endPixels / self.canvas.height) | 0;
+    self.drawContext.fillRect(x0, self.canvas.height * (1.0 - heightPercentage), x1 - x0 + 1, self.canvas.height);
+  },
+
   countOpenALAudioDataSize: function countOpenALAudioDataSize() {
     if (typeof AL == "undefined" || !AL.currentContext) return 0;
 
@@ -270,17 +331,53 @@ var emscriptenMemoryProfiler = {
     }
   },
 
- filterCallstack: function(callstack) {
-   // Do not show Memoryprofiler's own callstacks in the callstack prints.
-   var i = callstack.indexOf('emscripten_trace_record_');
-   if (i != -1) {
-     callstack = callstack.substr(callstack.indexOf('\n', i)+1);
-   }
-   // Hide paths from URLs to make the log more readable
-   callstack = callstack.replace(/@((file)|(http))[\w:\/\.]*\/([\w\.]*)/g, '@$4');
-   callstack = callstack.replace(/\n/g, '<br />');
-   return callstack;
- },
+  filterURLsFromCallstack: function(callstack) {
+    // Hide paths from URLs to make the log more readable
+    callstack = callstack.replace(/@((file)|(http))[\w:\/\.]*\/([\w\.]*)/g, '@$4');
+    callstack = callstack.replace(/\n/g, '<br />');
+    return callstack;
+  },
+
+  filterCallstackForMalloc: function(callstack) {
+    // Do not show Memoryprofiler's own callstacks in the callstack prints.
+    var i = callstack.indexOf('emscripten_trace_record_');
+    if (i != -1) {
+      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+    }
+    return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
+  },
+
+  filterCallstackForHeapResize: function(callstack) {
+    // Do not show Memoryprofiler's own callstacks in the callstack prints.
+    var i = callstack.indexOf('emscripten_asm_const_iii');
+    var j = callstack.indexOf('emscripten_realloc_buffer');
+    i = (i == -1) ? j : (j == -1 ? i : Math.min(i, j));
+    if (i != -1) {
+      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+    }
+    return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
+  },
+
+  printHeapResizeLog: function(heapResizes) {
+    var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
+    var html = '';
+    for(var i = 0; i < heapResizes.length; ++i) {
+      var j = i+1;
+      while(j < heapResizes.length) {
+        if (heapResizes[j].stack == heapResizes[i].stack) {
+          ++j;
+        } else {
+          break;
+        }
+      }
+      var resizeFirst = heapResizes[i];
+      var resizeLast = heapResizes[j-1];
+      var count = j - i;
+      html += '<b>' + resizeFirst.begin + '-' + resizeLast.end + ' (' + count + ' times, ' + emscriptenMemoryProfiler.formatBytes(resizeLast.end-resizeFirst.begin) + ')</b>:' + demangler(resizeFirst.stack) + '<br>';
+      i = j-1;
+    }
+    return html;
+  },
 
   // Main UI update entry point.
   updateUi: function updateUi() {
@@ -363,30 +460,60 @@ var emscriptenMemoryProfiler = {
       self.fillLine(DYNAMIC_BASE, DYNAMIC_BASE + self.totalMemoryAllocated);
     }
 
+    if (document.getElementById('showHeapResizes').checked) {
+      // Print heap resize traces.
+      for(var i in self.resizeMemorySources) {
+        var resize = self.resizeMemorySources[i];
+        self.drawContext.fillStyle = resize.color;
+        self.fillRect(resize.begin, resize.end, 0.5);
+      }
+
+      // Print sbrk() traces.
+      for(var i in self.sbrkSources) {
+        var sbrk = self.sbrkSources[i];
+        self.drawContext.fillStyle = sbrk.color;
+        self.fillRect(sbrk.begin, sbrk.end, 0.25);
+      }
+    }
+
     self.memoryprofiler_summary.innerHTML = html;
 
     var sort = document.getElementById('memoryProfilerSort');
     var sortOrder = sort.options[sort.selectedIndex].value;
 
     var html = '';
-    // Print out statistics of individual allocations if they were tracked.
-    if (Object.keys(self.allocationsAtLoc).length > 0) {
-      var calls = [];
-      for (var i in self.allocationsAtLoc) {
-        if (self.allocationsAtLoc[i][0] >= self.trackedCallstackMinAllocCount || self.allocationsAtLoc[i][1] >= self.trackedCallstackMinSizeBytes) {
-          calls.push(self.allocationsAtLoc[i]);
+
+    // Print out sbrk() and memory resize subdivisions:
+    if (document.getElementById('showHeapResizes').checked) {
+      // Print heap resize traces.
+      html += '<div style="background-color: #c0c0c0"><h4>Heap resize locations:</h4>';
+      html += self.printHeapResizeLog(self.resizeMemorySources);
+      html += '</div>'
+
+      // Print heap sbrk traces.
+      html += '<div style="background-color: #c0c0ff"><h4>Memory sbrk() locations:</h4>';
+      html += self.printHeapResizeLog(self.sbrkSources);
+      html += '</div>'
+    } else {
+      var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
+      // Print out statistics of individual allocations if they were tracked.
+      if (Object.keys(self.allocationsAtLoc).length > 0) {
+        var calls = [];
+        for (var i in self.allocationsAtLoc) {
+          if (self.allocationsAtLoc[i][0] >= self.trackedCallstackMinAllocCount || self.allocationsAtLoc[i][1] >= self.trackedCallstackMinSizeBytes) {
+            calls.push(self.allocationsAtLoc[i]);
+          }
         }
-      }
-      if (calls.length > 0) {
-        if (sortOrder != 'fixed') {
-          var sortIdx = (sortOrder == 'count') ? 0 : 1;
-          calls.sort(function(a,b) { return b[sortIdx] - a[sortIdx]; });
-        }
-        html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
-        var demangler = typeof demangleAll !== 'undefined' ? demangleAll : function(x) { return x; };
-        for (var i in calls) {
-          if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangler(calls[i][2])];
-          html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][3] + "<br />";
+        if (calls.length > 0) {
+          if (sortOrder != 'fixed') {
+            var sortIdx = (sortOrder == 'count') ? 0 : 1;
+            calls.sort(function(a,b) { return b[sortIdx] - a[sortIdx]; });
+          }
+          html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
+          for (var i in calls) {
+            if (calls[i].length == 3) calls[i] = [calls[i][0], calls[i][1], calls[i][2], demangler(calls[i][2])];
+            html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][3] + "<br />";
+          }
         }
       }
     }
