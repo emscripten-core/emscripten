@@ -25,21 +25,25 @@ def get(ports, settings, shared):
 
     # includes
     source_path_include = os.path.join(ports.get_dir(), 'boost_headers', 'boost')
-    dest_path_include = os.path.join(ports.get_build_dir(), 'boost_headers', 'boost')
+    dest_path_include = os.path.join(ports.get_include_dir(), 'boost')
+    shared.try_delete(dest_path_include)
     shutil.copytree(source_path_include, dest_path_include)
 
     # write out a dummy cpp file, to create an empty library
     # this is needed as emscripted ports expect this, even if it is not used
-    open(os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp'), 'w').write('static void dummy() {}')
+    dummy_file = os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp')
+    shared.safe_ensure_dirs(os.path.dirname(dummy_file))
+    with open(dummy_file, 'w') as f:
+      f.write('static void dummy() {}')
 
     commands = []
     o_s = []
-    o = os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp.o')
-    command = [shared.PYTHON, shared.EMCC, '-c', os.path.join(ports.get_build_dir(), 'boost_headers', 'dummy.cpp'), '-o', o]
+    obj = dummy_file + '.o'
+    command = [shared.PYTHON, shared.EMCC, '-c', dummy_file, '-o', obj]
     commands.append(command)
     ports.run_commands(commands)
     final = os.path.join(ports.get_build_dir(), 'boost_headers', libname)
-    o_s.append(o)
+    o_s.append(obj)
     ports.create_lib(final, o_s)
     return final
 
@@ -53,7 +57,7 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_BOOST_HEADERS == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'boost_headers'), '-DBOOST_ALL_NO_LIB']
+    args += ['-DBOOST_ALL_NO_LIB']
   return args
 
 

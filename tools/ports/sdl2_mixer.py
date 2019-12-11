@@ -60,7 +60,6 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_SDL_MIXER == 2:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'sdl2_mixer', 'include')]
   return args
 
 

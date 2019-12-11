@@ -26,6 +26,7 @@ def get(ports, settings, shared):
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
     open(os.path.join(dest_path, 'zconf.h'), 'w').write(zconf_h)
+    ports.install_headers(dest_path)
 
     # build
     srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()
@@ -52,7 +53,6 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_ZLIB == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'zlib')]
   return args
 
 

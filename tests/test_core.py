@@ -1925,6 +1925,19 @@ int main(int argc, char **argv) {
     src = open(path_from_root('tests', 'core', 'test_runtime_stacksave.c')).read()
     self.do_run(src, 'success')
 
+  # Tests that -s MINIMAL_RUNTIME=1 builds can utilize -s ALLOW_MEMORY_GROWTH=1 option.
+  @no_wasm_backend('MINIMAL_RUNTIME not yet for wasm backend')
+  def test_minimal_runtime_memorygrowth(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
+    # Fail without memory growth
+    self.do_run(src, 'OOM', assert_returncode=None)
+    # Win with it
+    self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
+    self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
+
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')

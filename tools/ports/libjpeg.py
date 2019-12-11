@@ -29,6 +29,7 @@ def get(ports, settings, shared):
     shutil.copytree(source_path, dest_path)
 
     open(os.path.join(dest_path, 'jconfig.h'), 'w').write(jconfig_h)
+    ports.install_headers(dest_path)
 
     final = os.path.join(ports.get_build_dir(), 'libjpeg', libname)
     ports.build_port(
@@ -51,7 +52,6 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_LIBJPEG == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'libjpeg')]
   return args
 
 

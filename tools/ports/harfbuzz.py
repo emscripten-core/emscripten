@@ -24,9 +24,8 @@ def get(ports, settings, shared):
     source_path = os.path.join(ports.get_dir(), 'harfbuzz', 'harfbuzz-' + TAG)
     dest_path = os.path.join(ports.get_build_dir(), 'harfbuzz')
 
-    freetype_dir = os.path.join(ports.get_build_dir(), 'freetype')
-    freetype_lib = os.path.join(freetype_dir, 'libfreetype.a')
-    freetype_include = os.path.join(freetype_dir, 'include')
+    freetype_lib = shared.Cache.get_path('libfreetype.a')
+    freetype_include = os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')
     freetype_include_dirs = freetype_include + ';' + os.path.join(freetype_include, 'config')
 
     configure_args = [
@@ -45,6 +44,9 @@ def get(ports, settings, shared):
 
     shared.Building.configure(configure_args)
     shared.Building.make(['make', '-j%d' % shared.Building.get_num_cores(), '-C' + dest_path, 'install'])
+
+    ports.install_header_dir(os.path.join(dest_path, 'include', 'harfbuzz'))
+
     return os.path.join(dest_path, 'libharfbuzz.a')
 
   return [shared.Cache.get('libharfbuzz' + ('-mt' if settings.USE_PTHREADS else '') + '.a', create, what='port')]
@@ -62,7 +64,7 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_HARFBUZZ == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
+    args += ['-I' + os.path.join(ports.get_build_dir(), 'harfbuzz', 'include', 'harfbuzz')]
   return args
 
 

@@ -198,13 +198,22 @@ var LibraryJSEvents = {
       return (target && target.nodeName) ? target.nodeName : '';
     },
 
-    tick: function() {
-      if (window['performance'] && window['performance']['now']) return window['performance']['now']();
-      else return Date.now();
-    },
-
     fullscreenEnabled: function() {
-      return document.fullscreenEnabled || document.mozFullScreenEnabled || document.webkitFullscreenEnabled || document.msFullscreenEnabled;
+      return document.fullscreenEnabled
+#if MIN_FIREFOX_VERSION <= 63
+      // Firefox 64 shipped unprefixed form of fullscreenEnabled (https://caniuse.com/#feat=mdn-api_document_fullscreenenabled)
+      || document.mozFullScreenEnabled
+#endif
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+      // Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitFullscreenEnabled.
+      // TODO: If Safari at some point ships with unprefixed version, update the version check above.
+      || document.webkitFullscreenEnabled
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
+      // Last IE 11 shipped prefixed msFullscreenEnabled
+       || document.msFullscreenEnabled
+#endif
+       ;
     },
   },
 
@@ -390,7 +399,6 @@ var LibraryJSEvents = {
   // target: Specifies a target DOM element that will be used as the reference to populate targetX and targetY parameters.
   _fillMouseEventData__deps: ['$JSEvents', '_getBoundingClientRect', '_specialEventTargets'],
   _fillMouseEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenX, 'e.screenX', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.screenY, 'e.screenY', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.clientX, 'e.clientX', 'i32') }}};
@@ -401,8 +409,32 @@ var LibraryJSEvents = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.metaKey, 'e.metaKey', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.button, 'e.button', 'i16') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.buttons, 'e.buttons', 'i16') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'e["movementX"] || e["mozMovementX"] || e["webkitMovementX"] || (e.screenX-JSEvents.previousScreenX)', 'i32') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'e["movementY"] || e["mozMovementY"] || e["webkitMovementY"] || (e.screenY-JSEvents.previousScreenY)', 'i32') }}};
+    var movementX = e["movementX"]
+#if MIN_FIREFOX_VERSION <= 40
+      //     https://caniuse.com/#feat=mdn-api_mouseevent_movementx
+      || e["mozMovementX"]
+#endif
+#if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
+      || e["webkitMovementX"]
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+      || (e.screenX-JSEvents.previousScreenX)
+#endif
+      ;
+    var movementY = e["movementY"]
+#if MIN_FIREFOX_VERSION <= 40
+      || e["mozMovementY"]
+#endif
+#if MIN_CHROME_VERSION <= 36 // || MIN_ANDROID_BROWSER_VERSION <= 4.4.4
+      || e["webkitMovementY"]
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION <= 12 || MIN_CHROME_VERSION <= 21
+      || (e.screenY-JSEvents.previousScreenY)
+#endif
+      ;
+
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementX, 'movementX', 'i32') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.movementY, 'movementY', 'i32') }}};
 
 #if !DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR
     if (Module['canvas']) {
@@ -576,12 +608,15 @@ var LibraryJSEvents = {
 #endif
       if ({{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, wheelEvent, userData)) e.preventDefault();
     };
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
     // The 'mousewheel' event as implemented in Safari 6.0.5
     var mouseWheelHandlerFunc = function(ev) {
       var e = ev || event;
       __fillMouseEventData(JSEvents.wheelEvent, e, target);
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["wheelDeltaX"] || 0', 'double') }}};
-      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, '-(e["wheelDeltaY"] || e["wheelDelta"]) /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */', 'double') }}};
+      /* 1. Invert to unify direction with the DOM Level 3 wheel event. 2. MSIE does not provide wheelDeltaY, so wheelDelta is used as a fallback. */
+      var wheelDeltaY = -(e["wheelDeltaY"] || e["wheelDelta"])
+      {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaY, 'wheelDeltaY', 'double') }}};
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaZ, '0 /* Not available */', 'double') }}};
       {{{ makeSetValue('JSEvents.wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaMode, '0 /* DOM_DELTA_PIXEL */', 'i32') }}};
       var shouldCancel = {{{ makeDynCall('iiii') }}}(callbackfunc, eventTypeId, JSEvents.wheelEvent, userData);
@@ -589,13 +624,18 @@ var LibraryJSEvents = {
         e.preventDefault();
       }
     };
+#endif
 
     var eventHandler = {
       target: target,
       allowsDeferredCalls: true,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
       handlerFunc: (eventTypeString == 'wheel') ? wheelHandlerFunc : mouseWheelHandlerFunc,
+#else
+      handlerFunc: wheelHandlerFunc,
+#endif
       useCapture: useCapture
     };
     JSEvents.registerOrRemoveHandler(eventHandler);
@@ -609,9 +649,11 @@ var LibraryJSEvents = {
     if (typeof target.onwheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "wheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+#if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
     } else if (typeof target.onmousewheel !== 'undefined') {
       __registerWheelEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_WHEEL') }}}, "mousewheel", targetThread);
       return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
+#endif
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
@@ -766,7 +808,6 @@ var LibraryJSEvents = {
 
   _fillDeviceOrientationEventData__deps: ['$JSEvents'],
   _fillDeviceOrientationEventData: function(eventStruct, e, target) {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.alpha, 'e.alpha', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.beta, 'e.beta', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceOrientationEvent.gamma, 'e.gamma', 'double') }}};
@@ -838,7 +879,6 @@ var LibraryJSEvents = {
     a = a || {};
     ag = ag || {};
     rr = rr || {};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.timestamp, 'JSEvents.tick()', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};
@@ -1095,9 +1135,20 @@ var LibraryJSEvents = {
 #endif
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "fullscreenchange", targetThread);
+
+#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "mozfullscreenchange", targetThread);
+#endif
+
+#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+    // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+    // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "webkitfullscreenchange", targetThread);
-    __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "msfullscreenchange", targetThread);
+#endif
+
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_fullscreenchange_event
+    __registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_FULLSCREENCHANGE') }}}, "MSFullscreenChange", targetThread);
+#endif
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
@@ -1119,14 +1170,20 @@ var LibraryJSEvents = {
 
     if (target.requestFullscreen) {
       target.requestFullscreen();
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=fullscreen
     } else if (target.msRequestFullscreen) {
       target.msRequestFullscreen();
+#endif
+#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=fullscreen
     } else if (target.mozRequestFullScreen) {
       target.mozRequestFullScreen();
     } else if (target.mozRequestFullscreen) {
       target.mozRequestFullscreen();
+#endif
+#if MIN_CHROME_VERSION <= 70 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     } else if (target.webkitRequestFullscreen) {
       target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
+#endif
     } else {
       return JSEvents.fullscreenEnabled() ? {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
@@ -1229,12 +1286,33 @@ var LibraryJSEvents = {
     var oldImageRendering = canvas.style.imageRendering;
 
     function restoreOldStyle() {
-      var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+      var fullscreenElement = document.fullscreenElement
+#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
+        || document.mozFullScreenElement
+#endif
+#if MIN_EDGE_VERSION != TARGET_NOT_SUPPORTED || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
+        || document.webkitFullscreenElement
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+        || document.msFullscreenElement
+#endif
+        ;
       if (!fullscreenElement) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
+
+#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
         document.removeEventListener('mozfullscreenchange', restoreOldStyle);
+#endif
+
+#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+        // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+        // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
         document.removeEventListener('webkitfullscreenchange', restoreOldStyle);
+#endif
+
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_fullscreenchange_event
         document.removeEventListener('MSFullscreenChange', restoreOldStyle);
+#endif
 
         __set_canvas_element_size(canvas, oldWidth, oldHeight);
 
@@ -1270,9 +1348,17 @@ var LibraryJSEvents = {
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
+#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
     document.addEventListener('mozfullscreenchange', restoreOldStyle);
+#endif
+#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+    // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+    // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     document.addEventListener('webkitfullscreenchange', restoreOldStyle);
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_fullscreenchange_event
     document.addEventListener('MSFullscreenChange', restoreOldStyle);
+#endif
     return restoreOldStyle;
   },
 
@@ -1399,7 +1485,18 @@ var LibraryJSEvents = {
     target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
-    if (!target.requestFullscreen && !target.msRequestFullscreen && !target.mozRequestFullScreen && !target.mozRequestFullscreen && !target.webkitRequestFullscreen) {
+    if (!target.requestFullscreen
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=fullscreen
+      && !target.msRequestFullscreen
+#endif
+#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=fullscreen
+      && !target.mozRequestFullScreen
+      && !target.mozRequestFullscreen
+#endif
+#if MIN_CHROME_VERSION <= 70 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+      && !target.webkitRequestFullscreen
+#endif
+      ) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
 
@@ -1532,12 +1629,18 @@ var LibraryJSEvents = {
     var d = __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
     if (d.exitFullscreen) {
       d.fullscreenElement && d.exitFullscreen();
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
     } else if (d.msExitFullscreen) {
       d.msFullscreenElement && d.msExitFullscreen();
+#endif
+#if MIN_FIREFOX_VERSION < 64 // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
     } else if (d.mozCancelFullScreen) {
       d.mozFullScreenElement && d.mozCancelFullScreen();
+#endif
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
     } else if (d.webkitExitFullscreen) {
       d.webkitFullscreenElement && d.webkitExitFullscreen();
+#endif
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
@@ -1673,16 +1776,32 @@ var LibraryJSEvents = {
   _requestPointerLock: function(target) {
     if (target.requestPointerLock) {
       target.requestPointerLock();
+#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
     } else if (target.mozRequestPointerLock) {
       target.mozRequestPointerLock();
+#endif
+#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
     } else if (target.webkitRequestPointerLock) {
       target.webkitRequestPointerLock();
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
     } else if (target.msRequestPointerLock) {
       target.msRequestPointerLock();
+#endif
     } else {
       // document.body is known to accept pointer lock, so use that to differentiate if the user passed a bad element,
       // or if the whole browser just doesn't support the feature.
-      if (document.body.requestPointerLock || document.body.mozRequestPointerLock || document.body.webkitRequestPointerLock || document.body.msRequestPointerLock) {
+      if (document.body.requestPointerLock
+#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
+        || document.body.mozRequestPointerLock
+#endif
+#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
+        || document.body.webkitRequestPointerLock
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+        || document.body.msRequestPointerLock
+#endif
+        ) {
         return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
       } else {
         return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
@@ -1700,7 +1819,17 @@ var LibraryJSEvents = {
 #endif
     target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
-    if (!target.requestPointerLock && !target.mozRequestPointerLock && !target.webkitRequestPointerLock && !target.msRequestPointerLock) {
+    if (!target.requestPointerLock
+#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
+      && !target.mozRequestPointerLock
+#endif
+#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
+      && !target.webkitRequestPointerLock
+#endif
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
+      && !target.msRequestPointerLock
+#endif
+      ) {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
@@ -1728,12 +1857,18 @@ var LibraryJSEvents = {
 
     if (document.exitPointerLock) {
       document.exitPointerLock();
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_EDGE_VERSION < 76
     } else if (document.msExitPointerLock) {
       document.msExitPointerLock();
+#endif
+#if MIN_FIREFOX_VERSION <= 40 // https://caniuse.com/#feat=pointerlock
     } else if (document.mozExitPointerLock) {
       document.mozExitPointerLock();
+#endif
+#if MIN_CHROME_VERSION <= 36 // https://caniuse.com/#feat=pointerlock
     } else if (document.webkitExitPointerLock) {
       document.webkitExitPointerLock();
+#endif
     } else {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }

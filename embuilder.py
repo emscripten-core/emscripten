@@ -18,9 +18,7 @@ import sys
 from tools import shared
 from tools.system_libs import Library
 
-C_BARE = '''
-        int main() {}
-      '''
+C_BARE = 'int main() {}'
 
 SYSTEM_LIBRARIES = Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
@@ -63,12 +61,10 @@ logger = logging.getLogger('embuilder')
 force = False
 
 
-def print_help():
+def get_usage():
   all_tasks = SYSTEM_TASKS + USER_TASKS
   all_tasks.sort()
-  print('''
-Emscripten System Builder Tool
-==============================
+  return '''embuilder.py [flags]... OPERATION TARGET [TARGET]...
 
 You can use this tool to manually build parts of the emscripten system
 environment. In general emcc will build them automatically on demand, so
@@ -76,21 +72,11 @@ you do not strictly need to use this tool, but it gives you more control
 over the process (in particular, if emcc does this automatically, and you
 are running multiple build commands in parallel, confusion can occur).
 
-Usage:
-
-  embuilder.py OPERATION TASK1 [TASK2..] [--pic] [--lto]
-
 Available operations and tasks:
 
   build %s
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
-
-Flags:
-
-  --force  Force rebuild of target (by removing it first)
-  --lto    Build bitcode files, for LTO with the LLVM wasm backend
-  --pic    Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -100,7 +86,7 @@ do that, run
    3. make (or mingw32-make/vcbuild/msbuild on Windows)
 
 and set up the location to the native optimizer in ~/.emscripten
-''' % '\n        '.join(all_tasks))
+''' % '\n        '.join(all_tasks)
 
 
 def build(src, result_libs, args=[]):
@@ -128,27 +114,21 @@ def build(src, result_libs, args=[]):
       shared.exit_with_error('not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib)))
 
 
-def build_port(port_name, lib_name, params):
-  build(C_BARE, [lib_name] if lib_name else [], params)
+def build_port(port_name, lib_name, params, extra_source=''):
+  build(extra_source + '\n' + C_BARE, [lib_name] if lib_name else [], params)
 
 
 def main():
   global force
-  parser = argparse.ArgumentParser(description=__doc__, usage="%(prog)s [operation] [targets ...]",
-                                   add_help=False)
-  parser.add_argument('--help', '-h', action='store_true', help='print help message')
+  parser = argparse.ArgumentParser(description=__doc__, usage=get_usage())
   parser.add_argument('--lto', action='store_true', help='build bitcode object for LTO')
   parser.add_argument('--pic', action='store_true',
                       help='build relocatable objects for suitable for dynamic linking')
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
-  parser.add_argument('operation')
-  parser.add_argument('targets', nargs='+')
+  parser.add_argument('operation', help='currently only "build" is supported')
+  parser.add_argument('targets', nargs='+', help='see above')
   args = parser.parse_args()
-
-  if args.help:
-    print_help()
-    return 0
 
   if args.operation != 'build':
     shared.exit_with_error('unfamiliar operation: ' + args.operation)
@@ -218,7 +198,7 @@ def main():
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'icu':
-      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'])
+      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'], '#include "unicode/ustring.h"')
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bzip2':
@@ -242,9 +222,9 @@ def main():
     elif what == 'sdl2-image':
       build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-image-png':
-      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+      build_port('sdl2-image', libname('libSDL2_image_png'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
     elif what == 'sdl2-image-jpg':
-      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
+      build_port('sdl2-image', libname('libSDL2_image_jpg'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
@@ -271,6 +251,20 @@ def main():
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-fno-exceptions', '-pthread'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
+    elif what == 'libsockets':
+      build('''
+        #include <sys/socket.h>
+        int main() {
+          return socket(0,0,0);
+        }
+      ''', [libname('libsockets')])
+    elif what == 'libsockets_proxy':
+      build('''
+        #include <sys/socket.h>
+        int main() {
+          return socket(0,0,0);
+        }
+      ''', [libname('libsockets_proxy')], ['-s', 'PROXY_POSIX_SOCKETS=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

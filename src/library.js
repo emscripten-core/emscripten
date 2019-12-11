@@ -1288,6 +1288,7 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME
+  $abortStackOverflow__deps: ['$stackSave'],
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
@@ -3213,6 +3214,7 @@ LibraryManager.library = {
   // arpa/inet.h
   // ==========================================================================
 
+#if PROXY_POSIX_SOCKETS == 0
   // old ipv4 only functions
   inet_addr__deps: ['_inet_pton4_raw'],
   inet_addr: function(ptr) {
@@ -3949,6 +3951,8 @@ LibraryManager.library = {
                0x0600000a, 0x0700000a, 0x0800000a, 0x0900000a, 0x0a00000a,
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a] /* 0x0100000a is reserved */
   },
+
+#endif // PROXY_POSIX_SOCKETS == 0
 
   // pwd.h
 

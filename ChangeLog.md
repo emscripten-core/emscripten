@@ -17,6 +17,17 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- All ports now install their headers into a shared directory under
+  `EM_CACHE`.  This should not really be a user visible change although one
+  side effect is that once a give ports is built its headers are then
+  universally accessible, just like the library is universally available as
+  `-l<name>`.
+- Removed `timestamp` field from mouse, wheel, devicemotion and
+  deviceorientation events. The presence of a `timestamp` on these events was
+  slightly arbitrary, and populating this field caused a small profileable
+  overhead that all users might not care about. It is easy to get a timestamp of
+  an event by calling `emscripten_get_now()` or `emscripten_performance_now()`
+  inside the event handler function of any event.
 - Add fine-grained options for specific legacy browser support,
   `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
   `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`

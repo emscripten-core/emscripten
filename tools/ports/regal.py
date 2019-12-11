@@ -45,9 +45,8 @@ def get(ports, settings, shared):
     shutil.copytree(source_path_lookup3, dest_path_lookup3)
 
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include')
-    dest_path_include = os.path.join(ports.get_build_dir(), 'regal', 'include')
-    shutil.copytree(source_path_include, dest_path_include)
+    source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include', 'GL')
+    ports.install_header_dir(source_path_include)
 
     # build
     srcs_regal = ['regal/RegalShaderInstance.cpp',
@@ -120,7 +119,6 @@ def get(ports, settings, shared):
                  '-fno-rtti',
                  '-O3',
                  '-o', o,
-                 '-I' + dest_path_include,
                  '-I' + dest_path_regal,
                  '-I' + dest_path_lookup3,
                  '-I' + dest_path_boost,
@@ -156,7 +154,6 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_REGAL == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'regal', 'include')]
   return args
 
 
