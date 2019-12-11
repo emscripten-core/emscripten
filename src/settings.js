@@ -1504,6 +1504,9 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 
+// Internal: represents a browser version that is not supported at all.
+var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
+
 // Specifies the oldest major version of Firefox to target. I.e. all Firefox
 // versions >= MIN_FIREFOX_VERSION
 // are desired to work. Pass -s MIN_FIREFOX_VERSION=majorVersion to drop support
