@@ -14,7 +14,15 @@ import time
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
 
-import websockify
+try:
+  import websockify
+  raise ImportError
+except (ImportError, ModuleNotFoundError):
+  # websockify won't successfully import on Windows under Python3, because socketserver.py doesn't export ForkingMixIn.
+  # (On python2, ForkingMixIn was exported but it didn't actually work on Windows).
+  # Swallowing the error here means that this file can always be imported, but won't work if actually used on Windows,
+  # which is the same behavior as before.
+  pass
 from runner import BrowserCore, no_windows, chdir
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
