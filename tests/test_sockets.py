@@ -17,7 +17,7 @@ if __name__ == '__main__':
 try:
   import websockify
   raise ImportError
-except (ImportError, ModuleNotFoundError):
+except Exception:
   # websockify won't successfully import on Windows under Python3, because socketserver.py doesn't export ForkingMixIn.
   # (On python2, ForkingMixIn was exported but it didn't actually work on Windows).
   # Swallowing the error here means that this file can always be imported, but won't work if actually used on Windows,
