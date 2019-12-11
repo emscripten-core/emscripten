@@ -1581,7 +1581,7 @@ def setup_function_pointers(function_table_sigs):
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = shared.Settings.RUNTIME_FUNCS_TO_IMPORT
-  if shared.Settings.STACK_OVERFLOW_CHECK:
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME:
     basic_funcs += ['abortStackOverflow']
   if shared.Settings.EMTERPRETIFY:
     basic_funcs += ['abortStackOverflowEmterpreter']
