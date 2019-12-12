@@ -450,6 +450,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
 
+    # Use emscripten root for node module lookup
+    os.environ['NODE_PATH'] = path_from_root('node_modules')
+
     if not self.save_dir:
       self.has_prev_ll = False
       for temp_file in os.listdir(TEMP_DIR):
