@@ -13,7 +13,9 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdint.h>
+#if __EMSCRIPTEN_PTHREADS__ // for error handling, see below
 #include <stdio.h>
+#endif
 
 #define WASM_PAGE_SIZE 65536
 
