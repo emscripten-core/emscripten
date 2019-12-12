@@ -377,7 +377,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
   // catch bugs, then set the real values in applyStackValues later.
-#if ASSERTIONS || SAFE_STACK
+#if STACK_OVERFLOW_CHECK
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
 
@@ -385,7 +385,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
     STACK_BASE = stackBase;
     STACKTOP = stackTop;
     STACK_MAX = stackMax;
-#if SAFE_STACK
+#if STACK_OVERFLOW_CHECK
     Module['___set_stack_limit'](STACK_MAX);
 #endif
   };
