@@ -8303,15 +8303,15 @@ int main() {
       text = re.sub(r'\$var\$*.', '', text)
       text = re.sub(r'param \$\d+', 'param ', text)
       text = re.sub(r' +', ' ', text)
-      # print("text: %s" % text)
-      e_add_f32 = re.search(r'func \$_?add_f \(type \$\d+\) \(param f32\) \(param f32\) \(result f32\)', text)
+      # TODO: remove the unecessary ".*" in e_* regexs after binaryen #2510 lands
+      e_add_f32 = re.search(r'func \$_?add_f .*\(param f32\) \(param f32\) \(result f32\)', text)
       i_i64_i32 = re.search(r'import .*"_?import_ll" .*\(param i32 i32\) \(result i32\)', text)
       i_f32_f64 = re.search(r'import .*"_?import_f" .*\(param f64\) \(result f64\)', text)
       i_i64_i64 = re.search(r'import .*"_?import_ll" .*\(param i64\) \(result i64\)', text)
       i_f32_f32 = re.search(r'import .*"_?import_f" .*\(param f32\) \(result f32\)', text)
-      e_i64_i32 = re.search(r'func \$_?add_ll \(type \$\d+\) \(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
-      e_f32_f64 = re.search(r'func \$legalstub\$_?add_f \(type \$\d+\) \(param f64\) \(param f64\) \(result f64\)', text)
-      e_i64_i64 = re.search(r'func \$_?add_ll \(type \$\d+\) \(param i64\) \(param i64\) \(result i64\)', text)
+      e_i64_i32 = re.search(r'func \$_?add_ll .*\(param i32\) \(param i32\) \(param i32\) \(param i32\) \(result i32\)', text)
+      e_f32_f64 = re.search(r'func \$legalstub\$_?add_f .*\(param f64\) \(param f64\) \(result f64\)', text)
+      e_i64_i64 = re.search(r'func \$_?add_ll .*\(param i64\) \(param i64\) \(result i64\)', text)
       assert e_add_f32, 'add_f export missing'
       if js_ffi:
         assert i_i64_i32,     'i64 not converted to i32 in imports'
