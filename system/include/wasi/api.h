@@ -65,7 +65,7 @@ typedef uint32_t __wasi_clockid_t;
  * The clock measuring real time. Time value zero corresponds with
  * 1970-01-01T00:00:00Z.
  */
-#define __WASI_CLOCKID_REALTIME ((__wasi_clockid_t)0)
+#define __WASI_CLOCKID_REALTIME (UINT32_C(0))
 
 /**
  * The store-wide monotonic clock, which is defined as a clock measuring
@@ -73,17 +73,17 @@ typedef uint32_t __wasi_clockid_t;
  * clock jumps. The epoch of this clock is undefined. The absolute time
  * value of this clock therefore has no meaning.
  */
-#define __WASI_CLOCKID_MONOTONIC ((__wasi_clockid_t)1)
+#define __WASI_CLOCKID_MONOTONIC (UINT32_C(1))
 
 /**
  * The CPU-time clock associated with the current process.
  */
-#define __WASI_CLOCKID_PROCESS_CPUTIME_ID ((__wasi_clockid_t)2)
+#define __WASI_CLOCKID_PROCESS_CPUTIME_ID (UINT32_C(2))
 
 /**
  * The CPU-time clock associated with the current thread.
  */
-#define __WASI_CLOCKID_THREAD_CPUTIME_ID ((__wasi_clockid_t)3)
+#define __WASI_CLOCKID_THREAD_CPUTIME_ID (UINT32_C(3))
 
 /**
  * Error codes returned by functions.
@@ -96,387 +96,387 @@ typedef uint16_t __wasi_errno_t;
 /**
  * No error occurred. System call completed successfully.
  */
-#define __WASI_ERRNO_SUCCESS ((__wasi_errno_t)0)
+#define __WASI_ERRNO_SUCCESS (UINT16_C(0))
 
 /**
  * Argument list too long.
  */
-#define __WASI_ERRNO_2BIG ((__wasi_errno_t)1)
+#define __WASI_ERRNO_2BIG (UINT16_C(1))
 
 /**
  * Permission denied.
  */
-#define __WASI_ERRNO_ACCES ((__wasi_errno_t)2)
+#define __WASI_ERRNO_ACCES (UINT16_C(2))
 
 /**
  * Address in use.
  */
-#define __WASI_ERRNO_ADDRINUSE ((__wasi_errno_t)3)
+#define __WASI_ERRNO_ADDRINUSE (UINT16_C(3))
 
 /**
  * Address not available.
  */
-#define __WASI_ERRNO_ADDRNOTAVAIL ((__wasi_errno_t)4)
+#define __WASI_ERRNO_ADDRNOTAVAIL (UINT16_C(4))
 
 /**
  * Address family not supported.
  */
-#define __WASI_ERRNO_AFNOSUPPORT ((__wasi_errno_t)5)
+#define __WASI_ERRNO_AFNOSUPPORT (UINT16_C(5))
 
 /**
  * Resource unavailable, or operation would block.
  */
-#define __WASI_ERRNO_AGAIN ((__wasi_errno_t)6)
+#define __WASI_ERRNO_AGAIN (UINT16_C(6))
 
 /**
  * Connection already in progress.
  */
-#define __WASI_ERRNO_ALREADY ((__wasi_errno_t)7)
+#define __WASI_ERRNO_ALREADY (UINT16_C(7))
 
 /**
  * Bad file descriptor.
  */
-#define __WASI_ERRNO_BADF ((__wasi_errno_t)8)
+#define __WASI_ERRNO_BADF (UINT16_C(8))
 
 /**
  * Bad message.
  */
-#define __WASI_ERRNO_BADMSG ((__wasi_errno_t)9)
+#define __WASI_ERRNO_BADMSG (UINT16_C(9))
 
 /**
  * Device or resource busy.
  */
-#define __WASI_ERRNO_BUSY ((__wasi_errno_t)10)
+#define __WASI_ERRNO_BUSY (UINT16_C(10))
 
 /**
  * Operation canceled.
  */
-#define __WASI_ERRNO_CANCELED ((__wasi_errno_t)11)
+#define __WASI_ERRNO_CANCELED (UINT16_C(11))
 
 /**
  * No child processes.
  */
-#define __WASI_ERRNO_CHILD ((__wasi_errno_t)12)
+#define __WASI_ERRNO_CHILD (UINT16_C(12))
 
 /**
  * Connection aborted.
  */
-#define __WASI_ERRNO_CONNABORTED ((__wasi_errno_t)13)
+#define __WASI_ERRNO_CONNABORTED (UINT16_C(13))
 
 /**
  * Connection refused.
  */
-#define __WASI_ERRNO_CONNREFUSED ((__wasi_errno_t)14)
+#define __WASI_ERRNO_CONNREFUSED (UINT16_C(14))
 
 /**
  * Connection reset.
  */
-#define __WASI_ERRNO_CONNRESET ((__wasi_errno_t)15)
+#define __WASI_ERRNO_CONNRESET (UINT16_C(15))
 
 /**
  * Resource deadlock would occur.
  */
-#define __WASI_ERRNO_DEADLK ((__wasi_errno_t)16)
+#define __WASI_ERRNO_DEADLK (UINT16_C(16))
 
 /**
  * Destination address required.
  */
-#define __WASI_ERRNO_DESTADDRREQ ((__wasi_errno_t)17)
+#define __WASI_ERRNO_DESTADDRREQ (UINT16_C(17))
 
 /**
  * Mathematics argument out of domain of function.
  */
-#define __WASI_ERRNO_DOM ((__wasi_errno_t)18)
+#define __WASI_ERRNO_DOM (UINT16_C(18))
 
 /**
  * Reserved.
  */
-#define __WASI_ERRNO_DQUOT ((__wasi_errno_t)19)
+#define __WASI_ERRNO_DQUOT (UINT16_C(19))
 
 /**
  * File exists.
  */
-#define __WASI_ERRNO_EXIST ((__wasi_errno_t)20)
+#define __WASI_ERRNO_EXIST (UINT16_C(20))
 
 /**
  * Bad address.
  */
-#define __WASI_ERRNO_FAULT ((__wasi_errno_t)21)
+#define __WASI_ERRNO_FAULT (UINT16_C(21))
 
 /**
  * File too large.
  */
-#define __WASI_ERRNO_FBIG ((__wasi_errno_t)22)
+#define __WASI_ERRNO_FBIG (UINT16_C(22))
 
 /**
  * Host is unreachable.
  */
-#define __WASI_ERRNO_HOSTUNREACH ((__wasi_errno_t)23)
+#define __WASI_ERRNO_HOSTUNREACH (UINT16_C(23))
 
 /**
  * Identifier removed.
  */
-#define __WASI_ERRNO_IDRM ((__wasi_errno_t)24)
+#define __WASI_ERRNO_IDRM (UINT16_C(24))
 
 /**
  * Illegal byte sequence.
  */
-#define __WASI_ERRNO_ILSEQ ((__wasi_errno_t)25)
+#define __WASI_ERRNO_ILSEQ (UINT16_C(25))
 
 /**
  * Operation in progress.
  */
-#define __WASI_ERRNO_INPROGRESS ((__wasi_errno_t)26)
+#define __WASI_ERRNO_INPROGRESS (UINT16_C(26))
 
 /**
  * Interrupted function.
  */
-#define __WASI_ERRNO_INTR ((__wasi_errno_t)27)
+#define __WASI_ERRNO_INTR (UINT16_C(27))
 
 /**
  * Invalid argument.
  */
-#define __WASI_ERRNO_INVAL ((__wasi_errno_t)28)
+#define __WASI_ERRNO_INVAL (UINT16_C(28))
 
 /**
  * I/O error.
  */
-#define __WASI_ERRNO_IO ((__wasi_errno_t)29)
+#define __WASI_ERRNO_IO (UINT16_C(29))
 
 /**
  * Socket is connected.
  */
-#define __WASI_ERRNO_ISCONN ((__wasi_errno_t)30)
+#define __WASI_ERRNO_ISCONN (UINT16_C(30))
 
 /**
  * Is a directory.
  */
-#define __WASI_ERRNO_ISDIR ((__wasi_errno_t)31)
+#define __WASI_ERRNO_ISDIR (UINT16_C(31))
 
 /**
  * Too many levels of symbolic links.
  */
-#define __WASI_ERRNO_LOOP ((__wasi_errno_t)32)
+#define __WASI_ERRNO_LOOP (UINT16_C(32))
 
 /**
  * File descriptor value too large.
  */
-#define __WASI_ERRNO_MFILE ((__wasi_errno_t)33)
+#define __WASI_ERRNO_MFILE (UINT16_C(33))
 
 /**
  * Too many links.
  */
-#define __WASI_ERRNO_MLINK ((__wasi_errno_t)34)
+#define __WASI_ERRNO_MLINK (UINT16_C(34))
 
 /**
  * Message too large.
  */
-#define __WASI_ERRNO_MSGSIZE ((__wasi_errno_t)35)
+#define __WASI_ERRNO_MSGSIZE (UINT16_C(35))
 
 /**
  * Reserved.
  */
-#define __WASI_ERRNO_MULTIHOP ((__wasi_errno_t)36)
+#define __WASI_ERRNO_MULTIHOP (UINT16_C(36))
 
 /**
  * Filename too long.
  */
-#define __WASI_ERRNO_NAMETOOLONG ((__wasi_errno_t)37)
+#define __WASI_ERRNO_NAMETOOLONG (UINT16_C(37))
 
 /**
  * Network is down.
  */
-#define __WASI_ERRNO_NETDOWN ((__wasi_errno_t)38)
+#define __WASI_ERRNO_NETDOWN (UINT16_C(38))
 
 /**
  * Connection aborted by network.
  */
-#define __WASI_ERRNO_NETRESET ((__wasi_errno_t)39)
+#define __WASI_ERRNO_NETRESET (UINT16_C(39))
 
 /**
  * Network unreachable.
  */
-#define __WASI_ERRNO_NETUNREACH ((__wasi_errno_t)40)
+#define __WASI_ERRNO_NETUNREACH (UINT16_C(40))
 
 /**
  * Too many files open in system.
  */
-#define __WASI_ERRNO_NFILE ((__wasi_errno_t)41)
+#define __WASI_ERRNO_NFILE (UINT16_C(41))
 
 /**
  * No buffer space available.
  */
-#define __WASI_ERRNO_NOBUFS ((__wasi_errno_t)42)
+#define __WASI_ERRNO_NOBUFS (UINT16_C(42))
 
 /**
  * No such device.
  */
-#define __WASI_ERRNO_NODEV ((__wasi_errno_t)43)
+#define __WASI_ERRNO_NODEV (UINT16_C(43))
 
 /**
  * No such file or directory.
  */
-#define __WASI_ERRNO_NOENT ((__wasi_errno_t)44)
+#define __WASI_ERRNO_NOENT (UINT16_C(44))
 
 /**
  * Executable file format error.
  */
-#define __WASI_ERRNO_NOEXEC ((__wasi_errno_t)45)
+#define __WASI_ERRNO_NOEXEC (UINT16_C(45))
 
 /**
  * No locks available.
  */
-#define __WASI_ERRNO_NOLCK ((__wasi_errno_t)46)
+#define __WASI_ERRNO_NOLCK (UINT16_C(46))
 
 /**
  * Reserved.
  */
-#define __WASI_ERRNO_NOLINK ((__wasi_errno_t)47)
+#define __WASI_ERRNO_NOLINK (UINT16_C(47))
 
 /**
  * Not enough space.
  */
-#define __WASI_ERRNO_NOMEM ((__wasi_errno_t)48)
+#define __WASI_ERRNO_NOMEM (UINT16_C(48))
 
 /**
  * No message of the desired type.
  */
-#define __WASI_ERRNO_NOMSG ((__wasi_errno_t)49)
+#define __WASI_ERRNO_NOMSG (UINT16_C(49))
 
 /**
  * Protocol not available.
  */
-#define __WASI_ERRNO_NOPROTOOPT ((__wasi_errno_t)50)
+#define __WASI_ERRNO_NOPROTOOPT (UINT16_C(50))
 
 /**
  * No space left on device.
  */
-#define __WASI_ERRNO_NOSPC ((__wasi_errno_t)51)
+#define __WASI_ERRNO_NOSPC (UINT16_C(51))
 
 /**
  * Function not supported.
  */
-#define __WASI_ERRNO_NOSYS ((__wasi_errno_t)52)
+#define __WASI_ERRNO_NOSYS (UINT16_C(52))
 
 /**
  * The socket is not connected.
  */
-#define __WASI_ERRNO_NOTCONN ((__wasi_errno_t)53)
+#define __WASI_ERRNO_NOTCONN (UINT16_C(53))
 
 /**
  * Not a directory or a symbolic link to a directory.
  */
-#define __WASI_ERRNO_NOTDIR ((__wasi_errno_t)54)
+#define __WASI_ERRNO_NOTDIR (UINT16_C(54))
 
 /**
  * Directory not empty.
  */
-#define __WASI_ERRNO_NOTEMPTY ((__wasi_errno_t)55)
+#define __WASI_ERRNO_NOTEMPTY (UINT16_C(55))
 
 /**
  * State not recoverable.
  */
-#define __WASI_ERRNO_NOTRECOVERABLE ((__wasi_errno_t)56)
+#define __WASI_ERRNO_NOTRECOVERABLE (UINT16_C(56))
 
 /**
  * Not a socket.
  */
-#define __WASI_ERRNO_NOTSOCK ((__wasi_errno_t)57)
+#define __WASI_ERRNO_NOTSOCK (UINT16_C(57))
 
 /**
  * Not supported, or operation not supported on socket.
  */
-#define __WASI_ERRNO_NOTSUP ((__wasi_errno_t)58)
+#define __WASI_ERRNO_NOTSUP (UINT16_C(58))
 
 /**
  * Inappropriate I/O control operation.
  */
-#define __WASI_ERRNO_NOTTY ((__wasi_errno_t)59)
+#define __WASI_ERRNO_NOTTY (UINT16_C(59))
 
 /**
  * No such device or address.
  */
-#define __WASI_ERRNO_NXIO ((__wasi_errno_t)60)
+#define __WASI_ERRNO_NXIO (UINT16_C(60))
 
 /**
  * Value too large to be stored in data type.
  */
-#define __WASI_ERRNO_OVERFLOW ((__wasi_errno_t)61)
+#define __WASI_ERRNO_OVERFLOW (UINT16_C(61))
 
 /**
  * Previous owner died.
  */
-#define __WASI_ERRNO_OWNERDEAD ((__wasi_errno_t)62)
+#define __WASI_ERRNO_OWNERDEAD (UINT16_C(62))
 
 /**
  * Operation not permitted.
  */
-#define __WASI_ERRNO_PERM ((__wasi_errno_t)63)
+#define __WASI_ERRNO_PERM (UINT16_C(63))
 
 /**
  * Broken pipe.
  */
-#define __WASI_ERRNO_PIPE ((__wasi_errno_t)64)
+#define __WASI_ERRNO_PIPE (UINT16_C(64))
 
 /**
  * Protocol error.
  */
-#define __WASI_ERRNO_PROTO ((__wasi_errno_t)65)
+#define __WASI_ERRNO_PROTO (UINT16_C(65))
 
 /**
  * Protocol not supported.
  */
-#define __WASI_ERRNO_PROTONOSUPPORT ((__wasi_errno_t)66)
+#define __WASI_ERRNO_PROTONOSUPPORT (UINT16_C(66))
 
 /**
  * Protocol wrong type for socket.
  */
-#define __WASI_ERRNO_PROTOTYPE ((__wasi_errno_t)67)
+#define __WASI_ERRNO_PROTOTYPE (UINT16_C(67))
 
 /**
  * Result too large.
  */
-#define __WASI_ERRNO_RANGE ((__wasi_errno_t)68)
+#define __WASI_ERRNO_RANGE (UINT16_C(68))
 
 /**
  * Read-only file system.
  */
-#define __WASI_ERRNO_ROFS ((__wasi_errno_t)69)
+#define __WASI_ERRNO_ROFS (UINT16_C(69))
 
 /**
  * Invalid seek.
  */
-#define __WASI_ERRNO_SPIPE ((__wasi_errno_t)70)
+#define __WASI_ERRNO_SPIPE (UINT16_C(70))
 
 /**
  * No such process.
  */
-#define __WASI_ERRNO_SRCH ((__wasi_errno_t)71)
+#define __WASI_ERRNO_SRCH (UINT16_C(71))
 
 /**
  * Reserved.
  */
-#define __WASI_ERRNO_STALE ((__wasi_errno_t)72)
+#define __WASI_ERRNO_STALE (UINT16_C(72))
 
 /**
  * Connection timed out.
  */
-#define __WASI_ERRNO_TIMEDOUT ((__wasi_errno_t)73)
+#define __WASI_ERRNO_TIMEDOUT (UINT16_C(73))
 
 /**
  * Text file busy.
  */
-#define __WASI_ERRNO_TXTBSY ((__wasi_errno_t)74)
+#define __WASI_ERRNO_TXTBSY (UINT16_C(74))
 
 /**
  * Cross-device link.
  */
-#define __WASI_ERRNO_XDEV ((__wasi_errno_t)75)
+#define __WASI_ERRNO_XDEV (UINT16_C(75))
 
 /**
  * Extension: Capabilities insufficient.
  */
-#define __WASI_ERRNO_NOTCAPABLE ((__wasi_errno_t)76)
+#define __WASI_ERRNO_NOTCAPABLE (UINT16_C(76))
 
 /**
  * File descriptor rights, determining which actions may be performed.
