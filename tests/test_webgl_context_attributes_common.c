@@ -138,7 +138,7 @@ static bool testAntiAliasing(bool activated) {
     
     bool antialiased = false;
     
-    unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
+    static unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
     glReadPixels(0, 0, WINDOWS_SIZE, WINDOWS_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     glFinish();
     for (unsigned int i = 0 ; i < WINDOWS_SIZE ; ++i) {
@@ -234,7 +234,7 @@ static bool testAlpha(bool activated) {
     
     bool hasAlpha = true;
     
-    unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
+    static unsigned char buffer[(WINDOWS_SIZE*WINDOWS_SIZE)*4];
     glReadPixels(0, 0, WINDOWS_SIZE, WINDOWS_SIZE, GL_RGBA, GL_UNSIGNED_BYTE, &buffer[0]);
     glFinish();
     for (unsigned int i = 0 ; i < WINDOWS_SIZE ; ++i) {

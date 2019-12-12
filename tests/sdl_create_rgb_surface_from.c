@@ -15,7 +15,7 @@
 
 int main() {
 
-  uint8_t pixels[width * height * 4];
+  static uint8_t pixels[width * height * 4];
   uint8_t *end = pixels + width * height * 4;
   uint8_t *pixel = pixels;
   SDL_Rect rect = {0, 0, width, height};

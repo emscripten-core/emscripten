@@ -1488,7 +1488,7 @@ private:
         Valid = 255,
         Deleted = 127,
     };
-    static constexpr size_t N_ = 1000000;
+    static constexpr size_t N_ = 10000;
     unsigned char d_[N_];
     T* ptr_;
 

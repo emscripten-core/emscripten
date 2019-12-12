@@ -48,7 +48,7 @@ int main()
   void *stack_addr;
   pthread_attr_getstack(&attr, &stack_addr, &stack_size);
   printf("stack_size: %d, stack_addr: %p\n", (int)stack_size, stack_addr);
-  if (stack_size != 2*1024*1024 || stack_addr == 0)
+  if (stack_size != 512*1024 || stack_addr == 0)
     result = -100; // Report failure.
 
   pthread_join(thr, 0);
