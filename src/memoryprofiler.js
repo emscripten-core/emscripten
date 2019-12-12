@@ -82,6 +82,29 @@ var emscriptenMemoryProfiler = {
     else return emscriptenMemoryProfiler.truncDec(bytes) + ' B';
   },
 
+  // HSV values in [0..1[, returns a RGB string in format '#rrggbb'
+  hsvToRgb: function hsvToRgb(h, s, v) {
+    var h_i = (h*6)|0;
+    var f = h*6 - h_i;
+    var p = v * (1 - s);
+    var q = v * (1 - f*s);
+    var t = v * (1 - (1 - f) * s);
+    var r, g, b;
+    switch(h_i) {
+      case 0: r = v; g = t; b = p; break;
+      case 1: r = q; g = v; b = p; break;
+      case 2: r = p; g = v; b = t; break;
+      case 3: r = p; g = q; b = v; break;
+      case 4: r = t; g = p; b = v; break;
+      case 5: r = v; g = p; b = q; break;
+    }
+    function toHex(v) {
+      v = (v*255|0).toString(16);
+      return (v.length == 1) ? '0' + v : v;
+    }
+    return '#' + toHex(r) + toHex(g) + toHex(b);
+  },
+
   onSbrkGrow: function onSbrkGrow(oldLimit, newLimit) {
     var self = emscriptenMemoryProfiler;
     // On first sbrk(), account for the initial size.
@@ -90,16 +113,16 @@ var emscriptenMemoryProfiler = {
         stack: "initial heap sbrk limit<br>",
         begin: 0,
         end: oldLimit,
-        color: self.sbrkSources.length % 2 ? '#ff0000' : '#ff8080'
+        color: self.hsvToRgb(self.sbrkSources.length * 0.618033988749895 % 1, 0.5, 0.95)
       });
     }
+    if (newLimit <= oldLimit) return;
     self.sbrkSources.push({
       stack: self.filterCallstackForHeapResize(new Error().stack.toString()),
       begin: oldLimit,
       end: newLimit,
-      color: self.sbrkSources.length % 2 ? '#ff0000' : '#ff8080'
+      color: self.hsvToRgb(self.sbrkSources.length * 0.618033988749895 % 1, 0.5, 0.95)
     });
-    console.log('sbrk: ' + oldLimit + ' ' + newLimit);
   },
 
   onMemoryResize: function onMemoryResize(oldSize, newSize) {
@@ -113,6 +136,7 @@ var emscriptenMemoryProfiler = {
         color: self.resizeMemorySources.length % 2 ? '#ff00ff' : '#ff80ff'
       });
     }
+    if (newSize <= oldSize) return;
     self.resizeMemorySources.push({
       stack: self.filterCallstackForHeapResize(new Error().stack.toString()),
       begin: oldSize,
@@ -191,8 +215,6 @@ var emscriptenMemoryProfiler = {
 
   onPreloadComplete: function onPreloadComplete() {
     emscriptenMemoryProfiler.pagePreRunIsFinished = true;
-    // It is common to set 'overflow: hidden;' on canvas pages that do WebGL. When MemoryProfiler is being used, there will be a long block of text on the page, so force-enable scrolling.
-    document.body.style.overflow = '';
   },
 
   // Installs startup hook and periodic UI update timer.
@@ -227,7 +249,7 @@ var emscriptenMemoryProfiler = {
     var div;
     if (!emscriptenMemoryProfiler.memoryprofiler_summary) {
       div = document.createElement("div");
-      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas><input type='checkbox' id='showHeapResizes' onclick='emscriptenMemoryProfiler.updateUi()'>Display heap and sbrk() resizes.<br/>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
+      div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas><input type='checkbox' id='showHeapResizes' onclick='emscriptenMemoryProfiler.updateUi()'>Display heap and sbrk() resizes. Filter sbrk() and heap resize callstacks by keywords: <input type='text' id='sbrkFilter'><br/>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
     }
     var populateHtmlBody = function() {
       if (div) document.body.appendChild(div);
@@ -338,6 +360,19 @@ var emscriptenMemoryProfiler = {
     return callstack;
   },
 
+  // given callstack of func1\nfunc2\nfunc3... and function name, cuts the tail from the callstack
+  // for anything after the function func.
+  filterCallstackAfterFunctionName: function(callstack, func) {
+    var i = callstack.indexOf(func);
+    if (i != -1) {
+      var end = callstack.indexOf('<br />', i);
+      if (end != -1) {
+        return callstack.substr(0, end);
+      }
+    }
+    return callstack;
+  },
+
   filterCallstackForMalloc: function(callstack) {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_trace_record_');
@@ -355,6 +390,7 @@ var emscriptenMemoryProfiler = {
     if (i != -1) {
       callstack = callstack.substr(callstack.indexOf('\n', i)+1);
     }
+    callstack = callstack.replace(/(wasm-function\[\d+\]):0x[0-9a-f]+/g, "$1");
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
 
@@ -364,7 +400,7 @@ var emscriptenMemoryProfiler = {
     for(var i = 0; i < heapResizes.length; ++i) {
       var j = i+1;
       while(j < heapResizes.length) {
-        if (heapResizes[j].stack == heapResizes[i].stack) {
+        if ((heapResizes[j].filteredStack || heapResizes[j].stack) == (heapResizes[i].filteredStack || heapResizes[i].stack)) {
           ++j;
         } else {
           break;
@@ -373,7 +409,7 @@ var emscriptenMemoryProfiler = {
       var resizeFirst = heapResizes[i];
       var resizeLast = heapResizes[j-1];
       var count = j - i;
-      html += '<b>' + resizeFirst.begin + '-' + resizeLast.end + ' (' + count + ' times, ' + emscriptenMemoryProfiler.formatBytes(resizeLast.end-resizeFirst.begin) + ')</b>:' + demangler(resizeFirst.stack) + '<br>';
+      html += '<div style="background-color: ' + resizeFirst.color + '"><b>' + resizeFirst.begin + '-' + resizeLast.end + ' (' + count + ' times, ' + emscriptenMemoryProfiler.formatBytes(resizeLast.end-resizeFirst.begin) + ')</b>:' + demangler(resizeFirst.filteredStack || resizeFirst.stack) + '</div><br>';
       i = j-1;
     }
     return html;
@@ -381,6 +417,8 @@ var emscriptenMemoryProfiler = {
 
   // Main UI update entry point.
   updateUi: function updateUi() {
+    // It is common to set 'overflow: hidden;' on canvas pages that do WebGL. When MemoryProfiler is being used, there will be a long block of text on the page, so force-enable scrolling.
+    if (document.body.style.overflow != '') document.body.style.overflow = '';
     function colorBar(color) {
       return '<span style="padding:0px; border:solid 1px black; width:28px;height:14px; vertical-align:middle; display:inline-block; background-color:'+color+';"></span>';
     }
@@ -469,11 +507,34 @@ var emscriptenMemoryProfiler = {
       }
 
       // Print sbrk() traces.
+      var uniqueSources = {};
+      var filterWords = document.getElementById('sbrkFilter').value.split(',');
       for(var i in self.sbrkSources) {
         var sbrk = self.sbrkSources[i];
-        self.drawContext.fillStyle = sbrk.color;
+        var stack = sbrk.stack;
+        for (var j in filterWords) {
+          var s = filterWords[j].trim();
+          if (s.length > 0)
+          stack = self.filterCallstackAfterFunctionName(stack, s);
+        }
+        sbrk.filteredStack = stack;
+        if (!uniqueSources[stack]) {
+          uniqueSources[stack] = self.hsvToRgb(Object.keys(uniqueSources).length * 0.618033988749895 % 1, 0.5, 0.95);
+        }
+        self.drawContext.fillStyle = sbrk.color = uniqueSources[stack];
         self.fillRect(sbrk.begin, sbrk.end, 0.25);
       }
+
+      // Print a divider line to make the sbrk()/heap resize block more prominently visible compared to the rest of the allocations.
+      function line(x0, y0, x1, y1) {
+        self.drawContext.beginPath();
+        self.drawContext.moveTo(x0, y0);
+        self.drawContext.lineTo(x1, y1);
+        self.drawContext.lineWidth = 2;
+        self.drawContext.stroke();
+      }
+      if (self.sbrkSources.length > 0) line(0, 0.75*self.canvas.height, self.canvas.width, 0.75*self.canvas.height);
+      if (self.resizeMemorySources.length > 0) line(0, 0.5*self.canvas.height, self.canvas.width, 0.5*self.canvas.height);
     }
 
     self.memoryprofiler_summary.innerHTML = html;
