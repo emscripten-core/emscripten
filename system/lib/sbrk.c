@@ -11,7 +11,9 @@
 #endif
 #include <limits.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define WASM_PAGE_SIZE 65536
 
@@ -99,6 +101,11 @@ void *sbrk(intptr_t increment) {
 }
 
 int brk(intptr_t ptr) {
+#if __EMSCRIPTEN_PTHREADS__
+  // FIXME
+  printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+  abort();
+#endif
   intptr_t last = (intptr_t)sbrk(0);
   if (sbrk(ptr - last) == (void*)-1) {
     return -1;
