@@ -1027,7 +1027,7 @@ class libgl(MTLibrary):
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     if self.is_webgl2:
-      cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
+      cflags += ['-DGL_MAX_FEATURE_LEVEL=20', '-s', 'GL_MAX_FEATURE_LEVEL=20']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
@@ -1042,7 +1042,7 @@ class libgl(MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super(libgl, cls).get_default_variation(
       is_legacy=shared.Settings.LEGACY_GL_EMULATION,
-      is_webgl2=shared.Settings.USE_WEBGL2,
+      is_webgl2=shared.Settings.GL_MAX_FEATURE_LEVEL >= 20,
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=shared.Settings.FULL_ES3,
       **kwargs

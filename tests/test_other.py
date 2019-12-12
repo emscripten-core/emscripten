@@ -1922,7 +1922,7 @@ int f() {
       }
       ''')
 
-    for args in ([], ['-O1'], ['-s', 'USE_WEBGL2=1']):
+    for args in ([], ['-O1'], ['-s', 'GL_MAX_FEATURE_LEVEL=20']):
       for action in ('WARN', 'ERROR', None):
         for value in ([0, 1]):
           try_delete('a.out.js')
@@ -9555,7 +9555,7 @@ int main () {
                            '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                            '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL',
                            '-s', 'MODULARIZE=1']
-    hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
+    hello_webgl2_sources = hello_webgl_sources + ['-s', 'GL_MAX_FEATURE_LEVEL=20']
 
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 1453, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
