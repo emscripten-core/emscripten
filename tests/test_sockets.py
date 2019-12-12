@@ -42,7 +42,7 @@ def clean_processes(processes):
       time.sleep(1)
       # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
       try:
-        p.kill() # SIGKILL
+        p.terminate() # SIGKILL
       except OSError:
         pass
 
