@@ -153,3 +153,6 @@ var ENVIRONMENT_MAY_BE_SHELL = 1;
 // JS -> asm.js import names. Controlled by optimization level, enabled
 // at -O1 and higher, but disabled at -g2 and higher.
 var MINIFY_ASMJS_IMPORT_NAMES = 0;
+
+// Internal: represents a browser version that is not supported at all.
+var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;

@@ -1168,6 +1168,8 @@ class SettingsManager(object):
       # Load the JS defaults into python.
       settings = open(path_from_root('src', 'settings.js')).read().replace('//', '#')
       settings = re.sub(r'var ([\w\d]+)', r'attrs["\1"]', settings)
+      # Variable TARGET_NOT_SUPPORTED is referenced by value settings.js (also beyond declaring it),
+      # so must pass it there explicitly.
       exec(settings, {'attrs': cls.attrs})
 
       settings = open(path_from_root('src', 'settings_internal.js')).read().replace('//', '#')

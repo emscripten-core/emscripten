@@ -9537,9 +9537,9 @@ int main () {
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 1453, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
       (opts, hello_world_sources, {'a.html': 1446, 'a.js': 604, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 1581, 'a.js': 4918, 'a.asm.js': 11139, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 1563, 'a.js': 4874, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 1563, 'a.js': 5362, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_webgl_sources, {'a.html': 1581, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 1563, 'a.js': 4837, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 1563, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
@@ -10159,10 +10159,5 @@ int main() {
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
     run_process([PYTHON, EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'MIN_IE_VERSION=-1'])
-    self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
-    self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
-
-    # Also test if someone wants to pass Infinity explicitly
-    run_process([PYTHON, EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'MIN_IE_VERSION=Infinity'])
     self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
     self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
