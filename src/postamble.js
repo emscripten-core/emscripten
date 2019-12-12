@@ -215,7 +215,7 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if STACK_OVERFLOW_CHECK
+#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 
