@@ -739,7 +739,7 @@ var LibraryPThread = {
         schedPrio = {{{ makeGetValue('attr', 24/*_a_prio*/, 'i32') }}};
       }
     } else {
-      // According to http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack size if not specified is 2 MB, so follow that convention.
+      // Use the default thread stack size specified in global build settings.
       stackSize = {{{ DEFAULT_PTHREAD_STACK_SIZE }}};
     }
     var allocatedOwnStack = stackBase == 0; // If allocatedOwnStack == true, then the pthread impl maintains the stack allocation.

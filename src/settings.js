@@ -102,7 +102,7 @@ var MEM_INIT_METHOD = 0;
 // value must be large enough for the program's requirements. If
 // assertions are on, we will assert on not exceeding this, otherwise,
 // it will fail silently.
-var TOTAL_STACK = 5*1024*1024;
+var TOTAL_STACK = 512*1024;
 
 // The total amount of memory to use. Using more memory than this will
 // cause us to expand the heap, which can be costly with typed arrays:
@@ -1357,14 +1357,14 @@ var PTHREAD_POOL_DELAY_LOAD = 0;
 // If not explicitly specified, this is the stack size to use for newly created
 // pthreads.  According to
 // http://man7.org/linux/man-pages/man3/pthread_create.3.html, default stack
-// size on Linux/x86-32 for a new thread is 2 megabytes, so follow the same
-// convention. Use pthread_attr_setstacksize() at thread creation time to
-// explicitly specify the stack size, in which case this value is ignored. Note
-// that the asm.js/wasm function call control flow stack is separate from this
+// size on Linux/x86-32 for a new thread is 2 megabytes. However in
+// WebAssembly/asm.js, function call control flow stack is separate from this
 // stack, and this stack only contains certain function local variables, such as
 // those that have their addresses taken, or ones that are too large to fit as
-// local vars in asm.js/wasm code.
-var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
+// local vars in asm.js/wasm code. Therefore use a smaller thread stack
+// by default. Use pthread_attr_setstacksize() at thread creation time to
+// explicitly specify the stack size, in which case this value is ignored.
+var DEFAULT_PTHREAD_STACK_SIZE = 512*1024;
 
 // Specifies the value returned by the function emscripten_num_logical_cores()
 // if navigator.hardwareConcurrency is not supported. Pass in a negative number
