@@ -10189,3 +10189,16 @@ int main() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'MIN_IE_VERSION=-1'])
     self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
     self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
+
+  def test_errno_type(self):
+    create_test_file('errno_type.c', '''
+#include <errno.h>
+
+// Use of these constants in C preprocessor comparisons should work.
+#if EPERM > 0
+#define DAV1D_ERR(e) (-(e))
+#else
+#define DAV1D_ERR(e) (e)
+#endif
+''')
+    run_process([PYTHON, EMCC, 'errno_type.c'])
