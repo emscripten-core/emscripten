@@ -428,8 +428,8 @@ jobs:
           command: |
             # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
             wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-v0.8.0-x86_64-linux.tar.xz
-            tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
+            tar -xf wasmtime-*-x86_64-linux.tar.xz
+            cp wasmtime-*-x86_64-linux/wasmtime ~/vms
       - run:
           name: get v8
           command: |
