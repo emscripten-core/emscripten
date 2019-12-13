@@ -8,7 +8,7 @@ Module['asm'] = asm;
 #if MEM_INIT_IN_WASM == 0
 #if MEM_INIT_METHOD == 2
 #if USE_PTHREADS
-if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) (function(s) {
+if (memoryInitializer && !ENVIRONMENT_IS_WORKER) (function(s) {
 #else
 if (memoryInitializer) (function(s) {
 #endif
@@ -35,7 +35,7 @@ if (memoryInitializer) (function(s) {
 })(memoryInitializer);
 #else
 #if USE_PTHREADS
-if (memoryInitializer && !ENVIRONMENT_IS_PTHREAD) {
+if (memoryInitializer && !ENVIRONMENT_IS_WORKER) {
 #else
 if (memoryInitializer) {
 #endif
@@ -469,13 +469,13 @@ if (Module['noInitialRun']) shouldRunNow = false;
 
 #if EXIT_RUNTIME == 0
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
+if (!ENVIRONMENT_IS_WORKER) // EXIT_RUNTIME=0 only applies to default behavior of the main browser thread
 #endif
   noExitRuntime = true;
 #endif
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) run();
+if (!ENVIRONMENT_IS_WORKER) run();
 #if EMBIND
 else {  // Embind must initialize itself on all threads, as it generates support JS.
   Module['___embind_register_native_and_builtin_types']();

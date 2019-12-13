@@ -2399,7 +2399,7 @@ var LibraryJSEvents = {
 
 #if (USE_PTHREADS && OFFSCREEN_FRAMEBUFFER)
     // Create a WebGL context that is proxied to main thread if canvas was not found on worker, or if explicitly requested to do so.
-    if (ENVIRONMENT_IS_PTHREAD) {
+    if (ENVIRONMENT_IS_WORKER) {
       if (contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS') }}} ||
          (!canvas && contextAttributes.proxyContextToMainThread === {{{ cDefine('EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK') }}})) {
         // When WebGL context is being proxied via the main thread, we must render using an offscreen FBO render target to avoid WebGL's
@@ -2722,7 +2722,7 @@ var LibraryJSEvents = {
 #if USE_PTHREADS && ASSERTIONS && OFFSCREENCANVAS_SUPPORT
     // TODO: for Offscreencanvas case, must first search locally in the calling thread if the given context is an OffscreenCanvas context on the calling thread,
     // and only if it's not, then try to proxy the call to main thread. I.e. this function cannot be unconditionally 'sync' proxied.
-    if (ENVIRONMENT_IS_PTHREAD) warnOnce('TODO: emscripten_is_webgl_context_lost() does not yet work properly in pthreads with OffscreenCanvas contexts');
+    if (ENVIRONMENT_IS_WORKER) warnOnce('TODO: emscripten_is_webgl_context_lost() does not yet work properly in pthreads with OffscreenCanvas contexts');
 #endif
     return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
   },

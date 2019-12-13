@@ -52,7 +52,7 @@ var Fetch = {
 
   staticInit: function() {
 #if USE_FETCH_WORKER
-    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
+    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_WORKER);
 #else
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined');
 #endif

@@ -47,7 +47,6 @@ function store4(ptr, value) { HEAP32[ptr>>2] = value; }
 
 var ENVIRONMENT_IS_FETCH_WORKER = true;
 var ENVIRONMENT_IS_WORKER = true;
-var ENVIRONMENT_IS_PTHREAD = true;
 var __pthread_is_main_runtime_thread=0;
 var DYNAMICTOP_PTR = 0;
 var nan = NaN;

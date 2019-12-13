@@ -27,7 +27,7 @@ function initRuntime(asm) {
 #endif
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return;
+  if (ENVIRONMENT_IS_WORKER) return;
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
   _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);

@@ -1082,7 +1082,7 @@ var LibraryBrowser = {
     onerror = getFuncWrapper(onerror, 'v');
 
 #if USE_PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
+    if (ENVIRONMENT_IS_WORKER) {
       console.error('emscripten_async_load_script("' + UTF8ToString(url) + '") failed, emscripten_async_load_script is currently not available in pthreads!');
       return onerror ? onerror() : undefined;
     }

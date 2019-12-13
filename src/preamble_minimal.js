@@ -34,7 +34,7 @@ function alignUp(x, multiple) {
 #include "runtime_sab_polyfill.js"
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
+if (!ENVIRONMENT_IS_WORKER) {
 #endif
 
 var GLOBAL_BASE = {{{ GLOBAL_BASE }}},

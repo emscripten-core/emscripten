@@ -281,7 +281,7 @@ function JSify(data, functionsOnly) {
           assert(typeof original === 'function');
           contentText = modifyFunction(snippet, function(name, args, body) {
             return 'function ' + name + '(' + args + ') {\n' +
-                   'if (ENVIRONMENT_IS_PTHREAD) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
+                   'if (ENVIRONMENT_IS_WORKER) return _emscripten_proxy_to_main_thread_js(' + proxiedFunctionTable.length + ', ' + (+sync) + (args ? ', ' : '') + args + ');\n' + body + '}\n';
           });
           proxiedFunctionTable.push(finalName);
         } else {
@@ -411,7 +411,7 @@ function JSify(data, functionsOnly) {
         });
         // write out the singleton big memory initialization value
         if (USE_PTHREADS) {
-          print('if (!ENVIRONMENT_IS_PTHREAD) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
+          print('if (!ENVIRONMENT_IS_WORKER) {') // Pthreads should not initialize memory again, since it's shared with the main thread.
         }
         print('/* memory initializer */ ' + makePointer(memoryInitialization, null, 'ALLOC_NONE', 'i8', 'GLOBAL_BASE' + (SIDE_MODULE ? '+H_BASE' : ''), true));
         if (USE_PTHREADS) {
@@ -424,7 +424,7 @@ function JSify(data, functionsOnly) {
       if (!SIDE_MODULE && !WASM_BACKEND) {
         if (USE_PTHREADS) {
           print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
+          print('if (!ENVIRONMENT_IS_WORKER) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
         } else {
           print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
         }

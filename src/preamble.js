@@ -371,7 +371,7 @@ assert(DYNAMIC_BASE % 16 === 0, 'heap must start aligned');
 #endif
 
 #if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
+if (ENVIRONMENT_IS_WORKER) {
 
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
@@ -487,12 +487,12 @@ var runtimeInitialized = false;
 var runtimeExited = false;
 
 #if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
+if (ENVIRONMENT_IS_WORKER) runtimeInitialized = true; // The runtime is hosted in the main thread, and bits shared to pthreads via SharedArrayBuffer. No need to init again in pthread.
 #endif
 
 function preRun() {
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+  if (ENVIRONMENT_IS_WORKER) return; // PThreads reuse the runtime from the main thread.
 #endif
 
 #if expectToReceiveOnModule('preRun')
@@ -524,7 +524,7 @@ function preMain() {
   checkStackCookie();
 #endif
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+  if (ENVIRONMENT_IS_WORKER) return; // PThreads reuse the runtime from the main thread.
 #endif
   {{{ getQuoted('ATMAINS') }}}
   callRuntimeCallbacks(__ATMAIN__);
@@ -535,7 +535,7 @@ function exitRuntime() {
   checkStackCookie();
 #endif
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+  if (ENVIRONMENT_IS_WORKER) return; // PThreads reuse the runtime from the main thread.
 #endif
 #if EXIT_RUNTIME
   callRuntimeCallbacks(__ATEXIT__);
@@ -549,7 +549,7 @@ function postRun() {
   checkStackCookie();
 #endif
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return; // PThreads reuse the runtime from the main thread.
+  if (ENVIRONMENT_IS_WORKER) return; // PThreads reuse the runtime from the main thread.
 #endif
 
 #if expectToReceiveOnModule('postRun')
@@ -620,7 +620,7 @@ function addRunDependency(id) {
 #if USE_PTHREADS
   // We should never get here in pthreads (could no-op this out if called in pthreads, but that might indicate a bug in caller side,
   // so good to be very explicit)
-  assert(!ENVIRONMENT_IS_PTHREAD, "addRunDependency cannot be used in a pthread worker");
+  assert(!ENVIRONMENT_IS_WORKER, "addRunDependency cannot be used in a pthread worker");
 #endif
   runDependencies++;
 
@@ -709,7 +709,7 @@ function abort(what) {
 #endif
 
 #if USE_PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) console.error('Pthread aborting at ' + new Error().stack);
+  if (ENVIRONMENT_IS_WORKER) console.error('Pthread aborting at ' + new Error().stack);
 #endif
   what += '';
   out(what);
@@ -796,7 +796,7 @@ var memoryInitializer = null;
 #endif
 
 #if USE_PTHREADS && PTHREAD_HINT_NUM_CORES < 0
-if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
+if (!ENVIRONMENT_IS_WORKER) addOnPreRun(function() {
   addRunDependency('pthreads_querycores');
 
   var bg = document.createElement('div');
@@ -834,7 +834,7 @@ if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
 
 #if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_DELAY_LOAD != 1
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
-if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
+if (!ENVIRONMENT_IS_WORKER) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
 #endif
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
@@ -970,7 +970,7 @@ function createWasm() {
     // Keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
-    if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('wasm-instantiate');
+    if (!ENVIRONMENT_IS_WORKER) removeRunDependency('wasm-instantiate');
 #else
     removeRunDependency('wasm-instantiate');
 #endif

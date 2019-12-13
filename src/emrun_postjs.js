@@ -3,7 +3,7 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-if (typeof window === "object" && (typeof ENVIRONMENT_IS_PTHREAD === 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
+if (typeof window === "object" && (typeof ENVIRONMENT_IS_WORKER === 'undefined' || !ENVIRONMENT_IS_WORKER)) {
   function emrun_register_handlers() {
     // When C code exit()s, we may still have remaining stdout and stderr messages in flight. In that case, we can't close
     // the browser until all those XHRs have finished, so the following state variables track that all communication is done,

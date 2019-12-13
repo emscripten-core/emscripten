@@ -23,7 +23,7 @@ function dynamicAlloc(size) {
 #if ASSERTIONS
   assert(DYNAMICTOP_PTR);
 #if USE_PTHREADS
-  assert(!ENVIRONMENT_IS_PTHREAD); // this function is not thread-safe
+  assert(!ENVIRONMENT_IS_WORKER); // this function is not thread-safe
 #endif
 #endif
   var ret = HEAP32[DYNAMICTOP_PTR>>2];

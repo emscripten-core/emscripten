@@ -7,7 +7,7 @@
 
 var LibraryFetch = {
 #if USE_PTHREADS
-  $Fetch__postset: 'if (!ENVIRONMENT_IS_PTHREAD) Fetch.staticInit();',
+  $Fetch__postset: 'if (!ENVIRONMENT_IS_WORKER) Fetch.staticInit();',
 #else
   $Fetch__postset: 'Fetch.staticInit();',
 #endif

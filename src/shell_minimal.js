@@ -87,13 +87,13 @@ function ready() {
 var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 #endif
 
-var ENVIRONMENT_IS_PTHREAD;
-if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
+var ENVIRONMENT_IS_WORKER;
+if (!ENVIRONMENT_IS_WORKER) ENVIRONMENT_IS_WORKER = false; // ENVIRONMENT_IS_WORKER=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
 
-if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {
-  // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread. 
+if (typeof ENVIRONMENT_IS_WORKER === 'undefined') {
+  // ENVIRONMENT_IS_WORKER=true will have been preset in pthread-main.js. Make it false in the main runtime thread. 
   // N.B. this line needs to appear without 'var' keyword to avoid 'var hoisting' from occurring. (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var)
-  ENVIRONMENT_IS_PTHREAD = false;
+  ENVIRONMENT_IS_WORKER = false;
 }
 #if MODULARIZE
 else {

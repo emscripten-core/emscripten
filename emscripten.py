@@ -827,7 +827,7 @@ def memory_and_global_initializers(pre, metadata, mem_init):
 
   pthread = ''
   if shared.Settings.USE_PTHREADS:
-    pthread = 'if (!ENVIRONMENT_IS_PTHREAD)'
+    pthread = 'if (!ENVIRONMENT_IS_WORKER)'
 
   global_initializers = ''
   if not shared.Settings.MINIMAL_RUNTIME:
@@ -977,7 +977,7 @@ def include_asm_consts(pre, forwarded_json, metadata):
         # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
         # ... over to the negative integers starting at -1.
         proxy_args = ['-1 - code', str(int(sync_proxy))] + args
-        pre_asm_const += '  if (ENVIRONMENT_IS_PTHREAD) { ' + proxy_debug_print(sync_proxy) + 'return _emscripten_proxy_to_main_thread_js(' + ', '.join(proxy_args) + '); }\n'
+        pre_asm_const += '  if (ENVIRONMENT_IS_WORKER) { ' + proxy_debug_print(sync_proxy) + 'return _emscripten_proxy_to_main_thread_js(' + ', '.join(proxy_args) + '); }\n'
 
     if shared.Settings.EMTERPRETIFY_ASYNC and shared.Settings.ASSERTIONS:
       # we cannot have an EM_ASM on the stack when saving/loading
@@ -2211,7 +2211,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
 /* global initializers */ %s __ATINIT__.push(%s);
 ''' % (staticbump,
-       'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
+       'if (!ENVIRONMENT_IS_WORKER)' if shared.Settings.USE_PTHREADS else '',
        global_initializers))
 
   pre = apply_memory(pre)
@@ -2402,7 +2402,7 @@ function readAsmConstArgs(sigPtr, buf) {
         # to regular C compiled functions. Negative integers -1, -2, -3, ... denote
         # indices to EM_ASM() blocks, so remap the EM_ASM() indices from 0, 1, 2,
         # ... over to the negative integers starting at -1.
-        preamble += ('\n  if (ENVIRONMENT_IS_PTHREAD) { ' +
+        preamble += ('\n  if (ENVIRONMENT_IS_WORKER) { ' +
                      proxy_debug_print(sync_proxy) +
                      'return _emscripten_proxy_to_main_thread_js(-1 - code, ' +
                      str(int(sync_proxy)) +

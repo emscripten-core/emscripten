@@ -129,7 +129,7 @@ this.onmessage = function(e) {
 
 #endif
 
-      Module['ENVIRONMENT_IS_PTHREAD'] = true;
+      Module['ENVIRONMENT_IS_WORKER'] = true;
 
 #if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {

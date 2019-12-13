@@ -518,7 +518,7 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
     } else {
       int success = EM_ASM_INT(
         {
-          if (!ENVIRONMENT_IS_PTHREAD) {
+          if (!ENVIRONMENT_IS_WORKER) {
             if (!PThread.pthreads[$0] || !PThread.pthreads[$0].worker) {
               // #if DEBUG
               //						Module.printErr('Cannot send message

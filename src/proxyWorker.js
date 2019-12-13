@@ -381,14 +381,8 @@ Module['postMainLoop'] = function() {
 
 // Wait to start running until we receive some info from the client
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-  addRunDependency('gl-prefetch');
-  addRunDependency('worker-init');
-#if USE_PTHREADS
-}
-#endif
+addRunDependency('gl-prefetch');
+addRunDependency('worker-init');
 
 // buffer messages until the program starts to run
 
@@ -477,9 +471,6 @@ function onMessageFromMainEmscriptenThread(message) {
       screen.height = Module.canvas.height_ = message.data.height;
       Module.canvas.boundingClientRect = message.data.boundingClientRect;
       document.URL = message.data.URL;
-#if USE_PTHREADS
-      currentScriptUrl = message.data.currentScriptUrl;
-#endif
       window.fireEvent({ type: 'load' });
       removeRunDependency('worker-init');
       break;
@@ -500,13 +491,7 @@ function onMessageFromMainEmscriptenThread(message) {
   }
 };
 
-#if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) {
-#endif
-  onmessage = onMessageFromMainEmscriptenThread;
-#if USE_PTHREADS
-}
-#endif
+onmessage = onMessageFromMainEmscriptenThread;
 
 // proxyWorker.js has defined 'document' and 'window' objects above, so need to
 // initialize them for library_html5.js explicitly here.

@@ -1,7 +1,7 @@
 // Create the main memory. (Note: this isn't used in STANDALONE_WASM mode since the wasm
 // memory is created in the wasm, not in JS.)
 #if USE_PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) {
+if (ENVIRONMENT_IS_WORKER) {
   wasmMemory = Module['wasmMemory'];
   buffer = Module['buffer'];
 } else {
@@ -77,7 +77,7 @@ assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 updateGlobalBufferAndViews(buffer);
 
 #if USE_PTHREADS
-if (!ENVIRONMENT_IS_PTHREAD) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
+if (!ENVIRONMENT_IS_WORKER) { // Pthreads have already initialized these variables in src/worker.js, where they were passed to the thread worker at startup time
 #endif
 #if !STANDALONE_WASM // in standalone mode the value is in the wasm
 HEAP32[DYNAMICTOP_PTR>>2] = DYNAMIC_BASE;

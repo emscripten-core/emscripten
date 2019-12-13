@@ -18,12 +18,8 @@ void EMSCRIPTEN_KEEPALIVE FinishTest(int result)
 
 void TestAsyncRunScript()
 {
-  // 5. Test emscripten_async_run_script() runs in a pthread.
-#if __EMSCRIPTEN_PTHREADS__
-  emscripten_async_run_script("Module['_FinishTest'](ENVIRONMENT_IS_PTHREAD && ENVIRONMENT_IS_WORKER);", 1);
-#else
+  // 5. Test emscripten_async_run_script() runs in a worker.
   emscripten_async_run_script("Module['_FinishTest'](!ENVIRONMENT_IS_WORKER);", 1);
-#endif
 }
 
 void AsyncScriptLoaded()
@@ -42,14 +38,14 @@ int main() {
 
   // 1. Test that emscripten_run_script() works in a pthread, and it gets executed in the web worker and not on the main thread.
 #if __EMSCRIPTEN_PTHREADS__
-  emscripten_run_script("Module['ranScript'] = ENVIRONMENT_IS_PTHREAD && ENVIRONMENT_IS_WORKER;");
+  emscripten_run_script("Module['ranScript'] = ENVIRONMENT_IS_WORKER;");
 #else
   emscripten_run_script("Module['ranScript'] = true;");
 #endif
 
   // 2. Test that emscripten_run_script_int() works in a pthread and it gets executed in the web worker and not on the main thread.
 #if __EMSCRIPTEN_PTHREADS__
-  int result = emscripten_run_script_int("Module['ranScript'] && ENVIRONMENT_IS_PTHREAD && ENVIRONMENT_IS_WORKER;");
+  int result = emscripten_run_script_int("Module['ranScript'] && ENVIRONMENT_IS_WORKER;");
 #else
   int result = emscripten_run_script_int("Module['ranScript'];");
 #endif
@@ -58,7 +54,7 @@ int main() {
 
   // 3. Test emscripten_run_script_string() runs in a pthread.
 #if __EMSCRIPTEN_PTHREADS__
-  char *data = emscripten_run_script_string("ENVIRONMENT_IS_PTHREAD && ENVIRONMENT_IS_WORKER ? 'in pthread' : 'not in pthread';");
+  char *data = emscripten_run_script_string("ENVIRONMENT_IS_WORKER ? 'in pthread' : 'not in pthread';");
   printf("%s\n", data);
   assert(!strcmp(data, "in pthread"));
 #else

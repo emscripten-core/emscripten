@@ -1573,7 +1573,7 @@ function modifyFunction(text, func) {
 
 function runOnMainThread(text) {
   if (USE_PTHREADS) {
-    return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+    return 'if (!ENVIRONMENT_IS_WORKER) { ' + text + ' }';
   } else {
     return text;
   }
