@@ -223,7 +223,7 @@ def generate_config(path, first_time=False):
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  open(abspath, 'w').write(config_file)
+  open(abspath, 'w', encoding='utf-8').write(config_file)
   if first_time:
     print('''
 ==============================================================================
@@ -331,7 +331,7 @@ def parse_config_file():
   global JS_ENGINES, JAVA, CLOSURE_COMPILER
 
   config = {}
-  config_text = open(CONFIG_FILE, 'r').read() if CONFIG_FILE else EM_CONFIG
+  config_text = open(CONFIG_FILE, 'r', encoding='utf-8').read() if CONFIG_FILE else EM_CONFIG
   try:
     exec(config_text, config)
   except Exception as e:
@@ -2290,7 +2290,7 @@ class Building(object):
       logger.debug('using response file for EXPORTED_FUNCTIONS in internalize')
       finalized_exports = '\n'.join([exp[1:] for exp in exps])
       internalize_list_file = configuration.get_temp_files().get(suffix='.response').name
-      with open(internalize_list_file, 'w') as f:
+      with open(internalize_list_file, 'w', encoding='utf-8') as f:
         f.write(finalized_exports)
       internalize_public_api += 'file=' + internalize_list_file
     else:
@@ -2335,14 +2335,14 @@ class Building(object):
       temp_files = configuration.get_temp_files()
       temp = temp_files.get('.js').name
       shutil.copyfile(filename, temp)
-      with open(temp, 'a') as f:
+      with open(temp, 'a', encoding='utf-8') as f:
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
     cmd = NODE_JS + [optimizer, filename] + passes
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
-      check_call(cmd, stdout=open(next, 'w'))
+      check_call(cmd, stdout=open(next, 'w', encoding='utf-8'))
       return next
     else:
       return check_call(cmd, stdout=PIPE).stdout
@@ -2627,7 +2627,7 @@ class Building(object):
         import_name_map[item['name']] = 'emcc$import$' + item['import'][1]
     temp = temp_files.get('.txt').name
     txt = json.dumps(graph)
-    with open(temp, 'w') as f:
+    with open(temp, 'w', encoding='utf-8') as f:
       f.write(txt)
     # run wasm-metadce
     out = Building.run_binaryen_command('wasm-metadce',
@@ -2713,7 +2713,7 @@ class Building(object):
                                                debug=debug_info,
                                                stdout=PIPE)
     if DEBUG:
-      with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w') as f:
+      with open(os.path.join(get_emscripten_temp_dir(), 'wasm2js-output.js'), 'w', encoding='utf-8') as f:
         f.write(wasm2js_js)
     # JS optimizations
     if opt_level >= 2:
@@ -2734,10 +2734,10 @@ class Building(object):
         wasm2js_js = wasm2js_js.replace('\n }', '\n}')
         wasm2js_js += '\n// EMSCRIPTEN_GENERATED_FUNCTIONS\n'
         temp = configuration.get_temp_files().get('.js').name
-        with open(temp, 'w') as f:
+        with open(temp, 'w', encoding='utf-8') as f:
           f.write(wasm2js_js)
         temp = Building.js_optimizer(temp, passes)
-        with open(temp) as f:
+        with open(temp, encoding='utf-8') as f:
           wasm2js_js = f.read()
     # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
     # minify the wasm2js output as well, which is ok since it isn't
@@ -2746,19 +2746,19 @@ class Building(object):
     #       purpose JS minifier here.
     if use_closure_compiler == 2:
       temp = configuration.get_temp_files().get('.js').name
-      with open(temp, 'a') as f:
+      with open(temp, 'a', encoding='utf-8') as f:
         f.write(wasm2js_js)
       temp = Building.closure_compiler(temp,
                                        pretty=not minify_whitespace,
                                        advanced=False)
-      with open(temp) as f:
+      with open(temp, encoding='utf-8') as f:
         wasm2js_js = f.read()
       # closure may leave a trailing `;`, which would be invalid given where we place
       # this code (inside parens)
       wasm2js_js = wasm2js_js.strip()
       if wasm2js_js[-1] == ';':
         wasm2js_js = wasm2js_js[:-1]
-    with open(js_file) as f:
+    with open(js_file, encoding='utf-8') as f:
       all_js = f.read()
     # quoted notation, something like Module['__wasm2jsInstantiate__']
     finds = re.findall(r'''[\w\d_$]+\[['"]__wasm2jsInstantiate__['"]\]''', all_js)
@@ -2770,7 +2770,7 @@ class Building(object):
     all_js = all_js.replace(marker, '(\n' + wasm2js_js + '\n)')
     # replace the placeholder with the actual code
     js_file = js_file + '.wasm2js.js'
-    with open(js_file, 'w') as f:
+    with open(js_file, 'w', encoding='utf-8') as f:
       f.write(all_js)
     if not DEBUG:
       try_delete(wasm_file)
@@ -2781,8 +2781,8 @@ class Building(object):
     logger.debug('supporting wasm memory growth with pthreads')
     fixed = Building.acorn_optimizer(js_file, ['growableHeap'])
     ret = js_file + '.pgrow.js'
-    with open(fixed, 'r') as fixed_f:
-      with open(ret, 'w') as ret_f:
+    with open(fixed, 'r', encoding='utf-8') as fixed_f:
+      with open(ret, 'w', encoding='utf-8') as ret_f:
         with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
           ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
     return ret
@@ -2799,7 +2799,7 @@ class Building(object):
     # ignore stderr because if wasm-opt is run without a -o it will warn
     output = Building.run_wasm_opt(wasm_file, args=args, stdout=PIPE)
     if symbols_file:
-      with open(symbols_file, 'w') as f:
+      with open(symbols_file, 'w', encoding='utf-8') as f:
         f.write(output)
 
   # the exports the user requested
@@ -3233,7 +3233,7 @@ class WebAssembly(object):
     table_size = Settings.WASM_TABLE_SIZE
     global_base = Settings.GLOBAL_BASE
 
-    js = open(js_file).read()
+    js = open(js_file, encoding='utf-8').read()
     if Settings.WASM_BACKEND:
       tempdouble_ptr = 0
     else:
@@ -3416,8 +3416,8 @@ def read_and_preprocess(filename, expand_macros=False):
   if expand_macros:
     args += ['--expandMacros']
 
-  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w'), cwd=path)
-  out = open(stdout, 'r').read()
+  run_js(path_from_root('tools/preprocessor.js'), NODE_JS, args, True, stdout=open(stdout, 'w', encoding='utf-8'), cwd=path)
+  out = open(stdout, 'r', encoding='utf-8').read()
 
   return out
 
@@ -3426,7 +3426,7 @@ def read_and_preprocess(filename, expand_macros=False):
 # and writes it out to location output_file. fetch-worker.js is the root entry point for a dedicated filesystem web
 # worker in -s ASMFS=1 mode.
 def make_fetch_worker(source_file, output_file):
-  src = open(source_file, 'r').read()
+  src = open(source_file, 'r', encoding='utf-8').read()
   funcs_to_import = ['alignUp', '_emscripten_get_heap_size', '_emscripten_resize_heap', 'stringToUTF8', 'UTF8ToString', 'UTF8ArrayToString', 'intArrayFromString', 'lengthBytesUTF8', 'stringToUTF8Array', '_emscripten_is_main_browser_thread', '_emscripten_futex_wait', '_emscripten_get_sbrk_ptr']
   asm_funcs_to_import = ['_malloc', '_free', '_sbrk', '___pthread_mutex_lock', '___pthread_mutex_unlock', '_pthread_mutexattr_init', '_pthread_mutex_init']
   function_prologue = '''this.onerror = function(e) {
@@ -3452,4 +3452,4 @@ def make_fetch_worker(source_file, output_file):
     function_prologue = function_prologue + '\n' + func_code
 
   fetch_worker_src = function_prologue + '\n' + read_and_preprocess(path_from_root('src', 'fetch-worker.js'), expand_macros=True)
-  open(output_file, 'w').write(fetch_worker_src)
+  open(output_file, 'w', encoding='utf-8').write(fetch_worker_src)

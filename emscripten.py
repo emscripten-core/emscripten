@@ -35,7 +35,7 @@ STDERR_FILE = os.environ.get('EMCC_STDERR_FILE')
 if STDERR_FILE:
   STDERR_FILE = os.path.abspath(STDERR_FILE)
   logger.info('logging stderr in js compiler phase into %s' % STDERR_FILE)
-  STDERR_FILE = open(STDERR_FILE, 'w')
+  STDERR_FILE = open(STDERR_FILE, 'w', encoding='utf-8')
 
 
 def get_configuration():
@@ -122,7 +122,7 @@ def compile_js(infile, temp_files, DEBUG):
       logger.debug('  emscript: llvm backend took %s seconds' % (time.time() - t))
 
     # Split up output
-    backend_output = open(temp_js).read()
+    backend_output = open(temp_js, encoding='utf-8').read()
   return backend_output
 
 
@@ -557,7 +557,7 @@ def write_cyberdwarf_data(outfile, metadata):
 
   assert('cyberdwarf_data' in metadata)
   cd_file_name = outfile.name + ".cd"
-  with open(cd_file_name, 'w') as f:
+  with open(cd_file_name, 'w', encoding='utf-8') as f:
     json.dump({'cyberdwarf': metadata['cyberdwarf_data']}, f)
 
 
@@ -747,7 +747,7 @@ def apply_forwarded_data(forwarded_data):
 def compile_settings(compiler_engine, temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
-    with open(settings_file, 'w') as s:
+    with open(settings_file, 'w', encoding='utf-8') as s:
       json.dump(shared.Settings.to_dict(), s, sort_keys=True)
 
     # Call js compiler

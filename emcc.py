@@ -419,7 +419,7 @@ def apply_settings(changes):
 
     if value[0] == '@':
       if key not in DEFERRED_RESPONSE_FILES:
-        value = open(value[1:]).read()
+        value = open(value[1:], encoding='utf-8').read()
     else:
       value = value.replace('\\', '\\\\')
     try:
@@ -655,13 +655,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if debug_configure:
       tempout = '/tmp/emscripten_temp/out'
       if not os.path.exists(tempout):
-        open(tempout, 'w').write('//\n')
+        open(tempout, 'w', encoding='utf-8').write('//\n')
 
     src = None
     for arg in args:
       if arg.endswith(SOURCE_ENDINGS):
         try:
-          src = open(arg).read()
+          src = open(arg, encoding='utf-8').read()
           if debug_configure:
             open(tempout, 'a').write('============= ' + arg + '\n' + src + '\n=============\n\n')
         except IOError:
@@ -716,11 +716,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shutil.copyfile(target, unsuffixed(target))
       target = unsuffixed(target)
     if not target.endswith(OBJECT_FILE_ENDINGS):
-      src = open(target).read()
+      src = open(target, encoding='utf-8').read()
       full_node = ' '.join(shared.NODE_JS)
       if os.path.sep not in full_node:
         full_node = '/usr/bin/' + full_node # TODO: use whereis etc. And how about non-*NIX?
-      open(target, 'w').write('#!' + full_node + '\n' + src) # add shebang
+      open(target, 'w', encoding='utf-8').write('#!' + full_node + '\n' + src) # add shebang
       try:
         os.chmod(target, stat.S_IMODE(os.stat(target).st_mode) | stat.S_IXUSR) # make executable
       except OSError:
@@ -2035,9 +2035,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
             # adjusting the target name away from the temporary file name to the specified target.
             # It will be deleted with the rest of the temporary directory.
-            deps = open(temp_output_base + '.d').read()
+            deps = open(temp_output_base + '.d', encoding='utf-8').read()
             deps = deps.replace(temp_output_base + options.default_object_extension, specified_target)
-            with open(os.path.join(os.path.dirname(specified_target), os.path.basename(unsuffixed(input_file) + '.d')), "w") as out_dep:
+            with open(os.path.join(os.path.dirname(specified_target),
+                                   os.path.basename(unsuffixed(input_file) + '.d')), "w", encoding='utf-8') as out_dep:
               out_dep.write(deps)
 
     # exit block 'process inputs'
@@ -2295,14 +2296,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Apply pre and postjs files
       if options.pre_js or options.post_js:
         logger.debug('applying pre/postjses')
-        src = open(final).read()
+        src = open(final, encoding='utf-8').read()
         final += '.pp.js'
         if WINDOWS: # Avoid duplicating \r\n to \r\r\n when writing out.
           if options.pre_js:
             options.pre_js = options.pre_js.replace('\r\n', '\n')
           if options.post_js:
             options.post_js = options.post_js.replace('\r\n', '\n')
-        with open(final, 'w') as f:
+        with open(final, 'w', encoding='utf-8') as f:
           # pre-js code goes right after the Module integration code (so it
           # can use Module), we have a marker for it
           f.write(src.replace('// {{PRE_JSES}}', options.pre_js))
@@ -2338,9 +2339,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.WASM_BACKEND:
           # For the wasm backend, we don't have any memory info in JS. All we need to do
           # is set the memory initializer url.
-          src = open(final).read()
+          src = open(final, encoding='utf-8').read()
           src = src.replace('var memoryInitializer = null;', 'var memoryInitializer = "%s";' % os.path.basename(memfile))
-          open(final + '.mem.js', 'w').write(src)
+          open(final + '.mem.js', 'w', encoding='utf-8').write(src)
           final += '.mem.js'
         else:
           # Non-wasm backend path: Strip the memory initializer out of the asmjs file
@@ -2369,7 +2370,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               return ''
 
           src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
-          open(final + '.mem.js', 'w').write(src)
+          open(final + '.mem.js', 'w', encoding='utf-8').write(src)
           final += '.mem.js'
           src = None
           js_transform_tempfiles[-1] = final # simple text substitution preserves comment line number mappings
@@ -2629,12 +2630,12 @@ def parse_args(newargs):
       newargs[i + 1] = ''
     elif newargs[i].startswith('--pre-js'):
       check_bad_eq(newargs[i])
-      options.pre_js += open(newargs[i + 1]).read() + '\n'
+      options.pre_js += open(newargs[i + 1], encoding='utf-8').read() + '\n'
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('--post-js'):
       check_bad_eq(newargs[i])
-      options.post_js += open(newargs[i + 1]).read() + '\n'
+      options.post_js += open(newargs[i + 1], encoding='utf-8').read() + '\n'
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('--minify'):
@@ -3138,7 +3139,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
-    js = open(final).read()
+    js = open(final, encoding='utf-8').read()
     for target, replacement_string, should_embed in (
         (wasm_binary_target,
          shared.FilenameReplacementStrings.WASM_BINARY_FILE,
@@ -3152,14 +3153,14 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       else:
         js = js.replace(replacement_string, '')
       shared.try_delete(target)
-    with open(final, 'w') as f:
+    with open(final, 'w', encoding='utf-8') as f:
       f.write(js)
 
 
 def modularize():
   global final
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
-  src = open(final).read()
+  src = open(final, encoding='utf-8').read()
 
   # TODO: exports object generation for MINIMAL_RUNTIME
   exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME else shared.Settings.EXPORT_NAME
@@ -3223,7 +3224,7 @@ var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_N
     }
 
   final = final + '.modular.js'
-  with open(final, 'w') as f:
+  with open(final, 'w', encoding='utf-8') as f:
     f.write(src)
 
     # Export using a UMD style export, or ES6 exports if selected
@@ -3448,7 +3449,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   if shared.Settings.SINGLE_FILE:
     js_contents = script.inline or ''
     if script.src:
-      js_contents += open(js_target).read()
+      js_contents += open(js_target, encoding='utf-8').read()
     shared.try_delete(js_target)
     script.src = None
     script.inline = js_contents
@@ -3531,7 +3532,7 @@ def generate_worker_js(target, js_target, target_basename):
     proxy_worker_filename = (shared.Settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
   target_contents = worker_js_script(proxy_worker_filename)
-  open(target, 'w').write(target_contents)
+  open(target, 'w', encoding='utf-8').write(target_contents)
 
 
 def worker_js_script(proxy_worker_filename):
