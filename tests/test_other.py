@@ -8792,7 +8792,7 @@ end
     # running the program makes it cache the code
     self.assertFalse(get_cached())
     self.assertEqual('hello, world!', run_js('a.out.js').strip())
-    self.assertTrue(get_cached())
+    self.assertTrue(get_cached(), 'should be a cache file')
 
     # hard to test it actually uses it to speed itself up, but test that it
     # does try to deserialize it at least
@@ -8801,8 +8801,8 @@ end
     ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
     self.assertContained(ERROR, run_js('a.out.js', stderr=PIPE, full_output=True))
     # we cached proper code after showing that error
-    with open(get_cached()) as f:
-      self.assertEqual(f.read().count('waka'), 0)
+    with open(get_cached(), 'rb') as f:
+      self.assertEqual(f.read().count(b'waka'), 0)
     self.assertNotContained(ERROR, run_js('a.out.js', stderr=PIPE, full_output=True))
 
   def test_autotools_shared_check(self):
