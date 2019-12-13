@@ -426,9 +426,11 @@ jobs:
       - run:
           name: get wasmtime
           command: |
-            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
-            tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
+            # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
+            export VERSION=v0.8.0
+            wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-$VERSION-x86_64-linux.tar.xz
+            tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
+            cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
       - run:
           name: get v8
           command: |
