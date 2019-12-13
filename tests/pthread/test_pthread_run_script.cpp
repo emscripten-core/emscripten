@@ -19,7 +19,11 @@ void EMSCRIPTEN_KEEPALIVE FinishTest(int result)
 void TestAsyncRunScript()
 {
   // 5. Test emscripten_async_run_script() runs in a worker.
+#if __EMSCRIPTEN_PTHREADS__
+  emscripten_async_run_script("Module['_FinishTest'](ENVIRONMENT_IS_WORKER);", 1);
+#else
   emscripten_async_run_script("Module['_FinishTest'](!ENVIRONMENT_IS_WORKER);", 1);
+#endif
 }
 
 void AsyncScriptLoaded()
