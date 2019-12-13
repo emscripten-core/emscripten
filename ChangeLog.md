@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Reduced program main thread stack size from 5MB to 512KB
+  (-s TOTAL_STACK=512KB) to save WebAssembly heap memory by default.
+- Reduced default pthread stack size attribute from 2MB to 512KB
+  (-s DEFAULT_PTHREAD_STACK_SIZE=512KB) to save memory by default.
 - All ports now install their headers into a shared directory under
   `EM_CACHE`.  This should not really be a user visible change although one
   side effect is that once a give ports is built its headers are then
