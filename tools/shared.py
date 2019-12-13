@@ -181,7 +181,7 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
 
   if hasattr(subprocess, "run"):
-    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+    ret = subprocess.run(cmd, check=check, input=input, encoding='utf-8', *args, **kw)
     logger.debug(debug_text)
     return ret
 

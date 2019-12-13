@@ -610,7 +610,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     # Copy over necessary files for compiling the source
     if main_file is None:
-      with open(filename, 'w') as f:
+      with open(filename, 'w', encoding='utf-8') as f:
         f.write(src)
       final_additional_files = []
       for f in additional_files:
@@ -778,8 +778,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     except subprocess.CalledProcessError as e:
       error = e
 
-    out = open(stdout, 'r').read()
-    err = open(stderr, 'r').read()
+    out = open(stdout, 'r', encoding='utf-8').read()
+    err = open(stderr, 'r', encoding='utf-8').read()
     if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
       err = self.validate_asmjs(err)
     if output_nicerizer:
@@ -1114,7 +1114,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
       kwargs['force_c'] = True
     logger.debug('do_run_from_file: %s' % src)
-    self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
+    src_str = open(src, encoding='utf-8').read()
+    self.do_run(src_str, open(expected_output, encoding='utf-8').read(), *args, **kwargs)
 
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,

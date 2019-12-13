@@ -2773,7 +2773,7 @@ def run(infile, outfile, memfile):
     shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
   # do we need an else, to define it for the bootstrap case?
 
-  outfile_obj = open(outfile, 'w')
+  outfile_obj = open(outfile, 'w', encoding='utf-8')
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(

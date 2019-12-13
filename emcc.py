@@ -3247,14 +3247,14 @@ var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_N
 def module_export_name_substitution():
   global final
   logger.debug('Private module export name substitution with ' + shared.Settings.EXPORT_NAME)
-  src = open(final).read()
+  src = open(final, encoding='utf-8').read()
   final = final + '.module_export_name_substitution.js'
   if shared.Settings.MINIMAL_RUNTIME:
     # In MINIMAL_RUNTIME the Module object is always present to provide the .asm.js/.wasm content
     replacement = shared.Settings.EXPORT_NAME
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
-  with open(final, 'w') as f:
+  with open(final, 'w', encoding='utf-8') as f:
     src = src.replace(shared.JS.module_export_name_substitution_pattern, replacement)
     # For Node.js and other shell environments, create an unminified Module object so that
     # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
