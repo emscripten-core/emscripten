@@ -312,10 +312,10 @@ var LibraryBrowser = {
         var contextAttributes = {
           antialias: false,
           alpha: false,
-#if GL_MIN_FEATURE_LEVEL >= 20
+#if MIN_WEBGL_VERSION >= 2
           majorVersion: 2,
 #else
-#if GL_MAX_FEATURE_LEVEL >= 20 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+#if MAX_WEBGL_VERSION >= 2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
           majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,

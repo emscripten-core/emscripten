@@ -1014,12 +1014,12 @@ var webgl2Funcs = [[0, 'endTransformFeedback pauseTransformFeedback resumeTransf
  [9, 'copyTexSubImage3D'],
  [10, 'blitFramebuffer']];
 
-#if GL_MAX_FEATURE_LEVEL >= 20
+#if MAX_WEBGL_VERSION >= 2
 
-// If user passes -s GL_MAX_FEATURE_LEVEL >= 20 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
+// If user passes -s MAX_WEBGL_VERSION >= 2 -s STRICT=1 but not -lGL (to link in WebGL 1), then WebGL2 library should not
 // be linked in as well.
 if (typeof createGLPassthroughFunctions === 'undefined') {
-  throw 'In order to use WebGL 2 in strict mode with -s GL_MAX_FEATURE_LEVEL=20, you need to link in WebGL support with -lGL!';
+  throw 'In order to use WebGL 2 in strict mode with -s MAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2Funcs);

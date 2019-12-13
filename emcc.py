@@ -1270,7 +1270,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
     if shared.Settings.USE_WEBGL2:
-      shared.Settings.GL_MAX_FEATURE_LEVEL = 20
+      shared.Settings.MAX_WEBGL_VERSION = 2
 
     forced_stdlibs = []
 

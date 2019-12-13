@@ -1802,7 +1802,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_clientside_vertex_arrays_es3(self):
-    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
+    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
@@ -2617,46 +2617,46 @@ Module["preRun"].push(function () {
       ['-s', 'FULL_ES2=1'],
     ]:
       print(opts)
-      self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-lGL'] + opts, expected='0')
+      self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts, expected='0')
 
   @requires_graphics_hardware
   @requires_threads
   def test_webgl2_pthreads(self):
     # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
     # (the testcase doesn't even use threads, but is compiled with thread support).
-    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
 
   def test_webgl2_objects(self):
-    self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   def test_webgl2_ubos(self):
-    self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_garbage_free_entrypoints(self):
-    self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-DTEST_WEBGL2=1'], expected='1')
+    self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'], expected='1')
     self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), expected='1')
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
-    self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
-    self.btest(path_from_root('tests', 'webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl_with_closure(self):
-    self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'GL_MAX_FEATURE_LEVEL=20', '--closure', '1', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'MAX_WEBGL_VERSION=2', '--closure', '1', '-lGL'], expected='0')
 
   # Tests that -s GL_ASSERTIONS=1 and glVertexAttribPointer with packed types works
   @requires_graphics_hardware
   def test_webgl2_packed_types(self):
-    self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'GL_MAX_FEATURE_LEVEL=20', '-s', 'GL_ASSERTIONS=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2', '-s', 'GL_ASSERTIONS=1'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_pbo(self):
-    self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'GL_MAX_FEATURE_LEVEL=20', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
@@ -4293,16 +4293,16 @@ window.close = function() {
   def test_webgl_offscreen_framebuffer_state_restoration(self):
     for args in [
         # full state restoration path on WebGL 1.0
-        ['-s', 'GL_MAX_FEATURE_LEVEL=10', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        ['-s', 'MAX_WEBGL_VERSION=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
         # VAO path on WebGL 1.0
-        ['-s', 'GL_MAX_FEATURE_LEVEL=10'],
-        ['-s', 'GL_MAX_FEATURE_LEVEL=20', '-DTEST_WEBGL2=0'],
+        ['-s', 'MAX_WEBGL_VERSION=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=0'],
         # VAO path on WebGL 2.0
-        ['-s', 'GL_MAX_FEATURE_LEVEL=20', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
         # full state restoration path on WebGL 2.0
-        ['-s', 'GL_MAX_FEATURE_LEVEL=20', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
         # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
-        ['-s', 'GL_MAX_FEATURE_LEVEL=20', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
       ]:
       cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1']
       self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
@@ -4315,7 +4315,7 @@ window.close = function() {
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
   def test_webgl_array_of_structs_uniform(self):
-    self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-s', 'GL_MAX_FEATURE_LEVEL=20'], reference='webgl_array_of_structs_uniform.png')
+    self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2'], reference='webgl_array_of_structs_uniform.png')
 
   # Tests that if a WebGL context is created in a pthread on a canvas that has not been transferred to that pthread, WebGL calls are then proxied to the main thread
   # -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via using Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then OffscreenCanvas is used

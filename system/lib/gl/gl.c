@@ -1819,7 +1819,7 @@ void* emscripten_GetProcAddress(const char *name_) {
 #if LEGACY_GL_EMULATION
   if (!ptr) ptr = emscripten_legacy_gl_emulation_GetProcAddress(name);
 #endif
-#if GL_MAX_FEATURE_LEVEL >= 20
+#if MAX_WEBGL_VERSION >= 2
   if (!ptr) ptr = emscripten_webgl2_get_proc_address(name);
   if (!ptr) ptr = _webgl2_match_ext_proc_address_without_suffix(name);
 #endif
@@ -1831,7 +1831,7 @@ void* emscripten_GetProcAddress(const char *name_) {
 extern void *emscripten_webgl_get_proc_address(const char *name)
 {
   void *ptr = emscripten_webgl1_get_proc_address(name);
-#if GL_MAX_FEATURE_LEVEL >= 20
+#if MAX_WEBGL_VERSION >= 2
   if (!ptr) ptr = emscripten_webgl2_get_proc_address(name);
 #endif
   return ptr;
