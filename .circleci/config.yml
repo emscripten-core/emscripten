@@ -238,7 +238,7 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             python3 tests/runner.py browser
-  test-sockets-chrome:
+  test-upstream-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
       - checkout
@@ -270,7 +270,7 @@ commands:
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
-            python tests/runner.py sockets
+            python3 tests/runner.py sockets
 
 jobs:
   build:
@@ -342,10 +342,6 @@ jobs:
     executor: bionic
     steps:
       - test-chrome
-  test-sockets-chrome:
-    executor: bionic
-    steps:
-      - test-sockets-chrome
   test-ab:
     executor: bionic
     steps:
@@ -478,6 +474,10 @@ jobs:
     executor: bionic
     steps:
       - test-firefox
+  test-upstream-sockets-chrome:
+    executor: bionic
+    steps:
+      - test-upstream-sockets-chrome
   build-upstream-mac:
     macos:
       xcode: "9.0"
@@ -511,9 +511,6 @@ workflows:
           requires:
             - build
       - test-browser-chrome:
-          requires:
-            - build
-      - test-sockets-chrome:
           requires:
             - build
       - test-ab:
@@ -578,6 +575,9 @@ workflows:
           requires:
             - build-upstream-linux
       - test-upstream-browser-firefox:
+          requires:
+            - build-upstream-linux
+      - test-upstream-sockets-chrome:
           requires:
             - build-upstream-linux
       - build-upstream-mac

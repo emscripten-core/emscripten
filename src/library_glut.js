@@ -664,7 +664,7 @@ var LibraryGLUT = {
   glutMainLoop: function() {
     _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
 };

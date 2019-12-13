@@ -226,7 +226,7 @@ this.onmessage = function(e) {
         if (e === 'Canceled!') {
           PThread.threadCancel();
           return;
-        } else if (e === 'SimulateInfiniteLoop' || e === 'pthread_exit') {
+        } else if (e == 'unwind') {
           return;
         } else {
           Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof Module['ExitStatus']) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);

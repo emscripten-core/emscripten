@@ -865,11 +865,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             key += '=1'
 
           # Special handling of browser version targets. A version -1 means that the specific version
-          # is not supported at all. Replace those with Infinity to make it possible to compare e.g.
+          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
           # #if MIN_FIREFOX_VERSION < 68
           try:
             if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=Infinity'
+              key = key.split('=')[0] + '=0x7FFFFFFF'
           except Exception:
             pass
 

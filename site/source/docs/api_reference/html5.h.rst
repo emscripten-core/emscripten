@@ -2392,3 +2392,14 @@ Functions
 .. c:function:: void emscripten_throw_string(const char *utf8String)
 
   Invokes JavaScript throw statement and throws a string.
+
+.. c:function:: void emscripten_unwind_to_js_event_loop(void)
+
+  Throws a JavaScript exception that unwinds the stack and yields execution back to the browser
+  event loop. This function does not return execution back to calling code.
+
+  This function can be useful when porting code that would enter an infinite loop. Instead of
+  actually running an infinite loop, which is not allowed on the Web, we can set up the body of
+  the loop to execute asynchronously (using emscripten_set_main_loop or something else), and call
+  this function to halt execution, which is important as we do not want execution to continue
+  normally.
