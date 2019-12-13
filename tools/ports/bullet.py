@@ -26,8 +26,20 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
-
     src_path = os.path.join(dest_path, 'bullet', 'src')
+    src_path = os.path.join(dest_path, 'bullet', 'src')
+
+    dest_include_path = os.path.join(ports.get_include_dir(), 'bullet')
+    for base, dirs, files in os.walk(src_path):
+      for f in files:
+        if os.path.splitext(f)[1] != '.h':
+          continue
+        fullpath = os.path.join(base, f)
+        relpath = os.path.relpath(fullpath, src_path)
+        target = os.path.join(dest_include_path, relpath)
+        shared.safe_ensure_dirs(os.path.dirname(target))
+        shutil.copyfile(fullpath, target)
+
     includes = []
     for root, dirs, files in os.walk(src_path, topdown=False):
       for dir in dirs:
@@ -47,7 +59,7 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_BULLET == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'bullet', 'bullet', 'src')]
+    args += ['-I' + os.path.join(ports.get_include_dir(), 'bullet')]
   return args
 
 

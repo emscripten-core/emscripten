@@ -1288,6 +1288,7 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME
+  $abortStackOverflow__deps: ['$stackSave'],
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
@@ -3213,6 +3214,7 @@ LibraryManager.library = {
   // arpa/inet.h
   // ==========================================================================
 
+#if PROXY_POSIX_SOCKETS == 0
   // old ipv4 only functions
   inet_addr__deps: ['_inet_pton4_raw'],
   inet_addr: function(ptr) {
@@ -3950,6 +3952,8 @@ LibraryManager.library = {
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a] /* 0x0100000a is reserved */
   },
 
+#endif // PROXY_POSIX_SOCKETS == 0
+
   // pwd.h
 
   getpwnam: function() { throw 'getpwnam: TODO' },
@@ -4006,13 +4010,21 @@ LibraryManager.library = {
                                "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
                                "} else " +
 #endif
+#if ENVIRONMENT_MAY_BE_SHELL
                                "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
-                               "} else if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
+                               "} else " +
+#endif
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+                               "if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return performance['now'](); };\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
+#else
+                               // Modern environment where performance.now() is supported:
+                               "_emscripten_get_now = function() { return performance['now'](); };\n",
+#endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
@@ -4025,11 +4037,16 @@ LibraryManager.library = {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
     if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else {
       return 1000*1000; // milliseconds
     }
+#else
+    // Modern environment where performance.now() is supported:
+    return 1000; // microseconds (1/1000 of a millisecond)
+#endif
   },
 
   emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
@@ -4044,7 +4061,14 @@ LibraryManager.library = {
       || (typeof dateNow !== 'undefined')
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
       || (typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+#else
+      // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
+      || 1
+#endif
+
 #endif
       );
   },

@@ -43,6 +43,7 @@ def get(ports, settings, shared):
 
     final = os.path.join(ports.get_build_dir(), 'bzip2', 'libbz2.a')
     ports.create_lib(final, o_s)
+    ports.install_headers(source_path)
     return final
 
   return [shared.Cache.get('libbz2.a', create, what='port')]
@@ -55,7 +56,6 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_BZIP2 == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'bzip2')]
   return args
 
 

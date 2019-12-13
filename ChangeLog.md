@@ -17,6 +17,34 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- All ports now install their headers into a shared directory under
+  `EM_CACHE`.  This should not really be a user visible change although one
+  side effect is that once a give ports is built its headers are then
+  universally accessible, just like the library is universally available as
+  `-l<name>`.
+- Removed `timestamp` field from mouse, wheel, devicemotion and
+  deviceorientation events. The presence of a `timestamp` on these events was
+  slightly arbitrary, and populating this field caused a small profileable
+  overhead that all users might not care about. It is easy to get a timestamp of
+  an event by calling `emscripten_get_now()` or `emscripten_performance_now()`
+  inside the event handler function of any event.
+- Add fine-grained options for specific legacy browser support,
+  `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
+  `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`
+  option sets all of them to 0, that is, maximal backwards compatibility.
+  Note that going forwards we will use these settings in more places, so if
+  you do need very old legacy browser support, you may need to set either
+  `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
+- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
+  With this change the old deprecated HTML5 API event target lookup behavior is
+  disabled. There is no "Module.canvas" object, no magic "null" default handling,
+  and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
+  of referring to DOM IDs. For more information see:
+  <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
+- WASI API updated to from `wasi_unstable` to `wasi_snapshot_preview1` this
+  is mostly an implementation detail but if you use `WASI_STANDALONE` it means
+  that the output of emscripten now requires a runtime with
+  `wasi_snapshot_preview1` support.
 
 v1.39.4: 12/03/2019
 -------------------

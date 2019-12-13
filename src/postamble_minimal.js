@@ -65,14 +65,14 @@ var imports = {
 #endif
 };
 
-#if ASSERTIONS
-if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
-#endif
-
 #if DECLARE_ASM_MODULE_EXPORTS
 /*** ASM_MODULE_EXPORTS_DECLARES ***/
 #endif
 
+#if ASSERTIONS
+// In synchronous Wasm compilation mode, Module['wasm'] should contain a typed array of the Wasm object data.
+if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+#endif
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   var asm = output.instance.exports;
 #if DECLARE_ASM_MODULE_EXPORTS == 0

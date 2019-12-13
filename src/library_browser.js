@@ -1285,7 +1285,7 @@ var LibraryBrowser = {
     }
 
     if (simulateInfiniteLoop) {
-      throw 'SimulateInfiniteLoop';
+      throw 'unwind';
     }
   },
 
@@ -1352,7 +1352,7 @@ var LibraryBrowser = {
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     noExitRuntime = true;
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
   emscripten_force_exit__proxy: 'sync',

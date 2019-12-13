@@ -789,7 +789,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return '-O0' not in opts
 
   def need_llvm_debug_info(options):
-    return options.debug_level >= 3 or shared.Settings.CYBERDWARF
+    return options.debug_level >= 3 or shared.Settings.CYBERDWARF or shared.Settings.FULL_DWARF
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
@@ -863,6 +863,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # If not = is specified default to 1
           if '=' not in key:
             key += '=1'
+
+          # Special handling of browser version targets. A version -1 means that the specific version
+          # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+          # #if MIN_FIREFOX_VERSION < 68
+          try:
+            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
+              key = key.split('=')[0] + '=0x7FFFFFFF'
+          except Exception:
+            pass
+
           settings_changes.append(key)
           newargs[i] = newargs[i + 1] = ''
           if key == 'WASM_BACKEND=1':
@@ -1108,7 +1118,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.WASM_OBJECT_FILES = 0
 
     if shared.Settings.STRICT:
-      shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
       shared.Settings.AUTO_ARCHIVE_INDEXES = 0
@@ -1207,12 +1216,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     link_flags = [f for f in link_flags if is_supported_link_flag(f[1])]
 
+    if shared.Settings.MINIMAL_RUNTIME:
+      # Remove the default exported functions 'memcpy', 'memset', 'malloc', 'free', etc. - those should only be linked in if used
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
+
     if shared.Settings.USE_PTHREADS:
       # These runtime methods are called from worker.js
       shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
+      if shared.Settings.MINIMAL_RUNTIME:
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
+      else:
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
 
     if shared.Settings.MODULARIZE_INSTANCE:
       shared.Settings.MODULARIZE = 1
@@ -1232,6 +1248,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
       shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
       shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
+
+      # Support all old browser versions
+      shared.Settings.MIN_FIREFOX_VERSION = 0
+      shared.Settings.MIN_SAFARI_VERSION = 0
+      shared.Settings.MIN_IE_VERSION = 0
+      shared.Settings.MIN_EDGE_VERSION = 0
+      shared.Settings.MIN_CHROME_VERSION = 0
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM and not shared.Settings.WASM2JS:
@@ -1504,18 +1527,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if options.shell_path == shared.path_from_root('src', 'shell.html'):
         options.shell_path = shared.path_from_root('src', 'shell_minimal_runtime.html')
 
-      # Remove the default exported functions 'memcpy', 'memset', 'malloc', 'free', etc. - those should only be linked in if used
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
       if shared.Settings.ASSERTIONS and shared.Settings.MINIMAL_RUNTIME:
         # In ASSERTIONS-builds, functions UTF8ArrayToString() and stringToUTF8Array() (which are not JS library functions), both
         # use warnOnce(), which in MINIMAL_RUNTIME is a JS library function, so explicitly have to mark dependency to warnOnce()
         # in that case. If string functions are turned to library functions in the future, then JS dependency tracking can be
         # used and this special directive can be dropped.
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
-
-      # Always use the new HTML5 API event target lookup rules
-      shared.Settings.DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1
 
       # Require explicit -lfoo.js flags to link with JS libraries.
       shared.Settings.AUTO_JS_LIBRARIES = 0
@@ -1783,9 +1800,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.ALLOW_MEMORY_GROWTH, 'memory growth is not supported with shared asm.js modules'
 
     if shared.Settings.MINIMAL_RUNTIME:
-      if shared.Settings.ALLOW_MEMORY_GROWTH:
-        logging.warning('-s ALLOW_MEMORY_GROWTH=1 is not yet supported with -s MINIMAL_RUNTIME=1')
-
       if shared.Settings.EMTERPRETIFY:
         exit_with_error('-s EMTERPRETIFY=1 is not supported with -s MINIMAL_RUNTIME=1')
 
@@ -1830,10 +1844,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.tracing:
       if shared.Settings.ALLOW_MEMORY_GROWTH:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
-
-    # MINIMAL_RUNTIME always use separate .asm.js file for best performance and memory usage
-    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.WASM:
-      options.separate_asm = True
 
     if shared.Settings.STANDALONE_WASM:
       if not shared.Settings.WASM_BACKEND:
@@ -2654,6 +2664,12 @@ def parse_args(newargs):
           # emit line tables, which can be represented in source maps
           newargs[i] = '-gline-tables-only'
       else:
+        if requested_level.startswith('force_dwarf'):
+          # Force clang to generate full debug info using -g. Set the FULL_DWARF
+          # setting to avoid stripping it out later.
+          newargs[i] = '-g'
+          shared.Settings.FULL_DWARF = 1
+          shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -3486,6 +3502,7 @@ def minify_html(filename, options):
   size_before = os.path.getsize(filename)
   start_time = time.time()
   run_process(shared.NODE_JS + [shared.path_from_root('third_party', 'html-minifier', 'cli.js'), filename, '-o', filename] + opts)
+
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before
