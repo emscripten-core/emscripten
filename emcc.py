@@ -1818,6 +1818,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.WarningManager.warn('ALMOST_ASM')
         shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
 
+    if shared.Settings.NODE_CODE_CACHING:
+      if shared.Settings.WASM_ASYNC_COMPILATION:
+        exit_with_error('NODE_CODE_CACHING requires sync compilation (WASM_ASYNC_COMPILATION=0)')
+      if not shared.Settings.target_environment_may_be('node'):
+        exit_with_error('NODE_CODE_CACHING only works in node, but target environments do not include it')
+
     # safe heap in asm.js uses the js optimizer (in wasm-only mode we can use binaryen)
     if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
       if not options.js_opts:
