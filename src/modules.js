@@ -445,8 +445,7 @@ function exportRuntime() {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    var threadExports = ['PThread', 'ExitStatus', 'tempDoublePtr', '_pthread_self',
-    'tempDoublePtr'];
+    var threadExports = ['PThread', 'ExitStatus', 'tempDoublePtr', '_pthread_self'];
     if (WASM) {
       threadExports.push('wasmMemory');
     }
