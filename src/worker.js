@@ -11,9 +11,6 @@
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
-#if !WASM_BACKEND && !MODULARIZE
-var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
-#endif
 
 var noExitRuntime;
 
@@ -86,11 +83,6 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
-#if !WASM_BACKEND
-      // Initialize the thread-local field(s):
-      Module['tempDoublePtr'] = e.data.tempDoublePtr;
-#endif
-
       // Initialize the global "process"-wide fields:
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
       Module['DYNAMICTOP_PTR'] = e.data.DYNAMICTOP_PTR;

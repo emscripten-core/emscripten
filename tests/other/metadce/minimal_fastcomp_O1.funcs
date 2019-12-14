@@ -6,7 +6,6 @@ $_malloc
 $_memcpy
 $_memset
 $_sbrk
-$establishStackSpace
 $stackAlloc
 $stackRestore
 $stackSave
