@@ -4666,6 +4666,17 @@ window.close = function() {
     self.assertExists('test.js')
     self.assertNotExists('test.worker.js')
 
+  # Tests that pthreads code works as intended in a Worker. That is, a pthreads-using
+  # program can run either on the main thread (normal tests) or when we start it in
+  # a Worker in this test (in that case, both the main application thread and the worker threads
+  # are all inside Web Workers).
+  @requires_threads
+  def test_pthreads_started_in_worker(self):
+    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp')).read()))
+    self.compile_btest(['src.cpp', '-o', 'test.js', '-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    create_test_file('test.html', '<script src="test.js"></script>')
+    self.run_browser('test.html', None, '/report_result?0')
+
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
     create_test_file('page.c', self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
