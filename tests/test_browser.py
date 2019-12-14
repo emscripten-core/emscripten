@@ -4674,7 +4674,11 @@ window.close = function() {
   def test_pthreads_started_in_worker(self):
     create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp')).read()))
     self.compile_btest(['src.cpp', '-o', 'test.js', '-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
-    create_test_file('test.html', '<script src="test.js"></script>')
+    create_test_file('test.html', '''
+      <script>
+        new Worker('test.js');
+      </script>
+    ''')
     self.run_browser('test.html', None, '/report_result?0')
 
   def test_access_file_after_heap_resize(self):
