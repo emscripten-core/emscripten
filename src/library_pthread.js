@@ -433,6 +433,7 @@ var LibraryPThread = {
             err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
           };
 
+#if ENVIRONMENT_MAY_BE_NODE
           if (ENVIRONMENT_HAS_NODE) {
             worker.on('message', function(data) {
               worker.onmessage({ data: data });
@@ -444,6 +445,7 @@ var LibraryPThread = {
               console.log('worker exited - TODO: update the worker queue?');
             });
           }
+#endif
         }(worker));
       }  // for each worker
     },
