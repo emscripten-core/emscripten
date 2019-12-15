@@ -1390,6 +1390,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       else:
         shared.Settings.GLOBAL_BASE = 8
 
+    if shared.Settings.SAFE_HEAP:
+      # SAFE_HEAP check includes calling emscripten_get_sbrk_ptr().
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_get_sbrk_ptr']
+
     if shared.Settings.USE_PTHREADS:
       if shared.Settings.USE_PTHREADS == 2:
         exit_with_error('USE_PTHREADS=2 is not longer supported')
