@@ -8131,8 +8131,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
-    if self.get_setting('SAFE_HEAP'):
-      return self.skipTest('TODO: SAFE_HEAP in minimal runtime')
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
