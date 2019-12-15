@@ -177,34 +177,23 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      Module['applyStackValues'](top, top, max);
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
       assert(top != 0);
+      assert(e.data.stackSize > 0);
 #if WASM_BACKEND
-      assert(max === e.data.stackBase);
       assert(top > max);
 #else
-      assert(max > e.data.stackBase);
       assert(max > top);
-      assert(e.data.stackBase === top);
 #endif
 #endif
-      // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
-      Module['establishStackSpace'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
-#if MODULARIZE
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-      Module['establishStackSpaceInJsModule'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
-#endif
+      Module['establishStackSpaceInJsModule'](top, max);
 #if WASM_BACKEND
       Module['_emscripten_tls_init']();
 #endif
-#if STACK_OVERFLOW_CHECK
-      Module['writeStackCookie']();
-#endif
-
       PThread.receiveObjectTransfer(e.data);
       PThread.setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
 
