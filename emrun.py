@@ -1633,6 +1633,7 @@ def run():
       # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
       if browser_exe == 'cmd':
         url = url.replace('&', '^&')
+      url = url.replace('0.0.0.0', 'localhost')
       browser += browser_args + [url]
 
   if options.kill_on_start:
@@ -1658,7 +1659,7 @@ def run():
   if processname_killed_atexit == 'firefox' and options.safe_firefox_profile and not options.no_browser and not options.android:
     profile_dir = create_emrun_safe_firefox_profile()
 
-    browser += ['-no-remote', '-profile', profile_dir.replace('\\', '/')]
+    browser += ['-no-remote', '--profile', profile_dir.replace('\\', '/')]
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
