@@ -136,9 +136,6 @@ this.onmessage = function(e) {
         Module = {{{ EXPORT_NAME }}}.default(Module);
         PThread = Module['PThread'];
         HEAPU32 = Module['HEAPU32'];
-#if !ASMFS
-        if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
-#endif
         postMessage({ cmd: 'loaded' });
       });
 #else
@@ -154,10 +151,6 @@ this.onmessage = function(e) {
 #endif
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
-
-#if !ASMFS
-      if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
-#endif
       postMessage({ cmd: 'loaded' });
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
