@@ -2477,7 +2477,7 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2487,18 +2487,19 @@ void *getBindBuffer() {
       args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:
         browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and '-profile' in browser_args:
+        if 'firefox' in browser_path and '--profile' in browser_args:
           # emrun uses its own -profile, strip it out
           parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
-          parser.add_argument('-profile')
+          parser.add_argument('--profile')
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
     for args in [
         args_base,
-        args_base + ['--no_private_browsing', '--port', '6941']
+        args_base + ['--private_browsing', '--port', '6941']
     ]:
       args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
+      print(' '.join(args))
       proc = run_process(args, check=False)
       stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
       stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
