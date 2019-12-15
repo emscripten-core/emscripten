@@ -8137,13 +8137,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
 
-  # Tests that -s MINIMAL_RUNTIME=1 works well
+  # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_hello_world(self):
-    self.set_setting('MINIMAL_RUNTIME', 1)
-    self.maybe_closure()
-    self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
+    for args  in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1']]:
+      self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
+      self.maybe_closure()
+      self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_emterpreter
