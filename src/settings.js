@@ -1567,6 +1567,24 @@ var SUPPORT_ERRNO = 1;
 // be useful for really small programs)
 var MINIMAL_RUNTIME = 0;
 
+// If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly compilation,
+// where WebAssembly module is compiled already while it is being downloaded.
+// In order for this to work, the web server MUST properly serve the .wasm file
+// with a HTTP response header "Content-Type: application/wasm". If this HTTP
+// header is not present, e.g. Firefox 73 will fail with an error message
+//    TypeError: Response has unsupported MIME type
+// and Chrome 78 will fail with an error message
+//    Uncaught (in promise) TypeError: Failed to execute 'compile' on
+//    'WebAssembly': Incorrect response MIME type. Expected 'application/wasm'.
+// If set to 0 (default), streaming WebAssembly compilation is disabled, which
+// means that the WebAssembly Module will first be downloaded fully, and only
+// then compilation starts.
+// For large .wasm modules and production environments, this should be set to 1
+// for faster startup speeds. However this setting is disabled by default
+// since it requires server side configuration and for really small pages there
+// is no observable difference (also has a ~100 byte impact to code size)
+var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
+
 // If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
 // enable this. If you are not using dynamic allocations, can set this to 0 to
 // save code size. This setting is ignored when building with -s
