@@ -1540,7 +1540,10 @@ def run():
     if file_to_serve == '.' or file_to_serve_is_url:
       serve_dir = os.path.abspath('.')
     else:
-     serve_dir = file_to_serve if (file_to_serve.endswith('/') or file_to_serve.endswith('\\') or os.path.isdir(file_to_serve)) else os.path.dirname(os.path.abspath(file_to_serve))
+      if file_to_serve.endswith('/') or file_to_serve.endswith('\\') or os.path.isdir(file_to_serve):
+        serve_dir = file_to_serve
+      else:
+        serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
   if file_to_serve_is_url:
     url = file_to_serve
   else:
