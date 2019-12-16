@@ -35,7 +35,11 @@
  */
 
 var LibraryGLFW = {
-  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser'],
+  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser'
+#if FILESYSTEM
+    , '$FS'
+#endif
+  ],
   $GLFW: {
 
     Window: function(id, width, height, title, monitor, share) {
