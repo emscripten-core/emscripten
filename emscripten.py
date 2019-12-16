@@ -2414,7 +2414,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG, libraryfile):
     args.append('--dwarf')
 
   if shared.Settings.MAIN_MODULE and libraryfile:
-    args.append('--pass-arg=library-file@%s' % libraryfile)
+    args.append('--pass-arg=js-symbols@%s' % libraryfile)
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
                                                 outfile=wasm,
