@@ -8349,7 +8349,7 @@ int main() {
       text = re.sub(r' +', ' ', text)
       # print("text: %s" % text)
       i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
-      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
