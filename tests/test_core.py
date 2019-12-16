@@ -8158,6 +8158,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.maybe_closure()
       self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_safe_heap(self):
+    self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SAFE_HEAP=1']
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
+
   # Tests global initializer with -s MINIMAL_RUNTIME=1
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
