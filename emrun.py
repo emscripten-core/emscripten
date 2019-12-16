@@ -354,10 +354,14 @@ def is_browser_process_alive():
     return True
 
   if current_browser_process_pids is not None:
-    import psutil
-    for p in current_browser_process_pids:
-      if psutil.pid_exists(p['pid']):
-        return True
+    try:
+      import psutil
+      for p in current_browser_process_pids:
+        if psutil.pid_exists(p['pid']):
+          return True
+    except Exception:
+      # Fail gracefully if psutil not available
+      return True
 
   return False
 
@@ -1373,8 +1377,10 @@ def list_processes_by_name(exe_full_path):
         if pinfo['exe'].lower().replace('\\', '/') == exe_full_path.lower().replace('\\', '/'):
           pids.append(pinfo)
       except Exception:
+        # Fail gracefully if unable to iterate over a specific process
         pass
   except Exception:
+    # Fail gracefully if psutil not available
     pass
 
   return pids
