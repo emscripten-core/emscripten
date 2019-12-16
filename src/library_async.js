@@ -900,126 +900,118 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+
   $Fibers: {
-    id: 0,  // last allocated fiber ID
-    allocate: function(fiber) {
-      var id = ++Fibers.id;
-      Fibers[id] = fiber;
-      return id;
-    },
     newFiber: null,
     finishContextSwitch: function() {
       var newFiber = Fibers.newFiber;
-      var asyncifyData = newFiber.asyncifyData
+      var asyncifyData = {{{ makeGetValue('newFiber', 0, 'i32') }}};
 
 #if ASSERTIONS
       assert(!asyncifyData || Asyncify.dataInfo[asyncifyData] !== undefined);
 #endif
 
       Asyncify.currData = asyncifyData;
-      STACK_MAX = newFiber.stackMax;
-      STACK_BASE = newFiber.stackBase;
-      stackRestore(newFiber.stackTop);
+      STACK_BASE = {{{ makeGetValue('newFiber', 4, 'i32') }}};
+      STACK_MAX = {{{ makeGetValue('newFiber', 8, 'i32') }}};
+      stackRestore({{{ makeGetValue('newFiber', 12, 'i32') }}});
 
       noExitRuntime = false;
 
-      if (newFiber.asyncifyData === 0) {
+      if (asyncifyData === 0) {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
-        newFiber.asyncifyData = Asyncify.allocateDataStorage();
-        {{{ makeDynCall('vi') }}}(newFiber.entryPoint, newFiber.userData);
+        asyncifyData = Asyncify.allocateDataStorage();
+        {{{ makeSetValue('newFiber', 0, 'asyncifyData', 'i32') }}};
+
+        var entryPoint = {{{ makeGetValue('newFiber', 16, 'i32') }}};
+        var userData = {{{ makeGetValue('newFiber', 20, 'i32') }}};
+        {{{ makeDynCall('vi') }}}(entryPoint, userData);
       } else {
         Asyncify.state = Asyncify.State.Rewinding;
         Module['_asyncify_start_rewind'](asyncifyData);
         Module['asm'][Asyncify.dataInfo[asyncifyData].bottomOfCallStack]();
       }
     },
-    // the rest of this object is an id -> fiber object mapping
   },
 
   emscripten_fiber_create__sig: 'iiiii',
-  emscripten_fiber_create__deps: ['$Fibers'],
+  emscripten_fiber_create__deps: ['malloc'],
   emscripten_fiber_create: function(entryPoint, userData, stack, stackSize) {
-    return Fibers.allocate({
-      asyncifyData: 0,
-      stackBase: stack + stackSize,
-      stackMax: stack,
-      stackTop: stack + stackSize,
-      entryPoint: entryPoint,
-      userData: userData,
-    });
+    var fiber = _malloc(24);
+    var stackBase = stack + stackSize;
+
+    {{{ makeSetValue('fiber',  0, 0, 'i32') }}};
+    {{{ makeSetValue('fiber',  4, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber',  8, 'stack', 'i32') }}};
+    {{{ makeSetValue('fiber', 12, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber', 16, 'entryPoint', 'i32') }}};
+    {{{ makeSetValue('fiber', 20, 'userData', 'i32') }}};
+    return fiber;
   },
 
   emscripten_fiber_create_from_current_context__sig: 'i',
-  emscripten_fiber_create_from_current_context__deps: ['$Fibers'],
+  emscripten_fiber_create_from_current_context__deps: ['malloc'],
   emscripten_fiber_create_from_current_context: function() {
-    return Fibers.allocate({
-      asyncifyData: Asyncify.allocateDataStorage(),
-      stackBase: STACK_BASE,
-      stackMax: STACK_MAX,
-
-      // NOTE: We don't need to initialize the other fields, because swapping
-      // will overwrite them anyway. We can not swap into this fiber without
-      // swapping out of it first anyway, because we'd need a continuation
-      // function.
-      //
-      // It may be possible to support this by doing an Asyncify.handleSleep
-      // here just to capture the wakeUp callback and Asyncify data, but I'm not
-      // sure if it's a useful thing to support.
-      stackTop: 0,
-      entryPoint: 0,
-      userData: 0,
-    });
+    var fiber = _malloc(24);
+    var asyncifyData = Asyncify.allocateDataStorage();
+    {{{ makeSetValue('fiber',  0, 'asyncifyData', 'i32') }}};
+    {{{ makeSetValue('fiber',  4, 'STACK_BASE', 'i32') }}};
+    {{{ makeSetValue('fiber',  8, 'STACK_MAX', 'i32') }}};
+    return fiber;
   },
 
   emscripten_fiber_recycle__sig: 'viii',
-  emscripten_fiber_recycle__deps: ["$Fibers"],
-  emscripten_fiber_recycle: function(fiberId, entryPoint, userData) {
-    var fiber = Fibers[fiberId];
+  emscripten_fiber_recycle__deps: ["$Asyncify"],
+  emscripten_fiber_recycle: function(fiber, entryPoint, userData) {
+    var asyncifyData = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
-    // this may be undefined when asyncifyData == 0, or when recycling the 'current' fiber
-    if (Asyncify.dataInfo[fiber.asyncifyData] !== undefined) {
-      Asyncify.freeData(fiber.asyncifyData);
+    if (asyncifyData) {
+      Asyncify.freeData(asyncifyData);
     }
 
-    fiber.asyncifyData = 0;
-    fiber.stackTop = fiber.stackBase;
-    fiber.entryPoint = entryPoint;
-    fiber.userData = userData;
+    var stackBase = {{{ makeGetValue('fiber', 4, 'i32') }}};
+
+    {{{ makeSetValue('fiber',  0, 0, 'i32') }}};
+    {{{ makeSetValue('fiber', 12, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber', 16, 'entryPoint', 'i32') }}};
+    {{{ makeSetValue('fiber', 20, 'userData', 'i32') }}};
   },
 
   emscripten_fiber_destroy__sig: 'vi',
-  emscripten_fiber_destroy__deps: ['$Asyncify', '$Fibers'],
-  emscripten_fiber_destroy: function(fiberId) {
-    var fiber = Fibers[fiberId];
+  emscripten_fiber_destroy__deps: ['$Asyncify', 'free'],
+  emscripten_fiber_destroy: function(fiber) {
+    var asyncifyData = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
-    // this may be undefined when asyncifyData == 0, or when recycling the 'current' fiber
-    if (Asyncify.dataInfo[fiber.asyncifyData] !== undefined) {
-      Asyncify.freeData(fiber.asyncifyData);
+    if (asyncifyData) {
+      Asyncify.freeData(asyncifyData);
     }
 
-    delete Fibers[fiberId];
+    _free(fiber);
   },
 
   emscripten_fiber_swap__sig: 'vii',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
-  emscripten_fiber_swap: function(oldFiberId, newFiberId) {
-    var oldFiber = Fibers[oldFiberId];
-
+  emscripten_fiber_swap: function(oldFiber, newFiber) {
     noExitRuntime = true;
     if (Asyncify.state === Asyncify.State.Normal) {
       Asyncify.state = Asyncify.State.Unwinding;
-      Asyncify.initializeData(oldFiber.asyncifyData);
-      Asyncify.currData = oldFiber.asyncifyData;
-      Module['_asyncify_start_unwind'](Asyncify.currData);
-      oldFiber.stackTop = stackSave();
+
+      var asyncifyData = {{{ makeGetValue('oldFiber', 0, 'i32') }}};
+      Asyncify.initializeData(asyncifyData);
+      Asyncify.currData = asyncifyData;
+
+      Module['_asyncify_start_unwind'](asyncifyData);
+
+      var stackTop = stackSave();
+      {{{ makeSetValue('oldFiber', 12, 'stackTop', 'i32') }}};
 
 #if ASSERTIONS
       assert(!Asyncify.trampoline);
 #endif
 
-      Fibers.newFiber = Fibers[newFiberId];
+      Fibers.newFiber = newFiber;
       Asyncify.trampoline = Fibers.finishContextSwitch;
     } else {
 #if ASSERTIONS
