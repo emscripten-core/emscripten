@@ -285,8 +285,9 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
 
     # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
     post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+    receiving = ''
 
-  return post
+  return post, receiving
 
 
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
@@ -416,8 +417,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   post = apply_static_code_hooks(post)
 
   if shared.Settings.MINIMAL_RUNTIME:
-    post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], shared.Settings.MODULE_EXPORTS, receiving)
-    receiving = ''
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], shared.Settings.MODULE_EXPORTS, receiving)
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
@@ -2274,8 +2274,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   receiving = create_receiving_wasm(exports)
 
   if shared.Settings.MINIMAL_RUNTIME:
-    post = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
-    receiving = ''
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
 
   module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
