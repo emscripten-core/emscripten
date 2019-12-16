@@ -694,23 +694,34 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 
-    allocateData: function() {
+    allocateDataStorage: function() {
       // An asyncify data structure has two fields: the
       // current stack pos, and the max pos.
-      var ptr = _malloc(Asyncify.StackSize + 8);
+      // var ptr = _malloc(Asyncify.StackSize + 8);
+      var data = _malloc(Asyncify.StackSize + 8);
+      Asyncify.dataInfo[data] = {
+        bottomOfCallStack: null,
+      };
+      return data;
+    },
+
+    allocateData: function() {
+      var data = Asyncify.allocateDataStorage();
+      Asyncify.initializeData(data);
+      return data;
+    },
+
+    initializeData: function(ptr) {
       HEAP32[ptr >> 2] = ptr + 8;
       HEAP32[ptr + 4 >> 2] = ptr + 8 + Asyncify.StackSize;
       var bottomOfCallStack = Asyncify.exportCallStack[0];
 #if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: allocateData, bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+      err('ASYNCIFY: initializeData('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
-      Asyncify.dataInfo[ptr] = {
-        bottomOfCallStack: bottomOfCallStack
-      };
+      Asyncify.dataInfo[ptr].bottomOfCallStack = bottomOfCallStack;
 #if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: dataInfo after allocateData('+ptr+'):', Asyncify.dataInfo);
+      err('ASYNCIFY: dataInfo after initializeData('+ptr+'):', Asyncify.dataInfo);
 #endif
-      return ptr;
     },
 
     freeData: function(ptr) {
@@ -896,6 +907,34 @@ mergeInto(LibraryManager.library, {
       Fibers[id] = fiber;
       return id;
     },
+    newFiber: null,
+    finishContextSwitch: function() {
+      var newFiber = Fibers.newFiber;
+      var asyncifyData = newFiber.asyncifyData
+
+#if ASSERTIONS
+      assert(!asyncifyData || Asyncify.dataInfo[asyncifyData] !== undefined);
+#endif
+
+      Asyncify.currData = asyncifyData;
+      STACK_MAX = newFiber.stackMax;
+      STACK_BASE = newFiber.stackBase;
+      stackRestore(newFiber.stackTop);
+
+      noExitRuntime = false;
+
+      if (newFiber.asyncifyData === 0) {
+#if STACK_OVERFLOW_CHECK
+        writeStackCookie();
+#endif
+        newFiber.asyncifyData = Asyncify.allocateDataStorage();
+        {{{ makeDynCall('vi') }}}(newFiber.entryPoint, newFiber.userData);
+      } else {
+        Asyncify.state = Asyncify.State.Rewinding;
+        Module['_asyncify_start_rewind'](asyncifyData);
+        Module['asm'][Asyncify.dataInfo[asyncifyData].bottomOfCallStack]();
+      }
+    },
     // the rest of this object is an id -> fiber object mapping
   },
 
@@ -907,12 +946,8 @@ mergeInto(LibraryManager.library, {
       stackBase: stack + stackSize,
       stackMax: stack,
       stackTop: stack + stackSize,
-      continuation: function() {
-#if STACK_OVERFLOW_CHECK
-        writeStackCookie();
-#endif
-        {{{ makeDynCall('vi') }}}(entryPoint, userData);
-      },
+      entryPoint: entryPoint,
+      userData: userData,
     });
   },
 
@@ -920,7 +955,7 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_create_from_current_context__deps: ['$Fibers'],
   emscripten_fiber_create_from_current_context: function() {
     return Fibers.allocate({
-      asyncifyData: 0,
+      asyncifyData: Asyncify.allocateDataStorage(),
       stackBase: STACK_BASE,
       stackMax: STACK_MAX,
 
@@ -933,7 +968,8 @@ mergeInto(LibraryManager.library, {
       // here just to capture the wakeUp callback and Asyncify data, but I'm not
       // sure if it's a useful thing to support.
       stackTop: 0,
-      continuation: null,
+      entryPoint: 0,
+      userData: 0,
     });
   },
 
@@ -949,12 +985,8 @@ mergeInto(LibraryManager.library, {
 
     fiber.asyncifyData = 0;
     fiber.stackTop = fiber.stackBase;
-    fiber.continuation = function() {
-#if STACK_OVERFLOW_CHECK
-      writeStackCookie();
-#endif
-      {{{ makeDynCall('vi') }}}(entryPoint, userData);
-    };
+    fiber.entryPoint = entryPoint;
+    fiber.userData = userData;
   },
 
   emscripten_fiber_destroy__sig: 'vi',
@@ -974,40 +1006,31 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiberId, newFiberId) {
     var oldFiber = Fibers[oldFiberId];
-    var newFiber = Fibers[newFiberId];
 
-    Asyncify.handleSleep(function(wakeUp) {
-      Asyncify.afterUnwind = function() {
-        /*
-         * save caller context
-         */
-
-        oldFiber.asyncifyData = Asyncify.currData;
-        oldFiber.stackTop = stackSave();
-        oldFiber.continuation = wakeUp;
+    noExitRuntime = true;
+    if (Asyncify.state === Asyncify.State.Normal) {
+      Asyncify.state = Asyncify.State.Unwinding;
+      Asyncify.initializeData(oldFiber.asyncifyData);
+      Asyncify.currData = oldFiber.asyncifyData;
+      Module['_asyncify_start_unwind'](Asyncify.currData);
+      oldFiber.stackTop = stackSave();
 
 #if ASSERTIONS
-        assert(!Asyncify.trampoline);
+      assert(!Asyncify.trampoline);
 #endif
 
-        Asyncify.trampoline = function() {
-          /*
-           * restore callee context
-           */
-
-          Asyncify.currData = newFiber.asyncifyData;
+      Fibers.newFiber = Fibers[newFiberId];
+      Asyncify.trampoline = Fibers.finishContextSwitch;
+    } else {
 #if ASSERTIONS
-          assert(!Asyncify.currData || Asyncify.dataInfo[Asyncify.currData] !== undefined);
+      assert(Asyncify.state === Asyncify.State.Rewinding);
 #endif
-          STACK_MAX = newFiber.stackMax;
-          STACK_BASE = newFiber.stackBase;
-          stackRestore(newFiber.stackTop);
 
-          noExitRuntime = false;
-          newFiber.continuation();
-        };
-      };
-    }, true  /* fake non-yielding "sleep" */);
+      Asyncify.state = Asyncify.State.Normal;
+      Module['_asyncify_stop_rewind']();
+      Asyncify.currData = null;
+      noExitRuntime = false;
+    }
   },
 
   emscripten_coroutine_create: function() {
