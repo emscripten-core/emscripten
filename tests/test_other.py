@@ -10177,6 +10177,10 @@ int main() {
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_output_to_nowhere(self):
+    nowhere = '/dev/null' if not WINDOWS else 'NUL'
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
+
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
   # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
