@@ -1254,7 +1254,7 @@ var LibraryBrowser = {
       }
 #endif
 
-      if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
+      if (Browser.mainLoop.method === 'timeout' && Module.ctx && !document.hidden) {
         err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
