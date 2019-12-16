@@ -1803,6 +1803,9 @@ int f() {
     run_process([PYTHON, EMCC, 'main.cpp'])
     self.assertContained('1234, 1234, 4321\n', run_js('a.out.js'))
 
+  def test_sdl2_mixer(self):
+    Building.emcc(path_from_root('tests', 'sdl2_mixer.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
+
   def test_libpng(self):
     shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
     Building.emcc(path_from_root('tests', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')

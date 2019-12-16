@@ -1553,8 +1553,10 @@ class Ports(object):
     if target:
       dest = os.path.join(dest, target)
       shared.safe_ensure_dirs(dest)
-    for f in glob.glob(os.path.join(src_dir, pattern)):
-      logger.debug(os.path.join(dest, os.path.basename(f)))
+    matches = glob.glob(os.path.join(src_dir, pattern))
+    assert matches, "no headers found to install in %s" % src_dir
+    for f in matches:
+      logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod
