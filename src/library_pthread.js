@@ -1329,19 +1329,18 @@ var LibraryPThread = {
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
-#if MODULARIZE
-  $establishStackSpaceInJsModule: function(stackBase, stackMax) {
-    STACK_BASE = stackBase;
-#if WASM_BACKEND
-    // The stack grows downwards
-    STACKTOP = stackMax;
-    STACK_MAX = stackBase;
-#else
-    STACKTOP = stackBase;
+  $establishStackSpaceInJsModule: function(stackTop, stackMax) {
+    STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
+#if SAFE_STACK
+    ___set_stack_limit(STACK_MAX);
 #endif
+#if STACK_OVERFLOW_CHECK
+    writeStackCookie();
+#endif
+    // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
+    establishStackSpace(stackTop, stackMax);
   },
-#endif
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
