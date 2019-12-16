@@ -1451,12 +1451,19 @@ Functions
 
     Switches the execution context to the one represented by `new_fiber`.
 
-    `old_fiber` is updated with the current context just before the switch, such
-    as that switching back into it via another `emscripten_fiber_swap` would
-    appear to return from the original `emscripten_fiber_swap`.
+    `old_fiber` is partially updated with the current context just before the
+    switch, such as that switching back into it via another
+    `emscripten_fiber_swap` would appear to return from the original
+    `emscripten_fiber_swap`.
 
     If `old_fiber` == `new_fiber` or any of them is `NULL`, the behavior is
     undefined.
+
+ .. warning:: The swap operation invalidates `new_fiber`'s context. It must be
+    updated with another call to `emscripten_fiber_swap` (this time, with the
+    fiber passed as the `old_fiber` argument) before you can switch into the
+    same fiber instance again. Copying the context completely is currently not
+    supported.
 
 .. c:function:: void emscripten_fiber_recycle(emscripten_fiber fiber, em_arg_callback_func func, void *arg)
 
