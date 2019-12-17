@@ -442,9 +442,18 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
-// Enables WebGL2 native functions. This mode will also create a WebGL2
-// context by default if no version is specified.
+// Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 var USE_WEBGL2 = 0;
+
+// Specifies the lowest WebGL version to target. Pass -s MIN_WEBGL_VERSION=1
+// to enable targeting WebGL 1, and -s MIN_WEBGL_VERSION=2 to drop support
+// for WebGL 1.0
+var MIN_WEBGL_VERSION = 1;
+
+// Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
+// to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
+// will default to creating a WebGL 2 context if no version is specified.
+var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
 // applications that use WebGL 1/GLES 2 can initialize a WebGL 2/GLES3 context,

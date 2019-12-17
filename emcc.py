@@ -1269,6 +1269,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # stb_image 2.x need to have STB_IMAGE_IMPLEMENTATION defined to include the implementation when compiling
       newargs.append('-DSTB_IMAGE_IMPLEMENTATION')
 
+    if shared.Settings.USE_WEBGL2:
+      shared.Settings.MAX_WEBGL_VERSION = 2
+
     forced_stdlibs = []
 
     if shared.Settings.ASMFS and final_suffix in JS_CONTAINING_ENDINGS:
