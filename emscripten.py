@@ -2671,9 +2671,15 @@ asm["%(e)s"] = function() {%(assertions)s
       if shared.Settings.MINIMAL_RUNTIME:
         module_assign = ''
       else:
-        module_assign = 'Module[__exportedFunc] = '
+        module_assign = 'Module[asmjs_mangle(__exportedFunc)] = '
 
-      receiving.append('for(var __exportedFunc in asm) ' + global_object + '[__exportedFunc] = ' + module_assign + 'asm[__exportedFunc];')
+      receiving.append('''
+  function asmjs_mangle(x) {
+    var unmangledSymbols = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', '__growWasmMemory', '__heap_base', '__data_end'];
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  }
+''')
+      receiving.append('for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];')
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
