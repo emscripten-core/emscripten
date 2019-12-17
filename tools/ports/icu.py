@@ -29,6 +29,8 @@ def get(ports, settings, shared):
 
     final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'icu4c', 'source', 'common'), final, [os.path.join(dest_path, 'icu4c', 'source', 'common')], ['--std=c++11', '-DU_COMMON_IMPLEMENTATION=1'])
+
+    ports.install_header_dir(os.path.join(dest_path, 'icu4c', 'source', 'common', 'unicode'))
     return final
 
   return [shared.Cache.get(libname, create)]
@@ -41,7 +43,6 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_ICU == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'icu', 'icu4c', 'source', 'common')]
   return args
 
 

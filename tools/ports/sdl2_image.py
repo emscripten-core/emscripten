@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 
 TAG = 'version_4'
 HASH = '30a7b04652239bccff3cb1fa7cd8ae602791b5f502a96df39585c13ebc4bb2b64ba1598c0d1f5382028d94e04a5ca02185ea06bf7f4b3520f6df4cc253f9dd24'
@@ -27,13 +26,10 @@ def get(ports, settings, shared):
   libname = ports.get_lib_name(libname)
 
   def create():
-    # although we shouldn't really do this and could instead use '-Xclang
-    # -isystem' as a kind of 'overlay' as sdl_mixer does,
-    # by now people may be relying on headers being pulled in by '-s USE_SDL=2'
-    # if sdl_image was built in the past
-    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_image.h'))
-    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, 'SDL_image.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_image.h'))
-    srcs = 'IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'.split(' ')
+    src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG)
+    ports.install_headers(src_dir, target='SDL2')
+    srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
+              IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m'''.split()
     commands = []
     o_s = []
     defs = []
@@ -49,7 +45,8 @@ def get(ports, settings, shared):
 
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_image', src + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(ports.get_dir(), 'sdl2_image', 'SDL2_image-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
+      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(src_dir, src),
+                       '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'] + defs)
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)

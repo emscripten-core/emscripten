@@ -572,6 +572,7 @@ mergeInto(LibraryManager.library, {
     exportCallStack: [],
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    sleepCallbacks: [], // functions to call every time we sleep
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
@@ -748,6 +749,10 @@ mergeInto(LibraryManager.library, {
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
+        // Call all sleep callbacks now that the sleep-resume is all done.
+        Asyncify.sleepCallbacks.forEach(function(func) {
+          func();
+        });
       } else {
         abort('invalid state: ' + Asyncify.state);
       }

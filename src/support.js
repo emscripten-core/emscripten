@@ -440,16 +440,20 @@ function loadWebAssemblyModule(binary, flags) {
       if (legalized) {
         sym = 'orig$' + sym;
       }
-#if WASM_BACKEND
-      sym = '_' + sym;
-#endif
-      var resolved = Module[sym];
+
+      var resolved = Module["asm"][sym];
       if (!resolved) {
-        resolved = moduleLocal[sym];
-      }
-#if ASSERTIONS
-      assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#if WASM_BACKEND
+        sym = '_' + sym;
 #endif
+        resolved = Module[sym];
+        if (!resolved) {
+          resolved = moduleLocal[sym];
+        }
+#if ASSERTIONS
+        assert(resolved, 'missing linked ' + type + ' `' + sym + '`. perhaps a side module was not linked in? if this global was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment');
+#endif
+     }
       return resolved;
     }
 
@@ -530,7 +534,7 @@ function loadWebAssemblyModule(binary, flags) {
       },
       'global.Math': Math,
       env: proxy,
-      wasi_unstable: proxy,
+      {{{ WASI_MODULE_NAME }}}: proxy,
       'asm2wasm': asm2wasmImports
     };
 #if ASSERTIONS
@@ -1003,10 +1007,10 @@ GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
 
 #if WASM_BACKEND && USE_PTHREADS
-// The wasm backend path does not have a way to set the stack max, so we can
-// just implement this function in a trivial way
-function establishStackSpace(base, max) {
-  stackRestore(max);
+// The wasm backend path does not have a way to set the stack max, so ignore
+// the stack max parameter, this function only resets the stack base.
+function establishStackSpace(base/*, max*/) {
+  stackRestore(base);
 }
 
 // JS library code refers to Atomics in the manner used from asm.js, provide

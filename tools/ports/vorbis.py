@@ -30,6 +30,7 @@ def get(ports, settings, shared):
     final = os.path.join(dest_path, libname)
     ports.build_port(os.path.join(dest_path, 'lib'), final, [os.path.join(dest_path, 'include')],
                      ['-s', 'USE_OGG=1'], ['psytune', 'barkmel', 'tone', 'misc'])
+    ports.install_header_dir(os.path.join(source_path, 'include', 'vorbis'))
     return final
 
   return [shared.Cache.get(libname, create)]
@@ -47,7 +48,6 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_VORBIS == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'vorbis', 'include')]
   return args
 
 

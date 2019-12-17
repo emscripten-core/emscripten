@@ -3339,7 +3339,7 @@ var LibraryGLEmulation = {
   glRotatef: 'glRotated',
 
   glDrawBuffer: function() { throw 'glDrawBuffer: TODO' },
-#if !USE_WEBGL2
+#if MAX_WEBGL_VERSION < 2
   glReadBuffer: function() { throw 'glReadBuffer: TODO' },
 #endif
 

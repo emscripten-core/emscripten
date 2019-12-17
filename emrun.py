@@ -49,6 +49,14 @@ emrun_options = None
 # Represents the process object handle to the browser we opened to run the html page.
 browser_process = None
 
+previous_browser_process_pids = None
+current_browser_process_pids = None
+
+navigation_has_occurred = False
+
+# Stores the browser executable that was run with --browser= parameter.
+browser_exe = None
+
 # If we have routed browser output to file with --log_stdout and/or --log_stderr,
 # these track the handles.
 browser_stdout_handle = sys.stdout
@@ -72,8 +80,9 @@ page_exit_code = 0
 # So killing browser_process would just kill launcher.exe and not the opera browser itself.
 processname_killed_atexit = ""
 
-# If user does not specify a --hostname parameter, this hostname is used to launch the server.
-default_webserver_hostname = "localhost"
+# Using "0.0.0.0" means "all interfaces", which should allow connecting to this server via LAN
+# addresses. Using "localhost" should allow only connecting from local computer.
+default_webserver_hostname = '0.0.0.0'
 
 # If user does not specify a --port parameter, this port is used to launch the server.
 default_webserver_port = 6931
@@ -115,7 +124,7 @@ def import_win32api_modules():
     global import_win32api_modules_warned_once
     if not import_win32api_modules_warned_once:
       print(str(e), file=sys.stderr)
-      print("Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from http://sourceforge.net/projects/pywin32/", file=sys.stderr)
+      print("Importing Python win32 modules failed! This most likely occurs if you do not have PyWin32 installed! Get it from https://github.com/mhammond/pywin32/releases", file=sys.stderr)
       import_win32api_modules_warned_once = True
     raise
 
@@ -253,7 +262,7 @@ user_pref("browser.sessionstore.resume_from_crash", false);
 user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
-user_pref("toolkip.startup.max_resumed_crashes", -1);
+user_pref("toolkit.startup.max_resumed_crashes", -1);
 // Don't show the slow script dialog popup
 user_pref("dom.max_script_run_time", 0);
 user_pref("dom.max_chrome_script_run_time", 0);
@@ -303,8 +312,6 @@ user_pref("extensions.getAddons.cache.lastUpdate", 2147483647);
 user_pref("media.gmp-eme-adobe.lastUpdate", 2147483647);
 user_pref("media.gmp-gmpopenh264.lastUpdate", 2147483647);
 user_pref("datareporting.healthreport.nextDataSubmissionTime", "2147483647000");
-// Detect directly when executing if asm.js does not validate by throwing an error.
-user_pref("javascript.options.throw_on_asmjs_validation_failure", true);
 // Sending Firefox Health Report Telemetry data is not desirable, since these are automated runs.
 user_pref("datareporting.healthreport.uploadEnabled", false);
 user_pref("datareporting.healthreport.service.enabled", false);
@@ -323,7 +330,7 @@ user_pref("javascript.options.wasm", true);
 // Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
 ''')
-    if not emrun_options.no_private_browsing:
+    if emrun_options.private_browsing:
       f.write('''
 // Start in private browsing mode to not cache anything to disk (everything will be wiped anyway after this run)
 user_pref("browser.privatebrowsing.autostart", true);
@@ -335,8 +342,28 @@ user_pref("browser.privatebrowsing.autostart", true);
 def is_browser_process_alive():
   """Returns whether the browser page we spawned is still running.  (note, not
   perfect atm, in case we are running in detached mode)"""
-  global browser_process
-  return browser_process and browser_process.poll() is None
+  global browser_process, current_browser_process_pids, navigation_has_occurred
+
+  # If navigation to the web page has not yet occurred, we behave as if the
+  # browser has not yet even loaded the page, and treat it as if the browser
+  # is running (as it is just starting up)
+  if not navigation_has_occurred:
+    return True
+
+  if browser_process and browser_process.poll() is None:
+    return True
+
+  if current_browser_process_pids is not None:
+    try:
+      import psutil
+      for p in current_browser_process_pids:
+        if psutil.pid_exists(p['pid']):
+          return True
+    except Exception:
+      # Fail gracefully if psutil not available
+      return True
+
+  return False
 
 
 def kill_browser_process():
@@ -451,15 +478,10 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
     while self.is_running:
       now = tick()
       # Did user close browser?
-      if browser_process:
-        browser_quit_code = browser_process.poll()
-        if browser_quit_code is not None:
-          delete_emrun_safe_firefox_profile()
-          if not emrun_options.serve_after_close:
-            emrun_options.serve_after_close = True
-            logv('Warning: emrun got detached from the target browser process (the process quit with code ' + str(browser_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve_after_close was passed in.')
-            if not emrun_options.browser:
-              logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
+      if not emrun_options.no_browser and not is_browser_process_alive():
+        delete_emrun_safe_firefox_profile()
+        if not emrun_options.serve_after_close:
+          self.is_running = False
 
       # Serve HTTP
       self.handle_request()
@@ -486,7 +508,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       if not emrun_not_enabled_nag_printed and page_last_served_time is not None:
         time_since_page_serve = now - page_last_served_time
         if not have_received_messages and time_since_page_serve > 10:
-          logi('The html page you are running is not emrun-capable. Stdout, stderr and exit(returncode) capture will not work. Recompile the application with the --emrun linker flag to enable this, or pass --no_emrun_detect to emrun to hide this check.')
+          logv('The html page you are running is not emrun-capable. Stdout, stderr and exit(returncode) capture will not work. Recompile the application with the --emrun linker flag to enable this, or pass --no_emrun_detect to emrun to hide this check.')
           emrun_not_enabled_nag_printed = True
 
     # Clean up at quit, print any leftover messages in queue.
@@ -512,6 +534,19 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
+
+    # A browser has navigated to this page - check which PID got spawned for the browser
+    global previous_browser_process_pids, current_browser_process_pids, navigation_has_occurred
+    if not navigation_has_occurred and current_browser_process_pids is None:
+      running_browser_process_pids = list_processes_by_name(browser_exe)
+      for p in running_browser_process_pids:
+        def pid_existed(pid):
+          for proc in previous_browser_process_pids:
+            if proc['pid'] == pid:
+              return True
+          return False
+        current_browser_process_pids = list(filter(lambda x: not pid_existed(x['pid']), running_browser_process_pids))
+    navigation_has_occurred = True
 
     if os.path.isdir(path):
       if not self.path.endswith('/'):
@@ -578,7 +613,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
   def do_POST(self):
     self.protocol_version = 'HTTP/1.1'
-    global page_exit_code, emrun_options, have_received_messages
+    global page_exit_code, emrun_options, have_received_messages, browser_exe
 
     (_, _, path, query, _) = urlsplit(self.path)
     logv('POST: "' + self.path + '" (path: "' + path + '", query: "' + query + '")')
@@ -1332,6 +1367,25 @@ def unwrap(s):
   return s
 
 
+def list_processes_by_name(exe_full_path):
+  pids = []
+  try:
+    import psutil
+    for proc in psutil.process_iter():
+      try:
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'exe'])
+        if pinfo['exe'].lower().replace('\\', '/') == exe_full_path.lower().replace('\\', '/'):
+          pids.append(pinfo)
+      except Exception:
+        # Fail gracefully if unable to iterate over a specific process
+        pass
+  except Exception:
+    # Fail gracefully if psutil not available
+    pass
+
+  return pids
+
+
 def run():
   global browser_process, browser_exe, processname_killed_atexit, emrun_options, emrun_not_enabled_nag_printed, ADB
   usage_str = "emrun [emrun_options] filename.html [html_cmdline_options]\n\n   where emrun_options specifies command line options for emrun itself, whereas\n   html_cmdline_options specifies startup arguments to the program."
@@ -1419,8 +1473,8 @@ def run():
   parser.add_argument('--log_html', dest='log_html', action='store_true',
                       help='If set, information lines are printed out an HTML-friendly format.')
 
-  parser.add_argument('--no_private_browsing', dest='no_private_browsing', action='store_true', default=False,
-                      help='If specified, do not open browser in private/incognito mode.')
+  parser.add_argument('--private_browsing', dest='private_browsing', action='store_true', default=False,
+                      help='If specified, opens browser in private/incognito mode.')
 
   parser.add_argument('serve', nargs='*')
 
@@ -1486,7 +1540,10 @@ def run():
     if file_to_serve == '.' or file_to_serve_is_url:
       serve_dir = os.path.abspath('.')
     else:
-     serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
+      if file_to_serve.endswith('/') or file_to_serve.endswith('\\') or os.path.isdir(file_to_serve):
+        serve_dir = file_to_serve
+      else:
+        serve_dir = os.path.dirname(os.path.abspath(file_to_serve))
   if file_to_serve_is_url:
     url = file_to_serve
   else:
@@ -1569,7 +1626,7 @@ def run():
       elif 'chrome' in browser_exe.lower():
         processname_killed_atexit = 'chrome'
         browser_args += ['--enable-nacl', '--enable-pnacl', '--disable-restore-session-state', '--enable-webgl', '--no-default-browser-check', '--no-first-run', '--allow-file-access-from-files']
-        if not options.no_private_browsing:
+        if options.private_browsing:
           browser_args += ['--incognito']
     #    if options.no_server:
     #      browser_args += ['--disable-web-security']
@@ -1577,7 +1634,7 @@ def run():
         processname_killed_atexit = 'firefox'
       elif 'iexplore' in browser_exe.lower():
         processname_killed_atexit = 'iexplore'
-        if not options.no_private_browsing:
+        if options.private_browsing:
           browser_args += ['-private']
       elif 'opera' in browser_exe.lower():
         processname_killed_atexit = 'opera'
@@ -1585,6 +1642,7 @@ def run():
       # In Windows cmdline, & character delimits multiple commmands, so must use ^ to escape them.
       if browser_exe == 'cmd':
         url = url.replace('&', '^&')
+      url = url.replace('0.0.0.0', 'localhost')
       browser += browser_args + [url]
 
   if options.kill_on_start:
@@ -1610,7 +1668,7 @@ def run():
   if processname_killed_atexit == 'firefox' and options.safe_firefox_profile and not options.no_browser and not options.android:
     profile_dir = create_emrun_safe_firefox_profile()
 
-    browser += ['-no-remote', '-profile', profile_dir.replace('\\', '/')]
+    browser += ['-no-remote', '--profile', profile_dir.replace('\\', '/')]
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
@@ -1647,6 +1705,8 @@ def run():
     # if browser[0] == 'cmd':
     #   Workaround an issue where passing 'cmd /C start' is not able to detect when the user closes the page.
     #   serve_forever = True
+    global previous_browser_process_pids
+    previous_browser_process_pids = list_processes_by_name(browser[0])
     browser_process = subprocess.Popen(browser, env=subprocess_env())
     if options.kill_on_exit:
       atexit.register(kill_browser_process)

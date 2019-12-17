@@ -136,9 +136,6 @@ this.onmessage = function(e) {
         Module = {{{ EXPORT_NAME }}}.default(Module);
         PThread = Module['PThread'];
         HEAPU32 = Module['HEAPU32'];
-#if !ASMFS
-        if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
-#endif
         postMessage({ cmd: 'loaded' });
       });
 #else
@@ -154,10 +151,6 @@ this.onmessage = function(e) {
 #endif
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
-
-#if !ASMFS
-      if (typeof FS !== 'undefined' && typeof FS.createStandardStreams === 'function') FS.createStandardStreams();
-#endif
       postMessage({ cmd: 'loaded' });
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
@@ -177,34 +170,23 @@ this.onmessage = function(e) {
       var max = e.data.stackBase + e.data.stackSize;
       var top = e.data.stackBase;
 #endif
-      Module['applyStackValues'](top, top, max);
 #if ASSERTIONS
       assert(threadInfoStruct);
       assert(selfThreadId);
       assert(parentThreadId);
       assert(top != 0);
+      assert(e.data.stackSize > 0);
 #if WASM_BACKEND
-      assert(max === e.data.stackBase);
       assert(top > max);
 #else
-      assert(max > e.data.stackBase);
       assert(max > top);
-      assert(e.data.stackBase === top);
 #endif
 #endif
-      // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
-      Module['establishStackSpace'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
-#if MODULARIZE
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-      Module['establishStackSpaceInJsModule'](e.data.stackBase, e.data.stackBase + e.data.stackSize);
-#endif
+      Module['establishStackSpaceInJsModule'](top, max);
 #if WASM_BACKEND
       Module['_emscripten_tls_init']();
 #endif
-#if STACK_OVERFLOW_CHECK
-      Module['writeStackCookie']();
-#endif
-
       PThread.receiveObjectTransfer(e.data);
       PThread.setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
 
@@ -226,7 +208,7 @@ this.onmessage = function(e) {
         if (e === 'Canceled!') {
           PThread.threadCancel();
           return;
-        } else if (e === 'SimulateInfiniteLoop' || e === 'pthread_exit') {
+        } else if (e == 'unwind') {
           return;
         } else {
           Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof Module['ExitStatus']) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);

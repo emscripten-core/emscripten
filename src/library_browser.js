@@ -312,10 +312,14 @@ var LibraryBrowser = {
         var contextAttributes = {
           antialias: false,
           alpha: false,
-#if USE_WEBGL2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+#if MIN_WEBGL_VERSION >= 2
+          majorVersion: 2,
+#else
+#if MAX_WEBGL_VERSION >= 2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
           majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,
+#endif
 #endif
         };
 
@@ -1285,7 +1289,7 @@ var LibraryBrowser = {
     }
 
     if (simulateInfiniteLoop) {
-      throw 'SimulateInfiniteLoop';
+      throw 'unwind';
     }
   },
 
@@ -1352,7 +1356,7 @@ var LibraryBrowser = {
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     noExitRuntime = true;
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
   emscripten_force_exit__proxy: 'sync',
