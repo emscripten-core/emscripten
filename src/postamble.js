@@ -216,7 +216,6 @@ function callMain(args) {
 #endif
 
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
-console.log('set stack limit', STACK_MAX, STACK_BASE, STACKTOP, typeof importScripts);
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 
