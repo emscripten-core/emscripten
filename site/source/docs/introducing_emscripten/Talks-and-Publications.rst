@@ -36,7 +36,7 @@ Presentations
 Papers
 ======
 
-- `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/kripken/emscripten/blob/master/docs/paper.pdf?raw=true>`_ (`kripken <https://github.com/kripken>`_) — A detailed explanation of how Emscripten works, covering the memory model, relooper algorithm, etc. **This is now somewhat outdated**.
+- `Emscripten: An LLVM-to-JavaScript Compiler <https://github.com/emscripten-core/emscripten/blob/master/docs/paper.pdf?raw=true>`_ (`kripken <https://github.com/kripken>`_) — A detailed explanation of how Emscripten works, covering the memory model, relooper algorithm, etc. **This is now somewhat outdated**.
 
 Books
 =====

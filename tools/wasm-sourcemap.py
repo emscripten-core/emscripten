@@ -11,7 +11,7 @@ sections from a wasm file.
 """
 
 import argparse
-from collections import OrderedDict, namedtuple
+from collections import OrderedDict
 import json
 import logging
 from math import floor, log
@@ -19,6 +19,12 @@ import os
 import re
 from subprocess import Popen, PIPE
 import sys
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools.shared import asstr
+
+logger = logging.getLogger('wasm-sourcemap')
 
 
 def parse_args():
@@ -33,6 +39,7 @@ def parse_args():
   parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
+  parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
   return parser.parse_args()
 
 
@@ -52,7 +59,6 @@ class Prefixes:
     if name in self.cache:
       return self.cache[name]
 
-    result = name
     for p in self.prefixes:
       if name.startswith(p['prefix']):
         if p['replacement'] is None:
@@ -67,7 +73,13 @@ class Prefixes:
 # SourceMapPrefixes contains resolver for file names that are:
 #  - "sources" is for names that output to source maps JSON
 #  - "load" is for paths that used to load source text
-SourceMapPrefixes = namedtuple('SourceMapPrefixes', 'sources, load')
+class SourceMapPrefixes:
+  def __init__(self, sources, load):
+    self.sources = sources
+    self.load = load
+
+  def provided(self):
+    return bool(self.sources.prefixes or self.load.prefixes)
 
 
 def encode_vlq(n):
@@ -94,7 +106,7 @@ def read_var_uint(wasm, pos):
 
 
 def strip_debug_sections(wasm):
-  logging.debug('Strip debug sections')
+  logger.debug('Strip debug sections')
   pos = 8
   stripped = wasm[:pos]
 
@@ -124,14 +136,14 @@ def encode_uint_var(n):
 
 
 def append_source_mapping(wasm, url):
-  logging.debug('Append sourceMappingURL section')
+  logger.debug('Append sourceMappingURL section')
   section_name = "sourceMappingURL"
   section_content = encode_uint_var(len(section_name)) + section_name + encode_uint_var(len(url)) + url
   return wasm + encode_uint_var(0) + encode_uint_var(len(section_content)) + section_content
 
 
 def get_code_section_offset(wasm):
-  logging.debug('Read sections index')
+  logger.debug('Read sections index')
   pos = 8
 
   while pos < len(wasm):
@@ -168,22 +180,22 @@ def read_dwarf_entries(wasm, options):
   if options.dwarfdump_output:
     output = open(options.dwarfdump_output, 'r').read()
   elif options.dwarfdump:
-    logging.debug('Reading DWARF information from %s' % wasm)
+    logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
-      logging.error('llvm-dwarfdump not found: ' + options.dwarfdump)
+      logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
-    process = Popen([options.dwarfdump, "-debug-info", "-debug-line", wasm], stdout=PIPE)
+    process = Popen([options.dwarfdump, '-debug-info', '-debug-line', '--recurse-depth=0', wasm], stdout=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
     if exit_code != 0:
-      logging.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
+      logger.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
       sys.exit(1)
   else:
-    logging.error('Please specify either --dwarfdump or --dwarfdump-output')
+    logger.error('Please specify either --dwarfdump or --dwarfdump-output')
     sys.exit(1)
 
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
+  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", asstr(output))
   maybe_debug_info_content = debug_line_chunks[0]
   for i in range(1, len(debug_line_chunks), 2):
     stmt_list = debug_line_chunks[i]
@@ -237,11 +249,14 @@ def read_dwarf_entries(wasm, options):
   return sorted(entries, key=lambda entry: entry['address'])
 
 
-def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
+def normalize_path(path):
+  return path.replace('\\', '/').replace('//', '/')
+
+
+def build_sourcemap(entries, code_section_offset, prefixes, collect_sources, base_path):
   sources = []
   sources_content = [] if collect_sources else None
   mappings = []
-
   sources_map = {}
   last_address = 0
   last_source_id = 0
@@ -258,7 +273,15 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
       column = 1
     address = entry['address'] + code_section_offset
     file_name = entry['file']
-    source_name = prefixes.sources.resolve(file_name)
+    file_name = normalize_path(file_name)
+    # if prefixes were provided, we use that; otherwise, we emit a relative
+    # path
+    if prefixes.provided():
+      source_name = prefixes.sources.resolve(file_name)
+    else:
+      file_name = os.path.relpath(os.path.abspath(file_name), base_path)
+      file_name = normalize_path(file_name)
+      source_name = file_name
     if source_name not in sources_map:
       source_id = len(sources)
       sources_map[source_name] = source_id
@@ -269,7 +292,7 @@ def build_sourcemap(entries, code_section_offset, prefixes, collect_sources):
           with open(load_name, 'r') as infile:
             source_content = infile.read()
           sources_content.append(source_content)
-        except:
+        except IOError:
           print('Failed to read source: %s' % load_name)
           sources_content.append(None)
     else:
@@ -304,8 +327,8 @@ def main():
 
   prefixes = SourceMapPrefixes(sources=Prefixes(options.prefix), load=Prefixes(options.load_prefix))
 
-  logging.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources)
+  logger.debug('Saving to %s' % options.output)
+  map = build_sourcemap(entries, code_section_offset, prefixes, options.sources, options.basepath)
   with open(options.output, 'w') as outfile:
     json.dump(map, outfile, separators=(',', ':'))
 
@@ -316,11 +339,11 @@ def main():
     wasm = append_source_mapping(wasm, options.source_map_url)
 
   if options.w:
-    logging.debug('Saving wasm to %s' % options.w)
+    logger.debug('Saving wasm to %s' % options.w)
     with open(options.w, 'wb') as outfile:
       outfile.write(wasm)
 
-  logging.debug('Done')
+  logger.debug('Done')
   return 0
 
 

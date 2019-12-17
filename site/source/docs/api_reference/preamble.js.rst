@@ -4,7 +4,7 @@
 preamble.js
 ===========
 
-The JavaScript APIs in `preamble.js <https://github.com/kripken/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
+The JavaScript APIs in `preamble.js <https://github.com/emscripten-core/emscripten/blob/master/src/preamble.js>`_ provide programmatic access for interacting with the compiled C code, including: calling compiled C functions, accessing memory, converting pointers to JavaScript ``Strings`` and ``Strings`` to pointers (with different encodings/formats), and other convenience functions.
 
 We call this "``preamble.js``" because Emscripten's output JS, at a high level, contains the preamble (from ``src/preamble.js``), then the compiled code, then the postamble. (In slightly more detail, the preamble contains utility functions and setup, while the postamble connects things and handles running the application.)
 
@@ -159,23 +159,13 @@ Accessing memory
 Conversion functions — strings, pointers and arrays
 ===================================================
 
-.. js:function:: Pointer_stringify(ptr[, length])
-
-  Returns a JavaScript String from a pointer, for use in compiled code.
-
-  :param ptr: The pointer to be converted to a ``String``.
-  :param length: The length of the data in the pointer (optional).
-  :returns: A JavaScript ``String`` containing the data from ``ptr``.
-  :rtype: String
-
-
-.. js:function:: UTF8ToString(ptr)
+.. js:function:: UTF8ToString(ptr[, maxBytesToRead])
 
   Given a pointer ``ptr`` to a null-terminated UTF8-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF8-encoded string in the Emscripten HEAP.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing frequent uses of UTF8ToString() with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
   :returns: A JavaScript ``String`` object
-
 
 
 .. js:function:: stringToUTF8(str, outPtr, maxBytesToWrite)
@@ -231,6 +221,15 @@ Conversion functions — strings, pointers and arrays
   :param outPtr: Pointer to data copied from ``str``, encoded in encoded in UTF32LE format and null-terminated.
   :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as `maxBytesToWrite >= 4`` so that there is space for the null terminator.
 
+
+
+.. js:function:: AsciiToString(ptr)
+
+  Converts an ASCII or Latin-1 encoded string to a JavaScript String object.
+
+  :param ptr: The pointer to be converted to a ``String``.
+  :returns: A JavaScript ``String`` containing the data from ``ptr``.
+  :rtype: String
 
 
 .. js:function:: intArrayFromString(stringy, dontAddNull[, length])
@@ -405,7 +404,7 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
 .. COMMENT (not rendered) : The following methods are explicitly not part of the public API and not documented. Note that in some case referred to by function name, other cases by Module assignment.
 
   function allocate(slab, types, allocator, ptr) — Internal and use is discouraged. Documentation can remain in source code but not here.
-    associated contants ALLOC_NORMAL, ALLOC_STACK, ALLOC_STATIC, ALLOC_DYNAMIC, ALLOC_NONE
+    associated contants ALLOC_NORMAL, ALLOC_STACK, ALLOC_DYNAMIC, ALLOC_NONE
 
   function addOnPreRun
   function addOnInit
@@ -414,13 +413,11 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function addOnPostRun
   Module['ALLOC_NORMAL'] = ALLOC_NORMAL;
   Module['ALLOC_STACK'] = ALLOC_STACK;
-  Module['ALLOC_STATIC'] = ALLOC_STATIC;
   Module['ALLOC_DYNAMIC'] = ALLOC_DYNAMIC;
   Module['ALLOC_NONE'] = ALLOC_NONE;
   Module['HEAP'] = HEAP;
   Module['IHEAP'] = IHEAP;
   function alignUp(x, multiple)
-  function enlargeMemory()
   function demangle(func)
   function demangleAll(text)
   function parseJSFunc(jsfunc)
@@ -443,7 +440,6 @@ The :ref:`emscripten-memory-model` uses a typed array buffer (``ArrayBuffer``) t
   function SAFE_HEAP_LOAD(dest, bytes, isFloat, unsigned)
   function SAFE_FT_MASK(value, mask)
   function CHECK_OVERFLOW(value, bits, ignore, sig)
-  Module['PGOMonitor'] = PGOMonitor; — a bit confusing
   Module["preloadedImages"]
   Module["preloadedAudios"]
 

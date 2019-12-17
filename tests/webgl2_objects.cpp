@@ -27,7 +27,7 @@ int result = 0;
 
 int main()
 {
-  emscripten_set_canvas_size( 100, 100 );
+  emscripten_set_canvas_element_size( "#canvas", 100, 100 );
 
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
@@ -36,7 +36,7 @@ int main()
   attrs.majorVersion = 2;
   attrs.minorVersion = 0;
 
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( 0, &attrs );
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( "#canvas", &attrs );
   if (!context)
   {
     printf("Skipped: WebGL 2 is not supported.\n");

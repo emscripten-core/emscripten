@@ -4,7 +4,7 @@
 emscripten.h
 ============
 
-This page documents the public C++ APIs provided by `emscripten.h <https://github.com/kripken/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
+This page documents the public C++ APIs provided by `emscripten.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/emscripten/emscripten.h>`_.
 
 Emscripten uses existing/familiar APIs where possible (for example: :term:`SDL`). This API provides C++ support for capabilities that are specific to JavaScript or the browser environment, or for which there is no existing API.
 
@@ -113,7 +113,7 @@ Defines
       // units, but Emscripten C strings operate as UTF-8.
       var lengthBytes = lengthBytesUTF8(jsString)+1;
       var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
 
@@ -151,7 +151,9 @@ Defines
 
     EM_ASM(console.log('hello ' + UTF8ToString($0)), "world!");
 
-    In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly. ::
+  In the same manner, pointers to any type (including ``void *``) can be passed inside ``EM_ASM`` code, where they appear as integers like ``char *`` pointers above did. Accessing the data can be managed by reading the heap directly.
+
+  .. code-block:: none
 
     int arr[2] = { 30, 45 };
     EM_ASM({
@@ -164,9 +166,7 @@ Defines
 
 .. c:macro:: EM_ASM_INT(code, ...)
 
-  EM_ASM_DOUBLE(code, ...)
-
-  These two functions behave like EM_ASM, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
+  This macro, as well as the :c:macro:`EM_ASM_DOUBLE` one, behave like :c:macro:`EM_ASM`, but in addition they also return a value back to C code. The output value is passed back with a ``return`` statement:
 
   .. code-block:: none
 
@@ -176,17 +176,52 @@ Defines
 
     int y = EM_ASM_INT(return TOTAL_MEMORY);
 
-    Strings can be returned back to C from JavaScript, but one needs to be careful about memory management. ::
+  Strings can be returned back to C from JavaScript, but one needs to be careful about memory management.
+
+  .. code-block:: none
 
     char *str = (char*)EM_ASM_INT({
       var jsString = 'Hello with some exotic Unicode characters: Tässä on yksi lumiukko: ☃, ole hyvä.';
-      var lengthBytes = lengthBytesUTF8(jsString)+1; // 'jsString.length' would return the length of the string as UTF-16 units, but Emscripten C strings operate as UTF-8.
+      var lengthBytes = lengthBytesUTF8(jsString)+1;
+      // 'jsString.length' would return the length of the string as UTF-16
+      // units, but Emscripten C strings operate as UTF-8.
       var stringOnWasmHeap = _malloc(lengthBytes);
-      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes+1);
+      stringToUTF8(jsString, stringOnWasmHeap, lengthBytes);
       return stringOnWasmHeap;
     });
     printf("UTF8 string says: %s\n", str);
     free(str); // Each call to _malloc() must be paired with free(), or heap memory will leak!
+
+.. c:macro:: EM_ASM_DOUBLE(code, ...)
+
+  Similar to :c:macro:`EM_ASM_INT` but for a ``double`` return value.
+
+.. c:macro:: MAIN_THREAD_EM_ASM(code, ...)
+
+   This behaves like :c:macro:`EM_ASM`, but does the call on the main thread. This is
+   useful in a pthreads build, when you want to interact with the DOM from a
+   pthread; this basically proxies the call for you.
+
+   This call is proxied in a synchronous way to the main thread, that is,
+   execution will resume after the main thread has finished running the JS.
+   Synchronous proxying also makes it possible to return a value, see the next
+   two variants.
+
+.. c:macro:: MAIN_THREAD_EM_ASM_INT(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns an ``int`` value.
+
+.. c:macro:: MAIN_THREAD_EM_ASM_DOUBLE(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but returns a ``double`` value.
+
+.. c:macro:: MAIN_THREAD_ASYNC_EM_ASM(code, ...)
+
+  Similar to :c:macro:`MAIN_THREAD_EM_ASM` but is proxied in an
+  **asynchronous** way, that is, the main thread will receive a request to run
+  the code, and will run it when it can; the worker will not wait for that.
+  (Note that if this is called on the main thread, then there is nothing to
+  proxy, and the JS is executed immediately and synchronously.)
 
 
 Calling JavaScript From C/C++
@@ -314,7 +349,7 @@ Functions
 
   The JavaScript environment will call that function at a specified number of frames per second. If called on the main browser thread, setting 0 or a negative value as the ``fps`` will use the browser’s ``requestAnimationFrame`` mechanism to call the main loop function. This is **HIGHLY** recommended if you are doing rendering, as the browser’s ``requestAnimationFrame`` will make sure you render at a proper smooth rate that lines up properly with the browser and monitor. If you do not render at all in your application, then you should pick a specific frame rate that makes sense for your code.
 
-  If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in `glutMainLoop <https://github.com/kripken/emscripten/blob/1.29.12/system/include/GL/freeglut_std.h#L400>`_ in `GLUT <http://www.opengl.org/resources/libraries/glut/>`_). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
+  If ``simulate_infinite_loop`` is true, the function will throw an exception in order to stop execution of the caller. This will lead to the main loop being entered instead of code after the call to :c:func:`emscripten_set_main_loop` being run, which is the closest we can get to simulating an infinite loop (we do something similar in `glutMainLoop <https://github.com/emscripten-core/emscripten/blob/1.29.12/system/include/GL/freeglut_std.h#L400>`_ in `GLUT <http://www.opengl.org/resources/libraries/glut/>`_). If this parameter is ``false``, then the behavior is the same as it was before this parameter was added to the API, which is that execution continues normally. Note that in both cases we do not run global destructors, ``atexit``, etc., since we know the main loop will still be running, but if we do not simulate an infinite loop then the stack will be unwound. That means that if ``simulate_infinite_loop`` is ``false``, and you created an object on the stack, it will be cleaned up before the main loop is called for the first time.
 
   This function can be called in a pthread, in which case the callback loop will be set up to be called in the context of the calling thread. In order for the loop to work, the calling thread must regularly "yield back" to the browser by exiting from its pthread main function, since the callback will be able to execute only when the calling thread is not executing any other code. This means that running a synchronously blocking main loop is not compatible with the emscripten_set_main_loop() function.
 
@@ -429,7 +464,7 @@ Functions
 
   When building natively this becomes a simple direct call, after ``SDL_Delay`` (you must include **SDL.h** for that).
 
-  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used.
+  If ``millis`` is negative, the browser's ``requestAnimationFrame`` mechanism is used. (Note that 0 means that ``setTimeout`` is still used, which basically means "run asynchronously as soon as possible".)
 
   :param em_arg_callback_func func: The C function to call asynchronously. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined argument to pass to the C function.
@@ -465,23 +500,6 @@ Functions
   Note that SDL’s ``SDL_ShowCursor`` command shows and hides the SDL cursor, not the OS one. This command is useful to hide the OS cursor if your app draws its own cursor.
 
 
-.. c:function:: void emscripten_set_canvas_size(int width, int height)
-
-  Resizes the pixel width and height of the ``<canvas>`` element on the Emscripten web page.
-
-  :param int width: New pixel width of canvas element.
-  :param int height: New pixel height of canvas element.
-
-
-.. c:function:: void emscripten_get_canvas_size(int * width, int * height, int * isFullscreen)
-
-  Gets the current pixel width and height of the ``<canvas>`` element as well as whether the canvas is fullscreen or not.
-
-  :param int* width: Pixel width of canvas element.
-  :param int* height: New pixel height of canvas element.
-  :param int* isFullscreen: If True (``*int > 0``), ``<canvas>`` is full screen.
-
-
 .. c:function:: double emscripten_get_now(void)
 
   Returns the highest-precision representation of the current time that the browser provides.
@@ -502,7 +520,7 @@ Functions
 
 .. _emscripten-h-asynchronous-file-system-api:
 
-Emscripten Asynchronous File System API
+Asynchronous File System API
 =========================================
 
 Typedefs
@@ -544,7 +562,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onload_func)(void*, void *, unsigned*)
+    typedef void (*em_async_wget2_data_onload_func)(unsigned, void*, void *, unsigned)
 
 
 
@@ -554,7 +572,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onerror_func)(void*, int, const char*)
+    typedef void (*em_async_wget2_data_onerror_func)(unsigned, void*, int, const char*)
 
 
 .. c:type:: em_async_wget2_data_onprogress_func
@@ -563,7 +581,7 @@ Typedefs
 
   Defined as: ::
 
-    typedef void (*em_async_wget2_data_onprogress_func)(void*, int, int)
+    typedef void (*em_async_wget2_data_onprogress_func)(unsigned void*, int, int)
 
 
 .. c:type:: em_run_preload_plugins_data_onload_func
@@ -578,20 +596,6 @@ Typedefs
 
 Functions
 ---------
-
-.. c:function:: void emscripten_wget(const char* url, const char* file)
-
-  Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
-
-  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-files` for more information on preloading files.
-
-  This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
-
-  To use this function, you will need to compile your application with the linker flag ``-s ASYNCIFY=1``
-
-  :param const char* url: The URL to load.
-  :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
-
 
 .. c:function:: void emscripten_async_wget(const char* url, const char* file, em_str_callback_func onload, em_str_callback_func onerror)
 
@@ -697,18 +701,21 @@ Functions
   :type free: int
   :param em_async_wget2_data_onload_func onload: Callback on successful load of the file. The callback function parameter values are:
 
+    - *(unsigned)* : Handle to the request
     - *(void*)* : Equal to ``arg`` (user defined data).
     - *(void*)* : A pointer to the buffer in memory.
     - *(unsigned)* : The size of the buffer (in bytes).
 
   :param em_async_wget2_data_onerror_func onerror: Callback in the event of failure. The callback function parameter values are:
 
+    - *(unsigned)* : Handle to the request
     - *(void*)* : Equal to ``arg`` (user defined data).
     - *(int)* : The HTTP error code.
     - *(const char*)* : A string with the status description.
 
   :param em_async_wget2_data_onprogress_func onprogress: Callback called (regularly) during load of the file to update progress. The callback function parameter values are:
 
+    - *(unsigned)* : Handle to the request
     - *(void*)* : Equal to ``arg`` (user defined data).
     - *(int)* : The number of bytes loaded.
     - *(int)* : The total size of the data in bytes, or zero if the size is unavailable.
@@ -746,7 +753,7 @@ Functions
     - *(void*)* : Equal to ``arg`` (user defined data).
 
 
-Emscripten Asynchronous IndexedDB API
+Asynchronous IndexedDB API
 =====================================
 
   IndexedDB is a browser API that lets you store data persistently, that is, you can save data there and load it later when the user re-visits the web page. IDBFS provides one way to use IndexedDB, through the Emscripten filesystem layer. The ``emscripten_idb_*`` methods listed here provide an alternative API, directly to IndexedDB, thereby avoiding the overhead of the filesystem layer.
@@ -1020,6 +1027,13 @@ Functions
   :returns: The value of the specified setting. Note that for values other than an integer, a string is returned (cast the ``int`` return value to a ``char*``).
   :rtype: int
 
+.. c:function:: int emscripten_has_asyncify()
+
+  Returns whether pseudo-synchronous functions can be used.
+
+  :rtype: int
+  :returns: 1 if program was compiled with ASYNCIFY=1 or EMTERPRETER_ASYNC=1, 0 otherwise.
+
 
 .. c:function:: void emscripten_debugger()
 
@@ -1222,15 +1236,15 @@ Typedefs
 
   Unaligned types. These may be used to force LLVM to emit unaligned loads/stores in places in your code where :ref:`SAFE_HEAP <debugging-SAFE-HEAP>` found an unaligned operation.
 
-  For usage examples see `tests/core/test_set_align.c <https://github.com/kripken/emscripten/blob/master/tests/core/test_set_align.c>`_.
+  For usage examples see `tests/core/test_set_align.c <https://github.com/emscripten-core/emscripten/blob/master/tests/core/test_set_align.c>`_.
 
   .. note:: It is better to avoid unaligned operations, but if you are reading from a packed stream of bytes or such, these types may be useful!
 
 
-Emterpreter-Async functions
-===========================
+Pseudo-synchronous functions
+============================
 
-Emterpreter-async functions are asynchronous functions that appear synchronously in C, the linker flags ``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1`` are required to use these functions. See `Emterpreter <https://github.com/kripken/emscripten/wiki/Emterpreter>`_ for more details.
+These functions require Asyncify (``-s ASYNCIFY=1``) with the wasm backend, or Emterpreter-async with fastcomp (``-s EMTERPRETIFY=1 -s EMTERPRETIFY_ASYNC=1``). These functions are asynchronous but appear synchronous in C. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ and `Emterpreter <https://emscripten.org/docs/porting/emterpreter.html>`_ for more details.
 
 Sleeping
 --------
@@ -1239,16 +1253,21 @@ Sleeping
 
   Sleep for `ms` milliseconds. This is a normal "synchronous" sleep, which blocks all other operations while it runs. In other words, if
   there are other async events waiting to happen, they will not happen during this sleep, which makes sense as conceptually this code is
-  on the stack (that's how it looks in the C source code). If you do want things to happen while sleeping, see ``emscripten_sleep_with_yield``.
-
-.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
-
-  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
-  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
-  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+  on the stack (that's how it looks in the C source code).
 
 Network
 -------
+
+.. c:function:: void emscripten_wget(const char* url, const char* file)
+
+  Load file from url in *synchronously*. For the asynchronous version, see the :c:func:`emscripten_async_wget`.
+
+  In addition to fetching the URL from the network, preload plugins are executed so that the data is usable in ``IMG_Load`` and so forth (we synchronously do the work to make the browser decode the image or audio etc.).  See :ref:`preloading-files` for more information on preloading files.
+
+  This function is blocking; it won't return until all operations are finished. You can then open and read the file if it succeeded.
+
+  :param const char* url: The URL to load.
+  :param const char* file: The name of the file created and loaded from the URL. If the file already exists it will be overwritten. If the destination directory for the file does not exist on the filesystem, it will be created. A relative pathname may be passed, which will be interpreted relative to the current working directory at the time of the call to this function.
 
 .. c:function:: void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
@@ -1300,10 +1319,10 @@ IndexedDB
   :param perror: An out parameter that will be filled with a non-zero value if an error occurred.
 
 
-Asyncify functions
-==================
+Fastcomp Asyncify functions
+===========================
 
-Asyncify functions are asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://github.com/kripken/emscripten/wiki/Asyncify>`_ for more details.
+Fastcomp's Asyncify support has asynchronous functions that appear synchronously in C, the linker flag `-s ASYNCIFY=1` is required to use these functions. See `Asyncify <https://emscripten.org/docs/porting/asyncify.html>`_ for more details.
 
 Typedefs
 --------
@@ -1315,9 +1334,13 @@ Typedefs
 Functions
 ---------
 
-.. c:function:: void emscripten_sleep(unsigned int ms)
+.. c:function:: void emscripten_sleep_with_yield(unsigned int ms)
 
-    Sleep for `ms` milliseconds.
+  Sleep for `ms` milliseconds, while allowing other asynchronous operations, e.g. caused by ``emscripten_async_call``, to run normally, during
+  this sleep. Note that this method **does** still block the main loop, as otherwise it could recurse, if you are calling this method from it.
+  Even so, you should use this method carefully: the order of execution is potentially very confusing this way.
+
+  .. note:: This only works in fastcomp. In the wasm backend, just use sleep, which does not have strict yield checking.
 
 .. c:function:: emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size)
 
@@ -1332,3 +1355,74 @@ Functions
 .. c:function:: void emscripten_yield(void)
 
     This function should only be called in a coroutine created by `emscripten_coroutine_create`, when it called, the coroutine is paused and the caller will continue.
+
+Upstream Asyncify functions
+===========================
+
+These functions only work with the upstream wasm backend when using Asyncify.
+
+Typedefs
+--------
+
+.. c:type:: em_scan_func
+
+  Function pointer type for use in scan callbacks, receiving two pointers, for
+  the beginning and end of a range of memory. You can then scan that range.
+
+  Defined as: ::
+
+    typedef void (*em_scan_func)(void*, void*)
+
+Functions
+---------
+
+.. c:function:: void emscripten_scan_stack(em_scan_func func)
+
+    Scan the C userspace stack, which means the stack managed by the compiled
+    code (as opposed to the wasm VM's internal stack, which is not directly
+    observable). This data is already in linear memory; this function just
+    gives you a simple way to know where it is.
+
+.. c:function:: void emscripten_scan_registers(em_scan_func func)
+
+    Scan "registers", by which we mean data that is not in memory. In wasm,
+    that means data stored in locals, including locals in functions higher up
+    the stack - the wasm VM has spilled them, but none of that is observable to
+    user code).
+
+    This function requires Asyncify - it relies on that option to spill the
+    local state all the way up the stack. As a result, it will add overhead
+    to your program.
+
+.. c:function:: void emscripten_lazy_load_code()
+
+    This creates two wasm files at compile time: the first wasm which is
+    downloaded and run normally, and a second that is lazy-loaded. When an
+    ``emscripten_lazy_load_code()`` call is reached, we load the second wasm
+    and resume execution using it.
+
+    The idea here is that the initial download can be quite small, if you
+    place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
+    the optimizer can remove code from the first wasm if it sees it can't
+    be reached. The second downloaded wasm can contain your full codebase,
+    including rarely-used functions, in which case the lazy-loading may
+    not happen at all.
+
+  .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
+
+ABI functions
+=============
+
+The following functions are not declared in ``emscripten.h``, but are used
+internally in our system libraries. You may care about them if you replace the
+Emscripten runtime JS code, or run Emscripten binaries in your own runtime.
+
+
+.. c:function:: void emscripten_notify_memory_growth(i32 index)
+
+    Called when memory has grown. In a JS runtime, this is used to know when
+    to update the JS views on the wasm memory, which otherwise we would need
+    to constantly check for after any wasm code runs. See
+    `this wasi discussion <https://github.com/WebAssembly/WASI/issues/82>`_.
+
+    :param i32 index: Which memory has grown.

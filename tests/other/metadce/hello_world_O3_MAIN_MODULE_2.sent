@@ -1,0 +1,12 @@
+__memory_base
+__stack_pointer
+__table_base
+emscripten_memcpy_big
+emscripten_resize_heap
+fd_write
+fp$__stdio_write$iiii
+g$__THREW__
+g$__threwValue
+g$stdout
+memory
+table

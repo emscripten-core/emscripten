@@ -10,13 +10,24 @@ import socket
 import shutil
 import sys
 import time
+import unittest
 
-import websockify
+if __name__ == '__main__':
+  raise Exception('do not run this file directly; do something like: tests/runner.py sockets')
+
+try:
+  import websockify
+except Exception:
+  # websockify won't successfully import on Windows under Python3, because socketserver.py doesn't export ForkingMixIn.
+  # (On python2, ForkingMixIn was exported but it didn't actually work on Windows).
+  # Swallowing the error here means that this file can always be imported, but won't work if actually used on Windows,
+  # which is the same behavior as before.
+  pass
 from runner import BrowserCore, no_windows, chdir
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
 
-node_ws_module_installed = False
+npm_checked = False
 
 NPM = os.path.join(os.path.dirname(NODE_JS[0]), 'npm.cmd' if WINDOWS else 'npm')
 
@@ -27,13 +38,13 @@ def clean_processes(processes):
       # ask nicely (to try and catch the children)
       try:
         p.terminate() # SIGTERM
-      except:
+      except OSError:
         pass
       time.sleep(1)
       # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
       try:
-        p.kill() # SIGKILL
-      except:
+        p.terminate() # SIGKILL
+      except OSError:
         pass
 
 
@@ -71,7 +82,7 @@ class WebsockifyServerHarness(object):
         proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
         proxy_sock.close()
         break
-      except:
+      except IOError:
         time.sleep(1)
     else:
       clean_processes(self.processes)
@@ -99,15 +110,11 @@ class CompiledServerHarness(object):
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
     # the ws module is installed
-    child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
-    global node_ws_module_installed
-    # Attempt to automatically install ws module for Node.js.
-    if child.returncode != 0 and not node_ws_module_installed:
-      node_ws_module_installed = True
-      run_process([NPM, 'install', path_from_root('tests', 'sockets', 'ws')], cwd=os.path.dirname(EMCC))
-      # Did installation succeed?
+    global npm_checked
+    if not npm_checked:
       child = run_process(NODE_JS + ['-e', 'require("ws");'], check=False)
-    assert child.returncode == 0, 'ws module for Node.js not installed, and automatic installation failed! Please run \'npm install\' from %s' % shared.__rootpath__
+      assert child.returncode == 0, '"ws" node module not found.  you may need to run npm install'
+      npm_checked = True
 
     # compile the server
     proc = run_process([PYTHON, EMCC, path_from_root('tests', self.filename), '-o', 'server.js', '-DSOCKK=%d' % self.listen_port] + self.args)
@@ -124,234 +131,38 @@ class CompiledServerHarness(object):
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
 
 
+# Executes a native executable server process
+class BackgroundServerProcess(object):
+  def __init__(self, args):
+    self.processes = []
+    self.args = args
+
+  def __enter__(self):
+    print('Running background server: ' + str(self.args))
+    process = Popen(self.args)
+    self.processes.append(process)
+
+  def __exit__(self, *args, **kwargs):
+    clean_processes(self.processes)
+
+
+def NodeJsWebSocketEchoServerProcess():
+  return BackgroundServerProcess(NODE_JS + [path_from_root('tests', 'websocket', 'nodejs_websocket_echo_server.js')])
+
+
+def PythonTcpEchoServerProcess(port):
+  return BackgroundServerProcess([PYTHON, path_from_root('tests', 'websocket', 'tcp_echo_server.py'), port])
+
+
 class sockets(BrowserCore):
   emcc_args = []
 
   @classmethod
-  def setUpClass(self):
-    super(sockets, self).setUpClass()
+  def setUpClass(cls):
+    super(sockets, cls).setUpClass()
     print()
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()
-
-  def test_inet(self):
-    src = r'''
-      #include <stdio.h>
-      #include <arpa/inet.h>
-
-      int main() {
-        printf("*%x,%x,%x,%x,%x,%x*\n", htonl(0xa1b2c3d4), htonl(0xfe3572e0), htonl(0x07abcdf0), htons(0xabcd), ntohl(0x43211234), ntohs(0xbeaf));
-        in_addr_t i = inet_addr("190.180.10.78");
-        printf("%x\n", i);
-        return 0;
-      }
-    '''
-    self.do_run(src, '*d4c3b2a1,e07235fe,f0cdab07,cdab,34122143,afbe*\n4e0ab4be\n')
-
-  def test_inet2(self):
-    src = r'''
-      #include <stdio.h>
-      #include <arpa/inet.h>
-
-      int main() {
-        struct in_addr x, x2;
-        int *y = (int*)&x;
-        *y = 0x12345678;
-        printf("%s\n", inet_ntoa(x));
-        int r = inet_aton(inet_ntoa(x), &x2);
-        printf("%s\n", inet_ntoa(x2));
-        return 0;
-      }
-    '''
-    self.do_run(src, '120.86.52.18\n120.86.52.18\n')
-
-  def test_inet3(self):
-    src = r'''
-      #include <stdio.h>
-      #include <arpa/inet.h>
-      #include <sys/socket.h>
-      int main() {
-        char dst[64];
-        struct in_addr x, x2;
-        int *y = (int*)&x;
-        *y = 0x12345678;
-        printf("%s\n", inet_ntop(AF_INET,&x,dst,sizeof dst));
-        int r = inet_aton(inet_ntoa(x), &x2);
-        printf("%s\n", inet_ntop(AF_INET,&x2,dst,sizeof dst));
-        return 0;
-      }
-    '''
-    self.do_run(src, '120.86.52.18\n120.86.52.18\n')
-
-  def test_inet4(self):
-    src = r'''
-      #include <stdio.h>
-      #include <arpa/inet.h>
-      #include <sys/socket.h>
-
-      void test(const char *test_addr, bool first=true){
-          char str[40];
-          struct in6_addr addr;
-          unsigned char *p = (unsigned char*)&addr;
-          int ret;
-          ret = inet_pton(AF_INET6,test_addr,&addr);
-          if(ret == -1) return;
-          if(ret == 0) return;
-          if(inet_ntop(AF_INET6,&addr,str,sizeof(str)) == NULL ) return;
-          printf("%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x - %s\n",
-               p[0],p[1],p[2],p[3],p[4],p[5],p[6],p[7],p[8],p[9],p[10],p[11],p[12],p[13],p[14],p[15],str);
-          if (first) test(str, false); // check again, on our output
-      }
-      int main(){
-          test("::");
-          test("::1");
-          test("::1.2.3.4");
-          test("::17.18.19.20");
-          test("::ffff:1.2.3.4");
-          test("1::ffff");
-          test("::255.255.255.255");
-          test("0:ff00:1::");
-          test("0:ff::");
-          test("abcd::");
-          test("ffff::a");
-          test("ffff::a:b");
-          test("ffff::a:b:c");
-          test("ffff::a:b:c:d");
-          test("ffff::a:b:c:d:e");
-          test("::1:2:0:0:0");
-          test("0:0:1:2:3::");
-          test("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff");
-          test("1::255.255.255.255");
-
-          //below should fail and not produce results..
-          test("1.2.3.4");
-          test("");
-          test("-");
-
-          printf("ok.\n");
-      }
-    '''
-    self.do_run(src, r'''0000:0000:0000:0000:0000:0000:0000:0000 - ::
-0000:0000:0000:0000:0000:0000:0000:0000 - ::
-0000:0000:0000:0000:0000:0000:0000:0001 - ::1
-0000:0000:0000:0000:0000:0000:0000:0001 - ::1
-0000:0000:0000:0000:0000:0000:0102:0304 - ::102:304
-0000:0000:0000:0000:0000:0000:0102:0304 - ::102:304
-0000:0000:0000:0000:0000:0000:1112:1314 - ::1112:1314
-0000:0000:0000:0000:0000:0000:1112:1314 - ::1112:1314
-0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4
-0000:0000:0000:0000:0000:ffff:0102:0304 - ::ffff:1.2.3.4
-0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff
-0001:0000:0000:0000:0000:0000:0000:ffff - 1::ffff
-0000:0000:0000:0000:0000:0000:ffff:ffff - ::ffff:ffff
-0000:0000:0000:0000:0000:0000:ffff:ffff - ::ffff:ffff
-0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::
-0000:ff00:0001:0000:0000:0000:0000:0000 - 0:ff00:1::
-0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::
-0000:00ff:0000:0000:0000:0000:0000:0000 - 0:ff::
-abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::
-abcd:0000:0000:0000:0000:0000:0000:0000 - abcd::
-ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a
-ffff:0000:0000:0000:0000:0000:0000:000a - ffff::a
-ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b
-ffff:0000:0000:0000:0000:0000:000a:000b - ffff::a:b
-ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c
-ffff:0000:0000:0000:0000:000a:000b:000c - ffff::a:b:c
-ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d
-ffff:0000:0000:0000:000a:000b:000c:000d - ffff::a:b:c:d
-ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e
-ffff:0000:0000:000a:000b:000c:000d:000e - ffff::a:b:c:d:e
-0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0
-0000:0000:0000:0001:0002:0000:0000:0000 - ::1:2:0:0:0
-0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::
-0000:0000:0001:0002:0003:0000:0000:0000 - 0:0:1:2:3::
-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff - ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
-0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff
-0001:0000:0000:0000:0000:0000:ffff:ffff - 1::ffff:ffff
-ok.
-''')
-
-  def test_getsockname_unconnected_socket(self):
-    self.do_run(r'''
-      #include <sys/socket.h>
-      #include <stdio.h>
-      #include <assert.h>
-      #include <sys/socket.h>
-      #include <netinet/in.h>
-      #include <arpa/inet.h>
-      #include <string.h>
-      int main() {
-        int fd;
-        int z;
-        fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-        struct sockaddr_in adr_inet;
-        socklen_t len_inet = sizeof adr_inet;
-        z = getsockname(fd, (struct sockaddr *)&adr_inet, &len_inet);
-        if (z != 0) {
-          perror("getsockname error");
-          return 1;
-        }
-        char buffer[1000];
-        sprintf(buffer, "%s:%u", inet_ntoa(adr_inet.sin_addr), (unsigned)ntohs(adr_inet.sin_port));
-        const char *correct = "0.0.0.0:0";
-        printf("got (expected) socket: %s (%s), size %d (%d)\n", buffer, correct, strlen(buffer), strlen(correct));
-        assert(strlen(buffer) == strlen(correct));
-        assert(strcmp(buffer, correct) == 0);
-        puts("success.");
-      }
-    ''', 'success.')
-
-  def test_getpeername_unconnected_socket(self):
-    self.do_run(r'''
-      #include <sys/socket.h>
-      #include <stdio.h>
-      #include <assert.h>
-      #include <sys/socket.h>
-      #include <netinet/in.h>
-      #include <arpa/inet.h>
-      #include <string.h>
-      int main() {
-        int fd;
-        int z;
-        fd = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-        struct sockaddr_in adr_inet;
-        socklen_t len_inet = sizeof adr_inet;
-        z = getpeername(fd, (struct sockaddr *)&adr_inet, &len_inet);
-        if (z != 0) {
-          perror("getpeername error");
-          return 1;
-        }
-        puts("unexpected success.");
-      }
-    ''', 'getpeername error: Socket not connected')
-
-  def test_getaddrinfo(self):
-    self.emcc_args = []
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getaddrinfo.c')).read(), 'success')
-
-  def test_getnameinfo(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getnameinfo.c')).read(), 'success')
-
-  def test_gethostbyname(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_gethostbyname.c')).read(), 'success')
-
-  def test_getprotobyname(self):
-    self.do_run(open(path_from_root('tests', 'sockets', 'test_getprotobyname.c')).read(), 'success')
-
-  def test_link(self):
-    self.do_run(r'''
-#include <netdb.h>
-
-#include <sys/types.h>
-#include <sys/socket.h>
-
-int main () {
-    void* thing = gethostbyname("bing.com");
-    ssize_t rval = recv (0, thing, 0, 0);
-    rval = send (0, thing, 0, 0);
-    return 0;
-}''', '', force_c=True)
 
   def test_sockets_echo(self):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
@@ -412,7 +223,7 @@ int main () {
     # generate a large string literal to use as our message
     message = ''
     for i in range(256 * 256 * 2):
-        message += str(unichr(ord('a') + (i % 26)))
+        message += str(chr(ord('a') + (i % 26)))
 
     # re-write the client test with this literal (it's too big to pass via command line)
     input_filename = path_from_root('tests', 'sockets', 'test_sockets_echo_client.c')
@@ -432,6 +243,7 @@ int main () {
         self.btest(output, expected='0', args=[sockets_include, '-DSOCKK=%d' % harness.listen_port, '-DTEST_DGRAM=%d' % datagram], force_c=True)
 
   @no_windows('This test is Unix-specific.')
+  @unittest.skip('fails on python3 - ws library may need to be updated')
   def test_sockets_partial(self):
     for harness in [
       WebsockifyServerHarness(os.path.join('sockets', 'test_sockets_partial_server.c'), [], 49180),
@@ -463,9 +275,9 @@ int main () {
   @no_windows('This test uses Unix-specific build architecture.')
   def test_enet(self):
     # this is also a good test of raw usage of emconfigure and emmake
-    shared.try_delete(self.in_dir('enet'))
-    shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
-    with chdir(self.in_dir('enet')):
+    shared.try_delete('enet')
+    shutil.copytree(path_from_root('tests', 'enet'), 'enet')
+    with chdir('enet'):
       run_process([PYTHON, path_from_root('emconfigure'), './configure'])
       run_process([PYTHON, path_from_root('emmake'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
@@ -481,10 +293,10 @@ int main () {
   # somewhat work, but those have been removed). However, with WebRTC it
   # should be able to resurect this test.
   # def test_enet_in_browser(self):
-  #   shared.try_delete(self.in_dir('enet'))
-  #   shutil.copytree(path_from_root('tests', 'enet'), self.in_dir('enet'))
+  #   shared.try_delete('enet')
+  #   shutil.copytree(path_from_root('tests', 'enet'), 'enet')
   #   pwd = os.getcwd()
-  #   os.chdir(self.in_dir('enet'))
+  #   os.chdir('enet')
   #   run_process([PYTHON, path_from_root('emconfigure'), './configure'])
   #   run_process([PYTHON, path_from_root('emmake'), 'make'])
   #   enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
@@ -650,3 +462,24 @@ int main () {
           out = run_js('client.js', engine=NODE_JS, full_output=True)
           self.assertContained('do_msg_read: read 14 bytes', out)
           self.assertContained('connect: ws://localhost:59168/testA/testB, text,base64,binary', out)
+
+  # Test Emscripten WebSockets API to send and receive text and binary messages against an echo server.
+  # N.B. running this test requires 'npm install ws' in Emscripten root directory
+  def test_websocket_send(self):
+    with NodeJsWebSocketEchoServerProcess():
+      self.btest(path_from_root('tests', 'websocket', 'test_websocket_send.c'), expected='101', args=['-lwebsocket', '-s', 'NO_EXIT_RUNTIME=1', '-s', 'WEBSOCKET_DEBUG=1'])
+
+  # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets -> POSIX sockets bridge server
+  def test_posix_proxy_sockets(self):
+    # Build the websocket bridge server
+    run_process(['cmake', path_from_root('tools', 'websocket_to_posix_proxy')])
+    run_process(['cmake', '--build', '.'])
+    if os.name == 'nt': # This is not quite exact, instead of "isWindows()" this should be "If CMake defaults to building with Visual Studio", but there is no good check for that, so assume Windows==VS.
+      proxy_server = os.path.join(self.get_dir(), 'Debug', 'websocket_to_posix_proxy.exe')
+    else:
+      proxy_server = os.path.join(self.get_dir(), 'websocket_to_posix_proxy')
+
+    with BackgroundServerProcess([proxy_server, '8080']):
+      with PythonTcpEchoServerProcess('7777'):
+        # Build and run the TCP echo client program with Emscripten
+        self.btest(path_from_root('tests', 'websocket', 'tcp_echo_client.cpp'), expected='101', args=['-lwebsocket', '-s', 'PROXY_POSIX_SOCKETS=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])

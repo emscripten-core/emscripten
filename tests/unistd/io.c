@@ -10,6 +10,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
+#include <sys/uio.h>
 #include <emscripten.h>
 
 int main() {
@@ -176,6 +177,26 @@ int main() {
   int bytesRead;
   printf("seek: %d\n", lseek(f, 0, SEEK_SET));
   printf("read after write: %d\n", bytesRead = read(f, readBuffer, sizeof readBuffer));
+  printf("errno: %d\n", errno);
+  errno = 0;
+  printf("final: ");
+  for (int i = 0; i < bytesRead; i++) {
+    if (readBuffer[i] == 0) {
+      printf("\\0");
+    } else {
+      printf("%c", readBuffer[i]);
+    }
+  }
+  printf("\n");
+
+  // readv
+  printf("\n");
+  memset(readBuffer, 0, sizeof readBuffer);
+  struct iovec iov;
+  iov.iov_base = readBuffer;
+  iov.iov_len = sizeof readBuffer;
+  printf("seek: %d\n", lseek(f, 0, SEEK_SET));
+  printf("read after write: %d\n", bytesRead = readv(f, &iov, 1));
   printf("errno: %d\n", errno);
   errno = 0;
   printf("final: ");

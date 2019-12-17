@@ -4,8 +4,8 @@
 // found in the LICENSE file.
 
 mergeInto(LibraryManager.library, {
-  $NODEFS__deps: ['$FS', '$PATH'],
-  $NODEFS__postset: 'if (ENVIRONMENT_IS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
+  $NODEFS__deps: ['$FS', '$PATH', '$ERRNO_CODES'],
+  $NODEFS__postset: 'if (ENVIRONMENT_HAS_NODE) { var fs = require("fs"); var NODEJS_PATH = require("path"); NODEFS.staticInit(); }',
   $NODEFS: {
     isWindows: false,
     staticInit: function() {
@@ -30,15 +30,20 @@ mergeInto(LibraryManager.library, {
       // Node.js < 4.5 compatibility: Buffer.from does not support ArrayBuffer
       // Buffer.from before 4.5 was just a method inherited from Uint8Array
       // Buffer.alloc has been added with Buffer.from together, so check it instead
-      return Buffer.alloc ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
+      return Buffer["alloc"] ? Buffer.from(arrayBuffer) : new Buffer(arrayBuffer);
+    },
+    convertNodeCode: function(e) {
+      var code = e.code;
+      assert(code in ERRNO_CODES);
+      return ERRNO_CODES[code];
     },
     mount: function (mount) {
-      assert(ENVIRONMENT_IS_NODE);
+      assert(ENVIRONMENT_HAS_NODE);
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {
       if (!FS.isDir(mode) && !FS.isFile(mode) && !FS.isLink(mode)) {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
       var node = FS.createNode(parent, name, mode);
       node.node_ops = NODEFS.node_ops;
@@ -56,7 +61,7 @@ mergeInto(LibraryManager.library, {
         }
       } catch (e) {
         if (!e.code) throw e;
-        throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+        throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
       }
       return stat.mode;
     },
@@ -88,7 +93,7 @@ mergeInto(LibraryManager.library, {
       if (!flags) {
         return newFlags;
       } else {
-        throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+        throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
     },
     node_ops: {
@@ -99,7 +104,7 @@ mergeInto(LibraryManager.library, {
           stat = fs.lstatSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
         // node.js v0.10.20 doesn't report blksize and blocks on Windows. Fake them with default blksize of 4096.
         // See http://support.microsoft.com/kb/140365
@@ -142,7 +147,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       lookup: function (parent, name) {
@@ -162,7 +167,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
         return node;
       },
@@ -173,7 +178,7 @@ mergeInto(LibraryManager.library, {
           fs.renameSync(oldPath, newPath);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       unlink: function(parent, name) {
@@ -182,7 +187,7 @@ mergeInto(LibraryManager.library, {
           fs.unlinkSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       rmdir: function(parent, name) {
@@ -191,7 +196,7 @@ mergeInto(LibraryManager.library, {
           fs.rmdirSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       readdir: function(node) {
@@ -200,7 +205,7 @@ mergeInto(LibraryManager.library, {
           return fs.readdirSync(path);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       symlink: function(parent, newName, oldPath) {
@@ -209,7 +214,7 @@ mergeInto(LibraryManager.library, {
           fs.symlinkSync(oldPath, newPath);
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       readlink: function(node) {
@@ -220,7 +225,7 @@ mergeInto(LibraryManager.library, {
           return path;
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
     },
@@ -233,7 +238,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       close: function (stream) {
@@ -243,7 +248,7 @@ mergeInto(LibraryManager.library, {
           }
         } catch (e) {
           if (!e.code) throw e;
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       read: function (stream, buffer, offset, length, position) {
@@ -252,33 +257,33 @@ mergeInto(LibraryManager.library, {
         try {
           return fs.readSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       write: function (stream, buffer, offset, length, position) {
         try {
           return fs.writeSync(stream.nfd, NODEFS.bufferFrom(buffer.buffer), offset, length, position);
         } catch (e) {
-          throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+          throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
       },
       llseek: function (stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             try {
               var stat = fs.fstatSync(stream.nfd);
               position += stat.size;
             } catch (e) {
-              throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+              throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
             }
           }
         }
 
         if (position < 0) {
-          throw new FS.ErrnoError(ERRNO_CODES.EINVAL);
+          throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
         }
 
         return position;

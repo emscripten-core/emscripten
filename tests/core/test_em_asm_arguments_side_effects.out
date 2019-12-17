@@ -1,0 +1,3 @@
+counter_1=3, counter_2=4
+counter_1++ * 10 + counter_2++=34
+counter_1=4, counter_2=5

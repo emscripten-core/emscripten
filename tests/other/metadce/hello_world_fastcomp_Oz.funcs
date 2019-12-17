@@ -1,0 +1,14 @@
+$___emscripten_stdout_close
+$___emscripten_stdout_seek
+$___fwritex
+$___overflow
+$___stdio_write
+$___towrite
+$_main
+$_memcpy
+$_puts
+$_strlen
+$b0
+$b1
+$b2
+$stackAlloc

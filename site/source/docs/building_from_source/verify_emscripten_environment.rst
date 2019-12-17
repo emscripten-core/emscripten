@@ -19,7 +19,7 @@ Open a terminal in the directory in which you installed Emscripten (on Windows o
 
   ./emcc -v
 
-.. note:: On Windows, invoke the tool with **emsdk** instead of **./emsdk**.
+.. note:: On Windows, invoke the tool with **emcc** instead of **./emcc**.
 
 For example, the following output reports an installation where Java is missing::
   :emphasize-lines: 6
@@ -31,7 +31,7 @@ For example, the following output reports an installation where Java is missing:
   INFO     root: (Emscripten: Running sanity checks)
   WARNING  root: java does not seem to exist, required for closure compiler. -O2 and above will fail. You need to define JAVA in ~/.emscripten
 
-At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``./emcc -v`` should give no warnings, and if you just enter ``./emcc`` (without any input files), it should only give the following warning: ::
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc -v`` should give no warnings, and if you just enter ``emcc`` (without any input files), it should only give the following warning: ::
 
   WARNING  root: no input files
 
@@ -91,6 +91,6 @@ Other common problems to check for are:
 
    - Errors in the paths in :ref:`.emscripten <compiler-configuration-file>`. These are less likely if you update the file using :ref:`emsdk <emsdk>`.
    - Using older versions of Node or JavaScript engines. Use the default versions for the SDK as listed with :ref:`emsdk list <emsdk>`.
-   - Using older versions of LLVM. The correct versions come with the SDK, but if you're building the environment from source see :ref:`LLVM-Backend` for the proper repos for LLVM and Clang.
+   - Using older versions of LLVM. The correct versions come with the SDK, but if you're building the environment from source you should make sure to use the proper version of LLVM (which you can find using the `emscripten-releases DEPS file and history <https://github.com/emscripten-core/emscripten/blob/incoming/docs/process.md#release-processes>`_; other versions might work, especially close-by ones, but are not tested by us and so not guaranteed to work).
 
 If none of the above is helpful, then please :ref:`contact us <contact>` for help.

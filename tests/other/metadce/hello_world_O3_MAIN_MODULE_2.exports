@@ -1,0 +1,10 @@
+__assign_got_enties
+__errno_location
+__stdio_write
+__wasm_call_ctors
+main
+malloc
+setThrew
+stackAlloc
+stackRestore
+stackSave

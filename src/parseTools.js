@@ -23,82 +23,59 @@ function processMacros(text) {
 // ident checked is true in our global.
 // Also handles #include x.js (similar to C #include <file>)
 // Param filenameHint can be passed as a description to identify the file that is being processed, used
-// to locate errors for reporting.
+// to locate errors for reporting and for html files to stop expansion between <style> and </style>.
 function preprocess(text, filenameHint) {
+  var fileExt = (filenameHint) ? filenameHint.split('.').pop().toLowerCase() : "";
+  var isHtml = (fileExt === 'html' || fileExt === 'htm') ? true : false;
+  var inStyle = false;
   var lines = text.split('\n');
   var ret = '';
   var showStack = [];
   for (var i = 0; i < lines.length; i++) {
     var line = lines[i];
     try {
-      if (line[line.length-1] == '\r') {
+      if (line[line.length-1] === '\r') {
         line = line.substr(0, line.length-1); // Windows will have '\r' left over from splitting over '\r\n'
       }
-      if (!line[0] || line[0] != '#') {
-        if (showStack.indexOf(false) == -1) {
-          ret += line + '\n';
-        }
-      } else {
-        if (line[1] == 'i') {
-          if (line[2] == 'f') { // if
-            var parts = line.split(' ');
-            var ident = parts[1];
-            var op = parts[2];
-            var value = parts[3];
-            if (typeof value === 'string') {
-              // when writing
-              // #if option == 'stringValue'
-              // we need to get rid of the quotes
-              if (value[0] === '"' || value[0] === "'") {
-                assert(value[value.length - 1] == '"' || value[value.length - 1] == "'");
-                value = value.substring(1, value.length - 1);
-              }
-            }
-            if (op) {
-              if (op === '==') {
-                showStack.push(ident in this && this[ident] == value);
-              } else if (op === '!=') {
-                showStack.push(!(ident in this && this[ident] == value));
-              } else if (op === '<') {
-                showStack.push(ident in this && this[ident] < value);
-              } else if (op === '<=') {
-                showStack.push(ident in this && this[ident] <= value);
-              } else if (op === '>') {
-                showStack.push(ident in this && this[ident] > value);
-              } else if (op === '>=') {
-                showStack.push(ident in this && this[ident] >= value);
-              } else {
-                error('unsupported preprocessor op ' + op);
-              }
-            } else {
-              // Check if a value is truthy.
-              var short = ident[0] === '!' ? ident.substr(1) : ident;
-              var truthy = short in this;
-              if (truthy) {
-                truthy = !!this[short];
-              }
-              if (ident[0] === '!') {
-                showStack.push(!truthy);
-              } else {
-                showStack.push(truthy);
-              }
-            }
-          } else if (line[2] == 'n') { // include
+      if (isHtml && line.indexOf('<style') !== -1 && !inStyle) {
+        inStyle = true;
+      }
+      if (isHtml && line.indexOf('</style') !== -1 && inStyle) {
+        inStyle = false;
+      }
+
+      if (!inStyle) {
+        if (line.indexOf('#if') === 0) {
+          var parts = line.split(' ');
+          var after = parts.slice(1).join(' ');
+          var truthy = !!eval(after);
+          showStack.push(truthy);
+        } else if (line.indexOf('#include') === 0) {
+          if (showStack.indexOf(false) === -1) {
             var filename = line.substr(line.indexOf(' ')+1);
             if (filename.indexOf('"') === 0) {
               filename = filename.substr(1, filename.length - 2);
             }
             var included = read(filename);
-            ret += '\n' + preprocess(included, filename) + '\n'
+            ret += '\n' + preprocess(included, filename) + '\n';
           }
-        } else if (line[2] == 'l') { // else
+        } else if (line.indexOf('#else') === 0) {
           assert(showStack.length > 0);
           showStack.push(!showStack.pop());
-        } else if (line[2] == 'n') { // endif
+        } else if (line.indexOf('#endif') === 0) {
           assert(showStack.length > 0);
           showStack.pop();
         } else {
-          throw "Unclear preprocessor command: " + line;
+          if (line[0] === '#') {
+            throw "Unclear preprocessor command on line " + i + ': ' + line;
+          }
+          if (showStack.indexOf(false) === -1) {
+            ret += line + '\n';
+          }
+        }
+      } else { // !inStyle
+        if (showStack.indexOf(false) === -1) {
+          ret += line + '\n';
         }
       }
     } catch(e) {
@@ -106,7 +83,7 @@ function preprocess(text, filenameHint) {
       throw e;
     }
   }
-  assert(showStack.length == 0);
+  assert(showStack.length == 0, 'preprocessing error in file '+ filenameHint + ', no matching #endif found (' + showStack.length + ' unmatched preprocessing directives on stack)');
   return ret;
 }
 
@@ -480,7 +457,7 @@ function splitI64(value, floatConversion) {
     asmCoercion('Math_abs(VALUE)', 'double') + ' >= ' + asmEnsureFloat('1', 'double') + ' ? ' +
       '(VALUE > ' + asmEnsureFloat('0', 'double') + ' ? ' +
                asmCoercion('Math_min(' + asmCoercion('Math_floor((VALUE)/' + asmEnsureFloat(4294967296, 'double') + ')', 'double') + ', ' + asmEnsureFloat(4294967295, 'double') + ')', 'i32') + '>>>0' +
-               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' + 
+               ' : ' + asmFloatToInt(asmCoercion('Math_ceil((VALUE - +((' + asmFloatToInt('VALUE') + ')>>>0))/' + asmEnsureFloat(4294967296, 'double') + ')', 'double')) + '>>>0' +
       ')' +
     ' : 0',
     value,
@@ -851,9 +828,6 @@ var asmPrintCounter = 0;
 
 // See makeSetValue
 function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, ignore, align, noSafe, forceAsm) {
-  if (UNALIGNED_MEMORY) align = 1;
-  else if (FORCE_ALIGNED_MEMORY && !isIllegalType(type)) align = 8;
-
   if (isStructType(type)) {
     var typeData = Types.types[type];
     var ret = [];
@@ -932,9 +906,6 @@ function makeGetValueAsm(ptr, pos, type, unsigned) {
 //!             which means we should write to all slabs, ignore type differences if any on reads, etc.
 //! @param noNeedFirst Whether to ignore the offset in the pointer itself.
 function makeSetValue(ptr, pos, value, type, noNeedFirst, ignore, align, noSafe, sep, forcedAlign, forceAsm) {
-  if (UNALIGNED_MEMORY && !forcedAlign) align = 1;
-  else if (FORCE_ALIGNED_MEMORY && !isIllegalType(type)) align = 8;
-
   sep = sep || ';';
   if (isStructType(type)) {
     var typeData = Types.types[type];
@@ -1025,7 +996,7 @@ function makeSetValues(ptr, pos, value, type, num, align) {
   if (value < 0) value += 256; // make it unsigned
   var values = {
     1: value,
-    2: value | (value << 8), 
+    2: value | (value << 8),
     4: value | (value << 8) | (value << 16) | (value << 24)
   };
   var ret = [];
@@ -1076,6 +1047,20 @@ function makeHEAPView(which, start, end) {
   var size = parseInt(which.replace('U', '').replace('F', ''))/8;
   var mod = size == 1 ? '' : ('>>' + log2(size));
   return 'HEAP' + which + '.subarray((' + start + ')' + mod + ',(' + end + ')' + mod + ')';
+}
+
+// When dynamically linking, some things like dynCalls may not exist in one module and
+// be provided by a linked module, so they must be accessed indirectly using Module
+function exportedAsmFunc(func) {
+  if (!MAIN_MODULE && !SIDE_MODULE) {
+    return func;
+  } else {
+    return "Module['" + func + "']";
+  }
+}
+
+function makeDynCall(sig) {
+  return exportedAsmFunc('dynCall_' + sig);
 }
 
 var TWO_TWENTY = Math.pow(2, 20);
@@ -1312,15 +1297,11 @@ function makeGetSlabs(ptr, type, allowMultiple, unsigned) {
 }
 
 function makeGetTempRet0() {
-  return RELOCATABLE ? "(getTempRet0() | 0)" : "tempRet0";
+  return "(getTempRet0() | 0)";
 }
 
 function makeSetTempRet0(value) {
-  if (WASM_BACKEND == 1) {
-    return 'Module["asm"]["setTempRet0"](' + value + ')';
-  } else {
-    return RELOCATABLE ? "setTempRet0((" + value + ") | 0)" : ("tempRet0 = " + value);
-  }
+  return "setTempRet0((" + value + ") | 0)";
 }
 
 function makeStructuralReturn(values, inAsm) {
@@ -1339,7 +1320,13 @@ function makeStructuralReturn(values, inAsm) {
 }
 
 function makeThrow(what) {
-  return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
+  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING == 1) {
+    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."';
+    if (MAIN_MODULE) {
+      what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+    }
+  }
+  return 'throw ' + what + ';';
 }
 
 function makeSignOp(value, type, op, force, ignore) {
@@ -1433,6 +1420,22 @@ function charCode(char) {
   return char.charCodeAt(0);
 }
 
+// Returns the number of bytes the given Javascript string takes if encoded as a UTF8 byte array, EXCLUDING the null terminator byte.
+function lengthBytesUTF8(str) {
+  var len = 0;
+  for (var i = 0; i < str.length; ++i) {
+    // Gotcha: charCodeAt returns a 16-bit word that is a UTF-16 encoded code unit, not a Unicode code point of the character! So decode UTF16->UTF32->UTF8.
+    // See http://unicode.org/faq/utf_bom.html#utf16-3
+    var u = str.charCodeAt(i); // possibly a lead surrogate
+    if (u >= 0xD800 && u <= 0xDFFF) u = 0x10000 + ((u & 0x3FF) << 10) | (str.charCodeAt(++i) & 0x3FF);
+    if (u <= 0x7F) ++len;
+    else if (u <= 0x7FF) len += 2;
+    else if (u <= 0xFFFF) len += 3;
+    else len += 4;
+  }
+  return len;
+}
+
 function getTypeFromHeap(suffix) {
   switch (suffix) {
     case '8': return 'i8';
@@ -1456,16 +1459,18 @@ function asmFFICoercion(value, type) {
 }
 
 function makeDynCall(sig) {
-  if (!EMULATED_FUNCTION_POINTERS) {
-    return 'dynCall_' + sig;
-  } else {
+  // asm.js function tables have one table in each linked asm.js module, so we
+  // can't just dynCall into them - ftCall exists for that purpose. In wasm,
+  // even linked modules share the table, so it's all fine.
+  if (EMULATED_FUNCTION_POINTERS && !WASM) {
     return 'ftCall_' + sig;
+  } else {
+    return 'dynCall_' + sig;
   }
 }
 
 function heapAndOffset(heap, ptr) { // given   HEAP8, ptr   , we return    splitChunk, relptr
-  if (!SPLIT_MEMORY) return heap + ',' + ptr;
-  return heap + 's[(' + ptr + ') >> SPLIT_MEMORY_BITS], (' + ptr + ') & SPLIT_MEMORY_MASK'; 
+  return heap + ',' + ptr;
 }
 
 function makeEval(code) {
@@ -1484,12 +1489,54 @@ function makeEval(code) {
 }
 
 function makeStaticAlloc(size) {
-  size = (size + (STACK_ALIGN-1)) & -STACK_ALIGN;
-  return 'STATICTOP; STATICTOP += ' + size + ';';
+  size = alignMemory(size);
+  var ret = alignMemory(GLOBAL_BASE + STATIC_BUMP);
+  STATIC_BUMP = ret + size - GLOBAL_BASE;
+  return ret;
+}
+
+function makeStaticString(string) {
+  var len = lengthBytesUTF8(string) + 1;
+  var ptr = makeStaticAlloc(len);
+  return '(stringToUTF8("' + string + '", ' + ptr + ', ' + len + '), ' + ptr + ')';
+}
+
+var ATINITS = [];
+
+function addAtInit(code) {
+  ATINITS.push(code);
+}
+
+var ATMAINS = [];
+
+function addAtMain(code) {
+  ATMAINS.push(code);
+}
+
+var ATEXITS = [];
+
+function addAtExit(code) {
+  if (EXIT_RUNTIME) {
+    ATEXITS.push(code);
+  }
+}
+
+// Some things, like the dynamic and stack bases, will be computed later and
+// applied. Return them as {{{ STR }}} for that replacing later.
+
+function getQuoted(str) {
+  return '{{{ ' + str + ' }}}';
 }
 
 function makeRetainedCompilerSettings() {
   var blacklist = set('STRUCT_INFO');
+  if (STRICT) {
+    for (var i in LEGACY_SETTINGS) {
+      var name = LEGACY_SETTINGS[i][0];
+      blacklist[name] = 0;
+    }
+  }
+
   var ret = {};
   for (var x in this) {
     try {
@@ -1499,3 +1546,88 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
+// In wasm, the heap size must be a multiple of 64KB.
+// In asm.js, it must be a multiple of 16MB.
+var WASM_PAGE_SIZE = 65536;
+var ASMJS_PAGE_SIZE = 16777216;
+
+function getPageSize() {
+  return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
+}
+
+// Receives a function as text, and a function that constructs a modified
+// function, to which we pass the parsed-out name, arguments, and body of the
+// function. Returns the output of that function.
+function modifyFunction(text, func) {
+  var match = text.match(/\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  assert(match, 'could not match function ' + text + '.');
+  var name = match[1];
+  var args = match[2];
+  var rest = text.substr(match[0].length);
+  var bodyStart = rest.indexOf('{');
+  assert(bodyStart >= 0);
+  var bodyEnd = rest.lastIndexOf('}');
+  assert(bodyEnd > 0);
+  return func(name, args, rest.substring(bodyStart + 1, bodyEnd));
+}
+
+function runOnMainThread(text) {
+  if (USE_PTHREADS) {
+    return 'if (!ENVIRONMENT_IS_PTHREAD) { ' + text + ' }';
+  } else {
+    return text;
+  }
+}
+
+function expectToReceiveOnModule(name) {
+  return name in INCOMING_MODULE_JS_API;
+}
+
+function makeRemovedModuleAPIAssert(moduleName, localName) {
+  if (!ASSERTIONS) return '';
+  if (!localName) localName = moduleName;
+  return "if (!Object.getOwnPropertyDescriptor(Module, '" + moduleName + "')) Object.defineProperty(Module, '" + moduleName + "', { configurable: true, get: function() { abort('Module." + moduleName + " has been replaced with plain " + localName + "') } });";
+}
+
+// Make code to receive a value on the incoming Module object.
+function makeModuleReceive(localName, moduleName) {
+  if (!moduleName) moduleName = localName;
+  var ret = '';
+  if (expectToReceiveOnModule(moduleName)) {
+    // Usually the local we use is the same as the Module property name,
+    // but sometimes they must differ.
+    ret = "if (Module['" + moduleName + "']) " + localName + " = Module['" + moduleName + "'];";
+  }
+  ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  return ret;
+}
+
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+  if (!moduleName) moduleName = localName;
+  var ret = 'var ' + localName;
+  if (!expectToReceiveOnModule(moduleName)) {
+    if (defaultValue) {
+      ret += ' = ' + defaultValue;
+    }
+    ret += ';';
+  } else {
+    if (defaultValue) {
+      ret += " = Module['" + moduleName + "'] || " + defaultValue + ";";
+    } else {
+      ret += ';' +
+             makeModuleReceive(localName, moduleName);
+      return ret;
+    }
+  }
+  if (!noAssert) {
+    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  }
+  return ret;
+}
+
+function makeRemovedFSAssert(fsName) {
+  if (!ASSERTIONS) return;
+  var lower = fsName.toLowerCase();
+  if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
+  return "var " + fsName + " = '" + fsName + " is no longer included by default; build with -l" + lower + ".js';";
+}

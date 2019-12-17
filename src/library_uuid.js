@@ -85,7 +85,7 @@ mergeInto(LibraryManager.library, {
   // pointed to by uu, otherwise -1 is returned.
   uuid_parse: function(inp, uu) {
     // int uuid_parse(const char *in, uuid_t uu);
-    var inp = Pointer_stringify(inp);
+    var inp = UTF8ToString(inp);
     if (inp.length === 36) {
       var i = 0;
       var uuid = new Array(16);

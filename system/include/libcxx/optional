@@ -105,8 +105,8 @@ namespace std {
 
     // 23.6.3.3, assignment
     optional &operator=(nullopt_t) noexcept;
-    optional &operator=(const optional &);
-    optional &operator=(optional &&) noexcept(see below );
+    optional &operator=(const optional &);                // constexpr in C++20
+    optional &operator=(optional &&) noexcept(see below); // constexpr in C++20
     template <class U = T> optional &operator=(U &&);
     template <class U> optional &operator=(const optional<U> &);
     template <class U> optional &operator=(optional<U> &&);
@@ -139,6 +139,10 @@ namespace std {
   private:
     T *val; // exposition only
   };
+
+template<class T>
+  optional(T) -> optional<T>;
+
 } // namespace std
 
 */
@@ -152,6 +156,7 @@ namespace std {
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#include <version>
 
 #if !defined(_LIBCPP_HAS_NO_PRAGMA_SYSTEM_HEADER)
 #pragma GCC system_header
@@ -164,7 +169,7 @@ _LIBCPP_PUSH_MACROS
 namespace std  // purposefully not using versioning namespace
 {
 
-class _LIBCPP_EXCEPTION_ABI bad_optional_access
+class _LIBCPP_EXCEPTION_ABI _LIBCPP_AVAILABILITY_BAD_OPTIONAL_ACCESS bad_optional_access
     : public exception
 {
 public:
@@ -181,6 +186,7 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 
 _LIBCPP_NORETURN
 inline _LIBCPP_INLINE_VISIBILITY
+_LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
 void __throw_bad_optional_access() {
 #ifndef _LIBCPP_NO_EXCEPTIONS
         throw bad_optional_access();
@@ -612,8 +618,8 @@ private:
     };
     template <class _Up>
     using _CheckOptionalArgsCtor = conditional_t<
-        !is_same_v<decay_t<_Up>, in_place_t> &&
-        !is_same_v<decay_t<_Up>, optional>,
+        !is_same_v<__uncvref_t<_Up>, in_place_t> &&
+        !is_same_v<__uncvref_t<_Up>, optional>,
         _CheckOptionalArgsConstructor,
         __check_tuple_constructor_fail
     >;
@@ -761,7 +767,7 @@ public:
               class = enable_if_t
                       <__lazy_and<
                           integral_constant<bool,
-                              !is_same_v<decay_t<_Up>, optional> &&
+                              !is_same_v<__uncvref_t<_Up>, optional> &&
                               !(is_same_v<_Up, value_type> && is_scalar_v<value_type>)
                           >,
                           is_constructible<value_type, _Up>,
@@ -928,6 +934,7 @@ public:
     using __base::__get;
 
     _LIBCPP_INLINE_VISIBILITY
+    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
     constexpr value_type const& value() const&
     {
         if (!this->has_value())
@@ -936,6 +943,7 @@ public:
     }
 
     _LIBCPP_INLINE_VISIBILITY
+    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
     constexpr value_type& value() &
     {
         if (!this->has_value())
@@ -944,6 +952,7 @@ public:
     }
 
     _LIBCPP_INLINE_VISIBILITY
+    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
     constexpr value_type&& value() &&
     {
         if (!this->has_value())
@@ -952,6 +961,7 @@ public:
     }
 
     _LIBCPP_INLINE_VISIBILITY
+    _LIBCPP_AVAILABILITY_THROW_BAD_OPTIONAL_ACCESS
     constexpr value_type const&& value() const&&
     {
         if (!this->has_value())
@@ -1002,6 +1012,11 @@ private:
         return &__x;
     }
 };
+
+#ifndef _LIBCPP_HAS_NO_DEDUCTION_GUIDES
+template<class T>
+    optional(T) -> optional<T>;
+#endif
 
 // Comparisons between optionals
 template <class _Tp, class _Up>

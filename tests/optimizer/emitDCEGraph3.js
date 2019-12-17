@@ -11,6 +11,6 @@ function dynCall(sig) {
 
 dynCall('vi' + 'ii'); // a dynamic dyncall, causes uses of all the dynCall_*
 
-Module.asmLibraryArg = {
+var asmLibraryArg = {
 };
 

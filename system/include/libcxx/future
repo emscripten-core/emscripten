@@ -409,7 +409,7 @@ _LIBCPP_DECLARE_STRONG_ENUM_EPILOG(launch)
 
 #ifndef _LIBCPP_HAS_NO_STRONG_ENUMS
 
-#ifdef _LIBCXX_UNDERLYING_TYPE
+#ifdef _LIBCPP_UNDERLYING_TYPE
 typedef underlying_type<launch>::type __launch_underlying_type;
 #else
 typedef int __launch_underlying_type;
@@ -514,7 +514,7 @@ public:
     virtual ~future_error() _NOEXCEPT;
 };
 
-_LIBCPP_NORETURN inline _LIBCPP_ALWAYS_INLINE
+_LIBCPP_NORETURN inline _LIBCPP_INLINE_VISIBILITY
 #ifndef _LIBCPP_NO_EXCEPTIONS
 _LIBCPP_AVAILABILITY_FUTURE_ERROR
 #endif
@@ -556,13 +556,14 @@ public:
         {return (__state_ & __constructed) || (__exception_ != nullptr);}
 
     _LIBCPP_INLINE_VISIBILITY
-    void __set_future_attached()
-    {
+    void __attach_future() {
         lock_guard<mutex> __lk(__mut_);
+        bool __has_future_attached = (__state_ & __future_attached) != 0;
+        if (__has_future_attached)
+            __throw_future_error(future_errc::future_already_retrieved);
+        this->__add_shared();
         __state_ |= __future_attached;
     }
-    _LIBCPP_INLINE_VISIBILITY
-    bool __has_future_attached() const {return (__state_ & __future_attached) != 0;}
 
     _LIBCPP_INLINE_VISIBILITY
     void __set_deferred() {__state_ |= deferred;}
@@ -1154,10 +1155,7 @@ template <class _Rp>
 future<_Rp>::future(__assoc_state<_Rp>* __state)
     : __state_(__state)
 {
-    if (__state_->__has_future_attached())
-        __throw_future_error(future_errc::future_already_retrieved);
-    __state_->__add_shared();
-    __state_->__set_future_attached();
+    __state_->__attach_future();
 }
 
 struct __release_shared_count
@@ -1257,10 +1255,7 @@ template <class _Rp>
 future<_Rp&>::future(__assoc_state<_Rp&>* __state)
     : __state_(__state)
 {
-    if (__state_->__has_future_attached())
-        __throw_future_error(future_errc::future_already_retrieved);
-    __state_->__add_shared();
-    __state_->__set_future_attached();
+    __state_->__attach_future();
 }
 
 template <class _Rp>
@@ -2021,7 +2016,7 @@ public:
               class = typename enable_if
               <
                   !is_same<
-                      typename decay<_Fp>::type, 
+                      typename __uncvref<_Fp>::type, 
                       packaged_task
                       >::value
                   >::type
@@ -2032,7 +2027,7 @@ public:
               class = typename enable_if
               <
                   !is_same<
-                      typename decay<_Fp>::type, 
+                      typename __uncvref<_Fp>::type, 
                       packaged_task
                       >::value
                   >::type
@@ -2150,7 +2145,7 @@ public:
               class = typename enable_if
               <
                   !is_same<
-                      typename decay<_Fp>::type, 
+                      typename __uncvref<_Fp>::type, 
                       packaged_task
                       >::value
                   >::type
@@ -2161,7 +2156,7 @@ public:
               class = typename enable_if
               <
                   !is_same<
-                      typename decay<_Fp>::type, 
+                      typename __uncvref<_Fp>::type, 
                       packaged_task
                       >::value
                   >::type
