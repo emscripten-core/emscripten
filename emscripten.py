@@ -1826,7 +1826,7 @@ def create_fp_accessors(metadata):
     originalAccessor = ''
     if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
       name = 'orig$' + name
-      originalAccessor = ('if (!func) func = Module["_%s"];' % (name))
+      originalAccessor = 'if (!func) func = Module["_%s"];' % (name)
 
     accessors.append('''
 Module['%(full)s'] = function() {
@@ -2248,13 +2248,14 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     for name in library_fns:
       library_fns_list.append(name.encode('utf-8'))
 
-    libraryfile = infile + '.libfile'
-    with open(libraryfile, 'w') as f:
-      f.write(str(library_fns_list))
+    js_symbols = infile + '.js_symbols'
+    with open(js_symbols, 'w') as js_symbols_file:
+      for sym in library_fns_list:
+        js_symbols_file.write(sym + '\n')
   else:
-    libraryfile = []
+    js_symbols = []
 
-  metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG, libraryfile)
+  metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG, js_symbols)
 
   update_settings_glue(metadata, DEBUG)
 
