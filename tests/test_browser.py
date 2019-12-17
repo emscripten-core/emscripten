@@ -1985,6 +1985,11 @@ keydown(100);keyup(100); // trigger the end
   def test_cubegeom_regal(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
 
+  @requires_threads
+  @requires_graphics_hardware
+  def test_cubegeom_regal_mt(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
+
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
     create_test_file('side.c', r'''
