@@ -572,6 +572,37 @@ mergeInto(LibraryManager.library, {
     exportCallStack: [],
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    sleepCallbacks: [], // functions to call every time we sleep
+
+#if ASSERTIONS
+    instrumentWasmImports: function(imports) {
+      var ASYNCIFY_IMPORTS = {{{ JSON.stringify(ASYNCIFY_IMPORTS) }}}.map(function(x) {
+        return x.split('.')[1];
+      });
+      for (var x in imports) {
+        (function(x) {
+          var original = imports[x];
+          if (typeof original === 'function') {
+            imports[x] = function() {
+              var originalAsyncifyState = Asyncify.state;
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                // Only functions in the list of known relevant imports are allowed to change the state.
+                // Note that invoke_* functions are allowed to change the state if we do not ignore
+                // indirect calls.
+                if (Asyncify.state !== originalAsyncifyState &&
+                    ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
+                    !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
+                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                }
+              }
+            }
+          }
+        })(x);
+      }
+    },
+#endif
 
     instrumentWasmExports: function(exports) {
       var ret = {};
@@ -718,6 +749,10 @@ mergeInto(LibraryManager.library, {
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
+        // Call all sleep callbacks now that the sleep-resume is all done.
+        Asyncify.sleepCallbacks.forEach(function(func) {
+          func();
+        });
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
@@ -779,6 +814,17 @@ mergeInto(LibraryManager.library, {
         {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
         wakeUp();
       };
+    });
+  },
+
+  emscripten_lazy_load_code: function() {
+    Asyncify.handleSleep(function(wakeUp) {
+      // Update the expected wasm binary file to be the lazy one.
+      wasmBinaryFile += '.lazy.wasm';
+      // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
+      dependenciesFulfilled = wakeUp;
+      // Load the new wasm.
+      asm = createWasm();
     });
   },
 

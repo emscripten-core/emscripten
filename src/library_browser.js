@@ -8,8 +8,10 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { err("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead."); Module["requestFullScreen"] = Module["requestFullscreen"]; Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
-                     'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+#if ASSERTIONS
+                     'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
+#endif
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
@@ -420,13 +422,11 @@ var LibraryBrowser = {
       }
     },
 
-    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
-        err('Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.');
-        Browser.requestFullScreen = function(lockPointer, resizeCanvas, vrDevice) {
-          return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
-        }
-        return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
+#if ASSERTIONS
+    requestFullScreen: function() {
+      abort('Module.requestFullScreen has been replaced by Module.requestFullscreen (without a capital S)');
     },
+#endif
 
     exitFullscreen: function() {
       // This is workaround for chrome. Trying to exit from fullscreen
@@ -1285,7 +1285,7 @@ var LibraryBrowser = {
     }
 
     if (simulateInfiniteLoop) {
-      throw 'SimulateInfiniteLoop';
+      throw 'unwind';
     }
   },
 
@@ -1352,7 +1352,7 @@ var LibraryBrowser = {
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     noExitRuntime = true;
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
   emscripten_force_exit__proxy: 'sync',

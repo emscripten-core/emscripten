@@ -152,6 +152,8 @@ Other methods
 
   Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``tests/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
 
+  .. note:: Sanitizers or source map is currently not supported if overriding WebAssembly instantiation with Module.instantiateWasm. Providing Module.instantiateWasm when source map or sanitizer is enabled can prevent WebAssembly instantiation from finishing.
+
 .. js:function:: Module.onCustomMessage
 
   When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/master/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/master/src/proxyWorker.js>`_).

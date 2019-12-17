@@ -59,7 +59,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_runner
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, V8_ENGINE, NODE_JS, EM_BUILD_VERBOSE
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
@@ -214,6 +214,11 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
+def ensure_dir(dirname):
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+
 def limit_size(string, maxbytes=800 * 20, maxlines=100):
   lines = string.splitlines()
   if len(lines) > maxlines:
@@ -239,15 +244,18 @@ core_test_modes = [
   'wasm3',
   'wasms',
   'wasmz',
-  'wasm2js0',
-  'wasm2js1',
-  'wasm2js2',
-  'wasm2js3',
-  'wasm2jss',
-  'wasm2jsz',
 ]
 
-if not shared.Settings.WASM_BACKEND:
+if shared.Settings.WASM_BACKEND:
+  core_test_modes += [
+    'wasm2js0',
+    'wasm2js1',
+    'wasm2js2',
+    'wasm2js3',
+    'wasm2jss',
+    'wasm2jsz',
+  ]
+else:
   core_test_modes += [
     'asm0',
     'asm2',
@@ -267,10 +275,14 @@ non_core_test_modes = [
   'sockets',
   'interactive',
   'benchmark',
-  'asan',
-  'lsan',
-  'wasm2ss',
 ]
+
+if shared.Settings.WASM_BACKEND:
+  non_core_test_modes += [
+    'asan',
+    'lsan',
+    'wasm2ss',
+  ]
 
 test_index = 0
 
@@ -416,7 +428,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def setUp(self):
     super(RunnerCore, self).setUp()
     self.settings_mods = {}
-    self.emcc_args = []
+    self.emcc_args = ['-Werror']
     self.save_dir = EMTEST_SAVE_DIR
     self.save_JS = False
     self.env = {}
@@ -433,8 +445,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if not os.path.exists(self.working_dir):
-        os.makedirs(self.working_dir)
+      ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
@@ -465,12 +476,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         # Our leak detection will pick up *any* new temp files in the temp dir. They may not be due to
         # us, but e.g. the browser when running browser tests. Until we figure out a proper solution,
         # ignore some temp file names that we see on our CI infrastructure.
-        ignorable_files = [
+        ignorable_file_prefixes = [
           '/tmp/tmpaddon',
-          '/tmp/circleci-no-output-timeout'
+          '/tmp/circleci-no-output-timeout',
+          '/tmp/wasmer'
         ]
 
-        left_over_files = list(set(temp_files_after_run) - set(self.temp_files_before_run) - set(ignorable_files))
+        left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
+        left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
         if len(left_over_files):
           print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
@@ -756,13 +769,18 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     stderr = self.in_dir('stderr')
     # Make sure that we produced proper line endings to the .js file we are about to run.
     self.assertEqual(line_endings.check_line_endings(filename), 0)
+    error = None
     if EMTEST_VERBOSE:
       print("Running '%s' under '%s'" % (filename, engine))
-    with chdir(self.get_dir()):
-      jsrun.run_js(filename, engine, args, check_timeout,
-                   stdout=open(stdout, 'w'),
-                   stderr=open(stderr, 'w'),
-                   assert_returncode=assert_returncode)
+    try:
+      with chdir(self.get_dir()):
+        jsrun.run_js(filename, engine, args, check_timeout,
+                     stdout=open(stdout, 'w'),
+                     stderr=open(stderr, 'w'),
+                     assert_returncode=assert_returncode)
+    except subprocess.CalledProcessError as e:
+      error = e
+
     out = open(stdout, 'r').read()
     err = open(stderr, 'r').read()
     if engine == SPIDERMONKEY_ENGINE and self.get_setting('ASM_JS') == 1:
@@ -771,11 +789,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = output_nicerizer(out, err)
     else:
       ret = out + err
-    assert 'strict warning:' not in ret, 'We should pass all strict mode checks: ' + ret
-    if EMTEST_VERBOSE:
+    if error or EMTEST_VERBOSE:
       print('-- begin program output --')
       print(ret, end='')
       print('-- end program output --')
+    if error:
+      self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
+
+    #  We should pass all strict mode checks
+    self.assertNotContained('strict warning:', ret)
     return ret
 
   def assertExists(self, filename, msg=None):
@@ -790,8 +812,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two paths are identical, modulo path delimiters. E.g. "C:/foo" is equal to "C:\foo".
   def assertPathsIdentical(self, path1, path2):
-    path1 = path1.replace('\\', '/').replace('//', '/')
-    path2 = path2.replace('\\', '/').replace('//', '/')
+    path1 = path1.replace('\\', '/')
+    path2 = path2.replace('\\', '/')
     return self.assertIdentical(path1, path2)
 
   # Tests that the given two multiline text content are identical, modulo line
@@ -855,14 +877,13 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_build_dir(self):
     ret = os.path.join(self.get_dir(), 'building')
-    if not os.path.exists(ret):
-      os.makedirs(ret)
+    ensure_dir(ret)
     return ret
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
-                  configure_args=[], make=['make'], make_args='help',
+                  configure_args=[], make=['make'], make_args=None,
                   env_init={}, cache_name_extra='', native=False):
-    if make_args == 'help':
+    if make_args is None:
       make_args = ['-j', str(multiprocessing.cpu_count())]
 
     build_dir = self.get_build_dir()
@@ -900,6 +921,20 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try_delete(os.path.join(EMSCRIPTEN_TEMP_DIR, name))
 
   # Shared test code between main suite and others
+
+  def expect_fail(self, cmd, **args):
+    """Run a subprocess and assert that it returns non-zero.
+
+    Return the stderr of the subprocess.
+    """
+    proc = run_process(cmd, check=False, stderr=PIPE, **args)
+    self.assertNotEqual(proc.returncode, 0)
+    # When we check for failure we expect a user-visible error, not a traceback.
+    # However, on windows a python traceback can happen randomly sometimes,
+    # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
+    if not WINDOWS or 'Access is denied' not in proc.stderr:
+      self.assertNotContained('Traceback', proc.stderr)
+    return proc.stderr
 
   def setup_runtimelink_test(self):
     create_test_file('header.h', r'''
@@ -1074,9 +1109,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     for engine in js_engines:
       assert type(engine) == list
     for engine in self.banned_js_engines:
-      assert type(engine) == list
-    js_engines = [engine for engine in js_engines if engine and engine[0] not in [banned[0] for banned in self.banned_js_engines if banned]]
-    return js_engines
+      assert type(engine) in (list, type(None))
+    banned = [b[0] for b in self.banned_js_engines if b]
+    return [engine for engine in js_engines if engine and engine[0] not in banned]
 
   def do_run_from_file(self, src, expected_output, *args, **kwargs):
     if 'force_c' not in kwargs and os.path.splitext(src)[1] == '.c':
@@ -1120,6 +1155,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         js_engines = [SPIDERMONKEY_ENGINE]
       else:
         js_engines = js_engines[:1]
+    # In standalone mode, also add wasm vms as we should be able to run there too.
+    if self.get_setting('STANDALONE_WASM'):
+      # TODO once standalone wasm support is more stable, apply use_all_engines
+      # like with js engines, but for now as we bring it up, test in all of them
+      wasm_engines = shared.WASM_ENGINES
+      if len(wasm_engines) == 0:
+        logger.warning('no wasm engine was found to run the standalone part of this test')
+      js_engines += wasm_engines
     for engine in js_engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
@@ -1142,7 +1185,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       test_index += 1
 
   def get_freetype_library(self):
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build
@@ -1158,6 +1203,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     # Poppler has some pretty glaring warning.  Suppress them to keep the
     # test output readable.
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
     self.emcc_args += [
       '-Wno-sentinel',
       '-Wno-logical-not-parentheses',
@@ -1638,17 +1685,22 @@ def build_library(name,
     for k, v in env_init.items():
       env[k] = v
     if configure:
-      # Useful in debugging sometimes to comment this out (and the lines below
-      # up to and including the |link| call)
-      if EM_BUILD_VERBOSE < 2:
-        stdout = open(os.path.join(project_dir, 'configure_out'), 'w')
-      else:
-        stdout = None
-      if EM_BUILD_VERBOSE < 1:
-        stderr = open(os.path.join(project_dir, 'configure_err'), 'w')
-      else:
-        stderr = None
-      Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+      try:
+        with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
+          with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
+            stdout = out if EM_BUILD_VERBOSE < 2 else None
+            stderr = err if EM_BUILD_VERBOSE < 1 else None
+            Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
+      except subprocess.CalledProcessError:
+        with open(os.path.join(project_dir, 'configure_out')) as f:
+          print('-- configure stdout --')
+          print(f.read())
+          print('-- end configure stdout --')
+        with open(os.path.join(project_dir, 'configure_err')) as f:
+          print('-- configure stderr --')
+          print(f.read())
+          print('-- end configure stderr --')
+        raise
 
     def open_make_out(mode='r'):
       return open(os.path.join(project_dir, 'make.out'), mode)
@@ -1659,11 +1711,22 @@ def build_library(name,
     if EM_BUILD_VERBOSE >= 3:
       make_args += ['VERBOSE=1']
 
-    with open_make_out('w') as make_out:
-      with open_make_err('w') as make_err:
-        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    try:
+      with open_make_out('w') as make_out:
+        with open_make_err('w') as make_err:
+          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+    except subprocess.CalledProcessError:
+      with open_make_out() as f:
+        print('-- make stdout --')
+        print(f.read())
+        print('-- end make stdout --')
+      with open_make_err() as f:
+        print('-- make stderr --')
+        print(f.read())
+        print('-- end stderr --')
+      raise
 
     if cache is not None:
       cache[cache_name] = []
@@ -1675,12 +1738,10 @@ def build_library(name,
 
 
 def check_js_engines():
-  total_engines = len(shared.JS_ENGINES)
-  shared.JS_ENGINES = list(filter(jsrun.check_engine, shared.JS_ENGINES))
-  if not shared.JS_ENGINES:
-    print('WARNING: None of the JS engines in JS_ENGINES appears to work.')
-  elif len(shared.JS_ENGINES) < total_engines:
-    print('WARNING: Not all the JS engines in JS_ENGINES appears to work, ignoring those.')
+  working_engines = list(filter(jsrun.check_engine, shared.JS_ENGINES))
+  if len(working_engines) < len(shared.JS_ENGINES):
+    print('Not all the JS engines in JS_ENGINES appears to work.')
+    exit(1)
 
   if EMTEST_ALL_ENGINES:
     print('(using ALL js engines)')
@@ -1889,25 +1950,12 @@ def run_tests(options, suites):
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='runner.py', description=__doc__)
-  parser.add_argument('-j', '--js-engine', help='Set JS_ENGINE_OVERRIDE')
   parser.add_argument('tests', nargs='*')
   return parser.parse_args()
 
 
 def main(args):
   options = parse_args(args)
-  if options.js_engine:
-    if options.js_engine == 'SPIDERMONKEY_ENGINE':
-      Building.JS_ENGINE_OVERRIDE = SPIDERMONKEY_ENGINE
-    elif options.js_engine == 'V8_ENGINE':
-      Building.JS_ENGINE_OVERRIDE = V8_ENGINE
-    elif options.js_engine == 'NODE_JS':
-      Building.JS_ENGINE_OVERRIDE = NODE_JS
-    else:
-      print('Unknown js engine override: ' + options.js_engine)
-      return 1
-    print("Overriding JS engine: " + Building.JS_ENGINE_OVERRIDE[0])
-
   check_js_engines()
 
   def prepend_default(arg):

@@ -5,7 +5,6 @@
 
 import os
 import shutil
-from subprocess import Popen
 
 TAG = 'version_1'
 HASH = '0d0b1280ba0501ad0a23cf1daa1f86821c722218b59432734d3087a89acd22aabd5c3e5e1269700dcd41e87073046e906060f167c032eb91a3ac8c5808a02783'
@@ -86,17 +85,27 @@ def get(ports, settings, shared):
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'freetype', src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, os.path.join(dest_path, src), '-DFT2_BUILD_LIBRARY', '-O2', '-o', o, '-I' + dest_path + '/include',
-                       '-I' + dest_path + '/truetype', '-I' + dest_path + '/sfnt', '-I' + dest_path + '/autofit', '-I' + dest_path + '/smooth',
-                       '-I' + dest_path + '/raster', '-I' + dest_path + '/psaux', '-I' + dest_path + '/psnames', '-I' + dest_path + '/truetype',
+      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(dest_path, src), '-o', o,
+                       '-DFT2_BUILD_LIBRARY', '-O2',
+                       '-I' + dest_path + '/include',
+                       '-I' + dest_path + '/truetype',
+                       '-I' + dest_path + '/sfnt',
+                       '-I' + dest_path + '/autofit',
+                       '-I' + dest_path + '/smooth',
+                       '-I' + dest_path + '/raster',
+                       '-I' + dest_path + '/psaux',
+                       '-I' + dest_path + '/psnames',
+                       '-I' + dest_path + '/truetype',
                        '-w'])
       o_s.append(o)
 
     ports.run_commands(commands)
     final = os.path.join(ports.get_build_dir(), 'freetype', 'libfreetype.a')
     shared.try_delete(final)
-    Popen([shared.LLVM_AR, 'rc', final] + o_s).communicate()
-    assert os.path.exists(final)
+    shared.run_process([shared.LLVM_AR, 'rc', final] + o_s)
+
+    ports.install_header_dir(os.path.join(dest_path, 'include'),
+                             target=os.path.join('freetype2', 'freetype'))
     return final
 
   return [shared.Cache.get('libfreetype.a', create, what='port')]
@@ -109,7 +118,8 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_FREETYPE == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'freetype/include')]
+    args += ['-I' + os.path.join(ports.get_include_dir(), 'freetype2', 'freetype')]
+
   return args
 
 

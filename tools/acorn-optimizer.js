@@ -576,6 +576,14 @@ function emitDCEGraph(ast) {
       var assignedObject = getAsmLibraryArgValue(node);
       assignedObject.properties.forEach(function(item) {
         var value = item.value;
+        if (value.type === 'Literal' || value.type === 'FunctionExpression') {
+          return; // if it's a numeric or function literal, nothing to do here
+        }
+        if (value.type === 'LogicalExpression') {
+          // We may have something like  wasmMemory || Module.wasmMemory  in pthreads code;
+          // use the left hand identifier.
+          value = value.left;
+        }
         assert(value.type === 'Identifier');
         imports.push(value.name); // the name doesn't matter, only the value which is that actual thing we are importing
       });
@@ -756,6 +764,104 @@ function applyDCEGraphRemovals(ast) {
   });
 }
 
+// Need a parser to pass to acorn.Node constructor.
+// Create it once and reuse it.
+var stubParser = new acorn.Parser();
+
+function createNode(props) {
+  var node = new acorn.Node(stubParser);
+  Object.assign(node, props);
+  return node;
+}
+
+function makeCallExpression(node, name, args) {
+  Object.assign(node, {
+    type: 'CallExpression',
+    callee: createNode({
+      type: 'Identifier',
+      name: name,
+    }),
+    arguments: args
+  });
+}
+
+// Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
+// pthreads + memory growth to work (we check if the memory was grown on another thread
+// in each access), see #8365.
+function growableHeap(ast) {
+  recursiveWalk(ast, {
+    AssignmentExpression: function(node) {
+      if (node.left.type === 'Identifier' &&
+          node.left.name.startsWith('HEAP')
+      ) {
+        // Don't transform initial setup of the arrays.
+        switch (node.left.name) {
+          case 'HEAP8':  case 'HEAPU8':
+          case 'HEAP16': case 'HEAPU16':
+          case 'HEAP32': case 'HEAPU32':
+          case 'HEAPF32': case 'HEAPF64': {
+            return;
+          }
+          default: {
+          }
+        }
+      }
+      growableHeap(node.left);
+      growableHeap(node.right);
+    },
+    VariableDeclaration: function(node) {
+      // Don't transform the var declarations for HEAP8 etc
+      node.declarations.forEach(function(decl) {
+        // but do transform anything that sets a var to
+        // something from HEAP8 etc
+        if (decl.init) {
+          growableHeap(decl.init);
+        }
+      });
+    },
+    Identifier: function(node) {
+      if (node.name.startsWith('HEAP')) {
+        // Turn HEAP8 into GROWABLE_HEAP_I8() etc
+        switch (node.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I8', []);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U8', []);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I16', []);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U16', []);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I32', []);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U32', []);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, 'GROWABLE_HEAP_F32', []);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
+            break;
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
 // Main
 
 var arguments = process['argv'].slice(2);;
@@ -782,6 +888,7 @@ var registry = {
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
   dump: function() { dump(ast) },
+  growableHeap: growableHeap,
 };
 
 passes.forEach(function(pass) {

@@ -51,9 +51,8 @@ def get(ports, settings, shared):
     shutil.copytree(source_path_glslopt, dest_path_glslopt)
 
     # includes
-    source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include')
-    dest_path_include = os.path.join(ports.get_build_dir(), 'regal', 'include')
-    shutil.copytree(source_path_include, dest_path_include)
+    source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include', 'GL')
+    ports.install_header_dir(source_path_include)
 
     # build
     srcs_regal = ['regal/RegalShaderInstance.cpp',
@@ -120,7 +119,7 @@ def get(ports, settings, shared):
       c = os.path.join(dest_path_src, src)
       o = os.path.join(dest_path_src, src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, c,
+      commands.append([shared.PYTHON, shared.EMCC, '-c', c,
                        # specify the defined symbols as the Regal Makefiles does for Emscripten+Release
                        # the define logic for other symbols will be handled automatically by Regal headers (SYS_EMSCRIPTEN, SYS_EGL, SYS_ES2, etc.)
                        '-DNDEBUG',
@@ -134,7 +133,6 @@ def get(ports, settings, shared):
                        '-fvisibility=hidden',
                        '-O2',
                        '-o', o,
-                       '-I' + dest_path_include,
                        '-I' + dest_path_regal,
                        '-I' + os.path.join(dest_path_md5, 'include'),
                        '-I' + dest_path_lookup3,
@@ -166,7 +164,6 @@ def process_dependencies(settings):
 def process_args(ports, args, settings, shared):
   if settings.USE_REGAL == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(ports.get_build_dir(), 'regal', 'include')]
   return args
 
 

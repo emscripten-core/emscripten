@@ -10,10 +10,12 @@ int pipe2(int fd[2], int flag)
 	if (ret != -ENOSYS) return __syscall_ret(ret);
 	ret = pipe(fd);
 	if (ret) return ret;
+#ifndef __EMSCRIPTEN__ // CLOEXEC makes no sense for a single process
 	if (flag & O_CLOEXEC) {
 		__syscall(SYS_fcntl, fd[0], F_SETFD, FD_CLOEXEC);
 		__syscall(SYS_fcntl, fd[1], F_SETFD, FD_CLOEXEC);
 	}
+#endif
 	if (flag & O_NONBLOCK) {
 		__syscall(SYS_fcntl, fd[0], F_SETFL, O_NONBLOCK);
 		__syscall(SYS_fcntl, fd[1], F_SETFL, O_NONBLOCK);

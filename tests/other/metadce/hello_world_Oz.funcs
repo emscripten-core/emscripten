@@ -1,0 +1,12 @@
+$__emscripten_stdout_close
+$__emscripten_stdout_seek
+$__fwritex
+$__overflow
+$__stdio_write
+$__towrite
+$__wasm_call_ctors
+$fwrite
+$main
+$memcpy
+$puts
+$strlen
