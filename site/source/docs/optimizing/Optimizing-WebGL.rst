@@ -25,7 +25,7 @@ By default, if no special GL related linker flags are chosen, Emscripten targets
 
 - When targeting OpenGL ES 3, if one needs to render from client side memory, or the use of ``glMapBuffer*()`` API is needed, pass the linker flag ``-s FULL_ES3=1`` to emulate these features, which core WebGL 2 does not have. This emulation is expected to hurt performance, so using VBOs is recommended instead.
 
-- Even if your application does not need any WebGL 2/OpenGL ES 3 features, consider porting the application to run on WebGL 2, because JavaScript side performance in WebGL 2 has been optimized to generate no temporary garbage, which has been observed to give a solid 3-7% speed improvement, as well as reducing potential stuttering at render time. To enable these optimizations, build with the linker flag ``-s USE_WEBGL2=1`` and make sure to create a WebGL 2 context at GL startup time (OpenGL ES 3 context if using EGL).
+- Even if your application does not need any WebGL 2/OpenGL ES 3 features, consider porting the application to run on WebGL 2, because JavaScript side performance in WebGL 2 has been optimized to generate no temporary garbage, which has been observed to give a solid 3-7% speed improvement, as well as reducing potential stuttering at render time. To enable these optimizations, build with the linker flag ``-s MAX_WEBGL_VERSION=2`` and make sure to create a WebGL 2 context at GL startup time (OpenGL ES 3 context if using EGL).
 
 How To Profile WebGL
 ====================

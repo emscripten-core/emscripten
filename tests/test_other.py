@@ -1803,6 +1803,9 @@ int f() {
     run_process([PYTHON, EMCC, 'main.cpp'])
     self.assertContained('1234, 1234, 4321\n', run_js('a.out.js'))
 
+  def test_sdl2_mixer(self):
+    Building.emcc(path_from_root('tests', 'sdl2_mixer.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
+
   def test_libpng(self):
     shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
     Building.emcc(path_from_root('tests', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')
@@ -1922,7 +1925,7 @@ int f() {
       }
       ''')
 
-    for args in ([], ['-O1'], ['-s', 'USE_WEBGL2=1']):
+    for args in ([], ['-O1'], ['-s', 'MAX_WEBGL_VERSION=2']):
       for action in ('WARN', 'ERROR', None):
         for value in ([0, 1]):
           try_delete('a.out.js')
@@ -4579,10 +4582,7 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
 
   def test_dashE_respect_dashO(self):
     # issue #3365
-    null_file = 'NUL' if WINDOWS else '/dev/null'
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', null_file], stdout=PIPE, stderr=PIPE).stdout
-    if WINDOWS:
-      self.assertNotExists(null_file)
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E', '-o', 'ignored.js'], stdout=PIPE, stderr=PIPE).stdout
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-E'], stdout=PIPE, stderr=PIPE).stdout
     self.assertEqual(len(with_dash_o), 0)
     self.assertNotEqual(len(without_dash_o), 0)
@@ -4592,10 +4592,8 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     self.assertContained('hello_world.o:', out) # Verify output is just a dependency rule instead of bitcode or js
 
   def test_dashM_respect_dashO(self):
-    null_file = 'NUL' if WINDOWS else '/dev/null'
-    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', null_file], stdout=PIPE).stdout
-    if WINDOWS:
-      self.assertNotExists(null_file)
+    # issue #3365
+    with_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M', '-o', 'ignored.js'], stdout=PIPE).stdout
     without_dash_o = run_process([PYTHON, EMXX, path_from_root('tests', 'hello_world.cpp'), '-M'], stdout=PIPE).stdout
     self.assertEqual(len(with_dash_o), 0)
     self.assertNotEqual(len(without_dash_o), 0)
@@ -8354,7 +8352,7 @@ int main() {
       text = re.sub(r' +', ' ', text)
       # print("text: %s" % text)
       i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
-      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
@@ -8776,6 +8774,34 @@ end
     assert expected in err
     err = self.expect_fail(base + ['--embed-files', 'somefile'])
     assert expected in err
+
+  def test_node_code_caching(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
+                 '-s', 'NODE_CODE_CACHING',
+                 '-s', 'WASM_ASYNC_COMPILATION=0'])
+
+    def get_cached():
+      cached = glob.glob('a.out.wasm.*.cached')
+      if not cached:
+        return None
+      self.assertEqual(len(cached), 1)
+      return cached[0]
+
+    # running the program makes it cache the code
+    self.assertFalse(get_cached())
+    self.assertEqual('hello, world!', run_js('a.out.js').strip())
+    self.assertTrue(get_cached(), 'should be a cache file')
+
+    # hard to test it actually uses it to speed itself up, but test that it
+    # does try to deserialize it at least
+    with open(get_cached(), 'w') as f:
+      f.write('waka waka')
+    ERROR = 'NODE_CODE_CACHING: failed to deserialize, bad cache file?'
+    self.assertContained(ERROR, run_js('a.out.js', stderr=PIPE, full_output=True))
+    # we cached proper code after showing that error
+    with open(get_cached(), 'rb') as f:
+      self.assertEqual(f.read().count(b'waka'), 0)
+    self.assertNotContained(ERROR, run_js('a.out.js', stderr=PIPE, full_output=True))
 
   def test_autotools_shared_check(self):
     env = os.environ.copy()
@@ -9532,14 +9558,14 @@ int main () {
                            '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                            '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL',
                            '-s', 'MODULARIZE=1']
-    hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
+    hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 1453, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 1446, 'a.js': 604, 'a.wasm': 86}),
+      (opts, hello_world_sources, {'a.html': 1415, 'a.js': 604, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 1581, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 1563, 'a.js': 4837, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 1563, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (opts, hello_webgl_sources, {'a.html': 1537, 'a.js': 4837, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 1537, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
@@ -10154,6 +10180,10 @@ int main() {
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_output_to_nowhere(self):
+    nowhere = '/dev/null' if not WINDOWS else 'NUL'
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
+
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
   # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
@@ -10161,3 +10191,16 @@ int main() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'test_html5.c'), '-s', 'MIN_IE_VERSION=-1'])
     self.assertContained('allowsDeferredCalls: true', open('a.out.js').read())
     self.assertNotContained('allowsDeferredCalls: JSEvents.isInternetExplorer()', open('a.out.js').read())
+
+  def test_errno_type(self):
+    create_test_file('errno_type.c', '''
+#include <errno.h>
+
+// Use of these constants in C preprocessor comparisons should work.
+#if EPERM > 0
+#define DAV1D_ERR(e) (-(e))
+#else
+#define DAV1D_ERR(e) (e)
+#endif
+''')
+    run_process([PYTHON, EMCC, 'errno_type.c'])

@@ -1027,7 +1027,7 @@ class libgl(MTLibrary):
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     if self.is_webgl2:
-      cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
+      cflags += ['-DMAX_WEBGL_VERSION=2', '-s', 'MAX_WEBGL_VERSION=2']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
@@ -1042,7 +1042,7 @@ class libgl(MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super(libgl, cls).get_default_variation(
       is_legacy=shared.Settings.LEGACY_GL_EMULATION,
-      is_webgl2=shared.Settings.USE_WEBGL2,
+      is_webgl2=shared.Settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=shared.Settings.FULL_ES3,
       **kwargs
@@ -1553,8 +1553,10 @@ class Ports(object):
     if target:
       dest = os.path.join(dest, target)
       shared.safe_ensure_dirs(dest)
-    for f in glob.glob(os.path.join(src_dir, pattern)):
-      logger.debug(os.path.join(dest, os.path.basename(f)))
+    matches = glob.glob(os.path.join(src_dir, pattern))
+    assert matches, "no headers found to install in %s" % src_dir
+    for f in matches:
+      logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
       shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
 
   @staticmethod

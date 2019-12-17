@@ -377,7 +377,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
   // catch bugs, then set the real values in applyStackValues later.
-#if STACK_OVERFLOW_CHECK
+#if ASSERTIONS || SAFE_STACK
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
 
@@ -1022,9 +1022,9 @@ function createWasm() {
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
       });
       return result;
-#else
+#else // USE_OFFSET_CONVERTER
       return WebAssembly.instantiate(binary, info);
-#endif
+#endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
@@ -1067,7 +1067,43 @@ function createWasm() {
     var binary;
     try {
       binary = getBinary();
+#if NODE_CODE_CACHING
+      if (ENVIRONMENT_HAS_NODE) {
+        var v8 = require('v8');
+        // Include the V8 version in the cache name, so that we don't try to
+        // load cached code from another version, which fails silently (it seems
+        // to load ok, but we do actually recompile the binary every time).
+        var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+        cachedCodeFile = locateFile(cachedCodeFile);
+        var hasCached = nodeFS.existsSync(cachedCodeFile);
+        if (hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: loading module');
+#endif
+          try {
+            module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
+          } catch (e) {
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file?');
+            // Save the new compiled code when we have it.
+            hasCached = false;
+          }
+err(module);
+        }
+      }
+      if (!module) {
+        module = new WebAssembly.Module(binary);
+      }
+      if (ENVIRONMENT_HAS_NODE) {
+        if (!hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: saving module');
+#endif
+          nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
+        }
+      }
+#else // NODE_CODE_CACHING
       module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
       instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);
