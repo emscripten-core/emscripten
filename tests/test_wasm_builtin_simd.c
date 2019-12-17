@@ -367,6 +367,7 @@ i8x16 TESTFN i8x16_sub_saturate_u(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_mul(i8x16 x, i8x16 y) {
   return x * y;
 }
+// Skip {min,max}_{s,u} because they do not have short builtin equivalents
 i16x8 TESTFN i16x8_neg(i16x8 vec) {
   return -vec;
 }
@@ -406,6 +407,7 @@ i16x8 TESTFN i16x8_sub_saturate_u(i16x8 x, i16x8 y) {
 i16x8 TESTFN i16x8_mul(i16x8 x, i16x8 y) {
   return x * y;
 }
+// Skip {min,max}_{s,u} because they do not have short builtin equivalents
 i32x4 TESTFN i32x4_neg(i32x4 vec) {
   return -vec;
 }
@@ -433,6 +435,7 @@ i32x4 TESTFN i32x4_sub(i32x4 x, i32x4 y) {
 i32x4 TESTFN i32x4_mul(i32x4 x, i32x4 y) {
   return x * y;
 }
+// Skip {min,max}_{s,u} because they do not have short builtin equivalents
 i64x2 TESTFN i64x2_neg(i64x2 vec) {
   return -vec;
 }
