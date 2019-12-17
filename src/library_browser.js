@@ -1254,7 +1254,10 @@ var LibraryBrowser = {
       }
 #endif
 
-      if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
+      // requestAnimationFrame() can be used to render smoothly at rates 60/k fps (60fps, 30fps, 20fps, 15fps, ...). If attempting to use setTimeout
+      // to render at one of those frame rates, give a performance warning - requestAnimationFrame is much more powerful than setTimeout for the frame rates it supports.
+      // Note that this assumes that browser's rAF() ticks at a rate of 60 Hz. Currently web platform does not allow querying what the rAF() refresh rate is.
+      if (Browser.mainLoop.method === 'timeout' && Module.ctx && 60 % fps != 0) {
         err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
