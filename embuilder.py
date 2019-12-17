@@ -41,8 +41,6 @@ USER_TASKS = [
     'ogg',
     'regal',
     'regal-mt',
-    'regal-mt-noexcept',
-    'regal-noexcept',
     'sdl2',
     'sdl2-mt',
     'sdl2-gfx',
@@ -242,13 +240,9 @@ def main():
     elif what == 'cocos2d':
       build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
-      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-fexceptions'])
+      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
     elif what == 'regal-mt':
-      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-fexceptions', '-pthread'])
-    elif what == 'regal-noexcept':
-      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-fno-exceptions'])
-    elif what == 'regal-mt-noexcept':
-      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-s', 'DISABLE_EXCEPTION_CATCHING=1', '-fno-exceptions', '-pthread'])
+      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-pthread'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
     elif what == 'libsockets':

@@ -12,8 +12,7 @@ HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b33470
 
 
 def get_lib_name(ports, settings):
-  return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else '') +
-                            ('-noexcept' if settings.DISABLE_EXCEPTION_CATCHING else ''))
+  return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else ''))
 
 
 def get(ports, settings, shared):
@@ -117,6 +116,7 @@ def get(ports, settings, shared):
                  '-DREGAL_LOG=0',  # Set to 1 if you need to have some logging info
                  '-DREGAL_MISSING=0',  # Set to 1 if you don't want to crash in case of missing GL implementation
                  '-fno-rtti',
+                 '-fno-exceptions', # Disable exceptions (in STL containers mostly), as they are not used at all
                  '-O3',
                  '-o', o,
                  '-I' + dest_path_regal,
@@ -126,8 +126,6 @@ def get(ports, settings, shared):
                  '-Wno-unused-parameter']
       if settings.USE_PTHREADS:
         command += ['-pthread']
-      if settings.DISABLE_EXCEPTION_CATCHING:
-        command += ['-fno-exceptions']
       if settings.WASM_OBJECT_FILES != 1:
         command += ['-flto']
       commands.append(command)
