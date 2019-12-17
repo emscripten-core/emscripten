@@ -4671,6 +4671,21 @@ window.close = function() {
     self.assertExists('test.js')
     self.assertNotExists('test.worker.js')
 
+  # Tests that pthreads code works as intended in a Worker. That is, a pthreads-using
+  # program can run either on the main thread (normal tests) or when we start it in
+  # a Worker in this test (in that case, both the main application thread and the worker threads
+  # are all inside Web Workers).
+  @requires_threads
+  def test_pthreads_started_in_worker(self):
+    create_test_file('src.cpp', self.with_report_result(open(path_from_root('tests', 'pthread', 'test_pthread_atomics.cpp')).read()))
+    self.compile_btest(['src.cpp', '-o', 'test.js', '-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=8'])
+    create_test_file('test.html', '''
+      <script>
+        new Worker('test.js');
+      </script>
+    ''')
+    self.run_browser('test.html', None, '/report_result?0')
+
   def test_access_file_after_heap_resize(self):
     create_test_file('test.txt', 'hello from file')
     create_test_file('page.c', self.with_report_result(open(path_from_root('tests', 'access_file_after_heap_resize.c'), 'r').read()))
@@ -4885,6 +4900,12 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
+
+  # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_hello_world(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1']]:
+      self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME=1'])
 
   @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')
