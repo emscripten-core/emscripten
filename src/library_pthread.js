@@ -1332,7 +1332,7 @@ var LibraryPThread = {
   $establishStackSpaceInJsModule: function(stackTop, stackMax) {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
-#if STACK_OVERFLW_CHECK >= 2
+#if STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif
 #if STACK_OVERFLOW_CHECK
