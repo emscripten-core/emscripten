@@ -380,16 +380,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if ASSERTIONS || SAFE_STACK
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
-
-  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
-    STACK_BASE = stackBase;
-    STACKTOP = stackTop;
-    STACK_MAX = stackMax;
-#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
-    Module['___set_stack_limit'](STACK_MAX);
-#endif
-  };
-
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
   // TODO tempDoublePtr = Module['tempDoublePtr'];

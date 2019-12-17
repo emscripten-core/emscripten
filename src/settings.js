@@ -1699,5 +1699,5 @@ var LEGACY_SETTINGS = [
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
-  ['SAFE_STACK', 'STACK_OVERFLOW_CHECK'],
+  ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
 ];
