@@ -8049,7 +8049,7 @@ int main() {
   def assertFileContents(self, filename, contents):
     if os.environ.get('EMTEST_REBASELINE'):
       with open(filename, 'w') as f:
-        f.write(contents)
+        f.write(contents.replace('\r', ''))
       return
 
     expected_content = open(filename).read()
@@ -8153,7 +8153,7 @@ int main() {
       self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],       6, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O0': ([],       7, [], ['waka'],  9766,  6, 13, 19), # noqa
     'O1': (['-O1'],  4, [], ['waka'],  7886,  2, 11, 12), # noqa
     'O2': (['-O2'],  4, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -8203,7 +8203,7 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],       9, [], ['waka'], 22185,  8,  17, 57), # noqa
+    'O0': ([],      10, [], ['waka'], 22874,  9,  18, 58), # noqa
     'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
     'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
