@@ -10198,6 +10198,7 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'errno_type.c'])
 
+  @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):
     def test(args):
       # legacy browsers may lack Promise, which wasm2js depends on. see what
