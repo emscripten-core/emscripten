@@ -267,10 +267,6 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
-// Check each stack pointer decrement on WASM backend to ensure that the stack
-// does not overflow.
-var SAFE_STACK = 0;
-
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
@@ -1703,4 +1699,5 @@ var LEGACY_SETTINGS = [
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
+  ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
 ];

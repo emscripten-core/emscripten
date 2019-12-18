@@ -2309,7 +2309,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=0')
     else:
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
-  if shared.Settings.SAFE_STACK:
+  if shared.Settings.WASM_BACKEND and shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')

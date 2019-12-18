@@ -377,7 +377,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
   // catch bugs, then set the real values in establishStackSpaceInJsModule later.
-#if ASSERTIONS || SAFE_STACK
+#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
