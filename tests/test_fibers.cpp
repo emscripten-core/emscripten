@@ -10,39 +10,42 @@
 #include <emscripten.h>
 
 struct Fiber {
-    emscripten_fiber context;
-    void *stack;
-    int result;
+    emscripten_fiber_t context;
+    alignas(16) char stack[1 << 13];
+    int result = 0;
 
-    static void bad(void *arg) {
-        abort();
+    void init_with_api(em_arg_callback_func entry, void *arg) {
+        emscripten_fiber_init(&context, sizeof(context), entry, arg, stack, sizeof(stack));
     }
 
-    void init(em_arg_callback_func entry, void *arg) {
-        const int stack_size = 1 << 13;
-        stack = malloc(stack_size);
-        context = emscripten_fiber_create(bad, nullptr, stack, stack_size);
-        emscripten_fiber_recycle(context, entry, arg);
-        result = 0;
+    void init_manually(em_arg_callback_func entry, void *arg) {
+        context.asyncify_fiber.stack_base = stack + sizeof(stack);
+        context.asyncify_fiber.stack_limit = stack;
+        context.asyncify_fiber.stack_ptr = context.asyncify_fiber.stack_base;
+        context.asyncify_fiber.entry = entry;
+        context.asyncify_fiber.user_data = arg;
+        context.asyncify_data.stack_ptr = context.asyncify_stack;
+        context.asyncify_data.stack_limit = reinterpret_cast<char*>(&context) + sizeof(context);
+    }
+
+    void swap(emscripten_fiber_t *fiber) {
+        emscripten_fiber_swap(&context, fiber);
     }
 
     ~Fiber() {
-        free(stack);
-        emscripten_fiber_destroy(context);
         printf("\ndestructor");
     }
 };
 
 static struct Globals {
-    emscripten_fiber main;
+    emscripten_fiber_t main;
     Fiber fibers[2];
 
     Globals() {
-        main = emscripten_fiber_create_from_current_context();
+        emscripten_fiber_init_from_current_context(&main, sizeof(main));
     }
 
     ~Globals() {
-        emscripten_fiber_destroy(main);
         printf("\ndestructor");
     }
 } G;
@@ -57,46 +60,48 @@ static void fib(void * arg) {
     int next = 1;
     for(int i = 0; i < 9; ++i) {
         *p = cur;
-        emscripten_fiber_swap(G.fibers[0].context, G.main);
+        G.fibers[0].swap(&G.main);
         int next2 = cur + next;
         cur = next;
         next = next2;
     }
 }
 
+[[noreturn]]
 static void f(void *arg) {
     int *p = (int*)arg;
     *p = 0;
     leaf();
-    emscripten_fiber_swap(G.fibers[0].context, G.main);
+    G.fibers[0].swap(&G.main);
     fib(arg);
 
     G.fibers[0].result = 1;
-    emscripten_fiber_swap(G.fibers[0].context, G.main);
+    G.fibers[0].swap(&G.main);
     abort();
 }
 
+[[noreturn]]
 static void g(void *arg) {
     int *p = (int*)arg;
     for(int i = 0; i < 10; ++i) {
         *p = 100+i;
-        emscripten_fiber_swap(G.fibers[1].context, G.main);
+        G.fibers[1].swap(&G.main);
     }
 
     G.fibers[1].result = 1;
-    emscripten_fiber_swap(G.fibers[1].context, G.main);
+    G.fibers[1].swap(&G.main);
     abort();
 }
 
 int main(int argc, char **argv) {
     int i;
-    G.fibers[0].init(f, &i);
-    G.fibers[1].init(g, &i);
+    G.fibers[0].init_with_api(f, &i);
+    G.fibers[1].init_manually(g, &i);
 
     printf("*");
-    while(emscripten_fiber_swap(G.main, G.fibers[0].context), !G.fibers[0].result) {
+    while(emscripten_fiber_swap(&G.main, &G.fibers[0].context), !G.fibers[0].result) {
         printf("%d-", i);
-        emscripten_fiber_swap(G.main, G.fibers[1].context);
+        emscripten_fiber_swap(&G.main, &G.fibers[1].context);
         printf("%d-", i);
     }
     printf("*");

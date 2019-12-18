@@ -255,19 +255,42 @@ typedef void (*em_scan_func)(void*, void*);
 void emscripten_scan_registers(em_scan_func func);
 void emscripten_scan_stack(em_scan_func func);
 
-/* Deprecated and not available in upstream backend; use Fibers instead */
+// Fibers API
+// Requires upstream backend and Asyncify
+
+#define EM_FIBER_ASYNCIFY_STACK_SIZE 4096
+
+typedef struct asyncify_fiber_s {
+    void *stack_base;
+    void *stack_limit;
+    void *stack_ptr;
+    em_arg_callback_func entry;
+    void *user_data;
+} asyncify_fiber_t;
+
+typedef struct asyncify_data_s {
+    void *stack_ptr;
+    void *stack_limit;
+    int rewind_id;
+} asyncify_data_t;
+
+typedef struct emscripten_fiber_s {
+    asyncify_fiber_t asyncify_fiber;
+    asyncify_data_t asyncify_data;
+    char asyncify_stack[EM_FIBER_ASYNCIFY_STACK_SIZE];
+} emscripten_fiber_t;
+
+void emscripten_fiber_init(emscripten_fiber_t *fiber, unsigned int fiber_struct_size, em_arg_callback_func entry_func, void *entry_func_arg, void *stack, unsigned int stack_size);
+void emscripten_fiber_init_from_current_context(emscripten_fiber_t *fiber, unsigned int fiber_struct_size);
+void emscripten_fiber_swap(emscripten_fiber_t *old_fiber, emscripten_fiber_t *new_fiber);
+
+// Old coroutines API
+// Deprecated and not available in upstream backend; use Fibers instead
+
 typedef void * emscripten_coroutine;
 emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
 int emscripten_coroutine_next(emscripten_coroutine);
 void emscripten_yield(void);
-
-/* Upstream backend + Asyncify only */
-typedef struct emscripten_fiber_s *emscripten_fiber;
-emscripten_fiber emscripten_fiber_create(em_arg_callback_func func, void *arg, void *stack, int stack_size);
-emscripten_fiber emscripten_fiber_create_from_current_context(void);
-void emscripten_fiber_recycle(emscripten_fiber fiber, em_arg_callback_func func, void *arg);
-void emscripten_fiber_destroy(emscripten_fiber fiber);
-void emscripten_fiber_swap(emscripten_fiber old_fiber, emscripten_fiber new_fiber);
 
 /* ===================================== */
 /* Internal APIs. Be careful with these. */

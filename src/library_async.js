@@ -219,17 +219,11 @@ mergeInto(LibraryManager.library, {
     );
   },
 
-  emscripten_fiber_create: function() {
-    throw 'emscripten_fiber_create is not implemented for fastcomp ASYNCIFY';
+  emscripten_fiber_init: function() {
+    throw 'emscripten_fiber_init is not implemented for fastcomp ASYNCIFY';
   },
-  emscripten_fiber_create_from_current_context: function() {
-    throw 'emscripten_fiber_create_from_current_context is not implemented for fastcomp ASYNCIFY';
-  },
-  emscripten_fiber_recycle: function() {
-    throw 'emscripten_fiber_recycle is not implemented for fastcomp ASYNCIFY';
-  },
-  emscripten_fiber_destroy: function() {
-    throw 'emscripten_fiber_destroy is not implemented for fastcomp ASYNCIFY';
+  emscripten_fiber_init_from_current_context: function() {
+    throw 'emscripten_fiber_init_from_current_context is not implemented for fastcomp ASYNCIFY';
   },
   emscripten_fiber_swap: function() {
     throw 'emscripten_fiber_swap is not implemented for fastcomp ASYNCIFY';
@@ -560,17 +554,11 @@ mergeInto(LibraryManager.library, {
     }
   },
 
-  emscripten_fiber_create: function() {
-    throw 'emscripten_fiber_create is not implemented for EMTERPRETIFY_ASYNC';
+  emscripten_fiber_init: function() {
+    throw 'emscripten_fiber_init is not implemented for EMTERPRETIFY_ASYNC';
   },
-  emscripten_fiber_create_from_current_context: function() {
-    throw 'emscripten_fiber_create_from_current_context is not implemented for EMTERPRETIFY_ASYNC';
-  },
-  emscripten_fiber_recycle: function() {
-    throw 'emscripten_fiber_recycle is not implemented for EMTERPRETIFY_ASYNC';
-  },
-  emscripten_fiber_destroy: function() {
-    throw 'emscripten_fiber_destroy is not implemented for EMTERPRETIFY_ASYNC';
+  emscripten_fiber_init_from_current_context: function() {
+    throw 'emscripten_fiber_init_from_current_context is not implemented for EMTERPRETIFY_ASYNC';
   },
   emscripten_fiber_swap: function() {
     throw 'emscripten_fiber_swap is not implemented for EMTERPRETIFY_ASYNC';
@@ -998,12 +986,12 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_create__sig: 'iiiii',
-  emscripten_fiber_create__deps: ['malloc'],
-  emscripten_fiber_create: function(entryPoint, userData, stack, stackSize) {
+  emscripten_fiber_init__sig: 'viiiiii',
+  emscripten_fiber_init__deps: ['$Asyncify'],
+  emscripten_fiber_init: function(fiber, sizeOfFiber, entryPoint, userData, stack, stackSize) {
+    var fiberDataSize = 20;
     var asyncifyDataSize = 12;
-    var asyncifyStackSize = Asyncify.StackSize;
-    var fiber = _malloc(20 + asyncifyDataSize + asyncifyStackSize);
+    var asyncifyStackSize = sizeOfFiber - fiberDataSize + asyncifyDataSize;
     var stackBase = stack + stackSize;
 
     {{{ makeSetValue('fiber',  0, 'stackBase', 'i32') }}};
@@ -1012,47 +1000,23 @@ mergeInto(LibraryManager.library, {
     {{{ makeSetValue('fiber', 12, 'entryPoint', 'i32') }}};
     {{{ makeSetValue('fiber', 16, 'userData', 'i32') }}};
 
-    var asyncifyData = fiber + 20;
+    var asyncifyData = fiber + fiberDataSize;
     Asyncify.setDataHeader(asyncifyData, asyncifyStackSize);
-
-    return fiber;
   },
 
-  emscripten_fiber_create_from_current_context__sig: 'i',
-  emscripten_fiber_create_from_current_context__deps: ['malloc', '$Asyncify'],
-  emscripten_fiber_create_from_current_context: function() {
+  emscripten_fiber_init_from_current_context__sig: 'vi',
+  emscripten_fiber_init_from_current_context__deps: ['$Asyncify'],
+  emscripten_fiber_init_from_current_context: function(fiber, sizeOfFiber) {
+    var fiberDataSize = 20;
     var asyncifyDataSize = 12;
-    var asyncifyStackSize = Asyncify.StackSize;
-    var fiber = _malloc(20 + asyncifyDataSize + asyncifyStackSize);
+    var asyncifyStackSize = sizeOfFiber - fiberDataSize + asyncifyDataSize;
 
     {{{ makeSetValue('fiber',  0, 'STACK_BASE', 'i32') }}};
     {{{ makeSetValue('fiber',  4, 'STACK_MAX', 'i32') }}};
     {{{ makeSetValue('fiber', 12, 0, 'i32') }}};
 
-    var asyncifyData = fiber + 20;
+    var asyncifyData = fiber + fiberDataSize;
     Asyncify.setDataHeader(asyncifyData, asyncifyStackSize);
-
-    return fiber;
-  },
-
-  emscripten_fiber_recycle__sig: 'viii',
-  emscripten_fiber_recycle__deps: ["$Asyncify"],
-  emscripten_fiber_recycle: function(fiber, entryPoint, userData) {
-    var stackBase = {{{ makeGetValue('fiber', 0, 'i32') }}};
-
-    {{{ makeSetValue('fiber',  8, 'stackBase', 'i32') }}};
-    {{{ makeSetValue('fiber', 12, 'entryPoint', 'i32') }}};
-    {{{ makeSetValue('fiber', 16, 'userData', 'i32') }}};
-
-    // Reset Asyncify stack pointer
-    var asyncifyData = fiber + 20;
-    {{{ makeSetValue('asyncifyData', 0, 'asyncifyData + 12', 'i32') }}};
-  },
-
-  emscripten_fiber_destroy__sig: 'vi',
-  emscripten_fiber_destroy__deps: ['free'],
-  emscripten_fiber_destroy: function(fiber) {
-    _free(fiber);
   },
 
   emscripten_fiber_swap__sig: 'vii',
@@ -1129,17 +1093,11 @@ mergeInto(LibraryManager.library, {
   emscripten_scan_registers: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
   },
-  emscripten_fiber_create: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_create';
+  emscripten_fiber_init: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init';
   },
-  emscripten_fiber_create_from_current_context: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_create_from_current_context';
-  },
-  emscripten_fiber_recycle: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_recycle';
-  },
-  emscripten_fiber_destroy: function() {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_destroy';
+  emscripten_fiber_init_from_current_context: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
   },
   emscripten_fiber_swap: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
