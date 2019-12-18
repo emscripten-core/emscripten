@@ -1989,7 +1989,9 @@ int main(int argc, char **argv) {
   def test_em_js(self, args, force_c):
     if '-sMAIN_MODULE' in args:
       self.check_dylink()
-    self.emcc_args += args + ['-sEXPORTED_FUNCTIONS=_main,_malloc']
+    self.emcc_args += args
+    if '-sMAIN_MODULE' not in args:
+      self.emcc_args += ['-sEXPORTED_FUNCTIONS=_main,_malloc']
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     self.assertContained("no args returning int", read_file('test_em_js.js'))
