@@ -48,6 +48,8 @@ Current Trunk
   `wasi_snapshot_preview1` support.
 - `SAFE_STACK` has been removed, as it overlaps with `STACK_OVERFLOW_CHECK`.
    Replace `SAFE_STACK=1` with `STACK_OVERFLOW_CHECK=2` (note the value is 2).
+   This also has the effect of enabling stack checking on upstream builds when
+   `ASSERTIONS` are enabled (as assertions enable `STACK_OVERFLOW_CHECK=2`).
 
 v1.39.4: 12/03/2019
 -------------------

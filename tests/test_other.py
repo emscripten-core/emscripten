@@ -8047,9 +8047,11 @@ int main() {
     self.assertContained('[funcs]', out)
 
   def assertFileContents(self, filename, contents):
+    contents = contents.replace('\r', '')
+
     if os.environ.get('EMTEST_REBASELINE'):
       with open(filename, 'w') as f:
-        f.write(contents.replace('\r', ''))
+        f.write(contents)
       return
 
     expected_content = open(filename).read()
