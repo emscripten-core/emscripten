@@ -742,19 +742,15 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 
-    allocateDataStorage: function(stackSize) {
+    allocateData: function() {
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
       //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
-      var data = _malloc(12 + stackSize);
-      return data;
-    },
-
-    allocateData: function() {
-      var data = Asyncify.allocateDataStorage(Asyncify.StackSize);
-      Asyncify.initializeData(data);
-      return data;
+      var ptr = _malloc(12 + Asyncify.StackSize);
+      Asyncify.setDataHeader(ptr, Asyncify.StackSize);
+      Asyncify.setDataRewindFunc(ptr);
+      return ptr;
     },
 
     setDataHeader: function(ptr, stackSize) {
@@ -773,11 +769,6 @@ mergeInto(LibraryManager.library, {
     getDataRewindFunc: function(ptr) {
       var id = HEAP32[ptr + 8 >> 2];
       return Asyncify.callStackIdToFunc[id];
-    },
-
-    initializeData: function(ptr) {
-      Asyncify.setDataHeader(ptr, Asyncify.StackSize);
-      Asyncify.setDataRewindFunc(ptr);
     },
 
     freeData: function(ptr) {
