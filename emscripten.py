@@ -2243,6 +2243,10 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   exports = metadata['exports']
 
+  # Store exports for Closure copmiler to be able to track these as globals in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  shared.Settings.MODULE_EXPORTS = [asmjs_mangle(f) for f in exports]
+
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
 
@@ -2654,7 +2658,7 @@ asm["%(e)s"] = function() {%(assertions)s
         receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports]
       else:
         if shared.Settings.MINIMAL_RUNTIME:
-          # In asm.js exports can be directly processed at top level, i.e.
+          # In wasm2js exports can be directly processed at top level, i.e.
           # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
           # var _main = asm["_main"];
           receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports]
@@ -2675,10 +2679,10 @@ asm["%(e)s"] = function() {%(assertions)s
 
       receiving.append('''
   function asmjs_mangle(x) {
-    var unmangledSymbols = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', '__growWasmMemory', '__heap_base', '__data_end'];
+    var unmangledSymbols = %s;
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   }
-''')
+''' % shared.Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED)
       receiving.append('for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];')
   else:
     receiving.append('Module["asm"] = asm;')
@@ -2782,13 +2786,9 @@ def create_invoke_wrappers(invoke_funcs):
 
 
 def treat_as_user_function(name):
-  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
-                                 'stackSave', 'stackRestore',
-                                 'establishStackSpace', '__growWasmMemory',
-                                 '__heap_base', '__data_end')
   if name.startswith('dynCall_'):
     return False
-  if name in library_functions_in_module:
+  if name in shared.Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED:
     return False
   return True
 
