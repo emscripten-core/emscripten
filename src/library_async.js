@@ -703,38 +703,46 @@ mergeInto(LibraryManager.library, {
       return ret;
     },
 
-    allocateDataStorage: function() {
-      // An asyncify data structure has three fields: the
+    allocateDataStorage: function(stackSize) {
+      // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
       //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
-      var data = _malloc(Asyncify.StackSize + 12);
+      var data = _malloc(12 + stackSize);
       return data;
     },
 
     allocateData: function() {
-      var data = Asyncify.allocateDataStorage();
+      var data = Asyncify.allocateDataStorage(Asyncify.StackSize);
       Asyncify.initializeData(data);
       return data;
     },
 
-    initializeData: function(ptr) {
+    setDataHeader: function(ptr, stackSize) {
       HEAP32[ptr >> 2] = ptr + 12;
-      HEAP32[ptr + 4 >> 2] = ptr + 12 + Asyncify.StackSize;
+      HEAP32[ptr + 4 >> 2] = ptr + 12 + stackSize;
+    },
+
+    setDataRewindFunc: function(ptr) {
       var bottomOfCallStack = Asyncify.exportCallStack[0];
 #if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: initializeData('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+      err('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
       HEAP32[ptr + 8 >> 2] = Asyncify.getCallStackId(bottomOfCallStack);
     },
 
-    freeData: function(ptr) {
-      _free(ptr);
+    getDataRewindFunc: function(ptr) {
+      var id = HEAP32[ptr + 8 >> 2];
+      return Asyncify.callStackIdToFunc[id];
     },
 
-    getRewindFunction: function(dataPtr) {
-      var id = HEAP32[dataPtr + 8 >> 2];
-      return Asyncify.callStackIdToFunc[id];
+    initializeData: function(ptr) {
+      Asyncify.setDataHeader(ptr, Asyncify.StackSize);
+      Asyncify.setDataRewindFunc(ptr);
+    },
+
+    freeData: function(ptr) {
+      _free(ptr);
     },
 
     handleSleep: function(startAsync, isNotYielding) {
@@ -769,7 +777,7 @@ mergeInto(LibraryManager.library, {
           if (Browser.mainLoop.func && !isNotYielding) {
             Browser.mainLoop.resume();
           }
-          var start = Asyncify.getRewindFunction(Asyncify.currData);
+          var start = Asyncify.getDataRewindFunc(Asyncify.currData);
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start:', start);
 #endif
@@ -900,34 +908,46 @@ mergeInto(LibraryManager.library, {
     });
   },
 
-
+  $Fibers__deps: ['$Asyncify'],
   $Fibers: {
     newFiber: null,
     finishContextSwitch: function() {
       var newFiber = Fibers.newFiber;
-      var asyncifyData = {{{ makeGetValue('newFiber', 0, 'i32') }}};
 
-      Asyncify.currData = asyncifyData;
-      STACK_BASE = {{{ makeGetValue('newFiber', 4, 'i32') }}};
-      STACK_MAX = {{{ makeGetValue('newFiber', 8, 'i32') }}};
-      stackRestore({{{ makeGetValue('newFiber', 12, 'i32') }}});
+      STACK_BASE = {{{ makeGetValue('newFiber', 0, 'i32') }}};
+      STACK_MAX = {{{ makeGetValue('newFiber', 4, 'i32') }}};
+      stackRestore({{{ makeGetValue('newFiber', 8, 'i32') }}});
 
       noExitRuntime = false;
 
-      if (asyncifyData === 0) {
+      var entryPoint = {{{ makeGetValue('newFiber', 12, 'i32') }}};
+
+      if (entryPoint !== 0) {
 #if STACK_OVERFLOW_CHECK
         writeStackCookie();
 #endif
-        asyncifyData = Asyncify.allocateDataStorage();
-        {{{ makeSetValue('newFiber', 0, 'asyncifyData', 'i32') }}};
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
+#endif
+        Asyncify.currData = null;
+        {{{ makeSetValue('newFiber', 12, 0, 'i32') }}};
 
-        var entryPoint = {{{ makeGetValue('newFiber', 16, 'i32') }}};
-        var userData = {{{ makeGetValue('newFiber', 20, 'i32') }}};
+        var userData = {{{ makeGetValue('newFiber', 16, 'i32') }}};
         {{{ makeDynCall('vi') }}}(entryPoint, userData);
       } else {
+        var asyncifyData = newFiber + 20;
+        Asyncify.currData = asyncifyData;
+
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
+#endif
         Asyncify.state = Asyncify.State.Rewinding;
         Module['_asyncify_start_rewind'](asyncifyData);
-        Asyncify.getRewindFunction(asyncifyData)();
+        var start = Asyncify.getDataRewindFunc(asyncifyData);
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY/FIBER: start: ' + start);
+#endif
+        start();
       }
     },
   },
@@ -935,73 +955,82 @@ mergeInto(LibraryManager.library, {
   emscripten_fiber_create__sig: 'iiiii',
   emscripten_fiber_create__deps: ['malloc'],
   emscripten_fiber_create: function(entryPoint, userData, stack, stackSize) {
-    var fiber = _malloc(24);
+    var asyncifyDataSize = 12;
+    var asyncifyStackSize = Asyncify.StackSize;
+    var fiber = _malloc(20 + asyncifyDataSize + asyncifyStackSize);
     var stackBase = stack + stackSize;
 
-    {{{ makeSetValue('fiber',  0, 0, 'i32') }}};
-    {{{ makeSetValue('fiber',  4, 'stackBase', 'i32') }}};
-    {{{ makeSetValue('fiber',  8, 'stack', 'i32') }}};
-    {{{ makeSetValue('fiber', 12, 'stackBase', 'i32') }}};
-    {{{ makeSetValue('fiber', 16, 'entryPoint', 'i32') }}};
-    {{{ makeSetValue('fiber', 20, 'userData', 'i32') }}};
+    {{{ makeSetValue('fiber',  0, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber',  4, 'stack', 'i32') }}};
+    {{{ makeSetValue('fiber',  8, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber', 12, 'entryPoint', 'i32') }}};
+    {{{ makeSetValue('fiber', 16, 'userData', 'i32') }}};
+
+    var asyncifyData = fiber + 20;
+    Asyncify.setDataHeader(asyncifyData, asyncifyStackSize);
+
     return fiber;
   },
 
   emscripten_fiber_create_from_current_context__sig: 'i',
-  emscripten_fiber_create_from_current_context__deps: ['malloc'],
+  emscripten_fiber_create_from_current_context__deps: ['malloc', '$Asyncify'],
   emscripten_fiber_create_from_current_context: function() {
-    var fiber = _malloc(24);
-    var asyncifyData = Asyncify.allocateDataStorage();
-    {{{ makeSetValue('fiber',  0, 'asyncifyData', 'i32') }}};
-    {{{ makeSetValue('fiber',  4, 'STACK_BASE', 'i32') }}};
-    {{{ makeSetValue('fiber',  8, 'STACK_MAX', 'i32') }}};
+    var asyncifyDataSize = 12;
+    var asyncifyStackSize = Asyncify.StackSize;
+    var fiber = _malloc(20 + asyncifyDataSize + asyncifyStackSize);
+
+    {{{ makeSetValue('fiber',  0, 'STACK_BASE', 'i32') }}};
+    {{{ makeSetValue('fiber',  4, 'STACK_MAX', 'i32') }}};
+    {{{ makeSetValue('fiber', 12, 0, 'i32') }}};
+
+    var asyncifyData = fiber + 20;
+    Asyncify.setDataHeader(asyncifyData, asyncifyStackSize);
+
     return fiber;
   },
 
   emscripten_fiber_recycle__sig: 'viii',
   emscripten_fiber_recycle__deps: ["$Asyncify"],
   emscripten_fiber_recycle: function(fiber, entryPoint, userData) {
-    var asyncifyData = {{{ makeGetValue('fiber', 0, 'i32') }}};
+    var stackBase = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
-    if (asyncifyData) {
-      Asyncify.freeData(asyncifyData);
-    }
+    {{{ makeSetValue('fiber',  8, 'stackBase', 'i32') }}};
+    {{{ makeSetValue('fiber', 12, 'entryPoint', 'i32') }}};
+    {{{ makeSetValue('fiber', 16, 'userData', 'i32') }}};
 
-    var stackBase = {{{ makeGetValue('fiber', 4, 'i32') }}};
-
-    {{{ makeSetValue('fiber',  0, 0, 'i32') }}};
-    {{{ makeSetValue('fiber', 12, 'stackBase', 'i32') }}};
-    {{{ makeSetValue('fiber', 16, 'entryPoint', 'i32') }}};
-    {{{ makeSetValue('fiber', 20, 'userData', 'i32') }}};
+    // Reset Asyncify stack pointer
+    var asyncifyData = fiber + 20;
+    {{{ makeSetValue('asyncifyData', 0, 'asyncifyData + 12', 'i32') }}};
   },
 
   emscripten_fiber_destroy__sig: 'vi',
-  emscripten_fiber_destroy__deps: ['$Fibers', 'free'],
+  emscripten_fiber_destroy__deps: ['free'],
   emscripten_fiber_destroy: function(fiber) {
-    var asyncifyData = {{{ makeGetValue('fiber', 0, 'i32') }}};
-
-    if (asyncifyData) {
-      Asyncify.freeData(asyncifyData);
-    }
-
     _free(fiber);
   },
 
   emscripten_fiber_swap__sig: 'vii',
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
   emscripten_fiber_swap: function(oldFiber, newFiber) {
+    if (ABORT) return;
     noExitRuntime = true;
+#if ASYNCIFY_DEBUG
+    err('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
+#endif
     if (Asyncify.state === Asyncify.State.Normal) {
       Asyncify.state = Asyncify.State.Unwinding;
 
-      var asyncifyData = {{{ makeGetValue('oldFiber', 0, 'i32') }}};
-      Asyncify.initializeData(asyncifyData);
+      var asyncifyData = oldFiber + 20;
+      Asyncify.setDataRewindFunc(asyncifyData);
       Asyncify.currData = asyncifyData;
 
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY/FIBER: start unwind', asyncifyData);
+#endif
       Module['_asyncify_start_unwind'](asyncifyData);
 
       var stackTop = stackSave();
-      {{{ makeSetValue('oldFiber', 12, 'stackTop', 'i32') }}};
+      {{{ makeSetValue('oldFiber', 8, 'stackTop', 'i32') }}};
 
 #if ASSERTIONS
       assert(!Asyncify.trampoline);
@@ -1013,7 +1042,9 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       assert(Asyncify.state === Asyncify.State.Rewinding);
 #endif
-
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY/FIBER: stop rewind');
+#endif
       Asyncify.state = Asyncify.State.Normal;
       Module['_asyncify_stop_rewind']();
       Asyncify.currData = null;
