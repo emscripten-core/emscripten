@@ -589,10 +589,6 @@ mergeInto(LibraryManager.library, {
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
-    // A map from data pointers to extra info about the data.
-    // That includes the name of the function on the bottom
-    // of the call stack, that we need to call to rewind.
-    dataInfo: {},
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
     // so we can return it later from the C function that called
@@ -602,11 +598,24 @@ mergeInto(LibraryManager.library, {
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
     exportCallStack: [],
+    callStackNameToId: {},
+    callStackIdToFunc: [],
+    callStackId: 0,
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
     trampoline: null,
     trampolineRunning: false,
+
+    getCallStackId: function(funcName) {
+      var id = Asyncify.callStackNameToId[funcName];
+      if (id === undefined) {
+        id = Asyncify.callStackId++;
+        Asyncify.callStackNameToId[funcName] = id;
+        Asyncify.callStackIdToFunc.push(Module['asm'][funcName]);
+      }
+      return id;
+    },
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
@@ -695,13 +704,11 @@ mergeInto(LibraryManager.library, {
     },
 
     allocateDataStorage: function() {
-      // An asyncify data structure has two fields: the
-      // current stack pos, and the max pos.
-      // var ptr = _malloc(Asyncify.StackSize + 8);
-      var data = _malloc(Asyncify.StackSize + 8);
-      Asyncify.dataInfo[data] = {
-        bottomOfCallStack: null,
-      };
+      // An asyncify data structure has three fields: the
+      //  0  current stack pos
+      //  4  max stack pos
+      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
+      var data = _malloc(Asyncify.StackSize + 12);
       return data;
     },
 
@@ -712,29 +719,22 @@ mergeInto(LibraryManager.library, {
     },
 
     initializeData: function(ptr) {
-      HEAP32[ptr >> 2] = ptr + 8;
-      HEAP32[ptr + 4 >> 2] = ptr + 8 + Asyncify.StackSize;
+      HEAP32[ptr >> 2] = ptr + 12;
+      HEAP32[ptr + 4 >> 2] = ptr + 12 + Asyncify.StackSize;
       var bottomOfCallStack = Asyncify.exportCallStack[0];
 #if ASYNCIFY_DEBUG >= 2
       err('ASYNCIFY: initializeData('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
 #endif
-      Asyncify.dataInfo[ptr].bottomOfCallStack = bottomOfCallStack;
-#if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: dataInfo after initializeData('+ptr+'):', Asyncify.dataInfo);
-#endif
+      HEAP32[ptr + 8 >> 2] = Asyncify.getCallStackId(bottomOfCallStack);
     },
 
     freeData: function(ptr) {
-#if ASYNCIFY_DEBUG >= 2
-      if (Asyncify.dataInfo[ptr] === undefined) {
-        err('ASYNCIFY: called freeData on unknown pointer', ptr, new Error().stack);
-      }
-#endif
       _free(ptr);
-      delete Asyncify.dataInfo[ptr];
-#if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: dataInfo after freeData('+ptr+'):', Asyncify.dataInfo);
-#endif
+    },
+
+    getRewindFunction: function(dataPtr) {
+      var id = HEAP32[dataPtr + 8 >> 2];
+      return Asyncify.callStackIdToFunc[id];
     },
 
     handleSleep: function(startAsync, isNotYielding) {
@@ -769,11 +769,11 @@ mergeInto(LibraryManager.library, {
           if (Browser.mainLoop.func && !isNotYielding) {
             Browser.mainLoop.resume();
           }
-          var start = Asyncify.dataInfo[Asyncify.currData].bottomOfCallStack;
+          var start = Asyncify.getRewindFunction(Asyncify.currData);
 #if ASYNCIFY_DEBUG
-          err('ASYNCIFY: start: ' + start);
+          err('ASYNCIFY: start:', start);
 #endif
-          var asyncWasmReturnValue = Module['asm'][start]();
+          var asyncWasmReturnValue = start();
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -907,10 +907,6 @@ mergeInto(LibraryManager.library, {
       var newFiber = Fibers.newFiber;
       var asyncifyData = {{{ makeGetValue('newFiber', 0, 'i32') }}};
 
-#if ASSERTIONS
-      assert(!asyncifyData || Asyncify.dataInfo[asyncifyData] !== undefined);
-#endif
-
       Asyncify.currData = asyncifyData;
       STACK_BASE = {{{ makeGetValue('newFiber', 4, 'i32') }}};
       STACK_MAX = {{{ makeGetValue('newFiber', 8, 'i32') }}};
@@ -931,7 +927,7 @@ mergeInto(LibraryManager.library, {
       } else {
         Asyncify.state = Asyncify.State.Rewinding;
         Module['_asyncify_start_rewind'](asyncifyData);
-        Module['asm'][Asyncify.dataInfo[asyncifyData].bottomOfCallStack]();
+        Asyncify.getRewindFunction(asyncifyData)();
       }
     },
   },
@@ -980,7 +976,7 @@ mergeInto(LibraryManager.library, {
   },
 
   emscripten_fiber_destroy__sig: 'vi',
-  emscripten_fiber_destroy__deps: ['$Asyncify', 'free'],
+  emscripten_fiber_destroy__deps: ['$Fibers', 'free'],
   emscripten_fiber_destroy: function(fiber) {
     var asyncifyData = {{{ makeGetValue('fiber', 0, 'i32') }}};
 
