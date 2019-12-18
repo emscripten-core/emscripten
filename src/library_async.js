@@ -647,6 +647,82 @@ mergeInto(LibraryManager.library, {
     },
 #endif
 
+    finishInstrumentedExportCall: function(x) {
+#if ASSERTIONS
+      var y = Asyncify.exportCallStack.pop();
+      assert(y === x);
+#else
+      Asyncify.exportCallStack.pop();
+#endif
+#if ASYNCIFY_DEBUG >= 2
+      err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
+#endif
+      // NOTE: the order of these comparisons matters for performance
+      if (!Asyncify.exportCallStack.length &&
+          Asyncify.state === Asyncify.State.Unwinding &&
+          Asyncify.currData) {
+        // We just finished unwinding.
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY: stop unwind');
+#endif
+        Asyncify.state = Asyncify.State.Normal;
+        runAndAbortIfError(Module['_asyncify_stop_unwind']);
+
+        if (typeof Fibers !== 'undefined') {
+          Fibers.trampoline();
+        }
+
+        if (Asyncify.afterUnwind) {
+          Asyncify.afterUnwind();
+          Asyncify.afterUnwind = null;
+        }
+      }
+    },
+
+    instrumentExportSpecialized: function(original, arity, x) {
+      switch(arity) {
+        case 0: return function() {
+          Asyncify.exportCallStack.push(x);
+          try {
+            return original();
+          } finally {
+            if (ABORT) return;
+            Asyncify.finishInstrumentedExportCall(x);
+          }
+        }
+
+        case 1: return function(a1) {
+          Asyncify.exportCallStack.push(x);
+          try {
+            return original(a1);
+          } finally {
+            if (ABORT) return;
+            Asyncify.finishInstrumentedExportCall(x);
+          }
+        }
+
+        case 2: return function(a1, a2) {
+          Asyncify.exportCallStack.push(x);
+          try {
+            return original(a1, a2);
+          } finally {
+            if (ABORT) return;
+            Asyncify.finishInstrumentedExportCall(x);
+          }
+        }
+
+        default: return function() {
+          Asyncify.exportCallStack.push(x);
+          try {
+            return original.apply(null, arguments);
+          } finally {
+            if (ABORT) return;
+            Asyncify.finishInstrumentedExportCall(x);
+          }
+        }
+      }
+    },
+
     instrumentWasmExports: function(exports) {
       var ret = {};
       for (var x in exports) {
@@ -654,46 +730,9 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
           if (typeof original === 'function') {
             ret[x] = function() {
-              Asyncify.exportCallStack.push(x);
-#if ASYNCIFY_DEBUG >= 2
-              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', x);
-#endif
-              try {
-                return original.apply(null, arguments);
-              } finally {
-                if (ABORT) return;
-                var y = Asyncify.exportCallStack.pop(x);
-                assert(y === x);
-#if ASYNCIFY_DEBUG >= 2
-                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
-#endif
-                if (Asyncify.currData &&
-                    Asyncify.state === Asyncify.State.Unwinding &&
-                    Asyncify.exportCallStack.length === 0) {
-                  // We just finished unwinding.
-#if ASYNCIFY_DEBUG
-                  err('ASYNCIFY: stop unwind');
-#endif
-                  Asyncify.state = Asyncify.State.Normal;
-                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
-                  if (Asyncify.afterUnwind) {
-                    Asyncify.afterUnwind();
-                    Asyncify.afterUnwind = null;
-                  }
-                  if (Asyncify.trampoline && !Asyncify.trampolineRunning) {
-                    Asyncify.trampolineRunning = true;
-                    do {
-                      var jump = Asyncify.trampoline;
-                      Asyncify.trampoline = null;
-#if ASYNCIFY_DEBUG >= 2
-                      err("ASYNCIFY: trampoline jump ->", jump, new Error().stack);
-#endif
-                      jump();
-                    } while (Asyncify.trampoline);
-                    Asyncify.trampolineRunning = false;
-                  }
-                }
-              }
+              var fun = Asyncify.instrumentExportSpecialized(original, arguments.length, x);
+              ret[x] = fun;
+              return fun.apply(null, arguments);
             };
           } else {
             ret[x] = original;
@@ -910,10 +949,26 @@ mergeInto(LibraryManager.library, {
 
   $Fibers__deps: ['$Asyncify'],
   $Fibers: {
-    newFiber: null,
-    finishContextSwitch: function() {
-      var newFiber = Fibers.newFiber;
-
+    nextFiber: 0,
+    trampolineRunning: false,
+    trampoline: function() {
+      if (!Fibers.trampolineRunning && Fibers.nextFiber) {
+        Fibers.trampolineRunning = true;
+        do {
+          var fiber = Fibers.nextFiber;
+          Fibers.nextFiber = null;
+#if ASYNCIFY_DEBUG >= 2
+          err("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+#endif
+          Fibers.finishContextSwitch(fiber);
+        } while (Fibers.nextFiber);
+        Fibers.trampolineRunning = false;
+      }
+    },
+    /*
+     * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
+     */
+    finishContextSwitch: function(newFiber) {
       STACK_BASE = {{{ makeGetValue('newFiber', 0, 'i32') }}};
       STACK_MAX = {{{ makeGetValue('newFiber', 4, 'i32') }}};
       stackRestore({{{ makeGetValue('newFiber', 8, 'i32') }}});
@@ -1036,8 +1091,7 @@ mergeInto(LibraryManager.library, {
       assert(!Asyncify.trampoline);
 #endif
 
-      Fibers.newFiber = newFiber;
-      Asyncify.trampoline = Fibers.finishContextSwitch;
+      Fibers.nextFiber = newFiber;
     } else {
 #if ASSERTIONS
       assert(Asyncify.state === Asyncify.State.Rewinding);
