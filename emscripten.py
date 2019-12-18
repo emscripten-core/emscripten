@@ -25,7 +25,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
@@ -2245,7 +2245,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   # Store exports for Closure copmiler to be able to track these as globals in
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
-  shared.Settings.MODULE_EXPORTS = [asmjs_mangle(f) for f in exports]
+  shared.Settings.MODULE_EXPORTS = [f for f in exports]
 
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
