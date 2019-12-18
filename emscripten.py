@@ -25,7 +25,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
@@ -2783,26 +2783,6 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
-
-
-def treat_as_user_function(name):
-  if name.startswith('dynCall_'):
-    return False
-  if name in shared.Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED:
-    return False
-  return True
-
-
-def asmjs_mangle(name):
-  """Mangle a name the way asm.js/JSBackend globals are mangled.
-
-  Prepends '_' and replaces non-alphanumerics with '_'.
-  Used by wasm backend for JS library consistency with asm.js.
-  """
-  if treat_as_user_function(name):
-    return '_' + name
-  else:
-    return name
 
 
 def normalize_line_endings(text):

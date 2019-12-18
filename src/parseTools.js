@@ -1631,3 +1631,12 @@ function makeRemovedFSAssert(fsName) {
   if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
   return "var " + fsName + " = '" + fsName + " is no longer included by default; build with -l" + lower + ".js';";
 }
+
+// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
+function buildStringArray(array) {
+  if (array.length > 0) {
+    return "['" + array.join("','") + "']";
+  } else {
+    return [];
+  }
+}

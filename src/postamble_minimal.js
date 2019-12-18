@@ -96,7 +96,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   // https://github.com/emscripten-core/emscripten/issues/10054
   // Keep in sync with emscripten.py function treat_as_user_function(name).
   function asmjs_mangle(x) {
-    var unmangledSymbols = {{{ WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED }}};
+    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
     return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
   }
 
