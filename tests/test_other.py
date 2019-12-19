@@ -8221,7 +8221,7 @@ int main() {
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10770,   12,   10, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  12648,   13,   14, None), # noqa
   })
   @no_fastcomp()
   def test_metadce_hello(self, *args):

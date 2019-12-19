@@ -9,4 +9,5 @@ g$__THREW__
 g$__threwValue
 g$stdout
 memory
+setTempRet0
 table
