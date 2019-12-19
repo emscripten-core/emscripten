@@ -417,7 +417,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   post = apply_static_code_hooks(post)
 
   if shared.Settings.MINIMAL_RUNTIME:
-    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], shared.Settings.MODULE_EXPORTS, receiving)
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], [mangled for mangled, unmangled in shared.Settings.MODULE_EXPORTS], receiving)
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
