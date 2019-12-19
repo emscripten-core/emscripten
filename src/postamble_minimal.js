@@ -91,10 +91,29 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 
 #if DECLARE_ASM_MODULE_EXPORTS == 0
 
+#if WASM_BACKEND
+  // XXX Hack: some function names need to be mangled when exporting them from wasm module, others do not. 
+  // https://github.com/emscripten-core/emscripten/issues/10054
+  // Keep in sync with emscripten.py function treat_as_user_function(name).
+  function asmjs_mangle(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  }
+
 #if ENVIRONMENT_MAY_BE_NODE
-  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = Module[i] = asm[i];
+  for(var i in asm) (typeof process !== "undefined" ? global : this)[asmjs_mangle(i)] = asm[i];
 #else
-  for(var i in asm) this[i] = Module[i] = asm[i];
+  for(var i in asm) this[asmjs_mangle(i)] = asm[i];
+#endif
+
+#else
+
+#if ENVIRONMENT_MAY_BE_NODE
+  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = asm[i];
+#else
+  for(var i in asm) this[i] = asm[i];
+#endif
+
 #endif
 
 #else

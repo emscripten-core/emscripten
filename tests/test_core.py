@@ -216,6 +216,21 @@ def no_asan(note):
   return decorator
 
 
+def no_lsan(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if '-fsanitize=leak' in self.emcc_args:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.is_wasm_backend() and not self.get_setting('WASM')
@@ -8140,10 +8155,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  @no_asan('TODO: ASan with MINIMAL_RUNTIME')
+  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_hello_world(self):
-    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1']]:
+    if '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Os' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skipTest('TODO: -O2 and higher with wasm backend')
+    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
       self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
+      self.set_setting('MINIMAL_RUNTIME', 1)
       self.maybe_closure()
       self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
