@@ -37,7 +37,9 @@ def asm_simd(f):
     if self.is_emterpreter():
       self.skipTest('simd not supported in emterpreter yet')
     if self.is_wasm_backend():
-      self.skipTest('asm.js simd not compatible with wasm yet')
+      self.skipTest('asm.js simd not compatible with wasm backend yet')
+    if self.get_setting('WASM'):
+      self.skipTest('asm.js simd not compatible with asm2wasm')
     self.emcc_args.append('-Wno-almost-asm')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
@@ -7332,6 +7334,7 @@ err = err = function(){};
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=post)
 
   @no_wasm('wasmifying destroys debug info and stack tracability')
+  @no_wasm2js('source maps support')
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
