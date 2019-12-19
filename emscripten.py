@@ -1720,7 +1720,8 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
       receiving = '\n'.join(wrappers)
 
-  shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
+  module_exports = exported_implemented_functions + function_tables(function_table_data)
+  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -2243,9 +2244,9 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   exports = metadata['exports']
 
-  # Store exports for Closure copmiler to be able to track these as globals in
+  # Store exports for Closure compiler to be able to track these as globals in
   # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
-  shared.Settings.MODULE_EXPORTS = [f for f in exports]
+  shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in exports]
 
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
