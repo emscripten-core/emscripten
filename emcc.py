@@ -1153,6 +1153,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE != 2:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
+      # fastcomp adds all the JS library to the asmLibraryArg object which is
+      # provided as "env" to wasm modules, which lets them access those methods.
+      # in the wasm backend we use a more straightforward method of flipping
+      # the EXPORT_ALL flag, which provides those methods on Module, which is
+      # used to look up imports as necessary.
+      if shared.Settings.WASM_BACKEND:
+        shared.Settings.EXPORT_ALL = 1
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
       options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)

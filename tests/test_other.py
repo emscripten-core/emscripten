@@ -6631,6 +6631,8 @@ main(int argc,char** argv)
   def test_main_module_without_exceptions_message(self):
     # A side module that needs exceptions needs a main module with that
     # support enabled; show a clear message in that case.
+    # This happens to also check that main modules have EXPORT_ALL enabled,
+    # in order to make their JS library code available to side modules.
     create_test_file('side.cpp', r'''
       #include <exception>
       #include <stdio.h>
@@ -6668,7 +6670,7 @@ main(int argc,char** argv)
     def build_main(args):
       print(args)
       with env_modify({'EMCC_FORCE_STDLIBS': 'libc++abi'}):
-        run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1', '-s', 'EXPORT_ALL',
+        run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1',
                      '--embed-file', 'libside.wasm'] + args)
 
     build_main([])
