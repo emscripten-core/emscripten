@@ -596,9 +596,9 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     self.send_header('Connection', 'close')
     self.send_header('Expires', '-1')
     self.send_header('Access-Control-Allow-Origin', '*')
-    self.send_header('Cross-Origin-Opener-Policy', 'same-origin');
-    self.send_header('Cross-Origin-Embedder-Policy', 'require-corp');
-    self.send_header('Cross-Origin-Resource-Policy', 'cross-origin');
+    self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+    self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+    self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
     self.end_headers()
     page_last_served_time = tick()
     return f
