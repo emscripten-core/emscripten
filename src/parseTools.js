@@ -1637,6 +1637,6 @@ function buildStringArray(array) {
   if (array.length > 0) {
     return "['" + array.join("','") + "']";
   } else {
-    return [];
+    return '[]';
   }
 }
