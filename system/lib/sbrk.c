@@ -15,6 +15,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#ifdef __EMSCRIPTEN_TRACING__
+#include <emscripten/em_asm.h>
+#endif
+
 #define WASM_PAGE_SIZE 65536
 
 #ifdef __cplusplus
@@ -93,6 +97,10 @@ void *sbrk(intptr_t increment) {
 #else // __EMSCRIPTEN_PTHREADS__
     *sbrk_ptr = new_brk;
 #endif // __EMSCRIPTEN_PTHREADS__
+
+#ifdef __EMSCRIPTEN_TRACING__
+    EM_ASM({if (typeof emscriptenMemoryProfiler !== 'undefined') emscriptenMemoryProfiler.onSbrkGrow($0, $1)}, old_brk, old_brk + increment );
+#endif
     return (void*)old_brk;
 
 #if __EMSCRIPTEN_PTHREADS__

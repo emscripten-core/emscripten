@@ -37,11 +37,7 @@ def get(ports, settings, shared):
                      ['external', 'native_midi', 'timidity'])
 
     # copy header to a location so it can be used as 'SDL2/'
-    dest_include_path = os.path.join(dest_path, 'include', 'SDL2')
-    os.makedirs(dest_include_path)
-    shutil.copyfile(os.path.join(source_path, 'SDL_mixer.h'),
-                    os.path.join(dest_include_path, 'SDL_mixer.h'))
-
+    ports.install_headers(source_path, pattern='SDL_*.h', target='SDL2')
     return final
 
   return [shared.Cache.get(libname, create, what='port')]

@@ -2059,7 +2059,7 @@ Functions
     - A successful call to this function will not immediately make that rendering context active. Call :c:func:`emscripten_webgl_make_context_current` after creating a context to activate it.
     - This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer backwards-compatible version or similar.
 
-  :param target: The DOM canvas element in which to initialize the WebGL context. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+  :param target: The DOM canvas element in which to initialize the WebGL context.
   :type target: const char*
   :param attributes: The attributes of the requested context version.
   :type attributes: const EmscriptenWebGLContextAttributes*
@@ -2163,7 +2163,7 @@ Functions
 
   Resizes the CSS width and height of the element specified by ``target`` on the Emscripten web page.
 
-  :param target: Element to resize. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+  :param target: Element to resize.
   :type target: const char*
   :param double width: New width of the element.
   :param double height: New height of the element.
@@ -2175,7 +2175,7 @@ Functions
 
   Gets the current CSS width and height of the element specified by ``target``.
 
-  :param target: Element to get size of. If 0 is passed, the element specified by ``Module.canvas`` will be used.
+  :param target: Element to get size of.
   :type target: const char*
   :param double* width: Width of the element.
   :param double* height: Height of the element.

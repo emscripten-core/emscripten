@@ -135,7 +135,7 @@ def also_with_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+    if self.is_wasm_backend() and self.get_setting('WASM'):
       print('standalone')
       self.set_setting('STANDALONE_WASM', 1)
       func(self)
@@ -151,7 +151,7 @@ def also_with_impure_standalone_wasm(func):
     func(self)
     # Standalone mode is only supported in the wasm backend, and not in all
     # modes there.
-    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+    if self.is_wasm_backend() and self.get_setting('WASM'):
       print('standalone (impure; no wasm runtimes)')
       self.set_setting('STANDALONE_WASM', 1)
       wasm_engines = shared.WASM_ENGINES
@@ -210,6 +210,21 @@ def no_asan(note):
     @wraps(f)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=address' in self.emcc_args:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
+def no_lsan(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if '-fsanitize=leak' in self.emcc_args:
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
@@ -806,6 +821,7 @@ base align: 0, 0, 0, 0'''])
     self.set_setting('GLOBAL_BASE', 102400)
     self.do_run_in_out_file_test('tests', 'core', 'test_stack_placement')
 
+  @no_wasm2js('MAIN_MODULE support')
   def test_stack_placement_pic(self):
     if not self.is_wasm_backend() and self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('memory growth is not compatible with MAIN_MODULE')
@@ -1915,8 +1931,8 @@ int main(int argc, char **argv) {
     'linked': (['-s', 'MAIN_MODULE'],),
   })
   def test_em_js(self, args):
-    if 'MAIN_MODULE' in args and self.get_setting('ALLOW_MEMORY_GROWTH') and not self.is_wasm():
-      self.skipTest('main module not compatible with asm.js memory growth')
+    if 'MAIN_MODULE' in args and self.get_setting('WASM') == 0:
+      self.skipTest('main module support for non-wasm')
     self.emcc_args += args
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
@@ -8131,23 +8147,26 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
-    if self.get_setting('SAFE_HEAP'):
-      return self.skipTest('TODO: SAFE_HEAP in minimal runtime')
-    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
 
-  # Tests that -s MINIMAL_RUNTIME=1 works well
+  # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  @no_asan('TODO: ASan with MINIMAL_RUNTIME')
+  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_hello_world(self):
+    if '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Os' in self.emcc_args or '-Oz' in self.emcc_args:
+      return self.skipTest('TODO: -O2 and higher with wasm backend')
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    self.set_setting('MINIMAL_RUNTIME', 1)
-    self.maybe_closure()
-    self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
+      self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
+      self.set_setting('MINIMAL_RUNTIME', 1)
+      self.maybe_closure()
+      self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_emterpreter
@@ -8158,11 +8177,18 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.maybe_closure()
       self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
+  @no_emterpreter
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_safe_heap(self):
+    self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SAFE_HEAP=1']
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
+
   # Tests global initializer with -s MINIMAL_RUNTIME=1
   @no_emterpreter
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_global_initializer(self):
-    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'test_global_initializer.cpp')).read(), 't1 > t0: 1')
@@ -8388,24 +8414,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'core', 'test_asan_js_stack_op.c')).read(),
                 basename='src.c', expected_output='Hello, World!')
 
-  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  @no_fastcomp('WASM backend stack protection')
   def test_safe_stack(self):
-    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack.c')).read(),
                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
-  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  @no_fastcomp('WASM backend stack protection')
   def test_safe_stack_alloca(self):
-    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     self.do_run(open(path_from_root('tests', 'core', 'test_safe_stack_alloca.c')).read(),
                 expected_output=['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
   @needs_dlfcn
-  @no_fastcomp('SAFE_STACK not supported on fastcomp')
+  @no_fastcomp('WASM backend stack protection')
   def test_safe_stack_dylink(self):
-    self.set_setting('SAFE_STACK', 1)
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('TOTAL_STACK', 65536)
     self.dylink_test(r'''
       #include <stdio.h>
@@ -8546,7 +8572,7 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
-wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'SAFE_STACK': 1})
+wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter

@@ -25,7 +25,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
@@ -270,6 +270,26 @@ def get_asm_extern_primitives(pre):
     return []
 
 
+def compute_minimal_runtime_initializer_and_exports(post, initializers, exports, receiving):
+  # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
+  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
+
+  if shared.Settings.WASM:
+    # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
+    # e.g. var a,b,c,d,e,f;
+    exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+    if shared.Settings.WASM_BACKEND:
+      # In Wasm backend the exports are still unmangled at this point, so mangle the names here
+      exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+    post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
+
+    # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+    post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+    receiving = ''
+
+  return post, receiving
+
+
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
   if DEBUG:
     logger.debug('emscript: python processing: function tables and exports')
@@ -397,17 +417,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   post = apply_static_code_hooks(post)
 
   if shared.Settings.MINIMAL_RUNTIME:
-    # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
-    post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(metadata['initializers'])]))
-
-    if shared.Settings.WASM:
-      # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
-      # e.g. var a,b,c,d,e,f;
-      post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(shared.Settings.MODULE_EXPORTS) + ';')
-
-      # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-      post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
-      receiving = ''
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], [mangled for mangled, unmangled in shared.Settings.MODULE_EXPORTS], receiving)
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
@@ -1710,7 +1720,8 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
       receiving = '\n'.join(wrappers)
 
-  shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
+  module_exports = exported_implemented_functions + function_tables(function_table_data)
+  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -2208,14 +2219,22 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   staticbump = shared.Settings.STATIC_BUMP
 
+  if shared.Settings.MINIMAL_RUNTIME:
+    # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
+    global_initializers = ''
+  else:
+    # In regular runtime, global initializers are recorded in an __ATINIT__ array.
+    global_initializers = '''/* global initializers */ %s __ATINIT__.push(%s);
+''' % ('if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
+       global_initializers)
+
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
-/* global initializers */ %s __ATINIT__.push(%s);
-''' % (staticbump,
-       'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
-       global_initializers))
+%s
+''' % (staticbump, global_initializers))
 
   pre = apply_memory(pre)
-  pre = apply_static_code_hooks(pre)
+  pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
+  post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 
   if shared.Settings.RELOCATABLE and not shared.Settings.SIDE_MODULE:
     pre += 'var gb = GLOBAL_BASE, fb = 0;\n'
@@ -2224,6 +2243,10 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   exports = metadata['exports']
+
+  # Store exports for Closure compiler to be able to track these as globals in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in exports]
 
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
@@ -2254,6 +2277,9 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
   receiving = create_receiving_wasm(exports)
+
+  if shared.Settings.MINIMAL_RUNTIME:
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
 
   module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
@@ -2309,7 +2335,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=0')
     else:
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
-  if shared.Settings.SAFE_STACK:
+  if shared.Settings.WASM_BACKEND and shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
@@ -2608,7 +2634,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
 def create_receiving_wasm(exports):
   receiving = []
-  if not shared.Settings.ASSERTIONS:
+  if shared.Settings.MINIMAL_RUNTIME or not shared.Settings.ASSERTIONS:
     runtime_assertions = ''
   else:
     runtime_assertions = RUNTIME_ASSERTIONS
@@ -2623,8 +2649,42 @@ asm["%(e)s"] = function() {%(assertions)s
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    for e in exports:
-      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
+    if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+      if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
+        # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
+        # var _main;
+        # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+        # var asm = output.instance.exports;
+        # _main = asm["_main"];
+        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports]
+      else:
+        if shared.Settings.MINIMAL_RUNTIME:
+          # In wasm2js exports can be directly processed at top level, i.e.
+          # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+          # var _main = asm["_main"];
+          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports]
+        else:
+          receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
+    else:
+      if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
+        global_object = '(typeof process !== "undefined" ? global : this)'
+      elif shared.Settings.target_environment_may_be('node'):
+        global_object = 'global'
+      else:
+        global_object = 'this'
+
+      if shared.Settings.MINIMAL_RUNTIME:
+        module_assign = ''
+      else:
+        module_assign = 'Module[asmjs_mangle(__exportedFunc)] = '
+
+      receiving.append('''
+  function asmjs_mangle(x) {
+    var unmangledSymbols = %s;
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  }
+''' % shared.Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED)
+      receiving.append('for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];')
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
@@ -2650,7 +2710,8 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
-  module.append("var asm = createWasm();\n")
+  if not shared.Settings.MINIMAL_RUNTIME:
+    module.append("var asm = createWasm();\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)
@@ -2697,8 +2758,10 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
+  if not shared.Settings.MINIMAL_RUNTIME:
+    # In regular runtime initializers call the global var version of the export, so they get the mangled name.
+    # In MINIMAL_RUNTIME, the initializers are called directly off the export object for minimal code size.
+    metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
@@ -2721,30 +2784,6 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
-
-
-def treat_as_user_function(name):
-  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
-                                 'stackSave', 'stackRestore',
-                                 'establishStackSpace', '__growWasmMemory',
-                                 '__heap_base', '__data_end')
-  if name.startswith('dynCall_'):
-    return False
-  if name in library_functions_in_module:
-    return False
-  return True
-
-
-def asmjs_mangle(name):
-  """Mangle a name the way asm.js/JSBackend globals are mangled.
-
-  Prepends '_' and replaces non-alphanumerics with '_'.
-  Used by wasm backend for JS library consistency with asm.js.
-  """
-  if treat_as_user_function(name):
-    return '_' + name
-  else:
-    return name
 
 
 def normalize_line_endings(text):

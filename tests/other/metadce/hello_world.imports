@@ -1,3 +1,4 @@
+__handle_stack_overflow
 __lock
 __unlock
 emscripten_memcpy_big

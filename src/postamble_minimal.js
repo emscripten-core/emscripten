@@ -70,17 +70,50 @@ var imports = {
 #endif
 
 #if ASSERTIONS
-// In synchronous Wasm compilation mode, Module['wasm'] should contain a typed array of the Wasm object data.
+// Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
+
+  // WebAssembly instantiation API gotcha: if Module['wasm'] above was a typed array, then the
+  // output object will have an output.instance and output.module objects. But if Module['wasm']
+  // is an already compiled WebAssembly module, then output is the WebAssembly instance itself.
+  // Depending on the build mode, Module['wasm'] can mean a different thing.
+#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || ENVIRONMENT_MAY_BE_NODE
+  var asm = output.instance ? output.instance.exports : output.exports;
+#else
+  var asm = output.exports;
+#endif
+#else
   var asm = output.instance.exports;
+#endif
+
 #if DECLARE_ASM_MODULE_EXPORTS == 0
 
+#if WASM_BACKEND
+  // XXX Hack: some function names need to be mangled when exporting them from wasm module, others do not. 
+  // https://github.com/emscripten-core/emscripten/issues/10054
+  // Keep in sync with emscripten.py function treat_as_user_function(name).
+  function asmjs_mangle(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  }
+
 #if ENVIRONMENT_MAY_BE_NODE
-  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = Module[i] = asm[i];
+  for(var i in asm) (typeof process !== "undefined" ? global : this)[asmjs_mangle(i)] = asm[i];
 #else
-  for(var i in asm) this[i] = Module[i] = asm[i];
+  for(var i in asm) this[asmjs_mangle(i)] = asm[i];
+#endif
+
+#else
+
+#if ENVIRONMENT_MAY_BE_NODE
+  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = asm[i];
+#else
+  for(var i in asm) this[i] = asm[i];
+#endif
+
 #endif
 
 #else

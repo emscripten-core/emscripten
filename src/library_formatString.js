@@ -8,7 +8,7 @@ mergeInto(LibraryManager.library, {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['strlen', '_reallyNegative'],
+  _formatString__deps: ['_reallyNegative'],
   _formatString: function(format, varargs) {
     assert((varargs & 3) === 0);
     var textIndex = format;

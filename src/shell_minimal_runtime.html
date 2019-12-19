@@ -43,8 +43,8 @@ function revokeURL(url) {
 // matrix, or just focus on a single/specific set of download schemes to use.
 
 #if MODULARIZE && WASM
-  // Modularize + no streaming wasm compilation, no separate .mem init file
-  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), b('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+  // Modularized wasm, no separate .mem init file
+  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
     var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
     js({ wasm: r[1] });
   });
@@ -82,8 +82,8 @@ function revokeURL(url) {
 #endif
 
 #if !MODULARIZE && WASM
-  // No modularize, no streaming wasm compilation, no separate .mem init file
-  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), b('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+  // No modularize, no separate .mem init file
+  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
     Module.wasm = r[1];
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
     s(url).then(() => { revokeURL(url) });
