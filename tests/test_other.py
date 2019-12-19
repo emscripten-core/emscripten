@@ -1803,6 +1803,9 @@ int f() {
     run_process([PYTHON, EMCC, 'main.cpp'])
     self.assertContained('1234, 1234, 4321\n', run_js('a.out.js'))
 
+  def test_sdl2_mixer(self):
+    Building.emcc(path_from_root('tests', 'sdl2_mixer.c'), ['-s', 'USE_SDL_MIXER=2'], output_filename='a.out.js')
+
   def test_libpng(self):
     shutil.copyfile(path_from_root('tests', 'pngtest.png'), 'pngtest.png')
     Building.emcc(path_from_root('tests', 'pngtest.c'), ['--embed-file', 'pngtest.png', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1'], output_filename='a.out.js')
@@ -1922,7 +1925,7 @@ int f() {
       }
       ''')
 
-    for args in ([], ['-O1'], ['-s', 'USE_WEBGL2=1']):
+    for args in ([], ['-O1'], ['-s', 'MAX_WEBGL_VERSION=2']):
       for action in ('WARN', 'ERROR', None):
         for value in ([0, 1]):
           try_delete('a.out.js')
@@ -8044,6 +8047,8 @@ int main() {
     self.assertContained('[funcs]', out)
 
   def assertFileContents(self, filename, contents):
+    contents = contents.replace('\r', '')
+
     if os.environ.get('EMTEST_REBASELINE'):
       with open(filename, 'w') as f:
         f.write(contents)
@@ -8150,7 +8155,7 @@ int main() {
       self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],       6, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O0': ([],       7, [], ['waka'],  9766,  6, 13, 19), # noqa
     'O1': (['-O1'],  4, [], ['waka'],  7886,  2, 11, 12), # noqa
     'O2': (['-O2'],  4, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -8200,7 +8205,7 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],       9, [], ['waka'], 22185,  8,  17, 57), # noqa
+    'O0': ([],      10, [], ['waka'], 22874,  9,  18, 58), # noqa
     'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
     'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
@@ -8349,7 +8354,7 @@ int main() {
       text = re.sub(r' +', ' ', text)
       # print("text: %s" % text)
       i_legalimport_i64 = re.search(r'\(import.*\$legalimport\$invoke_j.*', text)
-      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(type \$\d+\).*\(result i32\)', text)
+      e_legalstub_i32 = re.search(r'\(func.*\$legalstub\$dyn.*\(result i32\)', text)
       assert i_legalimport_i64, 'legal import not generated for invoke call'
       assert e_legalstub_i32, 'legal stub not generated for dyncall'
 
@@ -9555,14 +9560,14 @@ int main () {
                            '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                            '-s', 'USES_DYNAMIC_ALLOC=2', '-lGL',
                            '-s', 'MODULARIZE=1']
-    hello_webgl2_sources = hello_webgl_sources + ['-s', 'USE_WEBGL2=1']
+    hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
     test_cases = [
       (asmjs + opts, hello_world_sources, {'a.html': 1453, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 1446, 'a.js': 604, 'a.wasm': 86}),
+      (opts, hello_world_sources, {'a.html': 1415, 'a.js': 604, 'a.wasm': 86}),
       (asmjs + opts, hello_webgl_sources, {'a.html': 1581, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 1563, 'a.js': 4837, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 1563, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (opts, hello_webgl_sources, {'a.html': 1537, 'a.js': 4837, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 1537, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
@@ -10176,6 +10181,10 @@ int main() {
     with open(path_from_root('tests', 'hello_world.cpp')) as f:
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
+
+  def test_output_to_nowhere(self):
+    nowhere = '/dev/null' if not WINDOWS else 'NUL'
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
 
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
   # I.e. -s MIN_X_VERSION=-1 is equal to -s MIN_X_VERSION=Infinity

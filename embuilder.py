@@ -40,6 +40,7 @@ USER_TASKS = [
     'libpng',
     'ogg',
     'regal',
+    'regal-mt',
     'sdl2',
     'sdl2-mt',
     'sdl2-gfx',
@@ -240,6 +241,8 @@ def main():
       build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
+    elif what == 'regal-mt':
+      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-pthread'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
     elif what == 'libsockets':

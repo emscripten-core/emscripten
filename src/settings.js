@@ -267,10 +267,6 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
-// Check each stack pointer decrement on WASM backend to ensure that the stack
-// does not overflow.
-var SAFE_STACK = 0;
-
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
@@ -442,9 +438,18 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
-// Enables WebGL2 native functions. This mode will also create a WebGL2
-// context by default if no version is specified.
+// Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 var USE_WEBGL2 = 0;
+
+// Specifies the lowest WebGL version to target. Pass -s MIN_WEBGL_VERSION=1
+// to enable targeting WebGL 1, and -s MIN_WEBGL_VERSION=2 to drop support
+// for WebGL 1.0
+var MIN_WEBGL_VERSION = 1;
+
+// Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
+// to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
+// will default to creating a WebGL 2 context if no version is specified.
+var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
 // applications that use WebGL 1/GLES 2 can initialize a WebGL 2/GLES3 context,
@@ -1567,6 +1572,24 @@ var SUPPORT_ERRNO = 1;
 // be useful for really small programs)
 var MINIMAL_RUNTIME = 0;
 
+// If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly compilation,
+// where WebAssembly module is compiled already while it is being downloaded.
+// In order for this to work, the web server MUST properly serve the .wasm file
+// with a HTTP response header "Content-Type: application/wasm". If this HTTP
+// header is not present, e.g. Firefox 73 will fail with an error message
+//    TypeError: Response has unsupported MIME type
+// and Chrome 78 will fail with an error message
+//    Uncaught (in promise) TypeError: Failed to execute 'compile' on
+//    'WebAssembly': Incorrect response MIME type. Expected 'application/wasm'.
+// If set to 0 (default), streaming WebAssembly compilation is disabled, which
+// means that the WebAssembly Module will first be downloaded fully, and only
+// then compilation starts.
+// For large .wasm modules and production environments, this should be set to 1
+// for faster startup speeds. However this setting is disabled by default
+// since it requires server side configuration and for really small pages there
+// is no observable difference (also has a ~100 byte impact to code size)
+var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
+
 // If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
 // enable this. If you are not using dynamic allocations, can set this to 0 to
 // save code size. This setting is ignored when building with -s
@@ -1676,4 +1699,5 @@ var LEGACY_SETTINGS = [
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
+  ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
 ];

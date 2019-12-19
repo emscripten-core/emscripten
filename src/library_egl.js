@@ -345,14 +345,14 @@ var LibraryEGL = {
       }
       contextAttribs += 8;
     }
-#if USE_WEBGL2
+#if MAX_WEBGL_VERSION >= 2
     if (glesContextVersion < 2 || glesContextVersion > 3) {
 #else
     if (glesContextVersion != 2) {
 #endif
 #if GL_ASSERTIONS
       if (glesContextVersion == 3) {
-        err('When initializing GLES3/WebGL2 via EGL, one must build with -s USE_WEBGL2=1 !');
+        err('When initializing GLES3/WebGL2 via EGL, one must build with -s MAX_WEBGL_VERSION=2 !');
       } else {
         err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
       }

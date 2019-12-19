@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
 - All ports now install their headers into a shared directory under
   `EM_CACHE`.  This should not really be a user visible change although one
   side effect is that once a give ports is built its headers are then
@@ -45,6 +46,10 @@ Current Trunk
   is mostly an implementation detail but if you use `WASI_STANDALONE` it means
   that the output of emscripten now requires a runtime with
   `wasi_snapshot_preview1` support.
+- `SAFE_STACK` has been removed, as it overlaps with `STACK_OVERFLOW_CHECK`.
+   Replace `SAFE_STACK=1` with `STACK_OVERFLOW_CHECK=2` (note the value is 2).
+   This also has the effect of enabling stack checking on upstream builds when
+   `ASSERTIONS` are enabled (as assertions enable `STACK_OVERFLOW_CHECK=2`).
 
 v1.39.4: 12/03/2019
 -------------------
