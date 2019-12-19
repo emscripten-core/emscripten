@@ -156,3 +156,8 @@ var MINIFY_ASMJS_IMPORT_NAMES = 0;
 
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
+
+// Wasm backend does not apply C name mangling (== prefix with an underscore) to
+// the following functions. (it also does not mangle any function that starts with
+// string "dynCall_")
+var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', '__growWasmMemory', '__heap_base', '__data_end'];
