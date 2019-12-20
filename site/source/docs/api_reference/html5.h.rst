@@ -2149,7 +2149,7 @@ Functions
   :param target: Specifies a selector for the canvas to resize.
   :param width: A pointer to memory location where the width of the canvas element is received. This pointer may not be null.
   :param height: A pointer to memory location where the height of the canvas element is received. This pointer may not be null.
-  :returns: EMSCRIPTEN_RESULT_SUCCESS if resizing succeeded, and one of the EMSCRIPTEN_RESULT_* error values on failure.
+  :returns: EMSCRIPTEN_RESULT_SUCCESS if width and height retrieval succeeded, and one of the EMSCRIPTEN_RESULT_* error values on failure.
 
 
 CSS
