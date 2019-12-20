@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.5: 12/20/2019
+-------------------
 - Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
 - All ports now install their headers into a shared directory under
   `EM_CACHE`.  This should not really be a user visible change although one
