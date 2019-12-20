@@ -6157,7 +6157,7 @@ int main() {
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
     # just care about message regarding allocating over 1GB of memory
     output = run_js('a.out.js', stderr=PIPE, full_output=True)
-    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
+    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1473257472\n''', output)
     print('wasm')
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1'])
     # no message about growth, just check return code

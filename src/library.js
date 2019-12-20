@@ -581,7 +581,7 @@ LibraryManager.library = {
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
-      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + LIMIT + ' bytes!');
+      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
 #endif
       return false;
     }
@@ -611,25 +611,23 @@ LibraryManager.library = {
       var newSize = Math.min(maxHeapSize, Math.max(minHeapSize, requestedSize, alignUp(heapIncrement, PAGE_MULTIPLE)));
 
       var replacement = emscripten_realloc_buffer(newSize);
-      if (!replacement && cutDown == 4) {
-#if ASSERTIONS
-        err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
-#endif
-        return false;
-      }
-    }
-
+      if (replacement) {
 #if ASSERTIONS && (!WASM || WASM2JS)
-    err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
+        err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
 #if EMSCRIPTEN_TRACING
-    _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
-    // And now report the new layout
-    _emscripten_trace_report_memory_layout();
+        _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
+        // And now report the new layout
+        _emscripten_trace_report_memory_layout();
 #endif
-
-    return true;
+        return true;
+      }
+    }
+#if ASSERTIONS
+    err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
+#endif
+    return false;
 #endif // ALLOW_MEMORY_GROWTH
   },
 
