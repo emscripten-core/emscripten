@@ -528,7 +528,7 @@ LibraryManager.library = {
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
   emscripten_resize_heap__deps: ['emscripten_get_heap_size'
-#if ASSERTIONS
+#if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
 #if ABORTING_MALLOC
@@ -613,11 +613,11 @@ LibraryManager.library = {
 
       var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
 
-#if ASSERTIONS
+#if ASSERTIONS == 2
       var t0 = _emscripten_get_now();
 #endif
       var replacement = emscripten_realloc_buffer(newSize);
-#if ASSERTIONS
+#if ASSERTIONS == 2
       var t1 = _emscripten_get_now();
       console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
 #endif
