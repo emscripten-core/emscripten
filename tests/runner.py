@@ -391,7 +391,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return self.get_setting('EMTERPRETIFY')
 
   def is_wasm(self):
-    return self.is_wasm_backend() or self.get_setting('WASM') != 0
+    return self.get_setting('WASM') != 0
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
