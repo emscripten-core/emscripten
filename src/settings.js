@@ -1614,6 +1614,17 @@ var MINIMAL_RUNTIME = 0;
 // is no observable difference (also has a ~100 byte impact to code size)
 var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
 
+// If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly instantiation,
+// where WebAssembly module is compiled+instantiated already while it is being
+// downloaded. Same restrictions/requirements apply as with
+// MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION.
+// MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and
+// MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION cannot be simultaneously active.
+// Which one of these two is faster depends on the size of the wasm module,
+// the size of the JS runtime file, and the size of the preloaded data file
+// to download, and the browser in question.
+var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
+
 // If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
 // enable this. If you are not using dynamic allocations, can set this to 0 to
 // save code size. This setting is ignored when building with -s

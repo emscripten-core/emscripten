@@ -4911,7 +4911,7 @@ window.close = function() {
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_hello_world(self):
-    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1']]:
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1', '--closure', '1']]:
       self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME=1'])
 
   @requires_threads
