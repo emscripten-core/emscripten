@@ -36,8 +36,10 @@ def asm_simd(f):
   def decorated(self):
     if self.is_emterpreter():
       self.skipTest('simd not supported in emterpreter yet')
-    if self.is_wasm():
-      self.skipTest('asm.js simd not compatible with wasm yet')
+    if self.is_wasm_backend():
+      self.skipTest('asm.js simd not compatible with wasm backend yet')
+    if self.get_setting('WASM'):
+      self.skipTest('asm.js simd not compatible with asm2wasm')
     self.emcc_args.append('-Wno-almost-asm')
     self.use_all_engines = True # checks both native in spidermonkey and polyfill in others
     f(self)
@@ -112,7 +114,7 @@ def sync(f):
   assert callable(f)
 
   def decorated(self):
-    if self.is_wasm():
+    if self.get_setting('WASM') or self.is_wasm_backend():
       self.emcc_args += ['-s', 'WASM_ASYNC_COMPILATION=0'] # test is set up synchronously
     f(self)
   return decorated
@@ -833,7 +835,7 @@ base align: 0, 0, 0, 0'''])
 
   @no_emterpreter
   def test_stack_restore(self):
-    if self.is_wasm():
+    if self.get_setting('WASM') or self.is_wasm_backend():
       self.skipTest('generated code not available in wasm')
     self.emcc_args += ['-g3'] # to be able to find the generated code
 
@@ -5829,7 +5831,7 @@ return malloc(size);
       return relocs, num_relocs
 
     # TODO: wrappers for wasm modules
-    if not self.is_wasm():
+    if not self.get_setting('WASM') and not self.is_wasm_backend():
       print('relocatable')
       assert self.get_setting('RELOCATABLE') == self.get_setting('EMULATED_FUNCTION_POINTERS') == 0
       self.set_setting('RELOCATABLE', 1)
@@ -6719,7 +6721,7 @@ return malloc(size);
       self.do_run(open(src).read(), 'Finished up all reserved function pointers. Use a higher value for RESERVED_FUNCTION_POINTERS.', assert_returncode=None)
       self.assertNotContained('jsCall_', open('src.cpp.o.js').read())
 
-    if not self.is_wasm():
+    if not self.get_setting('WASM') and not self.is_wasm_backend():
       # with emulation, we don't need to reserve, except with wasm where
       # we still do.
       print('- with function pointer emulation')
@@ -7288,6 +7290,7 @@ err = err = function(){};
 
   @no_emterpreter
   @no_wasm('wasmifying destroys debug info and stack tracability')
+  @no_wasm2js('no source maps support yet')
   def test_exception_source_map(self):
     self.emcc_args.append('-g4')
     if not jsrun.check_engine(NODE_JS):
@@ -7331,6 +7334,7 @@ err = err = function(){};
     self.build(src, dirname, os.path.join(dirname, 'src.cpp'), post_build=post)
 
   @no_wasm('wasmifying destroys debug info and stack tracability')
+  @no_wasm2js('source maps support')
   def test_emscripten_log(self):
     self.banned_js_engines = [V8_ENGINE] # v8 doesn't support console.log
     self.emcc_args += ['-s', 'DEMANGLE_SUPPORT=1']
