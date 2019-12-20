@@ -2546,12 +2546,10 @@ The current type of b is: 9
   def prep_dlfcn_lib(self):
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    self.set_setting('EXPORT_ALL')
 
   def prep_dlfcn_main(self):
     self.set_setting('MAIN_MODULE')
     self.clear_setting('SIDE_MODULE')
-    self.set_setting('EXPORT_ALL')
 
     create_test_file('lib_so_pre.js', '''
     if (!Module['preRun']) Module['preRun'] = [];
@@ -3557,9 +3555,6 @@ ok
     self.do_run(src, 'float: 42.\n', js_engines=js_engines)
 
   def dylink_test(self, main, side, expected=None, header=None, main_emcc_args=[], force_c=False, need_reverse=True, auto_load=True, **kwargs):
-    # shared settings
-    self.set_setting('EXPORT_ALL', 1)
-
     if header:
       create_test_file('header.h', header)
 
