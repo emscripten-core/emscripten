@@ -39,11 +39,11 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
 
     const char* state;
     switch (xhr["readyState"].as<int>()) {
-	case 0:
+    case 0:
       state = "UNSENT"; break;
     case 1:
       state = "OPENED"; break;
-	default:
+    default:
       state = "etc";
     }
 
