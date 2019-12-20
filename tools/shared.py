@@ -1920,28 +1920,22 @@ class Building(object):
                                      not Settings.ASYNCIFY):
       cmd.append('--strip-debug')
 
-    if Settings.RELOCATABLE:
-      if Settings.MAIN_MODULE == 2 or Settings.SIDE_MODULE == 2:
-        cmd.append('--no-export-dynamic')
-      else:
-        cmd.append('--no-gc-sections')
-        cmd.append('--export-dynamic')
-
-    if Settings.LINKABLE:
+    if Settings.EXPORT_ALL:
       cmd.append('--export-all')
+    else:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      if not Settings.STANDALONE_WASM:
+        cmd += ['--export', '__wasm_call_ctors']
 
-    # in standalone mode, crt1 will call the constructors from inside the wasm
-    if not Settings.STANDALONE_WASM:
-      cmd += ['--export', '__wasm_call_ctors']
+      cmd += ['--export', '__data_end']
 
-    cmd += ['--export', '__data_end']
-
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
 
     if Settings.RELOCATABLE:
       if Settings.SIDE_MODULE:
         cmd.append('-shared')
+        cmd.append('--no-export-dynamic')
       else:
         cmd.append('-pie')
 
