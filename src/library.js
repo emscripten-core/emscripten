@@ -560,68 +560,50 @@ LibraryManager.library = {
 #endif
 
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
-    var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
-    if (requestedSize > LIMIT) {
+    // Memory resize rules:
+    // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
+    // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
+    // 3a. If MEMORY_GROWTH_STEP == -1, excessively resize the heap geometrically: increase the heap size by at least +20% from its old size.
+    // 3b. If MEMORY_GROWTH_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_STEP bytes.
+    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by WASM_MEM_MAX, or by ASAN limit, depending on which is smallest
+    // According to these rules heap resize will occur at most 28 times throughout Wasm module lifetime.
+    // (first resize will resize up to 16MB, then 16MB*1.20^27 > 2048MB)
+
+#if WASM_MEM_MAX != -1
+    // A limit was set for how much we can grow. We should not exceed that
+    // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+    var maxHeapSize = {{{ WASM_MEM_MAX }}};
+#else
+    var maxHeapSize = 2147483648 - PAGE_MULTIPLE;
+#endif
+    if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + LIMIT + ' bytes!');
 #endif
       return false;
     }
-
-    var MIN_TOTAL_MEMORY = 16777216;
-    var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
-
-    // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
-    while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
-#if MEMORY_GROWTH_STEP != -1
-      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set by the user.
-      newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
-#else
-      if (newSize <= 536870912) {
-        newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
-      } else {
-        // ..., but after that, add smaller increments towards 2GB, which we cannot reach
-        newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-      }
-#endif // MEMORY_GROWTH_STEP
-
-#if ASSERTIONS
-      if (newSize === oldSize) {
-        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
-      }
-#endif
-    }
-
-#if WASM_MEM_MAX != -1
-    // A limit was set for how much we can grow. We should not exceed that
-    // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
-    // if we are at say 64MB, and the max is 100MB, then we should *not* try to
-    // grow 64->128MB which is the default behavior (doubling), as 128MB will
-    // fail because of the max limit. Instead, we should only try to grow
-    // 64->100MB in this example, which has a chance of succeeding (but may
-    // still fail for another reason, of actually running out of memory).
-    newSize = Math.min(newSize, {{{ WASM_MEM_MAX }}});
-    if (newSize == oldSize) {
-#if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
-#endif
-      return false;
-    }
-#endif // WASM_MEM_MAX
-
 #if USE_ASAN
-    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
-    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
-    // This causes real memory to be corrupted.
-    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
-    if (newSize == oldSize) {
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
+    // so do not allow resizing past that limit.
+    maxHeapSize = Math.min(maxHeapSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
 #endif
       return false;
     }
 #endif
+
+    var minHeapSize = 16777216;
+
+#if MEMORY_GROWTH_STEP == -1
+    var heapIncrement = oldSize * 1.20; // ensure geometric growth
+#else
+    var heapIncrement = oldSize + {{{ MEMORY_GROWTH_STEP }}}; // ensure linear growth
+#endif
+
+    var newSize = Math.min(maxHeapSize, Math.max(minHeapSize, requestedSize, alignUp(heapIncrement, PAGE_MULTIPLE)));
 
     var replacement = emscripten_realloc_buffer(newSize);
     if (!replacement) {
