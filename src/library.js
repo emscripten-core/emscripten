@@ -528,6 +528,9 @@ LibraryManager.library = {
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
   emscripten_resize_heap__deps: ['emscripten_get_heap_size'
+#if ASSERTIONS
+  , 'emscripten_get_now'
+#endif
 #if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
 #endif
@@ -564,13 +567,12 @@ LibraryManager.library = {
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
     // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
-    // 3a. If MEMORY_GROWTH_STEP == -1, excessively resize the heap geometrically: increase the heap size by at least +20% from its old size.
+    // 3a. If MEMORY_GROWTH_STEP == -1, excessively resize the heap geometrically: increase the heap size by at least +20% from its old size,
+    //                                  but at most overreserve by 96MB.
     // 3b. If MEMORY_GROWTH_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_STEP bytes.
     // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by WASM_MEM_MAX, or by ASAN limit, depending on which is smallest
     // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
     //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
-    // According to these rules heap resize will occur at most 28 times throughout Wasm module lifetime.
-    // (first resize will resize up to 16MB, then 16MB*1.20^27 > 2048MB)
 
 #if WASM_MEM_MAX != -1
     // A limit was set for how much we can grow. We should not exceed that
@@ -604,13 +606,21 @@ LibraryManager.library = {
     for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_STEP == -1
       var overGrownHeapSize = oldSize * (1 + 0.20 / cutDown); // ensure geometric growth
+      overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 96*1024*1024); // but only ever overreserve by +96MB at most
 #else
       var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_STEP }}} / cutDown; // ensure linear growth
 #endif
 
       var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
 
+#if ASSERTIONS
+      var t0 = _emscripten_get_now();
+#endif
       var replacement = emscripten_realloc_buffer(newSize);
+#if ASSERTIONS
+      var t1 = _emscripten_get_now();
+      console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
+#endif
       if (replacement) {
 #if ASSERTIONS && (!WASM || WASM2JS)
         err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
