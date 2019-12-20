@@ -603,12 +603,12 @@ LibraryManager.library = {
     // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
     for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
 #if MEMORY_GROWTH_STEP == -1
-      var heapIncrement = oldSize * (1 + 0.20/cutDown); // ensure geometric growth
+      var overGrownHeapSize = oldSize * (1 + 0.20 / cutDown); // ensure geometric growth
 #else
-      var heapIncrement = oldSize + {{{ MEMORY_GROWTH_STEP }}} / cutDown; // ensure linear growth
+      var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_STEP }}} / cutDown; // ensure linear growth
 #endif
 
-      var newSize = Math.min(maxHeapSize, Math.max(minHeapSize, requestedSize, alignUp(heapIncrement, PAGE_MULTIPLE)));
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
 
       var replacement = emscripten_realloc_buffer(newSize);
       if (replacement) {
