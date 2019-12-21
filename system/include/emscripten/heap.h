@@ -13,7 +13,7 @@
 extern "C" {
 #endif
 
-void *emscripten_get_sbrk_ptr(void);
+intptr_t *emscripten_get_sbrk_ptr(void);
 int emscripten_resize_heap(size_t requested_size);
 size_t emscripten_get_heap_size(void);
 
