@@ -1157,6 +1157,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
       options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      if not shared.Settings.WASM_BACKEND:
+        shared.Settings.EXPORT_ALL = 1
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
