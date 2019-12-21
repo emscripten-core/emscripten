@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Added new system header <emscripten/heap.h>, which enables querying information
+  about the current WebAssembly heap state.
+- Reduced default geometric memory overgrowth rate from very generous 2x factor
+  to a more memory conserving +20% factor, and capped maximum reservation to 96MB
+  at most.
+- Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
+  to allow customizing the heap growth rates.
+- Renamed MEMORY_GROWTH_STEP option to MEMORY_GROWTH_LINEAR_STEP option.
 
 v1.39.5: 12/20/2019
 -------------------
