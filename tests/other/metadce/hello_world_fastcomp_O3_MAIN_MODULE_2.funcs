@@ -6,7 +6,6 @@ $___overflow
 $___stdio_write
 $___towrite
 $__apply_relocations
-$_fwrite
 $_main
 $_malloc
 $_memcpy
