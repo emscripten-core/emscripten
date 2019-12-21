@@ -6629,8 +6629,6 @@ main(int argc,char** argv)
   def test_main_module_without_exceptions_message(self):
     # A side module that needs exceptions needs a main module with that
     # support enabled; show a clear message in that case.
-    # This happens to also check that main modules have EXPORT_ALL enabled,
-    # in order to make their JS library code available to side modules.
     create_test_file('side.cpp', r'''
       #include <exception>
       #include <stdio.h>
