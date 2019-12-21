@@ -173,8 +173,10 @@ var MEMORY_GROWTH_GEOMETRIC_CAP = 96*1024*1024;
 
 // If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_LINEAR_STEP == -1, then
 // geometric memory overgrowth is utilized (above variable). Set
-// MEMORY_GROWTH_STEP to a multiple of WASM page size (64KB), eg. 16MB to
-// replace geometric overgrowth rate with a constant growth step size.
+// MEMORY_GROWTH_LINEAR_STEP to a multiple of WASM page size (64KB), eg. 16MB to
+// replace geometric overgrowth rate with a constant growth step size. When
+// MEMORY_GROWTH_LINEAR_STEP is used, the variables MEMORY_GROWTH_GEOMETRIC_STEP
+// and MEMORY_GROWTH_GEOMETRIC_CAP are ignored.
 var MEMORY_GROWTH_LINEAR_STEP = -1;
 
 // If true, allows more functions to be added to the table at runtime. This is
