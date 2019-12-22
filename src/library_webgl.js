@@ -658,16 +658,18 @@ var LibraryGL = {
       context.defaultFboForbidBlitFramebuffer = false;
       if (gl.getContextAttributes().antialias) {
         context.defaultFboForbidBlitFramebuffer = true;
-      } else {
+      }
+#if MIN_FIREFOX_VERSION < 67
+      else {
         // The WebGL 2 blit path doesn't work in Firefox < 67 (except in fullscreen).
         // https://bugzilla.mozilla.org/show_bug.cgi?id=1523030
-        // TODO: Remove this workaround once Firefox 67 is obsolete.
         var firefoxMatch = navigator.userAgent.toLowerCase().match(/firefox\/(\d\d)/);
         if (firefoxMatch != null) {
           var firefoxVersion = firefoxMatch[1];
           context.defaultFboForbidBlitFramebuffer = firefoxVersion < 67;
         }
       }
+#endif
 #endif
 
       // Create render targets to the FBO
