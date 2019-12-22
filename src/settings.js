@@ -1640,6 +1640,17 @@ var SUPPORT_LONGJMP = 1;
 // selectors, instead of referring to DOM IDs.
 var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
 
+// Certain browser DOM API operations, such as requesting fullscreen mode
+// transition or pointer lock require that the request originates from within
+// an user initiated event, such as mouse click or keyboard press. Refactoring
+// an application to follow this kind of program structure can be difficult, so
+// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=1 flag allows transparent
+// emulation of this by deferring synchronous fullscreen mode and pointer lock
+// requests until a suitable event callback is generated. Set this to 0
+// to disable support for deferring to save code space if your application does
+// not need support for deferred calls.
+var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = 1;
+
 // Specifies whether the generated .html file is run through html-minifier. The
 // set of optimization passes run by html-minifier depends on debug and
 // optimization levels. In -g2 and higher, no minification is performed. In -g1,

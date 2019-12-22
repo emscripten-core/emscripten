@@ -2568,7 +2568,7 @@ Module["preRun"].push(function () {
 
   @requires_threads
   def test_html5(self):
-    for opts in [[], ['-O2', '-g1', '--closure', '1'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], ['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0']]:
+    for opts in [[], ['-O2', '-g1', '--closure', '1', '-s', 'HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'], ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], ['-s', 'MIN_FIREFOX_VERSION=0', '-s', 'MIN_SAFARI_VERSION=0', '-s', 'MIN_IE_VERSION=0', '-s', 'MIN_EDGE_VERSION=0', '-s', 'MIN_CHROME_VERSION=0']]:
       print(opts)
       self.btest(path_from_root('tests', 'test_html5.c'), args=[] + opts, expected='0')
 
