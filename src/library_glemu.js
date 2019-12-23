@@ -18,7 +18,7 @@ var LibraryGLEmulation = {
     fogEnd: 1,
     fogDensity: 1.0,
     fogColor: null,
-    fogMode: 0x0800, // GL_EXP
+    fogMode: 0x800, // GL_EXP
     fogEnabled: false,
 
     // VAO support
@@ -81,12 +81,12 @@ var LibraryGLEmulation = {
 
       // XXX some of the capabilities we don't support may lead to incorrect rendering, if we do not emulate them in shaders
       var validCapabilities = {
-        0x0B44: 1, // GL_CULL_FACE
-        0x0BE2: 1, // GL_BLEND
-        0x0BD0: 1, // GL_DITHER,
-        0x0B90: 1, // GL_STENCIL_TEST
-        0x0B71: 1, // GL_DEPTH_TEST
-        0x0C11: 1, // GL_SCISSOR_TEST
+        0xB44: 1, // GL_CULL_FACE
+        0xBE2: 1, // GL_BLEND
+        0xBD0: 1, // GL_DITHER,
+        0xB90: 1, // GL_STENCIL_TEST
+        0xB71: 1, // GL_DEPTH_TEST
+        0xC11: 1, // GL_SCISSOR_TEST
         0x8037: 1, // GL_POLYGON_OFFSET_FILL
         0x809E: 1, // GL_SAMPLE_ALPHA_TO_COVERAGE
         0x80A0: 1  // GL_SAMPLE_COVERAGE
@@ -110,13 +110,13 @@ var LibraryGLEmulation = {
         // Clean up the renderer on any change to the rendering state. The optimization of
         // skipping renderer setup is aimed at the case of multiple glDraw* right after each other
         if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
-        if (cap == 0x0B60 /* GL_FOG */) {
+        if (cap == 0xB60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != true) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = true;
           }
           return;
-        } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
+        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glEnableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -134,13 +134,13 @@ var LibraryGLEmulation = {
       var glDisable = _glDisable;
       _glDisable = _emscripten_glDisable = function _glDisable(cap) {
         if (GLImmediate.lastRenderer) GLImmediate.lastRenderer.cleanup();
-        if (cap == 0x0B60 /* GL_FOG */) {
+        if (cap == 0xB60 /* GL_FOG */) {
           if (GLEmulation.fogEnabled != false) {
             GLImmediate.currentRenderer = null; // Fog parameter is part of the FFP shader state, we must re-lookup the renderer to use.
             GLEmulation.fogEnabled = false;
           }
           return;
-        } else if (cap == 0x0de1 /* GL_TEXTURE_2D */) {
+        } else if (cap == 0xDE1 /* GL_TEXTURE_2D */) {
           // XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support
           // it by forwarding to glDisableClientState
           /* Actually, let's not, for now. (This sounds exceedingly broken)
@@ -156,7 +156,7 @@ var LibraryGLEmulation = {
       {{{ updateExport('glDisable') }}}
 
       _glIsEnabled = _emscripten_glIsEnabled = function _glIsEnabled(cap) {
-        if (cap == 0x0B60 /* GL_FOG */) {
+        if (cap == 0xB60 /* GL_FOG */) {
           return GLEmulation.fogEnabled ? 1 : 0;
         } else if (!(cap in validCapabilities)) {
           return 0;
@@ -509,21 +509,21 @@ var LibraryGLEmulation = {
 
       var glGetFloatv = _glGetFloatv;
       _glGetFloatv = _emscripten_glGetFloatv = function _glGetFloatv(pname, params) {
-        if (pname == 0x0BA6) { // GL_MODELVIEW_MATRIX
+        if (pname == 0xBA6) { // GL_MODELVIEW_MATRIX
           HEAPF32.set(GLImmediate.matrix[0/*m*/], params >> 2);
-        } else if (pname == 0x0BA7) { // GL_PROJECTION_MATRIX
+        } else if (pname == 0xBA7) { // GL_PROJECTION_MATRIX
           HEAPF32.set(GLImmediate.matrix[1/*p*/], params >> 2);
-        } else if (pname == 0x0BA8) { // GL_TEXTURE_MATRIX
+        } else if (pname == 0xBA8) { // GL_TEXTURE_MATRIX
           HEAPF32.set(GLImmediate.matrix[2/*t*/ + GLImmediate.clientActiveTexture], params >> 2);
-        } else if (pname == 0x0B66) { // GL_FOG_COLOR
+        } else if (pname == 0xB66) { // GL_FOG_COLOR
           HEAPF32.set(GLEmulation.fogColor, params >> 2);
-        } else if (pname == 0x0B63) { // GL_FOG_START
+        } else if (pname == 0xB63) { // GL_FOG_START
           {{{ makeSetValue('params', '0', 'GLEmulation.fogStart', 'float') }}};
-        } else if (pname == 0x0B64) { // GL_FOG_END
+        } else if (pname == 0xB64) { // GL_FOG_END
           {{{ makeSetValue('params', '0', 'GLEmulation.fogEnd', 'float') }}};
-        } else if (pname == 0x0B62) { // GL_FOG_DENSITY
+        } else if (pname == 0xB62) { // GL_FOG_DENSITY
           {{{ makeSetValue('params', '0', 'GLEmulation.fogDensity', 'float') }}};
-        } else if (pname == 0x0B65) { // GL_FOG_MODE
+        } else if (pname == 0xB65) { // GL_FOG_MODE
           {{{ makeSetValue('params', '0', 'GLEmulation.fogMode', 'float') }}};
         } else {
           glGetFloatv(pname, params);
@@ -569,7 +569,7 @@ var LibraryGLEmulation = {
     getAttributeFromCapability: function(cap) {
       var attrib = null;
       switch (cap) {
-        case 0x0de1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
+        case 0xDE1: // GL_TEXTURE_2D - XXX not according to spec, and not in desktop GL, but works in some GLES1.x apparently, so support it
 #if ASSERTIONS
           abort("GL_TEXTURE_2D is not a spec-defined capability for gl{Enable,Disable}ClientState.");
 #endif
@@ -661,7 +661,7 @@ var LibraryGLEmulation = {
       case 0x8092: // GL_TEXTURE_COORD_ARRAY_POINTER
         attribute = GLImmediate.clientAttributes[GLImmediate.TEXTURE0 + GLImmediate.clientActiveTexture]; break;
       default:
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+        GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glGetPointerv: Unsupported name ' + name + '!');
 #endif
@@ -806,8 +806,8 @@ var LibraryGLEmulation = {
     spawnTexEnvJIT: function() {
       // GL defs:
       var GL_TEXTURE0 = 0x84C0;
-      var GL_TEXTURE_1D = 0x0DE0;
-      var GL_TEXTURE_2D = 0x0DE1;
+      var GL_TEXTURE_1D = 0xDE0;
+      var GL_TEXTURE_2D = 0xDE1;
       var GL_TEXTURE_3D = 0x806f;
       var GL_TEXTURE_CUBE_MAP = 0x8513;
       var GL_TEXTURE_ENV = 0x2300;
@@ -840,18 +840,18 @@ var LibraryGLEmulation = {
       var GL_COMBINE_ALPHA = 0x8572;
 
       var GL_RGB_SCALE = 0x8573;
-      var GL_ALPHA_SCALE = 0x0D1C;
+      var GL_ALPHA_SCALE = 0xD1C;
 
       // env.mode
-      var GL_ADD      = 0x0104;
-      var GL_BLEND    = 0x0BE2;
+      var GL_ADD      = 0x104;
+      var GL_BLEND    = 0xBE2;
       var GL_REPLACE  = 0x1E01;
       var GL_MODULATE = 0x2100;
       var GL_DECAL    = 0x2101;
       var GL_COMBINE  = 0x8570;
 
       // env.color/alphaCombiner
-      //var GL_ADD         = 0x0104;
+      //var GL_ADD         = 0x104;
       //var GL_REPLACE     = 0x1E01;
       //var GL_MODULATE    = 0x2100;
       var GL_SUBTRACT    = 0x84E7;
@@ -864,10 +864,10 @@ var LibraryGLEmulation = {
       var GL_PREVIOUS      = 0x8578;
 
       // env.color/alphaOp
-      var GL_SRC_COLOR           = 0x0300;
-      var GL_ONE_MINUS_SRC_COLOR = 0x0301;
-      var GL_SRC_ALPHA           = 0x0302;
-      var GL_ONE_MINUS_SRC_ALPHA = 0x0303;
+      var GL_SRC_COLOR           = 0x300;
+      var GL_ONE_MINUS_SRC_COLOR = 0x301;
+      var GL_SRC_ALPHA           = 0x302;
+      var GL_ONE_MINUS_SRC_ALPHA = 0x303;
 
       var GL_RGB  = 0x1907;
       var GL_RGBA = 0x1908;
@@ -1027,8 +1027,8 @@ var LibraryGLEmulation = {
           // mode
           0x1E01 /* GL_REPLACE */: 0,
           0x2100 /* GL_MODULATE */: 1,
-          0x0104 /* GL_ADD */: 2,
-          0x0BE2 /* GL_BLEND */: 3,
+          0x104 /* GL_ADD */: 2,
+          0xBE2 /* GL_BLEND */: 3,
           0x2101 /* GL_DECAL */: 4,
           0x8570 /* GL_COMBINE */: 5,
 
@@ -1043,10 +1043,10 @@ var LibraryGLEmulation = {
           0x8578 /* GL_PREVIOUS */: 3,
 
           // color and alpha op
-          0x0300 /* GL_SRC_COLOR */: 0,
-          0x0301 /* GL_ONE_MINUS_SRC_COLOR */: 1,
-          0x0302 /* GL_SRC_ALPHA */: 2,
-          0x0303 /* GL_ONE_MINUS_SRC_ALPHA */: 3
+          0x300 /* GL_SRC_COLOR */: 0,
+          0x301 /* GL_ONE_MINUS_SRC_COLOR */: 1,
+          0x302 /* GL_SRC_ALPHA */: 2,
+          0x303 /* GL_ONE_MINUS_SRC_ALPHA */: 3
         };
 
         // The tuple (key0,key1,key2) uniquely identifies the state of the variables in CTexEnv.
@@ -1933,7 +1933,7 @@ var LibraryGLEmulation = {
       var fogParam = 0;
       if (GLEmulation.fogEnabled) {
         switch (GLEmulation.fogMode) {
-          case 0x0801: // GL_EXP2
+          case 0x801: // GL_EXP2
             fogParam = 1;
             break;
           case 0x2601: // GL_LINEAR
@@ -2016,7 +2016,7 @@ var LibraryGLEmulation = {
             // that you cache the renderer based on the said parameters.
             if (GLEmulation.fogEnabled) {
               switch (GLEmulation.fogMode) {
-                case 0x0801: // GL_EXP2
+                case 0x801: // GL_EXP2
                   // fog = exp(-(gl_Fog.density * gl_FogFragCoord)^2)
                   var fogFormula = '  float fog = exp(-u_fogDensity * u_fogDensity * ecDistance * ecDistance); \n';
                   break;
@@ -2939,15 +2939,15 @@ var LibraryGLEmulation = {
 
   glFogf: function(pname, param) { // partial support, TODO
     switch(pname) {
-      case 0x0B63: // GL_FOG_START
+      case 0xB63: // GL_FOG_START
         GLEmulation.fogStart = param; break;
-      case 0x0B64: // GL_FOG_END
+      case 0xB64: // GL_FOG_END
         GLEmulation.fogEnd = param; break;
-      case 0x0B62: // GL_FOG_DENSITY
+      case 0xB62: // GL_FOG_DENSITY
         GLEmulation.fogDensity = param; break;
-      case 0x0B65: // GL_FOG_MODE
+      case 0xB65: // GL_FOG_MODE
         switch (param) {
-          case 0x0801: // GL_EXP2
+          case 0x801: // GL_EXP2
           case 0x2601: // GL_LINEAR
             if (GLEmulation.fogMode != param) {
               GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
@@ -2955,9 +2955,9 @@ var LibraryGLEmulation = {
             }
             break;
           default: // default to GL_EXP
-            if (GLEmulation.fogMode != 0x0800 /* GL_EXP */) {
+            if (GLEmulation.fogMode != 0x800 /* GL_EXP */) {
               GLImmediate.currentRenderer = null; // Fog mode is part of the FFP shader state, we must re-lookup the renderer to use.
-              GLEmulation.fogMode = 0x0800 /* GL_EXP */;
+              GLEmulation.fogMode = 0x800 /* GL_EXP */;
             }
             break;
         }
@@ -2971,21 +2971,21 @@ var LibraryGLEmulation = {
   glFogfv__deps: ['glFogf'],
   glFogfv: function(pname, param) { // partial support, TODO
     switch(pname) {
-      case 0x0B66: // GL_FOG_COLOR
+      case 0xB66: // GL_FOG_COLOR
         GLEmulation.fogColor[0] = {{{ makeGetValue('param', '0', 'float') }}};
         GLEmulation.fogColor[1] = {{{ makeGetValue('param', '4', 'float') }}};
         GLEmulation.fogColor[2] = {{{ makeGetValue('param', '8', 'float') }}};
         GLEmulation.fogColor[3] = {{{ makeGetValue('param', '12', 'float') }}};
         break;
-      case 0x0B63: // GL_FOG_START
-      case 0x0B64: // GL_FOG_END
+      case 0xB63: // GL_FOG_START
+      case 0xB64: // GL_FOG_END
         _glFogf(pname, {{{ makeGetValue('param', '0', 'float') }}}); break;
     }
   },
   glFogiv__deps: ['glFogf'],
   glFogiv: function(pname, param) {
     switch(pname) {
-      case 0x0B66: // GL_FOG_COLOR
+      case 0xB66: // GL_FOG_COLOR
         GLEmulation.fogColor[0] = ({{{ makeGetValue('param', '0', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[1] = ({{{ makeGetValue('param', '4', 'i32') }}}/2147483647)/2.0+0.5;
         GLEmulation.fogColor[2] = ({{{ makeGetValue('param', '8', 'i32') }}}/2147483647)/2.0+0.5;
@@ -3225,7 +3225,7 @@ var LibraryGLEmulation = {
 
   glPopMatrix: function() {
     if (GLImmediate.matrixStack[GLImmediate.currentMatrix].length == 0) {
-      GL.recordError(0x0504/*GL_STACK_UNDERFLOW*/);
+      GL.recordError(0x504/*GL_STACK_UNDERFLOW*/);
       return;
     }
     GLImmediate.matricesModified = true;
