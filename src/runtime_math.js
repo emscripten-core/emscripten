@@ -1,4 +1,8 @@
-#if POLYFILL_OLD_MATH_FUNCTIONS
+#if POLYFILL_OLD_MATH_FUNCTIONS || LEGACY_VM_SUPPORT
+
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/imul
+#if MIN_CHROME_VERSION < 28 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 20 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 90000 // || MIN_NODE_VERSION < 0.12
+// || MIN_NODE_VERSION < 0.12
 // check for imul support, and also for correctness ( https://bugs.webkit.org/show_bug.cgi?id=126345 )
 if (!Math.imul || Math.imul(0xffffffff, 5) !== -5) Math.imul = function imul(a, b) {
   var ah  = a >>> 16;
@@ -7,7 +11,10 @@ if (!Math.imul || Math.imul(0xffffffff, 5) !== -5) Math.imul = function imul(a, 
   var bl = b & 0xffff;
   return (al*bl + ((ah*bl + al*bh) << 16))|0;
 };
+#endif
 
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/fround
+#if MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 26 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // || MIN_NODE_VERSION < 0.12
 #if PRECISE_F32
 #if PRECISE_F32 == 1
 if (!Math.fround) {
@@ -22,7 +29,10 @@ if (!Math.fround) Math.fround = function(x) { return x };
 if (!Math.fround) Math.fround = function(x) { return x };
 #endif
 #endif
+#endif
 
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/clz32
+#if MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 31 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // || MIN_NODE_VERSION < 0.12
 if (!Math.clz32) Math.clz32 = function(x) {
   var n = 32;
   var y = x >> 16; if (y) { n -= 16; x = y; }
@@ -32,18 +42,23 @@ if (!Math.clz32) Math.clz32 = function(x) {
   y = x >> 1; if (y) return n - 2;
   return n - x;
 };
+#endif
 
+// https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/trunc
+#if MIN_CHROME_VERSION < 38 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 25 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // || MIN_NODE_VERSION < 0.12
 if (!Math.trunc) Math.trunc = function(x) {
   return x < 0 ? Math.ceil(x) : Math.floor(x);
 };
-#else // POLYFILL_OLD_MATH_FUNCTIONS
+#endif
+
+#else // !POLYFILL_OLD_MATH_FUNCTIONS && !LEGACY_VM_SUPPORT:
 #if ASSERTIONS
 assert(Math.imul, 'This browser does not support Math.imul(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 assert(Math.fround, 'This browser does not support Math.fround(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 assert(Math.clz32, 'This browser does not support Math.clz32(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 assert(Math.trunc, 'This browser does not support Math.trunc(), build with LEGACY_VM_SUPPORT or POLYFILL_OLD_MATH_FUNCTIONS to add in a polyfill');
 #endif
-#endif // LEGACY_VM_SUPPORT
+#endif // POLYFILL_OLD_MATH_FUNCTIONS || LEGACY_VM_SUPPORT
 
 var Math_abs = Math.abs;
 var Math_cos = Math.cos;
