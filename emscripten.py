@@ -2276,7 +2276,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     pass
 
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
-  receiving = create_receiving_wasm(exports)
+  receiving = create_receiving_wasm(exports, metadata['initializers'])
 
   if shared.Settings.MINIMAL_RUNTIME:
     post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
@@ -2632,7 +2632,9 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-def create_receiving_wasm(exports):
+def create_receiving_wasm(exports, initializers):
+  exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+
   receiving = []
   if shared.Settings.MINIMAL_RUNTIME or not shared.Settings.ASSERTIONS:
     runtime_assertions = ''
@@ -2656,13 +2658,13 @@ asm["%(e)s"] = function() {%(assertions)s
         # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
         # var asm = output.instance.exports;
         # _main = asm["_main"];
-        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports]
+        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
       else:
         if shared.Settings.MINIMAL_RUNTIME:
           # In wasm2js exports can be directly processed at top level, i.e.
           # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
           # var _main = asm["_main"];
-          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports]
+          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
         else:
           receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
     else:
