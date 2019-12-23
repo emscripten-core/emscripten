@@ -2632,15 +2632,23 @@ var LibraryJSEvents = {
   emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
 #endif
 
+#if MIN_WEBGL_VERSION == 1
+  emscripten_webgl_enable_extension_calling_thread__deps: ['_webgl_acquireInstancedArraysExtension',
+    '_webgl_acquireVertexArrayObjectExtension', '_webgl_acquireDrawBuffersExtension'],
+#endif
   emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
     if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+#endif
 
-    // Obtain function entry points to extension related functions.
-    if (extString == 'ANGLE_instanced_arrays') GL.acquireInstancedArraysExtension(GLctx);
-    else if (extString == 'OES_vertex_array_object') GL.acquireVertexArrayObjectExtension(GLctx);
-    else if (extString == 'WEBGL_draw_buffers') GL.acquireDrawBuffersExtension(GLctx);
+#if MIN_WEBGL_VERSION == 1
+    // Obtain function entry points to WebGL 1 extension related functions.
+    if (extString == 'ANGLE_instanced_arrays') __webgl_acquireInstancedArraysExtension(GLctx);
+    else if (extString == 'OES_vertex_array_object') __webgl_acquireVertexArrayObjectExtension(GLctx);
+    else if (extString == 'WEBGL_draw_buffers') __webgl_acquireDrawBuffersExtension(GLctx);
+#endif
 
     var ext = context.GLctx.getExtension(extString);
     return !!ext;
