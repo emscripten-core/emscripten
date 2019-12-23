@@ -2713,9 +2713,9 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
   def test_demangle_malloc_infinite_loop_crash(self):
     run_process([PYTHON, EMXX, path_from_root('tests', 'malloc_demangle_infinite_loop.cpp'), '-g', '-s', 'ABORTING_MALLOC=1', '-s', 'DEMANGLE_SUPPORT=1'])
     output = run_js('a.out.js', assert_returncode=None, stderr=PIPE)
-    if output.count('Cannot enlarge memory arrays') != 1:
+    if output.count('Cannot enlarge memory arrays') > 2:
       print(output)
-    assert(output.count('Cannot enlarge memory arrays') == 1)
+    assert(output.count('Cannot enlarge memory arrays') <= 2)
 
   def test_module_exports_with_closure(self):
     # This test checks that module.export is retained when JavaScript is minified by compiling with --closure 1

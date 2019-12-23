@@ -12,7 +12,8 @@ var LibraryStackTrace = {
 #if DEMANGLE_SUPPORT
     // If demangle has failed before, stop demangling any further function names
     // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
-    if (demangle.failed) return func;
+    demangle.recursionGuard = (demangle.recursionGuard|0)+1;
+    if (demangle.recursionGuard > 1) return func;
     var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
     assert(__cxa_demangle_func);
     var stackTop = stackSave();
@@ -30,10 +31,10 @@ var LibraryStackTrace = {
       }
       // otherwise, libcxxabi failed
     } catch(e) {
-      demangle.failed = true;
     } finally {
       _free(ret);
       stackRestore(stackTop);
+      if (demangle.recursionGuard < 2) --demangle.recursionGuard;
     }
     // failure when using libcxxabi, don't demangle
     return func;
