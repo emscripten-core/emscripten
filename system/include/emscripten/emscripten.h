@@ -280,8 +280,8 @@ typedef struct emscripten_fiber_s {
     char asyncify_stack[EM_FIBER_ASYNCIFY_STACK_SIZE];
 } emscripten_fiber_t;
 
-void emscripten_fiber_init(emscripten_fiber_t *fiber, size_t fiber_struct_size, em_arg_callback_func entry_func, void *entry_func_arg, void *stack, size_t stack_size);
-void emscripten_fiber_init_from_current_context(emscripten_fiber_t *fiber, size_t fiber_struct_size);
+void emscripten_fiber_init(emscripten_fiber_t *fiber, unsigned int fiber_struct_size, em_arg_callback_func entry_func, void *entry_func_arg, void *stack, unsigned int stack_size);
+void emscripten_fiber_init_from_current_context(emscripten_fiber_t *fiber, unsigned int fiber_struct_size);
 void emscripten_fiber_swap(emscripten_fiber_t *old_fiber, emscripten_fiber_t *new_fiber);
 
 // Old coroutines API
