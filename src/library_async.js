@@ -592,8 +592,6 @@ mergeInto(LibraryManager.library, {
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
-    trampoline: null,
-    trampolineRunning: false,
 
     getCallStackId: function(funcName) {
       var id = Asyncify.callStackNameToId[funcName];
@@ -635,82 +633,6 @@ mergeInto(LibraryManager.library, {
     },
 #endif
 
-    finishInstrumentedExportCall: function(x) {
-#if ASSERTIONS
-      var y = Asyncify.exportCallStack.pop();
-      assert(y === x);
-#else
-      Asyncify.exportCallStack.pop();
-#endif
-#if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
-#endif
-      // NOTE: the order of these comparisons matters for performance
-      if (!Asyncify.exportCallStack.length &&
-          Asyncify.state === Asyncify.State.Unwinding &&
-          Asyncify.currData) {
-        // We just finished unwinding.
-#if ASYNCIFY_DEBUG
-        err('ASYNCIFY: stop unwind');
-#endif
-        Asyncify.state = Asyncify.State.Normal;
-        runAndAbortIfError(Module['_asyncify_stop_unwind']);
-
-        if (typeof Fibers !== 'undefined') {
-          Fibers.trampoline();
-        }
-
-        if (Asyncify.afterUnwind) {
-          Asyncify.afterUnwind();
-          Asyncify.afterUnwind = null;
-        }
-      }
-    },
-
-    instrumentExportSpecialized: function(original, arity, x) {
-      switch(arity) {
-        case 0: return function() {
-          Asyncify.exportCallStack.push(x);
-          try {
-            return original();
-          } finally {
-            if (ABORT) return;
-            Asyncify.finishInstrumentedExportCall(x);
-          }
-        }
-
-        case 1: return function(a1) {
-          Asyncify.exportCallStack.push(x);
-          try {
-            return original(a1);
-          } finally {
-            if (ABORT) return;
-            Asyncify.finishInstrumentedExportCall(x);
-          }
-        }
-
-        case 2: return function(a1, a2) {
-          Asyncify.exportCallStack.push(x);
-          try {
-            return original(a1, a2);
-          } finally {
-            if (ABORT) return;
-            Asyncify.finishInstrumentedExportCall(x);
-          }
-        }
-
-        default: return function() {
-          Asyncify.exportCallStack.push(x);
-          try {
-            return original.apply(null, arguments);
-          } finally {
-            if (ABORT) return;
-            Asyncify.finishInstrumentedExportCall(x);
-          }
-        }
-      }
-    },
-
     instrumentWasmExports: function(exports) {
       var ret = {};
       for (var x in exports) {
@@ -718,9 +640,37 @@ mergeInto(LibraryManager.library, {
           var original = exports[x];
           if (typeof original === 'function') {
             ret[x] = function() {
-              var fun = Asyncify.instrumentExportSpecialized(original, arguments.length, x);
-              ret[x] = fun;
-              return fun.apply(null, arguments);
+              Asyncify.exportCallStack.push(x);
+#if ASYNCIFY_DEBUG >= 2
+              err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length) + ' try', x);
+#endif
+              try {
+                return original.apply(null, arguments);
+              } finally {
+                if (ABORT) return;
+                var y = Asyncify.exportCallStack.pop(x);
+                assert(y === x);
+#if ASYNCIFY_DEBUG >= 2
+                err('ASYNCIFY: ' + '  '.repeat(Asyncify.exportCallStack.length + 1) + ' finally', x);
+#endif
+                if (Asyncify.currData &&
+                    Asyncify.state === Asyncify.State.Unwinding &&
+                    Asyncify.exportCallStack.length === 0) {
+                  // We just finished unwinding.
+#if ASYNCIFY_DEBUG
+                  err('ASYNCIFY: stop unwind');
+#endif
+                  Asyncify.state = Asyncify.State.Normal;
+                  runAndAbortIfError(Module['_asyncify_stop_unwind']);
+                  if (typeof Fibers !== 'undefined') {
+                    Fibers.trampoline();
+                  }
+                  if (Asyncify.afterUnwind) {
+                    Asyncify.afterUnwind();
+                    Asyncify.afterUnwind = null;
+                  }
+                }
+              }
             };
           } else {
             ret[x] = original;
