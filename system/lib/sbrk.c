@@ -19,19 +19,7 @@
 #include <emscripten/em_asm.h>
 #endif
 
-#define WASM_PAGE_SIZE 65536
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern intptr_t* emscripten_get_sbrk_ptr(void);
-extern int emscripten_resize_heap(size_t requested_size);
-extern size_t emscripten_get_heap_size(void);
-
-#ifdef __cplusplus
-}
-#endif
+#include <emscripten/heap.h>
 
 #ifndef EMSCRIPTEN_NO_ERRNO
 #define SET_ERRNO() { errno = ENOMEM; }
