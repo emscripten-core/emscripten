@@ -155,10 +155,29 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
 
-// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_STEP == -1, memory roughly
-// doubles in size each time is grows. Set MEMORY_GROWTH_STEP to a multiple of
-// WASM page size (64KB), eg. 16MB to enable a slower growth rate.
-var MEMORY_GROWTH_STEP = -1;
+// If ALLOW_MEMORY_GROWTH is true, this variable specifies the geometric
+// overgrowth rate of the heap at resize. Specify MEMORY_GROWTH_GEOMETRIC_STEP=0
+// to disable overgrowing the heap at all, or e.g.
+// MEMORY_GROWTH_GEOMETRIC_STEP=1.0 to double the heap (+100%) at every grow step.
+// The larger this value is, the more memory the WebAssembly heap overreserves
+// to reduce performance hiccups coming from memory resize, and the smaller
+// this value is, the more memory is conserved, at the performance of more
+// stuttering when the heap grows. (profiled to be on the order of ~20 msecs)
+var MEMORY_GROWTH_GEOMETRIC_STEP = 0.20;
+
+// Specifies a cap for the maximum geometric overgrowth size, in bytes. Use
+// this value to constrain the geometric grow to not exceed a specific rate.
+// Pass MEMORY_GROWTH_GEOMETRIC_CAP=0 to disable the cap and allow unbounded
+// size increases.
+var MEMORY_GROWTH_GEOMETRIC_CAP = 96*1024*1024;
+
+// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_LINEAR_STEP == -1, then
+// geometric memory overgrowth is utilized (above variable). Set
+// MEMORY_GROWTH_LINEAR_STEP to a multiple of WASM page size (64KB), eg. 16MB to
+// replace geometric overgrowth rate with a constant growth step size. When
+// MEMORY_GROWTH_LINEAR_STEP is used, the variables MEMORY_GROWTH_GEOMETRIC_STEP
+// and MEMORY_GROWTH_GEOMETRIC_CAP are ignored.
+var MEMORY_GROWTH_LINEAR_STEP = -1;
 
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
@@ -266,10 +285,6 @@ var SAFE_HEAP = 0;
 
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
-
-// Check each stack pointer decrement on WASM backend to ensure that the stack
-// does not overflow.
-var SAFE_STACK = 0;
 
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
@@ -1703,4 +1718,6 @@ var LEGACY_SETTINGS = [
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
+  ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
+  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP']
 ];

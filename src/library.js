@@ -528,6 +528,9 @@ LibraryManager.library = {
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
   emscripten_resize_heap__deps: ['emscripten_get_heap_size'
+#if ASSERTIONS == 2
+  , 'emscripten_get_now'
+#endif
 #if ABORTING_MALLOC
   , '$abortOnCannotGrowMemory'
 #endif
@@ -560,62 +563,36 @@ LibraryManager.library = {
 #endif
 
     var PAGE_MULTIPLE = {{{ getPageSize() }}};
-    var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
 
-    if (requestedSize > LIMIT) {
-#if ASSERTIONS
-      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + LIMIT + ' bytes!');
-#endif
-      return false;
-    }
-
-    var MIN_TOTAL_MEMORY = 16777216;
-    var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
-
-    // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
-    while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
-#if MEMORY_GROWTH_STEP != -1
-      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set by the user.
-      newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
-#else
-      if (newSize <= 536870912) {
-        newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
-      } else {
-        // ..., but after that, add smaller increments towards 2GB, which we cannot reach
-        newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-      }
-#endif // MEMORY_GROWTH_STEP
-
-#if ASSERTIONS
-      if (newSize === oldSize) {
-        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
-      }
-#endif
-    }
+    // Memory resize rules:
+    // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
+    // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
+    // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
+    //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+    // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
+    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by WASM_MEM_MAX, or by ASAN limit, depending on which is smallest
+    // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
+    //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
 #if WASM_MEM_MAX != -1
     // A limit was set for how much we can grow. We should not exceed that
-    // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
-    // if we are at say 64MB, and the max is 100MB, then we should *not* try to
-    // grow 64->128MB which is the default behavior (doubling), as 128MB will
-    // fail because of the max limit. Instead, we should only try to grow
-    // 64->100MB in this example, which has a chance of succeeding (but may
-    // still fail for another reason, of actually running out of memory).
-    newSize = Math.min(newSize, {{{ WASM_MEM_MAX }}});
-    if (newSize == oldSize) {
+    // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+    var maxHeapSize = {{{ WASM_MEM_MAX }}};
+#else
+    var maxHeapSize = 2147483648 - PAGE_MULTIPLE;
+#endif
+    if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
+      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
 #endif
       return false;
     }
-#endif // WASM_MEM_MAX
-
 #if USE_ASAN
-    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
-    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
-    // This causes real memory to be corrupted.
-    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
-    if (newSize == oldSize) {
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
+    // so do not allow resizing past that limit.
+    maxHeapSize = Math.min(maxHeapSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
 #endif
@@ -623,25 +600,49 @@ LibraryManager.library = {
     }
 #endif
 
-    var replacement = emscripten_realloc_buffer(newSize);
-    if (!replacement) {
-#if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
-#endif
-      return false;
-    }
+    var minHeapSize = 16777216;
 
+    // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
+    // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+    for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+#if MEMORY_GROWTH_LINEAR_STEP == -1
+      var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
+#if MEMORY_GROWTH_GEOMETRIC_CAP
+      // but limit overreserving (default to capping at +96MB overgrowth at most)
+      overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + {{{ MEMORY_GROWTH_GEOMETRIC_CAP }}} );
+#endif
+
+#else
+      var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
+#endif
+
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+
+#if ASSERTIONS == 2
+      var t0 = _emscripten_get_now();
+#endif
+      var replacement = emscripten_realloc_buffer(newSize);
+#if ASSERTIONS == 2
+      var t1 = _emscripten_get_now();
+      console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
+#endif
+      if (replacement) {
 #if ASSERTIONS && (!WASM || WASM2JS)
-    err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
+        err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
 #if EMSCRIPTEN_TRACING
-    _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
-    // And now report the new layout
-    _emscripten_trace_report_memory_layout();
+        _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
+        // And now report the new layout
+        _emscripten_trace_report_memory_layout();
 #endif
-
-    return true;
+        return true;
+      }
+    }
+#if ASSERTIONS
+    err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
+#endif
+    return false;
 #endif // ALLOW_MEMORY_GROWTH
   },
 
@@ -1296,11 +1297,14 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME
+#if WASM_BACKEND == 0
   $abortStackOverflow__deps: ['$stackSave'],
+#endif
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
 
+#if WASM_BACKEND == 0
   $stackAlloc__asm: true,
   $stackAlloc__sig: 'ii',
   $stackAlloc__deps: ['$abortStackOverflow'],
@@ -1328,6 +1332,7 @@ LibraryManager.library = {
     top = top|0;
     STACKTOP = top;
   },
+#endif
 
   $establishStackSpace__asm: true,
   $establishStackSpace__sig: 'vii',

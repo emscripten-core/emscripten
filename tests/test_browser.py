@@ -3975,10 +3975,10 @@ window.close = function() {
   def test_pthread_tls_main(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS', '-std=c++11'])
 
-  @no_fastcomp('-s SAFE_STACK is only supported on WASM backend')
+  @no_fastcomp('WASM backend stack protection')
   @requires_threads
   def test_pthread_safe_stack(self):
-    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'SAFE_STACK', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
+    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-g4']],
@@ -4565,7 +4565,6 @@ window.close = function() {
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
-  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
@@ -4576,7 +4575,6 @@ window.close = function() {
     run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests memory growth in a pthread.
-  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
   @requires_threads
   def test_pthread_growth(self):
     def run(emcc_args=[]):

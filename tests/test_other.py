@@ -3410,8 +3410,6 @@ int main() {
 
     # when legacy is needed, we show an error indicating so
     test('build with LEGACY_VM_SUPPORT')
-    # wasm is on by default, and does not mix with legacy, so we show an error
-    test('LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0', ['-s', 'LEGACY_VM_SUPPORT=1'])
     # legacy + disabling wasm works
     if self.is_wasm_backend():
       return
@@ -6157,7 +6155,10 @@ int main() {
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
     # just care about message regarding allocating over 1GB of memory
     output = run_js('a.out.js', stderr=PIPE, full_output=True)
-    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
+    if self.is_wasm_backend():
+      self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1473314816\n''', output)
+    else:
+      self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1476395008\n''', output)
     print('wasm')
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1'])
     # no message about growth, just check return code
@@ -8047,6 +8048,8 @@ int main() {
     self.assertContained('[funcs]', out)
 
   def assertFileContents(self, filename, contents):
+    contents = contents.replace('\r', '')
+
     if os.environ.get('EMTEST_REBASELINE'):
       with open(filename, 'w') as f:
         f.write(contents)
@@ -8153,7 +8156,7 @@ int main() {
       self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],       6, [], ['waka'],  9211,  5, 12, 18), # noqa
+    'O0': ([],       7, [], ['waka'],  9766,  6, 13, 19), # noqa
     'O1': (['-O1'],  4, [], ['waka'],  7886,  2, 11, 12), # noqa
     'O2': (['-O2'],  4, [], ['waka'],  7871,  2, 11, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
@@ -8203,7 +8206,7 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],       9, [], ['waka'], 22185,  8,  17, 57), # noqa
+    'O0': ([],      10, [], ['waka'], 22874,  9,  18, 58), # noqa
     'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
     'O2': (['-O2'],  7, [], ['waka'], 10183,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
@@ -9561,11 +9564,11 @@ int main () {
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 1453, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 1415, 'a.js': 604, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 1581, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 1537, 'a.js': 4837, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 1537, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_world_sources, {'a.html': 1483, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 1440, 'a.js': 604, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 1606, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 1557, 'a.js': 4837, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 1557, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
