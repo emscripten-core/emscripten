@@ -935,7 +935,7 @@ mergeInto(LibraryManager.library, {
         Fibers.trampolineRunning = true;
         do {
           var fiber = Fibers.nextFiber;
-          Fibers.nextFiber = null;
+          Fibers.nextFiber = 0;
 #if ASYNCIFY_DEBUG >= 2
           err("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
 #endif
