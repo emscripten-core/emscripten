@@ -3295,12 +3295,12 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
     if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE:
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
       # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
-      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm')) : b('{{{ TARGET_BASENAME }}}.wasm')"
+      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm')) : binary('{{{ TARGET_BASENAME }}}.wasm')"
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
       download_wasm = "WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'))"
   else:
-    download_wasm = "b('{{{ TARGET_BASENAME }}}.wasm')"
+    download_wasm = "binary('{{{ TARGET_BASENAME }}}.wasm')"
 
   shell = shell.replace('{{{ DOWNLOAD_WASM }}}', download_wasm)
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)

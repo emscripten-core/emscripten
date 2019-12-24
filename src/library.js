@@ -1296,11 +1296,14 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME
+#if WASM_BACKEND == 0
   $abortStackOverflow__deps: ['$stackSave'],
+#endif
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
 
+#if WASM_BACKEND == 0
   $stackAlloc__asm: true,
   $stackAlloc__sig: 'ii',
   $stackAlloc__deps: ['$abortStackOverflow'],
@@ -1328,6 +1331,7 @@ LibraryManager.library = {
     top = top|0;
     STACKTOP = top;
   },
+#endif
 
   $establishStackSpace__asm: true,
   $establishStackSpace__sig: 'vii',
