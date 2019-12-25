@@ -587,7 +587,10 @@ mergeInto(LibraryManager.library, {
     // which is where we must call to rewind it.
     exportCallStack: [],
     callStackNameToId: {},
-    callStackIdToFunc: [],
+    callStackIdToFunc: {},
+#if ASYNCIFY_LAZY_LOAD_CODE
+    callStackIdToName: {},
+#endif
     callStackId: 0,
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
@@ -598,7 +601,11 @@ mergeInto(LibraryManager.library, {
       if (id === undefined) {
         id = Asyncify.callStackId++;
         Asyncify.callStackNameToId[funcName] = id;
-        Asyncify.callStackIdToFunc.push(Module['asm'][funcName]);
+#if ASYNCIFY_LAZY_LOAD_CODE
+        Asyncify.callStackIdToName[id] = funcName;
+#else
+        Asyncify.callStackIdToFunc[id] = Module['asm'][funcName];
+#endif
       }
       return id;
     },
@@ -706,7 +713,16 @@ mergeInto(LibraryManager.library, {
 
     getDataRewindFunc: function(ptr) {
       var id = HEAP32[ptr + 8 >> 2];
-      return Asyncify.callStackIdToFunc[id];
+      var func = Asyncify.callStackIdToFunc[id];
+
+#if ASYNCIFY_LAZY_LOAD_CODE
+      if (func === undefined) {
+        func = Module['asm'][Asyncify.callStackIdToName[id]];
+        Asyncify.callStackIdToFunc[id] = func;
+      }
+#endif
+
+      return func;
     },
 
     freeData: function(ptr) {
