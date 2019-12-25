@@ -917,6 +917,11 @@ mergeInto(LibraryManager.library, {
     finishContextSwitch: function(newFiber) {
       STACK_BASE = {{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.stack_base,  'i32') }}};
       STACK_MAX =  {{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.stack_limit, 'i32') }}};
+
+#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+      Module['___set_stack_limit'](STACK_MAX);
+#endif
+
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.stack_ptr,   'i32') }}});
 
       noExitRuntime = false;
