@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <emscripten.h>
+#include <emscripten/fiber.h>
 
 struct Fiber {
     emscripten_fiber_t context;

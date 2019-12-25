@@ -255,35 +255,6 @@ typedef void (*em_scan_func)(void*, void*);
 void emscripten_scan_registers(em_scan_func func);
 void emscripten_scan_stack(em_scan_func func);
 
-// Fibers API
-// Requires upstream backend and Asyncify
-
-#define EM_FIBER_ASYNCIFY_STACK_SIZE 4096
-
-typedef struct asyncify_fiber_s {
-    void *stack_base;
-    void *stack_limit;
-    void *stack_ptr;
-    em_arg_callback_func entry;
-    void *user_data;
-} asyncify_fiber_t;
-
-typedef struct asyncify_data_s {
-    void *stack_ptr;
-    void *stack_limit;
-    int rewind_id;
-} asyncify_data_t;
-
-typedef struct emscripten_fiber_s {
-    asyncify_fiber_t asyncify_fiber;
-    asyncify_data_t asyncify_data;
-    char asyncify_stack[EM_FIBER_ASYNCIFY_STACK_SIZE];
-} emscripten_fiber_t;
-
-void emscripten_fiber_init(emscripten_fiber_t *fiber, unsigned int fiber_struct_size, em_arg_callback_func entry_func, void *entry_func_arg, void *stack, unsigned int stack_size);
-void emscripten_fiber_init_from_current_context(emscripten_fiber_t *fiber, unsigned int fiber_struct_size);
-void emscripten_fiber_swap(emscripten_fiber_t *old_fiber, emscripten_fiber_t *new_fiber);
-
 // Old coroutines API
 // Deprecated and not available in upstream backend; use Fibers instead
 
