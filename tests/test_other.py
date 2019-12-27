@@ -9566,6 +9566,7 @@ int main () {
                                '-s', 'GL_POOL_TEMP_BUFFERS=0',
                                '-s', 'FAST_UNROLLED_MEMCPY_AND_MEMSET=0',
                                '-s', 'MIN_CHROME_VERSION=58',
+                               '-s', 'NO_FILESYSTEM=1',
                                '--output_eol', 'linux']
 
     asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', 'ELIMINATE_DUPLICATE_FUNCTIONS=1', '--memory-init-file', '1']

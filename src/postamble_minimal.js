@@ -51,7 +51,7 @@ var imports = {
 #if FILESYSTEM
   // TODO: Fix size bloat coming from WASI properly. The -s FILESYSTEM=1 check is too weak to properly DCE WASI linkage away.
   // (Emscripten now unconditionally uses WASI for stdio, perhaps replace that with web-friendly stdio)
-  , 'wasi_snapshot_preview1': asmLibraryArg
+  , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #endif
 #if WASM_BACKEND == 0
   , 'global': {
