@@ -11,21 +11,22 @@
 
 struct Fiber {
     emscripten_fiber_t context;
-    alignas(16) char stack[1 << 13];
+    char asyncify_stack[1024];
+    alignas(16) char c_stack[4096];
     int result = 0;
 
     void init_with_api(em_arg_callback_func entry, void *arg) {
-        emscripten_fiber_init(&context, sizeof(context), entry, arg, stack, sizeof(stack));
+        emscripten_fiber_init(&context, entry, arg, c_stack, sizeof(c_stack), asyncify_stack, sizeof(asyncify_stack));
     }
 
     void init_manually(em_arg_callback_func entry, void *arg) {
-        context.asyncify_fiber.stack_base = stack + sizeof(stack);
-        context.asyncify_fiber.stack_limit = stack;
-        context.asyncify_fiber.stack_ptr = context.asyncify_fiber.stack_base;
-        context.asyncify_fiber.entry = entry;
-        context.asyncify_fiber.user_data = arg;
-        context.asyncify_data.stack_ptr = context.asyncify_stack;
-        context.asyncify_data.stack_limit = reinterpret_cast<char*>(&context) + sizeof(context);
+        context.stack_base = c_stack + sizeof(c_stack);
+        context.stack_limit = c_stack;
+        context.stack_ptr = context.stack_base;
+        context.entry = entry;
+        context.user_data = arg;
+        context.asyncify_data.stack_ptr = asyncify_stack;
+        context.asyncify_data.stack_limit = asyncify_stack + sizeof(asyncify_stack);
     }
 
     void swap(emscripten_fiber_t *fiber) {
@@ -39,10 +40,11 @@ struct Fiber {
 
 static struct Globals {
     emscripten_fiber_t main;
+    char asyncify_stack[1024];
     Fiber fibers[2];
 
     Globals() {
-        emscripten_fiber_init_from_current_context(&main, sizeof(main));
+        emscripten_fiber_init_from_current_context(&main, asyncify_stack, sizeof(asyncify_stack));
     }
 
     ~Globals() {

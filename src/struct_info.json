@@ -1633,24 +1633,20 @@
     {
         "file": "emscripten/fiber.h",
         "structs": {
-            "asyncify_fiber_s": [
-                "stack_base",
-                "stack_limit",
-                "stack_ptr",
-                "entry",
-                "user_data"
-            ],
             "asyncify_data_s": [
                 "stack_ptr",
                 "stack_limit",
                 "rewind_id"
             ],
             "emscripten_fiber_s": [
-                "asyncify_fiber",
-                "asyncify_data",
-                "asyncify_stack"
+                "stack_base",
+                "stack_limit",
+                "stack_ptr",
+                "entry",
+                "user_data",
+                "asyncify_data"
             ]
         },
-        "defines": ["EM_FIBER_ASYNCIFY_STACK_SIZE"]
+        "defines": []
     }
  ]

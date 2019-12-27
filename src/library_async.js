@@ -693,14 +693,14 @@ mergeInto(LibraryManager.library, {
       //  4  max stack pos
       //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
       var ptr = _malloc(12 + Asyncify.StackSize);
-      Asyncify.setDataHeader(ptr, Asyncify.StackSize);
+      Asyncify.setDataHeader(ptr, ptr + 12, Asyncify.StackSize);
       Asyncify.setDataRewindFunc(ptr);
       return ptr;
     },
 
-    setDataHeader: function(ptr, stackSize) {
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'ptr + 12', 'i32') }}};
-      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'ptr + 12 + stackSize', 'i32') }}};
+    setDataHeader: function(ptr, stack, stackSize) {
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', 'i32') }}};
     },
 
     setDataRewindFunc: function(ptr) {
@@ -915,18 +915,18 @@ mergeInto(LibraryManager.library, {
      * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
      */
     finishContextSwitch: function(newFiber) {
-      STACK_BASE = {{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.stack_base,  'i32') }}};
-      STACK_MAX =  {{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.stack_limit, 'i32') }}};
+      STACK_BASE = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'i32') }}};
+      STACK_MAX =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
 
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
       Module['___set_stack_limit'](STACK_MAX);
 #endif
 
-      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.stack_ptr,   'i32') }}});
+      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
 
       noExitRuntime = false;
 
-      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.entry, 'i32') }}};
+      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 'i32') }}};
 
       if (entryPoint !== 0) {
 #if STACK_OVERFLOW_CHECK
@@ -936,9 +936,9 @@ mergeInto(LibraryManager.library, {
         err('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
 #endif
         Asyncify.currData = null;
-        {{{ makeSetValue('newFiber', C_STRUCTS.asyncify_fiber_s.entry, 0, 'i32') }}};
+        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
 
-        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.asyncify_fiber_s.user_data, 'i32') }}};
+        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
         {{{ makeDynCall('vi') }}}(entryPoint, userData);
       } else {
         var asyncifyData = newFiber + 20;
@@ -958,33 +958,30 @@ mergeInto(LibraryManager.library, {
     },
   },
 
-  emscripten_fiber_init__sig: 'viiiiii',
+  emscripten_fiber_init__sig: 'viiiiiii',
   emscripten_fiber_init__deps: ['$Asyncify'],
-  emscripten_fiber_init: function(fiber, sizeOfFiber, entryPoint, userData, stack, stackSize) {
-    var asyncifyStackSize = sizeOfFiber - {{{ C_STRUCTS.emscripten_fiber_s.asyncify_stack }}};
-    var stackBase = stack + stackSize;
+  emscripten_fiber_init: function(fiber, entryPoint, userData, cStack, cStackSize, asyncStack, asyncStackSize) {
+    var cStackBase = cStack + cStackSize;
 
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.stack_base,  'stackBase',  'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.stack_limit, 'stack',      'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.stack_ptr,   'stackBase',  'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.entry,       'entryPoint', 'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.user_data,   'userData',   'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'cStackBase',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'cStack',      'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'cStackBase',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       'entryPoint', 'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.user_data,   'userData',   'i32') }}};
 
     var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
-    Asyncify.setDataHeader(asyncifyData, asyncifyStackSize);
+    Asyncify.setDataHeader(asyncifyData, asyncStack, asyncStackSize);
   },
 
-  emscripten_fiber_init_from_current_context__sig: 'vi',
+  emscripten_fiber_init_from_current_context__sig: 'vii',
   emscripten_fiber_init_from_current_context__deps: ['$Asyncify'],
-  emscripten_fiber_init_from_current_context: function(fiber, sizeOfFiber) {
-    var asyncifyStackSize = sizeOfFiber - {{{ C_STRUCTS.emscripten_fiber_s.asyncify_stack }}};
-
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.stack_base,  'STACK_BASE', 'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.stack_limit, 'STACK_MAX',  'i32') }}};
-    {{{ makeSetValue('fiber', C_STRUCTS.asyncify_fiber_s.entry,       0,            'i32') }}};
+  emscripten_fiber_init_from_current_context: function(fiber, asyncStack, asyncStackSize) {
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'STACK_BASE', 'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'STACK_MAX',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       0,            'i32') }}};
 
     var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
-    Asyncify.setDataHeader(asyncifyData, asyncifyStackSize);
+    Asyncify.setDataHeader(asyncifyData, asyncStack, asyncStackSize);
   },
 
   emscripten_fiber_swap__sig: 'vii',
@@ -1008,7 +1005,7 @@ mergeInto(LibraryManager.library, {
       Module['_asyncify_start_unwind'](asyncifyData);
 
       var stackTop = stackSave();
-      {{{ makeSetValue('oldFiber', C_STRUCTS.asyncify_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
+      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
 
 #if ASSERTIONS
       assert(!Asyncify.trampoline);

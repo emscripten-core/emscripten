@@ -15,33 +15,44 @@
 extern "C" {
 #endif
 
-#define EM_FIBER_ASYNCIFY_STACK_SIZE 4096
-
 typedef struct asyncify_fiber_s {
-  void *stack_base;
-  void *stack_limit;
-  void *stack_ptr;
-  em_arg_callback_func entry;
-  void *user_data;
 } asyncify_fiber_t;
 
 typedef struct asyncify_data_s {
-  void *stack_ptr;
-  void *stack_limit;
-  int rewind_id;
+  void *stack_ptr;     /** Current position in the Asyncify stack (*not* the C stack) */
+  void *stack_limit;   /** Where the Asyncify stack ends. */
+  int rewind_id;       /** Interned ID of the rewind entry point; opaque to application. */
 } asyncify_data_t;
 
 typedef struct emscripten_fiber_s {
-  asyncify_fiber_t asyncify_fiber;
+  void *stack_base;             /** Where the C stack starts (NOTE: grows down). */
+  void *stack_limit;            /** Where the C stack ends. */
+  void *stack_ptr;              /** Current position in the C stack. */
+  em_arg_callback_func entry;   /** Function to call when resuming this context. If NULL, asyncify_data is used to rewind the call stack. */
+  void *user_data;              /** Opaque pointer, passed as-is to the entry function. */
   asyncify_data_t asyncify_data;
-  char asyncify_stack[EM_FIBER_ASYNCIFY_STACK_SIZE];
 } emscripten_fiber_t;
 
-void emscripten_fiber_init(emscripten_fiber_t *fiber, size_t fiber_struct_size, em_arg_callback_func entry_func, void *entry_func_arg, void *stack, size_t stack_size);
+void emscripten_fiber_init(
+    emscripten_fiber_t *fiber,
+    em_arg_callback_func entry_func,
+    void *entry_func_arg,
+    void *c_stack,
+    size_t c_stack_size,
+    void *asyncify_stack,
+    size_t asyncify_stack_size
+);
 
-void emscripten_fiber_init_from_current_context(emscripten_fiber_t *fiber, size_t fiber_struct_size);
+void emscripten_fiber_init_from_current_context(
+    emscripten_fiber_t *fiber,
+    void *asyncify_stack,
+    size_t asyncify_stack_size
+);
 
-void emscripten_fiber_swap(emscripten_fiber_t *old_fiber, emscripten_fiber_t *new_fiber);
+void emscripten_fiber_swap(
+    emscripten_fiber_t *old_fiber,
+    emscripten_fiber_t *new_fiber
+);
 
 #ifdef __cplusplus
 }
