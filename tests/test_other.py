@@ -9545,7 +9545,6 @@ int main () {
           test(['-s', 'WASM=0'], closure, opt)
           test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
-  @no_wasm_backend('tests asmjs, sizes sensitive to fastcomp')
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',
                                '-s', 'AGGRESSIVE_VARIABLE_ELIMINATION=1',
@@ -9581,13 +9580,20 @@ int main () {
                            '-s', 'MODULARIZE=1']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
-    test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 1483, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 1440, 'a.js': 604, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 1606, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 1557, 'a.js': 4837, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 1557, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
-    ]
+    if self.is_wasm_backend():
+      test_cases = [
+        (opts, hello_world_sources, {'a.html': 1440, 'a.js': 484, 'a.wasm': 176}),
+        (opts, hello_webgl_sources, {'a.html': 1557, 'a.js': 4659, 'a.wasm': 11918}),
+        (opts, hello_webgl2_sources, {'a.html': 1557, 'a.js': 5168, 'a.wasm': 11918}) # Compare how WebGL2 sizes stack up with WebGL 1
+      ]
+    else:
+      test_cases = [
+        (asmjs + opts, hello_world_sources, {'a.html': 1483, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+        (opts, hello_world_sources, {'a.html': 1440, 'a.js': 604, 'a.wasm': 86}),
+        (asmjs + opts, hello_webgl_sources, {'a.html': 1606, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
+        (opts, hello_webgl_sources, {'a.html': 1557, 'a.js': 4837, 'a.wasm': 8841}),
+        (opts, hello_webgl2_sources, {'a.html': 1557, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      ]
 
     success = True
 
