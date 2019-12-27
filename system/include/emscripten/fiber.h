@@ -15,9 +15,6 @@
 extern "C" {
 #endif
 
-typedef struct asyncify_fiber_s {
-} asyncify_fiber_t;
-
 typedef struct asyncify_data_s {
   void *stack_ptr;     /** Current position in the Asyncify stack (*not* the C stack) */
   void *stack_limit;   /** Where the Asyncify stack ends. */
@@ -34,24 +31,24 @@ typedef struct emscripten_fiber_s {
 } emscripten_fiber_t;
 
 void emscripten_fiber_init(
-    emscripten_fiber_t *fiber,
-    em_arg_callback_func entry_func,
-    void *entry_func_arg,
-    void *c_stack,
-    size_t c_stack_size,
-    void *asyncify_stack,
-    size_t asyncify_stack_size
+  emscripten_fiber_t *fiber,
+  em_arg_callback_func entry_func,
+  void *entry_func_arg,
+  void *c_stack,
+  size_t c_stack_size,
+  void *asyncify_stack,
+  size_t asyncify_stack_size
 );
 
 void emscripten_fiber_init_from_current_context(
-    emscripten_fiber_t *fiber,
-    void *asyncify_stack,
-    size_t asyncify_stack_size
+  emscripten_fiber_t *fiber,
+  void *asyncify_stack,
+  size_t asyncify_stack_size
 );
 
 void emscripten_fiber_swap(
-    emscripten_fiber_t *old_fiber,
-    emscripten_fiber_t *new_fiber
+  emscripten_fiber_t *old_fiber,
+  emscripten_fiber_t *new_fiber
 );
 
 #ifdef __cplusplus
