@@ -692,6 +692,10 @@ mergeInto(LibraryManager.library, {
       //  0  current stack pos
       //  4  max stack pos
       //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
+      //
+      // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
+      // We also embed a stack in the same memory region here, right next to the structure.
+      // This struct is also defined as asyncify_data_t in emscripten/fiber.h
       var ptr = _malloc(12 + Asyncify.StackSize);
       Asyncify.setDataHeader(ptr, ptr + 12, Asyncify.StackSize);
       Asyncify.setDataRewindFunc(ptr);
