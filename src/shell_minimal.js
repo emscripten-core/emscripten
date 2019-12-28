@@ -27,10 +27,13 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && WASM
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
+#if WASM == 2 || MAYBE_WASM2JS
+  if (typeof WebAssembly !== 'undefined')
+#endif
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
 #else
 #if SEPARATE_ASM
@@ -43,9 +46,12 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_SHELL
+#if ENVIRONMENT_MAY_BE_SHELL && WASM
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM
+#if WASM == 2 || MAYBE_WASM2JS
+  if (typeof WebAssembly !== 'undefined')
+#endif
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #else
   eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');

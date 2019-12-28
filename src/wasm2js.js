@@ -6,12 +6,11 @@
 #include "promise_polyfill.js"
 #endif
 
-// Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
-// mode, we can't use a "var" since it would prevent normal wasm from working.
-#if WASM2JS
-var
+#if WASM == 2 || !WASM2JS
+var Wasm2JSAssembly = {
+#else
+var WebAssembly = {
 #endif
-WebAssembly = {
   Memory: function(opts) {
     return {
       buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
@@ -68,10 +67,14 @@ WebAssembly = {
 
   instantiate: function(binary, info) {
     return {
-      then: function(ok, err) {
+      then: function(ok) {
         ok({
           'instance': new WebAssembly.Instance(new WebAssembly.Module(binary, info))
         });
+#if ASSERTIONS
+        // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
+        return { catch: function() {} };
+#endif
       }
     };
   },
@@ -79,6 +82,22 @@ WebAssembly = {
   RuntimeError: Error
 };
 
-// We don't need to actually download a wasm binary, mark it as present but empty.
-wasmBinary = [];
+#if WASM == 2 || !WASM2JS
+// Polyfill WebAssembly object if Wasm support is not present.
+var globalObject = {{{ globalObject() }}};
+#if MINIMAL_RUNTIME
+if (!globalObject['WebAssembly']) {
+#else
+if (!globalObject['WebAssembly'] || Module['doWasm2JS']) {
+#endif
+  globalObject['WebAssembly'] = Wasm2JSAssembly;
+#endif
 
+#if !MINIMAL_RUNTIME
+  // We don't need to actually download a wasm binary, mark it as present but empty.
+  wasmBinary = [];
+#endif
+
+#if WASM == 2 || !WASM2JS
+}
+#endif

@@ -1333,6 +1333,9 @@ def verify_settings():
       # to js.
       Settings.WASM = 1
       Settings.WASM2JS = 1
+    if Settings.WASM == 2:
+      # Requesting both Wasm and Wasm2JS support
+      Settings.WASM2JS = 1
 
     if Settings.CYBERDWARF:
       exit_with_error('emcc: CYBERDWARF is not supported by the LLVM wasm backend')
@@ -2805,8 +2808,6 @@ class Building(object):
     js_file = js_file + '.wasm2js.js'
     with open(js_file, 'w') as f:
       f.write(all_js)
-    if not DEBUG:
-      try_delete(wasm_file)
     return js_file
 
   @staticmethod

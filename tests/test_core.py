@@ -8017,6 +8017,22 @@ extern "C" {
     # verify that it runs
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js_fallback(self):
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2'] + args
+      run_process(cmd)
+
+      # First run with WebAssembly support enabled
+      self.assertContained('hello!', run_js('a.out.js'))
+
+      # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
+      open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
+      self.assertContained('hello!', run_js('b.out.js'))
+
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
     self.do_run(r'''
@@ -8264,10 +8280,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_emterpreter
   @no_asan('TODO: ASan with MINIMAL_RUNTIME')
   @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
-  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_hello_world(self):
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
+      print(str(args))
       self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
       self.set_setting('MINIMAL_RUNTIME', 1)
       self.maybe_closure()

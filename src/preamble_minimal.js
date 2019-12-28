@@ -34,6 +34,10 @@ function alignUp(x, multiple) {
 #include "runtime_strings.js"
 #include "runtime_sab_polyfill.js"
 
+#if MAYBE_WASM2JS || WASM != 1
+#include "wasm2js.js"
+#endif
+
 #if USE_PTHREADS
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif

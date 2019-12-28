@@ -84,7 +84,7 @@ var asm;
 // Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
 // Node.js and Safari do not support instantiateStreaming.
 #if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-#if ASSERTIONS
+#if ASSERTIONS && WASM == 1 && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
@@ -96,7 +96,7 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 #endif
 
 #else // Non-streaming instantiation
-#if ASSERTIONS
+#if ASSERTIONS && WASM == 1 && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif

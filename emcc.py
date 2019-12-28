@@ -3154,8 +3154,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
                                     symbols_file=symbols_file)
     save_intermediate('wasm2js')
 
-    shared.try_delete(wasm_binary_target)
-
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
   # note that wasm2js handles the symbol map itself (as it manipulates and then
@@ -3182,6 +3180,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shared.try_delete(target)
     with open(final, 'w') as f:
       f.write(js)
+
+  # if targeting only JS, delete the redundant temporary
+  # .wasm output file
+  if shared.Settings.WASM2JS and shared.Settings.WASM != 2:
+    shared.try_delete(wasm_binary_target)
 
 
 def modularize():
