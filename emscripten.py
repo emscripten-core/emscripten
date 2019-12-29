@@ -1762,7 +1762,7 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
     for name in module_exports:
       wrappers.append('''\
 var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
-  return Module["asm"]["%(name)s"].apply(null, arguments)
+  return (%(name)s = Module["%(name)s"] = Module["asm"]["%(name)s"]).apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
     receiving += '\n'.join(wrappers)
