@@ -1760,11 +1760,22 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
     receiving += 'Module["asm"] = asm;\n'
     wrappers = []
     for name in module_exports:
-      wrappers.append('''\
+
+      if shared.Settings.ASSERTIONS:
+        # With assertions on, don't hot-swap implementation.
+        wrappers.append('''\
+var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
+  return Module["asm"]["%(name)s"].apply(null, arguments)
+};
+''' % {'name': name, 'runtime_assertions': runtime_assertions})
+      else:
+        # With assertions off, hot-swap implementationi to avoid "arguments"..
+        wrappers.append('''\
 var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return (%(name)s = Module["%(name)s"] = Module["asm"]["%(name)s"]).apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
+
     receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
