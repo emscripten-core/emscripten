@@ -4926,6 +4926,11 @@ window.close = function() {
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1', '--closure', '1']]:
       self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME=1'])
 
+  # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
+  def test_minimal_runtime_hello_pthread(self):
+    for args in [[], ['-s', 'MODULARIZE=1']]:
+      self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), '1', args=args + ['-s', 'MINIMAL_RUNTIME=1', '-s', 'USE_PTHREADS=1'])
+
   @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')
   def test_offset_converter(self, *args):

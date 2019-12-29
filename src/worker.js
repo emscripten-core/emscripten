@@ -83,6 +83,10 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+#if MINIMAL_RUNTIME && MODULARIZE
+      var imports = {};
+#endif
+
 #if !WASM_BACKEND
       // Initialize the thread-local field(s):
 #if MINIMAL_RUNTIME
@@ -96,18 +100,22 @@ this.onmessage = function(e) {
 #endif
 
 #if USES_DYNAMIC_ALLOC
-      {{{ makeAsmGlobalAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
+      {{{ makeAsmImportsAccessInPthread('DYNAMICTOP_PTR') }}} = e.data.DYNAMICTOP_PTR;
 #endif
 
 #if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
-      Module['wasm'] = e.data.wasmModule;
+#if MODULARIZE
+      imports['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in an imports object for the MODULARIZEd build.
+#else
+      Module['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
+#endif
 #else
       Module['wasmModule'] = e.data.wasmModule;
 #endif
 
-      {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
+      {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
 #if LOAD_SOURCE_MAP
       wasmSourceMapData = e.data.wasmSourceMap;
@@ -116,9 +124,9 @@ this.onmessage = function(e) {
       wasmOffsetData = e.data.wasmOffsetConverter;
 #endif
 
-      {{{ makeAsmGlobalAccessInPthread('buffer') }}} = {{{ makeAsmGlobalAccessInPthread('wasmMemory') }}}.buffer;
+      {{{ makeAsmImportsAccessInPthread('buffer') }}} = {{{ makeAsmImportsAccessInPthread('wasmMemory') }}}.buffer;
 #else // asm.js:
-      {{{ makeAsmGlobalAccessInPthread('buffer') }}} = e.data.buffer;
+      {{{ makeAsmImportsAccessInPthread('buffer') }}} = e.data.buffer;
 
 #if SEPARATE_ASM
       // load the separated-out asm.js
@@ -134,15 +142,13 @@ this.onmessage = function(e) {
 
 #endif
 
-#if !MINIMAL_RUNTIME
-      Module['ENVIRONMENT_IS_PTHREAD'] = true;
+#if !MINIMAL_RUNTIME || MODULARIZE
+      {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
 
 #if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
         Module = {{{ EXPORT_NAME }}}.default(Module);
-        PThread = Module['PThread'];
-        HEAPU32 = Module['HEAPU32'];
         postMessage({ cmd: 'loaded' });
       });
 #else
@@ -160,7 +166,7 @@ this.onmessage = function(e) {
       Module = {{{ EXPORT_NAME }}}(Module);
 #endif
 #endif
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME || MODULARIZE
       PThread = Module['PThread'];
       HEAPU32 = Module['HEAPU32'];
 #endif
@@ -190,7 +196,7 @@ this.onmessage = function(e) {
       threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      {{{ makeAsmGlobalAccessInPthread('__register_pthread_ptr') }}}(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      {{{ makeAsmExportsAccessInPthread('__register_pthread_ptr') }}}(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
@@ -218,14 +224,14 @@ this.onmessage = function(e) {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpaceInJsModule'](top, max);
 #if WASM_BACKEND
-      {{{ makeAsmGlobalAccessInPthread('_emscripten_tls_init') }}}();
+      {{{ makeAsmExportsAccessInPthread('_emscripten_tls_init') }}}();
 #endif
 #if STACK_OVERFLOW_CHECK
-      {{{ makeAsmGlobalAccessInPthread('writeStackCookie') }}}();
+      {{{ makeAsmExportsAccessInPthread('writeStackCookie') }}}();
 #endif
 
       PThread.receiveObjectTransfer(e.data);
-      PThread.setThreadStatus({{{ makeAsmGlobalAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
+      PThread.setThreadStatus({{{ makeAsmExportsAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -235,10 +241,10 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = {{{ makeAsmGlobalAccessInPthread('dynCall_ii') }}}(e.data.start_routine, e.data.arg);
+        var result = {{{ makeAsmExportsAccessInPthread('dynCall_ii') }}}(e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
-        {{{ makeAsmGlobalAccessInPthread('checkStackCookie') }}}();
+        {{{ makeAsmExportsAccessInPthread('checkStackCookie') }}}();
 #endif
         // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
@@ -271,7 +277,6 @@ this.onmessage = function(e) {
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
           out('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
-#endif
 #endif
         }
       }
