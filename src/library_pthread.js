@@ -1341,6 +1341,29 @@ var LibraryPThread = {
     // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
     establishStackSpace(stackTop, stackMax);
   },
+
+  // This function is called internally to notify target thread ID that it has messages it needs to
+  // process in its message queue inside the Wasm heap. As a helper, the caller must also pass the
+  // ID of the main browser thread to this function, to avoid needlessly ping-ponging between JS and
+  // Wasm boundaries.
+  _emscripten_notify_thread_queue: function(targetThreadId, mainThreadId) {
+    if (targetThreadId == mainThreadId) {
+      postMessage({cmd : 'processQueuedMainThreadWork'});
+    } else if (ENVIRONMENT_IS_PTHREAD) {
+      postMessage({targetThread: targetThreadId, cmd: 'processThreadQueue'});
+    } else {
+      var pthread = PThread.pthreads[targetThreadId];
+      var worker = pthread && pthread.worker;
+      if (!worker) {
+#if ASSERTIONS
+        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
+#endif
+        return /*0*/;
+      }
+      worker.postMessage({cmd : 'processThreadQueue'});
+    }
+    return 1;
+  }
 };
 
 autoAddDeps(LibraryPThread, '$PThread');
