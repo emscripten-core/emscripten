@@ -946,19 +946,10 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
 #define EMSCRIPTEN_PTHREAD_STACK_SIZE (128 * 1024)
 
     pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
-    // TODO: Add a -s PROXY_CANVASES_TO_THREAD=parameter or similar to allow configuring this
-#ifdef EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES
-    // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases
-    // over to the pthread.
-    emscripten_pthread_attr_settransferredcanvases(
-      &attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
-#else
-    // Otherwise by default, transfer whatever is set to Module.canvas, because in PROXY_TO_PTHREAD
-    // mode this is the only chance - this is the only pthread_create call that happens on the
-    // main thread, so it's the only chance to transfer the canvas from there.
-    if (EM_ASM_INT(return !!(Module['canvas'])))
-      emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-#endif
+    // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
+    // should instead take a list of canvases that are specified from the command line with
+    // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
+    emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
     _main_arguments.argc = argc;
     _main_arguments.argv = argv;
     pthread_t thread;
