@@ -1844,7 +1844,11 @@ static void *allocate_memory(size_t alignment, size_t size)
   // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
   while(bucketMask)
   {
+#ifdef EMMALLOC_USE_64BIT_OPS
+    BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
+#else
     BUCKET_BITMASK_T indexAdd = __builtin_ctz(bucketMask);
+#endif
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
     assert(bucketIndex >= 0);
@@ -1883,7 +1887,7 @@ static void *allocate_memory(size_t alignment, size_t size)
       // but we just had a stale bit set to mark a populated bucket.
       // Reset the bit to update latest status so that we do not
       // redundantly look at this bucket again.
-      freeRegionBucketsUsed &= ~(1 << bucketIndex);
+      freeRegionBucketsUsed &= ~(((BUCKET_BITMASK_T)1) << bucketIndex);
       bucketMask ^= 1;
     }
     // Instead of recomputing bucketMask from scratch at the end of each loop, it is updated as we go,
@@ -1897,7 +1901,11 @@ static void *allocate_memory(size_t alignment, size_t size)
   // memory.)
   if (freeRegionBucketsUsed >> 10)
   {
+#ifdef EMMALLOC_USE_64BIT_OPS
+    int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
+#else
     int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clz(freeRegionBucketsUsed);
+#endif
     for(Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
       freeRegion != &freeRegionBuckets[largestBucketIndex];
       freeRegion = freeRegion->next)

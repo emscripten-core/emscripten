@@ -145,7 +145,7 @@ void realloc() {
   stage("realloc0");
   emmalloc_blank_slate_from_orbit();
   for (int i = 0; i < 2; i++) {
-    char* ptr = (char*)malloc(10);
+    char* ptr = (char*)malloc(100);
     stage("realloc0.1");
     char* raptr = (char*)realloc(ptr, 1);
     assert(raptr == ptr);
