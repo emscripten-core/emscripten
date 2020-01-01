@@ -94,6 +94,5 @@
   "_embind_register_std_string": ["malloc", "free"],
   "_embind_register_std_wstring": ["malloc", "free"],
   "__syscall192": ["emscripten_builtin_memalign"],
-  "pthread_create": ["malloc", "free"]
+  "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"]
 }
-

@@ -103,7 +103,6 @@ void previous_sbrk() {
   void* other = malloc(10);
   free(other);
   assert(other != old);
-  assert((char*)other == (char*)old + 2 * ALLOCATION_UNIT);
 }
 
 void min_alloc() {
@@ -205,11 +204,11 @@ void realloc() {
 }
 
 void check_aligned(size_t align, size_t ptr) {
-  if (align < 4 || ((align & (align - 1)) != 0)) {
+  if (align != 0 && ((align & (align - 1)) != 0)) {
     assert(ptr == 0);
   } else {
     assert(ptr);
-    assert(ptr % align == 0);
+    assert(align == 0 || ptr % align == 0);
   }
 }
 

@@ -922,10 +922,6 @@ class libmalloc(MTLibrary, NoBCLibrary):
 
     super(libmalloc, self).__init__(**kwargs)
 
-    if self.malloc != 'dlmalloc':
-      assert not self.is_mt
-      assert not self.is_tracing
-
   def get_files(self):
     malloc = shared.path_from_root('system', 'lib', {
       'dlmalloc': 'dlmalloc.c', 'emmalloc': 'emmalloc.cpp'
