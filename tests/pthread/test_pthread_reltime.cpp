@@ -19,14 +19,17 @@ static long ping, pong;
 
 static std::mutex mutex;
 static std::condition_variable cond_var;
+static bool pong_requested = false;
 
 void *thread_main(void *arg) {
     std::cout << "running thread ..." << std::endl;
 
     std::unique_lock<std::mutex> lock(mutex);
-    cond_var.wait(lock);
+    while (!pong_requested)
+        cond_var.wait(lock);
     pong = now(); // Measure time in the pthread
-    std::cout << "pong - ping: " << (now() - ping) << std::endl;
+    std::cout << "pong - ping: " << (pong - ping) << std::endl;
+    pong_requested = false;
     cond_var.notify_one();
 
     return NULL;
@@ -38,13 +41,15 @@ extern "C" int notify() {
         std::unique_lock<std::mutex> lock(mutex);
         std::cout << "notifying ..." << std::endl;
         ping = now();
+        pong_requested = true;
         cond_var.notify_one();
     }
 
     {
         std::unique_lock<std::mutex> lock(mutex);
-        cond_var.wait(lock);
-        TimePoint last = now();
+        while (pong_requested)
+            cond_var.wait(lock);
+        long last = now();
         std::cout << "last - pong: " << (last - ping) << std::endl;
 
         // Time measured on a worker should be relative to the main thread,
