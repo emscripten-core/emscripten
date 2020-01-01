@@ -1235,7 +1235,13 @@ extern "C"
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
+#ifdef EMMALLOC_USE_64BIT_OPS
+#define NUM_FREE_BUCKETS 64
+#define BUCKET_BITMASK_T uint64_t
+#else
 #define NUM_FREE_BUCKETS 32
+#define BUCKET_BITMASK_T uint32_t
+#endif
 
 // Dynamic memory is subdivided into regions, in the format
 
@@ -1286,7 +1292,7 @@ static Region freeRegionBuckets[NUM_FREE_BUCKETS];
 // used to avoid redundant scanning of the 32 different free region buckets: instead by
 // looking at the bitmask we can find in constant time an index to a free region bucket
 // that contains free memory of desired size.
-static uint32_t freeRegionBucketsUsed = 0;
+static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
 
 #ifndef CLAIM_MEMORY_WITH_SBRK
 // Stores the current asm.js/wasm heap end pointer (== TOTAL_MEMORY)
@@ -1309,8 +1315,9 @@ extern "C" void js_resize_wasm_heap(size_t newHeapSize);
 
 /* Subdivide regions of free space into distinct circular doubly linked lists, where each linked list
 represents a range of free space blocks. The following function compute_free_list_bucket() converts
-an allocation size to the bucket index that should be looked at. This function produces a subdivision/grouping
-as follows:
+an allocation size to the bucket index that should be looked at.
+
+When using 32 buckets, this function produces a subdivision/grouping as follows:
   Bucket 0: [8-15], range size=8
   Bucket 1: [16-23], range size=8
   Bucket 2: [24-31], range size=8
@@ -1342,14 +1349,88 @@ as follows:
   Bucket 28: [786432-1048575], range size=262144
   Bucket 29: [1048576-1572863], range size=524288
   Bucket 30: [1572864-2097151], range size=524288
-  Bucket 31: 2097152 bytes and larger */
+  Bucket 31: 2097152 bytes and larger.
 
+When using 64 buckets, this function produces a grouping as follows:
+  Bucket 0: [8, 15], range size=8
+  Bucket 1: [16, 23], range size=8
+  Bucket 2: [24, 31], range size=8
+  Bucket 3: [32, 39], range size=8
+  Bucket 4: [40, 47], range size=8
+  Bucket 5: [48, 55], range size=8
+  Bucket 6: [56, 63], range size=8
+  Bucket 7: [64, 71], range size=8
+  Bucket 8: [72, 79], range size=8
+  Bucket 9: [80, 87], range size=8
+  Bucket 10: [88, 95], range size=8
+  Bucket 11: [96, 103], range size=8
+  Bucket 12: [104, 111], range size=8
+  Bucket 13: [112, 119], range size=8
+  Bucket 14: [120, 159], range size=40
+  Bucket 15: [160, 191], range size=32
+  Bucket 16: [192, 223], range size=32
+  Bucket 17: [224, 255], range size=32
+  Bucket 18: [256, 319], range size=64
+  Bucket 19: [320, 383], range size=64
+  Bucket 20: [384, 447], range size=64
+  Bucket 21: [448, 511], range size=64
+  Bucket 22: [512, 639], range size=128
+  Bucket 23: [640, 767], range size=128
+  Bucket 24: [768, 895], range size=128
+  Bucket 25: [896, 1023], range size=128
+  Bucket 26: [1024, 1279], range size=256
+  Bucket 27: [1280, 1535], range size=256
+  Bucket 28: [1536, 1791], range size=256
+  Bucket 29: [1792, 2047], range size=256
+  Bucket 30: [2048, 2559], range size=512
+  Bucket 31: [2560, 3071], range size=512
+  Bucket 32: [3072, 3583], range size=512
+  Bucket 33: [3584, 6143], range size=2560
+  Bucket 34: [6144, 8191], range size=2048
+  Bucket 35: [8192, 12287], range size=4096
+  Bucket 36: [12288, 16383], range size=4096
+  Bucket 37: [16384, 24575], range size=8192
+  Bucket 38: [24576, 32767], range size=8192
+  Bucket 39: [32768, 49151], range size=16384
+  Bucket 40: [49152, 65535], range size=16384
+  Bucket 41: [65536, 98303], range size=32768
+  Bucket 42: [98304, 131071], range size=32768
+  Bucket 43: [131072, 196607], range size=65536
+  Bucket 44: [196608, 262143], range size=65536
+  Bucket 45: [262144, 393215], range size=131072
+  Bucket 46: [393216, 524287], range size=131072
+  Bucket 47: [524288, 786431], range size=262144
+  Bucket 48: [786432, 1048575], range size=262144
+  Bucket 49: [1048576, 1572863], range size=524288
+  Bucket 50: [1572864, 2097151], range size=524288
+  Bucket 51: [2097152, 3145727], range size=1048576
+  Bucket 52: [3145728, 4194303], range size=1048576
+  Bucket 53: [4194304, 6291455], range size=2097152
+  Bucket 54: [6291456, 8388607], range size=2097152
+  Bucket 55: [8388608, 12582911], range size=4194304
+  Bucket 56: [12582912, 16777215], range size=4194304
+  Bucket 57: [16777216, 25165823], range size=8388608
+  Bucket 58: [25165824, 33554431], range size=8388608
+  Bucket 59: [33554432, 50331647], range size=16777216
+  Bucket 60: [50331648, 67108863], range size=16777216
+  Bucket 61: [67108864, 100663295], range size=33554432
+  Bucket 62: [100663296, 134217727], range size=33554432
+  Bucket 63: 134217728 bytes and larger. */
 static int compute_free_list_bucket(uint32_t allocSize)
 {
+#if NUM_FREE_BUCKETS == 32
   if (allocSize < 48) return (allocSize >> 3) - 1;
   allocSize = MIN(allocSize >> 4, 131072);
   int clz = __builtin_clz(allocSize);
-  int bucketIndex = (clz <= 24) ? 17 + ((21-clz)<<1) + ((allocSize >> (30-clz)) ^ 2) : 35-clz;
+  int bucketIndex = (clz > 24) ? 35 - clz : 59 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2);
+#elif NUM_FREE_BUCKETS == 64
+  if (allocSize < 128) return (allocSize >> 3) - 1;
+  allocSize = MIN(allocSize >> 5, 4194304);
+  int clz = __builtin_clz(allocSize);
+  int bucketIndex = (clz > 24) ? 130 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4) : 81 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2);
+#else
+#error Invalid size chosen for NUM_FREE_BUCKETS
+#endif
   assert(bucketIndex >= 0);
   assert(bucketIndex < NUM_FREE_BUCKETS);
   return bucketIndex;
@@ -1481,7 +1562,7 @@ static void link_to_free_list(Region *freeRegion)
   assert(freeRegion->next);
   freeListHead->next = freeRegion;
   freeRegion->next->prev = freeRegion;
-  freeRegionBucketsUsed |= 1 << bucketIndex;
+  freeRegionBucketsUsed |= ((BUCKET_BITMASK_T)1) << bucketIndex;
 }
 
 static void dump_memory_regions()
@@ -1530,7 +1611,11 @@ static void dump_memory_regions()
       fr = fr->next;
     }
   }
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('Free bucket index map: '+($0>>>0).toString(2)), freeRegionBucketsUsed);
+#if NUM_FREE_BUCKETS == 64
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('Free bucket index map: ' + ($0>>>0).toString(2) + ' ' + ($1>>>0).toString(2)), (uint32_t)(freeRegionBucketsUsed >> 32), (uint32_t)freeRegionBucketsUsed);
+#else
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('Free bucket index map: ' + ($0>>>0).toString(2)), freeRegionBucketsUsed);
+#endif
   MAIN_THREAD_ASYNC_EM_ASM(console.log(""));
 }
 
@@ -1754,17 +1839,17 @@ static void *allocate_memory(size_t alignment, size_t size)
   // Under normal alignment conditions this should always be the first or second bucket we look at, but if
   // performing an allocation with complex alignment, we may need to look at multiple buckets.
   int bucketIndex = compute_free_list_bucket(size);
-  uint32_t bucketMask = freeRegionBucketsUsed >> bucketIndex;
+  BUCKET_BITMASK_T bucketMask = freeRegionBucketsUsed >> bucketIndex;
 
   // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
   while(bucketMask)
   {
-    uint32_t indexAdd = __builtin_ctz(bucketMask);
+    BUCKET_BITMASK_T indexAdd = __builtin_ctz(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
     assert(bucketIndex >= 0);
-    assert(bucketIndex <= 31);
-    assert(freeRegionBucketsUsed & (1 << bucketIndex));
+    assert(bucketIndex <= NUM_FREE_BUCKETS-1);
+    assert(freeRegionBucketsUsed & (((BUCKET_BITMASK_T)1) << bucketIndex));
 
     Region *freeRegion = freeRegionBuckets[bucketIndex].next;
     assert(freeRegion);
@@ -1802,8 +1887,8 @@ static void *allocate_memory(size_t alignment, size_t size)
       bucketMask ^= 1;
     }
     // Instead of recomputing bucketMask from scratch at the end of each loop, it is updated as we go,
-    // to avoid undefined behavior with (x >> 32) when bucketIndex reaches 32, (the shift would comes out as a no-op instead of 0).
-    assert((bucketIndex == 32 && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
+    // to avoid undefined behavior with (x >> 32)/(x >> 64) when bucketIndex reaches 32/64, (the shift would comes out as a no-op instead of 0).
+    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
   }
 
   // Last resort: loop through all free regions in the bucket that represents the largest allocations available, but
@@ -1812,7 +1897,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   // memory.)
   if (freeRegionBucketsUsed >> 10)
   {
-    int largestBucketIndex = 31 - __builtin_clz(freeRegionBucketsUsed);
+    int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clz(freeRegionBucketsUsed);
     for(Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
       freeRegion != &freeRegionBuckets[largestBucketIndex];
       freeRegion = freeRegion->next)

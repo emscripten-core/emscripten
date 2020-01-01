@@ -919,6 +919,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
     self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
+    self.use_64bit_ops = kwargs.pop('use_64bit_ops')
 
     super(libmalloc, self).__init__(**kwargs)
 
@@ -940,6 +941,8 @@ class libmalloc(MTLibrary, NoBCLibrary):
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
+    if self.use_64bit_ops:
+      cflags += ['-DEMMALLOC_USE_64BIT_OPS=1']
     return cflags
 
   def get_base_name_prefix(self):
@@ -954,6 +957,8 @@ class libmalloc(MTLibrary, NoBCLibrary):
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
+    if self.use_64bit_ops:
+      name += '-64bit'
     return name
 
   def can_use(self):
@@ -961,7 +966,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'use_64bit_ops']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -970,15 +975,15 @@ class libmalloc(MTLibrary, NoBCLibrary):
       is_debug=shared.Settings.DEBUG_LEVEL >= 3,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
+      use_64bit_ops=shared.Settings.WASM == 1,
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos] +
-            [dict(malloc='emmalloc', **combo) for combo in combos
-             if not combo['is_mt'] and not combo['is_tracing']])
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['use_64bit_ops']] +
+            [dict(malloc='emmalloc', **combo) for combo in combos])
 
 
 class libal(Library):
