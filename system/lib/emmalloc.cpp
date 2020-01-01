@@ -2194,7 +2194,7 @@ void *emmalloc_realloc_uninitialized(void *ptr, size_t size)
   return emmalloc_aligned_realloc_uninitialized(ptr, MALLOC_ALIGNMENT, size);
 }
 
-extern __typeof(emmalloc_memalign) aligned_alloc __attribute__((alias("emmalloc_memalign")));
+extern __typeof(emmalloc_memalign) aligned_alloc __attribute__((weak, alias("emmalloc_memalign")));
 
 int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
 {
