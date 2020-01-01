@@ -1112,6 +1112,10 @@ int main() {
   printf("ok.\n");
 }
 '''
+    # This test uses mallinfo() to track memory leaks in a way
+    # that is not applicable to emmalloc, so ensure that the
+    # test is using dlmalloc.
+    self.set_setting('MALLOC', 'dlmalloc')
 
     self.do_run(src, r'''ok.''')
 
