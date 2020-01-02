@@ -8559,6 +8559,40 @@ NODEFS is no longer included by default; build with -lnodefs.js
       }
     ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
+  @no_fastcomp('WASM backend convert imports to indirect calls')
+  def test_dylink_imports_to_indirect_calls(self):
+    # The ImportsToIndirectCalls pass in Binaryen should not allocate a new fp$ for
+    # imports that are already address taken. Test out both cases whereby the imports
+    # are either used directly or thru its address.
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.dylink_test(main=r'''
+      #include <stdio.h>
+      extern int sidey();
+      extern int sidey2();
+      typedef int (*func)();
+      int mainy() {
+        return 19;
+      }
+
+      int main(int argc, char **argv) {
+        sidey();
+        func funcPtr = (0 == argc) ? sidey:sidey2;
+        funcPtr();
+        return 0;
+      }
+    ''', side=r'''
+      #include <stdio.h>
+      int sidey() {
+        printf("sidey says %d ", 17);
+        return 17;
+      }
+
+      int sidey2() {
+        printf("sidey2 says %d", 18);
+        return 18;
+      }
+    ''', expected='sidey says 17 sidey2 says 18', need_reverse=False)
+
   @also_with_standalone_wasm
   def test_undefined_main(self):
     # By default in emscripten we allow main to be undefined.  Its used when
