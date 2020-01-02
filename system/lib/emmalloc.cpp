@@ -1222,11 +1222,6 @@ extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("mema
 // Behavior of right shifting a signed integer is compiler implementation defined.
 static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation requires that right-shifting a signed integer produces a sign-extending (arithmetic) shift!");
 
-// If defined, the malloc implementation uses sbrk() to claim new memory regions.
-// If undefined, the malloc implementation assumes it is the sole owner of the dynamic
-// memory area, and claims all of it immediately for its own use.
-#define CLAIM_MEMORY_WITH_SBRK
-
 extern "C"
 {
 
@@ -1293,14 +1288,6 @@ static Region freeRegionBuckets[NUM_FREE_BUCKETS];
 // looking at the bitmask we can find in constant time an index to a free region bucket
 // that contains free memory of desired size.
 static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
-
-#ifndef CLAIM_MEMORY_WITH_SBRK
-// Stores the current asm.js/wasm heap end pointer (== TOTAL_MEMORY)
-static uint8_t *asmHeapEnd = 0;
-
-extern "C" void js_resize_wasm_heap(size_t newHeapSize);
-
-#endif
 
 // Amount of bytes taken up by allocation header data
 #define REGION_HEADER_SIZE (2*sizeof(uint32_t))
@@ -1628,21 +1615,11 @@ void emmalloc_dump_memory_regions()
 
 static bool claim_more_memory(size_t numBytes)
 {
-#ifdef CLAIM_MEMORY_WITH_SBRK
   // Claim memory via sbrk
   uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
 //  MAIN_THREAD_ASYNC_EM_ASM(console.log('Claimed ' + $0 + '-' + $1 + ' via sbrk()'), startPtr, startPtr + numBytes);
   if ((intptr_t)startPtr <= 0) return false;
   assert(HAS_ALIGNMENT(startPtr, 4));
-#else
-  uint8_t *startPtr = asmHeapEnd;
-  if (listOfAllRegions) // If listOfAllRegions == 0, this is the first populating allocation
-  {
-    numBytes = MAX((uint32_t)asmHeapEnd, numBytes);
-    js_resize_wasm_heap((size_t)(asmHeapEnd + numBytes));
-  }
-  asmHeapEnd += numBytes;
-#endif
   uint8_t *endPtr = startPtr + numBytes;
 
   // Create a sentinel region at the end of the new heap block
@@ -1651,8 +1628,6 @@ static bool claim_more_memory(size_t numBytes)
 
   // If we are the sole user of sbrk(), it will feed us continuous/consecutive memory addresses - take advantage
   // of that if so: instead of creating two disjoint memory regions blocks, expand the previous one to a larger size.
-  // Also if we are not using sbrk(), this check will always be true when expanding (and only once false at first
-  // time when establishing the initial heap)
   uint8_t *previousSbrkEndAddress = listOfAllRegions ? (uint8_t*)((uint32_t*)listOfAllRegions)[2] : 0;
   if (startPtr == previousSbrkEndAddress)
   {
@@ -1712,25 +1687,14 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
     freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
 
-  uint8_t *startPtr = (uint8_t*)*emscripten_get_sbrk_ptr();
-#ifdef CLAIM_MEMORY_WITH_SBRK
-  // If using sbrk(), start with a tiny dynamic allocation.
-  uint8_t *endPtr = startPtr + 3*sizeof(Region);
-#else
-  // Otherwise claim the whole WebAssembly HEAP.
-  asmHeapEnd = startPtr;
-  uint8_t *endPtr = (uint8_t*)emscripten_get_heap_size();
-#endif
-  claim_more_memory(endPtr - startPtr);
+  // Start with a tiny dynamic region.
+  claim_more_memory(3*sizeof(Region));
 }
 
 void emmalloc_blank_slate_from_orbit()
 {
   listOfAllRegions = 0;
   freeRegionBucketsUsed = 0;
-#ifndef CLAIM_MEMORY_WITH_SBRK
-  asmHeapEnd = 0;
-#endif
   initialize_malloc_heap();
 }
 
@@ -1935,15 +1899,6 @@ static void *allocate_memory(size_t alignment, size_t size)
 
   if (success)
     return allocate_memory(alignment, size); // Recurse back to itself to try again
-
-#ifndef OPTIMIZED_RELEASE
-//  emscripten_throw_string("OOM");
-//  EM_ASM(console.error('OOM'));
-#endif
-  // malloc failed!
-//  dump_memory_regions();
-//  EM_ASM(console.error('POST malloc align='+$0+', size='+$1+' FAILED!, returning ptr=0'), alignment, size);
-
   return 0;
 }
 
