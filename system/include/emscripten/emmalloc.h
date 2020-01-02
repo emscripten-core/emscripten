@@ -22,6 +22,12 @@ void *malloc(size_t size);
 void *emmalloc_malloc(size_t size);
 void *emscripten_builtin_malloc(size_t size);
 
+// Returns the number of bytes that are actually allocated to the given pointer ptr.
+// E.g. due to alignment or size requirements, the actual size of the allocation can be
+// larger than what was requested.
+size_t malloc_usable_size(void *ptr);
+size_t emmalloc_usable_size(void *ptr);
+
 // Frees a memory pointer allocated with any of
 // emmalloc_memalign, emmalloc_malloc, 
 void free(void *ptr);

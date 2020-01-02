@@ -1919,6 +1919,27 @@ void *emmalloc_malloc(size_t size)
 extern __typeof(emmalloc_malloc) emscripten_builtin_malloc __attribute__((alias("emmalloc_malloc")));
 extern __typeof(emmalloc_malloc) malloc __attribute__((weak, alias("emmalloc_malloc")));
 
+size_t emmalloc_usable_size(void *ptr)
+{
+  if (!ptr)
+    return 0;
+
+  uint8_t *regionStartPtr = (uint8_t*)ptr - sizeof(uint32_t);
+  Region *region = (Region*)(regionStartPtr);
+  assert(HAS_ALIGNMENT(region, sizeof(uint32_t)));
+
+  MALLOC_ACQUIRE();
+
+  uint32_t size = region->size;
+  assert(size >= sizeof(Region));
+  assert(region_is_in_use(region));
+
+  MALLOC_RELEASE();
+
+  return size - REGION_HEADER_SIZE;
+}
+extern __typeof(emmalloc_usable_size) malloc_usable_size __attribute__((weak, alias("emmalloc_usable_size")));
+
 void emmalloc_free(void *ptr)
 {
   if (!ptr)
