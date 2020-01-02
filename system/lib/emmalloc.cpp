@@ -1895,19 +1895,28 @@ static void *allocate_memory(size_t alignment, size_t size)
     assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
   }
 
-  // Last resort: loop through all free regions in the bucket that represents the largest allocations available, but
-  // only if the bucket representing largest allocations available is not any of the first ten buckets (these represent
-  // allocatable areas less than <1024 bytes - which could be a lot of scrap. In such case, prefer to sbrk() in more
-  // memory.)
+  // None of the buckets were able to accommodate an allocation. If this happens we are almost out of memory.
+  // The largest bucket might contain some suitable regions, but we only looked at one region in that bucket, so
+  // as a last resort, loop through more free regions in the bucket that represents the largest allocations available.
+  // But only if the bucket representing largest allocations available is not any of the first ten buckets (thirty buckets
+  // in 64-bit buckets build), these represent allocatable areas less than <1024 bytes - which could be a lot of scrap.
+  // In such case, prefer to sbrk() in more memory right away.
+#ifdef EMMALLOC_USE_64BIT_OPS
   if (freeRegionBucketsUsed >> 10)
+#else
+  if (freeRegionBucketsUsed >> 30)
+#endif
   {
 #ifdef EMMALLOC_USE_64BIT_OPS
     int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
 #else
     int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clz(freeRegionBucketsUsed);
 #endif
+    // Look only at a constant number of regions in this bucket max, to avoid any bad worst case behavior.
+    const int maxRegionsToTryBeforeGivingUp = 100;
+    int numTriesLeft = maxRegionsToTryBeforeGivingUp;
     for(Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
-      freeRegion != &freeRegionBuckets[largestBucketIndex];
+      freeRegion != &freeRegionBuckets[largestBucketIndex] && numTriesLeft-- > 0;
       freeRegion = freeRegion->next)
     {
       void *ptr = attempt_allocate(freeRegion, alignment, size);
