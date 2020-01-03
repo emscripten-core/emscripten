@@ -59,6 +59,11 @@ extern "C"
 // than this will yield an allocation with this much alignment.
 #define MALLOC_ALIGNMENT 8
 
+// Configuration: If EMMALLOC_USE_64BIT_OPS is specified, emmalloc uses 64 buckets for free memory regions instead of just 32.
+// When building to target asm.js/wasm2js, 64-bit ops are disabled, but in Wasm builds, 64-bit ops are enabled. (this is
+// configured from command line in system_libs.py build)
+// #define EMMALLOC_USE_64BIT_OPS
+
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
