@@ -94,15 +94,23 @@ int emmalloc_validate_memory_regions(void);
 // O(1) time.
 size_t emmalloc_dynamic_heap_size(void);
 
-// Computes the amount of memory inside the dynamic heap that is free for the application
-// to allocate. Use this function for memory statistics tracking purposes. Calling this
-// function is very slow, as it walks through each free memory block in linear time.
-size_t emmalloc_free_dynamic_memory();
+// Computes the amount of memory currently reserved under emmalloc's governance  that is free
+// for the application to allocate. Use this function for memory statistics tracking purposes.
+// Note that calling this function is very slow, as it walks through each free memory block in
+// linear time.
+size_t emmalloc_free_dynamic_memory(void);
+
+// Estimates the amount of untapped memory that emmalloc could expand its dynamic memory area
+// via sbrk()ing. Theoretically the maximum amount of memory that can still be malloc()ed can
+// be calculated via emmalloc_free_dynamic_memory() + emmalloc_unclaimed_heap_memory().
+// Calling this function is very fast constant time lookup.
+size_t emmalloc_unclaimed_heap_memory(void);
 
 // Computes a detailed fragmentation map of available free memory. Pass in a pointer to a
 // 32 element long array. This function populates into each array index i the number of free
 // memory regions that have a size 2^i <= size < 2^(i+1), and returns the total number of
-// free memory regions (the sum of the array entries).
+// free memory regions (the sum of the array entries). This function runs very slowly, as it
+// iterates through all free memory blocks.
 size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemorySizeMap[32]);
 
 #ifdef __cplusplus

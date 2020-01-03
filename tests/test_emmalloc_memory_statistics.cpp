@@ -19,6 +19,7 @@ int main()
 	numFreeMemoryRegions = emmalloc_compute_free_dynamic_memory_fragmentation_map(freeMemorySizeMap);
 	printf("%zu\n", numFreeMemoryRegions);
 	for(int i = 0; i < 32; ++i)
-		printf("%d ", freeMemorySizeMap[i]);
+		printf("%zu ", freeMemorySizeMap[i]);
 	printf("\n");
+	printf("%zu\n", emmalloc_unclaimed_heap_memory());
 }
