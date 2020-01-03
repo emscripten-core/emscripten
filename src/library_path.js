@@ -66,7 +66,7 @@ mergeInto(LibraryManager.library, {
     basename: function(path) {
       // EMSCRIPTEN return '/'' for '/', not an empty string
       if (path === '/') return '/';
-      var lastSlash = path.lastIndexOf('/');
+      var lastSlash = path.lastIndexOf('/', path.length-2); //support both '/path' and '/path/'
       if (lastSlash === -1) return path;
       return path.substr(lastSlash+1);
     },
