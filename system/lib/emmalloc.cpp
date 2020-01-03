@@ -1673,10 +1673,26 @@ int emmalloc_validate_memory_regions()
 
 static bool claim_more_memory(size_t numBytes)
 {
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory(numBytes='+$0+ ')'), numBytes);
+#endif
+
+#ifdef EMMALLOC_DEBUG
+  validate_memory_regions();
+#endif
+
   // Claim memory via sbrk
   uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
-//  MAIN_THREAD_ASYNC_EM_ASM(console.log('Claimed ' + $0 + '-' + $1 + ' via sbrk()'), startPtr, startPtr + numBytes);
-  if ((intptr_t)startPtr <= 0) return false;
+  if ((intptr_t)startPtr <= 0)
+  {
+#ifdef EMMALLOC_DEBUG_LOG
+    MAIN_THREAD_ASYNC_EM_ASM(console.error('claim_more_memory - sbrk failed!'));
+#endif
+    return false;
+  }
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory - claimed ' + $0 + '-' + $1 + ' via sbrk()'), startPtr, startPtr + numBytes);
+#endif
   assert(HAS_ALIGNMENT(startPtr, 4));
   uint8_t *endPtr = startPtr + numBytes;
 
@@ -1744,6 +1760,10 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
   // Initialize circular doubly linked lists representing free space
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
     freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
+
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('initialize_malloc_heap()'));
+#endif
 
   // Start with a tiny dynamic region.
   claim_more_memory(3*sizeof(Region));
@@ -1814,12 +1834,12 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
     ((uint32_t*)((uint8_t*)freeRegion + freeRegion->size))[-1] = freeRegion->size;
   }
 
-//  dump_memory_regions();
-//  EM_ASM(console.error('POST malloc align='+$0+', size='+$1+', returning ptr='+$2.toString(16)),
-//    alignment, size, (uint8_t*)freeRegion + sizeof(uint32_t));
-
 #ifdef __EMSCRIPTEN_TRACING__
   emscripten_trace_record_allocation(freeRegion, freeRegion->size);
+#endif
+
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr='+$0+', align='+$1+', payload size=' + $2 + ')'), freeRegion, alignment, size);
 #endif
 
   return (uint8_t*)freeRegion + sizeof(uint32_t);
@@ -1844,8 +1864,14 @@ static size_t validate_alloc_size(size_t size)
 static void *allocate_memory(size_t alignment, size_t size)
 {
   ASSERT_MALLOC_IS_ACQUIRED();
-//  dump_memory_regions();
-//  EM_ASM(console.error('allocate_memory(align='+$0+', size=' + $1 + ')'), alignment, size);
+
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align='+$0+', size=' + $1 + ')'), alignment, size);
+#endif
+
+#ifdef EMMALLOC_DEBUG
+  validate_memory_regions();
+#endif
 
   if (!IS_POWER_OF_2(alignment))
     return 0;
@@ -1939,10 +1965,6 @@ static void *allocate_memory(size_t alignment, size_t size)
   size_t numBytesToClaim = size+sizeof(Region)*3;
   bool success = claim_more_memory(numBytesToClaim);
 
-//  dump_memory_regions();
-//  EM_ASM(console.error('claimed more memory when allocating align='+$0+', size='+$1),
-//    alignment, size);
-
   if (success)
     return allocate_memory(alignment, size); // Recurse back to itself to try again
   return 0;
@@ -1988,11 +2010,16 @@ extern __typeof(emmalloc_usable_size) malloc_usable_size __attribute__((weak, al
 
 void emmalloc_free(void *ptr)
 {
+#ifdef EMMALLOC_DEBUG
+  emmalloc_validate_memory_regions();
+#endif
+
   if (!ptr)
     return;
 
-//  dump_memory_regions();
-//  EM_ASM(console.error('free(ptr='+$0+')'), ptr);
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('free(ptr='+$0+')'), ptr);
+#endif
 
   uint8_t *regionStartPtr = (uint8_t*)ptr - sizeof(uint32_t);
   Region *region = (Region*)(regionStartPtr);
@@ -2034,10 +2061,11 @@ void emmalloc_free(void *ptr)
   create_free_region(regionStartPtr, size);
   link_to_free_list((Region*)regionStartPtr);
 
-//  dump_memory_regions();
-//  EM_ASM(console.error('Post free!'));
-
   MALLOC_RELEASE();
+
+#ifdef EMMALLOC_DEBUG
+  emmalloc_validate_memory_regions();
+#endif
 }
 extern __typeof(emmalloc_free) emscripten_builtin_free __attribute__((alias("emmalloc_free")));
 extern __typeof(emmalloc_free) free __attribute__((weak, alias("emmalloc_free")));
@@ -2049,6 +2077,10 @@ static int attempt_region_resize(Region *region, size_t size)
   ASSERT_MALLOC_IS_ACQUIRED();
   assert(size > 0);
   assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
+
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize(region='+$0+', size='+$1+')'), region, size);
+#endif
 
   // First attempt to resize this region, if the next region that follows this one
   // is a free region.
@@ -2098,10 +2130,13 @@ static int attempt_region_resize(Region *region, size_t size)
       return 1;
     }
   }
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize failed.'));
+#endif
   return 0;
 }
 
-static int locked_attempt_region_resize(Region *region, size_t size)
+static int acquire_and_attempt_region_resize(Region *region, size_t size)
 {
   MALLOC_ACQUIRE();
   int success = attempt_region_resize(region, size);
@@ -2131,7 +2166,7 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
   Region *region = (Region*)((uint8_t*)ptr - sizeof(uint32_t));
 
   // First attempt to resize the given region to avoid having to copy memory around
-  if (locked_attempt_region_resize(region, size + REGION_HEADER_SIZE))
+  if (acquire_and_attempt_region_resize(region, size + REGION_HEADER_SIZE))
   {
 #ifdef __EMSCRIPTEN_TRACING__
     emscripten_trace_record_reallocation(ptr, ptr, size);
@@ -2171,7 +2206,7 @@ void *emmalloc_realloc_try(void *ptr, size_t size)
   Region *region = (Region*)((uint8_t*)ptr - sizeof(uint32_t));
 
   // Attempt to resize the given region to avoid having to copy memory around
-  int success = locked_attempt_region_resize(region, size + REGION_HEADER_SIZE);
+  int success = acquire_and_attempt_region_resize(region, size + REGION_HEADER_SIZE);
 #ifdef __EMSCRIPTEN_TRACING__
   if (success)
     emscripten_trace_record_reallocation(ptr, ptr, size);
@@ -2198,7 +2233,7 @@ void *emmalloc_aligned_realloc_uninitialized(void *ptr, size_t alignment, size_t
   Region *region = (Region*)((uint8_t*)ptr - sizeof(uint32_t));
 
   // First attempt to resize the given region to avoid having to copy memory around
-  if (locked_attempt_region_resize(region, size + REGION_HEADER_SIZE))
+  if (acquire_and_attempt_region_resize(region, size + REGION_HEADER_SIZE))
   {
 #ifdef __EMSCRIPTEN_TRACING__
     emscripten_trace_record_reallocation(ptr, ptr, size);

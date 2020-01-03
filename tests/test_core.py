@@ -923,6 +923,14 @@ base align: 0, 0, 0, 0'''])
                 open(path_from_root('tests', 'test_malloc_usable_size.c')).read(),
                 open(path_from_root('tests', 'test_malloc_usable_size.txt')).read())
 
+  def test_emmalloc_memory_statistics(self, *args):
+    self.set_setting('MALLOC', 'none')
+    self.emcc_args += ['-fno-builtin', '-s', 'TOTAL_MEMORY=128MB', '-g'] + list(args)
+
+    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
+                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
+                open(path_from_root('tests', 'test_emmalloc_memory_statistics.cpp')).read(),
+                open(path_from_root('tests', 'test_emmalloc_memory_statistics.txt')).read())
 
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
