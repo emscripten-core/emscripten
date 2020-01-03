@@ -1232,9 +1232,13 @@ extern "C"
 #ifdef EMMALLOC_USE_64BIT_OPS
 #define NUM_FREE_BUCKETS 64
 #define BUCKET_BITMASK_T uint64_t
+#define CountLeadingZeroesInBitmask __builtin_clzll
+#define CountTrailingZeroesInBitmask __builtin_ctzll
 #else
 #define NUM_FREE_BUCKETS 32
 #define BUCKET_BITMASK_T uint32_t
+#define CountLeadingZeroesInBitmask __builtin_clz
+#define CountTrailingZeroesInBitmask __builtin_ctz
 #endif
 
 // Dynamic memory is subdivided into regions, in the format
@@ -1571,7 +1575,7 @@ static void dump_memory_regions()
       assert(debug_region_is_consistent(r));
       uint32_t sizeFromCeiling = size_of_region_from_ceiling(r);
       if (sizeFromCeiling != r->size)
-        MAIN_THREAD_ASYNC_EM_ASM(console.log('SIZE FROM END: '+$0), sizeFromCeiling);
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('Corrupt region! Size marker at the end of the region does not match: '+$0), sizeFromCeiling);
       if (r->size == 0)
         break;
       r = next_region(r);
@@ -1587,9 +1591,9 @@ static void dump_memory_regions()
     while(fr != &freeRegionBuckets[i])
     {
       MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region '+$1.toString(16)+', size: ' + $2 + ' (size at ceiling: '+$3+'), prev: ' + $4.toString(16) + ', next: ' + $5.toString(16)),
-        i, fr, fr->size, size_of_region_from_ceiling((Region*)fr), fr->prev, fr->next);
+        i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
       assert(debug_region_is_consistent(fr));
-      assert(region_is_free((Region*)fr));
+      assert(region_is_free(fr));
       assert(fr->prev == prev);
       prev = fr;
       assert(fr->next != fr);
@@ -1610,6 +1614,61 @@ void emmalloc_dump_memory_regions()
   MALLOC_ACQUIRE();
   dump_memory_regions();
   MALLOC_RELEASE();
+}
+
+static int validate_memory_regions()
+{
+  ASSERT_MALLOC_IS_ACQUIRED();
+  Region *root = listOfAllRegions;
+  while(root)
+  {
+    Region *r = root;
+    if (!debug_region_is_consistent(r))
+    {
+      MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region '+$0.toString(16)+', size: '+$1+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+        r, r->size, region_ceiling_size(r) == r->size);
+      return 1;
+    }
+    uint8_t *lastRegionEnd = (uint8_t*)(((uint32_t*)root)[2]);
+    while((uint8_t*)r < lastRegionEnd)
+    {
+      if (!debug_region_is_consistent(r))
+      {
+        MAIN_THREAD_ASYNC_EM_ASM(console.error('Used region '+$0.toString(16)+', size: '+$1+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+          r, r->size, region_ceiling_size(r) == r->size);
+        return 1;
+      }
+      if (r->size == 0)
+        break;
+      r = next_region(r);
+    }
+    root = ((Region*)((uint32_t*)root)[1]);
+  }
+  for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
+  {
+    Region *prev = &freeRegionBuckets[i];
+    Region *fr = freeRegionBuckets[i].next;
+    while(fr != &freeRegionBuckets[i])
+    {
+      if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr)
+      {
+        MAIN_THREAD_ASYNC_EM_ASM(console.log('In bucket '+$0+', free region '+$1.toString(16)+', size: ' + $2 + ' (size at ceiling: '+$3+'), prev: ' + $4.toString(16) + ', next: ' + $5.toString(16) + ' is corrupt!'),
+          i, fr, fr->size, size_of_region_from_ceiling((Region*)fr), fr->prev, fr->next);
+        return 1;
+      }
+      prev = fr;
+      fr = fr->next;
+    }
+  }
+  return 0;
+}
+
+int emmalloc_validate_memory_regions()
+{
+  MALLOC_ACQUIRE();
+  int memoryError = validate_memory_regions();
+  MALLOC_RELEASE();
+  return memoryError;
 }
 
 static bool claim_more_memory(size_t numBytes)
@@ -1803,11 +1862,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
   while(bucketMask)
   {
-#ifdef EMMALLOC_USE_64BIT_OPS
-    BUCKET_BITMASK_T indexAdd = __builtin_ctzll(bucketMask);
-#else
-    BUCKET_BITMASK_T indexAdd = __builtin_ctz(bucketMask);
-#endif
+    BUCKET_BITMASK_T indexAdd = CountTrailingZeroesInBitmask(bucketMask);
     bucketIndex += indexAdd;
     bucketMask >>= indexAdd;
     assert(bucketIndex >= 0);
@@ -1866,11 +1921,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   if (freeRegionBucketsUsed >> 30)
 #endif
   {
-#ifdef EMMALLOC_USE_64BIT_OPS
-    int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clzll(freeRegionBucketsUsed);
-#else
-    int largestBucketIndex = NUM_FREE_BUCKETS - 1 - __builtin_clz(freeRegionBucketsUsed);
-#endif
+    int largestBucketIndex = NUM_FREE_BUCKETS - 1 - CountLeadingZeroesInBitmask(freeRegionBucketsUsed);
     // Look only at a constant number of regions in this bucket max, to avoid any bad worst case behavior.
     const int maxRegionsToTryBeforeGivingUp = 100;
     int numTriesLeft = maxRegionsToTryBeforeGivingUp;
@@ -2299,6 +2350,84 @@ int emmalloc_malloc_trim(size_t pad)
   return 0;
 }
 extern __typeof(emmalloc_malloc_trim) malloc_trim __attribute__((weak, alias("emmalloc_malloc_trim")));
+
+size_t emmalloc_dynamic_heap_size()
+{
+  size_t dynamicHeapSize = 0;
+
+  MALLOC_ACQUIRE();
+  Region *root = listOfAllRegions;
+  while(root)
+  {
+    Region *r = root;
+    uintptr_t blockEndPtr = ((uint32_t*)r)[2];
+    dynamicHeapSize += blockEndPtr - (uintptr_t)r;
+    root = ((Region*)((uint32_t*)root)[1]);
+  }
+  MALLOC_RELEASE();
+  return dynamicHeapSize;
+}
+
+size_t emmalloc_free_dynamic_memory()
+{
+  size_t freeDynamicMemory = 0;
+
+  int bucketIndex = 0;
+
+  MALLOC_ACQUIRE();
+  BUCKET_BITMASK_T bucketMask = freeRegionBucketsUsed;
+
+  // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
+  while(bucketMask)
+  {
+    BUCKET_BITMASK_T indexAdd = CountTrailingZeroesInBitmask(bucketMask);
+    bucketIndex += indexAdd;
+    bucketMask >>= indexAdd;
+    for(Region *freeRegion = freeRegionBuckets[bucketIndex].next;
+      freeRegion != &freeRegionBuckets[bucketIndex];
+      freeRegion = freeRegion->next)
+    {
+      freeDynamicMemory += freeRegion->size - REGION_HEADER_SIZE;
+    }
+    ++bucketIndex;
+    bucketMask >>= 1;
+  }
+  MALLOC_RELEASE();
+  return freeDynamicMemory;
+}
+
+size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemorySizeMap[32])
+{
+  memset((void*)freeMemorySizeMap, 0, sizeof(freeMemorySizeMap[0])*32);
+
+  size_t numFreeMemoryRegions = 0;
+  int bucketIndex = 0;
+  MALLOC_ACQUIRE();
+  BUCKET_BITMASK_T bucketMask = freeRegionBucketsUsed;
+
+  // Loop through each bucket that has free regions in it, based on bits set in freeRegionBucketsUsed bitmap.
+  while(bucketMask)
+  {
+    BUCKET_BITMASK_T indexAdd = CountTrailingZeroesInBitmask(bucketMask);
+    bucketIndex += indexAdd;
+    bucketMask >>= indexAdd;
+    for(Region *freeRegion = freeRegionBuckets[bucketIndex].next;
+      freeRegion != &freeRegionBuckets[bucketIndex];
+      freeRegion = freeRegion->next)
+    {
+      ++numFreeMemoryRegions;
+      size_t freeDynamicMemory = freeRegion->size - REGION_HEADER_SIZE;
+      if (freeDynamicMemory > 0)
+        ++freeMemorySizeMap[31-__builtin_clz(freeDynamicMemory)];
+      else
+        ++freeMemorySizeMap[0];
+    }
+    ++bucketIndex;
+    bucketMask >>= 1;
+  }
+  MALLOC_RELEASE();
+  return numFreeMemoryRegions;
+}
 
 } // extern "C"
 

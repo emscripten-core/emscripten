@@ -84,6 +84,27 @@ struct mallinfo emmalloc_mallinfo();
 int malloc_trim(size_t pad);
 int emmalloc_malloc_trim(size_t pad);
 
+// Validates the consistency of the malloc heap. Returns non-zero and prints an error to console
+// if memory map is corrupt. Returns 0 (and does not print anything) if memory is intact.
+int emmalloc_validate_memory_regions(void);
+
+// Computes the size of the dynamic memory region governed by emmalloc. This represents the
+// amount of memory that emmalloc has sbrk()ed in for itself to manage. Use this function
+// for memory statistics tracking purposes. Calling this function is quite fast, practically
+// O(1) time.
+size_t emmalloc_dynamic_heap_size(void);
+
+// Computes the amount of memory inside the dynamic heap that is free for the application
+// to allocate. Use this function for memory statistics tracking purposes. Calling this
+// function is very slow, as it walks through each free memory block in linear time.
+size_t emmalloc_free_dynamic_memory();
+
+// Computes a detailed fragmentation map of available free memory. Pass in a pointer to a
+// 32 element long array. This function populates into each array index i the number of free
+// memory regions that have a size 2^i <= size < 2^(i+1), and returns the total number of
+// free memory regions (the sum of the array entries).
+size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemorySizeMap[32]);
+
 #ifdef __cplusplus
 }
 #endif
