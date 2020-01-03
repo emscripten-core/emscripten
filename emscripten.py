@@ -1765,6 +1765,7 @@ var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
+
     receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
@@ -2636,9 +2637,8 @@ def create_receiving_wasm(exports, initializers):
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
 
   receiving = []
-  if shared.Settings.MINIMAL_RUNTIME or not shared.Settings.ASSERTIONS:
-    runtime_assertions = ''
-  else:
+  runtime_assertions = ''
+  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
@@ -2690,9 +2690,19 @@ asm["%(e)s"] = function() {%(assertions)s
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      receiving.append('''\
+      if shared.Settings.ASSERTIONS:
+        # With assertions on, don't hot-swap implementation.
+        receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
   return Module["asm"]["%(e)s"].apply(null, arguments)
+};
+''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+      else:
+        # With assertions off, hot-swap implementation to avoid garbage via
+        # arguments keyword.
+        receiving.append('''\
+var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
+  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
