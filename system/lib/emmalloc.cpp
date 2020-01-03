@@ -25,6 +25,8 @@
  *    Used regions may be adjacent, and a used and unused region
  *    may be adjacent, but not two unused ones - they would be
  *    merged.
+ *    Memory allocation takes constant time, unless the alloc needs to sbrk()
+ *    or memory is very close to being exhausted.
  *
  * Debugging:
  *
@@ -779,32 +781,44 @@ static void *allocate_memory(size_t alignment, size_t size)
   // But only if the bucket representing largest allocations available is not any of the first ten buckets (thirty buckets
   // in 64-bit buckets build), these represent allocatable areas less than <1024 bytes - which could be a lot of scrap.
   // In such case, prefer to sbrk() in more memory right away.
+  int largestBucketIndex = NUM_FREE_BUCKETS - 1 - CountLeadingZeroesInBitmask(freeRegionBucketsUsed);
+  Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
 #ifdef EMMALLOC_USE_64BIT_OPS
   if (freeRegionBucketsUsed >> 10)
 #else
   if (freeRegionBucketsUsed >> 30)
 #endif
   {
-    int largestBucketIndex = NUM_FREE_BUCKETS - 1 - CountLeadingZeroesInBitmask(freeRegionBucketsUsed);
-    // Look only at a constant number of regions in this bucket max, to avoid any bad worst case behavior.
+    // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
+    // If this many regions cannot find free space, we give up and prefer to sbrk() more instead.
     const int maxRegionsToTryBeforeGivingUp = 100;
     int numTriesLeft = maxRegionsToTryBeforeGivingUp;
-    for(Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
-      freeRegion != &freeRegionBuckets[largestBucketIndex] && numTriesLeft-- > 0;
-      freeRegion = freeRegion->next)
+    while(freeRegion != &freeRegionBuckets[largestBucketIndex] && numTriesLeft-- > 0)
     {
       void *ptr = attempt_allocate(freeRegion, alignment, size);
       if (ptr)
         return ptr;
+      freeRegion = freeRegion->next;
     }
   }
 
   // We were unable to find a free memory region. Must sbrk() in more memory!
   size_t numBytesToClaim = size+sizeof(Region)*3;
   bool success = claim_more_memory(numBytesToClaim);
-
   if (success)
     return allocate_memory(alignment, size); // Recurse back to itself to try again
+
+  // also sbrk() failed, we are really really constrained :( As a last resort, go back to looking at the
+  // bucket we already looked at above, continuing where the above search left off - perhaps there are
+  // regions we overlooked the first time that might be able to satisfy the allocation.
+  while(freeRegion != &freeRegionBuckets[largestBucketIndex])
+  {
+    void *ptr = attempt_allocate(freeRegion, alignment, size);
+    if (ptr)
+      return ptr;
+    freeRegion = freeRegion->next;
+  }
+
   return 0;
 }
 
