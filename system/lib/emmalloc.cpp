@@ -1204,9 +1204,6 @@ extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("mema
 } // extern "C"
 #else
 
-
-#ifdef __EMSCRIPTEN__
-
 #include <stdint.h>
 #include <unistd.h>
 #include <memory.h>
@@ -1225,6 +1222,8 @@ static_assert((((int32_t)0x80000000U) >> 31) == -1, "This malloc implementation 
 extern "C"
 {
 
+// Configuration: specifies the minimum alignment that malloc()ed memory outputs. Allocation requests with smaller alignment
+// than this will yield an allocation with this much alignment.
 #define MALLOC_ALIGNMENT 8
 
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
@@ -1271,6 +1270,13 @@ static volatile uint8_t multithreadingLock = 0;
 #define ASSERT_MALLOC_IS_ACQUIRED() ((void)0)
 #endif
 
+#define IS_POWER_OF_2(val) (((val) & ((val)-1)) == 0)
+#define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
+#define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((alignment)-1)) == 0)
+
+static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
+static_assert(MALLOC_ALIGNMENT >= 4, "Smallest possible MALLOC_ALIGNMENT if 4!");
+
 // A region that contains as payload a single forward linked list of pointers to head regions of each disjoint region blocks.
 static Region *listOfAllRegions = 0;
 
@@ -1293,12 +1299,9 @@ static BUCKET_BITMASK_T freeRegionBucketsUsed = 0;
 #define REGION_HEADER_SIZE (2*sizeof(uint32_t))
 
 // Smallest allocation size that is possible is 2*pointer size, since payload of each region must at least contain space
-// to store the free region linked list prev and next pointers.
+// to store the free region linked list prev and next pointers. An allocation size smaller than this will be rounded up
+// to this size.
 #define SMALLEST_ALLOCATION_SIZE (2*sizeof(void*))
-
-// Allocations larger than this limit are considered to be large allocations, meaning that any free memory regions that
-// are at least this large will be grouped to the same "large alloc" memory regions.
-#define LARGE_ALLOCATION_SIZE (16*1024*1024)
 
 /* Subdivide regions of free space into distinct circular doubly linked lists, where each linked list
 represents a range of free space blocks. The following function compute_free_list_bucket() converts
@@ -1475,10 +1478,6 @@ static uint8_t *region_payload_end_ptr(Region *region)
 {
   return (uint8_t*)region + region->size - sizeof(uint32_t);
 }
-
-#define IS_POWER_OF_2(val) (((val) & ((val)-1)) == 0)
-#define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
-#define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((alignment)-1)) == 0)
 
 static void create_used_region(void *ptr, uint32_t size)
 {
@@ -1770,12 +1769,8 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 static size_t validate_alloc_alignment(size_t alignment)
 {
   // Cannot perform allocations that are less than 4 byte aligned, because the Region
-  // control structures need to be aligned.
-  alignment = MAX(alignment, sizeof(uint32_t));
-  // Alignments must be power of 2 in general, no silly 24 byte alignments or otherwise.
-  // We could silently round up the alignment to next pow-2, but better to treat such alignments
-  // as a programming error.
-  assert(IS_POWER_OF_2(alignment));
+  // control structures need to be aligned. Also round up to minimum outputted alignment.
+  alignment = MAX(alignment, MALLOC_ALIGNMENT);
   // Arbitrary upper limit on alignment - very likely a programming bug if alignment is higher than this.
   assert(alignment <= 1024*1024);
   return alignment;
@@ -2306,7 +2301,5 @@ int emmalloc_malloc_trim(size_t pad)
 extern __typeof(emmalloc_malloc_trim) malloc_trim __attribute__((weak, alias("emmalloc_malloc_trim")));
 
 } // extern "C"
-
-#endif // __EMSCRIPTEN__
 
 #endif
