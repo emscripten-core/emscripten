@@ -257,14 +257,12 @@ static int compute_free_list_bucket(uint32_t allocSize)
 {
 #if NUM_FREE_BUCKETS == 32
   if (allocSize < 48) return (allocSize >> 3) - 1;
-  allocSize = MIN(allocSize >> 4, 131072);
   int clz = __builtin_clz(allocSize);
-  int bucketIndex = (clz > 24) ? 35 - clz : 59 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2);
+  int bucketIndex = (clz > 20) ? 31 - clz : MIN(51 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
 #elif NUM_FREE_BUCKETS == 64
   if (allocSize < 128) return (allocSize >> 3) - 1;
-  allocSize = MIN(allocSize >> 5, 4194304);
   int clz = __builtin_clz(allocSize);
-  int bucketIndex = (clz > 24) ? 130 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4) : 81 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2);
+  int bucketIndex = (clz > 19) ? 110 - (clz<<2) + ((allocSize >> (29-clz)) ^ 4) : MIN(71 - (clz<<1) + ((allocSize >> (30-clz)) ^ 2), NUM_FREE_BUCKETS-1);
 #else
 #error Invalid size chosen for NUM_FREE_BUCKETS
 #endif
