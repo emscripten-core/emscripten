@@ -785,9 +785,9 @@ static void *allocate_memory(size_t alignment, size_t size)
   int largestBucketIndex = NUM_FREE_BUCKETS - 1 - CountLeadingZeroesInBitmask(freeRegionBucketsUsed);
   Region *freeRegion = freeRegionBuckets[largestBucketIndex].next;
 #ifdef EMMALLOC_USE_64BIT_OPS
-  if (freeRegionBucketsUsed >> 10)
-#else
   if (freeRegionBucketsUsed >> 30)
+#else
+  if (freeRegionBucketsUsed >> 10)
 #endif
   {
     // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
