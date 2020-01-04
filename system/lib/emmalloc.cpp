@@ -10,6 +10,7 @@
  * Assumptions:
  *
  *  - Pointers are 32-bit.
+ *  - Maximum individual allocation size is 2GB-1 bytes (2147483647 bytes)
  *  - sbrk() is used to claim new memory (sbrk handles geometric/linear 
  *  - overallocation growth)
  *  - sbrk() can be used by other code outside emmalloc.
@@ -25,7 +26,7 @@
  *    Used regions may be adjacent, and a used and unused region
  *    may be adjacent, but not two unused ones - they would be
  *    merged.
- *    Memory allocation takes constant time, unless the alloc needs to sbrk()
+ *  - Memory allocation takes constant time, unless the alloc needs to sbrk()
  *    or memory is very close to being exhausted.
  *
  * Debugging:
@@ -86,7 +87,9 @@ extern "C"
 // <size:uint32_t> ..... <size:uint32_t> | <size:uint32_t> ..... <size:uint32_t> | <size:uint32_t> ..... <size:uint32_t> | .....
 
 // That is, at the bottom and top end of each memory region, the size of that region is stored. That allows traversing the
-// memory regions backwards and forwards.
+// memory regions backwards and forwards. Free regions are distinguished by used regions by having all bits inverted in the size
+// field at the end of the region. Hence if the size values at the beginning and at the end of the region are the same, then the
+// region is in use, otherwise it is a free region.
 
 // A free region has the following structure:
 // <size:uint32_t> <prevptr> <nextptr> ... <size:uint32_t>
@@ -1183,8 +1186,8 @@ struct mallinfo emmalloc_mallinfo()
   info.fordblks = 0; // The total number of bytes in free blocks.
   // The total amount of releasable free space at the top of the heap.
   // This is the maximum number of bytes that could ideally be released by malloc_trim(3).
-  info.keepcost = 0;
-  Region *highestFreeRegion = 0;
+  Region *lastActualRegion = prev_region((Region*)((uint8_t*)((uint32_t*)listOfAllRegions)[2] - sizeof(Region)));
+  info.keepcost = region_is_free(lastActualRegion) ? lastActualRegion->size : 0;
 
   Region *root = listOfAllRegions;
   while(root)
@@ -1198,13 +1201,6 @@ struct mallinfo emmalloc_mallinfo()
 
       if (region_is_free(r))
       {
-        if (r > highestFreeRegion)
-        {
-          // Note: we report keepcost even though malloc_trim() does not
-          // actually trim any memory.
-          highestFreeRegion = r;
-          info.keepcost = region_payload_end_ptr(r) - region_payload_start_ptr(r);
-        }
         // Count only the payload of the free block towards free memory.
         info.fordblks += region_payload_end_ptr(r) - region_payload_start_ptr(r);
         // But the header data of the free block goes towards used memory.
@@ -1229,14 +1225,97 @@ struct mallinfo emmalloc_mallinfo()
 }
 extern __typeof(emmalloc_mallinfo) mallinfo __attribute__((weak, alias("emmalloc_mallinfo")));
 
+// Note! This function is not fully multithreadin safe: while this function is running, other threads should not be
+// allowed to call sbrk()!
+static int trim_dynamic_heap_reservation(size_t pad)
+{
+  ASSERT_MALLOC_IS_ACQUIRED();
+
+  if (!listOfAllRegions)
+    return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
+  uint32_t *previousSbrkEndAddress = (uint32_t*)((uint32_t*)listOfAllRegions)[2];
+  assert(sbrk(0) == previousSbrkEndAddress);
+  uint32_t lastMemoryRegionSize = previousSbrkEndAddress[-1];
+  assert(lastMemoryRegionSize == 16); // // The last memory region should be a sentinel node of exactly 16 bytes in size.
+  Region *endSentinelRegion = (Region*)((uint8_t*)previousSbrkEndAddress - sizeof(Region));
+  Region *lastActualRegion = prev_region(endSentinelRegion);
+
+  // Round padding up to multiple of 4 bytes to keep sbrk() and memory region alignment intact.
+  // Also have at least 8 bytes of payload so that we can form a full free region.
+  size_t newRegionSize = (size_t)ALIGN_UP(pad, 4);
+  if (pad > 0)
+    newRegionSize += sizeof(Region) - (newRegionSize - pad);
+
+  if (!region_is_free(lastActualRegion) || lastActualRegion->size <= newRegionSize)
+    return 0; // Last actual region is in use, or caller desired to leave more free memory intact than there is.
+
+  // This many bytes will be shrunk away.
+  size_t shrinkAmount = lastActualRegion->size - newRegionSize;
+  assert(HAS_ALIGNMENT(shrinkAmount, 4));
+
+  unlink_from_free_list(lastActualRegion);
+  // If pad == 0, we should delete the last free region altogether. If pad > 0,
+  // shrink the last free region to the desired size.
+  if (newRegionSize > 0)
+  {
+    create_free_region(lastActualRegion, newRegionSize);
+    link_to_free_list(lastActualRegion);
+  }
+
+  // Recreate the sentinel region at the end of the last free region
+  endSentinelRegion = (Region*)((uint8_t*)lastActualRegion + newRegionSize);
+  create_used_region(endSentinelRegion, sizeof(Region));
+
+  // And update the size field of the whole region block.
+  ((uint32_t*)listOfAllRegions)[2] = (uint32_t)endSentinelRegion + sizeof(Region);
+
+  // Finally call sbrk() to shrink the memory area.
+  void *oldSbrk = sbrk(-(intptr_t)shrinkAmount);
+  assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
+  assert(oldSbrk == previousSbrkEndAddress); // Another thread should not have raced to increase sbrk() on us!
+
+  // All successful, and we actually trimmed memory!
+  return 1;
+}
+
 int emmalloc_malloc_trim(size_t pad)
 {
-  // NOTE: malloc_trim() is not currently implemented. Currently sbrk() does
-  // not allow shrinking the heap size, and neither does WebAssembly allow
-  // shrinking the heap. We could apply trimming to DYNAMICTOP though.
-  return 0;
+  MALLOC_ACQUIRE();
+  int success = trim_dynamic_heap_reservation(pad);
+  MALLOC_RELEASE();
+  return success;
 }
 extern __typeof(emmalloc_malloc_trim) malloc_trim __attribute__((weak, alias("emmalloc_malloc_trim")));
+
+#if 0
+// TODO: In wasm2js/asm.js builds, we could use the following API to actually shrink the heap size, but in
+// WebAssembly builds this won't work. Keeping this code here for future use.
+
+emmalloc.h:
+// Shrinks the asm.js/wasm2js heap to the minimum size, releasing memory back to the system.
+// Returns 1 if memory was actually freed, and 0 if not. In WebAssembly builds, this function
+// does nothing, because it is not possible to shrink the Wasm heap size once it has grown.
+// Call emmalloc_malloc_trim() first before calling this function to maximize the amount of
+// free memory that is released.
+int emmalloc_shrink_heap(void);
+
+emmalloc.c:
+int emmalloc_shrink_heap()
+{
+  MALLOC_ACQUIRE();
+  size_t sbrkTop = (size_t)*emscripten_get_sbrk_ptr();
+  size_t heapSize = emscripten_get_heap_size();
+  assert(heapSize >= sbrkTop);
+  int success = 0;
+  if (sbrkTop < heapSize)
+  {
+    success = emscripten_realloc_buffer(sbrkTop);
+    assert(!success || emscripten_get_heap_size() == sbrkTop);
+  }
+  MALLOC_RELEASE();
+  return success;
+}
+#endif
 
 size_t emmalloc_dynamic_heap_size()
 {

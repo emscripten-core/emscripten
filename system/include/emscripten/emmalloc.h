@@ -79,8 +79,10 @@ void *emmalloc_calloc(size_t num, size_t size);
 struct mallinfo mallinfo();
 struct mallinfo emmalloc_mallinfo();
 
-// malloc_trim() frees up unused memory back to the system. Note: currently not implemented,
-// but only provided for cross-compilation compatibility. Always returns 0.
+// malloc_trim() returns unused dynamic memory back to the WebAssembly heap. Returns 1 if it
+// actually freed any memory, and 0 if not. Note: this function does not release memory back to
+// the system, but it only marks memory held by emmalloc back to unused state for other users
+// of sbrk() to claim.
 int malloc_trim(size_t pad);
 int emmalloc_malloc_trim(size_t pad);
 
