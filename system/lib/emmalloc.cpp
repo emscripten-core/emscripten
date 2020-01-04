@@ -47,6 +47,7 @@
 #include <malloc.h>
 #include <emscripten.h>
 #include <emscripten/heap.h>
+#include <emscripten/threading.h>
 
 #ifdef __EMSCRIPTEN_TRACING__
 #include <emscripten/trace.h>
