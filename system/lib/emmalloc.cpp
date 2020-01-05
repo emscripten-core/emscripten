@@ -533,7 +533,7 @@ static bool claim_more_memory(size_t numBytes)
     return false;
   }
 #ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory - claimed ' + $0 + '-' + $1 + ' via sbrk()'), startPtr, startPtr + numBytes);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('claim_more_memory - claimed ' + $0.toString(16) + '-' + $1.toString(16) + ' (' + $2 + ' bytes) via sbrk()'), startPtr, startPtr + numBytes, numBytes);
 #endif
   assert(HAS_ALIGNMENT(startPtr, 4));
   uint8_t *endPtr = startPtr + numBytes;
@@ -681,7 +681,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 #endif
 
 #ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr='+$0+', align='+$1+', payload size=' + $2 + ')'), freeRegion, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_allocate - succeeded allocating memory, region ptr=' + $0.toString(16) + ', align=' + $1 + ', payload size=' + $2 + ' bytes)'), freeRegion, alignment, size);
 #endif
 
   return (uint8_t*)freeRegion + sizeof(uint32_t);
@@ -708,7 +708,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   ASSERT_MALLOC_IS_ACQUIRED();
 
 #ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align='+$0+', size=' + $1 + ')'), alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('allocate_memory(align=' + $0 + ', size=' + $1 + ' bytes)'), alignment, size);
 #endif
 
 #ifdef EMMALLOC_DEBUG
@@ -872,7 +872,7 @@ void emmalloc_free(void *ptr)
     return;
 
 #ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('free(ptr='+$0+')'), ptr);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('free(ptr='+$0.toString(16)+')'), ptr);
 #endif
 
   uint8_t *regionStartPtr = (uint8_t*)ptr - sizeof(uint32_t);
@@ -933,7 +933,7 @@ static int attempt_region_resize(Region *region, size_t size)
   assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
 
 #ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize(region='+$0+', size='+$1+')'), region, size);
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('attempt_region_resize(region=' + $0.toString(16) + ', size=' + $1 + ' bytes)'), region, size);
 #endif
 
   // First attempt to resize this region, if the next region that follows this one

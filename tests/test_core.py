@@ -906,39 +906,33 @@ base align: 0, 0, 0, 0'''])
     # in newer clang+llvm, the internal calls to malloc in emmalloc may be optimized under
     # the assumption that they are external, so like in system_libs.py where we build
     # malloc, we need to disable builtin here too
-    self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-fno-builtin'] + list(args)
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
-                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
-                open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
+    self.do_run(open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                 open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
   def test_emmalloc_usable_size(self, *args):
-    self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-fno-builtin'] + list(args)
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
-                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
-                open(path_from_root('tests', 'test_malloc_usable_size.c')).read(),
+    self.do_run(open(path_from_root('tests', 'test_malloc_usable_size.c')).read(),
                 open(path_from_root('tests', 'test_malloc_usable_size.txt')).read())
 
+  @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
   def test_emmalloc_memory_statistics(self, *args):
-    self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '--js-library', path_from_root('src', 'library_emmalloc.js'), '-g'] + list(args)
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-g'] + list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
-                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
-                open(path_from_root('tests', 'test_emmalloc_memory_statistics.cpp')).read(),
+    self.do_run(open(path_from_root('tests', 'test_emmalloc_memory_statistics.cpp')).read(),
                 open(path_from_root('tests', 'test_emmalloc_memory_statistics.txt')).read())
 
+  @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
   def test_emmalloc_trim(self, *args):
-    self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '--js-library', path_from_root('src', 'library_emmalloc.js'), '-g'] + list(args)
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
 
-    self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
-                open(path_from_root('system', 'lib', 'sbrk.c')).read() +
-                open(path_from_root('tests', 'test_emmalloc_trim.cpp')).read(),
+    self.do_run(open(path_from_root('tests', 'test_emmalloc_trim.cpp')).read(),
                 open(path_from_root('tests', 'test_emmalloc_trim.txt')).read())
 
   def test_newstruct(self):

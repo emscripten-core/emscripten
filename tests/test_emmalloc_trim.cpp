@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <unistd.h>
 #include <emscripten/emmalloc.h>
 #include <emscripten/heap.h>
 

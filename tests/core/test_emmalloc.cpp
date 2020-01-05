@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <emscripten.h>
 
@@ -13,7 +14,7 @@
 #define RANDOM_ITERS 12345
 #endif
 
-extern void emmalloc_blank_slate_from_orbit();
+extern "C" void emmalloc_blank_slate_from_orbit();
 
 // Test emmalloc internals, but through the external interface. We expect
 // very specific outputs here based on the internals, this test would not
