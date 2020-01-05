@@ -45,6 +45,13 @@ void busy_sleep(double msecs)
 		;
 }
 
+EMSCRIPTEN_KEEPALIVE
+extern "C" int notify() {
+	wait(&threadStarted);
+	mainThreadTime = emscripten_get_now();
+	wake(&timeReceived);
+}
+
 int main()
 {
 	// Cause a one second delay between main() and pthread start that might have a chance to drift the wallclocks on emscripten_get_now().
@@ -52,9 +59,11 @@ int main()
 
 	pthread_t thread;
 	pthread_create(&thread, NULL, thread_main, NULL);
-	wait(&threadStarted);
-	mainThreadTime = emscripten_get_now();
-	wake(&timeReceived);
 
-	EM_ASM(noExitRuntime=true);
+	EM_ASM({
+        noExitRuntime=true;
+        setTimeout(function() {
+          Module._notify();
+        });
+    });
 }
