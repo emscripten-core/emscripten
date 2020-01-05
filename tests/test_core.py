@@ -925,7 +925,7 @@ base align: 0, 0, 0, 0'''])
 
   def test_emmalloc_memory_statistics(self, *args):
     self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '--js-library', path_from_root('src', 'library_emmalloc.js') , '-g'] + list(args)
+    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '--js-library', path_from_root('src', 'library_emmalloc.js'), '-g'] + list(args)
 
     self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
                 open(path_from_root('system', 'lib', 'sbrk.c')).read() +
@@ -934,7 +934,7 @@ base align: 0, 0, 0, 0'''])
 
   def test_emmalloc_trim(self, *args):
     self.set_setting('MALLOC', 'none')
-    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '--js-library', path_from_root('src', 'library_emmalloc.js') , '-g'] + list(args)
+    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '--js-library', path_from_root('src', 'library_emmalloc.js'), '-g'] + list(args)
 
     self.do_run(open(path_from_root('system', 'lib', 'emmalloc.cpp')).read() +
                 open(path_from_root('system', 'lib', 'sbrk.c')).read() +
