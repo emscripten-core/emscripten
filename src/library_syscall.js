@@ -69,9 +69,9 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
-    doMsync: function(addr, stream, len, flags) {
+    doMsync: function(addr, stream, len, flags, offset) {
       var buffer = new Uint8Array(HEAPU8.subarray(addr, addr + len));
-      FS.msync(stream, buffer, 0, len, flags);
+      FS.msync(stream, buffer, offset, len, flags);
     },
     doMkdir: function(path, mode) {
       // remove a trailing slash, if one - /a/b/ has basename of '', but
@@ -254,7 +254,7 @@ var SyscallsLibrary = {
       ptr = res.ptr;
       allocated = res.allocated;
     }
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, offset: off };
     return ptr;
   },
 
@@ -272,7 +272,7 @@ var SyscallsLibrary = {
     if (!info) return 0;
     if (len === info.len) {
       var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags);
+      SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
       FS.munmap(stream);
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
@@ -855,7 +855,7 @@ var SyscallsLibrary = {
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), flags = SYSCALLS.get();
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
-    SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
+    SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
   __syscall147__deps: ['$PROCINFO'],
