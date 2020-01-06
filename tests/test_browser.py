@@ -4584,6 +4584,13 @@ window.close = function() {
     run(['-s', 'ASSERTIONS=1'])
     run(['-s', 'PROXY_TO_PTHREAD=1'])
 
+  # Tests that time in a pthread is relative to the main thread, so measurements
+  # on different threads are still monotonic, as if checking a single central
+  # clock.
+  @requires_threads
+  def test_pthread_reltime(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_reltime.cpp'), expected='3', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
+
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
   def test_load_js_from_blob_with_pthreads(self):
