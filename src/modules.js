@@ -134,7 +134,7 @@ var LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
-    if (USE_WEBGL2) {
+    if (MAX_WEBGL_VERSION >= 2) {
       libraries.push('library_webgl2.js');
     }
 
@@ -425,7 +425,6 @@ function exportRuntime() {
   ];
 
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('Pointer_stringify');
     runtimeElements.push('warnOnce');
     runtimeElements.push('stackSave');
     runtimeElements.push('stackRestore');
@@ -445,8 +444,12 @@ function exportRuntime() {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    ['PThread', 'ExitStatus', 'tempDoublePtr', 'wasmMemory', '_pthread_self',
-     'ExitStatus', 'tempDoublePtr'].forEach(function(x) {
+    var threadExports = ['PThread', 'ExitStatus', 'tempDoublePtr', '_pthread_self'];
+    if (WASM) {
+      threadExports.push('wasmMemory');
+    }
+
+    threadExports.forEach(function(x) {
       EXPORTED_RUNTIME_METHODS_SET[x] = 1;
       runtimeElements.push(x);
     });

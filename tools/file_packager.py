@@ -453,9 +453,9 @@ if has_preloaded:
     };
 %s
   ''' % (create_preloaded if use_preload_plugins else create_data, '''
-        var files = metadata.files;
+        var files = metadata['files'];
         for (var i = 0; i < files.length; ++i) {
-          new DataRequest(files[i].start, files[i].end, files[i].audio).open('GET', files[i].filename);
+          new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio']).open('GET', files[i]['filename']);
         }
 ''' if not lz4 else '')
 
@@ -510,7 +510,7 @@ if has_preloaded:
         DataRequest.prototype.byteArray = byteArray;
   '''
     use_data += '''
-          var files = metadata.files;
+          var files = metadata['files'];
           for (var i = 0; i < files.length; ++i) {
             DataRequest.prototype.requests[files[i].filename].onload();
           }
@@ -561,8 +561,8 @@ if has_preloaded:
   metadata['remote_package_size'] = remote_package_size
   metadata['package_uuid'] = str(package_uuid)
   ret += '''
-    var REMOTE_PACKAGE_SIZE = metadata.remote_package_size;
-    var PACKAGE_UUID = metadata.package_uuid;
+    var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];
+    var PACKAGE_UUID = metadata['package_uuid'];
   '''
 
   if use_preload_cache:
@@ -639,8 +639,8 @@ if has_preloaded:
               var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
               var putMetadataRequest = metadata.put(
                 {
-                  uuid: packageMeta.uuid,
-                  chunkCount: chunkCount
+                  'uuid': packageMeta.uuid,
+                  'chunkCount': chunkCount
                 },
                 'metadata/' + packageName
               );
@@ -668,7 +668,7 @@ if has_preloaded:
           if (!result) {
             return callback(false, null);
           } else {
-            return callback(PACKAGE_UUID === result.uuid, result);
+            return callback(PACKAGE_UUID === result['uuid'], result);
           }
         };
         getRequest.onerror = function(error) {
@@ -682,19 +682,20 @@ if has_preloaded:
 
         var chunksDone = 0;
         var totalSize = 0;
-        var chunks = new Array(metadata.chunkCount);
+        var chunkCount = metadata['chunkCount'];
+        var chunks = new Array(chunkCount);
 
-        for (var chunkId = 0; chunkId < metadata.chunkCount; chunkId++) {
+        for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
           var getRequest = packages.get('package/' + packageName + '/' + chunkId);
           getRequest.onsuccess = function(event) {
             // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
-            if (metadata.chunkCount == 1) {
+            if (chunkCount == 1) {
               callback(event.target.result);
             } else {
               chunksDone++;
               totalSize += event.target.result.byteLength;
               chunks.push(event.target.result);
-              if (chunksDone == metadata.chunkCount) {
+              if (chunksDone == chunkCount) {
                 if (chunksDone == 1) {
                   callback(event.target.result);
                 } else {

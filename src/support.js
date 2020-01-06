@@ -761,7 +761,7 @@ function addFunctionWasm(func, sig) {
   try {
     table.grow(1);
   } catch (err) {
-    if (!err instanceof RangeError) {
+    if (!(err instanceof RangeError)) {
       throw err;
     }
     throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
@@ -772,7 +772,7 @@ function addFunctionWasm(func, sig) {
     // Attempting to call this with JS function will cause of table.set() to fail
     table.set(ret, func);
   } catch (err) {
-    if (!err instanceof TypeError) {
+    if (!(err instanceof TypeError)) {
       throw err;
     }
     assert(typeof sig !== 'undefined', 'Missing signature argument to addFunction');
@@ -1007,10 +1007,10 @@ GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
 
 #if WASM_BACKEND && USE_PTHREADS
-// The wasm backend path does not have a way to set the stack max, so we can
-// just implement this function in a trivial way
-function establishStackSpace(base, max) {
-  stackRestore(max);
+// The wasm backend path does not have a way to set the stack max, so ignore
+// the stack max parameter, this function only resets the stack base.
+function establishStackSpace(base/*, max*/) {
+  stackRestore(base);
 }
 
 // JS library code refers to Atomics in the manner used from asm.js, provide

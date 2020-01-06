@@ -15,7 +15,9 @@ void sound_loop_then_quit() {
 
     emscripten_cancel_main_loop();
     printf("Shutting down\n");
+#ifdef REPORT_RESULT
     REPORT_RESULT(1);
+#endif
 }
 
 int main(int argc, char* argv[]){

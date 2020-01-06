@@ -391,7 +391,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return self.get_setting('EMTERPRETIFY')
 
   def is_wasm(self):
-    return self.is_wasm_backend() or self.get_setting('WASM') != 0
+    return self.get_setting('WASM') != 0
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
@@ -449,6 +449,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
+
+    # Use emscripten root for node module lookup
+    os.environ['NODE_PATH'] = path_from_root('node_modules')
 
     if not self.save_dir:
       self.has_prev_ll = False
