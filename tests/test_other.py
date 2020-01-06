@@ -1564,7 +1564,7 @@ int f() {
     self.assertEqual(text.count('common_'), 2)
     for line in text.split('\n'):
       # should not have huge hash names
-      self.assertLess(len(line), 20, line)
+      self.assertLess(len(line), 30, line)
 
     create_test_file('main.c', r'''
       void a(void);
