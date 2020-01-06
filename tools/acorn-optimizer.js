@@ -445,6 +445,12 @@ function applyImportAndExportNameChanges(ast) {
           setLiteralValue(value.property, mapping[name]);
         }
       }
+    } else if (node.type === 'CallExpression' && isAsmUse(node.callee)) { // asm["___wasm_call_ctors"](); -> asm["M"]();
+      var callee = node.callee;
+      var name = callee.property.value;
+      if (mapping[name]) {
+        setLiteralValue(callee.property, mapping[name]);
+      }
     } else if (isModuleAsmUse(node)) {
       var prop = node.property;
       var name = prop.value;

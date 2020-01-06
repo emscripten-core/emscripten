@@ -13,13 +13,13 @@ var LibraryWebGL2 = {
   glGetStringi__sig: 'iii',
   glGetStringi: function(name, index) {
     if (GL.currentContext.version < 2) {
-      GL.recordError(0x0502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
+      GL.recordError(0x502 /* GL_INVALID_OPERATION */); // Calling GLES3/WebGL2 function with a GLES2/WebGL1 context
       return 0;
     }
     var stringiCache = GL.stringiCache[name];
     if (stringiCache) {
       if (index < 0 || index >= stringiCache.length) {
-        GL.recordError(0x0501/*GL_INVALID_VALUE*/);
+        GL.recordError(0x501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
         err('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ')!');
 #endif
@@ -37,7 +37,7 @@ var LibraryWebGL2 = {
 
         stringiCache = GL.stringiCache[name] = exts;
         if (index < 0 || index >= stringiCache.length) {
-          GL.recordError(0x0501/*GL_INVALID_VALUE*/);
+          GL.recordError(0x501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
           err('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ') in a call to GL_EXTENSIONS!');
 #endif
@@ -45,7 +45,7 @@ var LibraryWebGL2 = {
         }
         return stringiCache[index];
       default:
-        GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+        GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glGetStringi: Unknown parameter ' + name + '!');
 #endif
@@ -65,7 +65,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     if (!params) {
@@ -74,7 +74,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     var ret = GLctx['getInternalformatParameter'](target, internalformat, pname);
@@ -110,7 +110,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i64') }}};
@@ -215,7 +215,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetQueryiv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     {{{ makeSetValue('params', '0', 'GLctx[\'getQuery\'](target, pname)', 'i32') }}};
@@ -229,7 +229,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetQueryObjectuiv(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
 #if GL_ASSERTIONS
@@ -326,7 +326,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     sampler = GL.samplers[sampler];
@@ -341,7 +341,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     sampler = GL.samplers[sampler];
@@ -424,7 +424,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetInteger(64)i_v(target=' + target + ', index=' + index + ', data=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     var result = GLctx['getIndexedParameter'](target, index);
@@ -444,7 +444,7 @@ var LibraryWebGL2 = {
               ret = 0;
               break;
             default: {
-              GL.recordError(0x0500); // GL_INVALID_ENUM
+              GL.recordError(0x500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
               err('GL_INVALID_ENUM in glGetInteger(64)i_v(' + target + ') and it returns null!');
 #endif
@@ -454,7 +454,7 @@ var LibraryWebGL2 = {
         } else if (result instanceof WebGLBuffer) {
           ret = result.name | 0;
         } else {
-          GL.recordError(0x0500); // GL_INVALID_ENUM
+          GL.recordError(0x500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGetInteger(64)i_v: Unknown object returned from WebGL getIndexedParameter(' + target + ')!');
 #endif
@@ -462,7 +462,7 @@ var LibraryWebGL2 = {
         }
         break;
       default:
-        GL.recordError(0x0500); // GL_INVALID_ENUM
+        GL.recordError(0x500); // GL_INVALID_ENUM
 #if GL_ASSERTIONS
         err('GL_INVALID_ENUM in glGetInteger(64)i_v: Native code calling glGetInteger(64)i_v(' + target + ') and it returns ' + result + ' of type ' + typeof(result) + '!');
 #endif
@@ -518,11 +518,11 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetUniformIndices(program=' + program + ', uniformCount=' + uniformCount + ', uniformNames=' + uniformNames + ', uniformIndices=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     if (uniformCount > 0 && (uniformNames == 0 || uniformIndices == 0)) {
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     program = GL.programs[program];
@@ -550,11 +550,11 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetActiveUniformsiv(program=' + program + ', uniformCount=' + uniformCount + ', uniformIndices=' + uniformIndices + ', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     if (uniformCount > 0 && uniformIndices == 0) {
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     program = GL.programs[program];
@@ -588,7 +588,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetActiveUniformBlockiv(program=' + program + ', uniformBlockIndex=' + uniformBlockIndex + ', pname=' + pname + ', params=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
 #if GL_ASSERTIONS
@@ -686,7 +686,7 @@ var LibraryWebGL2 = {
     if (!id) return;
     var sync = GL.syncs[id];
     if (!sync) { // glDeleteSync signals an error when deleting a nonexisting object, unlike some other GL delete functions.
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     GLctx.deleteSync(sync);
@@ -723,7 +723,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values='+values+'): Function called with bufSize < 0!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     if (!values) {
@@ -732,7 +732,7 @@ var LibraryWebGL2 = {
 #if GL_ASSERTIONS
       err('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values=0): Function called with null out pointer!');
 #endif
-      GL.recordError(0x0501 /* GL_INVALID_VALUE */);
+      GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
     var ret = GLctx.getSyncParameter(GL.syncs[sync], pname);
@@ -917,7 +917,7 @@ var LibraryWebGL2 = {
 
   glProgramParameteri__sig: 'viii',
   glProgramParameteri: function(program, pname, value) {
-    GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+    GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_ENUM in glProgramParameteri: WebGL does not support binary shader formats! Calls to glProgramParameteri always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif
@@ -925,7 +925,7 @@ var LibraryWebGL2 = {
 
   glGetProgramBinary__sig: 'viiiii',
   glGetProgramBinary: function(program, bufSize, length, binaryFormat, binary) {
-    GL.recordError(0x0502/*GL_INVALID_OPERATION*/);
+    GL.recordError(0x502/*GL_INVALID_OPERATION*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_OPERATION in glGetProgramBinary: WebGL does not support binary shader formats! Calls to glGetProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif
@@ -933,7 +933,7 @@ var LibraryWebGL2 = {
 
   glProgramBinary__sig: 'viiii',
   glProgramBinary: function(program, binaryFormat, binary, length) {
-    GL.recordError(0x0500/*GL_INVALID_ENUM*/);
+    GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
     err("GL_INVALID_ENUM in glProgramBinary: WebGL does not support binary shader formats! Calls to glProgramBinary always fail. See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.4");
 #endif

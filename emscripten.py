@@ -1765,6 +1765,7 @@ var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
+
     receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
@@ -2276,7 +2277,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     pass
 
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
-  receiving = create_receiving_wasm(exports)
+  receiving = create_receiving_wasm(exports, metadata['initializers'])
 
   if shared.Settings.MINIMAL_RUNTIME:
     post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
@@ -2344,6 +2345,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # so that indirect calls have the right type, so export those.
   if shared.Settings.RELOCATABLE:
     args.append('--pass-arg=legalize-js-interface-export-originals')
+  if shared.Settings.FULL_DWARF:
+    args.append('--dwarf')
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
                                                 outfile=wasm,
@@ -2632,11 +2635,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-def create_receiving_wasm(exports):
+def create_receiving_wasm(exports, initializers):
+  exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+
   receiving = []
-  if shared.Settings.MINIMAL_RUNTIME or not shared.Settings.ASSERTIONS:
-    runtime_assertions = ''
-  else:
+  runtime_assertions = ''
+  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
@@ -2656,13 +2660,13 @@ asm["%(e)s"] = function() {%(assertions)s
         # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
         # var asm = output.instance.exports;
         # _main = asm["_main"];
-        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports]
+        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
       else:
         if shared.Settings.MINIMAL_RUNTIME:
           # In wasm2js exports can be directly processed at top level, i.e.
           # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
           # var _main = asm["_main"];
-          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports]
+          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
         else:
           receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
     else:
@@ -2688,9 +2692,19 @@ asm["%(e)s"] = function() {%(assertions)s
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      receiving.append('''\
+      if shared.Settings.ASSERTIONS:
+        # With assertions on, don't hot-swap implementation.
+        receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
   return Module["asm"]["%(e)s"].apply(null, arguments)
+};
+''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+      else:
+        # With assertions off, hot-swap implementation to avoid garbage via
+        # arguments keyword.
+        receiving.append('''\
+var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
+  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 

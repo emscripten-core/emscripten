@@ -7,10 +7,10 @@
 var ENVIRONMENT_IS_PTHREAD = Module['ENVIRONMENT_IS_PTHREAD'] || false;
 if (ENVIRONMENT_IS_PTHREAD) {
   // Grab imports from the pthread to local scope.
-  buffer = {{{EXPORT_NAME}}}['buffer'];
-  tempDoublePtr = {{{EXPORT_NAME}}}['tempDoublePtr'];
-  DYNAMIC_BASE = {{{EXPORT_NAME}}}['DYNAMIC_BASE'];
-  DYNAMICTOP_PTR = {{{EXPORT_NAME}}}['DYNAMICTOP_PTR'];
+  buffer = Module['buffer'];
+  tempDoublePtr = Module['tempDoublePtr'];
+  DYNAMIC_BASE = Module['DYNAMIC_BASE'];
+  DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
   // Note that not all runtime fields are imported above. Values for STACK_BASE, STACKTOP and STACK_MAX are not yet known at worker.js load time.
   // These will be filled in at pthread startup time (the 'run' message for a pthread - pthread start establishes the stack frame)
 }
