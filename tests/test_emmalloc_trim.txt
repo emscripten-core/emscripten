@@ -2,30 +2,30 @@ heap size: 134217728
 1
 dynamic heap 1: 37748880
 free dynamic memory 1: 84
-unclaimed heap memory 1: 91220368
-sbrk 1: 0x2901670
+unclaimed heap memory 1: 2104421504
+sbrk 1: 0x2901380
 1st trim: 1
 dynamic heap 1: 37748788
 free dynamic memory 1: 0
-unclaimed heap memory 1: 91220460
-sbrk 1: 0x2901614
+unclaimed heap memory 1: 2104421596
+sbrk 1: 0x2901324
 2nd trim: 0
 dynamic heap 2: 37748788
 free dynamic memory 2: 0
-unclaimed heap memory 2: 91220460
-sbrk 2: 0x2901614
+unclaimed heap memory 2: 2104421596
+sbrk 2: 0x2901324
 3rd trim: 1
 dynamic heap 3: 33654492
 free dynamic memory 3: 100008
-unclaimed heap memory 3: 95314756
-sbrk 3: 0x2519cbc
+unclaimed heap memory 3: 2108515892
+sbrk 3: 0x25199cc
 4th trim: 0
 dynamic heap 4: 33654492
 free dynamic memory 4: 100008
-unclaimed heap memory 4: 95314756
-sbrk 4: 0x2519cbc
+unclaimed heap memory 4: 2108515892
+sbrk 4: 0x25199cc
 5th trim: 1
 dynamic heap 5: 33554476
 free dynamic memory 5: 0
-unclaimed heap memory 5: 95414772
-sbrk 5: 0x250160c
+unclaimed heap memory 5: 2108615908
+sbrk 5: 0x250131c
