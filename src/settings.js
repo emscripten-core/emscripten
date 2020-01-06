@@ -120,7 +120,7 @@ var TOTAL_MEMORY = 16777216;
 // allocate very many small objects, you should use emmalloc since it's
 // smaller. Otherwise, if you do allocate many small objects, dlmalloc
 // is usually worth the extra size.
-var MALLOC = "emmalloc";
+var MALLOC = "dlmalloc";
 
 // If 1, then when malloc would fail we abort(). This is nonstandard behavior,
 // but makes sense for the web since we have a fixed amount of memory that
