@@ -1,7 +1,8 @@
 // wasm2js.js - enough of a polyfill for the WebAssembly object so that we can load
 // wasm2js code that way.
 
-#if LEGACY_VM_SUPPORT
+// https://caniuse.com/#feat=promises
+#if MIN_CHROME_VERSION < 33 || MIN_EDGE_VERSION < 12 || MIN_FIREFOX_VERSION < 29 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000
 // Include a Promise polyfill for legacy browsers.
 #include "promise.js"
 #endif
