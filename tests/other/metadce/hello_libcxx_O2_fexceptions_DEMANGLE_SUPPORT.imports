@@ -29,9 +29,12 @@ invoke_ii
 invoke_iii
 invoke_iiii
 invoke_iiiii
+invoke_iiiiii
 invoke_iiiiiii
 invoke_iiiiiiii
+invoke_iiiiiiiiiii
 invoke_iiiiiiiiiiii
+invoke_iiiiiiiiiiiii
 invoke_jiiii
 invoke_v
 invoke_vi
@@ -40,6 +43,7 @@ invoke_viii
 invoke_viiii
 invoke_viiiiiii
 invoke_viiiiiiiiii
+invoke_viiiiiiiiiiiiiii
 memory
 setTempRet0
 strftime_l
