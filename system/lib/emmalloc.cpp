@@ -1339,7 +1339,7 @@ emmalloc.h:
 // Shrinks the asm.js/wasm2js heap to the minimum size, releasing memory back to the system.
 // Returns 1 if memory was actually freed, and 0 if not. In WebAssembly builds, this function
 // does nothing, because it is not possible to shrink the Wasm heap size once it has grown.
-// Call emmalloc_malloc_trim() first before calling this function to maximize the amount of
+// Call emmalloc_trim() first before calling this function to maximize the amount of
 // free memory that is released.
 int emmalloc_shrink_heap(void);
 
