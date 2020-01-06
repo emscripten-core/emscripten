@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Added new system header <emscripten/heap.h>, which enables querying information
+  about the current WebAssembly heap state.
+- Reduced default geometric memory overgrowth rate from very generous 2x factor
+  to a more memory conserving +20% factor, and capped maximum reservation to 96MB
+  at most.
+- Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
+  to allow customizing the heap growth rates.
+- Renamed MEMORY_GROWTH_STEP option to MEMORY_GROWTH_LINEAR_STEP option.
 
 v1.39.5: 12/20/2019
 -------------------
@@ -45,8 +53,8 @@ v1.39.5: 12/20/2019
   and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
   of referring to DOM IDs. For more information see:
   <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
-- WASI API updated from `wasi_unstable` to `wasi_snapshot_preview1` this
-  is mostly an implementation detail but if you use `STANDALONE_WASM` it means
+- WASI API updated from `wasi_unstable` to `wasi_snapshot_preview1`. This
+  is mostly an implementation detail, but if you use `STANDALONE_WASM` it means
   that the output of emscripten now requires a runtime with
   `wasi_snapshot_preview1` support.
 - `SAFE_STACK` has been removed, as it overlaps with `STACK_OVERFLOW_CHECK`.

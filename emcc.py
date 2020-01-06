@@ -413,8 +413,8 @@ def apply_settings(changes):
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'MEMORY_GROWTH_STEP', 'GL_MAX_TEMP_BUFFER_SIZE',
-               'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
+    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
+               'GL_MAX_TEMP_BUFFER_SIZE', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
@@ -1246,11 +1246,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ALIASING_FUNCTION_POINTERS = 0
 
     if shared.Settings.LEGACY_VM_SUPPORT:
-      # legacy vms don't have wasm
-      assert not shared.Settings.WASM or shared.Settings.WASM2JS, 'LEGACY_VM_SUPPORT is only supported for asm.js, and not wasm. Build with -s WASM=0'
-      shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
-      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
-      shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
+      if not shared.Settings.WASM or shared.Settings.WASM2JS:
+        shared.Settings.POLYFILL_OLD_MATH_FUNCTIONS = 1
 
       # Support all old browser versions
       shared.Settings.MIN_FIREFOX_VERSION = 0
@@ -1258,6 +1255,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.MIN_IE_VERSION = 0
       shared.Settings.MIN_EDGE_VERSION = 0
       shared.Settings.MIN_CHROME_VERSION = 0
+
+    if shared.Settings.MIN_SAFARI_VERSION <= 9 and (not shared.Settings.WASM or shared.Settings.WASM2JS):
+      shared.Settings.WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 1
+
+    if shared.Settings.MIN_CHROME_VERSION <= 37:
+      shared.Settings.WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 1
 
     # Silently drop any individual backwards compatibility emulation flags that are known never to occur on browsers that support WebAssembly.
     if shared.Settings.WASM and not shared.Settings.WASM2JS:
@@ -1504,8 +1507,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       exit_with_error('TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
     if shared.Settings.WASM_MEM_MAX != -1 and shared.Settings.WASM_MEM_MAX % 65536 != 0:
       exit_with_error('WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX))
-    if shared.Settings.MEMORY_GROWTH_STEP != -1 and shared.Settings.MEMORY_GROWTH_STEP % 65536 != 0:
-      exit_with_error('MEMORY_GROWTH_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_STEP))
+    if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1 and shared.Settings.MEMORY_GROWTH_LINEAR_STEP % 65536 != 0:
+      exit_with_error('MEMORY_GROWTH_LINEAR_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_LINEAR_STEP))
     if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
       exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
 
@@ -3295,12 +3298,12 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
     if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE:
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
       # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
-      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm')) : b('{{{ TARGET_BASENAME }}}.wasm')"
+      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm')) : binary('{{{ TARGET_BASENAME }}}.wasm')"
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
       download_wasm = "WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'))"
   else:
-    download_wasm = "b('{{{ TARGET_BASENAME }}}.wasm')"
+    download_wasm = "binary('{{{ TARGET_BASENAME }}}.wasm')"
 
   shell = shell.replace('{{{ DOWNLOAD_WASM }}}', download_wasm)
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)

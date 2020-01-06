@@ -232,7 +232,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 1 : 0' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
-      {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '0x4' /* EGL_WINDOW_BIT */, 'i32') }}};
       return 1;
     case 0x3034: // EGL_TRANSPARENT_TYPE
       // If this returns EGL_TRANSPARENT_RGB (0x3052), transparency is used through color-keying. No such thing applies to Emscripten canvas.
@@ -264,7 +264,7 @@ var LibraryEGL = {
       return 1;
     case 0x3040: // EGL_RENDERABLE_TYPE
       // A bit combination of EGL_OPENGL_ES_BIT,EGL_OPENVG_BIT,EGL_OPENGL_ES2_BIT and EGL_OPENGL_BIT.
-      {{{ makeSetValue('value', '0', '0x0004' /* EGL_OPENGL_ES2_BIT */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '0x4' /* EGL_OPENGL_ES2_BIT */, 'i32') }}};
       return 1;
     case 0x3042: // EGL_CONFORMANT
       // "EGL_CONFORMANT is a mask indicating if a client API context created with respect to the corresponding EGLConfig will pass the required conformance tests for that API."
