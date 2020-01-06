@@ -2345,6 +2345,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # so that indirect calls have the right type, so export those.
   if shared.Settings.RELOCATABLE:
     args.append('--pass-arg=legalize-js-interface-export-originals')
+  if shared.Settings.FULL_DWARF:
+    args.append('--dwarf')
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
                                                 outfile=wasm,
