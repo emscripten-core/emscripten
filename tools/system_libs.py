@@ -975,7 +975,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
       is_debug=shared.Settings.DEBUG_LEVEL >= 3,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
-      use_64bit_ops=shared.Settings.WASM == 1,
+      use_64bit_ops=shared.Settings.WASM == 0 or (shared.Settings.WASM_BACKEND and shared.Settings.WASM2JS == 0),
       **kwargs
     )
 
