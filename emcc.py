@@ -1159,8 +1159,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORT_ALL = 1
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
-      options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
-      if not shared.Settings.WASM_BACKEND:
+      # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      options.memory_init_file = False
+      # fastcomp dynamic linking is a little odd in that EXPORT_ALL matters
+      # even for side modules.
+      if not shared.Settings.WASM_BACKEND and shared.Settings.SIDE_MODULE == 1:
         shared.Settings.EXPORT_ALL = 1
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
