@@ -86,7 +86,7 @@ struct mallinfo emmalloc_mallinfo();
 // the system, but it only marks memory held by emmalloc back to unused state for other users
 // of sbrk() to claim.
 int malloc_trim(size_t pad);
-int emmalloc_malloc_trim(size_t pad);
+int emmalloc_trim(size_t pad);
 
 // Validates the consistency of the malloc heap. Returns non-zero and prints an error to console
 // if memory map is corrupt. Returns 0 (and does not print anything) if memory is intact.

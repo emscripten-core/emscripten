@@ -68,6 +68,8 @@ extern "C"
 // configured from command line in system_libs.py build)
 // #define EMMALLOC_USE_64BIT_OPS
 
+#define EMMALLOC_EXPORT __attribute__((weak, __visibility__("default")))
+
 #define MIN(x, y) ((x) < (y) ? (x) : (y))
 #define MAX(x, y) ((x) > (y) ? (x) : (y))
 
@@ -832,14 +834,27 @@ void *emmalloc_memalign(size_t alignment, size_t size)
   return ptr;
 }
 extern __typeof(emmalloc_memalign) emscripten_builtin_memalign __attribute__((alias("emmalloc_memalign")));
-extern __typeof(emmalloc_memalign) memalign __attribute__((weak, alias("emmalloc_memalign")));
+
+void * EMMALLOC_EXPORT memalign(size_t alignment, size_t size)
+{
+  return emmalloc_memalign(alignment, size);
+}
+
+void * EMMALLOC_EXPORT aligned_alloc(size_t alignment, size_t size)
+{
+  return emmalloc_memalign(alignment, size);
+}
 
 void *emmalloc_malloc(size_t size)
 {
   return emmalloc_memalign(MALLOC_ALIGNMENT, size);
 }
 extern __typeof(emmalloc_malloc) emscripten_builtin_malloc __attribute__((alias("emmalloc_malloc")));
-extern __typeof(emmalloc_malloc) malloc __attribute__((weak, alias("emmalloc_malloc")));
+
+void * EMMALLOC_EXPORT malloc(size_t size)
+{
+  return emmalloc_malloc(size);
+}
 
 size_t emmalloc_usable_size(void *ptr)
 {
@@ -860,7 +875,11 @@ size_t emmalloc_usable_size(void *ptr)
 
   return size - REGION_HEADER_SIZE;
 }
-extern __typeof(emmalloc_usable_size) malloc_usable_size __attribute__((weak, alias("emmalloc_usable_size")));
+
+size_t EMMALLOC_EXPORT malloc_usable_size(void *ptr)
+{
+  return emmalloc_usable_size(ptr);
+}
 
 void emmalloc_free(void *ptr)
 {
@@ -922,7 +941,11 @@ void emmalloc_free(void *ptr)
 #endif
 }
 extern __typeof(emmalloc_free) emscripten_builtin_free __attribute__((alias("emmalloc_free")));
-extern __typeof(emmalloc_free) free __attribute__((weak, alias("emmalloc_free")));
+
+void EMMALLOC_EXPORT free(void *ptr)
+{
+  return emmalloc_free(ptr);
+}
 
 // Can be called to attempt to increase or decrease the size of the given region
 // to a new size (in-place). Returns 1 if resize succeeds, and 0 on failure.
@@ -1038,7 +1061,11 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
   }
   return newptr;
 }
-extern __typeof(emmalloc_aligned_realloc) aligned_realloc __attribute__((weak, alias("emmalloc_aligned_realloc")));
+
+void * EMMALLOC_EXPORT aligned_realloc(void *ptr, size_t alignment, size_t size)
+{
+  return emmalloc_aligned_realloc(ptr, alignment, size);
+}
 
 // realloc_try() is like realloc(), but only attempts to try to resize the existing memory
 // area. If resizing the existing memory area fails, then realloc_try() will return 0
@@ -1105,7 +1132,11 @@ void *emmalloc_realloc(void *ptr, size_t size)
 {
   return emmalloc_aligned_realloc(ptr, MALLOC_ALIGNMENT, size);
 }
-extern __typeof(emmalloc_realloc) realloc __attribute__((weak, alias("emmalloc_realloc")));
+
+void * EMMALLOC_EXPORT realloc(void *ptr, size_t size)
+{
+  return emmalloc_realloc(ptr, size);
+}
 
 // realloc_uninitialized() is like realloc(), but old memory contents
 // will be undefined after reallocation. (old memory is not preserved in any case)
@@ -1114,15 +1145,17 @@ void *emmalloc_realloc_uninitialized(void *ptr, size_t size)
   return emmalloc_aligned_realloc_uninitialized(ptr, MALLOC_ALIGNMENT, size);
 }
 
-extern __typeof(emmalloc_memalign) aligned_alloc __attribute__((weak, alias("emmalloc_memalign")));
-
 int emmalloc_posix_memalign(void **memptr, size_t alignment, size_t size)
 {
   assert(memptr);
   *memptr = emmalloc_memalign(alignment, size);
   return *memptr ?  0 : 12/*ENOMEM*/;
 }
-extern __typeof(emmalloc_posix_memalign) posix_memalign __attribute__((weak, alias("emmalloc_posix_memalign")));
+
+int EMMALLOC_EXPORT posix_memalign(void **memptr, size_t alignment, size_t size)
+{
+  return emmalloc_posix_memalign(memptr, alignment, size);
+}
 
 void *emmalloc_calloc(size_t num, size_t size)
 {
@@ -1132,7 +1165,11 @@ void *emmalloc_calloc(size_t num, size_t size)
     memset(ptr, 0, bytes);
   return ptr;
 }
-extern __typeof(emmalloc_calloc) calloc __attribute__((weak, alias("emmalloc_calloc")));
+
+void * EMMALLOC_EXPORT calloc(size_t num, size_t size)
+{
+  return emmalloc_calloc(num, size);
+}
 
 static int count_linked_list_size(Region *list)
 {
@@ -1222,7 +1259,11 @@ struct mallinfo emmalloc_mallinfo()
   MALLOC_RELEASE();
   return info;
 }
-extern __typeof(emmalloc_mallinfo) mallinfo __attribute__((weak, alias("emmalloc_mallinfo")));
+
+struct mallinfo EMMALLOC_EXPORT mallinfo()
+{
+  return emmalloc_mallinfo();
+}
 
 // Note! This function is not fully multithreadin safe: while this function is running, other threads should not be
 // allowed to call sbrk()!
@@ -1277,14 +1318,18 @@ static int trim_dynamic_heap_reservation(size_t pad)
   return 1;
 }
 
-int emmalloc_malloc_trim(size_t pad)
+int emmalloc_trim(size_t pad)
 {
   MALLOC_ACQUIRE();
   int success = trim_dynamic_heap_reservation(pad);
   MALLOC_RELEASE();
   return success;
 }
-extern __typeof(emmalloc_malloc_trim) malloc_trim __attribute__((weak, alias("emmalloc_malloc_trim")));
+
+int EMMALLOC_EXPORT malloc_trim(size_t pad)
+{
+  return emmalloc_trim(pad);
+}
 
 #if 0
 // TODO: In wasm2js/asm.js builds, we could use the following API to actually shrink the heap size, but in
