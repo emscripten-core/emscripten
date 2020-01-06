@@ -6,7 +6,6 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
   $PThread__deps: ['$PROCINFO', '_register_pthread_ptr',
-                   'emscripten_main_thread_process_queued_calls',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '_kill_thread',
                    '_cancel_thread', '_cleanup_thread'],
   $PThread: {
