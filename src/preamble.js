@@ -67,7 +67,6 @@ var wasmModule;
 // to avoid accessing the global scope.
 var threadInfoStruct = 0;
 var selfThreadId = 0;
-var __performance_now_clock_drift = 0;
 #if WASM_BACKEND
 var tempDoublePtr = 0;
 #endif
@@ -376,20 +375,10 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in applyStackValues later.
-#if ASSERTIONS || SAFE_STACK
+  // catch bugs, then set the real values in establishStackSpaceInJsModule later.
+#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
-
-  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
-    STACK_BASE = stackBase;
-    STACKTOP = stackTop;
-    STACK_MAX = stackMax;
-#if SAFE_STACK
-    Module['___set_stack_limit'](STACK_MAX);
-#endif
-  };
-
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
   // TODO tempDoublePtr = Module['tempDoublePtr'];

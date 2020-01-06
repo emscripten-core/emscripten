@@ -106,7 +106,7 @@ mergeInto(LibraryManager.library, {
           check.push.apply(check, FS.readdir(path).filter(isRealDir).map(toAbsolute(path)));
         }
 
-        entries[path] = { timestamp: stat.mtime };
+        entries[path] = { 'timestamp': stat.mtime };
       }
 
       return callback(null, { type: 'local', entries: entries });
@@ -134,7 +134,7 @@ mergeInto(LibraryManager.library, {
               return callback(null, { type: 'remote', db: db, entries: entries });
             }
 
-            entries[cursor.primaryKey] = { timestamp: cursor.key };
+            entries[cursor.primaryKey] = { 'timestamp': cursor.key };
 
             cursor.continue();
           };
@@ -155,28 +155,28 @@ mergeInto(LibraryManager.library, {
       }
 
       if (FS.isDir(stat.mode)) {
-        return callback(null, { timestamp: stat.mtime, mode: stat.mode });
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode });
       } else if (FS.isFile(stat.mode)) {
         // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
         // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
         node.contents = MEMFS.getFileDataAsTypedArray(node);
-        return callback(null, { timestamp: stat.mtime, mode: stat.mode, contents: node.contents });
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode, 'contents': node.contents });
       } else {
         return callback(new Error('node type not supported'));
       }
     },
     storeLocalEntry: function(path, entry, callback) {
       try {
-        if (FS.isDir(entry.mode)) {
-          FS.mkdir(path, entry.mode);
-        } else if (FS.isFile(entry.mode)) {
-          FS.writeFile(path, entry.contents, { canOwn: true });
+        if (FS.isDir(entry['mode'])) {
+          FS.mkdir(path, entry['mode']);
+        } else if (FS.isFile(entry['mode'])) {
+          FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {
           return callback(new Error('node type not supported'));
         }
 
-        FS.chmod(path, entry.mode);
-        FS.utime(path, entry.timestamp, entry.timestamp);
+        FS.chmod(path, entry['mode']);
+        FS.utime(path, entry['timestamp'], entry['timestamp']);
       } catch (e) {
         return callback(e);
       }
@@ -230,7 +230,7 @@ mergeInto(LibraryManager.library, {
       Object.keys(src.entries).forEach(function (key) {
         var e = src.entries[key];
         var e2 = dst.entries[key];
-        if (!e2 || e.timestamp > e2.timestamp) {
+        if (!e2 || e['timestamp'] > e2['timestamp']) {
           create.push(key);
           total++;
         }

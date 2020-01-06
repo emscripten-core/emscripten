@@ -1802,7 +1802,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_clientside_vertex_arrays_es3(self):
-    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'USE_WEBGL2=1', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
+    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
@@ -1984,6 +1984,11 @@ keydown(100);keyup(100); // trigger the end
   @requires_graphics_hardware
   def test_cubegeom_regal(self):
     self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-DUSE_REGAL', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=True)
+
+  @requires_threads
+  @requires_graphics_hardware
+  def test_cubegeom_regal_mt(self):
+    self.btest('cubegeom.c', reference='cubegeom.png', args=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-s', 'USE_PTHREADS=1', '-s', 'USE_REGAL=1', '-lGL', '-lSDL'], also_proxied=False)
 
   @requires_graphics_hardware
   def test_cubegeom_proc(self):
@@ -2477,7 +2482,7 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
@@ -2487,18 +2492,20 @@ void *getBindBuffer() {
       args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:
         browser_args = browser_cmd[1:]
-        if 'firefox' in browser_path and '-profile' in browser_args:
+        if 'firefox' in browser_path and ('-profile' in browser_args or '--profile' in browser_args):
           # emrun uses its own -profile, strip it out
           parser = argparse.ArgumentParser(add_help=False) # otherwise it throws with -headless
           parser.add_argument('-profile')
+          parser.add_argument('--profile')
           browser_args = parser.parse_known_args(browser_args)[1]
         if browser_args:
           args_base += ['--browser_args', ' ' + ' '.join(browser_args)]
     for args in [
         args_base,
-        args_base + ['--no_private_browsing', '--port', '6941']
+        args_base + ['--private_browsing', '--port', '6941']
     ]:
       args += [os.path.join(outdir, 'hello_world.html'), '1', '2', '--3']
+      print(' '.join(args))
       proc = run_process(args, check=False)
       stdout = open(os.path.join(outdir, 'stdout.txt'), 'r').read()
       stderr = open(os.path.join(outdir, 'stderr.txt'), 'r').read()
@@ -2617,46 +2624,46 @@ Module["preRun"].push(function () {
       ['-s', 'FULL_ES2=1'],
     ]:
       print(opts)
-      self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'] + opts, expected='0')
+      self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'] + opts, expected='0')
 
   @requires_graphics_hardware
   @requires_threads
   def test_webgl2_pthreads(self):
     # test that a program can be compiled with pthreads and render WebGL2 properly on the main thread
     # (the testcase doesn't even use threads, but is compiled with thread support).
-    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL', '-s', 'USE_PTHREADS=1'], expected='0')
 
   def test_webgl2_objects(self):
-    self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_objects.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   def test_webgl2_ubos(self):
-    self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_ubos.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_garbage_free_entrypoints(self):
-    self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1'], expected='1')
+    self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1'], expected='1')
     self.btest(path_from_root('tests', 'webgl2_garbage_free_entrypoints.cpp'), expected='1')
 
   @requires_graphics_hardware
   def test_webgl2_backwards_compatibility_emulation(self):
-    self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'USE_WEBGL2=1', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_backwards_compatibility_emulation.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION=1'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_invalid_teximage2d_type(self):
-    self.btest(path_from_root('tests', 'webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'USE_WEBGL2=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_invalid_teximage2d_type.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl_with_closure(self):
-    self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'USE_WEBGL2=1', '--closure', '1', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl_with_closure.cpp'), args=['-O2', '-s', 'MAX_WEBGL_VERSION=2', '--closure', '1', '-lGL'], expected='0')
 
   # Tests that -s GL_ASSERTIONS=1 and glVertexAttribPointer with packed types works
   @requires_graphics_hardware
   def test_webgl2_packed_types(self):
-    self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'USE_WEBGL2=1', '-s', 'GL_ASSERTIONS=1'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_draw_packed_triangle.c'), args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2', '-s', 'GL_ASSERTIONS=1'], expected='0')
 
   @requires_graphics_hardware
   def test_webgl2_pbo(self):
-    self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'USE_WEBGL2=1', '-lGL'], expected='0')
+    self.btest(path_from_root('tests', 'webgl2_pbo.cpp'), args=['-s', 'MAX_WEBGL_VERSION=2', '-lGL'], expected='0')
 
   def test_sdl_touch(self):
     for opts in [[], ['-O2', '-g1', '--closure', '1']]:
@@ -3968,10 +3975,10 @@ window.close = function() {
   def test_pthread_tls_main(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS', '-std=c++11'])
 
-  @no_fastcomp('-s SAFE_STACK is only supported on WASM backend')
+  @no_fastcomp('WASM backend stack protection')
   @requires_threads
   def test_pthread_safe_stack(self):
-    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'SAFE_STACK', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
+    self.btest(path_from_root('tests', 'core', 'test_safe_stack.c'), expected='1', args=['-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-s', 'STACK_OVERFLOW_CHECK=2', '-s', 'DEFAULT_PTHREAD_STACK_SIZE=64KB', '--pre-js', path_from_root('tests', 'pthread', 'test_safe_stack.js')])
 
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-g4']],
@@ -4243,7 +4250,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5651), 100)
+    self.assertLess(abs(size - 5680), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4293,16 +4300,16 @@ window.close = function() {
   def test_webgl_offscreen_framebuffer_state_restoration(self):
     for args in [
         # full state restoration path on WebGL 1.0
-        ['-s', 'USE_WEBGL2=0', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        ['-s', 'MAX_WEBGL_VERSION=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
         # VAO path on WebGL 1.0
-        ['-s', 'USE_WEBGL2=0'],
-        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=0'],
+        ['-s', 'MAX_WEBGL_VERSION=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=0'],
         # VAO path on WebGL 2.0
-        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-DTEST_REQUIRE_VAO=1'],
         # full state restoration path on WebGL 2.0
-        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=1', '-s', 'OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH=1'],
         # blitFramebuffer path on WebGL 2.0 (falls back to VAO on Firefox < 67)
-        ['-s', 'USE_WEBGL2=1', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
+        ['-s', 'MAX_WEBGL_VERSION=2', '-DTEST_WEBGL2=1', '-DTEST_ANTIALIAS=0'],
       ]:
       cmd = args + ['-lGL', '-s', 'OFFSCREEN_FRAMEBUFFER=1', '-DEXPLICIT_SWAP=1']
       self.btest('webgl_offscreen_framebuffer_swap_with_bad_state.c', '0', args=cmd)
@@ -4315,7 +4322,7 @@ window.close = function() {
   # Tests that using an array of structs in GL uniforms works.
   @requires_graphics_hardware
   def test_webgl_array_of_structs_uniform(self):
-    self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-s', 'USE_WEBGL2=1'], reference='webgl_array_of_structs_uniform.png')
+    self.btest('webgl_array_of_structs_uniform.c', args=['-lGL', '-s', 'MAX_WEBGL_VERSION=2'], reference='webgl_array_of_structs_uniform.png')
 
   # Tests that if a WebGL context is created in a pthread on a canvas that has not been transferred to that pthread, WebGL calls are then proxied to the main thread
   # -DTEST_OFFSCREEN_CANVAS=1: Tests that if a WebGL context is created on a pthread that has the canvas transferred to it via using Emscripten's EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES="#canvas", then OffscreenCanvas is used
@@ -4558,7 +4565,6 @@ window.close = function() {
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
-  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9062')
   @requires_threads
   def test_pthread_growth_mainthread(self):
     def run(emcc_args=[]):
@@ -4569,7 +4575,6 @@ window.close = function() {
     run(['-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests memory growth in a pthread.
-  @no_chrome('https://bugs.chromium.org/p/v8/issues/detail?id=9065')
   @requires_threads
   def test_pthread_growth(self):
     def run(emcc_args=[]):
@@ -4578,6 +4583,13 @@ window.close = function() {
     run()
     run(['-s', 'ASSERTIONS=1'])
     run(['-s', 'PROXY_TO_PTHREAD=1'])
+
+  # Tests that time in a pthread is relative to the main thread, so measurements
+  # on different threads are still monotonic, as if checking a single central
+  # clock.
+  @requires_threads
+  def test_pthread_reltime(self):
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_reltime.cpp'), expected='3', args=['-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
@@ -4895,6 +4907,12 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)
+
+  # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
+  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  def test_minimal_runtime_hello_world(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1']]:
+      self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME=1'])
 
   @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')

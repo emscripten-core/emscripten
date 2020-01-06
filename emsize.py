@@ -65,13 +65,14 @@ def print_sizes(js_file):
 
   sizes = shared.check_call([LLVM_SIZE, '-format=sysv', wasm_file],
                             stdout=subprocess.PIPE).stdout
-  lines = sizes.splitlines()
+  # llvm-size may emit some number of blank lines (after the total), ignore them
+  lines = [line for line in sizes.splitlines() if line]
 
-  # Last line is '', next-to-to last is the total. Add the JS size.
-  total = int(lines[-2].split()[-1])
+  # Last line is the total. Add the JS size.
+  total = int(lines[-1].split()[-1])
   total += js_size
 
-  for line in lines[:-2]:
+  for line in lines[:-1]:
     print(line)
 
   print('JS\t\t%s\t0' % js_size)

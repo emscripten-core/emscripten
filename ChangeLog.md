@@ -17,6 +17,18 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Added new system header <emscripten/heap.h>, which enables querying information
+  about the current WebAssembly heap state.
+- Reduced default geometric memory overgrowth rate from very generous 2x factor
+  to a more memory conserving +20% factor, and capped maximum reservation to 96MB
+  at most.
+- Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
+  to allow customizing the heap growth rates.
+- Renamed MEMORY_GROWTH_STEP option to MEMORY_GROWTH_LINEAR_STEP option.
+
+v1.39.5: 12/20/2019
+-------------------
+- Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
 - All ports now install their headers into a shared directory under
   `EM_CACHE`.  This should not really be a user visible change although one
   side effect is that once a give ports is built its headers are then
@@ -41,10 +53,14 @@ Current Trunk
   and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
   of referring to DOM IDs. For more information see:
   <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
-- WASI API updated to from `wasi_unstable` to `wasi_snapshot_preview1` this
-  is mostly an implementation detail but if you use `WASI_STANDALONE` it means
+- WASI API updated from `wasi_unstable` to `wasi_snapshot_preview1`. This
+  is mostly an implementation detail, but if you use `STANDALONE_WASM` it means
   that the output of emscripten now requires a runtime with
   `wasi_snapshot_preview1` support.
+- `SAFE_STACK` has been removed, as it overlaps with `STACK_OVERFLOW_CHECK`.
+   Replace `SAFE_STACK=1` with `STACK_OVERFLOW_CHECK=2` (note the value is 2).
+   This also has the effect of enabling stack checking on upstream builds when
+   `ASSERTIONS` are enabled (as assertions enable `STACK_OVERFLOW_CHECK=2`).
 
 v1.39.4: 12/03/2019
 -------------------
