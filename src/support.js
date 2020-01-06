@@ -508,6 +508,11 @@ function loadWebAssemblyModule(binary, flags) {
           return obj[prop] = function() {
             if (!fp) {
               var f = resolveSymbol(name, 'function', legalized);
+#if ASSERTIONS
+              // this resolved symbol must exist, as we are about to try to
+              // add it to the table; error clearly here instead of there.
+              assert(f, 'could not resolve: ' + name);
+#endif
               fp = addFunction(f, sig);
             }
             return fp;

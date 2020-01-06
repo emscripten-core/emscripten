@@ -2609,13 +2609,6 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   declared_items = ['_' + item for item in metadata['declares']]
   send_items = set(basic_funcs + invoke_funcs + em_asm_funcs + em_js_funcs + declared_items)
 
-  if shared.Settings.MAIN_MODULE == 1:
-    # Main modules must provide all JS library functions to side modules, as they
-    # may require them (in main module mode 2, the user must specify which
-    # using the normal EXPORTED_RUNTIME_METHODS method).
-    js_library_funcs = set(key for key, value in forwarded_json['Functions']['libraryFunctions'].items() if value != 2)
-    send_items = send_items.union(js_library_funcs)
-
   def fix_import_name(g):
     if g.startswith('Math_'):
       return g.split('_')[1]

@@ -1152,8 +1152,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE == 1:
+        # Main modules must provide all JS library functions to side modules, as they
+        # may require them (in main module mode 2, the user must specify which
+        # using the normal exporting method).
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
-      if not shared.Settings.WASM_BACKEND:
         shared.Settings.EXPORT_ALL = 1
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
