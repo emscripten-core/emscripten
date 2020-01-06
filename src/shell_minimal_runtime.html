@@ -2,7 +2,7 @@
 <body>
 <canvas style='display:block; margin:auto;'></canvas>
 <script>
-  function b(url) { // Downloads a binary file and outputs it in the specified callback
+  function binary(url) { // Downloads a binary file and outputs it in the specified callback
     return new Promise((ok, err) => {
       var x = new XMLHttpRequest();
       x.open('GET', url, true);
@@ -12,7 +12,7 @@
     });
   }
 
-  function s(url) { // Downloads a script file and adds it to DOM
+  function script(url) { // Downloads a script file and adds it to DOM
     return new Promise((ok, err) => {
       var s = document.createElement('script');
       s.src = url;
@@ -44,7 +44,7 @@ function revokeURL(url) {
 
 #if MODULARIZE && WASM
   // Modularized wasm, no separate .mem init file
-  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
     var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
     js({ wasm: r[1] });
   });
@@ -52,14 +52,14 @@ function revokeURL(url) {
 
 #if MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 0
   // Modularize + asm.js embedded in main runtime .js file, no separate .mem init file
-  s('{{{ TARGET_BASENAME }}}.js').then((r) => {
+  script('{{{ TARGET_BASENAME }}}.js').then((r) => {
     r();
   });
 #endif
 
 #if MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 1
   // Modularize + asm.js embedded in main runtime .js file, separate .mem init file
-  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
     var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
     js({ mem: r[1] });
   });
@@ -67,7 +67,7 @@ function revokeURL(url) {
 
 #if MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 0
   // Modularize + asm.js in its own file, no separate .mem init file
-  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
     var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
     js({ asm: r[1] });
   });
@@ -75,7 +75,7 @@ function revokeURL(url) {
 
 #if MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 1
   // Modularize + asm.js in its own file, separate .mem init file
-  Promise.all([s('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
     var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
     js({ asm: r[1], mem: r[2] });
   });
@@ -83,41 +83,41 @@ function revokeURL(url) {
 
 #if !MODULARIZE && WASM
   // No modularize, no separate .mem init file
-  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
     Module.wasm = r[1];
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
-    s(url).then(() => { revokeURL(url) });
+    script(url).then(() => { revokeURL(url) });
   });
 #endif
 
 #if !MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 0
   // No modularize, asm.js embedded in main runtime .js file, no separate .mem init file
-  s('{{{ TARGET_BASENAME }}}.js');
+  script('{{{ TARGET_BASENAME }}}.js');
 #endif
 
 #if !MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 1
   // No modularize, asm.js embedded in main runtime .js file, separate .mem init file
-  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
     Module.mem = r[1];
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
-    s(url).then(() => { revokeURL(url) });
+    script(url).then(() => { revokeURL(url) });
   });
 #endif
 
 #if !MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 0
   // No modularize, asm.js in its own file, no separate .mem init file
-  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
-    s(url).then(() => { revokeURL(url) });
+    script(url).then(() => { revokeURL(url) });
   });
 #endif
 
 #if !MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 1
   // No modularize, asm.js in its own file, separate .mem init file
-  Promise.all([b('{{{ TARGET_BASENAME }}}.js'), s('{{{ TARGET_BASENAME }}}.asm.js'), b('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
     Module.mem = r[2];
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
-    s(url).then(() => { revokeURL(url) });
+    script(url).then(() => { revokeURL(url) });
   });
 #endif
 

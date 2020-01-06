@@ -425,7 +425,6 @@ function exportRuntime() {
   ];
 
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('Pointer_stringify');
     runtimeElements.push('warnOnce');
     runtimeElements.push('stackSave');
     runtimeElements.push('stackRestore');

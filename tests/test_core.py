@@ -2034,15 +2034,24 @@ int main(int argc, char **argv) {
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
-  def test_memorygrowth_memory_growth_step(self):
+  def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_STACK=1Mb', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=130Mb', '-s', 'MEMORY_GROWTH_STEP=1Mb']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_STACK=1Mb', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=130Mb', '-s', 'MEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_memory_growth_step')
+
+  def test_memorygrowth_geometric_step(self):
+    if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
+      self.skipTest('test needs to modify memory growth')
+    if not self.is_wasm():
+      self.skipTest('wasm memory specific test')
+
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MEMORY_GROWTH_GEOMETRIC_STEP=15', '-s', 'MEMORY_GROWTH_GEOMETRIC_CAP=0']
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_geometric_step')
 
   def test_memorygrowth_3_force_fail_reallocBuffer(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -8163,8 +8172,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_hello_world(self):
-    if '-O2' in self.emcc_args or '-O3' in self.emcc_args or '-Os' in self.emcc_args or '-Oz' in self.emcc_args:
-      return self.skipTest('TODO: -O2 and higher with wasm backend')
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
       self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args

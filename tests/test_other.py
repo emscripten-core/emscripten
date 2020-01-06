@@ -6160,7 +6160,10 @@ int main() {
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'])
     # just care about message regarding allocating over 1GB of memory
     output = run_js('a.out.js', stderr=PIPE, full_output=True)
-    self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1543503872\n''', output)
+    if self.is_wasm_backend():
+      self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1473314816\n''', output)
+    else:
+      self.assertContained('''Warning: Enlarging memory arrays, this is not fast! 16777216,1476395008\n''', output)
     print('wasm')
     run_process([PYTHON, EMCC, 'main.cpp', '-s', 'ALLOW_MEMORY_GROWTH=1'])
     # no message about growth, just check return code
@@ -9566,11 +9569,11 @@ int main () {
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
     test_cases = [
-      (asmjs + opts, hello_world_sources, {'a.html': 1453, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-      (opts, hello_world_sources, {'a.html': 1415, 'a.js': 604, 'a.wasm': 86}),
-      (asmjs + opts, hello_webgl_sources, {'a.html': 1581, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
-      (opts, hello_webgl_sources, {'a.html': 1537, 'a.js': 4837, 'a.wasm': 8841}),
-      (opts, hello_webgl2_sources, {'a.html': 1537, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
+      (asmjs + opts, hello_world_sources, {'a.html': 1483, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+      (opts, hello_world_sources, {'a.html': 1440, 'a.js': 604, 'a.wasm': 86}),
+      (asmjs + opts, hello_webgl_sources, {'a.html': 1606, 'a.js': 4880, 'a.asm.js': 11139, 'a.mem': 321}),
+      (opts, hello_webgl_sources, {'a.html': 1557, 'a.js': 4837, 'a.wasm': 8841}),
+      (opts, hello_webgl2_sources, {'a.html': 1557, 'a.js': 5324, 'a.wasm': 8841}) # Compare how WebGL2 sizes stack up with WebGL 1
     ]
 
     success = True
