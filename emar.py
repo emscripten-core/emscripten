@@ -55,6 +55,7 @@ def run():
       else:
         out_arg_index = 2
 
+      target_full_name = os.path.abspath(newargs[out_arg_index])
       # Add a hash to colliding basename, to make them unique.
       for j in range(out_arg_index + 1, len(newargs)):
         orig_name = newargs[j]
@@ -62,9 +63,10 @@ def run():
         dirname = os.path.dirname(full_name)
         basename = os.path.basename(full_name)
 
-        h = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
+        h1 = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
+        h2 = hashlib.md5(target_full_name.encode('utf-8')).hexdigest()[:8]
         parts = basename.split('.')
-        parts[0] += '_' + h
+        parts[0] += '_' + h1 + '_' + h2
         newname = '.'.join(parts)
         full_newname = os.path.join(dirname, newname)
         try:
