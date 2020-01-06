@@ -1484,6 +1484,11 @@ var EMBIND_STD_STRING_IS_UTF8 = 1;
 // contexts. This needs browser support for the OffscreenCanvas specification.
 var OFFSCREENCANVAS_SUPPORT = 0;
 
+// If you are using PROXY_TO_PTHREAD with OFFSCREENCANVAS_SUPPORT, then specify
+// here a comma separated list of CSS ID selectors to canvases to proxy over
+// to the pthread at program startup, e.g. '#canvas1, #canvas2'.
+var OFFSCREENCANVASES_TO_PTHREAD = "#canvas";
+
 // If set to 1, enables support for WebGL contexts to render to an offscreen
 // render target, to avoid the implicit swap behavior of WebGL where exiting any
 // event callback would automatically perform a "flip" to present rendered
