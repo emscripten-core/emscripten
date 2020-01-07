@@ -219,7 +219,7 @@ def ensure_dir(dirname):
     os.makedirs(dirname)
 
 
-def limit_size(string, maxbytes=800 * 20, maxlines=100):
+def limit_size(string, maxbytes=800000 * 20, maxlines=100000):
   lines = string.splitlines()
   if len(lines) > maxlines:
     lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]

@@ -1837,18 +1837,22 @@ int f() {
     Building.emcc(path_from_root('tests', 'freetype_test.c'), ['-s', 'USE_FREETYPE=1', '--embed-file', 'LiberationSansBold.ttf'], output_filename='a.out.js')
     # the test program will print an ascii representation of a bitmap where the
     # 'w' character has been rendered using the Liberation Sans Bold font
-    expectedOutput = '***   +***+   **\n' + \
-                     '***+  +***+  +**\n' + \
-                     '***+  *****  +**\n' + \
-                     '+**+ +**+**+ +**\n' + \
-                     '+*** +**+**+ ***\n' + \
-                     ' *** +** **+ ***\n' + \
-                     ' ***+**+ +**+**+\n' + \
-                     ' +**+**+ +**+**+\n' + \
-                     ' +*****  +*****+\n' + \
-                     '  *****   ***** \n' + \
-                     '  ****+   +***+ \n' + \
-                     '  +***+   +***+ \n'
+    expectedOutput = '                \n' + \
+                     '                \n' + \
+                     '                \n' + \
+                     '                \n' + \
+                     '***    +***+    \n' + \
+                     '***+   *****   +\n' + \
+                     '+**+   *****   +\n' + \
+                     '+***  +**+**+  *\n' + \
+                     ' ***+ ***+**+ +*\n' + \
+                     ' +**+ *** *** +*\n' + \
+                     ' +**++**+ +**+**\n' + \
+                     '  ***+**+ +**+**\n' + \
+                     '  ******   *****\n' + \
+                     '  +****+   +****\n' + \
+                     '  +****+   +****\n' + \
+                     '   ****     ****'
     self.assertContained(expectedOutput, run_process(JS_ENGINES[0] + ['a.out.js'], stdout=PIPE, stderr=PIPE).stdout)
 
   def test_link_memcpy(self):
