@@ -11,9 +11,11 @@
 #endif
 #include <limits.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
+#if __EMSCRIPTEN_PTHREADS__ // for error handling, see below
 #include <stdio.h>
+#include <stdlib.h>
+#endif
 
 #ifdef __EMSCRIPTEN_TRACING__
 #include <emscripten/em_asm.h>
