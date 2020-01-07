@@ -1309,7 +1309,7 @@ def verify_settings():
     exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
 
   if Settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAVE_HEAP must be 0 or 1 in fastcomp')
+    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
