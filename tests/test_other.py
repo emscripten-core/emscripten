@@ -10211,3 +10211,20 @@ int main() {
 #endif
 ''')
     run_process([PYTHON, EMCC, 'errno_type.c'])
+
+  @no_fastcomp('wasm2js only')
+  def test_promise_polyfill(self):
+    def test(args):
+      # legacy browsers may lack Promise, which wasm2js depends on. see what
+      # happens when we kill the global Promise function.
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=0'] + args)
+      with open('a.out.js') as f:
+        js = f.read()
+      with open('a.out.js', 'w') as f:
+        f.write('Promise = undefined;\n' + js)
+      return run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+
+    # we fail without legacy support
+    self.assertNotContained('hello, world!', test([]))
+    # but work with it
+    self.assertContained('hello, world!', test(['-s', 'LEGACY_VM_SUPPORT']))
