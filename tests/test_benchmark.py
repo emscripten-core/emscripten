@@ -330,6 +330,10 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
     EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'v8', V8_ENGINE),
   ]
+if shared.NODE_JS and shared.NODE_JS in shared.JS_ENGINES:
+  benchmarkers += [
+    EmscriptenBenchmarker('Node.js', shared.NODE_JS),
+  ]
 if os.path.exists(CHEERP_BIN):
   benchmarkers += [
     # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),

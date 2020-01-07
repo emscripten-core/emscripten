@@ -8173,7 +8173,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_hello_world(self):
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
+    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
       self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
       self.set_setting('MINIMAL_RUNTIME', 1)
       self.maybe_closure()

@@ -1614,6 +1614,17 @@ var MINIMAL_RUNTIME = 0;
 // is no observable difference (also has a ~100 byte impact to code size)
 var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
 
+// If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly instantiation,
+// where WebAssembly module is compiled+instantiated already while it is being
+// downloaded. Same restrictions/requirements apply as with
+// MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION.
+// MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and
+// MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION cannot be simultaneously active.
+// Which one of these two is faster depends on the size of the wasm module,
+// the size of the JS runtime file, and the size of the preloaded data file
+// to download, and the browser in question.
+var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
+
 // If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
 // enable this. If you are not using dynamic allocations, can set this to 0 to
 // save code size. This setting is ignored when building with -s
@@ -1639,6 +1650,17 @@ var SUPPORT_LONGJMP = 1;
 // handling, and DOM element 'target' parameters are taken to refer to CSS
 // selectors, instead of referring to DOM IDs.
 var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
+
+// Certain browser DOM API operations, such as requesting fullscreen mode
+// transition or pointer lock require that the request originates from within
+// an user initiated event, such as mouse click or keyboard press. Refactoring
+// an application to follow this kind of program structure can be difficult, so
+// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=1 flag allows transparent
+// emulation of this by deferring synchronous fullscreen mode and pointer lock
+// requests until a suitable event callback is generated. Set this to 0
+// to disable support for deferring to save code space if your application does
+// not need support for deferred calls.
+var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = 1;
 
 // Specifies whether the generated .html file is run through html-minifier. The
 // set of optimization passes run by html-minifier depends on debug and

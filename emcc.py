@@ -1134,6 +1134,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE:
       exit_with_error('cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time')
 
+    if shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
+      exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
+
     if options.emrun:
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('--emrun is not compatible with -s MINIMAL_RUNTIME=1')
@@ -3296,7 +3299,9 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
   # Depending on whether streaming Wasm compilation is enabled or not, the minimal sized code to download Wasm looks a bit different.
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in the template directly)
   if shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE:
+    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE or shared.Settings.MIN_FIREFOX_VERSION < 58 or shared.Settings.MIN_CHROME_VERSION < 61:
+      # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
+      # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
       # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
       download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm')) : binary('{{{ TARGET_BASENAME }}}.wasm')"
