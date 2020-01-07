@@ -25,6 +25,9 @@ Current Trunk
 - Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
   to allow customizing the heap growth rates.
 - Renamed MEMORY_GROWTH_STEP option to MEMORY_GROWTH_LINEAR_STEP option.
+- Added new linker option -s HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0
+  (default enabled) to allow disabling support for deferred fullscreen mode and
+  pointer lock requests for applications that do not need deferring support.
 
 v1.39.5: 12/20/2019
 -------------------
