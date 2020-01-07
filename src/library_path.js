@@ -64,11 +64,9 @@ mergeInto(LibraryManager.library, {
       return root + dir;
     },
     basename: function(path) {
-      // EMSCRIPTEN return '/'' for '/', not an empty string
+      // EMSCRIPTEN return '/' for '/', not an empty string
       if (path === '/') return '/';
-      var lastSlash = path.lastIndexOf('/', path.length-2); //support both '/path' and '/path/'
-      if (lastSlash === -1) return path;
-      return path.substr(lastSlash+1);
+      return path.split('/').filter(function(item) {return item}).pop();
     },
     extname: function(path) {
       return PATH.splitPath(path)[3];
