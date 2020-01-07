@@ -5940,7 +5940,7 @@ int main(void) {
   def test_EXPORT_NAME_with_html(self):
     result = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.html', '-s', 'EXPORT_NAME=Other'], stdout=PIPE, check=False, stderr=STDOUT)
     self.assertNotEqual(result.returncode, 0)
-    self.assertContained('Customizing EXPORT_NAME is not currently possible with HTML output', result.stdout)
+    self.assertContained('Customizing EXPORT_NAME requires that the HTML be customized to use that name', result.stdout)
 
   @no_wasm_backend('tests fastcomp specific passes')
   def test_emcc_c_multi(self):

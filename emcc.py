@@ -3538,10 +3538,12 @@ def generate_html(target, options, js_target, target_basename,
                   memfile, optimizer):
   logger.debug('generating HTML')
 
-  if shared.Settings.EXPORT_NAME != 'Module' and not shared.Settings.MINIMAL_RUNTIME:
+  if shared.Settings.EXPORT_NAME != 'Module' and \
+     not shared.Settings.MINIMAL_RUNTIME and \
+     options.shell_path == shared.path_from_root('src', 'shell.html'):
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
-    exit_with_error('Customizing EXPORT_NAME is not currently possible with HTML output (see https://github.com/emscripten-core/emscripten/issues/10086)')
+    exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
   if shared.Settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,
