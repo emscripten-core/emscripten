@@ -67,7 +67,6 @@ var wasmModule;
 // to avoid accessing the global scope.
 var threadInfoStruct = 0;
 var selfThreadId = 0;
-var __performance_now_clock_drift = 0;
 #if WASM_BACKEND
 var tempDoublePtr = 0;
 #endif
