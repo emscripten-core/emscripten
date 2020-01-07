@@ -1454,9 +1454,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # To ensure allocated thread stacks are aligned:
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
 
-      # pthread stack setup:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$establishStackSpaceInJsModule']
-      shared.Settings.EXPORTED_FUNCTIONS += ['establishStackSpaceInJsModule']
+      # pthread stack setup and other necessary utilities
+      def include_and_export(name):
+        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
+        shared.Settings.EXPORTED_FUNCTIONS += [name]
+
+      include_and_export('establishStackSpaceInJsModule')
+      include_and_export('checkNoExitRuntime')
 
       if shared.Settings.MODULARIZE:
         # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js

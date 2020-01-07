@@ -15,8 +15,6 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
 #endif
 
-var noExitRuntime;
-
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
@@ -229,7 +227,7 @@ this.onmessage = function(e) {
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
       // (This is a no-op if explicit pthread_exit() had been called prior.)
-      if (!noExitRuntime) PThread.threadExit(result);
+      if (!Module['checkNoExitRuntime']()) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct) {
         PThread.threadCancel();
