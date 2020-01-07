@@ -602,6 +602,7 @@ static void EMSCRIPTEN_KEEPALIVE __attribute__((constructor(0))) initialize_mall
 #endif
 
   // Initialize circular doubly linked lists representing free space
+#pragma clang loop unroll(disable) // Never useful to unroll this for loop, just takes up code size.
   for(int i = 0; i < NUM_FREE_BUCKETS; ++i)
     freeRegionBuckets[i].prev = freeRegionBuckets[i].next = &freeRegionBuckets[i];
 
@@ -795,7 +796,7 @@ static void *allocate_memory(size_t alignment, size_t size)
   {
     // Look only at a constant number of regions in this bucket max, to avoid bad worst case behavior.
     // If this many regions cannot find free space, we give up and prefer to sbrk() more instead.
-    const int maxRegionsToTryBeforeGivingUp = 100;
+    const int maxRegionsToTryBeforeGivingUp = 99;
     int numTriesLeft = maxRegionsToTryBeforeGivingUp;
     while(freeRegion != &freeRegionBuckets[largestBucketIndex] && numTriesLeft-- > 0)
     {
