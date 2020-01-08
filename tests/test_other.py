@@ -9574,7 +9574,7 @@ int main () {
                            path_from_root('tests', 'minimal_webgl', 'webgl.c'),
                            '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'),
                            '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
-                           '-s', 'USES_DYNAMIC_ALLOC=2', '-lwebgl.js',
+                           '-s', 'USES_DYNAMIC_ALLOC=1', '-lwebgl.js',
                            '-s', 'MODULARIZE=1']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 

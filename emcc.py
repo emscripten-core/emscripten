@@ -1291,6 +1291,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.FETCH = 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_asmfs.js'))
 
+    # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
+    if not shared.Settings.USES_DYNAMIC_ALLOC:
+      shared.Settings.MALLOC = 'none'
+
     if shared.Settings.MALLOC == 'emmalloc':
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_emmalloc.js'))
 
