@@ -27,13 +27,6 @@ int emscripten_resize_heap(size_t requested_growth_bytes);
 // Returns the current size of the WebAssembly heap.
 size_t emscripten_get_heap_size(void);
 
-// Resizes the heap to the given size. This function cannot shrink the size,
-// so the size that is passed must be >= current emscripten_get_heap_size().
-// Returns 1 on success, 0 otherwise. In order to call this function,
-// the page must have been compiled with -s ALLOW_MEMORY_GROWTH=1 linker
-// flag.
-int emscripten_realloc_buffer(size_t requested_size);
-
 #ifdef __cplusplus
 }
 #endif

@@ -5,8 +5,6 @@
 
 int main()
 {
-	// Test growing the heap to a custom size:
-	emscripten_realloc_buffer(128*1024*1024);
 	printf("heap size: %zu\n", emscripten_get_heap_size());
 
 	void *ptr = malloc(32*1024*1024);
