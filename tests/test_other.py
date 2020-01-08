@@ -2522,8 +2522,6 @@ int f() {
     self.assertExists('conftest')
 
   def test_file_packager(self):
-    self.skipTest('FIXME: Chromium CI is currently broken, disable this for now to help fix it')
-
     ensure_dir('subdir')
     create_test_file('data1.txt', 'data1')
 
