@@ -785,9 +785,12 @@ var NODE_CODE_CACHING = 0;
 // there, you are in effect removing it).
 var EXPORTED_FUNCTIONS = ['_main'];
 
-// If true, we export all the symbols. Note that this does *not* affect LLVM, so
-// it can still eliminate functions as dead. This just exports them on the
-// Module object.
+// If true, we export all the symbols that are present in JS onto the Module
+// object. This does not affect which symbols will be present - it does not
+// prevent DCE or cause anything to be included in linking. It only does
+//   Module['X'] = X;
+// for all X that end up in the JS file. This is useful to export the JS
+// library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
 // Export all bindings generator functions (prefixed with emscripten_bind_). This

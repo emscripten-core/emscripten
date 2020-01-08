@@ -1154,16 +1154,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
-      if shared.Settings.MAIN_MODULE != 2:
+      if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
-      options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      options.memory_init_file = False
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-      if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
+      if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
+        shared.Settings.EXPORT_ALL = 1
       shared.Settings.RELOCATABLE = 1
       assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
       # shared modules need memory utilities to allocate their memory
