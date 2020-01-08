@@ -2890,7 +2890,9 @@ class Building(object):
     library_files = []
     if library_name in js_system_libraries:
       if len(js_system_libraries[library_name]):
-        library_files += js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        library_files += lib
+        logger.debug('Linking in JS library ' + str(lib))
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
