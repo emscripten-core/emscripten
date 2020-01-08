@@ -4013,8 +4013,10 @@ ok
       int64_t function_ret_64(int32_t i, int32_t j, int32_t k) {
           return 64;
       }
-    ''', '''res32 - internal 32\nres32 - external 32\nres64 - internal 64\nres64 - external 64\n''',
-    header='''
+    ''', '''res32 - internal 32
+res32 - external 32
+res64 - internal 64
+res64 - external 64\n''', header='''
       #include <emscripten.h>
       #include <cstdint>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
