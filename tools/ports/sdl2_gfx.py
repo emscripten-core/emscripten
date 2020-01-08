@@ -28,12 +28,10 @@ def get(ports, settings, shared):
 
     shutil.rmtree(dest_path, ignore_errors=True)
     shutil.copytree(source_path, dest_path)
-
-    for header in ['SDL2_framerate.h', 'SDL2_gfxPrimitives_font.h', 'SDL2_gfxPrimitives.h', 'SDL2_imageFilter.h', 'SDL2_rotozoom.h']:
-      shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_gfx', 'sdl2_gfx-' + TAG, header), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', header))
-
     final = os.path.join(dest_path, libname)
     ports.build_port(dest_path, final, [dest_path], exclude_dirs=['test'])
+
+    ports.install_headers(source_path, target='SDL2')
     return final
 
   return [shared.Cache.get(libname, create)]

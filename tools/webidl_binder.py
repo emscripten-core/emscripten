@@ -28,7 +28,7 @@ import WebIDL
 # Anything else defaults to legacy mode for backward compatibility.
 CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
 # DEBUG=1 will print debug info in render_function
-DEBUG = os.environ.get('IDL_VERBOSE') is '1'
+DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
 if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
@@ -525,7 +525,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     pre = ''
 
-    basic_return = 'return ' if constructor or return_type is not 'Void' else ''
+    basic_return = 'return ' if constructor or return_type != 'Void' else ''
     return_prefix = basic_return
     return_postfix = ''
     if non_pointer:

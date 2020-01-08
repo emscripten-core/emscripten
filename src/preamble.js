@@ -67,10 +67,6 @@ var wasmModule;
 // to avoid accessing the global scope.
 var threadInfoStruct = 0;
 var selfThreadId = 0;
-var __performance_now_clock_drift = 0;
-#if WASM_BACKEND
-var tempDoublePtr = 0;
-#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -376,23 +372,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in applyStackValues later.
-#if ASSERTIONS || SAFE_STACK
+  // catch bugs, then set the real values in establishStackSpaceInJsModule later.
+#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
-
-  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
-    STACK_BASE = stackBase;
-    STACKTOP = stackTop;
-    STACK_MAX = stackMax;
-#if SAFE_STACK
-    Module['___set_stack_limit'](STACK_MAX);
-#endif
-  };
-
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
-  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 
@@ -426,7 +411,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
-    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return;
+    if (e.message.indexOf('unwind') != -1) return;
     console.error('Page threw an exception ' + e);
     Module['pageThrewException'] = true;
   });
@@ -933,7 +918,7 @@ function createWasm() {
   // prepare imports
   var info = {
     'env': asmLibraryArg,
-    'wasi_unstable': asmLibraryArg
+    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #if WASM_BACKEND == 0
     ,
     'global': {
@@ -1022,9 +1007,9 @@ function createWasm() {
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
       });
       return result;
-#else
+#else // USE_OFFSET_CONVERTER
       return WebAssembly.instantiate(binary, info);
-#endif
+#endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
@@ -1067,7 +1052,43 @@ function createWasm() {
     var binary;
     try {
       binary = getBinary();
+#if NODE_CODE_CACHING
+      if (ENVIRONMENT_HAS_NODE) {
+        var v8 = require('v8');
+        // Include the V8 version in the cache name, so that we don't try to
+        // load cached code from another version, which fails silently (it seems
+        // to load ok, but we do actually recompile the binary every time).
+        var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+        cachedCodeFile = locateFile(cachedCodeFile);
+        var hasCached = nodeFS.existsSync(cachedCodeFile);
+        if (hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: loading module');
+#endif
+          try {
+            module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
+          } catch (e) {
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file?');
+            // Save the new compiled code when we have it.
+            hasCached = false;
+          }
+err(module);
+        }
+      }
+      if (!module) {
+        module = new WebAssembly.Module(binary);
+      }
+      if (ENVIRONMENT_HAS_NODE) {
+        if (!hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: saving module');
+#endif
+          nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
+        }
+      }
+#else // NODE_CODE_CACHING
       module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
       instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);

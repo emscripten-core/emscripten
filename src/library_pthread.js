@@ -310,12 +310,6 @@ var LibraryPThread = {
       for (var i = 0; i < numWorkers; ++i) {
         var worker = workers[i];
 
-#if !WASM_BACKEND
-        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
-        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
-        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
-#endif
-
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
           'cmd': 'load',
@@ -337,9 +331,6 @@ var LibraryPThread = {
 #else
           'buffer': HEAPU8.buffer,
           'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
-#endif
-#if !WASM_BACKEND
-          'tempDoublePtr': tempDoublePtr,
 #endif
           'DYNAMIC_BASE': DYNAMIC_BASE,
           'DYNAMICTOP_PTR': DYNAMICTOP_PTR
@@ -408,6 +399,7 @@ var LibraryPThread = {
               if (detached) {
                 PThread.returnWorkerToPool(worker);
               }
+#if EXIT_RUNTIME // If building with -s EXIT_RUNTIME=0, no thread will post this message, so don't even compile it in.
             } else if (cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
               noExitRuntime = false;
@@ -417,6 +409,7 @@ var LibraryPThread = {
                 if (e instanceof ExitStatus) return;
                 throw e;
               }
+#endif
             } else if (cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
             } else if (cmd === 'objectTransfer') {
@@ -433,6 +426,7 @@ var LibraryPThread = {
             err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
           };
 
+#if ENVIRONMENT_MAY_BE_NODE
           if (ENVIRONMENT_HAS_NODE) {
             worker.on('message', function(data) {
               worker.onmessage({ data: data });
@@ -444,6 +438,7 @@ var LibraryPThread = {
               console.log('worker exited - TODO: update the worker queue?');
             });
           }
+#endif
         }(worker));
       }  // for each worker
     },
@@ -536,26 +531,27 @@ var LibraryPThread = {
       thread: threadParams.pthread_ptr,
       threadInfoStruct: threadParams.pthread_ptr // Info area for this thread in Emscripten HEAP (shared)
     };
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2, 0); // threadStatus <- 0, meaning not yet exited.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.threadExitCode }}} ) >> 2, 0); // threadExitCode <- 0.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0); // profilerBlock <- 0.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.detached }}} ) >> 2, threadParams.detached);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd }}} ) >> 2, tlsMemory); // Init thread-local-storage memory array.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tsd_used }}} ) >> 2, 0); // Mark initial status to unused.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.tid }}} ) >> 2, pthread.threadInfoStruct); // Main thread ID.
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.pid }}} ) >> 2, PROCINFO.pid); // Process ID.
+    var tis = pthread.threadInfoStruct >> 2;
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.threadStatus }}} >> 2), 0); // threadStatus <- 0, meaning not yet exited.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.threadExitCode }}} >> 2), 0); // threadExitCode <- 0.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.profilerBlock }}} >> 2), 0); // profilerBlock <- 0.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.detached }}} >> 2), threadParams.detached);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd }}} >> 2), tlsMemory); // Init thread-local-storage memory array.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tsd_used }}} >> 2), 0); // Mark initial status to unused.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.tid }}} >> 2), pthread.threadInfoStruct); // Main thread ID.
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.pid }}} >> 2), PROCINFO.pid); // Process ID.
 
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}}) >> 2, threadParams.stackSize);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.stack_size }}}) >> 2, threadParams.stackSize);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.stack }}}) >> 2, stackHigh);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 8) >> 2, stackHigh);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 12) >> 2, threadParams.detached);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 20) >> 2, threadParams.schedPolicy);
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.attr }}} + 24) >> 2, threadParams.schedPrio);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} >> 2), threadParams.stackSize);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack_size }}} >> 2), threadParams.stackSize);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.stack }}} >> 2), stackHigh);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 8 >> 2), stackHigh);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 12 >> 2), threadParams.detached);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 20 >> 2), threadParams.schedPolicy);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.attr }}} + 24 >> 2), threadParams.schedPrio);
 
     var global_libc = _emscripten_get_global_libc();
     var global_locale = global_libc + {{{ C_STRUCTS.libc.global_locale }}};
-    Atomics.store(HEAPU32, (pthread.threadInfoStruct + {{{ C_STRUCTS.pthread.locale }}}) >> 2, global_locale);
+    Atomics.store(HEAPU32, tis + ({{{ C_STRUCTS.pthread.locale }}} >> 2), global_locale);
 
 #if PTHREADS_PROFILING
     PThread.createProfilerBlock(pthread.threadInfoStruct);
@@ -620,7 +616,14 @@ var LibraryPThread = {
 #if OFFSCREENCANVAS_SUPPORT
     // Deduce which WebGL canvases (HTMLCanvasElements or OffscreenCanvases) should be passed over to the
     // Worker that hosts the spawned pthread.
-    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0; // Comma-delimited list of IDs "canvas1, canvas2, ..."
+    // Comma-delimited list of CSS selectors that must identify canvases by IDs: "#canvas1, #canvas2, ..."
+    var transferredCanvasNames = attr ? {{{ makeGetValue('attr', 36, 'i32') }}} : 0;
+#if OFFSCREENCANVASES_TO_PTHREAD
+    // Proxied canvases string pointer -1 is used as a special token to fetch whatever canvases were passed to build
+    // in -s OFFSCREENCANVASES_TO_PTHREAD= command line.
+    if (transferredCanvasNames == -1) transferredCanvasNames = '{{{ OFFSCREENCANVASES_TO_PTHREAD }}}';
+    else
+#endif
     if (transferredCanvasNames) transferredCanvasNames = UTF8ToString(transferredCanvasNames).trim();
     if (transferredCanvasNames) transferredCanvasNames = transferredCanvasNames.split(',');
 #if GL_DEBUG
@@ -648,8 +651,8 @@ var LibraryPThread = {
           offscreenCanvasInfo = GL.offscreenCanvases[name];
           GL.offscreenCanvases[name] = null; // This thread no longer owns this canvas.
           if (Module['canvas'] instanceof OffscreenCanvas && name === Module['canvas'].id) Module['canvas'] = null;
-        } else {
-          var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.getElementById(name);
+        } else if (!ENVIRONMENT_IS_PTHREAD) {
+          var canvas = (Module['canvas'] && Module['canvas'].id === name) ? Module['canvas'] : document.querySelector(name);
           if (!canvas) {
             err('pthread_create: could not find canvas with ID "' + name + '" to transfer to thread!');
             error = {{{ cDefine('EINVAL') }}};
@@ -962,7 +965,7 @@ var LibraryPThread = {
       // the entire application.
       process.exit(status);
     }
-    throw 'pthread_exit';
+    throw 'unwind';
 #endif
   },
 
@@ -1218,7 +1221,9 @@ var LibraryPThread = {
 
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
+#if EXIT_RUNTIME
     if (!noExitRuntime) postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
+#endif
     return returnCode;
   },
 
@@ -1327,19 +1332,53 @@ var LibraryPThread = {
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
-#if MODULARIZE
-  $establishStackSpaceInJsModule: function(stackBase, stackMax) {
-    STACK_BASE = stackBase;
-#if WASM_BACKEND
-    // The stack grows downwards
-    STACKTOP = stackMax;
-    STACK_MAX = stackBase;
-#else
-    STACKTOP = stackBase;
+  $establishStackSpaceInJsModule: function(stackTop, stackMax) {
+    STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
+
+#if !WASM_BACKEND
+    // In fastcomp backend, locate tempDoublePtr memory area at the bottom of the stack, and bump up
+    // the stack by the bytes used.
+    tempDoublePtr = STACK_BASE;
+#if ASSERTIONS
+    assert(tempDoublePtr % 8 == 0);
 #endif
+    STACK_BASE += 8;
+    STACKTOP += 8;
+#endif
+
+#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+    ___set_stack_limit(STACK_MAX);
+#endif
+#if STACK_OVERFLOW_CHECK
+    writeStackCookie();
+#endif
+    // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
+    establishStackSpace(stackTop, stackMax);
   },
+
+  // This function is called internally to notify target thread ID that it has messages it needs to
+  // process in its message queue inside the Wasm heap. As a helper, the caller must also pass the
+  // ID of the main browser thread to this function, to avoid needlessly ping-ponging between JS and
+  // Wasm boundaries.
+  _emscripten_notify_thread_queue: function(targetThreadId, mainThreadId) {
+    if (targetThreadId == mainThreadId) {
+      postMessage({cmd : 'processQueuedMainThreadWork'});
+    } else if (ENVIRONMENT_IS_PTHREAD) {
+      postMessage({targetThread: targetThreadId, cmd: 'processThreadQueue'});
+    } else {
+      var pthread = PThread.pthreads[targetThreadId];
+      var worker = pthread && pthread.worker;
+      if (!worker) {
+#if ASSERTIONS
+        err('Cannot send message to thread with ID ' + targetThreadId + ', unknown thread ID!');
 #endif
+        return /*0*/;
+      }
+      worker.postMessage({cmd : 'processThreadQueue'});
+    }
+    return 1;
+  }
 };
 
 autoAddDeps(LibraryPThread, '$PThread');

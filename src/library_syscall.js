@@ -69,9 +69,9 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
-    doMsync: function(addr, stream, len, flags) {
+    doMsync: function(addr, stream, len, flags, offset) {
       var buffer = new Uint8Array(HEAPU8.subarray(addr, addr + len));
-      FS.msync(stream, buffer, 0, len, flags);
+      FS.msync(stream, buffer, offset, len, flags);
     },
     doMkdir: function(path, mode) {
       // remove a trailing slash, if one - /a/b/ has basename of '', but
@@ -254,7 +254,7 @@ var SyscallsLibrary = {
       ptr = res.ptr;
       allocated = res.allocated;
     }
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags };
+    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, offset: off };
     return ptr;
   },
 
@@ -272,7 +272,7 @@ var SyscallsLibrary = {
     if (!info) return 0;
     if (len === info.len) {
       var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags);
+      SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
       FS.munmap(stream);
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
@@ -512,6 +512,7 @@ var SyscallsLibrary = {
   __syscall97: function(which, varargs) { // setpriority
     return -{{{ cDefine('EPERM') }}};
   },
+#if PROXY_POSIX_SOCKETS == 0
   __syscall102__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
   __syscall102: function(which, varargs) { // socketcall
     var call = SYSCALLS.get(), socketvararg = SYSCALLS.get();
@@ -728,6 +729,7 @@ var SyscallsLibrary = {
       }
     }
   },
+#endif // ~PROXY_POSIX_SOCKETS==0
   __syscall104: function(which, varargs) { // setitimer
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -853,7 +855,7 @@ var SyscallsLibrary = {
     var addr = SYSCALLS.get(), len = SYSCALLS.get(), flags = SYSCALLS.get();
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
-    SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags);
+    SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
   __syscall147__deps: ['$PROCINFO'],
@@ -1393,8 +1395,16 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.close(stream);
 #else
+#if PROXY_POSIX_SOCKETS
+    // close() is a tricky function because it can be used to close both regular file descriptors
+    // and POSIX network socket handles, hence an implementation would need to track for each
+    // file descriptor which kind of item it is. To simplify, when using PROXY_POSIX_SOCKETS
+    // option, use shutdown() to close a socket, and this function should behave like a no-op.
+    warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
+#else
 #if ASSERTIONS
     abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
 #endif
 #endif
     return 0;
@@ -1852,7 +1862,7 @@ var WASI_SYSCALLS = set([
   'fd_sync',
 ]);
 
-// Fallback for cases where the wasi_unstable.name prefixing fails,
+// Fallback for cases where the wasi_interface_version.name prefixing fails,
 // and we have the full name from C. This happens in fastcomp which
 // lacks the attribute to set the import module and base names.
 if (!WASM_BACKEND) {

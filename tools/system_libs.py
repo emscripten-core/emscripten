@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 from __future__ import print_function
+import glob
 import hashlib
 import itertools
 import json
@@ -24,6 +25,11 @@ stdout = None
 stderr = None
 
 logger = logging.getLogger('system_libs')
+
+LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
+                'listen.c', 'accept.c', 'getsockname.c', 'getpeername.c', 'send.c',
+                'recv.c', 'sendto.c', 'recvfrom.c', 'sendmsg.c', 'recvmsg.c',
+                'getsockopt.c', 'setsockopt.c', 'freeaddrinfo.c']
 
 
 def files_in_path(path_components, filenames):
@@ -675,6 +681,8 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'faccessat.c',
     ]
 
+    blacklist += LIBC_SOCKETS
+
     # individual math files
     blacklist += [
         'abs.c', 'cos.c', 'cosf.c', 'cosl.c', 'sin.c', 'sinf.c', 'sinl.c',
@@ -743,6 +751,28 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     if shared.Settings.WASM:
       return depends + ['libc-wasm']
     return depends
+
+
+class libsockets(MuslInternalLibrary, MTLibrary):
+  name = 'libsockets'
+  symbols = set()
+
+  cflags = ['-Os', '-fno-builtin']
+
+  def get_files(self):
+    network_dir = shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network')
+    return [os.path.join(network_dir, x) for x in LIBC_SOCKETS]
+
+
+class libsockets_proxy(MuslInternalLibrary, MTLibrary):
+  name = 'libsockets_proxy'
+  symbols = set()
+
+  cflags = ['-Os']
+
+  def get_files(self):
+    return [shared.path_from_root('system', 'lib', 'websocket', 'websocket_to_posix_socket.cpp'),
+            shared.path_from_root('system', 'lib', 'libc', 'musl', 'src', 'network', 'inet_addr.c')]
 
 
 class libc_wasm(MuslInternalLibrary):
@@ -997,7 +1027,7 @@ class libgl(MTLibrary):
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     if self.is_webgl2:
-      cflags += ['-DUSE_WEBGL2=1', '-s', 'USE_WEBGL2=1']
+      cflags += ['-DMAX_WEBGL_VERSION=2', '-s', 'MAX_WEBGL_VERSION=2']
     if self.is_ofb:
       cflags += ['-D__EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__']
     if self.is_full_es3:
@@ -1012,7 +1042,7 @@ class libgl(MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super(libgl, cls).get_default_variation(
       is_legacy=shared.Settings.LEGACY_GL_EMULATION,
-      is_webgl2=shared.Settings.USE_WEBGL2,
+      is_webgl2=shared.Settings.MAX_WEBGL_VERSION >= 2,
       is_ofb=shared.Settings.OFFSCREEN_FRAMEBUFFER,
       is_full_es3=shared.Settings.FULL_ES3,
       **kwargs
@@ -1461,6 +1491,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.STANDALONE_WASM:
     add_library(system_libs_map['libstandalonewasm'])
 
+  if shared.Settings.PROXY_POSIX_SOCKETS:
+    add_library(system_libs_map['libsockets_proxy'])
+  else:
+    add_library(system_libs_map['libsockets'])
+
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 
   # libc++abi and libc++ *static* linking is tricky. e.g. cxa_demangle.cpp disables c++
@@ -1497,6 +1532,34 @@ class Ports(object):
     return shared.static_library_name(name)
 
   @staticmethod
+  def get_include_dir():
+    dirname = shared.Cache.get_path('include')
+    shared.safe_ensure_dirs(dirname)
+    return dirname
+
+  @staticmethod
+  def install_header_dir(src_dir, target=None):
+    if not target:
+      target = os.path.basename(src_dir)
+    dest = os.path.join(Ports.get_include_dir(), target)
+    shared.try_delete(dest)
+    logger.debug('installing headers: ' + dest)
+    shutil.copytree(src_dir, dest)
+
+  @staticmethod
+  def install_headers(src_dir, pattern="*.h", target=None):
+    logger.debug("install_headers")
+    dest = Ports.get_include_dir()
+    if target:
+      dest = os.path.join(dest, target)
+      shared.safe_ensure_dirs(dest)
+    matches = glob.glob(os.path.join(src_dir, pattern))
+    assert matches, "no headers found to install in %s" % src_dir
+    for f in matches:
+      logger.debug('installing: ' + os.path.join(dest, os.path.basename(f)))
+      shutil.copyfile(f, os.path.join(dest, os.path.basename(f)))
+
+  @staticmethod
   def build_port(src_path, output_path, includes=[], flags=[], exclude_files=[], exclude_dirs=[]):
     srcs = []
     for root, dirs, files in os.walk(src_path, topdown=False):
@@ -1505,7 +1568,7 @@ class Ports(object):
       for f in files:
         ext = os.path.splitext(f)[1]
         if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
-            srcs.append(os.path.join(root, f))
+          srcs.append(os.path.join(root, f))
     include_commands = ['-I' + src_path]
     for include in includes:
       include_commands.append('-I' + include)
@@ -1518,7 +1581,6 @@ class Ports(object):
       objects.append(obj)
 
     run_commands(commands)
-    print('create_lib', output_path)
     create_lib(output_path, objects)
     return output_path
 

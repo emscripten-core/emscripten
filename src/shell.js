@@ -100,6 +100,8 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 
 if (ENVIRONMENT_IS_NODE) {
   _scriptDir = __filename;
+} else if (ENVIRONMENT_IS_WORKER) {
+  _scriptDir = self.location.href;
 }
 #endif
 #endif

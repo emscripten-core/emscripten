@@ -115,7 +115,7 @@ that is:
 
 1. In your emscripten repo checkout, enter `site`.
 2. Run `make html`.
-3. Run `cp -R build/html/* \[path-to-a-checkout-of-the-site-repo\]`
+3. Run `make install EMSCRIPTEN_SITE=\[path-to-a-checkout-of-the-site-repo\]`
 3. Go to the site repo, commit the changes, and push.
 
 [site_repo]: https://github.com/kripken/emscripten-site

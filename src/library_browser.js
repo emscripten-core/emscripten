@@ -312,10 +312,14 @@ var LibraryBrowser = {
         var contextAttributes = {
           antialias: false,
           alpha: false,
-#if USE_WEBGL2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+#if MIN_WEBGL_VERSION >= 2
+          majorVersion: 2,
+#else
+#if MAX_WEBGL_VERSION >= 2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
           majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,
+#endif
 #endif
         };
 
@@ -1254,10 +1258,12 @@ var LibraryBrowser = {
       }
 #endif
 
+#if ASSERTIONS
       if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
-        err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
+        warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
+#endif
 
       Browser.mainLoop.runIter(browserIterationFunc);
 
@@ -1285,7 +1291,7 @@ var LibraryBrowser = {
     }
 
     if (simulateInfiniteLoop) {
-      throw 'SimulateInfiniteLoop';
+      throw 'unwind';
     }
   },
 
@@ -1352,7 +1358,7 @@ var LibraryBrowser = {
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     noExitRuntime = true;
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
   emscripten_force_exit__proxy: 'sync',

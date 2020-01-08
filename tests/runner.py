@@ -214,7 +214,12 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-def limit_size(string, maxbytes=800 * 20, maxlines=100):
+def ensure_dir(dirname):
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+
+def limit_size(string, maxbytes=800000 * 20, maxlines=100000):
   lines = string.splitlines()
   if len(lines) > maxlines:
     lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
@@ -386,7 +391,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return self.get_setting('EMTERPRETIFY')
 
   def is_wasm(self):
-    return self.is_wasm_backend() or self.get_setting('WASM') != 0
+    return self.get_setting('WASM') != 0
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
@@ -440,8 +445,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if not os.path.exists(self.working_dir):
-        os.makedirs(self.working_dir)
+      ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
@@ -873,8 +877,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_build_dir(self):
     ret = os.path.join(self.get_dir(), 'building')
-    if not os.path.exists(ret):
-      os.makedirs(ret)
+    ensure_dir(ret)
     return ret
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
@@ -1182,7 +1185,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       test_index += 1
 
   def get_freetype_library(self):
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build

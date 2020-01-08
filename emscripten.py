@@ -25,7 +25,7 @@ from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
 from tools.response_file import substitute_response_files
-from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error
+from tools.shared import WINDOWS, asstr, path_from_root, exit_with_error, asmjs_mangle, treat_as_user_function
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.minified_js_name_generator import MinifiedJsNameGenerator
 
@@ -270,6 +270,26 @@ def get_asm_extern_primitives(pre):
     return []
 
 
+def compute_minimal_runtime_initializer_and_exports(post, initializers, exports, receiving):
+  # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
+  post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
+
+  if shared.Settings.WASM:
+    # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
+    # e.g. var a,b,c,d,e,f;
+    exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+    if shared.Settings.WASM_BACKEND:
+      # In Wasm backend the exports are still unmangled at this point, so mangle the names here
+      exports_that_are_not_initializers = [asmjs_mangle(x) for x in exports_that_are_not_initializers]
+    post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(exports_that_are_not_initializers) + ';')
+
+    # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
+    post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
+    receiving = ''
+
+  return post, receiving
+
+
 def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data, outfile, DEBUG):
   if DEBUG:
     logger.debug('emscript: python processing: function tables and exports')
@@ -397,17 +417,7 @@ def function_tables_and_exports(funcs, metadata, mem_init, glue, forwarded_data,
   post = apply_static_code_hooks(post)
 
   if shared.Settings.MINIMAL_RUNTIME:
-    # Generate invocations for all global initializers directly off the asm export object, e.g. asm['__GLOBAL__INIT']();
-    post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(metadata['initializers'])]))
-
-    if shared.Settings.WASM:
-      # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
-      # e.g. var a,b,c,d,e,f;
-      post = post.replace('/*** ASM_MODULE_EXPORTS_DECLARES ***/', 'var ' + ','.join(shared.Settings.MODULE_EXPORTS) + ';')
-
-      # Generate assignments from all asm.js/wasm exports out to the JS variables above: e.g. a = asm['a']; b = asm['b'];
-      post = post.replace('/*** ASM_MODULE_EXPORTS ***/', receiving)
-      receiving = ''
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], [mangled for mangled, unmangled in shared.Settings.MODULE_EXPORTS], receiving)
 
   function_tables_impls = make_function_tables_impls(function_table_data)
   final_function_tables = '\n'.join(function_tables_impls) + '\n' + function_tables_defs
@@ -927,7 +937,10 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   if shared.Settings.ALLOW_MEMORY_GROWTH:
     funcs.append('_emscripten_replace_memory')
   if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
+    if shared.Settings.USE_PTHREADS:
+      funcs += ['establishStackSpace']
+
   if shared.Settings.EMTERPRETIFY:
     funcs += ['emterpret']
     if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -1581,7 +1594,7 @@ def setup_function_pointers(function_table_sigs):
 
 def create_basic_funcs(function_table_sigs, invoke_function_names):
   basic_funcs = shared.Settings.RUNTIME_FUNCS_TO_IMPORT
-  if shared.Settings.STACK_OVERFLOW_CHECK:
+  if shared.Settings.STACK_OVERFLOW_CHECK and not shared.Settings.MINIMAL_RUNTIME:
     basic_funcs += ['abortStackOverflow']
   if shared.Settings.EMTERPRETIFY:
     basic_funcs += ['abortStackOverflowEmterpreter']
@@ -1656,7 +1669,9 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
+    if shared.Settings.USE_PTHREADS:
+      funcs += ['establishStackSpace']
   return funcs
 
 
@@ -1710,7 +1725,8 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
       receiving = '\n'.join(wrappers)
 
-  shared.Settings.MODULE_EXPORTS = module_exports = exported_implemented_functions + function_tables(function_table_data)
+  module_exports = exported_implemented_functions + function_tables(function_table_data)
+  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
@@ -1754,6 +1770,7 @@ var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
+
     receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
@@ -1876,13 +1893,19 @@ function stackRestore(top) {
   top = top|0;
   STACKTOP = top;
 }
+''' % stack_check]
+
+  if shared.Settings.USE_PTHREADS:
+    funcs.append('''
 function establishStackSpace(stackBase, stackMax) {
   stackBase = stackBase|0;
   stackMax = stackMax|0;
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
+  tempDoublePtr = STACKTOP;
+  STACKTOP = (STACKTOP + 8)|0;
 }
-''' % stack_check]
+''')
 
   if shared.Settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME moves stack functions to library.
@@ -2209,14 +2232,22 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   staticbump = shared.Settings.STATIC_BUMP
 
+  if shared.Settings.MINIMAL_RUNTIME:
+    # In minimal runtime, global initializers are run after the Wasm Module instantiation has finished.
+    global_initializers = ''
+  else:
+    # In regular runtime, global initializers are recorded in an __ATINIT__ array.
+    global_initializers = '''/* global initializers */ %s __ATINIT__.push(%s);
+''' % ('if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
+       global_initializers)
+
   pre = pre.replace('STATICTOP = STATIC_BASE + 0;', '''STATICTOP = STATIC_BASE + %d;
-/* global initializers */ %s __ATINIT__.push(%s);
-''' % (staticbump,
-       'if (!ENVIRONMENT_IS_PTHREAD)' if shared.Settings.USE_PTHREADS else '',
-       global_initializers))
+%s
+''' % (staticbump, global_initializers))
 
   pre = apply_memory(pre)
-  pre = apply_static_code_hooks(pre)
+  pre = apply_static_code_hooks(pre) # In regular runtime, atinits etc. exist in the preamble part
+  post = apply_static_code_hooks(post) # In MINIMAL_RUNTIME, atinit exists in the postamble part
 
   if shared.Settings.RELOCATABLE and not shared.Settings.SIDE_MODULE:
     pre += 'var gb = GLOBAL_BASE, fb = 0;\n'
@@ -2225,6 +2256,10 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   shared.Settings.EXPORTED_FUNCTIONS = forwarded_json['EXPORTED_FUNCTIONS']
 
   exports = metadata['exports']
+
+  # Store exports for Closure compiler to be able to track these as globals in
+  # -s DECLARE_ASM_MODULE_EXPORTS=0 builds.
+  shared.Settings.MODULE_EXPORTS = [(asmjs_mangle(f), f) for f in exports]
 
   if shared.Settings.ASYNCIFY:
     exports += ['asyncify_start_unwind', 'asyncify_stop_unwind', 'asyncify_start_rewind', 'asyncify_stop_rewind']
@@ -2254,7 +2289,10 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     pass
 
   sending = create_sending_wasm(invoke_funcs, forwarded_json, metadata)
-  receiving = create_receiving_wasm(exports)
+  receiving = create_receiving_wasm(exports, metadata['initializers'])
+
+  if shared.Settings.MINIMAL_RUNTIME:
+    post, receiving = compute_minimal_runtime_initializer_and_exports(post, metadata['initializers'], exports, receiving)
 
   module = create_module_wasm(sending, receiving, invoke_funcs, metadata)
 
@@ -2310,7 +2348,7 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
       args.append('--global-base=0')
     else:
       args.append('--global-base=%s' % shared.Settings.GLOBAL_BASE)
-  if shared.Settings.SAFE_STACK:
+  if shared.Settings.WASM_BACKEND and shared.Settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
   if shared.Settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
@@ -2319,6 +2357,8 @@ def finalize_wasm(temp_files, infile, outfile, memfile, DEBUG):
   # so that indirect calls have the right type, so export those.
   if shared.Settings.RELOCATABLE:
     args.append('--pass-arg=legalize-js-interface-export-originals')
+  if shared.Settings.FULL_DWARF:
+    args.append('--dwarf')
   stdout = shared.Building.run_binaryen_command('wasm-emscripten-finalize',
                                                 infile=base_wasm,
                                                 outfile=wasm,
@@ -2363,8 +2403,10 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   if all_sigs:
     # emit the signature-reading helper function only if we have any EM_ASM
     # functions in the module
+    check_int = ''
     check = ''
     if shared.Settings.ASSERTIONS:
+      check_int = "if (ch === 105 /*'i'*/)"
       check = ' else abort("unexpected char in asm const signature " + ch);'
     asm_const_funcs.append(r'''
 // Avoid creating a new array
@@ -2373,21 +2415,21 @@ var _readAsmConstArgsArray = [];
 function readAsmConstArgs(sigPtr, buf) {
   var args = _readAsmConstArgsArray;
   args.length = 0;
-  while (1) {
-    var ch = HEAPU8[sigPtr++];
-    if (!ch) return args;
-    if (ch === 'd'.charCodeAt(0) || ch === 'f'.charCodeAt(0)) {
-      buf = alignMemory(buf, 8);
+  var ch;
+  while (ch = HEAPU8[sigPtr++]) {
+    if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
+      buf = (buf + 7) & ~7;
       args.push(HEAPF64[(buf >> 3)]);
       buf += 8;
-    } else if (ch === 'i'.charCodeAt(0)) {
-      buf = alignMemory(buf, 4);
+    } else %s {
+      buf = (buf + 3) & ~3;
       args.push(HEAP32[(buf >> 2)]);
       buf += 4;
     }%s
   }
+  return args;
 }
-''' % check)
+''' % (check_int, check))
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
@@ -2607,11 +2649,12 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
   return '{ ' + ', '.join('"' + k + '": ' + send_items_map[k] for k in sorted_keys) + ' }'
 
 
-def create_receiving_wasm(exports):
+def create_receiving_wasm(exports, initializers):
+  exports_that_are_not_initializers = [x for x in exports if x not in initializers]
+
   receiving = []
-  if not shared.Settings.ASSERTIONS:
-    runtime_assertions = ''
-  else:
+  runtime_assertions = ''
+  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
     # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
     # some support code
@@ -2624,14 +2667,58 @@ asm["%(e)s"] = function() {%(assertions)s
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
   if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    for e in exports:
-      receiving.append('var %(mangled)s = Module["%(mangled)s"] = asm["%(e)s"];' % {'mangled': asmjs_mangle(e), 'e': e})
+    if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+      if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
+        # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
+        # var _main;
+        # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+        # var asm = output.instance.exports;
+        # _main = asm["_main"];
+        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
+      else:
+        if shared.Settings.MINIMAL_RUNTIME:
+          # In wasm2js exports can be directly processed at top level, i.e.
+          # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+          # var _main = asm["_main"];
+          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
+        else:
+          receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
+    else:
+      if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
+        global_object = '(typeof process !== "undefined" ? global : this)'
+      elif shared.Settings.target_environment_may_be('node'):
+        global_object = 'global'
+      else:
+        global_object = 'this'
+
+      if shared.Settings.MINIMAL_RUNTIME:
+        module_assign = ''
+      else:
+        module_assign = 'Module[asmjs_mangle(__exportedFunc)] = '
+
+      receiving.append('''
+  function asmjs_mangle(x) {
+    var unmangledSymbols = %s;
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  }
+''' % shared.Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED)
+      receiving.append('for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];')
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      receiving.append('''\
+      if shared.Settings.ASSERTIONS:
+        # With assertions on, don't hot-swap implementation.
+        receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
   return Module["asm"]["%(e)s"].apply(null, arguments)
+};
+''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+      else:
+        # With assertions off, hot-swap implementation to avoid garbage via
+        # arguments keyword.
+        receiving.append('''\
+var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
+  return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
@@ -2651,7 +2738,8 @@ def create_module_wasm(sending, receiving, invoke_funcs, metadata):
   if shared.Settings.ASYNCIFY and shared.Settings.ASSERTIONS:
     module.append('Asyncify.instrumentWasmImports(asmLibraryArg);\n')
 
-  module.append("var asm = createWasm();\n")
+  if not shared.Settings.MINIMAL_RUNTIME:
+    module.append("var asm = createWasm();\n")
 
   module.append(receiving)
   module.append(invoke_wrappers)
@@ -2698,8 +2786,10 @@ def load_metadata_wasm(metadata_raw, DEBUG):
       exit_with_error('unexpected metadata key received from wasm-emscripten-finalize: %s', key)
     metadata[key] = value
 
-  # Initializers call the global var version of the export, so they get the mangled name.
-  metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
+  if not shared.Settings.MINIMAL_RUNTIME:
+    # In regular runtime initializers call the global var version of the export, so they get the mangled name.
+    # In MINIMAL_RUNTIME, the initializers are called directly off the export object for minimal code size.
+    metadata['initializers'] = [asmjs_mangle(i) for i in metadata['initializers']]
 
   if DEBUG:
     logger.debug("Metadata parsed: " + pprint.pformat(metadata))
@@ -2722,30 +2812,6 @@ def create_invoke_wrappers(invoke_funcs):
     sig = invoke[len('invoke_'):]
     invoke_wrappers += '\n' + shared.JS.make_invoke(sig) + '\n'
   return invoke_wrappers
-
-
-def treat_as_user_function(name):
-  library_functions_in_module = ('setTempRet0', 'getTempRet0', 'stackAlloc',
-                                 'stackSave', 'stackRestore',
-                                 'establishStackSpace', '__growWasmMemory',
-                                 '__heap_base', '__data_end')
-  if name.startswith('dynCall_'):
-    return False
-  if name in library_functions_in_module:
-    return False
-  return True
-
-
-def asmjs_mangle(name):
-  """Mangle a name the way asm.js/JSBackend globals are mangled.
-
-  Prepends '_' and replaces non-alphanumerics with '_'.
-  Used by wasm backend for JS library consistency with asm.js.
-  """
-  if treat_as_user_function(name):
-    return '_' + name
-  else:
-    return name
 
 
 def normalize_line_endings(text):
