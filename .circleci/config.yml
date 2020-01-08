@@ -50,7 +50,7 @@ commands:
       - run:
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
@@ -60,7 +60,7 @@ commands:
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
+            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
             python3 tests/runner.py test_hello_world
       - run:
           name: freeze cache
@@ -496,9 +496,11 @@ jobs:
   test-upstream-other-mac:
     macos:
       xcode: "9.0"
+    environment:
+      EMCC_DEBUG: "1"
     steps:
       - run-tests-mac:
-          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
+          test_targets: "other.test_minimal_runtime_code_size"
 
 workflows:
   build-test:
