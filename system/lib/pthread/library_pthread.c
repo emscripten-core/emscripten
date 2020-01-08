@@ -937,7 +937,6 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
       // Proceed by running main() on the main browser thread as a fallback.
       return __call_main(_main_arguments.argc, _main_arguments.argv);
     }
-    EM_ASM(noExitRuntime = true);
     return 0;
   } else {
     return __call_main(_main_arguments.argc, _main_arguments.argv);

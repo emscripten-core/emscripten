@@ -399,6 +399,7 @@ var LibraryPThread = {
               if (detached) {
                 PThread.returnWorkerToPool(worker);
               }
+#if EXIT_RUNTIME // If building with -s EXIT_RUNTIME=0, no thread will post this message, so don't even compile it in.
             } else if (cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
               noExitRuntime = false;
@@ -408,6 +409,7 @@ var LibraryPThread = {
                 if (e instanceof ExitStatus) return;
                 throw e;
               }
+#endif
             } else if (cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
             } else if (cmd === 'objectTransfer') {
@@ -1219,7 +1221,9 @@ var LibraryPThread = {
 
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
+#if EXIT_RUNTIME
     if (!noExitRuntime) postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
+#endif
     return returnCode;
   },
 
