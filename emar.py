@@ -34,6 +34,12 @@ if __name__ == '__main__':
 # Main run() function
 #
 def run():
+  if shared.Settings.WASM_BACKEND:
+    # The wasm backend does suffer from the same probllem as fastcomp so doesn't
+    # need the filename hashing.
+    cmd = [shared.LLVM_AR] + sys.argv[1:]
+    return shared.run_process(cmd, stdin=sys.stdin, check=False).returncode
+
   try:
     args = substitute_response_files(sys.argv)
   except IOError as e:
