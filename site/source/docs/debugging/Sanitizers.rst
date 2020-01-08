@@ -22,7 +22,9 @@ Emscripten. This makes it much easier to catch bugs in your code.
 
 __ https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html
 
-To use UBSan, simply pass ``-fsanitize=undefined`` to ``emcc`` or ``em++``.
+To use UBSan, simply pass ``-fsanitize=undefined`` to ``emcc`` or ``em++``. Note
+that you need to pass this at both the compile and link stages, as it affects
+both codegen and system libraries.
 
 Catching Null Dereference
 -------------------------
@@ -124,7 +126,9 @@ related bugs in your code.
 
 __ https://clang.llvm.org/docs/AddressSanitizer.html
 
-To use ASan, simply pass ``-fsanitize=address`` to ``emcc`` or ``em++``.
+To use ASan, simply pass ``-fsanitize=address`` to ``emcc`` or ``em++``. As
+with UBSan, you need to pass this at both the compile and link stages,
+as it affects both codegen and system libraries.
 
 You probably need to increase ``TOTAL_MEMORY`` to at least 64 MB or pass
 ``-s ALLOW_MEMORY_GROWTH`` so that ASan has enough memory to start. Otherwise,
