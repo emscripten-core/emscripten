@@ -496,11 +496,9 @@ jobs:
   test-upstream-other-mac:
     macos:
       xcode: "9.0"
-    environment:
-      EMCC_DEBUG: "1"
     steps:
       - run-tests-mac:
-          test_targets: "other.test_minimal_runtime_code_size"
+          test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
 
 workflows:
   build-test:
