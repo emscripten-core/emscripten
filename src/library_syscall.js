@@ -1037,26 +1037,21 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name[0] === '.') { // XXX name? see https://github.com/emscripten-core/emscripten/issues/7487
-        id = 1;
-        type = 4; // DT_DIR
-      } else {
-        try {
-          var child = FS.lookupNode(stream, name);
-        } catch (e) {
-          if (!(e instanceof FS.ErrnoError) || e.errno !== {{{ cDefine('EACCES') }}}) {
-            throw e;
-          }
-          // Access denied; skip it in the directory listing.
-          idx++;
-          continue;
+      try {
+        var child = FS.lookupNode(stream, name);
+      } catch (e) {
+        if (!(e instanceof FS.ErrnoError) || e.errno !== {{{ cDefine('EACCES') }}}) {
+          throw e;
         }
-        id = child.id;
-        type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
-               FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
-               FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
-               8;                             // DT_REG, regular file.
+        // Access denied; skip it in the directory listing.
+        idx++;
+        continue;
       }
+      id = child.id;
+      type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
+             FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
+             FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
+             8;                             // DT_REG, regular file.
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_ino, 'id', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_off, '(idx + 1) * struct_size', 'i64') }}};
       {{{ makeSetValue('dirp + pos', C_STRUCTS.dirent.d_reclen, C_STRUCTS.dirent.__size__, 'i16') }}};
