@@ -863,10 +863,15 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name[0] === '.') { // XXX name? see https://github.com/emscripten-core/emscripten/issues/7487
-        id = 1;
+      if (name === '.') {
+        id = stream.id;
         type = 4; // DT_DIR
-      } else {
+      }
+      else if (name === '..') {
+        id = FS.lookupPath(stream.path, { parent: true }).id;
+        type = 4; // DT_DIR
+      }
+      else {
         try {
           var child = FS.lookupNode(stream, name);
         } catch (e) {
