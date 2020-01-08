@@ -11,7 +11,6 @@ dynCall_iidiiii
 dynCall_iiii
 dynCall_jiji
 dynCall_vii
-establishStackSpace
 stackAlloc
 stackRestore
 stackSave

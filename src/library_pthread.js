@@ -310,12 +310,6 @@ var LibraryPThread = {
       for (var i = 0; i < numWorkers; ++i) {
         var worker = workers[i];
 
-#if !WASM_BACKEND
-        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
-        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
-        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
-#endif
-
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
           'cmd': 'load',
@@ -337,9 +331,6 @@ var LibraryPThread = {
 #else
           'buffer': HEAPU8.buffer,
           'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
-#endif
-#if !WASM_BACKEND
-          'tempDoublePtr': tempDoublePtr,
 #endif
           'DYNAMIC_BASE': DYNAMIC_BASE,
           'DYNAMICTOP_PTR': DYNAMICTOP_PTR
@@ -1340,6 +1331,18 @@ var LibraryPThread = {
   $establishStackSpaceInJsModule: function(stackTop, stackMax) {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
+
+#if !WASM_BACKEND
+    // In fastcomp backend, locate tempDoublePtr memory area at the bottom of the stack, and bump up
+    // the stack by the bytes used.
+    tempDoublePtr = STACK_BASE;
+#if ASSERTIONS
+    assert(tempDoublePtr % 8 == 0);
+#endif
+    STACK_BASE += 8;
+    STACKTOP += 8;
+#endif
+
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif

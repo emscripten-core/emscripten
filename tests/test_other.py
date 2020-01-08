@@ -8187,9 +8187,9 @@ int main() {
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 15, 29), # noqa
-    'O1': (['-O1'], 16, ['abort'], ['waka'], 10450,  4, 11, 12), # noqa
-    'O2': (['-O2'], 16, ['abort'], ['waka'], 10440,  4, 11, 12), # noqa
+    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 14, 28), # noqa
+    'O1': (['-O1'], 16, ['abort'], ['waka'], 10450,  4, 10, 11), # noqa
+    'O2': (['-O2'], 16, ['abort'], ['waka'], 10440,  4, 10, 11), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
     'O3': (['-O3'],  4, [],        [],          55,  0,  1, 1), # noqa
     'Os': (['-Os'],  4, [],        [],          55,  0,  1, 1), # noqa
@@ -8213,10 +8213,10 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'normal': (['-O2'], 40, ['abort'], ['waka'], 186423, 23, 37, 541), # noqa
+    'normal': (['-O2'], 40, ['abort'], ['waka'], 186423, 23, 36, 540), # noqa
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        40, ['abort'], ['waka'], 188310, 23, 38, 521), # noqa
+                        40, ['abort'], ['waka'], 188310, 23, 37, 520), # noqa
   })
   @no_wasm_backend()
   def test_metadce_cxx_fastcomp(self, *args):
@@ -8245,9 +8245,9 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      27, ['abort'], ['waka'], 42701,  18,   17, 56), # noqa
-    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,   9,   14, 32), # noqa
-    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,   9,   14, 27), # noqa
+    'O0': ([],      27, ['abort'], ['waka'], 42701,  18,   16, 55), # noqa
+    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,   9,   13, 31), # noqa
+    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,   9,   13, 26), # noqa
     'O3': (['-O3'],  7, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
     'Os': (['-Os'],  7, [],        [],        2064,   6,    2, 15), # noqa
     'Oz': (['-Oz'],  7, [],        [],        2045,   6,    2, 14), # noqa

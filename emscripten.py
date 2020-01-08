@@ -937,7 +937,10 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   if shared.Settings.ALLOW_MEMORY_GROWTH:
     funcs.append('_emscripten_replace_memory')
   if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
+    if shared.Settings.USE_PTHREADS:
+      funcs += ['establishStackSpace']
+
   if shared.Settings.EMTERPRETIFY:
     funcs += ['emterpret']
     if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -1666,7 +1669,9 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
+    if shared.Settings.USE_PTHREADS:
+      funcs += ['establishStackSpace']
   return funcs
 
 
@@ -1887,13 +1892,19 @@ function stackRestore(top) {
   top = top|0;
   STACKTOP = top;
 }
+''' % stack_check]
+
+  if shared.Settings.USE_PTHREADS:
+    funcs.append('''
 function establishStackSpace(stackBase, stackMax) {
   stackBase = stackBase|0;
   stackMax = stackMax|0;
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
+  tempDoublePtr = STACKTOP;
+  STACKTOP = (STACKTOP + 8)|0;
 }
-''' % stack_check]
+''')
 
   if shared.Settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME moves stack functions to library.

@@ -49,7 +49,6 @@ $dynCall_iidiiii
 $dynCall_iiii
 $dynCall_jiji
 $dynCall_vii
-$establishStackSpace
 $legalstub$dynCall_jiji
 $stackAlloc
 $stackRestore

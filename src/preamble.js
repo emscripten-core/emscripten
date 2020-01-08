@@ -67,9 +67,6 @@ var wasmModule;
 // to avoid accessing the global scope.
 var threadInfoStruct = 0;
 var selfThreadId = 0;
-#if WASM_BACKEND
-var tempDoublePtr = 0;
-#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -381,7 +378,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
-  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 

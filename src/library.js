@@ -1334,6 +1334,7 @@ LibraryManager.library = {
   },
 #endif
 
+#if USE_PTHREADS
   $establishStackSpace__asm: true,
   $establishStackSpace__sig: 'vii',
   $establishStackSpace: function(stackBase, stackMax) {
@@ -1342,6 +1343,7 @@ LibraryManager.library = {
     STACKTOP = stackBase;
     STACK_MAX = stackMax;
   },
+#endif
 
 #if WASM_BACKEND == 0
   $setThrew__asm: true,
