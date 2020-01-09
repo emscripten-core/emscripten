@@ -526,16 +526,3 @@ var PassManager = {
     */
   }
 };
-
-// Given a list of dependencies, maybe add GL to it, if it was linked in
-// (note that the item with this list of dependencies should not call GL code
-// if it is not; this just avoids even adding a dependency that would error).
-// This only matters in strict mode (specifically AUTO_JS_LIBRARIES=0), as in
-// non-strict mode the GL library is always linked in anyhow.
-function maybeAddGLDep(deps) {
-  if (AUTO_JS_LIBRARIES ||
-      SYSTEM_JS_LIBRARIES.indexOf('library_webgl.js') >= 0) {
-    deps.push('$GL');
-  }
-  return deps;
-}
