@@ -1018,6 +1018,7 @@ int main()
     self.do_run(src, r'''d is at 24''')
 
   def test_setjmp_noleak(self):
+    self.emcc_args.append('-fno-builtin')
     self.do_runf(test_file('core/test_setjmp_noleak.c'), 'ok.')
 
   @with_both_exception_handling
@@ -8507,6 +8508,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # 'none' should fail to link because the dependency on ntohs was not added.
     err = self.expect_fail([EMCC, 'connect.c', '-sREVERSE_DEPS=none'])
     self.assertContained('undefined symbol: ntohs', err)
+
+  @parameterized({
+    'dlmalloc': ['dlmalloc'],
+    'emmalloc': ['emmalloc'],
+    'dlmalloc_align8': ['dlmalloc-align8'],
+    'emmalloc_align8': ['emmalloc-align8'],
+  })
+  def test_malloc_alignment(self, malloc):
+    self.set_setting('MALLOC', malloc)
+    if 'align8' in malloc:
+      self.emcc_args += ['-DALIGN8']
+    self.emcc_args += ['-std=gnu11', '-fno-builtin']
+    self.do_runf(test_file('core/test_malloc_alignment.c'))
 
 
 # Generate tests for everything

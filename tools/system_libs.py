@@ -1020,10 +1020,15 @@ class libmalloc(MTLibrary):
   cflags = ['-O2', '-fno-builtin']
 
   def __init__(self, **kwargs):
-    self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'none'):
-      raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
+    valid = ['dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose']
+    valid += [v + '-align8' for v in valid]
+    valid.append('none')
 
+    self.malloc = kwargs.pop('malloc').replace('-align8', '')
+    if self.malloc not in valid:
+      shared.exit_with_error(f'invalid MALLOC setting: `{self.malloc}`.  must be one of "emmalloc[-debug|-memvalidate][-verbose]", "dlmalloc" or "none", see settings.js')
+
+    self.align8 = kwargs.pop('align8')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
     self.memvalidate = kwargs.pop('memvalidate')
@@ -1054,6 +1059,8 @@ class libmalloc(MTLibrary):
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
+    if self.align8:
+      cflags += ['-DMALLOC_ALIGNMENT=8']
     return cflags
 
   def get_base_name_prefix(self):
@@ -1068,6 +1075,8 @@ class libmalloc(MTLibrary):
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
+    if self.align8:
+      name += '-align8'
     return name
 
   def can_use(self):
@@ -1075,7 +1084,7 @@ class libmalloc(MTLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose']
+    return super().vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'memvalidate', 'verbose', 'align8']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -1084,6 +1093,7 @@ class libmalloc(MTLibrary):
       is_debug=settings.ASSERTIONS >= 2,
       use_errno=settings.SUPPORT_ERRNO,
       is_tracing=settings.EMSCRIPTEN_TRACING,
+      align8='align8' in settings.MALLOC,
       memvalidate='memvalidate' in settings.MALLOC,
       verbose='verbose' in settings.MALLOC,
       **kwargs

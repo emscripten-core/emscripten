@@ -24,6 +24,13 @@ See docs/process.md for more on how version tagging works.
   existence of `Buffer.from` which was added in v5.10.0.  If it turns out
   there is still a need to support these older node versions we can
   add a polyfil under LEGACY_VM_SUPPORT (#14447).
+- The alignment of memory returned from the malloc implementations in emscripten
+  (dlmalloc and emmalloc) defaults to 16 rather than 8.  This is technically
+  correct (since `alignof(max_align_t)` is 16 for the WebAssembly clang target)
+  and fixes several issues we have seen in the wild.  Since some programs can
+  benefit having a lower alignment we have added `dlmalloc-align8` and
+  `emmalloc-align8` variants which can use used with the `-s MALLOC` option to
+  opt into the old (non-compliant) behavior.
 
 2.0.24 - 06/10/2021
 -------------------

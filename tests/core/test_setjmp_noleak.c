@@ -16,7 +16,7 @@ void luaWork(int d){
 
 void dump() {
   struct mallinfo m = mallinfo();
-  printf("dump: %d , %d\n", m.arena, m.uordblks);
+  printf("dump: %d , %d, %d\n", m.arena, m.uordblks, m.fordblks);
 }
 
 void work(int n)
@@ -24,7 +24,7 @@ void work(int n)
   printf("work %d\n", n);
   dump();
 
-  if(!setjmp(env)){
+  if (!setjmp(env)){
     luaWork(n);
   }
 
@@ -32,6 +32,7 @@ void work(int n)
 }
 
 int main() {
+  void* x = malloc(10);
   struct mallinfo m1 = mallinfo();
   dump();
   work(10);
@@ -39,4 +40,6 @@ int main() {
   struct mallinfo m2 = mallinfo();
   assert(m1.uordblks == m2.uordblks);
   printf("ok.\n");
+  dump();
+  return 0;
 }
