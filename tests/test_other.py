@@ -2555,7 +2555,7 @@ int f() {
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
     shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
-    # ensure some time passes before running the packager again so that if it does touch the 
+    # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
