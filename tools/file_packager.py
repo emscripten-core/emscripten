@@ -101,6 +101,7 @@ DDS_HEADER_SIZE = 128
 AV_WORKAROUND = 0
 
 excluded_patterns = []
+new_data_files = []
 
 
 def has_hidden_attribute(filepath):
@@ -168,7 +169,6 @@ def main():
   export_name = 'Module'
   leading = ''
   has_preloaded = False
-  compress_cnt = 0
   plugins = []
   jsoutput = None
   from_emcc = False
@@ -297,7 +297,6 @@ def main():
       }
   '''
 
-  new_data_files = []
   for file_ in data_files:
     if not should_ignore(file_['srcpath']):
       if os.path.isdir(file_['srcpath']):
@@ -357,13 +356,11 @@ def main():
   # Remove duplicates (can occur naively, for example preload dir/, preload dir/subdir/)
   seen = {}
 
-
   def was_seen(name):
     if seen.get(name):
         return True
     seen[name] = 1
     return False
-
 
   data_files = [file_ for file_ in data_files if not was_seen(file_['dstpath'])]
 
@@ -485,7 +482,6 @@ def main():
       counter += 1
     elif file_['mode'] == 'preload':
       # Preload
-      varname = 'filePreload%d' % counter
       counter += 1
       metadata['files'].append({
         'filename': file_['dstpath'],
@@ -908,7 +904,6 @@ def main():
   ret += '''%s
   })();
   ''' % _metadata_template
-
 
   if force or len(data_files):
     if jsoutput is None:
