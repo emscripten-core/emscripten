@@ -25,7 +25,6 @@ $b2
 $dynCall_ii
 $dynCall_iiii
 $dynCall_jiji
-$establishStackSpace
 $legalstub$dynCall_jiji
 $stackAlloc
 $stackRestore

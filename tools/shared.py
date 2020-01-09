@@ -1309,7 +1309,7 @@ def verify_settings():
     exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
 
   if Settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAVE_HEAP must be 0 or 1 in fastcomp')
+    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
@@ -1444,6 +1444,26 @@ def mangle_c_symbol_name(name):
 
 def demangle_c_symbol_name(name):
   return name[1:] if name.startswith('_') else '$' + name
+
+
+def treat_as_user_function(name):
+  if name.startswith('dynCall_'):
+    return False
+  if name in Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED:
+    return False
+  return True
+
+
+def asmjs_mangle(name):
+  """Mangle a name the way asm.js/JSBackend globals are mangled.
+
+  Prepends '_' and replaces non-alphanumerics with '_'.
+  Used by wasm backend for JS library consistency with asm.js.
+  """
+  if treat_as_user_function(name):
+    return '_' + name
+  else:
+    return name
 
 
 #  Building
@@ -2452,7 +2472,7 @@ class Building(object):
       # externs file for the exports, Closure is able to reason about the exports.
       if Settings.MODULE_EXPORTS and not Settings.DECLARE_ASM_MODULE_EXPORTS:
         # Generate an exports file that records all the exported symbols from asm.js/wasm module.
-        module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i in Settings.MODULE_EXPORTS])
+        module_exports_suppressions = '\n'.join(['/**\n * @suppress {duplicate, undefinedVars}\n */\nvar %s;\n' % i for i, j in Settings.MODULE_EXPORTS])
         exports_file = configuration.get_temp_files().get('_module_exports.js')
         exports_file.write(module_exports_suppressions.encode())
         exports_file.close()
@@ -2564,7 +2584,7 @@ class Building(object):
     logger.debug('running meta-DCE')
     temp_files = configuration.get_temp_files()
     # first, get the JS part of the graph
-    extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x + '","' + x + '"]', Settings.MODULE_EXPORTS)) + ']}'
+    extra_info = '{ "exports": [' + ','.join(map(lambda x: '["' + x[0] + '","' + x[1] + '"]', Settings.MODULE_EXPORTS)) + ']}'
     txt = Building.acorn_optimizer(js_file, ['emitDCEGraph', 'noPrint'], return_output=True, extra_info=extra_info)
     graph = json.loads(txt)
     # add exports based on the backend output, that are not present in the JS
@@ -2573,7 +2593,7 @@ class Building(object):
       for item in graph:
         if 'export' in item:
           exports.add(item['export'])
-      for export in Settings.MODULE_EXPORTS:
+      for export, unminified in Settings.MODULE_EXPORTS:
         if export not in exports:
           graph.append({
             'export': export,
@@ -2870,7 +2890,9 @@ class Building(object):
     library_files = []
     if library_name in js_system_libraries:
       if len(js_system_libraries[library_name]):
-        library_files += js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        library_files += lib
+        logger.debug('Linking in JS library ' + str(lib))
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]

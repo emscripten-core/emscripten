@@ -134,7 +134,7 @@ var LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
-    if (USE_WEBGL2) {
+    if (MAX_WEBGL_VERSION >= 2) {
       libraries.push('library_webgl2.js');
     }
 
@@ -425,12 +425,13 @@ function exportRuntime() {
   ];
 
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('Pointer_stringify');
     runtimeElements.push('warnOnce');
     runtimeElements.push('stackSave');
     runtimeElements.push('stackRestore');
     runtimeElements.push('stackAlloc');
-    runtimeElements.push('establishStackSpace');
+    if (USE_PTHREADS) {
+      runtimeElements.push('establishStackSpace');
+    }
   }
 
   if (STACK_OVERFLOW_CHECK) {
@@ -445,7 +446,7 @@ function exportRuntime() {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    var threadExports = ['PThread', 'ExitStatus', 'tempDoublePtr', '_pthread_self'];
+    var threadExports = ['PThread', 'ExitStatus', '_pthread_self'];
     if (WASM) {
       threadExports.push('wasmMemory');
     }
@@ -525,16 +526,3 @@ var PassManager = {
     */
   }
 };
-
-// Given a list of dependencies, maybe add GL to it, if it was linked in
-// (note that the item with this list of dependencies should not call GL code
-// if it is not; this just avoids even adding a dependency that would error).
-// This only matters in strict mode (specifically AUTO_JS_LIBRARIES=0), as in
-// non-strict mode the GL library is always linked in anyhow.
-function maybeAddGLDep(deps) {
-  if (AUTO_JS_LIBRARIES ||
-      SYSTEM_JS_LIBRARIES.indexOf('library_webgl.js') >= 0) {
-    deps.push('$GL');
-  }
-  return deps;
-}

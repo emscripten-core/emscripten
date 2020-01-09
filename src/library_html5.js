@@ -36,7 +36,9 @@ var LibraryJSEvents = {
         JSEvents._removeHandler(i);
       }
       JSEvents.eventHandlers = [];
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       JSEvents.deferredCalls = [];
+#endif
     },
 
 #if !MINIMAL_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
@@ -48,6 +50,7 @@ var LibraryJSEvents = {
     },
 #endif
 
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     deferredCalls: [],
 
     // Queues the given function call to occur the next time we enter an event handler.
@@ -110,6 +113,7 @@ var LibraryJSEvents = {
     inEventHandler: 0,
     // If we are in an event handler, specifies the event handler object from the eventHandlers array that is currently running.
     currentEventHandler: null,
+#endif
 
     // Stores objects representing each currently registered JS event handler.
     eventHandlers: [],
@@ -136,17 +140,21 @@ var LibraryJSEvents = {
     
     registerOrRemoveHandler: function(eventHandler) {
       var jsEventHandler = function jsEventHandler(event) {
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
         // Increment nesting count for the event handler.
         ++JSEvents.inEventHandler;
         JSEvents.currentEventHandler = eventHandler;
         // Process any old deferred calls the user has placed.
         JSEvents.runDeferredCalls();
+#endif
         // Process the actual event, calls back to user C code handler.
         eventHandler.handlerFunc(event);
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
         // Process any new deferred calls that were placed right now from this event handler.
         JSEvents.runDeferredCalls();
         // Out of event handler - restore nesting count.
         --JSEvents.inEventHandler;
+#endif
       };
       
       if (eventHandler.callbackfunc) {
@@ -255,10 +263,12 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
 #if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
       allowsDeferredCalls: JSEvents.isInternetExplorer() ? false : true, // MSIE doesn't allow fullscreen and pointerlock requests from key handlers, others do.
 #else
       allowsDeferredCalls: true,
+#endif
 #endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
@@ -485,13 +495,15 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
+#endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: mouseEventHandlerFunc,
       useCapture: useCapture
     };
-#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_IE_VERSION != TARGET_NOT_SUPPORTED && HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // In IE, mousedown events don't either allow deferred calls to be run!
     if (JSEvents.isInternetExplorer() && eventTypeString == 'mousedown') eventHandler.allowsDeferredCalls = false;
 #endif
@@ -628,7 +640,9 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: true,
+#endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
 #if MIN_IE_VERSION <= 8 || MIN_SAFARI_VERSION < 130000 // https://caniuse.com/#feat=mdn-api_wheelevent
@@ -710,7 +724,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
-      allowsDeferredCalls: false, // Neither scroll or resize events allow running requests inside them.
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: uiEventHandlerFunc,
@@ -765,7 +778,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: focusEventHandlerFunc,
@@ -838,7 +850,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: deviceOrientationEventHandlerFunc,
@@ -914,7 +925,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: deviceMotionEventHandlerFunc,
@@ -994,7 +1004,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: orientationChangeEventHandlerFunc,
@@ -1114,7 +1123,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: fullscreenChangeEventhandlerFunc,
@@ -1205,11 +1213,13 @@ var LibraryJSEvents = {
     var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
     var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
     var rect = __getBoundingClientRect(target);
-#if LEGACY_VM_SUPPORT
+#if MIN_IE_VERSION < 9
+    // .getBoundingClientRect(element).width & .height do not work on IE 8 and older, IE 9+ is required
+    // (https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect)
     var windowedCssWidth = rect.right - rect.left;
     var windowedCssHeight = rect.bottom - rect.top;
 #else
-    var windowedCssWidth = rect.width; // .getBoundingClientRect(element).width & .height do not work on IE 8 and older, IE 9+ is required
+    var windowedCssWidth = rect.width;
     var windowedCssHeight = rect.height;
 #endif
     var canvasSize = __get_canvas_element_size(target);
@@ -1500,6 +1510,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}};
     }
 
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
 
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
@@ -1511,6 +1522,7 @@ var LibraryJSEvents = {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
     }
+#endif
 
     return _JSEvents_requestFullscreen(target, strategy);
   },
@@ -1524,7 +1536,9 @@ var LibraryJSEvents = {
     strategy.scaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}};
     strategy.canvasResolutionScaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
     strategy.filteringMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}};
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+#endif
     strategy.canvasResizedCallbackTargetThread = {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}};
 
     return __emscripten_do_request_fullscreen(target, strategy);
@@ -1538,7 +1552,9 @@ var LibraryJSEvents = {
     strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
     strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
     strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+#endif
     strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
     strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
 #if USE_PTHREADS
@@ -1623,8 +1639,10 @@ var LibraryJSEvents = {
   emscripten_exit_fullscreen__sig: 'i',
   emscripten_exit_fullscreen: function() {
     if (!JSEvents.fullscreenEnabled()) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // Make sure no queued up calls will fire after this.
     JSEvents.removeDeferredCalls(_JSEvents_requestFullscreen);
+#endif
 
     var d = __specialEventTargets[{{{ cDefine('EMSCRIPTEN_EVENT_TARGET_DOCUMENT') }}}];
     if (d.exitFullscreen) {
@@ -1685,7 +1703,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: pointerlockChangeEventHandlerFunc,
@@ -1730,7 +1747,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: pointerlockErrorEventHandlerFunc,
@@ -1833,6 +1849,7 @@ var LibraryJSEvents = {
       return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     var canPerformRequests = JSEvents.canPerformEventHandlerRequests();
 
     // Queue this function call if we're not currently in an event handler and the user saw it appropriate to do so.
@@ -1844,6 +1861,7 @@ var LibraryJSEvents = {
         return {{{ cDefine('EMSCRIPTEN_RESULT_FAILED_NOT_DEFERRED') }}};
       }
     }
+#endif
 
     return __requestPointerLock(target);
   },
@@ -1852,8 +1870,10 @@ var LibraryJSEvents = {
   emscripten_exit_pointerlock__sig: 'i',
   emscripten_exit_pointerlock__deps: ['$JSEvents', '_requestPointerLock'],
   emscripten_exit_pointerlock: function() {
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
     // Make sure no queued up calls will fire after this.
     JSEvents.removeDeferredCalls(__requestPointerLock);
+#endif
 
     if (document.exitPointerLock) {
       document.exitPointerLock();
@@ -1932,7 +1952,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: visibilityChangeEventHandlerFunc,
@@ -2049,7 +2068,9 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: target,
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
+#endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: touchEventHandlerFunc,
@@ -2143,7 +2164,9 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
+#if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
       allowsDeferredCalls: true,
+#endif
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: gamepadEventHandlerFunc,
@@ -2231,7 +2254,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: beforeUnloadEventHandlerFunc,
@@ -2287,7 +2309,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: batteryEventHandlerFunc,
@@ -2367,7 +2388,11 @@ var LibraryJSEvents = {
   // for all the messages, one of which is this GL-using one. This won't be
   // called if GL is not linked in, but also make sure to not add a dep on
   // GL unnecessarily from here, as that would cause a linker error.
-  emscripten_webgl_do_create_context__deps: maybeAddGLDep(['$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget']),
+  emscripten_webgl_do_create_context__deps: [
+#if LibraryManager.has('library_webgl.js')
+  '$GL',
+#endif
+  '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
@@ -2632,15 +2657,23 @@ var LibraryJSEvents = {
   emscripten_webgl_destroy_context: 'emscripten_webgl_destroy_context_calling_thread',
 #endif
 
+#if MIN_WEBGL_VERSION == 1
+  emscripten_webgl_enable_extension_calling_thread__deps: ['_webgl_acquireInstancedArraysExtension',
+    '_webgl_acquireVertexArrayObjectExtension', '_webgl_acquireDrawBuffersExtension'],
+#endif
   emscripten_webgl_enable_extension_calling_thread: function(contextHandle, extension) {
     var context = GL.getContext(contextHandle);
     var extString = UTF8ToString(extension);
+#if GL_EXTENSIONS_IN_PREFIXED_FORMAT
     if (extString.indexOf('GL_') == 0) extString = extString.substr(3); // Allow enabling extensions both with "GL_" prefix and without.
+#endif
 
-    // Obtain function entry points to extension related functions.
-    if (extString == 'ANGLE_instanced_arrays') GL.acquireInstancedArraysExtension(GLctx);
-    else if (extString == 'OES_vertex_array_object') GL.acquireVertexArrayObjectExtension(GLctx);
-    else if (extString == 'WEBGL_draw_buffers') GL.acquireDrawBuffersExtension(GLctx);
+#if MIN_WEBGL_VERSION == 1
+    // Obtain function entry points to WebGL 1 extension related functions.
+    if (extString == 'ANGLE_instanced_arrays') __webgl_acquireInstancedArraysExtension(GLctx);
+    else if (extString == 'OES_vertex_array_object') __webgl_acquireVertexArrayObjectExtension(GLctx);
+    else if (extString == 'WEBGL_draw_buffers') __webgl_acquireDrawBuffersExtension(GLctx);
+#endif
 
     var ext = context.GLctx.getExtension(extString);
     return !!ext;
@@ -2691,7 +2724,6 @@ var LibraryJSEvents = {
 
     var eventHandler = {
       target: __findEventTarget(target),
-      allowsDeferredCalls: false,
       eventTypeString: eventTypeString,
       callbackfunc: callbackfunc,
       handlerFunc: webGlEventHandlerFunc,
@@ -2747,7 +2779,7 @@ var LibraryJSEvents = {
       if (canvas.offscreenCanvas) canvas = canvas.offscreenCanvas;
       var autoResizeViewport = false;
       if (canvas.GLctxObject && canvas.GLctxObject.GLctx) {
-        var prevViewport = canvas.GLctxObject.GLctx.getParameter(canvas.GLctxObject.GLctx.VIEWPORT);
+        var prevViewport = canvas.GLctxObject.GLctx.getParameter(0xBA2 /* GL_VIEWPORT */);
         // TODO: Perhaps autoResizeViewport should only be true if FBO 0 is currently active?
         autoResizeViewport = (prevViewport[0] === 0 && prevViewport[1] === 0 && prevViewport[2] === canvas.width && prevViewport[3] === canvas.height);
 #if GL_DEBUG
@@ -2968,11 +3000,12 @@ var LibraryJSEvents = {
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
     var rect = __getBoundingClientRect(target);
-#if LEGACY_VM_SUPPORT
+#if MIN_IE_VERSION < 9
+    // .getBoundingClientRect(element).width & .height do not work on IE 8 and older, IE 9+ is required
+    // (https://developer.mozilla.org/en-US/docs/Web/API/Element/getBoundingClientRect)
     {{{ makeSetValue('width', '0', 'rect.right - rect.left', 'double') }}};
     {{{ makeSetValue('height', '0', 'rect.bottom - rect.top', 'double') }}};
 #else
-    // N.b. .getBoundingClientRect(element).width & .height do not exist on IE 8, so IE 9+ is needed.
     {{{ makeSetValue('width', '0', 'rect.width', 'double') }}};
     {{{ makeSetValue('height', '0', 'rect.height', 'double') }}};
 #endif

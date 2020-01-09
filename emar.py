@@ -21,6 +21,7 @@ import hashlib
 import os
 import shutil
 import sys
+import tempfile
 
 from tools.toolchain_profiler import ToolchainProfiler
 from tools import shared
@@ -34,17 +35,25 @@ if __name__ == '__main__':
 # Main run() function
 #
 def run():
+  if shared.Settings.WASM_BACKEND:
+    # The wasm backend does suffer from the same probllem as fastcomp so doesn't
+    # need the filename hashing.
+    cmd = [shared.LLVM_AR] + sys.argv[1:]
+    return shared.run_process(cmd, stdin=sys.stdin, check=False).returncode
+
   try:
     args = substitute_response_files(sys.argv)
   except IOError as e:
     shared.exit_with_error(e)
   newargs = [shared.LLVM_AR] + args[1:]
 
-  to_delete = []
+  tmpdir = None
+  response_filename = None
 
   # The 3 argmuent form of ar doesn't involve other files. For example
   # 'ar x libfoo.a'.
   if len(newargs) > 3:
+    tmpdir = tempfile.mkdtemp(prefix='emar-')
     cmd = newargs[1]
     if 'r' in cmd or 'q' in cmd:
       # We are adding files to the archive.
@@ -59,35 +68,28 @@ def run():
       for j in range(out_arg_index + 1, len(newargs)):
         orig_name = newargs[j]
         full_name = os.path.abspath(orig_name)
-        dirname = os.path.dirname(full_name)
         basename = os.path.basename(full_name)
 
         h = hashlib.md5(full_name.encode('utf-8')).hexdigest()[:8]
         parts = basename.split('.')
         parts[0] += '_' + h
         newname = '.'.join(parts)
-        full_newname = os.path.join(dirname, newname)
-        try:
-          shutil.copyfile(orig_name, full_newname)
-          newargs[j] = full_newname
-          to_delete.append(full_newname)
-        except Exception:
-          # it is ok to fail here, we just don't get hashing
-          pass
+        full_newname = os.path.join(tmpdir, newname)
+        shutil.copyfile(orig_name, full_newname)
+        newargs[j] = full_newname
 
     if shared.DEBUG:
       print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
-
     response_filename = create_response_file(newargs[3:], shared.get_emscripten_temp_dir())
-    to_delete += [response_filename]
     newargs = newargs[:3] + ['@' + response_filename]
 
   if shared.DEBUG:
     print('emar:', sys.argv, '  ==>  ', newargs, file=sys.stderr)
 
   rtn = shared.run_process(newargs, stdin=sys.stdin, check=False).returncode
-  for d in to_delete:
-    shared.try_delete(d)
+  if tmpdir:
+    shutil.rmtree(tmpdir)
+    shared.try_delete(response_filename)
   return rtn
 
 

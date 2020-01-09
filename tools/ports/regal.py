@@ -7,8 +7,12 @@ import logging
 import os
 import shutil
 
-TAG = 'version_4'
-HASH = 'db702ee677d6ee276663922560012fe8d28c5f414ba50a628320432212bdcb606c34bc71f7a533416f43bd0226ceb819f79af822f11518d53552a071a27fc841'
+TAG = 'version_7'
+HASH = 'a921dab254f21cf5d397581c5efe58faf147c31527228b4fb34aed75164c736af4b3347092a8d9ec1249160230fa163309a87a20c2b9ceef8554566cc215de9d'
+
+
+def get_lib_name(ports, settings):
+  return ports.get_lib_name('libregal' + ('-mt' if settings.USE_PTHREADS else ''))
 
 
 def get(ports, settings, shared):
@@ -17,38 +21,27 @@ def get(ports, settings, shared):
 
   ports.fetch_project('regal', 'https://github.com/emscripten-ports/regal/archive/' + TAG + '.zip',
                       'regal-' + TAG, sha512hash=HASH)
-  libname = ports.get_lib_name('libregal')
 
   def create():
     logging.info('building port: regal')
     ports.clear_project_build('regal')
 
     # copy sources
-    # only what is needed is copied: regal, md5, jsonsl, boost, lookup3,
-    # Note: GLSL Optimizer is included (needed for headers) but not built
+    # only what is needed is copied: regal, boost, lookup3
     source_path_src = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'src')
     dest_path_src = os.path.join(ports.get_build_dir(), 'regal', 'src')
 
     source_path_regal = os.path.join(source_path_src, 'regal')
-    source_path_md5 = os.path.join(source_path_src, 'md5')
-    source_path_jsonsl = os.path.join(source_path_src, 'jsonsl')
     source_path_boost = os.path.join(source_path_src, 'boost')
     source_path_lookup3 = os.path.join(source_path_src, 'lookup3')
-    source_path_glslopt = os.path.join(source_path_src, 'glsl')
     dest_path_regal = os.path.join(dest_path_src, 'regal')
-    dest_path_md5 = os.path.join(dest_path_src, 'md5')
-    dest_path_jsonsl = os.path.join(dest_path_src, 'jsonsl')
     dest_path_boost = os.path.join(dest_path_src, 'boost')
     dest_path_lookup3 = os.path.join(dest_path_src, 'lookup3')
-    dest_path_glslopt = os.path.join(dest_path_src, 'glsl')
 
     shutil.rmtree(dest_path_src, ignore_errors=True)
     shutil.copytree(source_path_regal, dest_path_regal)
-    shutil.copytree(source_path_md5, dest_path_md5)
-    shutil.copytree(source_path_jsonsl, dest_path_jsonsl)
     shutil.copytree(source_path_boost, dest_path_boost)
     shutil.copytree(source_path_lookup3, dest_path_lookup3)
-    shutil.copytree(source_path_glslopt, dest_path_glslopt)
 
     # includes
     source_path_include = os.path.join(ports.get_dir(), 'regal', 'regal-' + TAG, 'include', 'GL')
@@ -108,9 +101,7 @@ def get(ports, settings, shared):
                   'regal/RegalFilt.cpp',
                   'regal/RegalXfer.cpp',
                   'regal/RegalX11.cpp',
-                  'regal/RegalDllMain.cpp',
-                  'md5/src/md5.c',
-                  'jsonsl/jsonsl.c']
+                  'regal/RegalDllMain.cpp']
 
     commands = []
     o_s = []
@@ -119,41 +110,38 @@ def get(ports, settings, shared):
       c = os.path.join(dest_path_src, src)
       o = os.path.join(dest_path_src, src + '.o')
       shared.safe_ensure_dirs(os.path.dirname(o))
-      commands.append([shared.PYTHON, shared.EMCC, '-c', c,
-                       # specify the defined symbols as the Regal Makefiles does for Emscripten+Release
-                       # the define logic for other symbols will be handled automatically by Regal headers (SYS_EMSCRIPTEN, SYS_EGL, SYS_ES2, etc.)
-                       '-DNDEBUG',
-                       '-DREGAL_NO_PNG=1',
-                       '-DREGAL_LOG=0',
-                       '-DREGAL_NO_TLS=1',
-                       '-DREGAL_THREAD_LOCKING=0',
-                       '-DREGAL_GLSL_OPTIMIZER=0',
-                       '-fomit-frame-pointer',
-                       '-Wno-constant-logical-operand',
-                       '-fvisibility=hidden',
-                       '-O2',
-                       '-o', o,
-                       '-I' + dest_path_regal,
-                       '-I' + os.path.join(dest_path_md5, 'include'),
-                       '-I' + dest_path_lookup3,
-                       '-I' + dest_path_jsonsl,
-                       '-I' + dest_path_boost,
-                       '-I' + os.path.join(dest_path_glslopt, 'include'),
-                       '-I' + os.path.join(dest_path_glslopt, 'src', 'glsl'),
-                       '-I' + os.path.join(dest_path_glslopt, 'src', 'mesa'),
-                       '-w'])
+
+      command = [shared.PYTHON, shared.EMCC, '-c', c,
+                 '-DNDEBUG',
+                 '-DREGAL_LOG=0',  # Set to 1 if you need to have some logging info
+                 '-DREGAL_MISSING=0',  # Set to 1 if you don't want to crash in case of missing GL implementation
+                 '-fno-rtti',
+                 '-fno-exceptions', # Disable exceptions (in STL containers mostly), as they are not used at all
+                 '-O3',
+                 '-o', o,
+                 '-I' + dest_path_regal,
+                 '-I' + dest_path_lookup3,
+                 '-I' + dest_path_boost,
+                 '-Wall',
+                 '-Wno-unused-parameter']
+      if settings.USE_PTHREADS:
+        command += ['-pthread']
+      if settings.WASM_OBJECT_FILES != 1:
+        command += ['-flto']
+      commands.append(command)
+
       o_s.append(o)
 
     ports.run_commands(commands)
-    final = os.path.join(ports.get_build_dir(), 'regal', libname)
+    final = os.path.join(ports.get_build_dir(), 'regal', get_lib_name(ports, settings))
     ports.create_lib(final, o_s)
     return final
 
-  return [shared.Cache.get(libname, create, what='port')]
+  return [shared.Cache.get(get_lib_name(ports, settings), create, what='port')]
 
 
 def clear(ports, shared):
-  shared.Cache.erase_file(ports.get_lib_name('libregal'))
+  shared.Cache.erase_file(get_lib_name(ports, shared.Settings))
 
 
 def process_dependencies(settings):

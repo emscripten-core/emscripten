@@ -11,27 +11,17 @@
 #endif
 #include <limits.h>
 #include <stddef.h>
-#include <stdlib.h>
 #include <stdint.h>
+#if __EMSCRIPTEN_PTHREADS__ // for error handling, see below
 #include <stdio.h>
+#include <stdlib.h>
+#endif
 
 #ifdef __EMSCRIPTEN_TRACING__
 #include <emscripten/em_asm.h>
 #endif
 
-#define WASM_PAGE_SIZE 65536
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern intptr_t* emscripten_get_sbrk_ptr(void);
-extern int emscripten_resize_heap(size_t requested_size);
-extern size_t emscripten_get_heap_size(void);
-
-#ifdef __cplusplus
-}
-#endif
+#include <emscripten/heap.h>
 
 #ifndef EMSCRIPTEN_NO_ERRNO
 #define SET_ERRNO() { errno = ENOMEM; }
@@ -45,6 +35,8 @@ extern size_t emscripten_get_heap_size(void);
 }
 
 void *sbrk(intptr_t increment) {
+  // Enforce preserving a minimal 4-byte alignment for sbrk.
+  increment = (increment + 3) & ~3;
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
