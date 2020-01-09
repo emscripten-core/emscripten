@@ -582,20 +582,12 @@ var LibraryPThread = {
     }
   },
 
-  _num_logical_cores__deps: ['emscripten_force_num_logical_cores'],
-  _num_logical_cores: '{{{ makeStaticAlloc(4) }}}; HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}},
-
   emscripten_has_threading_support: function() {
     return typeof SharedArrayBuffer !== 'undefined';
   },
 
-  emscripten_num_logical_cores__deps: ['_num_logical_cores'],
   emscripten_num_logical_cores: function() {
-    return {{{ makeGetValue('__num_logical_cores', 0, 'i32') }}};
-  },
-
-  emscripten_force_num_logical_cores: function(cores) {
-    {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
+    return navigator['hardwareConcurrency'];
   },
 
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],

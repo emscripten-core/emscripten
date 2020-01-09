@@ -1393,11 +1393,6 @@ var PTHREAD_POOL_DELAY_LOAD = 0;
 // local vars in asm.js/wasm code.
 var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
 
-// Specifies the value returned by the function emscripten_num_logical_cores()
-// if navigator.hardwareConcurrency is not supported. Pass in a negative number
-// to show a popup dialog at startup so the user can configure this dynamically.
-var PTHREAD_HINT_NUM_CORES = 4;
-
 // True when building with --threadprofiler
 var PTHREADS_PROFILING = 0;
 

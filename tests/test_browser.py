@@ -3819,11 +3819,6 @@ window.close = function() {
   def test_pthread_setspecific_mainthread(self):
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_setspecific_mainthread.cpp'), expected='0', args=['-s', 'TOTAL_MEMORY=64MB', '-O3', '-s', 'USE_PTHREADS=1'], also_asmjs=True)
 
-  # Test the -s PTHREAD_HINT_NUM_CORES=x command line variable.
-  @requires_threads
-  def test_pthread_num_logical_cores(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_num_logical_cores.cpp'), expected='0', args=['-O3', '-s', 'USE_PTHREADS=1', '-s', 'PTHREAD_HINT_NUM_CORES=2'], also_asmjs=True)
-
   # Test that pthreads have access to filesystem.
   @requires_threads
   def test_pthread_file_io(self):

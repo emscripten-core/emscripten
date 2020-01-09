@@ -780,43 +780,6 @@ var memoryInitializer = null;
 #include "memoryprofiler.js"
 #endif
 
-#if USE_PTHREADS && PTHREAD_HINT_NUM_CORES < 0
-if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
-  addRunDependency('pthreads_querycores');
-
-  var bg = document.createElement('div');
-  bg.style = "position: absolute; top: 0%; left: 0%; width: 100%; height: 100%; background-color: black; z-index:1001; -moz-opacity: 0.8; opacity:.80; filter: alpha(opacity=80);";
-  var div = document.createElement('div');
-  var default_num_cores = navigator.hardwareConcurrency || 4;
-  var hwConcurrency = navigator.hardwareConcurrency ? ("says " + navigator.hardwareConcurrency) : "is not available";
-  var html = '<div style="width: 100%; text-align:center;"> Thread setup</div> <br /> Number of logical cores: <input type="number" style="width: 50px;" value="'
-    + default_num_cores + '" min="1" max="32" id="thread_setup_num_logical_cores"></input> <br /><span style="font-size: 75%;">(<span style="font-family: monospace;">navigator.hardwareConcurrency</span> '
-    + hwConcurrency + ')</span> <br />';
-#if PTHREAD_POOL_SIZE < 0
-  html += 'PThread pool size: <input type="number" style="width: 50px;" value="'
-    + default_num_cores + '" min="1" max="32" id="thread_setup_pthread_pool_size"></input> <br />';
-#endif
-  html += ' <br /> <input type="button" id="thread_setup_button_go" value="Go"></input>';
-  div.innerHTML = html;
-  div.style = 'position: absolute; top: 35%; left: 35%; width: 30%; height: 150px; padding: 16px; border: 16px solid gray; background-color: white; z-index:1002; overflow: auto;';
-  document.body.appendChild(bg);
-  document.body.appendChild(div);
-  var goButton = document.getElementById('thread_setup_button_go');
-  goButton.onclick = function() {
-    var num_logical_cores = parseInt(document.getElementById('thread_setup_num_logical_cores').value);
-    _emscripten_force_num_logical_cores(num_logical_cores);
-#if PTHREAD_POOL_SIZE < 0
-    var pthread_pool_size = parseInt(document.getElementById('thread_setup_pthread_pool_size').value);
-    PThread.allocateUnusedWorkers(pthread_pool_size, function() { removeRunDependency('pthreads_querycores'); });
-#else
-    removeRunDependency('pthreads_querycores');
-#endif
-    document.body.removeChild(bg);
-    document.body.removeChild(div);
-  }
-});
-#endif
-
 #if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_DELAY_LOAD != 1
 // To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
 if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
