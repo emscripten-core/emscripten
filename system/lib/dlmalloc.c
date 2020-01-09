@@ -26,6 +26,12 @@
 #define USE_SPIN_LOCKS 0 // Ensure we use pthread_mutex_t.
 #endif
 
+/* `mallloc`ed pointers must be aligned at least as strictly as max_align_t. */
+#ifndef MALLOC_ALIGNMENT
+#include <stddef.h>
+#define MALLOC_ALIGNMENT (__alignof__(max_align_t))
+#endif
+
 #endif
 
 

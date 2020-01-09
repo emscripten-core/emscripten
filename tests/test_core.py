@@ -8570,6 +8570,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+  @parameterized({
+    'dlmalloc': ['dlmalloc'],
+    'emmalloc': ['emmalloc'],
+  })
+  def test_malloc_alignment(self, malloc):
+    self.set_setting('MALLOC', malloc)
+    self.emcc_args += ['-std=gnu11']
+    src = open(path_from_root('tests', 'core', 'test_malloc_alignment.c')).read()
+    self.do_run(src, '', basename='src.c')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
