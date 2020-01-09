@@ -8,7 +8,6 @@
 
 from __future__ import print_function
 from functools import wraps
-import filecmp
 import glob
 import itertools
 import json
@@ -2543,21 +2542,26 @@ int f() {
     self.assertNotContained('below the current directory', proc2.stderr)
 
     def clean(txt):
-      return [line for line in txt.split('\n') if 'PACKAGE_UUID' not in line and 'loadPackage({' not in line]
+      lines = txt.splitlines()
+      lines = [l for l in lines if 'PACKAGE_UUID' not in l and 'loadPackage({' not in l]
+      return ''.join(lines)
 
-    assert clean(proc.stdout) == clean(proc2.stdout)
+    self.assertTextDataIdentical(clean(proc.stdout), clean(proc2.stdout))
 
     # verify '--separate-metadata' option produces separate metadata file
     os.chdir('..')
 
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
-    assert os.path.isfile('immutable.js.metadata')
-    # verify js output file is immutable when metadata is separated
+    self.assertExists('immutable.js.metadata')
+    # verify js output JS file is not touched when the metadata is separated
     shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
+    # ensure some time passes before running the packager again so that if it does touch the
+    # js file it will end up with the different timestamp.
+    time.sleep(1.0)
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
-    assert filecmp.cmp('immutable.js.copy', 'immutable.js')
     # assert both file content and timestamp are the same as reference copy
-    self.assertEqual(str(os.path.getmtime('immutable.js.copy')), str(os.path.getmtime('immutable.js')))
+    self.assertTextDataIdentical(open('immutable.js.copy').read(), open('immutable.js').read())
+    self.assertEqual(os.path.getmtime('immutable.js.copy'), os.path.getmtime('immutable.js'))
     # verify the content of metadata file is correct
     with open('immutable.js.metadata') as f:
       metadata = json.load(f)
