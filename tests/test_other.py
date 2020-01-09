@@ -2552,8 +2552,12 @@ int f() {
 
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     assert os.path.isfile('immutable.js.metadata')
-    # verify js output file is immutable when metadata is separated
-    shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
+    # verify js output file is immutable when metadata is separated.
+    # copy with timestamp preserved: when the contents do not change, the file
+    # packager should not overwrite the file, and so the mtime should be
+    # unchanged.
+    shutil.copy2('immutable.js', 'immutable.js.copy')
+    self.assertEqual(str(os.path.getmtime('immutable.js.copy')), str(os.path.getmtime('immutable.js')))
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     assert filecmp.cmp('immutable.js.copy', 'immutable.js')
     # assert both file content and timestamp are the same as reference copy
