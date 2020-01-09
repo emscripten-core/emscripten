@@ -3997,6 +3997,57 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
+  def test_dylink_i64_c(self):
+    self.dylink_test(r'''
+      #include <cstdio>
+      #include <cinttypes>
+      #include "header.h"
+
+      typedef int32_t (*fp_type_32)(int32_t, int32_t, int32_t);
+      typedef int64_t (*fp_type_64)(int32_t, int32_t, int32_t);
+
+      int32_t internal_function_ret_32(int32_t i, int32_t j, int32_t k) {
+          return 32;
+      }
+      int64_t internal_function_ret_64(int32_t i, int32_t j, int32_t k) {
+          return 64;
+      }
+
+      int main() {
+          fp_type_32 fp32_internal = &internal_function_ret_32;
+          fp_type_32 fp32_external = &function_ret_32;
+          fp_type_64 fp64_external = &function_ret_64;
+          fp_type_64 fp64_internal = &internal_function_ret_64;
+          int32_t ires32 = fp32_internal(0,0,0);
+          printf("res32 - internal %d\n",ires32);
+          int32_t eres32 = fp32_external(0,0,0);
+          printf("res32 - external %d\n",eres32);
+
+          int64_t ires64 = fp64_internal(0,0,0);
+          printf("res64 - internal %" PRId64 "\n",ires64);
+          int64_t eres64 = fp64_external(0,0,0);
+          printf("res64 - external %" PRId64 "\n",eres64);
+          return 0;
+      }
+    ''', '''
+      #include "header.h"
+      int32_t function_ret_32(int32_t i, int32_t j, int32_t k) {
+          return 32;
+      }
+      int64_t function_ret_64(int32_t i, int32_t j, int32_t k) {
+          return 64;
+      }
+    ''', '''res32 - internal 32
+res32 - external 32
+res64 - internal 64
+res64 - external 64\n''', header='''
+      #include <emscripten.h>
+      #include <cstdint>
+      EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
+      EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
+    ''')
+
+  @needs_dlfcn
   def test_dylink_class(self):
     self.dylink_test(header=r'''
       #include <stdio.h>
