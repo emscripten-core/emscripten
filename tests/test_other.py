@@ -2555,7 +2555,6 @@ int f() {
     self.assertExists('immutable.js.metadata')
     # verify js output file is immutable when metadata is separated
     shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
-    time.sleep(3.0)
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(open('immutable.js.copy').read(), open('immutable.js').read())
