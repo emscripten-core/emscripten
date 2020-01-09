@@ -1,11 +1,6 @@
 
 #if !MINIMAL_RUNTIME // TODO: Reintroduce these to MINIMAL_RUNTIME as library functions
 
-/** @type {function(number, number=)} */
-function Pointer_stringify(ptr, length) {
-  abort("this function has been removed - you should use UTF8ToString(ptr, maxBytesToRead) instead!");
-}
-
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns
 // a copy of that string as a Javascript String object.
 

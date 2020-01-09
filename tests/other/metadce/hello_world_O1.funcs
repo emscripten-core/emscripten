@@ -4,7 +4,6 @@ $__errno_location
 $__fwritex
 $__growWasmMemory
 $__lockfile
-$__original_main
 $__overflow
 $__stdio_write
 $__towrite

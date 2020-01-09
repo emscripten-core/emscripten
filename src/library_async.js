@@ -572,6 +572,7 @@ mergeInto(LibraryManager.library, {
     exportCallStack: [],
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    sleepCallbacks: [], // functions to call every time we sleep
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
@@ -748,6 +749,10 @@ mergeInto(LibraryManager.library, {
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
+        // Call all sleep callbacks now that the sleep-resume is all done.
+        Asyncify.sleepCallbacks.forEach(function(func) {
+          func();
+        });
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
@@ -809,6 +814,17 @@ mergeInto(LibraryManager.library, {
         {{{ makeDynCall('vii') }}}(func, Asyncify.currData + 8, HEAP32[Asyncify.currData >> 2]);
         wakeUp();
       };
+    });
+  },
+
+  emscripten_lazy_load_code: function() {
+    Asyncify.handleSleep(function(wakeUp) {
+      // Update the expected wasm binary file to be the lazy one.
+      wasmBinaryFile += '.lazy.wasm';
+      // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
+      dependenciesFulfilled = wakeUp;
+      // Load the new wasm.
+      asm = createWasm();
     });
   },
 

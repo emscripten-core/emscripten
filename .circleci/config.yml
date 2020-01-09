@@ -26,10 +26,14 @@ commands:
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
             rm -Rf emscripten
-            echo "V8_ENGINE = '`pwd`/upstream/bin/d8'" >> ~/.emscripten
-            echo "JS_ENGINES = [NODE_JS, V8_ENGINE]" >> ~/.emscripten
-            echo "WASM_ENGINES = []" >> ~/.emscripten
             echo "import os" >> ~/.emscripten
+            # test v8 with --wasm-staging which enables new features. we use v8
+            # as a "bleeding edge" shell here, basically, with node being the
+            # primary shell (which we run without any special flags)
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
+            echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
+            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
+            echo "WASM_ENGINES = []" >> ~/.emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
             cd -
@@ -72,6 +76,7 @@ commands:
             - .emscripten_ports/
             - .emscripten
             - vms
+            - .jsvu
   run-tests:
     description: "Runs emscripten tests"
     parameters:
@@ -119,9 +124,7 @@ commands:
       - run:
           name: download firefox
           command: |
-            # we should pin a version here, but llvm upstream now emits bulk memory for pthreads
-            # which requires very latest nightly as of Jul 13 2019
-            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-beta-latest-ssl&os=linux64&lang=en-US"
+            wget -O ~/ff.tar.bz2 "https://download.mozilla.org/?product=firefox-devedition-latest-ssl&os=linux64&lang=en-US"
             tar -C ~ -xf ~/ff.tar.bz2
       - run:
           name: configure firefox
@@ -130,6 +133,7 @@ commands:
             cat > ~/tmp-firefox-profile/user.js \<<EOF
             user_pref("gfx.offscreencanvas.enabled", true);
             user_pref("javascript.options.shared_memory", true);
+            user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
             EOF
       - run:
           name: configure openbox
@@ -189,7 +193,8 @@ commands:
           environment:
             GALLIUM_DRIVER: softpipe # TODO: use the default llvmpipe when it supports more extensions
             EMTEST_LACKS_SOUND_HARDWARE: "1"
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1" # looks broken in ff nightly
+            # OffscreenCanvas support is not yet done in Firefox.
+            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             DISPLAY: ":0"
           command: |
@@ -208,7 +213,7 @@ commands:
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
-    description: "Runs emscripten tests under firefox"
+    description: "Runs emscripten browser tests under chrome"
     steps:
       - checkout
       - attach_workspace:
@@ -233,6 +238,39 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             python3 tests/runner.py browser
+  test-upstream-sockets-chrome:
+    description: "Runs emscripten sockets tests under chrome"
+    steps:
+      - checkout
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: download chrome
+          command: |
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            dpkg -i ~/chrome.deb
+      - run:
+          name: install sockets test suite prerequisites
+          command: |
+            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+            tar -xf node-v12.13.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
+            npm install ws
+      - run:
+          name: run sockets tests
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          command: |
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            python3 tests/runner.py sockets
 
 jobs:
   build:
@@ -381,15 +419,27 @@ jobs:
       - run:
           name: get wasmer
           command: |
-            curl https://get.wasmer.io -sSfL | sh
+            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
+            tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
-            cp ~/.wasmer/bin/wasmer ~/vms
+            cp bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
-            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
-            tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
+            # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
+            export VERSION=v0.8.0
+            wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-$VERSION-x86_64-linux.tar.xz
+            tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
+            cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
+      - run:
+          name: get v8
+          command: |
+            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
+            tar -xf node-v12.13.0-linux-x64.tar.xz
+            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
+            npm install jsvu -g
+            export PATH="${HOME}/.jsvu:${PATH}"
+            jsvu --os=default --engines=v8
       - build-upstream
   test-upstream-wasm0:
     executor: bionic
@@ -426,6 +476,10 @@ jobs:
     executor: bionic
     steps:
       - test-firefox
+  test-upstream-sockets-chrome:
+    executor: bionic
+    steps:
+      - test-upstream-sockets-chrome
   build-upstream-mac:
     macos:
       xcode: "9.0"
@@ -523,6 +577,9 @@ workflows:
           requires:
             - build-upstream-linux
       - test-upstream-browser-firefox:
+          requires:
+            - build-upstream-linux
+      - test-upstream-sockets-chrome:
           requires:
             - build-upstream-linux
       - build-upstream-mac

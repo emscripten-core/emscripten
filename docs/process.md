@@ -115,10 +115,23 @@ that is:
 
 1. In your emscripten repo checkout, enter `site`.
 2. Run `make html`.
-3. Run `cp -R build/html/* \[path-to-a-checkout-of-the-site-repo\]`
+3. Run `make install EMSCRIPTEN_SITE=\[path-to-a-checkout-of-the-site-repo\]`
 3. Go to the site repo, commit the changes, and push.
 
 [site_repo]: https://github.com/kripken/emscripten-site
+
+
+Updating the `emcc.py` help text
+--------------------------------
+
+`emcc --help` output is generated from the main documentation under `site/`,
+so it is the same as shown on the website, but it is rendered to text. After
+updating `emcc.rst` in a PR, the following should be done:
+
+1. In your emscripten repo checkout, enter `site`.
+2. Run `make clean` (without this, it may not emit the right output).
+2. Run `make text`.
+3. Add the changes to your PR.
 
 
 Packaging Emscripten

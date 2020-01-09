@@ -4,9 +4,7 @@
 # found in the LICENSE file.
 
 import os
-import shutil
 import logging
-
 
 TAG = 'version_2'
 HASH = '317b22ad9b6b2f7b40fac7b7c426da2fa2da1803bbe58d480631f1e5b190d730763f2768c77c72affa806c69a1e703f401b15a1be3ec611cd259950d5ebc3711'
@@ -23,18 +21,15 @@ def get(ports, settings, shared):
 
   def create():
     logging.info('building port: sdl2_net')
-    # although we shouldn't really do this and could instead use '-Xclang
-    # -isystem' as a kind of 'overlay' as sdl_mixer does,
-    # by now people may be relying on headers being pulled in by '-s USE_SDL=2'
-    # if sdl_net was built in the past
-    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG, 'SDL_net.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL_net.h'))
-    shutil.copyfile(os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG, 'SDL_net.h'), os.path.join(ports.get_build_dir(), 'sdl2', 'include', 'SDL2', 'SDL_net.h'))
-    srcs = 'SDLnet.c SDLnetselect.c SDLnetTCP.c SDLnetUDP.c'.split(' ')
+    src_dir = os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG)
+    ports.install_headers(src_dir, target='SDL2')
+    srcs = 'SDLnet.c SDLnetselect.c SDLnetTCP.c SDLnetUDP.c'.split()
     commands = []
     o_s = []
     for src in srcs:
       o = os.path.join(ports.get_build_dir(), 'sdl2_net', src + '.o')
-      commands.append([shared.PYTHON, shared.EMCC, os.path.join(ports.get_dir(), 'sdl2_net', 'SDL2_net-' + TAG, src), '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'])
+      commands.append([shared.PYTHON, shared.EMCC, '-c', os.path.join(src_dir, src),
+                       '-O2', '-s', 'USE_SDL=2', '-o', o, '-w'])
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))
     ports.run_commands(commands)

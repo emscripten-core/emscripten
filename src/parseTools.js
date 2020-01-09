@@ -1320,11 +1320,13 @@ function makeStructuralReturn(values, inAsm) {
 }
 
 function makeThrow(what) {
-  if (ASSERTIONS) {
-    return 'throw ' + what + (DISABLE_EXCEPTION_CATCHING == 1 ? ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."' : '') + ';';
-  } else {
-  return 'throw ' + what + ';';
+  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING == 1) {
+    what += ' + " - Exception catching is disabled, this exception cannot be caught. Compile with -s DISABLE_EXCEPTION_CATCHING=0 or DISABLE_EXCEPTION_CATCHING=2 to catch."';
+    if (MAIN_MODULE) {
+      what += ' + " (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)"';
+    }
   }
+  return 'throw ' + what + ';';
 }
 
 function makeSignOp(value, type, op, force, ignore) {
@@ -1628,4 +1630,13 @@ function makeRemovedFSAssert(fsName) {
   var lower = fsName.toLowerCase();
   if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
   return "var " + fsName + " = '" + fsName + " is no longer included by default; build with -l" + lower + ".js';";
+}
+
+// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
+function buildStringArray(array) {
+  if (array.length > 0) {
+    return "['" + array.join("','") + "']";
+  } else {
+    return '[]';
+  }
 }

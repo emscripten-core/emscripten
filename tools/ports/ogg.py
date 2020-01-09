@@ -30,8 +30,12 @@ def get(ports, settings, shared):
 
     open(os.path.join(dest_path, 'include', 'ogg', 'config_types.h'), 'w').write(config_types_h)
 
+    header_dir = os.path.join(ports.get_include_dir(), 'ogg')
+    shutil.rmtree(header_dir, ignore_errors=True)
+    shutil.copytree(os.path.join(dest_path, 'include', 'ogg'), header_dir)
+
     final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'src'), final, [os.path.join(dest_path, 'include')])
+    ports.build_port(os.path.join(dest_path, 'src'), final)
     return final
 
   return [shared.Cache.get(libname, create)]
@@ -44,7 +48,6 @@ def clear(ports, shared):
 def process_args(ports, args, settings, shared):
   if settings.USE_OGG == 1:
     get(ports, settings, shared)
-    args += ['-Xclang', '-isystem' + os.path.join(shared.Cache.get_path('ports-builds'), 'ogg', 'include')]
   return args
 
 

@@ -215,7 +215,7 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if SAFE_STACK
+#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 
@@ -254,7 +254,7 @@ function callMain(args) {
       // exit() throws this once it's done to make sure execution
       // has been stopped completely
       return;
-    } else if (e == 'SimulateInfiniteLoop') {
+    } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
       noExitRuntime = true;
 #if EMTERPRETIFY_ASYNC
