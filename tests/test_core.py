@@ -914,6 +914,31 @@ base align: 0, 0, 0, 0'''])
                 open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                 open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
+  def test_emmalloc_usable_size(self, *args):
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += list(args)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_malloc_usable_size')
+
+  @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
+  @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
+  @no_wasm2js('output is specific to wasm debug builds only')
+  def test_emmalloc_memory_statistics(self, *args):
+
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-g'] + list(args)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_memory_statistics')
+
+  @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
+  @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
+  @no_wasm2js('output is specific to wasm debug builds only')
+  def test_emmalloc_trim(self, *args):
+    self.set_setting('MALLOC', 'emmalloc')
+    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
+
+    self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_trim')
+
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
@@ -1112,7 +1137,6 @@ int main() {
   printf("ok.\n");
 }
 '''
-
     self.do_run(src, r'''ok.''')
 
   def test_exceptions(self):
@@ -3050,7 +3074,7 @@ Var: 42
       self.assertGreater(len(exports), 20)
       # wasm backend includes alias in NAMED_GLOBALS
       if self.is_wasm_backend():
-        self.assertLess(len(exports), 55)
+        self.assertLess(len(exports), 56)
       else:
         self.assertLess(len(exports), 30)
 

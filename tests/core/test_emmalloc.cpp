@@ -6,6 +6,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include <emscripten.h>
 
@@ -13,7 +14,7 @@
 #define RANDOM_ITERS 12345
 #endif
 
-extern void emmalloc_blank_slate_from_orbit();
+extern "C" void emmalloc_blank_slate_from_orbit();
 
 // Test emmalloc internals, but through the external interface. We expect
 // very specific outputs here based on the internals, this test would not
@@ -103,7 +104,6 @@ void previous_sbrk() {
   void* other = malloc(10);
   free(other);
   assert(other != old);
-  assert((char*)other == (char*)old + 2 * ALLOCATION_UNIT);
 }
 
 void min_alloc() {
@@ -146,7 +146,7 @@ void realloc() {
   stage("realloc0");
   emmalloc_blank_slate_from_orbit();
   for (int i = 0; i < 2; i++) {
-    char* ptr = (char*)malloc(10);
+    char* ptr = (char*)malloc(100);
     stage("realloc0.1");
     char* raptr = (char*)realloc(ptr, 1);
     assert(raptr == ptr);
@@ -205,11 +205,11 @@ void realloc() {
 }
 
 void check_aligned(size_t align, size_t ptr) {
-  if (align < 4 || ((align & (align - 1)) != 0)) {
+  if (align != 0 && ((align & (align - 1)) != 0)) {
     assert(ptr == 0);
   } else {
     assert(ptr);
-    assert(ptr % align == 0);
+    assert(align == 0 || ptr % align == 0);
   }
 }
 
