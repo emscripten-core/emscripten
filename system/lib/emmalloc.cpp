@@ -777,7 +777,10 @@ static void *allocate_memory(size_t alignment, size_t size)
     }
     // Instead of recomputing bucketMask from scratch at the end of each loop, it is updated as we go,
     // to avoid undefined behavior with (x >> 32)/(x >> 64) when bucketIndex reaches 32/64, (the shift would comes out as a no-op instead of 0).
-    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
+
+    // Work around bug https://github.com/emscripten-core/emscripten/issues/10173
+//    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask == freeRegionBucketsUsed >> bucketIndex));
+    assert((bucketIndex == NUM_FREE_BUCKETS && bucketMask == 0) || (bucketMask + EM_ASM_INT(return 0) == (freeRegionBucketsUsed >> bucketIndex) + EM_ASM_INT(return 0)));
   }
 
   // None of the buckets were able to accommodate an allocation. If this happens we are almost out of memory.
