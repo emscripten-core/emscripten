@@ -134,21 +134,21 @@ function GROWABLE_HEAP_VIEW_U8(start, end) {
   return new Uint8Array(wasmMemory.buffer, start, end - start);
 }
 function GROWABLE_HEAP_VIEW_I16(start, end) {
-  return new Int16Array(wasmMemory.buffer, start >> 1, end - start >> 1);
+  return new Int16Array(wasmMemory.buffer, start, end - start);
 }
 function GROWABLE_HEAP_VIEW_U16(start, end) {
-  return new Uint16Array(wasmMemory.buffer, start >> 1, end - start >> 1);
+  return new Uint16Array(wasmMemory.buffer, start, end - start);
 }
 function GROWABLE_HEAP_VIEW_I32(start, end) {
-  return new Int32Array(wasmMemory.buffer, start >> 2, end - start >> 2);
+  return new Int32Array(wasmMemory.buffer, start, end - start);
 }
 function GROWABLE_HEAP_VIEW_U32(start, end) {
-  return new Uint32Array(wasmMemory.buffer, start >> 2, end - start >> 2);
+  return new Uint32Array(wasmMemory.buffer, start, end - start);
 }
 function GROWABLE_HEAP_VIEW_F32(start, end) {
-  return new Float32Array(wasmMemory.buffer, start >> 2, end - start >> 2);
+  return new Float32Array(wasmMemory.buffer, start, end - start);
 }
 function GROWABLE_HEAP_VIEW_F64(start, end) {
-  return new Float64Array(wasmMemory.buffer, start >> 3, end - start >> 3);
+  return new Float64Array(wasmMemory.buffer, start, end - start);
 }
 
