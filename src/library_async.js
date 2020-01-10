@@ -730,10 +730,6 @@ mergeInto(LibraryManager.library, {
       return func;
     },
 
-    freeData: function(ptr) {
-      _free(ptr);
-    },
-
     handleSleep: function(startAsync) {
       if (ABORT) return;
       noExitRuntime = true;
@@ -812,7 +808,7 @@ mergeInto(LibraryManager.library, {
 #endif
         Asyncify.state = Asyncify.State.Normal;
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
-        Asyncify.freeData(Asyncify.currData);
+        _free(Asyncify.currData);
         Asyncify.currData = null;
         noExitRuntime = false;
         // Call all sleep callbacks now that the sleep-resume is all done.
