@@ -2561,7 +2561,10 @@ int f() {
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     # assert both file content and timestamp are the same as reference copy
     self.assertTextDataIdentical(open('immutable.js.copy').read(), open('immutable.js').read())
-    self.assertEqual(os.path.getmtime('immutable.js.copy'), os.path.getmtime('immutable.js'))
+    # on some OSes the timestamp may change slightly in subsequent reads. we
+    # slept for 1 second so if we really did change the file, the difference
+    # would be substantial (around 1+ seconds); ignore tiny differences.
+    self.assertLess(abs(os.path.getmtime('immutable.js.copy') - os.path.getmtime('immutable.js')), 0.5)
     # verify the content of metadata file is correct
     with open('immutable.js.metadata') as f:
       metadata = json.load(f)
