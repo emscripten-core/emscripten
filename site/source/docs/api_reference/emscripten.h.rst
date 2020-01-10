@@ -1410,7 +1410,6 @@ Functions
 
   .. note:: This requires building with ``-s ASYNCIFY_LAZY_LOAD_CODE``.
 
-
 ABI functions
 =============
 

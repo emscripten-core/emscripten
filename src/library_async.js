@@ -734,7 +734,7 @@ mergeInto(LibraryManager.library, {
       _free(ptr);
     },
 
-    handleSleep: function(startAsync, isNotYielding) {
+    handleSleep: function(startAsync) {
       if (ABORT) return;
       noExitRuntime = true;
 #if ASYNCIFY_DEBUG
@@ -763,7 +763,7 @@ mergeInto(LibraryManager.library, {
 #endif
           Asyncify.state = Asyncify.State.Rewinding;
           runAndAbortIfError(function() { Module['_asyncify_start_rewind'](Asyncify.currData) });
-          if (Browser.mainLoop.func && !isNotYielding) {
+          if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
           var start = Asyncify.getDataRewindFunc(Asyncify.currData);
@@ -801,7 +801,7 @@ mergeInto(LibraryManager.library, {
           err('ASYNCIFY: start unwind ' + Asyncify.currData);
 #endif
           runAndAbortIfError(function() { Module['_asyncify_start_unwind'](Asyncify.currData) });
-          if (Browser.mainLoop.func && !isNotYielding) {
+          if (Browser.mainLoop.func) {
             Browser.mainLoop.pause();
           }
         }
@@ -815,13 +815,10 @@ mergeInto(LibraryManager.library, {
         Asyncify.freeData(Asyncify.currData);
         Asyncify.currData = null;
         noExitRuntime = false;
-
-        if (!isNotYielding) {
-          // Call all sleep callbacks now that the sleep-resume is all done.
-          Asyncify.sleepCallbacks.forEach(function(func) {
-            func();
-          });
-        }
+        // Call all sleep callbacks now that the sleep-resume is all done.
+        Asyncify.sleepCallbacks.forEach(function(func) {
+          func();
+        });
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
@@ -1010,10 +1007,6 @@ mergeInto(LibraryManager.library, {
 
       var stackTop = stackSave();
       {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
-
-#if ASSERTIONS
-      assert(!Asyncify.trampoline);
-#endif
 
       Fibers.nextFiber = newFiber;
     } else {
