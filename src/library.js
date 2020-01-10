@@ -3982,7 +3982,7 @@ LibraryManager.library = {
   // grp.h
 
   getgrgid: function() { throw 'getgrgid: TODO' },
-  getgrgid: function() { throw 'getgrgid_r: TODO' },
+  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
   getgrnam: function() { throw 'getgrnam: TODO' },
   getgrnam_r: function() { throw 'getgrnam_r: TODO' },
   getgrent: function() { throw 'getgrent: TODO' },
