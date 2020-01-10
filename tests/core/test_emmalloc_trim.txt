@@ -1,4 +1,8 @@
 heap size: 134217728
+dynamic heap 0: 48
+free dynamic memory 0: 8
+unclaimed heap memory 0: 2142170240
+sbrk 0: 0x501380
 1
 dynamic heap 1: 37748880
 free dynamic memory 1: 84

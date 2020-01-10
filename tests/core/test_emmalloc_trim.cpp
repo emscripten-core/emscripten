@@ -6,6 +6,10 @@
 int main()
 {
 	printf("heap size: %zu\n", emscripten_get_heap_size());
+	printf("dynamic heap 0: %zu\n", emmalloc_dynamic_heap_size());
+	printf("free dynamic memory 0: %zu\n", emmalloc_free_dynamic_memory());
+	printf("unclaimed heap memory 0: %zu\n", emmalloc_unclaimed_heap_memory());
+	printf("sbrk 0: %p\n", sbrk(0));
 
 	void *ptr = malloc(32*1024*1024);
 	void *ptr2 = malloc(4*1024*1024);
