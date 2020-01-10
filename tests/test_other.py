@@ -2554,14 +2554,15 @@ int f() {
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     self.assertExists('immutable.js.metadata')
     # verify js output JS file is not touched when the metadata is separated
-    shutil.copy2('immutable.js', 'immutable.js.copy') # copy with timestamp preserved
+    orig_timestamp = os.path.getmtime('immutable.js')
+    orig_content = open('immutable.js').read()
     # ensure some time passes before running the packager again so that if it does touch the
     # js file it will end up with the different timestamp.
     time.sleep(1.0)
     run_process([PYTHON, FILE_PACKAGER, 'test.data', '--preload', 'data1.txt', '--preload', 'subdir/data2.txt', '--js-output=immutable.js', '--separate-metadata'])
     # assert both file content and timestamp are the same as reference copy
-    self.assertTextDataIdentical(open('immutable.js.copy').read(), open('immutable.js').read())
-    self.assertEqual(os.path.getmtime('immutable.js.copy'), os.path.getmtime('immutable.js'))
+    self.assertTextDataIdentical(orig_content, open('immutable.js').read())
+    self.assertEqual(orig_timestamp, os.path.getmtime('immutable.js'))
     # verify the content of metadata file is correct
     with open('immutable.js.metadata') as f:
       metadata = json.load(f)
