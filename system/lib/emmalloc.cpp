@@ -1027,6 +1027,10 @@ static int acquire_and_attempt_region_resize(Region *region, size_t size)
 
 void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size)
 {
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('aligned_realloc(ptr=' + $0.toString(16) + ', alignment=' + $1 + ', size=' + $2), ptr, alignment, size);
+#endif
+
   if (!ptr)
     return emmalloc_memalign(alignment, size);
 
