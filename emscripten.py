@@ -2400,9 +2400,11 @@ def create_asm_consts_wasm(forwarded_json, metadata):
 
   asm_const_funcs = []
 
-  if all_sigs:
-    # emit the signature-reading helper function only if we have any EM_ASM
-    # functions in the module
+  # emit the signature-reading helper function only if we have any EM_ASM
+  # functions in the module. we also need to emit it for pthreads anyhow as
+  # the proxying code there, which is always emitted, supports EM_ASMs and
+  # requires this support code
+  if all_sigs or shared.Settings.USE_PTHREADS:
     check_int = ''
     check = ''
     if shared.Settings.ASSERTIONS:

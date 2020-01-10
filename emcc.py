@@ -1466,6 +1466,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # To ensure allocated thread stacks are aligned:
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
 
+      if shared.Settings.PROXY_TO_PTHREAD:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
+
       # pthread stack setup:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$establishStackSpaceInJsModule']
       shared.Settings.EXPORTED_FUNCTIONS += ['establishStackSpaceInJsModule']
