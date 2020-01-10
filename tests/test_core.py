@@ -897,6 +897,7 @@ base align: 0, 0, 0, 0'''])
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', '(S*)malloc(sizeof(S))').replace('{{del_struct}}', 'free'), '*51,62*')
 
   @no_asan('ASan does not support custom memory allocators')
+  @no_lsan('LSan does not support custom memory allocators')
   @parameterized({
     'normal': [],
     'debug': ['-DEMMALLOC_DEBUG'],
@@ -914,6 +915,8 @@ base align: 0, 0, 0, 0'''])
                 open(path_from_root('tests', 'core', 'test_emmalloc.cpp')).read(),
                 open(path_from_root('tests', 'core', 'test_emmalloc.txt')).read())
 
+  @no_asan('ASan does not support custom memory allocators')
+  @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_usable_size(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += list(args)
@@ -922,7 +925,8 @@ base align: 0, 0, 0, 0'''])
 
   @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_wasm2js('output is specific to wasm debug builds only')
+  @no_asan('ASan does not support custom memory allocators')
+  @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_memory_statistics(self, *args):
 
     self.set_setting('MALLOC', 'emmalloc')
@@ -932,7 +936,8 @@ base align: 0, 0, 0, 0'''])
 
   @no_fastcomp('this feature works in fastcomp, but test outputs are sensitive to wasm backend')
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_wasm2js('output is specific to wasm debug builds only')
+  @no_asan('ASan does not support custom memory allocators')
+  @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
     self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
