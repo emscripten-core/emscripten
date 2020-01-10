@@ -200,23 +200,23 @@ this.onmessage = function(e) {
         Module['checkStackCookie']();
 #endif
 
-      } catch(e) {
-        if (e === 'Canceled!') {
+      } catch(ex) {
+        if (ex === 'Canceled!') {
           PThread.threadCancel();
           return;
-        } else if (e == 'unwind') {
+        } else if (ex === 'unwind') {
           return;
         } else {
-          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof Module['ExitStatus']) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
-            throw e;
+            throw ex;
           }
 #endif
           Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
-          if (!(e instanceof Module['ExitStatus'])) throw e;
+          if (!(ex instanceof Module['ExitStatus'])) throw ex;
         }
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
@@ -236,9 +236,9 @@ this.onmessage = function(e) {
       err('worker.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
-  } catch(e) {
-    console.error('worker.js onmessage() captured an uncaught exception: ' + e);
-    console.error(e.stack);
+  } catch(ex) {
+    console.error('worker.js onmessage() captured an uncaught exception: ' + ex);
+    if (ex.stack) console.error(ex.stack);
     throw e;
   }
 };
