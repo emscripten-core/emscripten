@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <emscripten/emmalloc.h>
 
+template<typename T>
+T round_to_4k(T val){
+	return (T)(((size_t)val + 4095) & ~4095);
+}
+
 int main()
 {
 	void *ptr = malloc(32*1024*1024);
@@ -21,5 +26,5 @@ int main()
 	for(int i = 0; i < 32; ++i)
 		printf("%zu ", freeMemorySizeMap[i]);
 	printf("\n");
-	printf("%zu\n", emmalloc_unclaimed_heap_memory());
+	printf("%zu\n", round_to_4k(emmalloc_unclaimed_heap_memory()));
 }
