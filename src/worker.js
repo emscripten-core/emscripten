@@ -204,7 +204,7 @@ this.onmessage = function(e) {
         if (ex === 'Canceled!') {
           PThread.threadCancel();
           return;
-        } else if (ex == 'unwind') {
+        } else if (ex === 'unwind') {
           return;
         } else {
           Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
