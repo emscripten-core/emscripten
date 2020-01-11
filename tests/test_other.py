@@ -9594,7 +9594,7 @@ int main () {
       test_cases = [
         (asmjs + opts, hello_world_sources, {'a.html': 1481, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
         (opts, hello_world_sources, {'a.html': 1445, 'a.js': 633, 'a.wasm': 86}),
-        (asmjs + opts, hello_webgl_sources, {'a.html': 1605, 'a.js': 4921, 'a.asm.js': 11153, 'a.mem': 321}),
+        (asmjs + opts, hello_webgl_sources, {'a.html': 1605, 'a.js': 4921, 'a.asm.js': 11129, 'a.mem': 321}),
         (opts, hello_webgl_sources, {'a.html': 1565, 'a.js': 4874, 'a.wasm': 8932}),
         (opts, hello_webgl2_sources, {'a.html': 1565, 'a.js': 5361, 'a.wasm': 8932}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
