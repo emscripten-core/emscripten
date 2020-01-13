@@ -701,20 +701,25 @@ def update_settings_glue(metadata, DEBUG):
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
 
-  # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
-  # the compiled code have, each signature will need a proxy function invoker
-  # generated for it.
-  def read_proxied_function_signatures(asmConsts):
-    proxied_function_signatures = set()
-    for _, sigs, proxying_types in asmConsts.values():
-      for sig, proxying_type in zip(sigs, proxying_types):
-        if proxying_type == 'sync_on_main_thread_':
-          proxied_function_signatures.add(sig + '_sync')
-        elif proxying_type == 'async_on_main_thread_':
-          proxied_function_signatures.add(sig + '_async')
-    return list(proxied_function_signatures)
+  if metadata['asmConsts']:
+    # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
+    # functions in the module.
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_read_asm_const_args']
 
-  shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
+    # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
+    # the compiled code have, each signature will need a proxy function invoker
+    # generated for it.
+    def read_proxied_function_signatures(asmConsts):
+      proxied_function_signatures = set()
+      for _, sigs, proxying_types in asmConsts.values():
+        for sig, proxying_type in zip(sigs, proxying_types):
+          if proxying_type == 'sync_on_main_thread_':
+            proxied_function_signatures.add(sig + '_sync')
+          elif proxying_type == 'async_on_main_thread_':
+            proxied_function_signatures.add(sig + '_async')
+      return list(proxied_function_signatures)
+
+    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
@@ -2399,11 +2404,6 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
-
-  # emit the signature-reading helper function only if we have any EM_ASM
-  # functions in the module.
-  if all_sigs:
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_emscripten_read_asm_const_args']
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
