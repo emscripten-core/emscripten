@@ -1334,6 +1334,7 @@ LibraryManager.library = {
   },
 #endif
 
+#if USE_PTHREADS
   $establishStackSpace__asm: true,
   $establishStackSpace__sig: 'vii',
   $establishStackSpace: function(stackBase, stackMax) {
@@ -1342,6 +1343,7 @@ LibraryManager.library = {
     STACKTOP = stackBase;
     STACK_MAX = stackMax;
   },
+#endif
 
 #if WASM_BACKEND == 0
   $setThrew__asm: true,
@@ -3970,9 +3972,22 @@ LibraryManager.library = {
   // pwd.h
 
   getpwnam: function() { throw 'getpwnam: TODO' },
+  getpwnam_r: function() { throw 'getpwnam_r: TODO' },
+  getpwuid: function() { throw 'getpwuid: TODO' },
+  getpwuid_r: function() { throw 'getpwuid_r: TODO' },
   setpwent: function() { throw 'setpwent: TODO' },
   getpwent: function() { throw 'getpwent: TODO' },
   endpwent: function() { throw 'endpwent: TODO' },
+
+  // grp.h
+
+  getgrgid: function() { throw 'getgrgid: TODO' },
+  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
+  getgrnam: function() { throw 'getgrnam: TODO' },
+  getgrnam_r: function() { throw 'getgrnam_r: TODO' },
+  getgrent: function() { throw 'getgrent: TODO' },
+  endgrent: function() { throw 'endgrent: TODO' },
+  setgrent: function() { throw 'setgrent: TODO' },
 
   // ==========================================================================
   // emscripten.h

@@ -1154,16 +1154,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
-      if shared.Settings.MAIN_MODULE != 2:
+      if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
-      options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      options.memory_init_file = False
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-      if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
+      if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
+        shared.Settings.EXPORT_ALL = 1
       shared.Settings.RELOCATABLE = 1
       assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
       # shared modules need memory utilities to allocate their memory
@@ -1288,6 +1290,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_asmfs.js'))
+
+    # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
+    if not shared.Settings.USES_DYNAMIC_ALLOC:
+      shared.Settings.MALLOC = 'none'
+
+    if shared.Settings.MALLOC == 'emmalloc':
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_emmalloc.js'))
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
       forced_stdlibs.append('libfetch')
@@ -3546,6 +3555,13 @@ def generate_html(target, options, js_target, target_basename,
                   asm_target, wasm_binary_target,
                   memfile, optimizer):
   logger.debug('generating HTML')
+
+  if shared.Settings.EXPORT_NAME != 'Module' and \
+     not shared.Settings.MINIMAL_RUNTIME and \
+     options.shell_path == shared.path_from_root('src', 'shell.html'):
+    # the minimal runtime shell HTML is designed to support changing the export
+    # name, but the normal one does not support that currently
+    exit_with_error('Customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
   if shared.Settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename, asm_target,

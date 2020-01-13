@@ -6,7 +6,6 @@
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
   $PThread__deps: ['$PROCINFO', '_register_pthread_ptr',
-                   'emscripten_main_thread_process_queued_calls',
                    '$ERRNO_CODES', 'emscripten_futex_wake', '_kill_thread',
                    '_cancel_thread', '_cleanup_thread'],
   $PThread: {
@@ -310,12 +309,6 @@ var LibraryPThread = {
       for (var i = 0; i < numWorkers; ++i) {
         var worker = workers[i];
 
-#if !WASM_BACKEND
-        // Allocate tempDoublePtr for the worker. This is done here on the worker's behalf, since we may need to do this statically
-        // if the runtime has not been loaded yet, etc. - so we just use getMemory, which is main-thread only.
-        var tempDoublePtr = getMemory(8); // TODO: leaks. Cleanup after worker terminates.
-#endif
-
         // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
         worker.postMessage({
           'cmd': 'load',
@@ -337,9 +330,6 @@ var LibraryPThread = {
 #else
           'buffer': HEAPU8.buffer,
           'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
-#endif
-#if !WASM_BACKEND
-          'tempDoublePtr': tempDoublePtr,
 #endif
           'DYNAMIC_BASE': DYNAMIC_BASE,
           'DYNAMICTOP_PTR': DYNAMICTOP_PTR
@@ -408,6 +398,7 @@ var LibraryPThread = {
               if (detached) {
                 PThread.returnWorkerToPool(worker);
               }
+#if EXIT_RUNTIME // If building with -s EXIT_RUNTIME=0, no thread will post this message, so don't even compile it in.
             } else if (cmd === 'exitProcess') {
               // A pthread has requested to exit the whole application process (runtime).
               noExitRuntime = false;
@@ -417,6 +408,7 @@ var LibraryPThread = {
                 if (e instanceof ExitStatus) return;
                 throw e;
               }
+#endif
             } else if (cmd === 'cancelDone') {
               PThread.returnWorkerToPool(worker);
             } else if (cmd === 'objectTransfer') {
@@ -590,20 +582,12 @@ var LibraryPThread = {
     }
   },
 
-  _num_logical_cores__deps: ['emscripten_force_num_logical_cores'],
-  _num_logical_cores: '{{{ makeStaticAlloc(4) }}}; HEAPU32[__num_logical_cores>>2] = navigator["hardwareConcurrency"] || ' + {{{ PTHREAD_HINT_NUM_CORES }}},
-
   emscripten_has_threading_support: function() {
     return typeof SharedArrayBuffer !== 'undefined';
   },
 
-  emscripten_num_logical_cores__deps: ['_num_logical_cores'],
   emscripten_num_logical_cores: function() {
-    return {{{ makeGetValue('__num_logical_cores', 0, 'i32') }}};
-  },
-
-  emscripten_force_num_logical_cores: function(cores) {
-    {{{ makeSetValue('__num_logical_cores', 0, 'cores', 'i32') }}};
+    return navigator['hardwareConcurrency'];
   },
 
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
@@ -1228,7 +1212,9 @@ var LibraryPThread = {
 
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
+#if EXIT_RUNTIME
     if (!noExitRuntime) postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
+#endif
     return returnCode;
   },
 
@@ -1340,6 +1326,18 @@ var LibraryPThread = {
   $establishStackSpaceInJsModule: function(stackTop, stackMax) {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
+
+#if !WASM_BACKEND
+    // In fastcomp backend, locate tempDoublePtr memory area at the bottom of the stack, and bump up
+    // the stack by the bytes used.
+    tempDoublePtr = STACK_BASE;
+#if ASSERTIONS
+    assert(tempDoublePtr % 8 == 0);
+#endif
+    STACK_BASE += 8;
+    STACKTOP += 8;
+#endif
+
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
     ___set_stack_limit(STACK_MAX);
 #endif

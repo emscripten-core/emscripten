@@ -238,6 +238,9 @@ function callMain(args) {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
+    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
+    // off to a pthread.
+#if !PROXY_TO_PTHREAD
 #if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
@@ -270,6 +273,7 @@ function callMain(args) {
       err('exception thrown: ' + toLog);
       quit_(1, e);
     }
+#endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
   }

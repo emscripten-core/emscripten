@@ -1309,7 +1309,7 @@ def verify_settings():
     exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
 
   if Settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAVE_HEAP must be 0 or 1 in fastcomp')
+    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
@@ -2890,7 +2890,9 @@ class Building(object):
     library_files = []
     if library_name in js_system_libraries:
       if len(js_system_libraries[library_name]):
-        library_files += js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        library_files += lib
+        logger.debug('Linking in JS library ' + str(lib))
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]

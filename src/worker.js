@@ -11,9 +11,6 @@
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
-#if !WASM_BACKEND && !MODULARIZE
-var tempDoublePtr = 0; // A temporary memory area for global float and double marshalling operations.
-#endif
 
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
@@ -84,11 +81,6 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
-#if !WASM_BACKEND
-      // Initialize the thread-local field(s):
-      Module['tempDoublePtr'] = e.data.tempDoublePtr;
-#endif
-
       // Initialize the global "process"-wide fields:
       Module['DYNAMIC_BASE'] = e.data.DYNAMIC_BASE;
       Module['DYNAMICTOP_PTR'] = e.data.DYNAMICTOP_PTR;
@@ -206,23 +198,23 @@ this.onmessage = function(e) {
         Module['checkStackCookie']();
 #endif
 
-      } catch(e) {
-        if (e === 'Canceled!') {
+      } catch(ex) {
+        if (ex === 'Canceled!') {
           PThread.threadCancel();
           return;
-        } else if (e == 'unwind') {
+        } else if (ex === 'unwind') {
           return;
         } else {
-          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (e instanceof Module['ExitStatus']) ? e.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
-            throw e;
+            throw ex;
           }
 #endif
           Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
-          if (!(e instanceof Module['ExitStatus'])) throw e;
+          if (!(ex instanceof Module['ExitStatus'])) throw ex;
         }
       }
       // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
@@ -242,9 +234,9 @@ this.onmessage = function(e) {
       err('worker.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
-  } catch(e) {
-    console.error('worker.js onmessage() captured an uncaught exception: ' + e);
-    console.error(e.stack);
+  } catch(ex) {
+    console.error('worker.js onmessage() captured an uncaught exception: ' + ex);
+    if (ex.stack) console.error(ex.stack);
     throw e;
   }
 };
