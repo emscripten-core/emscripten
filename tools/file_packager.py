@@ -232,7 +232,8 @@ def main():
       from_emcc = True
       leading = ''
     elif arg.startswith('--plugin'):
-      plugin = open(arg.split('=', 1)[1], 'r').read()
+      with open(arg.split('=', 1)[1]) as f:
+        plugin = f.read()
       eval(plugin) # should append itself to plugins
       leading = ''
     elif leading == 'preload' or leading == 'embed':
@@ -391,17 +392,18 @@ def main():
   if has_preloaded:
     # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
     # XHRs which has overhead.
-    data = open(data_target, 'wb')
     start = 0
-    for file_ in data_files:
-      file_['data_start'] = start
-      curr = open(file_['srcpath'], 'rb').read()
-      file_['data_end'] = start + len(curr)
-      if AV_WORKAROUND:
-          curr += '\x00'
-      start += len(curr)
-      data.write(curr)
-    data.close()
+    with open(data_target, 'wb') as data:
+      for file_ in data_files:
+        file_['data_start'] = start
+        with open(file_['srcpath'], 'rb') as f:
+          curr = f.read()
+        file_['data_end'] = start + len(curr)
+        if AV_WORKAROUND:
+            curr += '\x00'
+        start += len(curr)
+        data.write(curr)
+
     # TODO: sha256sum on data_target
     if start > 256 * 1024 * 1024:
       print('warning: file packager is creating an asset bundle of %d MB. '
@@ -913,20 +915,17 @@ def main():
       # differs from the current generated one, otherwise leave the file
       # untouched preserving its old timestamp
       if os.path.isfile(jsoutput):
-        f = open(jsoutput, 'r+')
-        old = f.read()
+        with open(jsoutput) as f:
+          old = f.read()
         if old != ret:
-          f.seek(0)
-          f.write(ret)
-          f.truncate()
+          with open(jsoutput, 'w') as f:
+            f.write(ret)
       else:
-        f = open(jsoutput, 'w')
-        f.write(ret)
-      f.close()
+        with open(jsoutput, 'w') as f:
+          f.write(ret)
       if separate_metadata:
-        f = open(jsoutput + '.metadata', 'w')
-        json.dump(metadata, f, separators=(',', ':'))
-        f.close()
+        with open(jsoutput + '.metadata', 'w') as f:
+          json.dump(metadata, f, separators=(',', ':'))
 
   return 0
 
