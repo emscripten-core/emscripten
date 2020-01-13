@@ -1351,7 +1351,7 @@ var LibraryPThread = {
   },
 
   // allow pthreads to check if noExitRuntime from worker.js
-  $checkNoExitRuntime: function() {
+  $getNoExitRuntime: function() {
     return noExitRuntime;
   },
 

@@ -1463,7 +1463,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += [name]
 
       include_and_export('establishStackSpaceInJsModule')
-      include_and_export('checkNoExitRuntime')
+      include_and_export('getNoExitRuntime')
 
       if shared.Settings.MODULARIZE:
         # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
