@@ -197,7 +197,9 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-
+        // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+        // (This is a no-op if explicit pthread_exit() had been called prior.)
+        if (!Module['getNoExitRuntime']()) PThread.threadExit(result);
       } catch(ex) {
         if (ex === 'Canceled!') {
           PThread.threadCancel();
@@ -217,9 +219,6 @@ this.onmessage = function(e) {
           if (!(ex instanceof Module['ExitStatus'])) throw ex;
         }
       }
-      // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
-      // (This is a no-op if explicit pthread_exit() had been called prior.)
-      if (!Module['getNoExitRuntime']()) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct) {
         PThread.threadCancel();
