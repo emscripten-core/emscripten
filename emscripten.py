@@ -2401,37 +2401,9 @@ def create_asm_consts_wasm(forwarded_json, metadata):
   asm_const_funcs = []
 
   # emit the signature-reading helper function only if we have any EM_ASM
-  # functions in the module. we also need to emit it for pthreads anyhow as
-  # the proxying code there, which is always emitted, supports EM_ASMs and
-  # requires this support code
-  if all_sigs or shared.Settings.USE_PTHREADS:
-    check_int = ''
-    check = ''
-    if shared.Settings.ASSERTIONS:
-      check_int = "if (ch === 105 /*'i'*/)"
-      check = ' else abort("unexpected char in asm const signature " + ch);'
-    asm_const_funcs.append(r'''
-// Avoid creating a new array
-var _readAsmConstArgsArray = [];
-
-function readAsmConstArgs(sigPtr, buf) {
-  var args = _readAsmConstArgsArray;
-  args.length = 0;
-  var ch;
-  while (ch = HEAPU8[sigPtr++]) {
-    if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
-      buf = (buf + 7) & ~7;
-      args.push(HEAPF64[(buf >> 3)]);
-      buf += 8;
-    } else %s {
-      buf = (buf + 3) & ~3;
-      args.push(HEAP32[(buf >> 2)]);
-      buf += 4;
-    }%s
-  }
-  return args;
-}
-''' % (check_int, check))
+  # functions in the module.
+  if all_sigs:
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_emscripten_read_asm_const_args']
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
@@ -2458,7 +2430,7 @@ function readAsmConstArgs(sigPtr, buf) {
 
     asm_const_funcs.append(r'''
 function %s(code, sigPtr, argbuf) {%s
-  var args = readAsmConstArgs(sigPtr, argbuf);
+  var args = _emscripten_read_asm_const_args(sigPtr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   asm_consts = [(key, value) for key, value in asm_consts.items()]
