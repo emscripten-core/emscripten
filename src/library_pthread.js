@@ -168,6 +168,9 @@ var LibraryPThread = {
     threadExit: function(exitCode) {
       var tb = _pthread_self();
       if (tb) { // If we haven't yet exited?
+#if ASSERTIONS
+        err('Pthread 0x' + tb.toString(16) + ' exited.');
+#endif
 #if PTHREADS_PROFILING
         var profilerBlock = Atomics.load(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2);
         Atomics.store(HEAPU32, (threadInfoStruct + {{{ C_STRUCTS.pthread.profilerBlock }}} ) >> 2, 0);
@@ -1213,9 +1216,20 @@ var LibraryPThread = {
   __call_main: function(argc, argv) {
     var returnCode = _main(argc, argv);
 #if EXIT_RUNTIME
-    if (!noExitRuntime) postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
+    if (!noExitRuntime) {
+      // exitRuntime enabled, proxied main() finished in a pthread, shut down the process.
+#if ASSERTIONS
+      out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=1 set, quitting process.');
 #endif
-    return returnCode;
+      postMessage({ 'cmd': 'exitProcess', 'returnCode': returnCode });
+      return returnCode;
+    }
+#else
+    // EXIT_RUNTIME==0 set on command line, keeping main thread alive.
+#if ASSERTIONS
+    out('Proxied main thread 0x' + _pthread_self().toString(16) + ' finished with return code ' + returnCode + '. EXIT_RUNTIME=0 set, so keeping main thread alive for asynchronous event operations.');
+#endif
+#endif
   },
 
   emscripten_conditional_set_current_thread_status_js: function(expectedStatus, newStatus) {
