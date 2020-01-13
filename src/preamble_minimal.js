@@ -145,7 +145,10 @@ var HEAPF32 = new Float32Array(buffer);
 var HEAPF64 = new Float64Array(buffer);
 #endif
 
-#if !WASM
+#if MEM_INIT_METHOD == 1
+#if ASSERTIONS
+if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
+#endif
 HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 #endif
 

@@ -144,9 +144,16 @@ function revokeURL(url) {
 #endif
 
 #if !MODULARIZE && WASM && !MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
-  // No modularize, no separate .mem init file
-  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
+  // No modularize, possibly with separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}
+#if MEM_INIT_METHOD == 1
+    , binary('{{{ TARGET_BASENAME }}}.mem')
+#endif
+    ]).then((r) => {
     Module.wasm = r[1];
+#if MEM_INIT_METHOD == 1
+    Module.mem = r[2];
+#endif
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
     script(url).then(() => { revokeURL(url) });
   });
@@ -159,15 +166,37 @@ function revokeURL(url) {
   // Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
   // Node.js and Safari do not support instantiateStreaming.
 #if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-  // No modularize, no separate .mem init file
-  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), WebAssembly.instantiateStreaming && binary('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+  // No modularize, possibly with separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), WebAssembly.instantiateStreaming && binary('{{{ TARGET_BASENAME }}}.wasm')
+#if MEM_INIT_METHOD == 1
+    , binary('{{{ TARGET_BASENAME }}}.mem')
+#endif
+    ]).then((r) => {
     Module.wasm = r[1];
+#if MEM_INIT_METHOD == 1
+    Module.mem = r[2];
+#endif
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
     script(url).then(() => { revokeURL(url) });
   });
 #else
-  // WebAssembly.instantiateStreaming() is unconditionally supported - loading the .js file is very simple:
+#if MEM_INIT_METHOD == 1
+  // No modularize, with separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'),
+#if MEM_INIT_METHOD == 1
+    , binary('{{{ TARGET_BASENAME }}}.mem')
+#endif
+    ]).then((r) => {
+#if MEM_INIT_METHOD == 1
+    Module.mem = r[1];
+#endif
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => { revokeURL(url) });
+  });
+#else
+  // No separate .mem init file, WebAssembly.instantiateStreaming() is unconditionally supported - loading the .js file is very simple:
   script('{{{ TARGET_BASENAME }}}.js');
+#endif
 #endif
 #endif
 

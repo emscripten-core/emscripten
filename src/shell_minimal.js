@@ -39,9 +39,9 @@ if (ENVIRONMENT_IS_NODE) {
 #if SEPARATE_ASM
   eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
 #endif
+#endif
 #if MEM_INIT_METHOD == 1
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
-#endif
 #endif
 }
 #endif
@@ -55,6 +55,8 @@ if (ENVIRONMENT_IS_SHELL) {
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #else
   eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#if MEM_INIT_METHOD == 1
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }

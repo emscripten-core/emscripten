@@ -172,9 +172,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
 
 // Initialize asm.js (synchronous)
-#if ASSERTIONS
-if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
-#endif
 initRuntime(asm);
 ready();
 
