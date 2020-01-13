@@ -3183,7 +3183,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # if targeting only JS, delete the redundant temporary
   # .wasm output file
-  if shared.Settings.WASM2JS and shared.Settings.WASM != 2:
+  if shared.Settings.WASM == 1 and shared.Settings.WASM2JS:
     shared.try_delete(wasm_binary_target)
 
 
