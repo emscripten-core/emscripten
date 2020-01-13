@@ -199,14 +199,13 @@ this.onmessage = function(e) {
 #if STACK_OVERFLOW_CHECK
         Module['checkStackCookie']();
 #endif
-
+        // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
+        // (This is a no-op if explicit pthread_exit() had been called prior.)
+        if (!noExitRuntime) PThread.threadExit(result);
       } catch(ex) {
         if (ex === 'Canceled!') {
           PThread.threadCancel();
-          return;
-        } else if (ex === 'unwind') {
-          return;
-        } else {
+        } else if (ex != 'unwind') {
           Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
@@ -217,11 +216,13 @@ this.onmessage = function(e) {
 #endif
           Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
           if (!(ex instanceof Module['ExitStatus'])) throw ex;
+#if ASSERTIONS
+        } else {
+          // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
+          out('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+#endif
         }
       }
-      // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
-      // (This is a no-op if explicit pthread_exit() had been called prior.)
-      if (!noExitRuntime) PThread.threadExit(result);
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct) {
         PThread.threadCancel();
