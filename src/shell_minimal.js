@@ -27,20 +27,21 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
+#if WASM == 2
+if (typeof WebAssembly !== 'undefined') {
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE && WASM > WASM2JS
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
-#if WASM == 2
-  if (typeof WebAssembly !== 'undefined')
-#endif
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
 #else
 #if SEPARATE_ASM
   eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
 #endif
 #endif
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif
 }
@@ -49,16 +50,17 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL && WASM > WASM2JS
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM
-#if WASM == 2
-  if (typeof WebAssembly !== 'undefined')
-#endif
   Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
 #else
   eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
 #endif
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
+}
+#endif
+
+#if WASM == 2
 }
 #endif
 

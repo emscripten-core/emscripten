@@ -146,12 +146,12 @@ function revokeURL(url) {
 #if !MODULARIZE && WASM && !MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
   // No modularize, possibly with separate .mem init file
   Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
     , binary('{{{ TARGET_BASENAME }}}.mem')
 #endif
     ]).then((r) => {
     Module.wasm = r[1];
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
     Module.mem = r[2];
 #endif
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
@@ -168,26 +168,26 @@ function revokeURL(url) {
 #if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
   // No modularize, possibly with separate .mem init file
   Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), WebAssembly.instantiateStreaming && binary('{{{ TARGET_BASENAME }}}.wasm')
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
     , binary('{{{ TARGET_BASENAME }}}.mem')
 #endif
     ]).then((r) => {
     Module.wasm = r[1];
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
     Module.mem = r[2];
 #endif
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
     script(url).then(() => { revokeURL(url) });
   });
 #else
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   // No modularize, with separate .mem init file
   Promise.all([binary('{{{ TARGET_BASENAME }}}.js'),
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
     , binary('{{{ TARGET_BASENAME }}}.mem')
 #endif
     ]).then((r) => {
-#if MEM_INIT_METHOD == 1
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
     Module.mem = r[1];
 #endif
     var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
