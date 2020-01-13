@@ -31,6 +31,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 if (typeof WebAssembly !== 'undefined') {
 #endif
 
+// Wasm or Wasm2JS loading:
 #if ENVIRONMENT_MAY_BE_NODE && WASM > WASM2JS
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
@@ -62,6 +63,32 @@ if (ENVIRONMENT_IS_SHELL) {
 
 #if WASM == 2
 }
+#endif
+
+// asm.js loading in fastcomp backend:
+#if !WASM && !WASM_BACKEND
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+#if SEPARATE_ASM
+  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
+#endif
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
+  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
+#endif
+}
+#endif
+
 #endif
 
 // Redefine these in a --pre-js to override behavior. If you would like to
