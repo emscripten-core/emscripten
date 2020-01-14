@@ -1226,10 +1226,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Remove the default exported functions 'memcpy', 'memset', 'malloc', 'free', etc. - those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
-    if shared.Settings.USE_PTHREADS:
-      # These runtime methods are called from worker.js
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
-
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
@@ -1464,8 +1460,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
-      # To ensure allocated thread stacks are aligned:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace']
+
+      # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
+
+      # dynCall_ii is used to call pthread entry points in worker.js (as
+      # metadce does not consider worker.js, which is external, we must
+      # consider it a user export, i.e., one which can never be removed).
+      shared.Building.user_requested_exports += ['dynCall_ii']
+
+      if shared.Settings.PROXY_TO_PTHREAD:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
 
       # pthread stack setup:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$establishStackSpaceInJsModule']
