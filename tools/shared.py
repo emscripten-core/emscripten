@@ -2606,7 +2606,7 @@ class Building(object):
         export = item['export']
         # wasm backend's exports are prefixed differently inside the wasm
         if Settings.WASM_BACKEND:
-          export = '_' + export
+          export = asmjs_mangle(export)
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     # in standalone wasm, always export the memory
