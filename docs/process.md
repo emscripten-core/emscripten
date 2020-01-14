@@ -32,8 +32,8 @@ Landing PRs
 Release Processes
 =================
 
-Emscripten version updates
---------------------------
+Minor version updates (1.X.Y to 1.X.Y+1)
+----------------------------------------
 
 When:
 
@@ -75,6 +75,31 @@ How:
      when that's unlikely, etc.
    * There is no need to open a PR for this change, you can optionally just
      commit it directly.
+
+
+Major version update (1.X.Y to 1.(X+1).0)
+-----------------------------------------
+
+When:
+
+ * We should do such an update when we have a reasonable assurance of stability.
+
+Requirements:
+
+ * All the requirements for a minor update.
+ * No major change recently landed.
+ * No major recent regressions have been filed.
+ * All tests pass locally for the person doing the update, including the main
+   test suite (no params passed to `runner.py`), `other`, `browser`, `sockets`,
+   `sanity`, `binaryen*`. (Not all of those are run on all the bots.)
+ * A minor version was recently tagged, no major bugs have been reported on it,
+   and nothing major landed since it did. (Bugs are often only found on tagged
+   versions, so a big feature should first be in a minor version update before
+   it is in a major one.)
+
+How:
+
+1. Follow the same steps for a minor version update.
 
 
 Updating the `emscripten.org` Website
