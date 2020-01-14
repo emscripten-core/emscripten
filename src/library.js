@@ -4581,6 +4581,34 @@ LibraryManager.library = {
     return STACK_BASE;
   },
 
+  emscripten_read_asm_const_args: function(sigPtr, buf) {
+    if (!_emscripten_read_asm_const_args.array) {
+      _emscripten_read_asm_const_args.array = [];
+    }
+    var args = _emscripten_read_asm_const_args.array;
+    args.length = 0;
+    var ch;
+    while (ch = HEAPU8[sigPtr++]) {
+      if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
+        buf = (buf + 7) & ~7;
+        args.push(HEAPF64[(buf >> 3)]);
+        buf += 8;
+      } else
+#if ASSERTIONS
+      if (ch === 105 /*'i'*/)
+#endif
+      {
+        buf = (buf + 3) & ~3;
+        args.push(HEAP32[(buf >> 2)]);
+        buf += 4;
+      }
+#if ASSERTIONS
+      else abort("unexpected char in asm const signature " + ch);
+#endif
+    }
+    return args;
+  },
+
   //============================
   // i64 math
   //============================
