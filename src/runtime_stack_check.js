@@ -1,7 +1,9 @@
 #if STACK_OVERFLOW_CHECK
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
+#if ASSERTIONS
   assert((STACK_MAX & 3) == 0);
+#endif
 #if WASM_BACKEND
   // The stack grows downwards
   HEAPU32[(STACK_MAX >> 2)+1] = 0x2135467;
