@@ -479,6 +479,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       now = tick()
       # Did user close browser?
       if not emrun_options.no_browser and not is_browser_process_alive():
+        logi('Browser process is not alive. Quitting web server.')
         delete_emrun_safe_firefox_profile()
         if not emrun_options.serve_after_close:
           self.is_running = False
