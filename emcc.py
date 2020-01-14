@@ -473,7 +473,8 @@ def ensure_archive_index(archive_file):
   # Fastcomp linking works without archive indexes.
   if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
-  stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE).stdout
+  # Ignore stderr since llvm-nm prints "no symbols" to stderr for each object that has no symbols
+  stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE, stderr=PIPE).stdout
   stdout = stdout.strip()
   # Ignore empty archives
   if not stdout:
