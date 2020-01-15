@@ -40,6 +40,7 @@
  *    malloc.
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <memory.h>
@@ -61,7 +62,7 @@ extern "C"
 
 // Configuration: specifies the minimum alignment that malloc()ed memory outputs. Allocation requests with smaller alignment
 // than this will yield an allocation with this much alignment.
-#define MALLOC_ALIGNMENT 8
+#define MALLOC_ALIGNMENT __alignof__(max_align_t)
 
 // Configuration: If EMMALLOC_USE_64BIT_OPS is specified, emmalloc uses 64 buckets for free memory regions instead of just 32.
 // When building to target asm.js/wasm2js, 64-bit ops are disabled, but in Wasm builds, 64-bit ops are enabled. (this is
