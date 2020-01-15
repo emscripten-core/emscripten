@@ -8554,6 +8554,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')
+    self.emcc_args.remove('-Werror')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   @node_pthreads
