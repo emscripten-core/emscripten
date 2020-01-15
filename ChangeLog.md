@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.6: 01/15/2020
+-------------------
+- Development has switched from "incoming" branches to "master".
 - Added new system header <emscripten/heap.h>, which enables querying information
   about the current WebAssembly heap state.
 - Reduced default geometric memory overgrowth rate from very generous 2x factor
@@ -637,11 +641,6 @@ v1.37.17: 7/25/2017
  - Updated to libc++'s "v2" ABI, which provides better alignment for string data
    and other improvements. This is an ABI-incompatible change, so bitcode files
    from previous versions will not be compatible.
- - To see a list of commits in the active development branch 'incoming', which
-   have not yet been packaged in a release, see
-    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.13...incoming
-    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.13...incoming
-    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.13...incoming
 
 v1.37.13: 5/26/2017
 -------------------
