@@ -499,6 +499,9 @@ var GL_FFP_ONLY = 0;
 // WebGL initialization afterwards will use this GL context to render.
 var GL_PREINITIALIZED_CONTEXT = 0;
 
+// If true, enables WebGPU (webgpu.h/webgpu_cpp.h) support.
+var USE_WEBGPU = 0;
+
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
 // decoders. The benefit is that this can be done synchronously, however, it

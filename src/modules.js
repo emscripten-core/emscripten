@@ -103,6 +103,7 @@ var LibraryManager = {
     if (AUTO_JS_LIBRARIES) {
       libraries = libraries.concat([
         'library_webgl.js',
+        'library_webgpu.js',
         'library_openal.js',
         'library_vr.js',
         'library_sdl.js',

@@ -995,6 +995,14 @@ class libal(Library):
   src_files = ['al.c']
 
 
+class libwebgpu_cpp(MTLibrary):
+  name = 'libwebgpu_cpp'
+
+  cflags = ['-std=c++11', '-O2']
+  src_dir = ['system', 'lib', 'webgpu']
+  src_files = ['webgpu_cpp.cpp']
+
+
 class libgl(MTLibrary):
   name = 'libgl'
   depends = ['libc']
@@ -1496,6 +1504,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     add_library(system_libs_map['libsockets_proxy'])
   else:
     add_library(system_libs_map['libsockets'])
+
+  if shared.Settings.USE_WEBGPU:
+    add_library(system_libs_map['libwebgpu_cpp'])
 
   libs_to_link.sort(key=lambda x: x[0].endswith('.a')) # make sure to put .a files at the end.
 

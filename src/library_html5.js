@@ -2759,6 +2759,28 @@ var LibraryJSEvents = {
     return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
   },
 
+#if USE_WEBGPU
+  emscripten_webgpu_get_device__sig: 'i',
+  emscripten_webgpu_get_device: 'emscripten_webgpu_do_get_device',
+  emscripten_webgpu_do_get_device__deps: ['$WebGPU'],
+  emscripten_webgpu_do_get_device: function() {
+    // TODO(kainino0x): make it possible to actually create devices
+    assert(Module['preinitializedWebGPUDevice']);
+    WebGPU.initManagers();
+    return WebGPU.mgrDevice.create(Module['preinitializedWebGPUDevice']);
+  },
+
+  emscripten_webgpu_get_current_texture__sig: 'i',
+  emscripten_webgpu_get_current_texture: 'emscripten_webgpu_do_get_current_texture',
+  emscripten_webgpu_do_get_current_texture__deps: ['$WebGPU'],
+  emscripten_webgpu_do_get_current_texture: function() {
+    var swapchain = Module['preinitializedWebGPUSwapChain'];
+    assert(swapchain);
+    WebGPU.initManagers();
+    return WebGPU.mgrTexture.create(swapchain.getCurrentTexture());
+  },
+#endif
+
 #if USE_PTHREADS
   emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '_findCanvasEventTarget'],
   emscripten_set_canvas_element_size_calling_thread: function(target, width, height) {
