@@ -1531,15 +1531,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
 
-    # When MODULARIZE option is used, currently declare all module exports
-    # individually - TODO: this could be optimized
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-      shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
-      shared.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1, since MODULARIZE currently requires declaring asm.js/wasm module exports in full')
+      # When MODULARIZE option is used, currently requires declaring all module exports
+      # individually - TODO: this could be optimized
+      shared.warning('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
 
-    # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as the JS module. This allows code to share same loading function for both JS and asm.js modules,
-    # to save code size. The intent is that loader code captures the function variable from global scope to XHR loader local scope when it finishes loading, to avoid polluting global JS scope with
-    # variables. This provides safety via encapsulation. See src/shell_minimal_runtime.html for an example.
+    # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
+    # the JS module. This allows code to share same loading function for both JS and asm.js modules,
+    # to save code size. The intent is that loader code captures the function variable from global
+    # scope to XHR loader local scope when it finishes loading, to avoid polluting global JS scope
+    # with variables. This provides safety via encapsulation. See src/shell_minimal_runtime.html for
+    # an example.
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.SEPARATE_ASM_MODULE_NAME and not shared.Settings.WASM and shared.Settings.MODULARIZE:
       shared.Settings.SEPARATE_ASM_MODULE_NAME = 'var ' + shared.Settings.EXPORT_NAME
 
@@ -1637,13 +1639,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif 'WASM_ASYNC_COMPILATION=0' not in settings_changes and 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
             shared.warning('WASM_ASYNC_COMPILATION disabled due to user options. ' + warning)
 
-      if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+      if shared.Settings.SWAPPABLE_ASM_MODULE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
         # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
         # function generated to each function export from wasm module, so cannot use the
         # concise form of grabbing exports that does not need to refer to each export individually.
-        if shared.Settings.SWAPPABLE_ASM_MODULE == 1:
-          shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
-          shared.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -s SWAPPABLE_ASM_MODULE=1 is used')
+        exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not comptabible with SWAPPABLE_ASM_MODULE')
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
