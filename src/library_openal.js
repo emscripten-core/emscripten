@@ -4503,7 +4503,7 @@ var LibraryOpenAL = {
 
   alGetSource3f__proxy: 'sync',
   alGetSource3f__sig: 'viiiii',
-  alGetSource3f: function(source, param, pValue0, pValue1, pValue2) {
+  alGetSource3f: function(sourceId, param, pValue0, pValue1, pValue2) {
     var val = AL.getSourceParam('alGetSource3f', sourceId, param);
     if (val === null) {
       return;
