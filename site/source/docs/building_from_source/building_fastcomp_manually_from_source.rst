@@ -119,12 +119,7 @@ Bisecting across multiple git trees can be hard. We use version numbers to help 
 - `emscripten-version.txt <https://github.com/emscripten-core/emscripten-fastcomp/blob/master/emscripten-version.txt>`__ in fastcomp (llvm)
 - `emscripten-version.txt <https://github.com/emscripten-core/emscripten-fastcomp-clang/blob/master/emscripten-version.txt>`__ in fastcomp-clang (clang)
 
-Version numbers are typically ``X.Y.Z`` where:
-
-- ``X`` is a major number (changes very rarely).
-- ``Y`` is a release number (changes each time we merge incoming to master, so these numbers indicate points where all tests passed).
-- ``Z`` is minor update that is just a sync point between the repos, or is needed when libc changes in emscripten (version changes clear the cache).
-
+Version numbers are typically ``X.Y.Z`` where.
 
 
 Backend code structure
