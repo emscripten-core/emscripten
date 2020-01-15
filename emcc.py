@@ -1674,12 +1674,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # async compilation requires a swappable module - we swap it in when it's ready
         shared.Settings.SWAPPABLE_ASM_MODULE = 1
 
-      if shared.Settings.SWAPPABLE_ASM_MODULE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-        # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
-        # function generated to each function export from wasm module, so cannot use the
-        # concise form of grabbing exports that does not need to refer to each export individually.
-        exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not comptabible with SWAPPABLE_ASM_MODULE')
-
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
         shared.warning('output suffix .js requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')

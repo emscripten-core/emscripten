@@ -1719,23 +1719,24 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   module_exports = exported_implemented_functions + function_tables(function_table_data)
   shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
 
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    if runtime_assertions:
-      # assert on the runtime being in a valid state when calling into compiled code. The only
-      # exceptions are some support code.
-      receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+  if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+    receiving += 'exportAsmFunctions(asm);'
+  else:
+    if not shared.Settings.SWAPPABLE_ASM_MODULE:
+      if runtime_assertions:
+        # assert on the runtime being in a valid state when calling into compiled code. The only
+        # exceptions are some support code.
+        receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+        wrappers = []
+        for name in receiving_functions:
+          wrappers.append('''\
+  var real_%(name)s = asm["%(name)s"];
+  asm["%(name)s"] = function() {%(runtime_assertions)s
+    return real_%(name)s.apply(null, arguments);
+  };
+  ''' % {'name': name, 'runtime_assertions': runtime_assertions})
+        receiving += '\n'.join(wrappers)
 
-      wrappers = []
-      for name in receiving_functions:
-        wrappers.append('''\
-var real_%(name)s = asm["%(name)s"];
-asm["%(name)s"] = function() {%(runtime_assertions)s
-  return real_%(name)s.apply(null, arguments);
-};
-''' % {'name': name, 'runtime_assertions': runtime_assertions})
-      receiving += '\n'.join(wrappers)
-
-    if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       imported_exports = [s for s in module_exports if s not in initializers]
 
       if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
@@ -1754,18 +1755,16 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
         else:
           receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"];' for s in module_exports]) + '\n'
     else:
-      receiving += 'exportAsmFunctions(asm);'
-  else:
-    receiving += 'Module["asm"] = asm;\n'
-    wrappers = []
-    for name in module_exports:
-      wrappers.append('''\
+      receiving += 'Module["asm"] = asm;\n'
+      wrappers = []
+      for name in module_exports:
+        wrappers.append('''\
 var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
 
-    receiving += '\n'.join(wrappers)
+      receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
     for table in function_table_data.values():
@@ -2613,6 +2612,11 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
 
 def create_receiving_wasm(exports, initializers):
+  # When not declaring asm exports this section is empty and we instead programiatically export
+  # synbols on the global object by calling exportAsmFunctions after initialization
+  if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+    return ''
+
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
 
   receiving = []
@@ -2631,24 +2635,21 @@ asm["%(e)s"] = function() {%(assertions)s
   return real_%(mangled)s.apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-    if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-      if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
-        # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
-        # var _main;
-        # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
-        # var asm = output.instance.exports;
-        # _main = asm["_main"];
-        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
-      else:
-        if shared.Settings.MINIMAL_RUNTIME:
-          # In wasm2js exports can be directly processed at top level, i.e.
-          # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
-          # var _main = asm["_main"];
-          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
-        else:
-          receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
+    if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
+      # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
+      # var _main;
+      # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+      # var asm = output.instance.exports;
+      # _main = asm["_main"];
+      receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
     else:
-      receiving.append('exportAsmFunctions(asm);')
+      if shared.Settings.MINIMAL_RUNTIME:
+        # In wasm2js exports can be directly processed at top level, i.e.
+        # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+        # var _main = asm["_main"];
+        receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
+      else:
+        receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:

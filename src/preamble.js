@@ -909,6 +909,11 @@ function createWasm() {
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
+#if !DECLARE_ASM_MODULE_EXPORTS
+    // If we didn't declare the asm exports as top level enties this function
+    // is in charge of programatically exporting them on the global object.
+    exportAsmFunctions(exports);
+#endif
 #if STANDALONE_WASM
     // In pure wasm mode the memory is created in the wasm (not imported), and
     // then exported.
