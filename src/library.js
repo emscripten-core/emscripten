@@ -4613,6 +4613,43 @@ LibraryManager.library = {
     return args;
   },
 
+#if !DECLARE_ASM_MODULE_EXPORTS
+  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
+  // at runtime rather than statically in JS code.
+  $exportAsmFunctions: function(asm) {
+#if WASM_BACKEND
+    var asmjsMangle = function(x) {
+      var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+    };
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WEB
+    var global_object = (typeof process !== "undefined" ? global : this);
+#else
+    var global_object = global;
+#endif
+#else
+    var global_object = this;
+#endif
+
+    for (var __exportedFunc in asm) {
+#if WASM_BACKEND
+      var jsname = asmjsMangle(__exportedFunc);
+#else
+      var jsname = __exportedFunc;
+#endif
+#if MINIMAL_RUNTIME
+      global_object[jsname] = asm[__exportedFunc];
+#else
+      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+#endif
+    }
+
+  },
+#endif
+
   //============================
   // i64 math
   //============================
