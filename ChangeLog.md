@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.6: 01/15/2020
+-------------------
+- Development has switched from "incoming" branches to "master".
 - Added new system header <emscripten/heap.h>, which enables querying information
   about the current WebAssembly heap state.
 - Reduced default geometric memory overgrowth rate from very generous 2x factor
