@@ -2933,13 +2933,13 @@ class Building(object):
       exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % finalize)
     try:
       output = run_process([finalize, '--version'], stdout=PIPE).stdout
-    except CalledProcessError:
+    except subprocess.CalledProcessError:
       exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % finalize)
     version = output.split()[2]
     version = int(version)
     # Allow the expected version or the following one in order avoid needing to update both
     # emscripten and binaryen in lock step in emscripten-releases.
-    if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION+1):
+    if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):
       warning('unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
 
   @staticmethod
