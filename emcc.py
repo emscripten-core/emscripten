@@ -1534,7 +1534,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       # When MODULARIZE option is used, currently requires declaring all module exports
       # individually - TODO: this could be optimized
-      shared.warning('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
+      exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
 
     # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
     # the JS module. This allows code to share same loading function for both JS and asm.js modules,
