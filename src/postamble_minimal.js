@@ -68,6 +68,12 @@ var imports = {
 #endif
 };
 
+// In non-fastcomp non-asm.js builds, grab wasm exports to outer scope
+// for emscripten_get_exported_function() to be able to access them.
+#if (LibraryManager.has('library_exports.js')) && (WASM || WASM_BACKEND)
+var wasmExports;
+#endif
+
 #if DECLARE_ASM_MODULE_EXPORTS
 /*** ASM_MODULE_EXPORTS_DECLARES ***/
 #endif
@@ -113,6 +119,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 #else
   var asm = output.instance.exports;
+#endif
+
+#if LibraryManager.has('library_exports.js')
+  wasmExports = asm;
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS == 0

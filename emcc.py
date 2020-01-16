@@ -1536,6 +1536,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # individually - TODO: this could be optimized
       exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
 
+    # When not declaring asm module exports in outer scope one by one, disable minifying
+    # asm.js/wasm module export names so that the names can be passed directly to the outer scope.
+    # Also, if using library_exports.js API, disable minification so that the feature can work.
+    if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _,x in libs]:
+      shared.Settings.MINIFY_ASMJS_EXPORT_NAMES = 0
+
     # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
     # the JS module. This allows code to share same loading function for both JS and asm.js modules,
     # to save code size. The intent is that loader code captures the function variable from global
