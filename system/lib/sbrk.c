@@ -35,6 +35,8 @@
 }
 
 void *sbrk(intptr_t increment) {
+  // Enforce preserving a minimal 4-byte alignment for sbrk.
+  increment = (increment + 3) & ~3;
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk

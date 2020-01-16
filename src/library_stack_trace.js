@@ -1,31 +1,40 @@
 var LibraryStackTrace = {
 
-#if ASSERTIONS && MINIMAL_RUNTIME
-  $demangle__deps: ['$warnOnce'],
+  $demangle__deps: [
+#if MINIMAL_RUNTIME
+  '$stackSave', '$stackAlloc', '$stackRestore'
+#if ASSERTIONS
+    , '$warnOnce'
 #endif
+#endif
+  ],
   $demangle: function(func) {
 #if DEMANGLE_SUPPORT
+    // If demangle has failed before, stop demangling any further function names
+    // This avoids an infinite recursion with malloc()->abort()->stackTrace()->demangle()->malloc()->...
+    demangle.recursionGuard = (demangle.recursionGuard|0)+1;
+    if (demangle.recursionGuard > 1) return func;
     var __cxa_demangle_func = Module['___cxa_demangle'] || Module['__cxa_demangle'];
     assert(__cxa_demangle_func);
+    var stackTop = stackSave();
     try {
       var s = func;
       if (s.startsWith('__Z'))
         s = s.substr(1);
       var len = lengthBytesUTF8(s)+1;
-      var buf = _malloc(len);
+      var buf = stackAlloc(len);
       stringToUTF8(s, buf, len);
-      var status = _malloc(4);
+      var status = stackAlloc(4);
       var ret = __cxa_demangle_func(buf, 0, 0, status);
       if ({{{ makeGetValue('status', '0', 'i32') }}} === 0 && ret) {
         return UTF8ToString(ret);
       }
       // otherwise, libcxxabi failed
     } catch(e) {
-      // ignore problems here
     } finally {
-      if (buf) _free(buf);
-      if (status) _free(status);
-      if (ret) _free(ret);
+      _free(ret);
+      stackRestore(stackTop);
+      if (demangle.recursionGuard < 2) --demangle.recursionGuard;
     }
     // failure when using libcxxabi, don't demangle
     return func;

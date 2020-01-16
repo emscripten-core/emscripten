@@ -31,7 +31,6 @@ dynCall_viiii
 dynCall_viiiii
 dynCall_viiiiii
 dynCall_viijii
-establishStackSpace
 globalCtors
 stackAlloc
 stackRestore

@@ -98,7 +98,6 @@ if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {
 #if MODULARIZE
 else {
   var buffer = {{{EXPORT_NAME}}}.buffer;
-  var tempDoublePtr = {{{EXPORT_NAME}}}.tempDoublePtr;
   var STATICTOP = {{{EXPORT_NAME}}}.STATICTOP;
   var DYNAMICTOP_PTR = {{{EXPORT_NAME}}}.DYNAMICTOP_PTR;
   var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;

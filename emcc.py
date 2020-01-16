@@ -473,7 +473,8 @@ def ensure_archive_index(archive_file):
   # Fastcomp linking works without archive indexes.
   if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
-  stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE).stdout
+  # Ignore stderr since llvm-nm prints "no symbols" to stderr for each object that has no symbols
+  stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE, stderr=PIPE).stdout
   stdout = stdout.strip()
   # Ignore empty archives
   if not stdout:
@@ -1154,16 +1155,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
-      if shared.Settings.MAIN_MODULE != 2:
+      if shared.Settings.MAIN_MODULE == 1:
         shared.Settings.INCLUDE_FULL_LIBRARY = 1
     elif shared.Settings.SIDE_MODULE:
       assert not shared.Settings.MAIN_MODULE
-      options.memory_init_file = False # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      # memory init file is not supported with asm.js side modules, must be executable synchronously (for dlopen)
+      options.memory_init_file = False
 
     if shared.Settings.MAIN_MODULE or shared.Settings.SIDE_MODULE:
       assert shared.Settings.ASM_JS, 'module linking requires asm.js output (-s ASM_JS=1)'
-      if shared.Settings.MAIN_MODULE != 2 and shared.Settings.SIDE_MODULE != 2:
+      if shared.Settings.MAIN_MODULE == 1 or shared.Settings.SIDE_MODULE == 1:
         shared.Settings.LINKABLE = 1
+        shared.Settings.EXPORT_ALL = 1
       shared.Settings.RELOCATABLE = 1
       assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
       # shared modules need memory utilities to allocate their memory
@@ -1288,6 +1291,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
       shared.Settings.FETCH = 1
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_asmfs.js'))
+
+    # Explicitly drop linking in a malloc implementation if program is not using any dynamic allocation calls.
+    if not shared.Settings.USES_DYNAMIC_ALLOC:
+      shared.Settings.MALLOC = 'none'
+
+    if shared.Settings.MALLOC == 'emmalloc':
+      shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_emmalloc.js'))
 
     if shared.Settings.FETCH and final_suffix in JS_CONTAINING_ENDINGS:
       forced_stdlibs.append('libfetch')
