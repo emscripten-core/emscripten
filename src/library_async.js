@@ -810,7 +810,6 @@ mergeInto(LibraryManager.library, {
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
         _free(Asyncify.currData);
         Asyncify.currData = null;
-        noExitRuntime = false;
         // Call all sleep callbacks now that the sleep-resume is all done.
         Asyncify.sleepCallbacks.forEach(function(func) {
           func();
@@ -921,8 +920,6 @@ mergeInto(LibraryManager.library, {
 
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
 
-      noExitRuntime = false;
-
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 'i32') }}};
 
       if (entryPoint !== 0) {
@@ -1015,7 +1012,6 @@ mergeInto(LibraryManager.library, {
       Asyncify.state = Asyncify.State.Normal;
       Module['_asyncify_stop_rewind']();
       Asyncify.currData = null;
-      noExitRuntime = false;
     }
   },
 
