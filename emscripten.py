@@ -275,7 +275,8 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
 
   if shared.Settings.WASM:
-    # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
+    # Declare all exports out to global JS scope so that JS library functions can access them in a
+    # way that minifies well with Closure
     # e.g. var a,b,c,d,e,f;
     exports_that_are_not_initializers = [x for x in exports if x not in initializers]
     if shared.Settings.WASM_BACKEND:
