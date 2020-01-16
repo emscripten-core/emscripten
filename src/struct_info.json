@@ -1629,5 +1629,24 @@
             "EMSCRIPTEN_FETCH_SYNCHRONOUS",
             "EMSCRIPTEN_FETCH_WAITABLE"
         ]
+    },
+    {
+        "file": "emscripten/fiber.h",
+        "structs": {
+            "asyncify_data_s": [
+                "stack_ptr",
+                "stack_limit",
+                "rewind_id"
+            ],
+            "emscripten_fiber_s": [
+                "stack_base",
+                "stack_limit",
+                "stack_ptr",
+                "entry",
+                "user_data",
+                "asyncify_data"
+            ]
+        },
+        "defines": []
     }
  ]
