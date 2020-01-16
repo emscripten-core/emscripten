@@ -54,7 +54,8 @@ mergeInto(LibraryManager.library, {
       if (typeof flags === "string") {
         flags = VFS.modeStringToFlags(flags)
       }
-      var nfd = fs.openSync(path, NODEFS.flagsForNode(flags), mode);
+      var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
+      var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, mode: st.mode, node_ops: NODERAWFS, seekable: true };
