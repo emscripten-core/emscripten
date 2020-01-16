@@ -9526,27 +9526,35 @@ int main () {
     else:
       self.assertFalse("wasm file had too many sections")
 
-  # This test verifies that the generated exports from asm.js/wasm module only reference the unminified exported name exactly once.
-  # (need to contain the export name once for unminified access from calling code, and should not have the unminified name exist more than once, that would be wasteful for size)
+  # This test verifies that the generated exports from asm.js/wasm module only reference the
+  # unminified exported name exactly once.  (need to contain the export name once for unminified
+  # access from calling code, and should not have the unminified name exist more than once, that
+  # would be wasteful for size)
   def test_function_exports_are_small(self):
     def test(wasm, closure, opt):
-      args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0'] + wasm + opt + closure
+      extra_args = wasm + opt + closure
+      if self.is_wasm_backend() and 'WASM_ASYNC_COMPILATION=0' not in extra_args:
+        # TODO: re-enable once we allow WASM_ASYNC_COMPILATION+DECLARE_ASM_MODULE_EXPORTS
+        # https://github.com/emscripten-core/emscripten/issues/10217
+        return
+      print(extra_args)
+      args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-Werror'] + extra_args
       run_process(args)
 
       output = open('a.js', 'r').read()
       try_delete('a.js')
-      self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunctionNameThatWouldBeGreatToOnlyHaveThisLongNameReferredAtMostOnceInOutput"]', output)
+      self.assertNotContained('asm["_thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction"]', output)
 
-      # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need to reference exports multiple times)
+      # TODO: Add stricter testing when Wasm side is also optimized: (currently Wasm does still need
+      # to reference exports multiple times)
       if 'WASM=1' not in wasm:
-        num_times_export_is_referenced = output.count('thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunctionNameThatWouldBeGreatToOnlyHaveThisLongNameReferredAtMostOnceInOutput')
+        num_times_export_is_referenced = output.count('thisIsAFunctionExportedFromAsmJsOrWasmWithVeryLongFunction')
         self.assertEqual(num_times_export_is_referenced, 1)
 
-    if not self.is_wasm_backend():
-      for closure in [[], ['--closure', '1']]:
-        for opt in [['-O2'], ['-O3'], ['-Os']]:
-          test(['-s', 'WASM=0'], closure, opt)
-          test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
+    for closure in [[], ['--closure', '1']]:
+      for opt in [['-O2'], ['-O3'], ['-Os']]:
+        test(['-s', 'WASM=0'], closure, opt)
+        test(['-s', 'WASM=1', '-s', 'WASM_ASYNC_COMPILATION=0'], closure, opt)
 
   def test_minimal_runtime_code_size(self):
     smallest_code_size_args = ['-s', 'MINIMAL_RUNTIME=2',

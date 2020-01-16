@@ -8238,10 +8238,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
+    js = open('src.cpp.o.js').read()
+    occurances = js.count('cFunction')
+    if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
+      # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
+      if self.is_wasm():
+        self.assertEqual(occurances, 1)
+      else:
+        # With js the asm module itself also contains a reference for the cFunction name
+        self.assertEqual(occurances, 2)
+    else:
+      print(occurances)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
