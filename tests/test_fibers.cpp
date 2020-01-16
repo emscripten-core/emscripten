@@ -32,10 +32,6 @@ struct Fiber {
     void swap(emscripten_fiber_t *fiber) {
         emscripten_fiber_swap(&context, fiber);
     }
-
-    ~Fiber() {
-        printf("\ndestructor");
-    }
 };
 
 static struct Globals {
@@ -45,10 +41,6 @@ static struct Globals {
 
     Globals() {
         emscripten_fiber_init_from_current_context(&main, asyncify_stack, sizeof(asyncify_stack));
-    }
-
-    ~Globals() {
-        printf("\ndestructor");
     }
 } G;
 
@@ -106,7 +98,7 @@ int main(int argc, char **argv) {
         emscripten_fiber_swap(&G.main, &G.fibers[1].context);
         printf("%d-", i);
     }
-    printf("*");
+    printf("*\n");
 
     return 0;
 }

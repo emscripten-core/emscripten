@@ -7841,11 +7841,9 @@ extern "C" {
   @no_fastcomp('Fibers are not implemented for fastcomp')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
-    # needs to flush stdio streams and to ensure destructors are called
-    self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-std=gnu++11']
     src = open(path_from_root('tests', 'test_fibers.cpp')).read()
-    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*\ndestructor\ndestructor\ndestructor')
+    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
   @no_fastcomp('ASYNCIFY has been removed from fastcomp')
