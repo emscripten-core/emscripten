@@ -16,7 +16,8 @@ mergeInto(LibraryManager.library, {
       return FS.lookupPath(parent.path + '/' + child);
     },
     lookupPath: function(path) {
-      return { path: path, node: { mode: NODEFS.getMode(path) } };
+      var st = fs.lstatSync(path);
+      return { path: path, id: st.ino, node: { mode: st.mode } };
     },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
