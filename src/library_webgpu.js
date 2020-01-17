@@ -75,7 +75,7 @@ var LibraryWebGPU = {
           create: function(object) {
             var id = this.objects.length;
             {{{ gpu.makeCheck("typeof this.objects[id] === 'undefined'") }}}
-            this.objects[id] = { refcount: 1, object };
+            this.objects[id] = { refcount: 1, object: object };
             return id;
           },
           get: function(id) {
@@ -410,7 +410,7 @@ var LibraryWebGPU = {
     var desc = {
       bindings: makeBindings(
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUBindGroupLayoutDescriptor.bindingCount) }}},
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupLayoutDescriptor.bindings, '*') }}},
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupLayoutDescriptor.bindings, '*') }}}
       ),
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupLayoutDescriptor.label, '*') }}};
@@ -446,7 +446,7 @@ var LibraryWebGPU = {
         }
 
         return {
-          binding,
+          binding: binding,
           resource: {
             buffer: WebGPU.mgrBuffer.get(bufferId),
             offset: {{{ gpu.makeGetU64('bindingPtr', C_STRUCTS.WGPUBindGroupBinding.offset) }}},
@@ -455,12 +455,12 @@ var LibraryWebGPU = {
         };
       } else if (samplerId != 0) {
         return {
-          binding,
+          binding: binding,
           resource: WebGPU.mgrSampler.get(samplerId),
         };
       } else {
         return {
-          binding,
+          binding: binding,
           resource: WebGPU.mgrTextureView.get(textureViewId),
         };
       }
@@ -481,7 +481,7 @@ var LibraryWebGPU = {
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupDescriptor.layout, '*') }}}),
       bindings: makeBindings(
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUBindGroupDescriptor.bindingCount) }}},
-        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupDescriptor.bindings, '*') }}},
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupDescriptor.bindings, '*') }}}
       ),
     };
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUBindGroupDescriptor.label, '*') }}};
@@ -775,6 +775,7 @@ var LibraryWebGPU = {
     {{{ gpu.makeCheck('descriptor') }}}
 
     function makeRenderBundleEncoderDescriptor(descriptor) {
+      {{{ gpu.makeCheck('descriptor') }}}
 
       function makeColorFormats(count, formatsPtr) {
         var formats = [];
@@ -819,7 +820,7 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachmentDescriptor.resolveTarget) }}}),
         storeOp: WebGPU.StoreOp[
           {{{ gpu.makeGetU32('caPtr', C_STRUCTS.WGPURenderPassColorAttachmentDescriptor.storeOp) }}}],
-        loadValue,
+        loadValue: loadValue,
       };
     }
 
@@ -851,10 +852,10 @@ var LibraryWebGPU = {
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachmentDescriptor.attachment) }}}),
         depthStoreOp: WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachmentDescriptor.depthStoreOp) }}}],
-        depthLoadValue,
+        depthLoadValue: depthLoadValue,
         stencilStoreOp: WebGPU.StoreOp[
           {{{ gpu.makeGetU32('dsaPtr', C_STRUCTS.WGPURenderPassDepthStencilAttachmentDescriptor.stencilStoreOp) }}}],
-        stencilLoadValue,
+        stencilLoadValue: stencilLoadValue,
       };
     }
 
@@ -1097,7 +1098,7 @@ var LibraryWebGPU = {
       if (labelPtr) desc.label = UTF8ToString(labelPtr);
     }
     var encoder = WebGPU.mgrRenderBundleEncoder.get(bundleId);
-    return WebGPU.mgrRenderBundle.create(encoder.finish());
+    return WebGPU.mgrRenderBundle.create(encoder.finish(desc));
   },
 
   // Unsupported (won't be implemented)
