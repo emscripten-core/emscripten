@@ -1275,11 +1275,6 @@ keydown(100);keyup(100); // trigger the end
   def test_preinitialized_webgl_context(self):
     self.btest('preinitialized_webgl_context.cpp', '5', args=['-s', 'GL_PREINITIALIZED_CONTEXT=1', '--shell-file', path_from_root('tests/preinitialized_webgl_context.html')])
 
-  # Primarily a compile-test for library_webgpu.
-  # TODO: is there a lighter-weight way to make compile tests?
-  def test_webgpu_dummy(self):
-    self.btest('webgpu_dummy.cpp', '0', args=['-std=c++11', '-s', 'USE_WEBGPU=1'])
-
   @requires_threads
   def test_emscripten_get_now(self):
     for args in [[], ['-s', 'USE_PTHREADS=1'], ['-s', 'ENVIRONMENT=web', '-O2', '--closure', '1']]:

@@ -5,7 +5,6 @@
 
 // Make sure these headers exist.
 #include <webgpu/webgpu.h> 
-#include <webgpu/webgpu_cpp.h> 
 
 #include <emscripten.h>
 #include <emscripten/html5.h>

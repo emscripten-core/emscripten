@@ -10252,3 +10252,7 @@ int main() {
     self.assertNotContained('hello, world!', test([]))
     # but work with it
     self.assertContained('hello, world!', test(['-s', 'LEGACY_VM_SUPPORT']))
+
+  # Compile-test for -s USE_WEBGPU=1 and library_webgpu.js.
+  def test_webgpu_compiletest(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'webgpu_dummy.cpp'), '-std=c++11', '-s', 'USE_WEBGPU=1'])

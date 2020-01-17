@@ -103,7 +103,6 @@ var LibraryManager = {
     if (AUTO_JS_LIBRARIES) {
       libraries = libraries.concat([
         'library_webgl.js',
-        'library_webgpu.js',
         'library_openal.js',
         'library_vr.js',
         'library_sdl.js',
@@ -141,6 +140,10 @@ var LibraryManager = {
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
+    }
+
+    if (USE_WEBGPU) {
+      libraries.push('library_webgpu.js');
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];

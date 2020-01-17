@@ -2760,20 +2760,18 @@ var LibraryJSEvents = {
   },
 
 #if USE_WEBGPU
-  emscripten_webgpu_get_device__sig: 'i',
-  emscripten_webgpu_get_device: 'emscripten_webgpu_do_get_device',
-  emscripten_webgpu_do_get_device__deps: ['$WebGPU'],
-  emscripten_webgpu_do_get_device: function() {
-    // TODO(kainino0x): make it possible to actually create devices
+  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
+  emscripten_webgpu_get_device__deps: ['$WebGPU'],
+  emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
+  emscripten_webgpu_get_device: function() {
     assert(Module['preinitializedWebGPUDevice']);
     WebGPU.initManagers();
     return WebGPU.mgrDevice.create(Module['preinitializedWebGPUDevice']);
   },
 
-  emscripten_webgpu_get_current_texture__sig: 'i',
-  emscripten_webgpu_get_current_texture: 'emscripten_webgpu_do_get_current_texture',
-  emscripten_webgpu_do_get_current_texture__deps: ['$WebGPU'],
-  emscripten_webgpu_do_get_current_texture: function() {
+  // TODO(kainino0x): try to refactor so this is no longer needed
+  emscripten_webgpu_get_current_texture__deps: ['$WebGPU'],
+  emscripten_webgpu_get_current_texture: function() {
     var swapchain = Module['preinitializedWebGPUSwapChain'];
     assert(swapchain);
     WebGPU.initManagers();
