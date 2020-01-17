@@ -71,7 +71,7 @@ DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in 
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
-WASM_ENDINGS = ('.wasm', '.wast')
+WASM_ENDINGS = ('.wasm',)
 
 SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
@@ -1046,7 +1046,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       js_target = unsuffixed(target) + '.js'
 
     asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
-    wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
+    wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
     wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
 
@@ -1576,7 +1576,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
-    if target.endswith(WASM_ENDINGS):
+    if final_suffix in WASM_ENDINGS:
       # if the output is just a wasm file, it will normally be a standalone one,
       # as there is no JS. an exception are side modules, as we can't tell at
       # compile time whether JS will be involved or not - the main module may
@@ -2274,7 +2274,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
-        # we also received wast and wasm at this stage
+        # we also received wat and wasm at this stage
         temp_basename = unsuffixed(final)
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)

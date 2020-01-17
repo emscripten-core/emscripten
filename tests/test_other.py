@@ -130,11 +130,11 @@ def get_fastcomp_src_dir():
 
 
 def parse_wasm(filename):
-  wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), filename], stdout=PIPE).stdout
+  wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), filename], stdout=PIPE).stdout
   imports = []
   exports = []
   funcs = []
-  for line in wast.splitlines():
+  for line in wat.splitlines():
     line = line.strip()
     if line.startswith('(import '):
       line = line.strip('()')
@@ -3985,9 +3985,9 @@ EM_ASM({ _middle() });
           out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
           self.assertContained(stack_trace_reference, out)
           # make sure there are no symbols in the wasm itself
-          wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+          wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
           for func_start in ('(func $middle', '(func $_middle'):
-            self.assertNotContained(func_start, wast)
+            self.assertNotContained(func_start, wat)
 
   def test_bc_to_bc(self):
     # emcc should 'process' bitcode to bitcode. build systems can request this if
@@ -7803,19 +7803,20 @@ int main() {
           (['-Oz'], False, True, True), # ctor evaller turned off since only-wasm
         ]:
         try_delete('a.out.js')
-        try_delete('a.out.wast')
+        try_delete('a.out.wasm')
+        try_delete('a.out.wat')
         cmd = [PYTHON, EMCC, path_from_root('tests', 'core', 'test_i64.c')] + args
         print(args, 'js opts:', expect_js_opts, 'only-wasm:', expect_only_wasm, '   ', ' '.join(cmd))
         err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
         assert expect_js_opts == ('applying js optimization passes:' in err), err
         if not self.is_wasm_backend():
           assert expect_only_wasm == ('-emscripten-only-wasm' in err and '--wasm-only' in err), err # check both flag to fastcomp and to asm2wasm
-        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+        wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
         # i64s
-        i64s = wast.count('(i64.')
+        i64s = wat.count('(i64.')
         print('    seen i64s:', i64s)
         assert expect_only_wasm == (i64s > 30), 'i64 opts can be emitted in only-wasm mode, but not normally' # note we emit a few i64s even without wasm-only, when we replace udivmoddi (around 15 such)
-        selects = wast.count('(select')
+        selects = wat.count('(select')
         print('    seen selects:', selects)
         if expect_wasm_opts:
           # when optimizing we should create selects
@@ -7928,8 +7929,8 @@ int main() {
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2'] + args
       print(' '.join(cmd))
       run_process(cmd)
-      wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
-      for line in wast:
+      wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'a.out.wasm'], stdout=PIPE).stdout
+      for line in wat:
         if '(import "env" "memory" (memory ' in line:
           parts = line.strip().replace('(', '').replace(')', '').split(' ')
           print(parts)
@@ -8013,7 +8014,7 @@ int main() {
           (['-O2', '--js-opts', '1'], False, False, True,  False, False),
         ]:
         print(args, expect_dash_g, expect_emit_text)
-        try_delete('a.out.wast')
+        try_delete('a.out.wat')
         cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1'] + args
         print(' '.join(cmd))
         err = run_process(cmd, stdout=PIPE, stderr=PIPE).stderr
@@ -8024,7 +8025,7 @@ int main() {
           assert expect_dash_g == (' -g ' in asm2wasm_line)
           assert expect_emit_text == (' -S ' in asm2wasm_line)
           if expect_emit_text:
-            text = open('a.out.wast').read()
+            text = open('a.out.wat').read()
             assert ';;' in text, 'must see debug info comment'
             assert 'hello_world.cpp:12' in text, 'must be file:line info'
         js = open('a.out.js').read()
@@ -8314,12 +8315,12 @@ int main() {
         continue
       print(args)
       try_delete('a.out.wasm')
-      try_delete('a.out.wast')
+      try_delete('a.out.wat')
       cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'ffi.c'), '-g', '-o', 'a.out.js'] + args
       print(' '.join(cmd))
       run_process(cmd)
-      run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wast'])
-      text = open('a.out.wast').read()
+      run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
+      text = open('a.out.wat').read()
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -8362,13 +8363,13 @@ int main() {
       ]:
       print(args)
       try_delete('a.out.wasm')
-      try_delete('a.out.wast')
+      try_delete('a.out.wat')
       with env_modify({'EMCC_FORCE_STDLIBS': 'libc++'}):
         cmd = [PYTHON, EMCC, path_from_root('tests', 'other', 'noffi.cpp'), '-g', '-o', 'a.out.js'] + args
       print(' '.join(cmd))
       run_process(cmd)
-      run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wast'])
-      text = open('a.out.wast').read()
+      run_process([wasm_dis, 'a.out.wasm', '-o', 'a.out.wat'])
+      text = open('a.out.wat').read()
       # remove internal comments and extra whitespace
       text = re.sub(r'\(;[^;]+;\)', '', text)
       text = re.sub(r'\$var\$*.', '', text)
@@ -8437,10 +8438,10 @@ int main() {
         self.assertExists('out.wasm')
         if target.endswith('.wasm'):
           assert not os.path.exists('out.js'), 'only wasm requested'
-        wast = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'out.wasm'], stdout=PIPE).stdout
-        wast_lines = wast.split('\n')
-        exports = [line.strip().split(' ')[1].replace('"', '') for line in wast_lines if "(export " in line]
-        imports = [line.strip().split(' ')[2].replace('"', '') for line in wast_lines if "(import " in line]
+        wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-dis'), 'out.wasm'], stdout=PIPE).stdout
+        wat_lines = wat.split('\n')
+        exports = [line.strip().split(' ')[1].replace('"', '') for line in wat_lines if "(export " in line]
+        imports = [line.strip().split(' ')[2].replace('"', '') for line in wat_lines if "(import " in line]
         exports_and_imports = exports + imports
         print('  exports', exports)
         print('  imports', imports)
@@ -8639,7 +8640,7 @@ int main() {
       expect_emterpretify_file = emterpreter_file_enabled
       expect_meminit = meminit1_enabled and not wasm_enabled
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
-      expect_wast = debug_enabled and wasm_enabled and not self.is_wasm_backend()
+      expect_wat = debug_enabled and wasm_enabled and not self.is_wasm_backend()
 
       if self.is_wasm_backend() and emterpreter_enabled:
         continue
@@ -8678,7 +8679,7 @@ int main() {
       assert expect_emterpretify_file == os.path.exists('a.out.dat')
       assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
       assert expect_wasm == os.path.exists('a.out.wasm')
-      assert expect_wast == os.path.exists('a.out.wast')
+      assert expect_wat == os.path.exists('a.out.wat')
       if should_run_js:
         self.assertContained('hello, world!', run_js('a.out.js'))
 
