@@ -192,7 +192,7 @@ mergeInto(LibraryManager.library, {
         }
       },
       lookup: function(parent, name) {
-        return FS.lookupPath(parent.path + '/' + name);
+        throw FS.genericErrors[{{{ cDefine('ENOENT') }}}];
       },
       mknod: function(parent, name, mode, dev) {
         return MEMFS.createNode(parent, name, mode, dev);
