@@ -29,6 +29,16 @@ mergeInto(LibraryManager.library, {
   __async_retval: '{{{ makeStaticAlloc(2) }}}', // store the return value for async functions
   __async_cur_frame: 0, // address to the current frame, which stores previous frame, stack pointer and async context
 
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
+  },
+
   // __async_retval is not actually required in emscripten_async_resume
   // but we want it included when ASYNCIFY is enabled
   emscripten_async_resume__deps: ['__async', '__async_unwind', '__async_retval', '__async_cur_frame'],
