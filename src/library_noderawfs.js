@@ -62,7 +62,7 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, mode: st.mode, node_ops: NODERAWFS, seekable: true };
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: st.mode, node_ops: NODERAWFS, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },

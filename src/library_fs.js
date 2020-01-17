@@ -1063,10 +1063,13 @@ mergeInto(LibraryManager.library, {
       var stream = FS.createStream({
         node: node,
         path: FS.getPath(node),  // we want the absolute path to the node
+        id: node.id,
         flags: flags,
+        mode: node.mode,
         seekable: true,
         position: 0,
         stream_ops: node.stream_ops,
+        node_ops: node.node_ops,
         // used by the file family libc calls (fopen, fwrite, ferror, etc.)
         ungotten: [],
         error: false
