@@ -2765,7 +2765,6 @@ var LibraryJSEvents = {
   emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
   emscripten_webgpu_get_device: function() {
     assert(Module['preinitializedWebGPUDevice']);
-    WebGPU.initManagers();
     return WebGPU.mgrDevice.create(Module['preinitializedWebGPUDevice']);
   },
 
@@ -2774,7 +2773,6 @@ var LibraryJSEvents = {
   emscripten_webgpu_get_current_texture: function() {
     var swapchain = Module['preinitializedWebGPUSwapChain'];
     assert(swapchain);
-    WebGPU.initManagers();
     return WebGPU.mgrTexture.create(swapchain.getCurrentTexture());
   },
 #endif
