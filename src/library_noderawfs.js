@@ -57,6 +57,9 @@ mergeInto(LibraryManager.library, {
       var pathTruncated = path.split('/').map(function(s) { return s.substr(0, 255); }).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
+      if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
+        throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
+      }
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
       var stream = { fd: fd, nfd: nfd, position: 0, path: path, flags: flags, mode: st.mode, node_ops: NODERAWFS, seekable: true };
       FS.streams[fd] = stream;
