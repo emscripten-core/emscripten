@@ -1680,6 +1680,10 @@
                 "usage",
                 "size"
             ],
+            "WGPUChainedStruct": [
+                "nextInChain",
+                "sType"
+            ],
             "WGPUColor": [
                 "r",
                 "g",
@@ -1789,10 +1793,23 @@
                 "depthFailOp",
                 "passOp"
             ],
+            "WGPUSurfaceDescriptor": [
+                "nextInChain",
+                "label"
+            ],
+            "WGPUSurfaceDescriptorFromHTMLCanvas": [
+                "nextInChain",
+                "sType",
+                "target"
+            ],
             "WGPUSwapChainDescriptor": [
                 "nextInChain",
                 "label",
-                "implementation"
+                "usage",
+                "format",
+                "width",
+                "height",
+                "presentMode"
             ],
             "WGPUTextureViewDescriptor": [
                 "nextInChain",

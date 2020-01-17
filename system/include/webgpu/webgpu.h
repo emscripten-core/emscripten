@@ -74,6 +74,7 @@ typedef struct WGPURenderPassEncoderImpl* WGPURenderPassEncoder;
 typedef struct WGPURenderPipelineImpl* WGPURenderPipeline;
 typedef struct WGPUSamplerImpl* WGPUSampler;
 typedef struct WGPUShaderModuleImpl* WGPUShaderModule;
+typedef struct WGPUSurfaceImpl* WGPUSurface;
 typedef struct WGPUSwapChainImpl* WGPUSwapChain;
 typedef struct WGPUTextureImpl* WGPUTexture;
 typedef struct WGPUTextureViewImpl* WGPUTextureView;
@@ -221,6 +222,12 @@ typedef enum WGPULoadOp {
     WGPULoadOp_Force32 = 0x7FFFFFFF
 } WGPULoadOp;
 
+typedef enum WGPUPresentMode {
+    WGPUPresentMode_NoVSync = 0x00000000,
+    WGPUPresentMode_VSync = 0x00000001,
+    WGPUPresentMode_Force32 = 0x7FFFFFFF
+} WGPUPresentMode;
+
 typedef enum WGPUPrimitiveTopology {
     WGPUPrimitiveTopology_PointList = 0x00000000,
     WGPUPrimitiveTopology_LineList = 0x00000001,
@@ -229,6 +236,15 @@ typedef enum WGPUPrimitiveTopology {
     WGPUPrimitiveTopology_TriangleStrip = 0x00000004,
     WGPUPrimitiveTopology_Force32 = 0x7FFFFFFF
 } WGPUPrimitiveTopology;
+
+typedef enum WGPUSType {
+    WGPUSType_Invalid = 0x00000000,
+    WGPUSType_SurfaceDescriptorFromMetalLayer = 0x00000001,
+    WGPUSType_SurfaceDescriptorFromWindowsHWND = 0x00000002,
+    WGPUSType_SurfaceDescriptorFromXlib = 0x00000003,
+    WGPUSType_SurfaceDescriptorFromHTMLCanvas = 0x00000004,
+    WGPUSType_Force32 = 0x7FFFFFFF
+} WGPUSType;
 
 typedef enum WGPUStencilOperation {
     WGPUStencilOperation_Keep = 0x00000000,
@@ -419,8 +435,13 @@ typedef enum WGPUTextureUsage {
 typedef WGPUFlags WGPUTextureUsageFlags;
 
 
+typedef struct WGPUChainedStruct {
+    struct WGPUChainedStruct const * nextInChain;
+    WGPUSType sType;
+} WGPUChainedStruct;
+
 typedef struct WGPUAdapterProperties {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     uint32_t deviceID;
     uint32_t vendorID;
     char const * name;
@@ -454,7 +475,7 @@ typedef struct WGPUBlendDescriptor {
 } WGPUBlendDescriptor;
 
 typedef struct WGPUBufferCopyView {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUBuffer buffer;
     uint64_t offset;
     uint32_t rowPitch;
@@ -462,7 +483,7 @@ typedef struct WGPUBufferCopyView {
 } WGPUBufferCopyView;
 
 typedef struct WGPUBufferDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUBufferUsageFlags usage;
     uint64_t size;
@@ -476,17 +497,17 @@ typedef struct WGPUColor {
 } WGPUColor;
 
 typedef struct WGPUCommandBufferDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
 } WGPUCommandBufferDescriptor;
 
 typedef struct WGPUCommandEncoderDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
 } WGPUCommandEncoderDescriptor;
 
 typedef struct WGPUComputePassDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
 } WGPUComputePassDescriptor;
 
@@ -507,13 +528,13 @@ typedef struct WGPUExtent3D {
 } WGPUExtent3D;
 
 typedef struct WGPUFenceDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     uint64_t initialValue;
 } WGPUFenceDescriptor;
 
 typedef struct WGPUInstanceDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
 } WGPUInstanceDescriptor;
 
 typedef struct WGPUOrigin3D {
@@ -523,20 +544,20 @@ typedef struct WGPUOrigin3D {
 } WGPUOrigin3D;
 
 typedef struct WGPUPipelineLayoutDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     uint32_t bindGroupLayoutCount;
     WGPUBindGroupLayout const * bindGroupLayouts;
 } WGPUPipelineLayoutDescriptor;
 
 typedef struct WGPUProgrammableStageDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUShaderModule module;
     char const * entryPoint;
 } WGPUProgrammableStageDescriptor;
 
 typedef struct WGPURasterizationStateDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUFrontFace frontFace;
     WGPUCullMode cullMode;
     int32_t depthBias;
@@ -545,12 +566,12 @@ typedef struct WGPURasterizationStateDescriptor {
 } WGPURasterizationStateDescriptor;
 
 typedef struct WGPURenderBundleDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
 } WGPURenderBundleDescriptor;
 
 typedef struct WGPURenderBundleEncoderDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     uint32_t colorFormatsCount;
     WGPUTextureFormat const * colorFormats;
@@ -569,7 +590,7 @@ typedef struct WGPURenderPassDepthStencilAttachmentDescriptor {
 } WGPURenderPassDepthStencilAttachmentDescriptor;
 
 typedef struct WGPUSamplerDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUAddressMode addressModeU;
     WGPUAddressMode addressModeV;
@@ -583,7 +604,7 @@ typedef struct WGPUSamplerDescriptor {
 } WGPUSamplerDescriptor;
 
 typedef struct WGPUShaderModuleDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     uint32_t codeSize;
     uint32_t const * code;
@@ -596,14 +617,49 @@ typedef struct WGPUStencilStateFaceDescriptor {
     WGPUStencilOperation passOp;
 } WGPUStencilStateFaceDescriptor;
 
-typedef struct WGPUSwapChainDescriptor {
-    void const * nextInChain;
+typedef struct WGPUSurfaceDescriptor {
+    WGPUChainedStruct const * nextInChain;
     char const * label;
-    uint64_t implementation;
+} WGPUSurfaceDescriptor;
+
+typedef struct WGPUSurfaceDescriptorFromHTMLCanvas {
+    WGPUChainedStruct const * nextInChain;
+    WGPUSType sType;
+    char const * target;
+} WGPUSurfaceDescriptorFromFromHTMLCanvas;
+
+typedef struct WGPUSurfaceDescriptorFromMetalLayer {
+    WGPUChainedStruct const * nextInChain;
+    WGPUSType sType;
+    void * layer;
+} WGPUSurfaceDescriptorFromMetalLayer;
+
+typedef struct WGPUSurfaceDescriptorFromWindowsHWND {
+    WGPUChainedStruct const * nextInChain;
+    WGPUSType sType;
+    void * hinstance;
+    void * hwnd;
+} WGPUSurfaceDescriptorFromWindowsHWND;
+
+typedef struct WGPUSurfaceDescriptorFromXlib {
+    WGPUChainedStruct const * nextInChain;
+    WGPUSType sType;
+    void * display;
+    uint32_t window;
+} WGPUSurfaceDescriptorFromXlib;
+
+typedef struct WGPUSwapChainDescriptor {
+    WGPUChainedStruct const * nextInChain;
+    char const * label;
+    WGPUTextureUsageFlags usage;
+    WGPUTextureFormat format;
+    uint32_t width;
+    uint32_t height;
+    WGPUPresentMode presentMode;
 } WGPUSwapChainDescriptor;
 
 typedef struct WGPUTextureViewDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUTextureFormat format;
     WGPUTextureViewDimension dimension;
@@ -621,7 +677,7 @@ typedef struct WGPUVertexAttributeDescriptor {
 } WGPUVertexAttributeDescriptor;
 
 typedef struct WGPUBindGroupDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUBindGroupLayout layout;
     uint32_t bindingCount;
@@ -629,14 +685,14 @@ typedef struct WGPUBindGroupDescriptor {
 } WGPUBindGroupDescriptor;
 
 typedef struct WGPUBindGroupLayoutDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     uint32_t bindingCount;
     WGPUBindGroupLayoutBinding const * bindings;
 } WGPUBindGroupLayoutDescriptor;
 
 typedef struct WGPUColorStateDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUTextureFormat format;
     WGPUBlendDescriptor alphaBlend;
     WGPUBlendDescriptor colorBlend;
@@ -644,14 +700,14 @@ typedef struct WGPUColorStateDescriptor {
 } WGPUColorStateDescriptor;
 
 typedef struct WGPUComputePipelineDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUPipelineLayout layout;
     WGPUProgrammableStageDescriptor computeStage;
 } WGPUComputePipelineDescriptor;
 
 typedef struct WGPUDepthStencilStateDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUTextureFormat format;
     bool depthWriteEnabled;
     WGPUCompareFunction depthCompare;
@@ -670,7 +726,7 @@ typedef struct WGPURenderPassColorAttachmentDescriptor {
 } WGPURenderPassColorAttachmentDescriptor;
 
 typedef struct WGPUTextureCopyView {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUTexture texture;
     uint32_t mipLevel;
     uint32_t arrayLayer;
@@ -678,7 +734,7 @@ typedef struct WGPUTextureCopyView {
 } WGPUTextureCopyView;
 
 typedef struct WGPUTextureDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUTextureUsageFlags usage;
     WGPUTextureDimension dimension;
@@ -697,7 +753,7 @@ typedef struct WGPUVertexBufferLayoutDescriptor {
 } WGPUVertexBufferLayoutDescriptor;
 
 typedef struct WGPURenderPassDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     uint32_t colorAttachmentCount;
     WGPURenderPassColorAttachmentDescriptor const * colorAttachments;
@@ -705,14 +761,14 @@ typedef struct WGPURenderPassDescriptor {
 } WGPURenderPassDescriptor;
 
 typedef struct WGPUVertexStateDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     WGPUIndexFormat indexFormat;
     uint32_t vertexBufferCount;
     WGPUVertexBufferLayoutDescriptor const * vertexBuffers;
 } WGPUVertexStateDescriptor;
 
 typedef struct WGPURenderPipelineDescriptor {
-    void const * nextInChain;
+    WGPUChainedStruct const * nextInChain;
     char const * label;
     WGPUPipelineLayout layout;
     WGPUProgrammableStageDescriptor vertexStage;
@@ -813,9 +869,10 @@ typedef WGPURenderBundleEncoder (*WGPUProcDeviceCreateRenderBundleEncoder)(WGPUD
 typedef WGPURenderPipeline (*WGPUProcDeviceCreateRenderPipeline)(WGPUDevice device, WGPURenderPipelineDescriptor const * descriptor);
 typedef WGPUSampler (*WGPUProcDeviceCreateSampler)(WGPUDevice device, WGPUSamplerDescriptor const * descriptor);
 typedef WGPUShaderModule (*WGPUProcDeviceCreateShaderModule)(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor);
-typedef WGPUSwapChain (*WGPUProcDeviceCreateSwapChain)(WGPUDevice device, WGPUSwapChainDescriptor const * descriptor);
+typedef WGPUSwapChain (*WGPUProcDeviceCreateSwapChain)(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor);
 typedef WGPUTexture (*WGPUProcDeviceCreateTexture)(WGPUDevice device, WGPUTextureDescriptor const * descriptor);
 typedef void (*WGPUProcDeviceInjectError)(WGPUDevice device, WGPUErrorType type, char const * message);
+typedef void (*WGPUProcDeviceLoseForTesting)(WGPUDevice device);
 typedef bool (*WGPUProcDevicePopErrorScope)(WGPUDevice device, WGPUErrorCallback callback, void * userdata);
 typedef void (*WGPUProcDevicePushErrorScope)(WGPUDevice device, WGPUErrorFilter filter);
 typedef void (*WGPUProcDeviceSetDeviceLostCallback)(WGPUDevice device, WGPUDeviceLostCallback callback, void * userdata);
@@ -831,6 +888,7 @@ typedef void (*WGPUProcFenceReference)(WGPUFence fence);
 typedef void (*WGPUProcFenceRelease)(WGPUFence fence);
 
 // Procs of Instance
+typedef WGPUSurface (*WGPUProcInstanceCreateSurface)(WGPUInstance instance, WGPUSurfaceDescriptor const * descriptor);
 typedef void (*WGPUProcInstanceReference)(WGPUInstance instance);
 typedef void (*WGPUProcInstanceRelease)(WGPUInstance instance);
 
@@ -899,8 +957,11 @@ typedef void (*WGPUProcSamplerRelease)(WGPUSampler sampler);
 typedef void (*WGPUProcShaderModuleReference)(WGPUShaderModule shaderModule);
 typedef void (*WGPUProcShaderModuleRelease)(WGPUShaderModule shaderModule);
 
+// Procs of Surface
+typedef void (*WGPUProcSurfaceReference)(WGPUSurface surface);
+typedef void (*WGPUProcSurfaceRelease)(WGPUSurface surface);
+
 // Procs of SwapChain
-typedef void (*WGPUProcSwapChainConfigure)(WGPUSwapChain swapChain, WGPUTextureFormat format, WGPUTextureUsageFlags allowedUsage, uint32_t width, uint32_t height);
 typedef WGPUTextureView (*WGPUProcSwapChainGetCurrentTextureView)(WGPUSwapChain swapChain);
 typedef void (*WGPUProcSwapChainPresent)(WGPUSwapChain swapChain);
 typedef void (*WGPUProcSwapChainReference)(WGPUSwapChain swapChain);
@@ -989,9 +1050,10 @@ WGPU_EXPORT WGPURenderBundleEncoder wgpuDeviceCreateRenderBundleEncoder(WGPUDevi
 WGPU_EXPORT WGPURenderPipeline wgpuDeviceCreateRenderPipeline(WGPUDevice device, WGPURenderPipelineDescriptor const * descriptor);
 WGPU_EXPORT WGPUSampler wgpuDeviceCreateSampler(WGPUDevice device, WGPUSamplerDescriptor const * descriptor);
 WGPU_EXPORT WGPUShaderModule wgpuDeviceCreateShaderModule(WGPUDevice device, WGPUShaderModuleDescriptor const * descriptor);
-WGPU_EXPORT WGPUSwapChain wgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSwapChainDescriptor const * descriptor);
+WGPU_EXPORT WGPUSwapChain wgpuDeviceCreateSwapChain(WGPUDevice device, WGPUSurface surface, WGPUSwapChainDescriptor const * descriptor);
 WGPU_EXPORT WGPUTexture wgpuDeviceCreateTexture(WGPUDevice device, WGPUTextureDescriptor const * descriptor);
 WGPU_EXPORT void wgpuDeviceInjectError(WGPUDevice device, WGPUErrorType type, char const * message);
+WGPU_EXPORT void wgpuDeviceLoseForTesting(WGPUDevice device);
 WGPU_EXPORT bool wgpuDevicePopErrorScope(WGPUDevice device, WGPUErrorCallback callback, void * userdata);
 WGPU_EXPORT void wgpuDevicePushErrorScope(WGPUDevice device, WGPUErrorFilter filter);
 WGPU_EXPORT void wgpuDeviceSetDeviceLostCallback(WGPUDevice device, WGPUDeviceLostCallback callback, void * userdata);
@@ -1007,6 +1069,7 @@ WGPU_EXPORT void wgpuFenceReference(WGPUFence fence);
 WGPU_EXPORT void wgpuFenceRelease(WGPUFence fence);
 
 // Methods of Instance
+WGPU_EXPORT WGPUSurface wgpuInstanceCreateSurface(WGPUInstance instance, WGPUSurfaceDescriptor const * descriptor);
 WGPU_EXPORT void wgpuInstanceReference(WGPUInstance instance);
 WGPU_EXPORT void wgpuInstanceRelease(WGPUInstance instance);
 
@@ -1075,8 +1138,11 @@ WGPU_EXPORT void wgpuSamplerRelease(WGPUSampler sampler);
 WGPU_EXPORT void wgpuShaderModuleReference(WGPUShaderModule shaderModule);
 WGPU_EXPORT void wgpuShaderModuleRelease(WGPUShaderModule shaderModule);
 
+// Methods of Surface
+WGPU_EXPORT void wgpuSurfaceReference(WGPUSurface surface);
+WGPU_EXPORT void wgpuSurfaceRelease(WGPUSurface surface);
+
 // Methods of SwapChain
-WGPU_EXPORT void wgpuSwapChainConfigure(WGPUSwapChain swapChain, WGPUTextureFormat format, WGPUTextureUsageFlags allowedUsage, uint32_t width, uint32_t height);
 WGPU_EXPORT WGPUTextureView wgpuSwapChainGetCurrentTextureView(WGPUSwapChain swapChain);
 WGPU_EXPORT void wgpuSwapChainPresent(WGPUSwapChain swapChain);
 WGPU_EXPORT void wgpuSwapChainReference(WGPUSwapChain swapChain);

@@ -101,6 +101,9 @@ var LibraryWebGPU = {
         };
       }
 
+      {{{ gpu.makeInitManager('Surface') }}}
+      {{{ gpu.makeInitManager('SwapChain') }}}
+
       {{{ gpu.makeInitManager('Device') }}}
       {{{ gpu.makeInitManager('Queue') }}}
       {{{ gpu.makeInitManager('Fence') }}}
@@ -233,6 +236,9 @@ var LibraryWebGPU = {
   },
 
   // *Reference/*Release
+
+  {{{ gpu.makeReferenceRelease('Surface') }}}
+  {{{ gpu.makeReferenceRelease('SwapChain') }}}
 
   {{{ gpu.makeReferenceRelease('Device') }}}
   {{{ gpu.makeReferenceRelease('Queue') }}}
@@ -1101,30 +1107,76 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderBundle.create(encoder.finish(desc));
   },
 
+  // Instance
+
+  wgpuInstanceReference: function() {
+    assert(false, 'No WGPUInstance object should exist.');
+  },
+  wgpuInstanceRelease: function() {
+    assert(false, 'No WGPUInstance object should exist.');
+  },
+
+  wgpuInstanceCreateSurface__deps: ['_findCanvasEventTarget'],
+  wgpuInstanceCreateSurface: function(instanceId, descriptor) {
+    assert(instanceId === 0, "WGPUInstance is ignored");
+    assert(descriptor !== 0);
+    var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
+    assert(nextInChainPtr !== 0);
+    assert(/* WGPUSType_SurfaceDescriptorFromHTMLCanvas */ 4 ===
+      {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}});
+    var descriptorFromHTMLCanvas = nextInChainPtr;
+
+    {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvas') }}}
+    var targetPtr = {{{ makeGetValue('descriptorFromHTMLCanvas', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvas.target, '*') }}};
+    assert(targetPtr !== 0);
+    var target = UTF8ToString(targetPtr);
+    var canvas = __findCanvasEventTarget(target);
+
+    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.label, '*') }}};
+    if (labelPtr) canvas.surfaceLabelWebGPU = UTF8ToString(labelPtr);
+
+    return WebGPU.mgrSurface.create(canvas);
+  },
+
+  // wgpuDeviceCreateSwapChain + WGPUSwapChain
+
+  wgpuDeviceCreateSwapChain: function(deviceId, surfaceId, descriptor) {
+    {{{ gpu.makeCheckDescriptor('descriptor') }}}
+    var device = WebGPU.mgrDevice.get(deviceId);
+    var canvas = WebGPU.mgrSurface.get(surfaceId);
+
+    canvas.width = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.width) }}};
+    canvas.height = {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.height) }}};
+
+    var ctx = canvas.getContext('gpupresent');
+    assert(/* WGPUPresentMode_VSync */ 1 ===
+      {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.presentMode) }}});
+
+    var desc = {
+      label: undefined,
+      device: device,
+      format: WebGPU.TextureFormat[
+        {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.format) }}}],
+      usage: {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.usage) }}},
+    };
+    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSwapChainDescriptor.label, '*') }}};
+    if (labelPtr) desc.label = UTF8ToString(labelPtr);
+    var swapChain = ctx.configureSwapChain(desc);
+
+    return WebGPU.mgrSwapChain.create(swapChain);
+  },
+  wgpuSwapChainGetCurrentTextureView: function(swapChainId) {
+    var swapChain = WebGPU.mgrSwapChain.get(swapChainId);
+    return WebGPU.mgrTextureView.create(swapChain.getCurrentTexture().createView());
+  },
+
   // Unsupported (won't be implemented)
 
   wgpuDeviceTick: function() {
     assert(false, 'wgpuDeviceTick is unsupported (use requestAnimationFrame via html5.h instead)');
   },
-  wgpuDeviceCreateSwapChain: function() {
-    assert(false, 'wgpuSwapChain is unsupported (use html5.h instead)');
-    return 0;
-  },
-  wgpuSwapChainConfigure: function() {
-    assert(false, 'wgpuSwapChain is unsupported (use html5.h instead)');
-  },
-  wgpuSwapChainGetCurrentTextureView: function() {
-    assert(false, 'wgpuSwapChain is unsupported (use html5.h instead)');
-    return 0;
-  },
   wgpuSwapChainPresent: function() {
-    assert(false, 'wgpuSwapChain is unsupported (use html5.h instead)');
-  },
-  wgpuSwapChainReference: function() {
-    assert(false, 'wgpuSwapChain is unsupported (use html5.h instead)');
-  },
-  wgpuSwapChainRelease: function() {
-    assert(false, 'wgpuSwapChain is unsupported (use html5.h instead)');
+    assert(false, 'wgpuSwapChainPresent is unsupported (use requestAnimationFrame via html5.h instead)');
   },
 };
 

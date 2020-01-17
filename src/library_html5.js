@@ -2767,14 +2767,6 @@ var LibraryJSEvents = {
     assert(Module['preinitializedWebGPUDevice']);
     return WebGPU.mgrDevice.create(Module['preinitializedWebGPUDevice']);
   },
-
-  // TODO(kainino0x): try to refactor so this is no longer needed
-  emscripten_webgpu_get_current_texture__deps: ['$WebGPU'],
-  emscripten_webgpu_get_current_texture: function() {
-    var swapchain = Module['preinitializedWebGPUSwapChain'];
-    assert(swapchain);
-    return WebGPU.mgrTexture.create(swapchain.getCurrentTexture());
-  },
 #endif
 
 #if USE_PTHREADS
