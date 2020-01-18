@@ -3133,6 +3133,17 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
     shared.Building.asyncify_lazy_load_code(wasm_binary_target, options, debug=intermediate_debug_info)
 
+  def preprocess_wasm2js_script():
+    wasm2js = read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'))
+    # We do not currently have a setup to preprocess {{{ }}} settings in user scripts, so manually
+    # expand the settings that wasm2js.js actually uses.
+    wasm2js = wasm2js.replace('{{{ WASM_PAGE_SIZE }}}', '65536')
+    for opt in ['RESERVED_FUNCTION_POINTERS']:
+      wasm2js = wasm2js.replace('{{{ %s }}}' % opt, str(shared.Settings.get(opt)))
+    for opt in ['WASM_TABLE_SIZE']:
+      wasm2js = wasm2js.replace("{{{ getQuoted('%s') }}}" % opt, str(shared.Settings.get(opt)))
+    return wasm2js
+
   def run_closure_compiler(final):
     final = shared.Building.closure_compiler(final, pretty=not optimizer.minify_whitespace,
                                              extra_closure_args=options.closure_args)
@@ -3145,13 +3156,26 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   symbols_file = target + '.symbols' if options.emit_symbol_map else None
 
   if shared.Settings.WASM2JS:
-    final = shared.Building.wasm2js(final,
-                                    wasm_binary_target,
-                                    opt_level=options.opt_level,
-                                    minify_whitespace=optimizer.minify_whitespace,
-                                    use_closure_compiler=options.use_closure_compiler,
-                                    debug_info=intermediate_debug_info,
-                                    symbols_file=symbols_file)
+    if shared.Settings.WASM == 2:
+      wasm2js_template = wasm_binary_target + '.js'
+      open(wasm2js_template, 'w').write(preprocess_wasm2js_script())
+    else:
+      wasm2js_template = final
+
+    wasm2js = shared.Building.wasm2js(wasm2js_template,
+                                      wasm_binary_target,
+                                      opt_level=options.opt_level,
+                                      minify_whitespace=optimizer.minify_whitespace,
+                                      use_closure_compiler=options.use_closure_compiler,
+                                      debug_info=intermediate_debug_info,
+                                      symbols_file=symbols_file)
+    if shared.Settings.WASM == 2:
+      shutil.copyfile(wasm2js, wasm2js_template)
+      shared.try_delete(wasm2js)
+
+    if shared.Settings.WASM != 2:
+      final = wasm2js
+
     save_intermediate('wasm2js')
 
   # emit the final symbols, either in the binary or in a symbol map.
@@ -3296,13 +3320,9 @@ def module_export_name_substitution():
   save_intermediate('module_export_name_substitution')
 
 
-def generate_minimal_runtime_html(target, options, js_target, target_basename,
-                                  asm_target, wasm_binary_target,
-                                  memfile, optimizer):
-  logger.debug('generating HTML for minimal runtime')
-  shell = read_and_preprocess(options.shell_path)
-  if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+def generate_minimal_runtime_load_statement(target_basename):
+  then_statements = []
+  modularize_params = []
 
   # Depending on whether streaming Wasm compilation is enabled or not, the minimal sized code to download Wasm looks a bit different.
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in the template directly)
@@ -3312,16 +3332,85 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
       # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
       # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
-      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm')) : binary('{{{ TARGET_BASENAME }}}.wasm')"
+      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('%s')) : binary('%s')" % (target_basename + '.wasm', target_basename + '.wasm')
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
-      download_wasm = "WebAssembly.compileStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'))"
+      download_wasm = "WebAssembly.compileStreaming(fetch('%s'))" % (target_basename + '.wasm')
+  elif shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
+    # Same compatibility story as above for https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE or shared.Settings.MIN_FIREFOX_VERSION < 58 or shared.Settings.MIN_CHROME_VERSION < 61:
+      download_wasm = "!WebAssembly.instantiateStreaming && binary('%s')" % (target_basename + '.wasm')
+    else:
+      # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm in the .html file,
+      # but leave it to the .js file to download
+      download_wasm = None
   else:
-    download_wasm = "binary('{{{ TARGET_BASENAME }}}.wasm')"
+    download_wasm = "binary('%s')" % (target_basename + '.wasm')
 
-  shell = shell.replace('{{{ DOWNLOAD_WASM }}}', download_wasm)
+  files_to_load = ["script('%s')" % (target_basename + '.js')] # Main JS file always in first entry
+
+  # Download separate memory initializer file .mem
+  if shared.Settings.MEM_INIT_METHOD == 1 and not shared.Settings.MEM_INIT_IN_WASM:
+    if shared.Settings.MODULARIZE:
+      modularize_params += ['mem: r[%d]' % len(files_to_load)]
+    else:
+      then_statements += ["Module.mem = r[%d];" % len(files_to_load)]
+    files_to_load += ["binary('%s')" % (target_basename + '.mem')]
+
+  # Download separate .asm.fs file when building with --separate-asm
+  if shared.Settings.SEPARATE_ASM:
+    files_to_load += ["script('%s')" % (target_basename + '.asm.js')]
+
+  # Download .wasm file
+  if shared.Settings.WASM == 1 or not download_wasm:
+    if shared.Settings.MODULARIZE:
+      modularize_params += ['wasm: r[%d]' % len(files_to_load)]
+    else:
+      then_statements += ["Module.wasm = r[%d];" % len(files_to_load)]
+    if download_wasm:
+      files_to_load += [download_wasm]
+
+  # Download Wasm2JS code if target browser does not support WebAssembly
+  if shared.Settings.WASM == 2:
+    if shared.Settings.MODULARIZE:
+      modularize_params += ['wasm: supportsWasm ? r[%d] : 0' % len(files_to_load)]
+    else:
+      then_statements += ["if (supportsWasm) Module.wasm = r[%d];" % len(files_to_load)]
+    files_to_load += ["supportsWasm ? %s : script('%s')" % (download_wasm, target_basename + '.wasm.js')]
+
+  # Execute compiled output when building with MODULARIZE
+  if shared.Settings.MODULARIZE:
+    then_statements += ['var js = r[0];\njs({ %s });' % ',\n  '.join(modularize_params)]
+
+  # Only one file to download - no need to use Promise.all()
+  if len(files_to_load) == 1:
+    if shared.Settings.MODULARIZE:
+      return files_to_load[0] + ".then((js) => {\n  js();\n});"
+    else:
+      return files_to_load[0] + ";"
+
+  files_to_load[0] = "binary('%s')" % (target_basename + '.js')
+  then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
+    "script(url).then(() => { revokeURL(url) });"]
+
+  # Several files to download, go via Promise.all()
+  load = "Promise.all([" + ', '.join(files_to_load) + "])"
+  if len(then_statements) > 0:
+    load += '.then((r) => {\n  %s\n});' % '\n  '.join(then_statements)
+  return load
+
+
+def generate_minimal_runtime_html(target, options, js_target, target_basename,
+                                  asm_target, wasm_binary_target,
+                                  memfile, optimizer):
+  logger.debug('generating HTML for minimal runtime')
+  shell = read_and_preprocess(options.shell_path)
+  if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
+    exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   shell = shell.replace('{{{ EXPORT_NAME }}}', shared.Settings.EXPORT_NAME)
+  shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
   shell = tools.line_endings.convert_line_endings(shell, '\n', options.output_eol)
   with open(target, 'wb') as f:
     f.write(asbytes(shell))
@@ -3482,6 +3571,26 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
           };
           wasmXHR.send(null);
 ''' % (shared.JS.get_subresource_location(wasm_binary_target), script.inline)
+
+    if shared.Settings.WASM == 2:
+      # If target browser does not support WebAssembly, we need to load the .wasm.js file before the main .js file.
+      script.un_src()
+      script.inline = '''
+          function loadMainJs() {
+%s
+          }
+          if (!window.WebAssembly) {
+            // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
+            // before the main JS runtime.
+            var wasm2js = document.createElement('script');
+            wasm2js.src = '%s';
+            s.onload = loadMainJs;
+            document.body.appendChild(wasm2js);
+          } else {
+            // Current browser supports Wasm, proceed with loading the main JS runtime.
+            loadMainJs();
+          }
+''' % (script.inline, shared.JS.get_subresource_location(wasm_binary_target) + '.js')
 
   # when script.inline isn't empty, add required helper functions such as tryParseAsDataURI
   if script.inline:

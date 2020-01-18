@@ -4539,7 +4539,11 @@ LibraryManager.library = {
   },
 
   emscripten_get_module_name: function(buf, length) {
+#if MINIMAL_RUNTIME
+    return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
+#else
     return stringToUTF8(wasmBinaryFile, buf, length);
+#endif
   },
 
   emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],

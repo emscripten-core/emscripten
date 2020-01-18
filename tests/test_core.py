@@ -8027,10 +8027,14 @@ extern "C" {
       run_process(cmd)
 
       # First run with WebAssembly support enabled
+      # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
+      os.rename('a.out.wasm.js', 'a.out.wasm.js.unused')
       self.assertContained('hello!', run_js('a.out.js'))
+      os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
 
       # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
       open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
+      os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.assertContained('hello!', run_js('b.out.js'))
 
   def test_cxx_self_assign(self):

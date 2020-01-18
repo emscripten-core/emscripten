@@ -16,11 +16,11 @@ out = err = function(){};
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime') }}}
 
-#if MAYBE_WASM2JS
+#if MAYBE_WASM2JS && WASM != 2
 #include "wasm2js.js"
 #endif
 
-#if WASM
+#if WASM == 1
 if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
   abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');

@@ -4917,3 +4917,22 @@ window.close = function() {
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
     self.btest(path_from_root('tests', 'browser', 'test_emscripten_unwind_to_js_event_loop.c'), '1', args=['-s', 'NO_EXIT_RUNTIME=1'])
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js_fallback(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2', '-o', 'test.html'] + args
+      run_process(cmd)
+
+      # First run with WebAssembly support enabled
+      # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
+      os.rename('test.wasm.js', 'test.wasm.js.unused')
+      self.run_browser('test.html', 'hello!', '/report_result?1')
+      os.rename('test.wasm.js.unused', 'test.wasm.js')
+
+      # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
+      html = open('test.html', 'r')
+      html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
+      open('test.html', 'w').write(html)
+      os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
+      self.run_browser('test.html', 'hello!', '/report_result?1')

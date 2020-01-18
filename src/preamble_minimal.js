@@ -34,7 +34,7 @@ function alignUp(x, multiple) {
 #include "runtime_strings.js"
 #include "runtime_sab_polyfill.js"
 
-#if MAYBE_WASM2JS
+#if MAYBE_WASM2JS && WASM != 2
 #include "wasm2js.js"
 #endif
 
