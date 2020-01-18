@@ -3391,7 +3391,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   files_to_load[0] = "binary('%s')" % (target_basename + '.js')
   then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
-    "script(url).then(() => { revokeURL(url) });"]
+                      "script(url).then(() => { revokeURL(url) });"]
 
   # Several files to download, go via Promise.all()
   load = "Promise.all([" + ', '.join(files_to_load) + "])"
