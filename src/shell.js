@@ -184,7 +184,7 @@ if (ENVIRONMENT_IS_NODE) {
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
   if (typeof WebAssembly === 'undefined') {
-    eval(fs.readFileSync(Module.locateFile('{{{ TARGET_BASENAME }}}.wasm.js')+'');
+    eval(fs.readFileSync(Module.locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
 
