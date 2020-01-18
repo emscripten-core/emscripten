@@ -552,10 +552,11 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
     except Exception:
       revision = '(unknown revision)'
     print('''emcc (Emscripten gcc/clang-like replacement) %s (%s)
+version %s
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
-  ''' % (shared.EMSCRIPTEN_VERSION, revision))
+  ''' % (shared.EMSCRIPTEN_VERSION, revision, shared.EMSCRIPTEN_VERSION))
     return 0
 
   if len(args) == 1 and args[0] == '-v': # -v with no inputs
