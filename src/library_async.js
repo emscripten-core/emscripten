@@ -8,6 +8,16 @@
 // Two experiments in async support: ASYNCIFY, and EMTERPRETIFY_ASYNC
 
 mergeInto(LibraryManager.library, {
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
+  },
+
 #if !WASM_BACKEND && ASYNCIFY
 /*
  * The layout of normal and async stack frames
