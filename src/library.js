@@ -4581,11 +4581,11 @@ LibraryManager.library = {
     return STACK_BASE;
   },
 
-  emscripten_read_asm_const_args: function(sigPtr, buf) {
-    if (!_emscripten_read_asm_const_args.array) {
-      _emscripten_read_asm_const_args.array = [];
+  $readAsmConstArgs: function(sigPtr, buf) {
+    if (!readAsmConstArgs.array) {
+      readAsmConstArgs.array = [];
     }
-    var args = _emscripten_read_asm_const_args.array;
+    var args = readAsmConstArgs.array;
     args.length = 0;
     var ch;
     while (ch = HEAPU8[sigPtr++]) {
