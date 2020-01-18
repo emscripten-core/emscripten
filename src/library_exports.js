@@ -7,15 +7,7 @@ mergeInto(LibraryManager.library, {
     if (name[0] == '_') name = name.substr(1);
 #endif
 #if MINIMAL_RUNTIME
-#if !WASM && !WASM_BACKEND
-    // In old fastcomp asm.js, exports are available in outermost scope
-    // under var asm.
     var exportedFunc = asm[name];
-#else
-    // In wasm builds, exports are captured to a dedicated variable
-    // wasmExports.
-    var exportedFunc = wasmExports[name];
-#endif
 #else
     // In regular runtime, exports are available on the Module object.
     var exportedFunc = Module["asm"][name];
