@@ -184,7 +184,8 @@ if (ENVIRONMENT_IS_NODE) {
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
   if (typeof WebAssembly === 'undefined') {
-    eval(fs.readFileSync(Module.locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
+    var fs = require('fs');
+    eval(fs.readFileSync(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
 
@@ -249,7 +250,7 @@ if (ENVIRONMENT_IS_SHELL) {
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
   if (typeof WebAssembly === 'undefined') {
-    eval(read(Module.locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
+    eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
 
