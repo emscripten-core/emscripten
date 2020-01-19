@@ -42,6 +42,7 @@ import emscripten
 from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
+from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
 from tools.toolchain_profiler import ToolchainProfiler
 if __name__ == '__main__':
@@ -3318,109 +3319,6 @@ def module_export_name_substitution():
       src = 'if(typeof Module==="undefined"){var Module={};}' + src
     f.write(src)
   save_intermediate('module_export_name_substitution')
-
-
-def generate_minimal_runtime_load_statement(target_basename):
-  then_statements = []
-  modularize_params = []
-
-  # Depending on whether streaming Wasm compilation is enabled or not, the minimal sized code to download Wasm looks a bit different.
-  # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in the template directly)
-  if shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE or shared.Settings.MIN_FIREFOX_VERSION < 58 or shared.Settings.MIN_CHROME_VERSION < 61:
-      # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
-      # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
-      # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
-      # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
-      download_wasm = "WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('%s')) : binary('%s')" % (target_basename + '.wasm', target_basename + '.wasm')
-    else:
-      # WebAssembly.compileStreaming() is unconditionally supported:
-      download_wasm = "WebAssembly.compileStreaming(fetch('%s'))" % (target_basename + '.wasm')
-  elif shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
-    # Same compatibility story as above for https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if shared.Settings.MIN_SAFARI_VERSION != shared.Settings.TARGET_NOT_SUPPORTED or shared.Settings.ENVIRONMENT_MAY_BE_NODE or shared.Settings.MIN_FIREFOX_VERSION < 58 or shared.Settings.MIN_CHROME_VERSION < 61:
-      download_wasm = "!WebAssembly.instantiateStreaming && binary('%s')" % (target_basename + '.wasm')
-    else:
-      # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm in the .html file,
-      # but leave it to the .js file to download
-      download_wasm = None
-  else:
-    download_wasm = "binary('%s')" % (target_basename + '.wasm')
-
-  files_to_load = ["script('%s')" % (target_basename + '.js')] # Main JS file always in first entry
-
-  # Download separate memory initializer file .mem
-  if shared.Settings.MEM_INIT_METHOD == 1 and not shared.Settings.MEM_INIT_IN_WASM:
-    if shared.Settings.MODULARIZE:
-      modularize_params += ['mem: r[%d]' % len(files_to_load)]
-    else:
-      then_statements += ["Module.mem = r[%d];" % len(files_to_load)]
-    files_to_load += ["binary('%s')" % (target_basename + '.mem')]
-
-  # Download separate .asm.fs file when building with --separate-asm
-  if shared.Settings.SEPARATE_ASM:
-    files_to_load += ["script('%s')" % (target_basename + '.asm.js')]
-
-  # Download .wasm file
-  if shared.Settings.WASM == 1 or not download_wasm:
-    if shared.Settings.MODULARIZE:
-      modularize_params += ['wasm: r[%d]' % len(files_to_load)]
-    else:
-      then_statements += ["Module.wasm = r[%d];" % len(files_to_load)]
-    if download_wasm:
-      files_to_load += [download_wasm]
-
-  # Download Wasm2JS code if target browser does not support WebAssembly
-  if shared.Settings.WASM == 2:
-    if shared.Settings.MODULARIZE:
-      modularize_params += ['wasm: supportsWasm ? r[%d] : 0' % len(files_to_load)]
-    else:
-      then_statements += ["if (supportsWasm) Module.wasm = r[%d];" % len(files_to_load)]
-    files_to_load += ["supportsWasm ? %s : script('%s')" % (download_wasm, target_basename + '.wasm.js')]
-
-  # Execute compiled output when building with MODULARIZE
-  if shared.Settings.MODULARIZE:
-    then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
-  var js = r[0];\n  js({ %s });''' % ',\n  '.join(modularize_params)]
-
-  # Only one file to download - no need to use Promise.all()
-  if len(files_to_load) == 1:
-    if shared.Settings.MODULARIZE:
-      return files_to_load[0] + ".then((js) => {\n  js();\n});"
-    else:
-      return files_to_load[0] + ";"
-
-  if not shared.Settings.MODULARIZE:
-    # If downloading multiple files like .wasm or .mem, those need to be loaded in
-    # before we can add the main runtime script to the DOM, so convert the main .js
-    # script load from direct script() load to a binary() load so we can still
-    # immediately start the download, but can control when we add the script to the
-    # DOM.
-    files_to_load[0] = "binary('%s')" % (target_basename + '.js')
-    then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
-                        "script(url).then(() => { revokeURL(url) });"]
-
-  # Several files to download, go via Promise.all()
-  load = "Promise.all([" + ', '.join(files_to_load) + "])"
-  if len(then_statements) > 0:
-    load += '.then((r) => {\n  %s\n});' % '\n  '.join(then_statements)
-  return load
-
-
-def generate_minimal_runtime_html(target, options, js_target, target_basename,
-                                  asm_target, wasm_binary_target,
-                                  memfile, optimizer):
-  logger.debug('generating HTML for minimal runtime')
-  shell = read_and_preprocess(options.shell_path)
-  if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
-
-  shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
-  shell = shell.replace('{{{ EXPORT_NAME }}}', shared.Settings.EXPORT_NAME)
-  shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
-  shell = tools.line_endings.convert_line_endings(shell, '\n', options.output_eol)
-  with open(target, 'wb') as f:
-    f.write(asbytes(shell))
 
 
 def generate_traditional_runtime_html(target, options, js_target, target_basename,

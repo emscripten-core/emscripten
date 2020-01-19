@@ -2,58 +2,12 @@
 <body>
 <canvas style='display:block; margin:auto;'></canvas>
 <script>
-  function binary(url) { // Downloads a binary file and outputs it in the specified callback
-    return new Promise((ok, err) => {
-      var x = new XMLHttpRequest();
-      x.open('GET', url, true);
-      x.responseType = 'arraybuffer';
-      x.onload = () => { ok(x.response); }
-      x.send(null);
-    });
-  }
-
-  function script(url) { // Downloads a script file and adds it to DOM
-    return new Promise((ok, err) => {
-      var s = document.createElement('script');
-      s.src = url;
-      s.onload = () => {
-#if MODULARIZE && WASM == 2
-        // In MODULARIZEd WASM==2 builds, we use this same function to download
-        // both .js and .asm.js that are structured with {{{ EXPORT_NAME }}}
-        // at the top level, but also use this function to download the Wasm2JS
-        // file that does not have an {{{ EXPORT_NAME }}} function, hence the
-        // variable typeof check:
-        if (typeof {{{ EXPORT_NAME }}} !== 'undefined') {
-          var c = {{{ EXPORT_NAME }}};
-          delete {{{ EXPORT_NAME }}};
-          ok(c);
-        } else {
-          ok();
-        }
-#else
-#if MODULARIZE
-        var c = {{{ EXPORT_NAME }}};
-        delete {{{ EXPORT_NAME }}};
-        ok(c);
-#else
-        ok();
-#endif
-#endif
-      };
-      document.body.appendChild(s);
-    });
-  }
-
 #if !MODULARIZE
   var Module = {};
 #endif
 
-function revokeURL(url) {
-  URL.revokeObjectURL(url)
-}
-
 #if WASM == 2
-var supportsWasm = window.WebAssembly;
+  var supportsWasm = window.WebAssembly;
 #endif
 
 // Depending on the build flags that one uses, different files need to be downloaded
