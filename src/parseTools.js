@@ -1640,11 +1640,3 @@ function buildStringArray(array) {
     return '[]';
   }
 }
-
-function globalObject() {
-  var globals = [];
-  if (ENVIRONMENT_MAY_BE_NODE) {
-    return '(typeof process !== "undefined" ? global : window)';
-  }
-  return 'window';
-}
