@@ -30,6 +30,16 @@ function alignUp(x, multiple) {
   return x;
 }
 
+#if WASM != 2 && MAYBE_WASM2JS
+#if !WASM2JS
+if (Module['doWasm2JS']) {
+#endif
+#include "wasm2js.js"
+#if !WASM2JS
+}
+#endif
+#endif
+
 #include "runtime_functions.js"
 #include "runtime_strings.js"
 #include "runtime_sab_polyfill.js"
