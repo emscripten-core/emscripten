@@ -28,7 +28,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 #endif
 
 // Wasm or Wasm2JS loading:
-#if ENVIRONMENT_MAY_BE_NODE && WASM > WASM2JS
+#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && !WASM2JS) || WASM == 2)
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
@@ -49,7 +49,7 @@ if (ENVIRONMENT_IS_NODE) {
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_SHELL && WASM > WASM2JS
+#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
 if (ENVIRONMENT_IS_SHELL) {
 #if WASM
 #if WASM == 2
