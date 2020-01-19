@@ -4895,10 +4895,9 @@ window.close = function() {
     self.btest(path_from_root('tests', 'declare_asm_module_exports.cpp'), '1', args=['-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-s', 'ENVIRONMENT=web', '-O3', '--closure', '1', '-s', 'MINIMAL_RUNTIME=1'])
 
   # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_loader_shell(self):
     args = ['-s', 'MINIMAL_RUNTIME=2']
-    for wasm in [[], ['-s', 'WASM=0', '--memory-init-file', '0'], ['-s', 'WASM=0', '--memory-init-file', '1']]:
+    for wasm in [[], ['-s', 'WASM=0', '--memory-init-file', '0'], ['-s', 'WASM=0', '--memory-init-file', '1'], ['-s', 'SINGLE_FILE=1'], ['-s', 'WASM=0', '-s', 'SINGLE_FILE=1']]:
       for modularize in [[], ['-s', 'MODULARIZE=1']]:
         print(str(args + wasm + modularize))
         self.btest('minimal_hello.c', '0', args=args + wasm + modularize)

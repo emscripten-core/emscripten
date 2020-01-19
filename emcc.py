@@ -36,6 +36,7 @@ import shutil
 import stat
 import sys
 import time
+import base64
 from subprocess import PIPE
 
 import emscripten
@@ -1137,6 +1138,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EMTERPRETIFY_FILE and shared.Settings.SINGLE_FILE:
       exit_with_error('cannot have both EMTERPRETIFY_FILE and SINGLE_FILE enabled at the same time')
 
+    if shared.Settings.WASM == 2 and shared.Settings.SINGLE_FILE:
+      exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time (pick either JS to target with -s WASM=0 or Wasm to target with -s WASM=1)')
+
     if shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and shared.Settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
       exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION are mutually exclusive!')
 
@@ -1836,9 +1840,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if shared.Settings.PRECISE_F32 == 2:
         exit_with_error('-s PRECISE_F32=2 is not supported with -s MINIMAL_RUNTIME=1')
 
-      if shared.Settings.SINGLE_FILE:
-        exit_with_error('-s SINGLE_FILE=1 is not supported with -s MINIMAL_RUNTIME=1')
-
     if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
       # this is an issue in asm.js, but not wasm
       if not shared.Settings.WASM:
@@ -2378,14 +2379,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # Non-wasm backend path: Strip the memory initializer out of the asmjs file
           shared.try_delete(memfile)
 
+          def parse_mem_bytes(s):
+            membytes = [int(x or '0') for x in s.split(',')]
+            while membytes and membytes[-1] == 0:
+              membytes.pop()
+            return membytes
+
           def repl(m):
             # handle chunking of the memory initializer
             s = m.group(1)
             if len(s) == 0:
               return '' # don't emit 0-size ones
-            membytes = [int(x or '0') for x in s.split(',')]
-            while membytes and membytes[-1] == 0:
-              membytes.pop()
+            membytes = parse_mem_bytes(s)
             if not membytes:
               return ''
             if shared.Settings.MEM_INIT_METHOD == 2:
@@ -2400,7 +2405,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             else:
               return ''
 
-          src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
+          if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or shared.Settings.SINGLE_FILE):
+            # In MINIMAL_RUNTIME emit the base64 memory initializer directly into a HEAPU8.set() statement.
+            mem_init_data = re.search(shared.JS.memory_initializer_pattern, open(final).read())
+            src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64.b64encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))))
+            src = re.sub(shared.JS.memory_initializer_pattern, '', src)
+          else:
+            src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
           open(final + '.mem.js', 'w').write(src)
           final += '.mem.js'
           src = None
@@ -2546,7 +2557,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if (options.separate_asm or shared.Settings.WASM) and not shared.Settings.WASM_BACKEND:
         separate_asm_js(final, asm_target)
-        generated_text_files_with_native_eols += [asm_target]
+        if not shared.Settings.SINGLE_FILE:
+          generated_text_files_with_native_eols += [asm_target]
 
       if shared.Settings.WASM:
         do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
@@ -2560,7 +2572,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
       # by processing steps that occurred after Closure.
-      if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and options.debug_level == 0:
+      if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and options.debug_level == 0 and not shared.Settings.SINGLE_FILE:
         # Process .js runtime file
         shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final])
         # Process .asm.js file
@@ -2570,7 +2582,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # The JS is now final. Move it to its final location
       shutil.move(final, js_target)
 
-      generated_text_files_with_native_eols += [js_target]
+      if not shared.Settings.SINGLE_FILE:
+        generated_text_files_with_native_eols += [js_target]
 
       # If we were asked to also generate HTML, do that
       if final_suffix == '.html':
@@ -3191,6 +3204,10 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
     js = open(final).read()
+
+    if '{{{ WASM_BINARY_DATA }}}' in js:
+      js = js.replace('{{{ WASM_BINARY_DATA }}}', base64.b64encode(open(wasm_binary_target, 'rb').read()))
+
     for target, replacement_string, should_embed in (
         (wasm_binary_target,
          shared.FilenameReplacementStrings.WASM_BINARY_FILE,
