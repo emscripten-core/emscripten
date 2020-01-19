@@ -3380,7 +3380,8 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   # Execute compiled output when building with MODULARIZE
   if shared.Settings.MODULARIZE:
-    then_statements += ['var js = r[0];\njs({ %s });' % ',\n  '.join(modularize_params)]
+    then_statements += ['''// Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this" directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+  var js = r[0];\n  js({ %s });''' % ',\n  '.join(modularize_params)]
 
   # Only one file to download - no need to use Promise.all()
   if len(files_to_load) == 1:
@@ -3389,9 +3390,15 @@ def generate_minimal_runtime_load_statement(target_basename):
     else:
       return files_to_load[0] + ";"
 
-  files_to_load[0] = "binary('%s')" % (target_basename + '.js')
-  then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
-                      "script(url).then(() => { revokeURL(url) });"]
+  if not shared.Settings.MODULARIZE:
+    # If downloading multiple files like .wasm or .mem, those need to be loaded in
+    # before we can add the main runtime script to the DOM, so convert the main .js
+    # script load from direct script() load to a binary() load so we can still
+    # immediately start the download, but can control when we add the script to the
+    # DOM.
+    files_to_load[0] = "binary('%s')" % (target_basename + '.js')
+    then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
+                        "script(url).then(() => { revokeURL(url) });"]
 
   # Several files to download, go via Promise.all()
   load = "Promise.all([" + ', '.join(files_to_load) + "])"
