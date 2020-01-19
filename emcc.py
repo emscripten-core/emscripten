@@ -3489,7 +3489,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             // before the main JS runtime.
             var wasm2js = document.createElement('script');
             wasm2js.src = '%s';
-            s.onload = loadMainJs;
+            wasm2js.onload = loadMainJs;
             document.body.appendChild(wasm2js);
           } else {
             // Current browser supports Wasm, proceed with loading the main JS runtime.
