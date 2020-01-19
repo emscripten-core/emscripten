@@ -137,9 +137,9 @@ def generate_minimal_runtime_load_statement(target_basename):
                         "script(url).then(() => { URL.revokeObjectURL(url) });"]
 
   # Add in binary() XHR loader if used:
-  if any("binary(" in s for s in files_to_load):
+  if any("binary(" in s for s in files_to_load + then_statements):
     prefix_statements += [binary_xhr]
-  if any("script(" in s for s in files_to_load):
+  if any("script(" in s for s in files_to_load + then_statements):
     prefix_statements += [script_xhr]
 
   # Several files to download, go via Promise.all()
