@@ -16,6 +16,7 @@ out = err = function(){};
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime') }}}
 
+#if WASM != 2
 #if MAYBE_WASM2JS && !WASM2JS
 if (Module['doWasm2JS']) {
 #endif
@@ -24,6 +25,7 @@ if (Module['doWasm2JS']) {
 #endif
 #if MAYBE_WASM2JS && !WASM2JS
 }
+#endif
 #endif
 
 #if WASM == 1
