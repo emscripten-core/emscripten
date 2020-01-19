@@ -4,6 +4,7 @@ import logging
 import line_endings
 logger = logging.getLogger('minimal_runtime_shell')
 
+
 def generate_minimal_runtime_load_statement(target_basename):
   prefix_statements = [] # Extra code to appear before the loader
   then_statements = [] # Statements to appear inside a Promise .then() block after loading has finished
@@ -156,7 +157,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
     shell = shared.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+    shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   shell = shell.replace('{{{ EXPORT_NAME }}}', shared.Settings.EXPORT_NAME)
