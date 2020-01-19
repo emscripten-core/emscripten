@@ -1044,11 +1044,11 @@ var SyscallsLibrary = {
       var id;
       var type;
       var name = stream.getdents[idx];
-      if (name == '.') {
+      if (name === '.') {
         id = stream.id;
         type = 4; // DT_DIR
       }
-      else if (name == '..') {
+      else if (name === '..') {
         id = FS.lookupPath(stream.path, { parent: true }).id;
         type = 4; // DT_DIR
       }
