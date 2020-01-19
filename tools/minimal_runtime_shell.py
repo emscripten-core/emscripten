@@ -1,7 +1,13 @@
 import re
-import shared
+import sys
+import os
 import logging
-import line_endings
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
+from tools import line_endings
+
 logger = logging.getLogger('minimal_runtime_shell')
 
 
