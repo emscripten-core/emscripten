@@ -62,9 +62,9 @@ mergeInto(LibraryManager.library, {
       if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
-      var mode = NODEFS.getMode(pathTruncated);
+      var newMode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: mode, node_ops: NODERAWFS, seekable: true };
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: newMode, node_ops: NODERAWFS, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },
