@@ -17,7 +17,8 @@ mergeInto(LibraryManager.library, {
     },
     lookupPath: function(path) {
       var st = fs.lstatSync(path);
-      return { path: path, id: st.ino, mode: st.mode, node: { mode: st.mode } };
+      var mode = NODEFS.getMode(path);
+      return { path: path, id: st.ino, mode: mode, node: { mode: mode } };
     },
     createStandardStreams: function() {
       FS.streams[0] = { fd: 0, nfd: 0, position: 0, path: '', flags: 0, tty: true, seekable: false };
@@ -61,8 +62,9 @@ mergeInto(LibraryManager.library, {
       if (flags & {{{ cDefine('O_DIRECTORY') }}} && !st.isDirectory()) {
         throw new FS.ErrnoError(ERRNO_CODES.ENOTDIR);
       }
+      var mode = NODEFS.getMode(pathTruncated);
       var fd = suggestFD != null ? suggestFD : FS.nextfd(nfd);
-      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: st.mode, node_ops: NODERAWFS, seekable: true };
+      var stream = { fd: fd, nfd: nfd, position: 0, path: path, id: st.ino, flags: flags, mode: mode, node_ops: NODERAWFS, seekable: true };
       FS.streams[fd] = stream;
       return stream;
     },
