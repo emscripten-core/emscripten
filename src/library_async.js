@@ -8,6 +8,16 @@
 // Two experiments in async support: ASYNCIFY, and EMTERPRETIFY_ASYNC
 
 mergeInto(LibraryManager.library, {
+  // error handling
+
+  $runAndAbortIfError: function(func) {
+    try {
+      return func();
+    } catch (e) {
+      abort(e);
+    }
+  },
+
 #if !WASM_BACKEND && ASYNCIFY
 /*
  * The layout of normal and async stack frames
@@ -217,6 +227,16 @@ mergeInto(LibraryManager.library, {
         FS.mkdirTree(destinationDirectory);
       }
     );
+  },
+
+  emscripten_fiber_init: function() {
+    throw 'emscripten_fiber_init is not implemented for fastcomp ASYNCIFY';
+  },
+  emscripten_fiber_init_from_current_context: function() {
+    throw 'emscripten_fiber_init_from_current_context is not implemented for fastcomp ASYNCIFY';
+  },
+  emscripten_fiber_swap: function() {
+    throw 'emscripten_fiber_swap is not implemented for fastcomp ASYNCIFY';
   },
 
 #else // !WASM_BACKEND && ASYNCIFY
@@ -544,6 +564,16 @@ mergeInto(LibraryManager.library, {
     }
   },
 
+  emscripten_fiber_init: function() {
+    throw 'emscripten_fiber_init is not implemented for EMTERPRETIFY_ASYNC';
+  },
+  emscripten_fiber_init_from_current_context: function() {
+    throw 'emscripten_fiber_init_from_current_context is not implemented for EMTERPRETIFY_ASYNC';
+  },
+  emscripten_fiber_swap: function() {
+    throw 'emscripten_fiber_swap is not implemented for EMTERPRETIFY_ASYNC';
+  },
+
 #else // EMTERPRETIFY_ASYNC
 
 #if WASM_BACKEND && ASYNCIFY
@@ -557,10 +587,6 @@ mergeInto(LibraryManager.library, {
     state: 0,
     StackSize: {{{ ASYNCIFY_STACK_SIZE }}},
     currData: null,
-    // A map from data pointers to extra info about the data.
-    // That includes the name of the function on the bottom
-    // of the call stack, that we need to call to rewind.
-    dataInfo: {},
     // The return value passed to wakeUp() in
     // Asyncify.handleSleep(function(wakeUp){...}) is stored here,
     // so we can return it later from the C function that called
@@ -570,8 +596,29 @@ mergeInto(LibraryManager.library, {
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
     exportCallStack: [],
+    callStackNameToId: {},
+    callStackIdToFunc: {},
+#if ASYNCIFY_LAZY_LOAD_CODE
+    callStackIdToName: {},
+#endif
+    callStackId: 0,
     afterUnwind: null,
     asyncFinalizers: [], // functions to run when *all* asynchronicity is done
+    sleepCallbacks: [], // functions to call every time we sleep
+
+    getCallStackId: function(funcName) {
+      var id = Asyncify.callStackNameToId[funcName];
+      if (id === undefined) {
+        id = Asyncify.callStackId++;
+        Asyncify.callStackNameToId[funcName] = id;
+#if ASYNCIFY_LAZY_LOAD_CODE
+        Asyncify.callStackIdToName[id] = funcName;
+#else
+        Asyncify.callStackIdToFunc[id] = Module['asm'][funcName];
+#endif
+      }
+      return id;
+    },
 
 #if ASSERTIONS
     instrumentWasmImports: function(imports) {
@@ -632,6 +679,9 @@ mergeInto(LibraryManager.library, {
 #endif
                   Asyncify.state = Asyncify.State.Normal;
                   runAndAbortIfError(Module['_asyncify_stop_unwind']);
+                  if (typeof Fibers !== 'undefined') {
+                    Fibers.trampoline();
+                  }
                   if (Asyncify.afterUnwind) {
                     Asyncify.afterUnwind();
                     Asyncify.afterUnwind = null;
@@ -648,24 +698,46 @@ mergeInto(LibraryManager.library, {
     },
 
     allocateData: function() {
-      // An asyncify data structure has two fields: the
-      // current stack pos, and the max pos.
-      var ptr = _malloc(Asyncify.StackSize + 8);
-      HEAP32[ptr >> 2] = ptr + 8;
-      HEAP32[ptr + 4 >> 2] = ptr + 8 + Asyncify.StackSize;
-      var bottomOfCallStack = Asyncify.exportCallStack[0];
-#if ASYNCIFY_DEBUG >= 2
-      err('ASYNCIFY: allocateData, bottomOfCallStack is', bottomOfCallStack, new Error().stack);
-#endif
-      Asyncify.dataInfo[ptr] = {
-        bottomOfCallStack: bottomOfCallStack
-      };
+      // An asyncify data structure has three fields:
+      //  0  current stack pos
+      //  4  max stack pos
+      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == js function)
+      //
+      // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
+      // We also embed a stack in the same memory region here, right next to the structure.
+      // This struct is also defined as asyncify_data_t in emscripten/fiber.h
+      var ptr = _malloc({{{ C_STRUCTS.asyncify_data_s.__size__ }}} + Asyncify.StackSize);
+      Asyncify.setDataHeader(ptr, ptr + {{{ C_STRUCTS.asyncify_data_s.__size__ }}}, Asyncify.StackSize);
+      Asyncify.setDataRewindFunc(ptr);
       return ptr;
     },
 
-    freeData: function(ptr) {
-      _free(ptr);
-      Asyncify.dataInfo[ptr] = null;
+    setDataHeader: function(ptr, stack, stackSize) {
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_ptr, 'stack', 'i32') }}};
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.stack_limit, 'stack + stackSize', 'i32') }}};
+    },
+
+    setDataRewindFunc: function(ptr) {
+      var bottomOfCallStack = Asyncify.exportCallStack[0];
+#if ASYNCIFY_DEBUG >= 2
+      err('ASYNCIFY: setDataRewindFunc('+ptr+'), bottomOfCallStack is', bottomOfCallStack, new Error().stack);
+#endif
+      var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
+      {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
+    },
+
+    getDataRewindFunc: function(ptr) {
+      var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+      var func = Asyncify.callStackIdToFunc[id];
+
+#if ASYNCIFY_LAZY_LOAD_CODE
+      if (func === undefined) {
+        func = Module['asm'][Asyncify.callStackIdToName[id]];
+        Asyncify.callStackIdToFunc[id] = func;
+      }
+#endif
+
+      return func;
     },
 
     handleSleep: function(startAsync) {
@@ -700,11 +772,11 @@ mergeInto(LibraryManager.library, {
           if (Browser.mainLoop.func) {
             Browser.mainLoop.resume();
           }
-          var start = Asyncify.dataInfo[Asyncify.currData].bottomOfCallStack;
+          var start = Asyncify.getDataRewindFunc(Asyncify.currData);
 #if ASYNCIFY_DEBUG
-          err('ASYNCIFY: start: ' + start);
+          err('ASYNCIFY: start:', start);
 #endif
-          var asyncWasmReturnValue = Module['asm'][start]();
+          var asyncWasmReturnValue = start();
           if (!Asyncify.currData) {
             // All asynchronous execution has finished.
             // `asyncWasmReturnValue` now contains the final
@@ -746,8 +818,12 @@ mergeInto(LibraryManager.library, {
 #endif
         Asyncify.state = Asyncify.State.Normal;
         runAndAbortIfError(Module['_asyncify_stop_rewind']);
-        Asyncify.freeData(Asyncify.currData);
+        _free(Asyncify.currData);
         Asyncify.currData = null;
+        // Call all sleep callbacks now that the sleep-resume is all done.
+        Asyncify.sleepCallbacks.forEach(function(func) {
+          func();
+        });
       } else {
         abort('invalid state: ' + Asyncify.state);
       }
@@ -812,6 +888,153 @@ mergeInto(LibraryManager.library, {
     });
   },
 
+  emscripten_lazy_load_code: function() {
+    Asyncify.handleSleep(function(wakeUp) {
+      // Update the expected wasm binary file to be the lazy one.
+      wasmBinaryFile += '.lazy.wasm';
+      // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
+      dependenciesFulfilled = wakeUp;
+      // Load the new wasm.
+      asm = createWasm();
+    });
+  },
+
+  $Fibers__deps: ['$Asyncify'],
+  $Fibers: {
+    nextFiber: 0,
+    trampolineRunning: false,
+    trampoline: function() {
+      if (!Fibers.trampolineRunning && Fibers.nextFiber) {
+        Fibers.trampolineRunning = true;
+        do {
+          var fiber = Fibers.nextFiber;
+          Fibers.nextFiber = 0;
+#if ASYNCIFY_DEBUG >= 2
+          err("ASYNCIFY/FIBER: trampoline jump into fiber", fiber, new Error().stack);
+#endif
+          Fibers.finishContextSwitch(fiber);
+        } while (Fibers.nextFiber);
+        Fibers.trampolineRunning = false;
+      }
+    },
+    /*
+     * NOTE: This function is the asynchronous part of emscripten_fiber_swap.
+     */
+    finishContextSwitch: function(newFiber) {
+      STACK_BASE = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'i32') }}};
+      STACK_MAX =  {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'i32') }}};
+
+#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
+      Module['___set_stack_limit'](STACK_MAX);
+#endif
+
+      stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'i32') }}});
+
+      var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 'i32') }}};
+
+      if (entryPoint !== 0) {
+#if STACK_OVERFLOW_CHECK
+        writeStackCookie();
+#endif
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
+#endif
+        Asyncify.currData = null;
+        {{{ makeSetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, 0, 'i32') }}};
+
+        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, 'i32') }}};
+        {{{ makeDynCall('vi') }}}(entryPoint, userData);
+      } else {
+        var asyncifyData = newFiber + 20;
+        Asyncify.currData = asyncifyData;
+
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY/FIBER: start rewind', asyncifyData, '(resuming fiber', newFiber, ')');
+#endif
+        Asyncify.state = Asyncify.State.Rewinding;
+        Module['_asyncify_start_rewind'](asyncifyData);
+        var start = Asyncify.getDataRewindFunc(asyncifyData);
+#if ASYNCIFY_DEBUG
+        err('ASYNCIFY/FIBER: start: ' + start);
+#endif
+        start();
+      }
+    },
+  },
+
+  emscripten_fiber_init__sig: 'viiiiiii',
+  emscripten_fiber_init__deps: ['$Asyncify'],
+  emscripten_fiber_init: function(fiber, entryPoint, userData, cStack, cStackSize, asyncStack, asyncStackSize) {
+    var cStackBase = cStack + cStackSize;
+
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'cStackBase',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'cStack',      'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   'cStackBase',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       'entryPoint', 'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.user_data,   'userData',   'i32') }}};
+
+    var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
+    Asyncify.setDataHeader(asyncifyData, asyncStack, asyncStackSize);
+  },
+
+  emscripten_fiber_init_from_current_context__sig: 'vii',
+  emscripten_fiber_init_from_current_context__deps: ['$Asyncify'],
+  emscripten_fiber_init_from_current_context: function(fiber, asyncStack, asyncStackSize) {
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_base,  'STACK_BASE', 'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.stack_limit, 'STACK_MAX',  'i32') }}};
+    {{{ makeSetValue('fiber', C_STRUCTS.emscripten_fiber_s.entry,       0,            'i32') }}};
+
+    var asyncifyData = fiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
+    Asyncify.setDataHeader(asyncifyData, asyncStack, asyncStackSize);
+  },
+
+  emscripten_fiber_swap__sig: 'vii',
+  emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers"],
+  emscripten_fiber_swap: function(oldFiber, newFiber) {
+    if (ABORT) return;
+    noExitRuntime = true;
+#if ASYNCIFY_DEBUG
+    err('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
+#endif
+    if (Asyncify.state === Asyncify.State.Normal) {
+      Asyncify.state = Asyncify.State.Unwinding;
+
+      var asyncifyData = oldFiber + {{{ C_STRUCTS.emscripten_fiber_s.asyncify_data }}};
+      Asyncify.setDataRewindFunc(asyncifyData);
+      Asyncify.currData = asyncifyData;
+
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY/FIBER: start unwind', asyncifyData);
+#endif
+      Module['_asyncify_start_unwind'](asyncifyData);
+
+      var stackTop = stackSave();
+      {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', 'i32') }}};
+
+      Fibers.nextFiber = newFiber;
+    } else {
+#if ASSERTIONS
+      assert(Asyncify.state === Asyncify.State.Rewinding);
+#endif
+#if ASYNCIFY_DEBUG
+      err('ASYNCIFY/FIBER: stop rewind');
+#endif
+      Asyncify.state = Asyncify.State.Normal;
+      Module['_asyncify_stop_rewind']();
+      Asyncify.currData = null;
+    }
+  },
+
+  emscripten_coroutine_create: function() {
+    throw 'emscripten_coroutine_create has been removed. Please use the Fibers API';
+  },
+  emscripten_coroutine_next: function() {
+    throw 'emscripten_coroutine_next has been removed. Please use the Fibers API';
+  },
+  emscripten_yield: function() {
+    throw 'emscripten_yield has been removed. Please use the Fibers API';
+  },
+
 #else // ASYNCIFY
   emscripten_sleep: function() {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
@@ -833,6 +1056,15 @@ mergeInto(LibraryManager.library, {
   },
   emscripten_scan_registers: function(url, file) {
     throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
+  },
+  emscripten_fiber_init: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init';
+  },
+  emscripten_fiber_init_from_current_context: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_init_from_current_context';
+  },
+  emscripten_fiber_swap: function() {
+    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
   },
 #endif // ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC

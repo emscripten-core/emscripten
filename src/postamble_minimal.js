@@ -48,6 +48,9 @@ function initRuntime(asm) {
 
 var imports = {
   'env': asmLibraryArg
+  // TODO: Fix size bloat coming from WASI properly. The -s FILESYSTEM=1 check is too weak to properly DCE WASI linkage away.
+  // (Emscripten now unconditionally uses WASI for stdio, perhaps replace that with web-friendly stdio)
+  , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #if WASM_BACKEND == 0
   , 'global': {
     'NaN': NaN,
@@ -65,22 +68,78 @@ var imports = {
 #endif
 };
 
-#if ASSERTIONS
-if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
-#endif
-
 #if DECLARE_ASM_MODULE_EXPORTS
 /*** ASM_MODULE_EXPORTS_DECLARES ***/
 #endif
 
+#if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+// https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+// Firefox 52 added Wasm support, but only Firefox 58 added instantiateStreaming.
+// Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
+// Node.js and Safari do not support instantiateStreaming.
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if ASSERTIONS
+// Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
+if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+#endif
+(WebAssembly.instantiateStreaming
+  ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
+  : WebAssembly.instantiate(Module['wasm'], imports)).then(function(output) {
+#else
+WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then(function(output) {
+#endif
+
+#else // Non-streaming instantiation
+#if ASSERTIONS
+// Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
+if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
+#endif
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
+#endif
+
+// WebAssembly instantiation API gotcha: if Module['wasm'] above was a typed array, then the
+// output object will have an output.instance and output.module objects. But if Module['wasm']
+// is an already compiled WebAssembly module, then output is the WebAssembly instance itself.
+// Depending on the build mode, Module['wasm'] can mean a different thing.
+#if MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION || MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+// https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+// Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming & instantiateStreaming.
+// Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming & instantiateStreaming.
+// Node.js and Safari do not support compileStreaming or instantiateStreaming.
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+  var asm = output.instance ? output.instance.exports : output.exports;
+#else
+  var asm = output.exports;
+#endif
+#else
   var asm = output.instance.exports;
+#endif
+
 #if DECLARE_ASM_MODULE_EXPORTS == 0
 
+#if WASM_BACKEND
+  // XXX Hack: some function names need to be mangled when exporting them from wasm module, others do not. 
+  // https://github.com/emscripten-core/emscripten/issues/10054
+  // Keep in sync with emscripten.py function treat_as_user_function(name).
+  function asmjs_mangle(x) {
+    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+  }
+
 #if ENVIRONMENT_MAY_BE_NODE
-  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = Module[i] = asm[i];
+  for(var i in asm) (typeof process !== "undefined" ? global : this)[asmjs_mangle(i)] = asm[i];
 #else
-  for(var i in asm) this[i] = Module[i] = asm[i];
+  for(var i in asm) this[asmjs_mangle(i)] = asm[i];
+#endif
+
+#else
+
+#if ENVIRONMENT_MAY_BE_NODE
+  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = asm[i];
+#else
+  for(var i in asm) this[i] = asm[i];
+#endif
+
 #endif
 
 #else

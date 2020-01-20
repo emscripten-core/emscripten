@@ -97,6 +97,12 @@ if (Module['ENVIRONMENT']) {
 var _scriptDir = import.meta.url;
 #else
 var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+
+if (ENVIRONMENT_IS_NODE) {
+  _scriptDir = __filename;
+} else if (ENVIRONMENT_IS_WORKER) {
+  _scriptDir = self.location.href;
+}
 #endif
 #endif
 
@@ -118,6 +124,9 @@ var read_,
     setWindowTitle;
 
 #if ENVIRONMENT_MAY_BE_NODE
+var nodeFS;
+var nodePath;
+
 if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT
 #if ASSERTIONS
@@ -126,35 +135,7 @@ if (ENVIRONMENT_IS_NODE) {
 #endif
   scriptDirectory = __dirname + '/';
 
-  // Expose functionality in the same simple way that the shells work
-  // Note that we pollute the global namespace here, otherwise we break in node
-  var nodeFS;
-  var nodePath;
-
-  read_ = function shell_read(filename, binary) {
-    var ret;
-#if SUPPORT_BASE64_EMBEDDING
-    ret = tryParseAsDataURI(filename);
-    if (!ret) {
-#endif
-      if (!nodeFS) nodeFS = require('fs');
-      if (!nodePath) nodePath = require('path');
-      filename = nodePath['normalize'](filename);
-      ret = nodeFS['readFileSync'](filename);
-#if SUPPORT_BASE64_EMBEDDING
-    }
-#endif
-    return binary ? ret : ret.toString();
-  };
-
-  readBinary = function readBinary(filename) {
-    var ret = read_(filename, true);
-    if (!ret.buffer) {
-      ret = new Uint8Array(ret);
-    }
-    assert(ret.buffer);
-    return ret;
-  };
+#include "node_shell_read.js"
 
   if (process['argv'].length > 1) {
     thisProgram = process['argv'][1].replace(/\\/g, '/');
@@ -188,6 +169,18 @@ if (ENVIRONMENT_IS_NODE) {
   };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
+
+#if USE_PTHREADS
+  var nodeWorkerThreads;
+  try {
+    nodeWorkerThreads = require('worker_threads');
+  } catch (e) {
+    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
+    throw e;
+  }
+  Worker = nodeWorkerThreads.Worker;
+#endif
+
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -247,6 +240,10 @@ if (ENVIRONMENT_IS_SHELL) {
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
+
+// Note that this includes Node.js workers when relevant (pthreads is enabled).
+// Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
+// ENVIRONMENT_HAS_NODE.
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
@@ -277,68 +274,20 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif
 #endif
 
-  read_ = function shell_read(url) {
-#if SUPPORT_BASE64_EMBEDDING
-    try {
-#endif
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, false);
-      xhr.send(null);
-      return xhr.responseText;
-#if SUPPORT_BASE64_EMBEDDING
-    } catch (err) {
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        return intArrayToString(data);
-      }
-      throw err;
-    }
-#endif
-  };
+  // Differentiate the Web Worker from the Node Worker case, as reading must
+  // be done differently.
+#if USE_PTHREADS
+  if (ENVIRONMENT_HAS_NODE) {
 
-  if (ENVIRONMENT_IS_WORKER) {
-    readBinary = function readBinary(url) {
-#if SUPPORT_BASE64_EMBEDDING
-      try {
+#include "node_shell_read.js"
+
+  } else
 #endif
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false);
-        xhr.responseType = 'arraybuffer';
-        xhr.send(null);
-        return new Uint8Array(xhr.response);
-#if SUPPORT_BASE64_EMBEDDING
-      } catch (err) {
-        var data = tryParseAsDataURI(url);
-        if (data) {
-          return data;
-        }
-        throw err;
-      }
-#endif
-    };
+  {
+
+#include "web_or_worker_shell_read.js"
+
   }
-
-  readAsync = function readAsync(url, onload, onerror) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = function xhr_onload() {
-      if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-        onload(xhr.response);
-        return;
-      }
-#if SUPPORT_BASE64_EMBEDDING
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        onload(data.buffer);
-        return;
-      }
-#endif
-      onerror();
-    };
-    xhr.onerror = onerror;
-    xhr.send(null);
-  };
 
   setWindowTitle = function(title) { document.title = title };
 } else
@@ -348,6 +297,16 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   throw new Error('environment detection error');
 #endif // ASSERTIONS
 }
+
+#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
+if (ENVIRONMENT_HAS_NODE) {
+  // Polyfill the performance object, which emscripten pthreads support
+  // depends on for good timing.
+  if (typeof performance === 'undefined') {
+    performance = require('perf_hooks').performance;
+  }
+}
+#endif
 
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
@@ -393,7 +352,7 @@ assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle o
 {{{ makeRemovedFSAssert('NODEFS') }}}
 
 #if USE_PTHREADS
-assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
+assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
 

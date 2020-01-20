@@ -18,8 +18,7 @@ Compiling with pthreads enabled
 By default, support for pthreads is not enabled. To enable code generation for pthreads, the following command line flags exist:
 
 - Pass the compiler flag ``-s USE_PTHREADS=1`` when compiling any .c/.cpp files, AND when linking to generate the final output .js file.
-- Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` to specify a predefined pool of web workers to populate at page preRun time before application main() is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below. (If -1 is passed to both PTHREAD_POOL_SIZE and PTHREAD_HINT_NUM_CORES, then a popup dialog will ask the user the size of the pool, which is useful for testing.)
-- Optionally, pass the linker flag ``-s PTHREAD_HINT_NUM_CORES=<integer>`` to choose what the function emscripten_num_logical_cores(); will return if navigator.hardwareConcurrency is not supported. If -1 is specified here, a popup dialog will be shown at startup to let the user specify the value that is returned here. This can be helpful in order to dynamically test how an application behaves with different values here.
+- Optionally, pass the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` to specify a predefined pool of web workers to populate at page preRun time before application main() is called. This is important because if the workers do not already exist then we may need to wait for the next browser event iteration for certain things, see below.
 
 There should be no other changes required. In C/C++ code, the preprocessor check ``#ifdef __EMSCRIPTEN_PTHREADS__`` can be used to detect whether Emscripten is currently targeting pthreads.
 
@@ -43,16 +42,82 @@ but is unrelated. That flag does not use pthreads or SharedArrayBuffer, and
 instead uses a plain Web Worker to run your main program (and postMessage to
 proxy messages back and forth).
 
+Proxying
+========
+
+The Web allows certain operations to only happen from the main browser thread,
+like interacting with the DOM. As a result, various operations are proxied to
+the main browser thread if they are called on a background thread. See
+`bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
+more information and how to try to work around this until then. To check which
+operations are proxied, you can look for the function's implementation in
+the JS library (``src/library_*``) and see if it is annotated with
+``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
+itself proxies certain things (like some GL operations), so there is no
+general way to be safe here (aside from not blocking on the main browser
+thread).
+
+In addition, Emscripten currently has a simple model of file I/O only happening
+on the main application thread (as we support JS plugin filesystems, which
+cannot share memory); this is another set of operations that are proxied.
+
+Proxying can cause problems in certain cases, see the section on blocking below.
+
+Blocking on the main browser thread
+===================================
+
+Note that in most cases the "main browser thread" is the same as the "main
+application thread". The main browser thread is where web pages start to run
+JavaScript, and where JavaScript can access the DOM (a page can also create a Web
+Worker, which would no longer be on the main thread). The main application
+thread is the one on which you started up the application (by loading the main
+JS file emitted by Emscripten). If you started it on the main browser thread -
+by it being a normal HTML page - then the two are identical. However, you can
+also start a multithreaded application in a worker; in that case the main
+application thread is that worker, and there is no access to the main browser
+thread.
+
+The Web API for atomics does not allow blocking on the main thread
+(specifically, ``Atomics.wait`` doesn't work there). Such blocking is
+necessary in APIs like ``pthread_join`` and anything that uses a futex wait
+under the hood, like ``usleep()``, ``emscripten_futex_wait()``, or
+``pthread_mutex_lock()``. To make them work, we use a busy-wait on the main
+browser thread, which can make the browser tab unresponsive, and also wastes
+power. (On a pthread, this isn't a problem as it runs in a Web Worker, where
+we don't need to busy-wait.)
+
+Busy-waiting on the main browser thread in general will work despite the
+downsides just mentioned, for things like waiting on a lightly-contended mutex.
+However, things like ``pthread_join`` and ``pthread_cond_wait``
+are often intended to block for long periods of time, and if that
+happens on the main browser thread, and while other threads expect it to
+respond, it can cause a surprising deadlock. That can happen because of
+proxying, see the previous section. If the main thread blocks while a worker
+attempts to proxy to it, a deadlock can occur.
+
+The bottom line is that on the Web it is bad for the main browser thread to
+wait on anything else. Therefore by default Emscripten warns if
+``pthread_join`` and ``pthread_cond_wait`` happen on the main browser thread,
+and will throw an error if ``ALLOW_BLOCKING_ON_MAIN_THREAD`` is zero
+(whose message will point to here).
+
+To avoid these problems, you can use ``PROXY_TO_PTHREAD``, which as
+mentioned earlier moves your ``main()`` function to a pthread, which leaves
+the main browser thread to focus only on receiving proxied events. This is
+recommended in general, but may take some porting work, if the application
+assumed ``main()`` was on the main browser thread.
+
+Another option is to replace blocking calls with nonblocking ones. For example
+you can replace ``pthread_join`` with ``pthread_tryjoin_np``. This may require
+your application to be refactored to use asynchronous events, perhaps through
+:c:func:`emscripten_set_main_loop` or :ref:`Asyncify`.
+
 Special considerations
 ======================
 
 The Emscripten implementation for the pthreads API should follow the POSIX standard closely, but some behavioral differences do exist:
 
 - When the linker flag ``-s PTHREAD_POOL_SIZE=<integer>`` is not specified and ``pthread_create()`` is called, the new thread will not start until control is yielded back to the browser's main event loop, because the web worker cannot be created while JS or wasm code is running. This is a violation of POSIX behavior and will break common code which creates a thread and immediately joins it or otherwise synchronously waits to observe an effect such as a memory write. Using a pool creates the web workers before main is called, allowing thread creation to be synchronous.
-
-- Browser DOM access is only possible on the main browser thread, and therefore things that may access the DOM, like filesystem operations (``fopen()``, etc.) or changing the HTML page's title, etc., are proxied over to the main browser thread. This proxying can generate a deadlock in a special situation that native code running pthreads does not have. See `bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for more information and how to work around this until this proxying is no longer needed in Emscripten. (To check which operations are proxied, you can look for the function's implementation in the JS library (``src/library_*``) and see if it is annotated with ``__proxy: 'sync'`` or ``__proxy: 'async'``.)
-
-- When doing a futex wait, e.g. ``usleep()``, ``emscripten_futex_wait()``, or ``pthread_mutex_lock()``, we use ``Atomics.wait`` on workers, which the browser should do pretty efficiently. But that is not available on the main thread, and so we busy-wait there. Busy-waiting is not recommended because it freezes the tab, and also wastes power.
 
 - The Emscripten implementation does not support `POSIX signals <http://man7.org/linux/man-pages/man7/signal.7.html>`_, which are sometimes used in conjunction with pthreads. This is because it is not possible to send signals to web workers and pre-empt their execution. The only exception to this is pthread_kill() which can be used as normal to forcibly terminate a running thread.
 

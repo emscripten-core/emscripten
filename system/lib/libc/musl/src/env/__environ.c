@@ -2,7 +2,7 @@
 
 #ifdef __EMSCRIPTEN__
 #include <stdlib.h>
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 #endif
 
 char **__environ = 0;
@@ -17,7 +17,7 @@ void __emscripten_environ_constructor(void) {
     size_t environ_buf_size;
     __wasi_errno_t err = __wasi_environ_sizes_get(&environ_count,
                                                   &environ_buf_size);
-    if (err != __WASI_ESUCCESS) {
+    if (err != __WASI_ERRNO_SUCCESS) {
         return;
     }
 
@@ -34,8 +34,8 @@ void __emscripten_environ_constructor(void) {
     // Ensure null termination.
     __environ[environ_count] = 0;
 
-    err = __wasi_environ_get(__environ, environ_buf);
-    if (err != __WASI_ESUCCESS) {
+    err = __wasi_environ_get((uint8_t**)__environ, environ_buf);
+    if (err != __WASI_ERRNO_SUCCESS) {
         __environ = 0;
     }
 }

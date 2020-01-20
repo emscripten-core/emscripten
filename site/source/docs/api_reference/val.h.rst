@@ -33,6 +33,19 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
     val xhr = val::global("XMLHttpRequest").new_();
     xhr.call("open", std::string("GET"), std::string("http://url"));
 
+  You can test whether the ``open`` method call was successful using :cpp:func:`~emscripten::val::operator[]` to read an object property, then :cpp:func:`~emscripten::val::as` to coerce the type:
+
+  .. code:: cpp
+
+    const char* state;
+    switch (xhr["readyState"].as<int>()) {
+    case 0:
+      state = "UNSENT"; break;
+    case 1:
+      state = "OPENED"; break;
+    default:
+      state = "etc";
+    }
 
   See :ref:`embind-val-guide` for other examples.
 
@@ -146,13 +159,6 @@ Guide material for this class can be found in :ref:`embind-val-guide`.
   .. cpp:function:: ~val()
 
     Destructor. **HamishW**-Replace with further description or delete comment.
-
-
-  .. cpp:function:: val(const val& v)
-
-    **HamishW**-Replace with description.
-
-    :param const val& v: **HamishW**-Replace with description.
 
 
   .. cpp:function:: val& operator=(val&& v)

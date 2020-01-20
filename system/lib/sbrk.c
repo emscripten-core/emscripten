@@ -9,24 +9,34 @@
 #ifndef EMSCRIPTEN_NO_ERRNO
 #include <errno.h>
 #endif
+#include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-
-#define WASM_PAGE_SIZE 65536
-
-#ifdef __cplusplus
-extern "C" {
+#if __EMSCRIPTEN_PTHREADS__ // for error handling, see below
+#include <stdio.h>
+#include <stdlib.h>
 #endif
 
-extern intptr_t* emscripten_get_sbrk_ptr(void);
-extern int emscripten_resize_heap(size_t requested_size);
-extern size_t emscripten_get_heap_size(void);
+#ifdef __EMSCRIPTEN_TRACING__
+#include <emscripten/em_asm.h>
+#endif
 
-#ifdef __cplusplus
+#include <emscripten/heap.h>
+
+#ifndef EMSCRIPTEN_NO_ERRNO
+#define SET_ERRNO() { errno = ENOMEM; }
+#else
+#define SET_ERRNO()
+#endif
+
+#define RETURN_ERROR() { \
+  SET_ERRNO()            \
+  return (void*)-1;      \
 }
-#endif
 
 void *sbrk(intptr_t increment) {
+  // Enforce preserving a minimal 4-byte alignment for sbrk.
+  increment = (increment + 3) & ~3;
 #if __EMSCRIPTEN_PTHREADS__
   // Our default dlmalloc uses locks around each malloc/free, so no additional
   // work is necessary to keep things threadsafe, but we also make sure sbrk
@@ -41,8 +51,17 @@ void *sbrk(intptr_t increment) {
 #else
     intptr_t old_brk = *sbrk_ptr;
 #endif
-    // TODO: overflow checks
     intptr_t new_brk = old_brk + increment;
+    // ArrayBuffers are currently limited in practice to 2GB, the size of a
+    // signed integer, because VMs do not properly support 4GB. They may not
+    // report an error when trying to allocate past that boundary, but later
+    // accessing the memory will fail on out of  bounds. So we need to guard
+    // against it here.
+    // TODO When 4GB support arrives, we'll want to add an option
+    //      to ignore this check there.
+    if ((uint32_t)new_brk > (uint32_t)INT_MAX) {
+      RETURN_ERROR();
+    }
 #ifdef __wasm__
     uintptr_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
 #else
@@ -52,10 +71,7 @@ void *sbrk(intptr_t increment) {
       // Try to grow memory.
       intptr_t diff = new_brk - old_size;
       if (!emscripten_resize_heap(new_brk)) {
-#ifndef EMSCRIPTEN_NO_ERRNO
-        errno = ENOMEM;
-#endif
-        return (void*)-1;
+        RETURN_ERROR();
       }
     }
 #if __EMSCRIPTEN_PTHREADS__
@@ -73,6 +89,10 @@ void *sbrk(intptr_t increment) {
 #else // __EMSCRIPTEN_PTHREADS__
     *sbrk_ptr = new_brk;
 #endif // __EMSCRIPTEN_PTHREADS__
+
+#ifdef __EMSCRIPTEN_TRACING__
+    EM_ASM({if (typeof emscriptenMemoryProfiler !== 'undefined') emscriptenMemoryProfiler.onSbrkGrow($0, $1)}, old_brk, old_brk + increment );
+#endif
     return (void*)old_brk;
 
 #if __EMSCRIPTEN_PTHREADS__
@@ -81,6 +101,11 @@ void *sbrk(intptr_t increment) {
 }
 
 int brk(intptr_t ptr) {
+#if __EMSCRIPTEN_PTHREADS__
+  // FIXME
+  printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+  abort();
+#endif
   intptr_t last = (intptr_t)sbrk(0);
   if (sbrk(ptr - last) == (void*)-1) {
     return -1;

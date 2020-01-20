@@ -297,10 +297,10 @@ an alert, followed by an exception. (Note, however, that under the hood
 Emscripten still does a function call even in this case, which has some
 amount of overhead.)
 
-You can also send values from C into JavaScript inside :c:macro:`EM_ASM_`
-(note the extra "_" at the end), for example::
+You can also send values from C into JavaScript inside :c:macro:`EM_ASM`,
+for example::
 
-   EM_ASM_({
+   EM_ASM({
      console.log('I received: ' + $0);
    }, 100);
 

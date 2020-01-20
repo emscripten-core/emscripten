@@ -52,7 +52,7 @@ Requirements:
    [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
    exactly which revisions to use in all other repos).
  * [GitHub CI](https://github.com/emscripten-core/emscripten/branches) is green
-   on the incoming branch.
+   on the `master` branch.
 
 How:
 
@@ -65,7 +65,7 @@ How:
    you can tell from the DEPS file), using something like
    `git checkout [COMMIT]` ; `git tag [VERSION]` ; `git push --tags`.
 3. Update
-   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/incoming/emscripten-version.txt)
+   [emscripten-version.txt](https://github.com/emscripten-core/emscripten/blob/master/emscripten-version.txt)
    in the emscripten repo. This is a delayed update, in that the tag will refer
    to the actual release, but the update to emscripten-version.txt is a new
    commit to emscripten that happens later.
@@ -99,11 +99,7 @@ Requirements:
 
 How:
 
-1. Follow all the steps for a minor version update.
-2. Merge the `incoming` branch to `master`. This should not be done immediately,
-   rather first we should at minimum see that CI and new builds are all green.
-   If a problem occurs, we may only merge to master the minor version update
-   that fixes things.
+1. Follow the same steps for a minor version update.
 
 
 Updating the `emscripten.org` Website
@@ -115,10 +111,23 @@ that is:
 
 1. In your emscripten repo checkout, enter `site`.
 2. Run `make html`.
-3. Run `cp -R build/html/* \[path-to-a-checkout-of-the-site-repo\]`
+3. Run `make install EMSCRIPTEN_SITE=\[path-to-a-checkout-of-the-site-repo\]`
 3. Go to the site repo, commit the changes, and push.
 
 [site_repo]: https://github.com/kripken/emscripten-site
+
+
+Updating the `emcc.py` help text
+--------------------------------
+
+`emcc --help` output is generated from the main documentation under `site/`,
+so it is the same as shown on the website, but it is rendered to text. After
+updating `emcc.rst` in a PR, the following should be done:
+
+1. In your emscripten repo checkout, enter `site`.
+2. Run `make clean` (without this, it may not emit the right output).
+2. Run `make text`.
+3. Add the changes to your PR.
 
 
 Packaging Emscripten

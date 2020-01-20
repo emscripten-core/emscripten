@@ -2486,12 +2486,25 @@ var LibrarySDL = {
         }
       }
 
-#if EMTERPRETIFY_ASYNC
-      var yieldCallback = function() {
+#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+      var sleepCallback = function() {
         if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
       };
-      SDL.audio.yieldCallback = yieldCallback;
-      EmterpreterAsync.yieldCallbacks.push(yieldCallback);
+#if EMTERPRETIFY_ASYNC
+      EmterpreterAsync.yieldCallbacks.push(sleepCallback);
+      SDL.audio.callbackRemover = function() {
+        EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
+          return callback !== sleepCallback;
+        });
+      }
+#else
+      Asyncify.sleepCallbacks.push(sleepCallback);
+      SDL.audio.callbackRemover = function() {
+        Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
+          return callback !== sleepCallback;
+        });
+      }
+#endif
 #endif
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.
@@ -2635,11 +2648,10 @@ var LibrarySDL = {
   SDL_CloseAudio__sig: 'v',
   SDL_CloseAudio: function() {
     if (SDL.audio) {
-#if EMTERPRETIFY_ASYNC
-      EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
-        return callback !== SDL.audio.yieldCallback;
-      });
-#endif
+      if (SDL.audio.callbackRemover) {
+        SDL.audio.callbackRemover();
+        SDL.audio.callbackRemover = null;
+      }
       _SDL_PauseAudio(1);
       _free(SDL.audio.buffer);
       SDL.audio = null;
@@ -3201,7 +3213,7 @@ var LibrarySDL = {
     surfData.ctx.save();
     surfData.ctx.fillStyle = color;
     surfData.ctx.font = fontString;
-    // use bottom alligment, because it works
+    // use bottom alignment, because it works
     // same in all browsers, more info here:
     // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
     surfData.ctx.textBaseline = 'bottom';

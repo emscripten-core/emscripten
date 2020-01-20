@@ -34,11 +34,20 @@ Fastcomp is currently the default, but we hope to `switch the default soon to th
 
 To use fastcomp, just use the emsdk normally to get ``latest``. For the upstream backend, use ``latest-upstream`` (or, if you are not using the emsdk, you can set LLVM in the ``.emscripten`` file to point to a build you make of very recent LLVM - preferably from git/svn master).
 
-There are some differences you may notice between the two backends, if you upgrade from fastcomp to upstream:
+There are some differences you may notice between the two backends, if you
+upgrade from fastcomp to upstream:
 
-* The wasm backend is strict about linking files with different features sets - for example, if one file was built with atomics but another was not, it will error at link time. This prevents possible bugs, but may mean you need to make some build system fixes.
+* The wasm backend is strict about linking files with different features sets -
+  for example, if one file was built with atomics but another was not, it will
+  error at link time. This prevents possible bugs, but may mean you need to make
+  some build system fixes.
 
-* ``WASM=0`` behaves differently in the two backends. In fastcomp we emit asm.js, while in upstream we emit JS (since not all wasm constructs can be expressed in asm.js). Also, the JS support implements the same external ``WebAssembly.*`` API, so in particular startup will be async just like wasm by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even though ``WASM=0``).
+* ``WASM=0`` behaves differently in the two backends. In fastcomp we emit
+  asm.js, while in upstream we emit JS (since not all wasm constructs can be
+  expressed in asm.js). Also, the JS support implements the same external
+  ``WebAssembly.*`` API, so in particular startup will be async just like wasm
+  by default, and you can control that with ``WASM_ASYNC_COMPILATION`` (even
+  though ``WASM=0``).
 
 * The wasm backend uses wasm object files by default. That means that it does
   codegen at the compile step, which makes the link step much faster - like a
@@ -55,6 +64,21 @@ There are some differences you may notice between the two backends, if you upgra
     fastcomp nor the wasm backend without wasm object files will run the
     LLVM optimization passes by default, even if using LLVM IR in object files;
     for that you must pass ``--llvm-lto 1``.
+
+  * Another thing you might notice is that fastcomp's link stage is able to
+    perform some types of link time optimization by default that the LLVM
+    backend requires flags for (for example,
+    `propagate the "noexcept" property <https://github.com/emscripten-core/emscripten/issues/9817#issuecomment-553459496>`_),
+    which can have an impact on performance. Building with LTO in the wasm
+    backend can achieve similar things, see the previous bullet point.
+
+* `wasm-ld`, the linker used by the wasm backend, requires libraries (`.a`
+  archives) to contain symbol indexes.  This matches the behaviour the native
+  GNU linker.  While `emar` will create such indexes by default, native tools
+  such as GNU `ar` and GNU `strip` are not aware of the WebAssembly object
+  format and cannot create archive indexes.  In particular, if you run GNU
+  `strip` on an archive file that contains WebAssembly object files it will
+  remove the index which makes the archive unusable at link time.
 
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
@@ -119,7 +143,7 @@ Debugging WebAssembly
 
 When you do need to debug a WebAssembly build, the following tips might help you.
 
-WebAssembly doesn't have source maps support yet, but building with ``-g`` will emit both a text and a binary wasm, and it will include function names in both, and also include source file and line number information in the text, for example, building hello world might have this in the ``.wast``:
+WebAssembly doesn't have source maps support yet, but building with ``-g`` will emit both a text and a binary wasm, and it will include function names in both, and also include source file and line number information in the text, for example, building hello world might produce this ``.wat``:
 
 .. code-block:: none
 

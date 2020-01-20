@@ -67,10 +67,6 @@ var wasmModule;
 // to avoid accessing the global scope.
 var threadInfoStruct = 0;
 var selfThreadId = 0;
-var __performance_now_clock_drift = 0;
-#if WASM_BACKEND
-var tempDoublePtr = 0;
-#endif
 #endif // USE_PTHREADS
 
 //========================================
@@ -376,23 +372,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in applyStackValues later.
-#if ASSERTIONS || SAFE_STACK
+  // catch bugs, then set the real values in establishStackSpaceInJsModule later.
+#if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
-
-  Module['applyStackValues'] = function(stackBase, stackTop, stackMax) {
-    STACK_BASE = stackBase;
-    STACKTOP = stackTop;
-    STACK_MAX = stackMax;
-#if SAFE_STACK
-    Module['___set_stack_limit'](STACK_MAX);
-#endif
-  };
-
   // TODO DYNAMIC_BASE = Module['DYNAMIC_BASE'];
   // TODO DYNAMICTOP_PTR = Module['DYNAMICTOP_PTR'];
-  // TODO tempDoublePtr = Module['tempDoublePtr'];
 }
 #endif
 
@@ -426,7 +411,7 @@ assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' 
 // Test runs in browsers should always be free from uncaught exceptions. If an uncaught exception is thrown, we fail browser test execution in the REPORT_RESULT() macro to output an error value.
 if (ENVIRONMENT_IS_WEB) {
   window.addEventListener('error', function(e) {
-    if (e.message.indexOf('SimulateInfiniteLoop') != -1) return;
+    if (e.message.indexOf('unwind') != -1) return;
     console.error('Page threw an exception ' + e);
     Module['pageThrewException'] = true;
   });
@@ -719,17 +704,25 @@ function abort(what) {
   EXITSTATUS = 1;
 
 #if ASSERTIONS == 0
-  throw 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
+  what = 'abort(' + what + '). Build with -s ASSERTIONS=1 for more info.';
 #else
-  var extra = '';
-  var output = 'abort(' + what + ') at ' + stackTrace() + extra;
+  var output = 'abort(' + what + ') at ' + stackTrace();
 #if EMTERPRETIFY_ASYNC
   abortDecorators.forEach(function(decorator) {
     output = decorator(output, what);
   });
 #endif
-  throw output;
+  what = output;
 #endif // ASSERTIONS
+
+  // Throw a wasm runtime error, because a JS error might be seen as a foreign
+  // exception, which means we'd run destructors on it. We need the error to
+  // simply make the program stop.
+#if WASM
+  throw new WebAssembly.RuntimeError(what);
+#else
+  throw what;
+#endif
 }
 
 #if RELOCATABLE
@@ -785,43 +778,6 @@ var memoryInitializer = null;
 
 #if MEMORYPROFILER
 #include "memoryprofiler.js"
-#endif
-
-#if USE_PTHREADS && PTHREAD_HINT_NUM_CORES < 0
-if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() {
-  addRunDependency('pthreads_querycores');
-
-  var bg = document.createElement('div');
-  bg.style = "position: absolute; top: 0%; left: 0%; width: 100%; height: 100%; background-color: black; z-index:1001; -moz-opacity: 0.8; opacity:.80; filter: alpha(opacity=80);";
-  var div = document.createElement('div');
-  var default_num_cores = navigator.hardwareConcurrency || 4;
-  var hwConcurrency = navigator.hardwareConcurrency ? ("says " + navigator.hardwareConcurrency) : "is not available";
-  var html = '<div style="width: 100%; text-align:center;"> Thread setup</div> <br /> Number of logical cores: <input type="number" style="width: 50px;" value="'
-    + default_num_cores + '" min="1" max="32" id="thread_setup_num_logical_cores"></input> <br /><span style="font-size: 75%;">(<span style="font-family: monospace;">navigator.hardwareConcurrency</span> '
-    + hwConcurrency + ')</span> <br />';
-#if PTHREAD_POOL_SIZE < 0
-  html += 'PThread pool size: <input type="number" style="width: 50px;" value="'
-    + default_num_cores + '" min="1" max="32" id="thread_setup_pthread_pool_size"></input> <br />';
-#endif
-  html += ' <br /> <input type="button" id="thread_setup_button_go" value="Go"></input>';
-  div.innerHTML = html;
-  div.style = 'position: absolute; top: 35%; left: 35%; width: 30%; height: 150px; padding: 16px; border: 16px solid gray; background-color: white; z-index:1002; overflow: auto;';
-  document.body.appendChild(bg);
-  document.body.appendChild(div);
-  var goButton = document.getElementById('thread_setup_button_go');
-  goButton.onclick = function() {
-    var num_logical_cores = parseInt(document.getElementById('thread_setup_num_logical_cores').value);
-    _emscripten_force_num_logical_cores(num_logical_cores);
-#if PTHREAD_POOL_SIZE < 0
-    var pthread_pool_size = parseInt(document.getElementById('thread_setup_pthread_pool_size').value);
-    PThread.allocateUnusedWorkers(pthread_pool_size, function() { removeRunDependency('pthreads_querycores'); });
-#else
-    removeRunDependency('pthreads_querycores');
-#endif
-    document.body.removeChild(bg);
-    document.body.removeChild(div);
-  }
-});
 #endif
 
 #if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_DELAY_LOAD != 1
@@ -925,7 +881,7 @@ function createWasm() {
   // prepare imports
   var info = {
     'env': asmLibraryArg,
-    'wasi_unstable': asmLibraryArg
+    '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
 #if WASM_BACKEND == 0
     ,
     'global': {
@@ -1014,9 +970,9 @@ function createWasm() {
         {{{ runOnMainThread("removeRunDependency('offset-converter');") }}}
       });
       return result;
-#else
+#else // USE_OFFSET_CONVERTER
       return WebAssembly.instantiate(binary, info);
-#endif
+#endif // USE_OFFSET_CONVERTER
     }).then(receiver, function(reason) {
       err('failed to asynchronously prepare wasm: ' + reason);
       abort(reason);
@@ -1059,7 +1015,43 @@ function createWasm() {
     var binary;
     try {
       binary = getBinary();
+#if NODE_CODE_CACHING
+      if (ENVIRONMENT_HAS_NODE) {
+        var v8 = require('v8');
+        // Include the V8 version in the cache name, so that we don't try to
+        // load cached code from another version, which fails silently (it seems
+        // to load ok, but we do actually recompile the binary every time).
+        var cachedCodeFile = '{{{ WASM_BINARY_FILE }}}.' + v8.cachedDataVersionTag() + '.cached';
+        cachedCodeFile = locateFile(cachedCodeFile);
+        var hasCached = nodeFS.existsSync(cachedCodeFile);
+        if (hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: loading module');
+#endif
+          try {
+            module = v8.deserialize(nodeFS.readFileSync(cachedCodeFile));
+          } catch (e) {
+            err('NODE_CODE_CACHING: failed to deserialize, bad cache file?');
+            // Save the new compiled code when we have it.
+            hasCached = false;
+          }
+err(module);
+        }
+      }
+      if (!module) {
+        module = new WebAssembly.Module(binary);
+      }
+      if (ENVIRONMENT_HAS_NODE) {
+        if (!hasCached) {
+#if RUNTIME_LOGGING
+          err('NODE_CODE_CACHING: saving module');
+#endif
+          nodeFS.writeFileSync(cachedCodeFile, v8.serialize(module));
+        }
+      }
+#else // NODE_CODE_CACHING
       module = new WebAssembly.Module(binary);
+#endif // NODE_CODE_CACHING
       instance = new WebAssembly.Instance(module, info);
 #if USE_OFFSET_CONVERTER
       wasmOffsetConverter = new WasmOffsetConverter(binary, module);

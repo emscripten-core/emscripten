@@ -25,7 +25,9 @@ To program against the WebGL subset of OpenGL ES, one uses the GL ES 2.0 header 
 
 This mode is used by default because it best matches the WebGL features brovided by browsers.
 
-To target WebGL 2, pass the linker flag ``-s USE_WEBGL2=1``. Specifying this flag enables (and defaults to, unless otherwise specified at context creation time) the creation of WebGL 2 contexts at runtime, but it is still possible to create WebGL 1 contexts, so applications can choose whether to require WebGL 2 or whether to support a fallback to WebGL 1.
+To target WebGL 2, pass the linker flag ``-s MAX_WEBGL_VERSION=2``. Specifying this flag enables (and defaults to, unless otherwise specified at context creation time) the creation of WebGL 2 contexts at runtime, but it is still possible to create WebGL 1 contexts, so applications can choose whether to require WebGL 2 or whether to support a fallback to WebGL 1.
+
+To only target WebGL 2 and drop support for WebGL 1 altogether to save code size, pass the linker flags ``-s MIN_WEBGL_VERSION=2`` and ``-s MAX_WEBGL_VERSION=2``.
 
 .. _opengl-support-opengl-es2-0-emulation:
 

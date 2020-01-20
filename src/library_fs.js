@@ -504,7 +504,7 @@ mergeInto(LibraryManager.library, {
       FS.syncFSRequests++;
 
       if (FS.syncFSRequests > 1) {
-        console.log('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
+        err('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
       }
 
       var mounts = FS.getMounts(FS.root.mount);
@@ -779,7 +779,7 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willMovePath'](old_path, new_path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
@@ -796,7 +796,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (FS.trackingDelegate['onMovePath']) FS.trackingDelegate['onMovePath'](old_path, new_path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
     },
     rmdir: function(path) {
@@ -819,14 +819,14 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willDeletePath'](path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
       try {
         if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readdir: function(path) {
@@ -860,14 +860,14 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willDeletePath'](path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
       try {
         if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readlink: function(path) {
@@ -1082,7 +1082,7 @@ mergeInto(LibraryManager.library, {
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-          console.log("FS.trackingDelegate error on read file: " + path);
+          err("FS.trackingDelegate error on read file: " + path);
         }
       }
       try {
@@ -1097,7 +1097,7 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['onOpenFile'](path, trackingFlags);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+        err("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
       }
       return stream;
     },
@@ -1191,7 +1191,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
@@ -1779,7 +1779,7 @@ mergeInto(LibraryManager.library, {
           chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
           datalength = this.getter(0).length;
           chunkSize = datalength;
-          console.log("LazyFiles on gzip forces download of the whole file when length is accessed");
+          out("LazyFiles on gzip forces download of the whole file when length is accessed");
         }
 
         this._length = datalength;
@@ -1941,7 +1941,7 @@ mergeInto(LibraryManager.library, {
         return onerror(e);
       }
       openRequest.onupgradeneeded = function openRequest_onupgradeneeded() {
-        console.log('creating db');
+        out('creating db');
         var db = openRequest.result;
         db.createObjectStore(FS.DB_STORE_NAME);
       };

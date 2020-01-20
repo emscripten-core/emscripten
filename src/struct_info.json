@@ -1280,7 +1280,6 @@
               "which"
             ],
             "EmscriptenMouseEvent": [
-              "timestamp",
               "screenX",
               "screenY",
               "clientX",
@@ -1321,14 +1320,12 @@
               "id"
             ],
             "EmscriptenDeviceOrientationEvent": [
-              "timestamp",
               "alpha",
               "beta",
               "gamma",
               "absolute"
             ],
             "EmscriptenDeviceMotionEvent": [
-              "timestamp",
               "accelerationX",
               "accelerationY",
               "accelerationZ",
@@ -1579,7 +1576,7 @@
         ]
     },
     {
-        "file": "wasi/wasi.h",
+        "file": "wasi/api.h",
         "structs": {
             "__wasi_fdstat_t": [
                 "fs_filetype",
@@ -1635,5 +1632,24 @@
             "EMSCRIPTEN_FETCH_SYNCHRONOUS",
             "EMSCRIPTEN_FETCH_WAITABLE"
         ]
+    },
+    {
+        "file": "emscripten/fiber.h",
+        "structs": {
+            "asyncify_data_s": [
+                "stack_ptr",
+                "stack_limit",
+                "rewind_id"
+            ],
+            "emscripten_fiber_s": [
+                "stack_base",
+                "stack_limit",
+                "stack_ptr",
+                "entry",
+                "user_data",
+                "asyncify_data"
+            ]
+        },
+        "defines": []
     }
  ]

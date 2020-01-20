@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 
 /*
  * WASI support code. These are compiled with the program, and call out
