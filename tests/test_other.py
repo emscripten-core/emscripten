@@ -6472,6 +6472,63 @@ int main(int argc, char** argv) {
     if not self.is_wasm_backend():
       run(wasm=0)
 
+  def test_mainmodule_invoke(self):
+    # for wasm in (1, 0):
+      wasm = 1
+      print('wasm?', wasm)
+      library_file = 'library.wasm' if wasm else 'library.js'
+
+      def test(main_args=[], library_args=[], expected='hello from main\nhello from library\nI am inside foo'):
+        print('testing', main_args, library_args)
+        self.clear()
+        create_test_file('library.cpp', r'''
+          #include <stdio.h>
+          int foo(int, int);
+          void library_func() {
+          #ifdef USE_PRINTF
+            printf("hello from library: %p\n", &library_func);
+          #else
+            puts("hello from library");
+          #endif
+            try {
+              foo(5,5);
+            } catch(...) {}
+          }
+        ''')
+        run_process([PYTHON, EMCC, 'library.cpp', '-s', 'SIDE_MODULE=1', '-O2', '-s', 'DISABLE_EXCEPTION_CATCHING=0', '-o', library_file, '-s', 'WASM=' + str(wasm), '-s', 'EXPORT_ALL=1'] + library_args)
+        create_test_file('main.cpp', r'''
+          #include <dlfcn.h>
+          #include <stdio.h>
+          int foo(int a, int b){
+            puts("I am inside foo");
+            return (a + b);
+          }
+          int main() {
+            puts("hello from main");
+            void *lib_handle = dlopen("%s", 0);
+            if (!lib_handle) {
+              puts("cannot load side module");
+              puts(dlerror());
+              return 1;
+            }
+            typedef void (*voidfunc)();
+            voidfunc x = (voidfunc)dlsym(lib_handle, "_Z12library_funcv");
+            if (!x) puts("cannot find side function");
+            else x();
+          }
+        ''' % library_file)
+        run_process([PYTHON, EMCC, 'main.cpp', '-s', 'MAIN_MODULE=1', '--embed-file', library_file, '-O2', '-s', 'WASM=' + str(wasm)] + main_args)
+        self.assertContained(expected, run_js('a.out.js', assert_returncode=None, stderr=STDOUT))
+        size = os.path.getsize('a.out.js')
+        if wasm:
+          size += os.path.getsize('a.out.wasm')
+        side_size = os.path.getsize(library_file)
+        print('  sizes:', size, side_size)
+        return (size, side_size)
+
+      # test invoke calls
+      test(main_args=['-s', 'MAIN_MODULE=2', '-s', 'EXPORTED_FUNCTIONS=["_main", "_puts", "__Z3fooii"]'])
+
   def test_ld_library_path(self):
     create_test_file('hello1.c', r'''
 #include <stdio.h>
