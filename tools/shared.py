@@ -2947,7 +2947,11 @@ class Building(object):
       output = run_process([finalize, '--version'], stdout=PIPE).stdout
     except subprocess.CalledProcessError:
       exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % finalize)
-    version = output.split()[2]
+    try:
+      version = output.split()[2]
+    except IndexError:
+      warning('could not check binaryen version: %s (expected %s)', output, EXPECTED_BINARYEN_VERSION)
+      return
     version = int(version)
     # Allow the expected version or the following one in order avoid needing to update both
     # emscripten and binaryen in lock step in emscripten-releases.
