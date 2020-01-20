@@ -2952,6 +2952,12 @@ class Building(object):
     except IndexError:
       warning('could not check binaryen version: %s (expected %s)', output, EXPECTED_BINARYEN_VERSION)
       return
+    # handle versions like "(version_90-45-gffe7123"
+    if version[0] == '(':
+      version = version[1:]
+    version = version.replace('version_', '')
+    if '-' in version:
+      version = version.split('-')[0]
     version = int(version)
     # Allow the expected version or the following one in order avoid needing to update both
     # emscripten and binaryen in lock step in emscripten-releases.
