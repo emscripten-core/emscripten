@@ -2246,7 +2246,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
     library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
     for name in library_fns:
-      library_fns_list.append(name.encode('utf-8'))
+      library_fns_list.append(name)
 
     js_symbols = infile + '.js_symbols'
     with open(js_symbols, 'w') as js_symbols_file:
