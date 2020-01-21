@@ -9849,6 +9849,10 @@ int main () {
       'SUMMARY: AddressSanitizer: 3427 byte(s) leaked in 3 allocation(s).',
     ])
 
+  @no_fastcomp('asan is not supported on fastcomp')
+  def test_asan_pthread_stubs(self):
+    self.do_smart_test(path_from_root('tests', 'other', 'test_asan_pthread_stubs.c'), emcc_args=['-fsanitize=address', '-s', 'ALLOW_MEMORY_GROWTH=1'])
+
   @parameterized({
     'async': ['-s', 'WASM_ASYNC_COMPILATION=1'],
     'sync': ['-s', 'WASM_ASYNC_COMPILATION=0'],

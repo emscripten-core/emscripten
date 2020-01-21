@@ -446,7 +446,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "10.0"
+    return "11.0"
   else:
     return "6.0"
 
@@ -476,10 +476,10 @@ def get_llc_targets():
     exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
-  except Exception as e:
-    return '(no targets could be identified: ' + str(e) + ')'
+  except subprocess.CalledProcessError:
+    exit_with_error('error running `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
   if 'Registered Targets:' not in llc_version_info:
-    return '(no targets could be identified: ' + llc_version_info + ')'
+    exit_with_error('error parsing output of `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
   pre, targets = llc_version_info.split('Registered Targets:')
   return targets
 
@@ -799,6 +799,18 @@ def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
 
+def replace_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return os.path.splitext(filename)[0] + new_suffix
+
+
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# Retain the original naming scheme in traditional runtime.
+def replace_or_append_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+
+
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG = CLANG_CPP
@@ -967,7 +979,7 @@ def check_vanilla():
     # see which backends it has. we cache this result.
     temp_cache = cache.Cache(use_subdir=False)
 
-    def check_vanilla():
+    def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
       targets = get_llc_targets()
       return has_wasm_target(targets) and not has_asm_js_target(targets)
@@ -977,7 +989,7 @@ def check_vanilla():
       saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
       if os.path.exists(saved_file):
         logger.debug('old: %s\n' % open(saved_file).read())
-      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT + '\n')
+      open(saved_file, 'w').write(('1' if has_vanilla_targets() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
     is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
@@ -992,10 +1004,10 @@ def check_vanilla():
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
         temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
-        is_vanilla = check_vanilla()
+        is_vanilla = has_vanilla_targets()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
-      is_vanilla = check_vanilla()
+      is_vanilla = has_vanilla_targets()
     temp_cache = None
     if is_vanilla:
       logger.debug('check tells us to use wasm backend')
@@ -2606,7 +2618,7 @@ class Building(object):
         export = item['export']
         # wasm backend's exports are prefixed differently inside the wasm
         if Settings.WASM_BACKEND:
-          export = '_' + export
+          export = asmjs_mangle(export)
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     # in standalone wasm, always export the memory

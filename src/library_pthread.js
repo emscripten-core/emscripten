@@ -1309,7 +1309,7 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',
 
-  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js', 'emscripten_receive_on_main_thread_js_callArgs'],
+  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js', 'emscripten_receive_on_main_thread_js_callArgs', 'emscripten_read_asm_const_args'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
     _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
     var b = args >> 3;
@@ -1327,7 +1327,7 @@ var LibraryPThread = {
       // signature pointer, and vararg buffer pointer, in that order.
       var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
       var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
-      var constArgs = readAsmConstArgs(sigPtr, varargPtr);
+      var constArgs = _emscripten_read_asm_const_args(sigPtr, varargPtr);
       return func.apply(null, constArgs);
     }
 #endif

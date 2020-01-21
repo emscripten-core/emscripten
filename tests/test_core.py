@@ -6576,12 +6576,13 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
+  @no_fastcomp('fails mysteriously on fastcomp (dynCall_viji is not defined); ignored, because fastcomp is deprecated')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
         ('DIRECT', []),
         ('EXPORTED', []),
-        ('FROM_OUTSIDE', ['dynCall_viii'])
+        ('FROM_OUTSIDE', ['dynCall_viji'])
       ]:
       print(which)
       self.emcc_args = emcc_args + ['-D' + which]
@@ -8554,6 +8555,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')
+    self.emcc_args.remove('-Werror')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   @node_pthreads

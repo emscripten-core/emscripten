@@ -949,7 +949,8 @@ function makeBigInt(low, high, unsigned) {
 function dynCall(sig, ptr, args) {
   if (args && args.length) {
 #if ASSERTIONS
-    assert(args.length == sig.length-1);
+    // j (64-bit integer) must be passed in as two numbers [low 32, high 32].
+    assert(args.length === sig.substring(1).replace(/j/g, '--').length);
 #endif
 #if ASSERTIONS
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
