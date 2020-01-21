@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 // Make sure these headers exist.
-#include <webgpu/webgpu.h> 
+#include <webgpu/webgpu.h>
 
 #include <emscripten.h>
 #include <emscripten/html5.h>
