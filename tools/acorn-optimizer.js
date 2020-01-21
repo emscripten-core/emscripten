@@ -880,7 +880,8 @@ var extraInfo = null;
 if (extraInfoStart > 0) {
   extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
 }
-var ast = acorn.parse(input, { ecmaVersion: 6 });
+var comments = [];
+var ast = acorn.parse(input, { ecmaVersion: 6, onComment: comments });
 
 var minifyWhitespace = false;
 var noPrint = false;
@@ -903,10 +904,56 @@ passes.forEach(function(pass) {
 
 if (!noPrint) {
   var terserAst = terser.AST_Node.from_mozilla_ast(ast);
+
+  var symbols = [];
+
+  terserAst.walk(new terser.TreeWalker(function(node) {
+    if (node.start && node.start.pos) {
+      symbols.push(node);
+    }
+  }));
+
+  symbols.sort((a,b) => {
+    return a.start.pos - b.start.pos;
+  })
+
+  for(var i = 0, j = 0; i < comments.length; ++i) {
+    while(j < symbols.length && symbols[j].start.pos < comments[i].end)
+      ++j;
+    if (j >= symbols.length)
+      break;
+    if (symbols[j].start.pos - comments[i].end > 20) {
+      // This comment is too far away to refer to the given symbol. Drop
+      // the comment altogether.
+      continue;
+    }
+    if (!Array.isArray(symbols[j].start.comments_before)) {
+      symbols[j].start.comments_before = [];
+    }
+    symbols[j].start.comments_before.push(new terser.AST_Token({
+        end: undefined,
+        quote: undefined,
+        raw: undefined,
+        file: '0',
+        comments_after: undefined,
+        comments_before: undefined,
+        nlb: false,
+        endpos: undefined,
+        endcol: undefined,
+        endline: undefined,
+        pos: undefined,
+        col: undefined,
+        line: undefined,
+        value: comments[i].value,
+        type: comments[i].type == 'Line' ? 'comment' : 'comment2',
+        flags: 0
+      }));
+  }
   var output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
+    comments: true // for closure as well
   });
   print(output);
 }
