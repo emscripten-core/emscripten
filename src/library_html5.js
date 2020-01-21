@@ -2765,7 +2765,7 @@ var LibraryJSEvents = {
   emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
   emscripten_webgpu_get_device: function() {
     assert(Module['preinitializedWebGPUDevice']);
-    return WebGPU.mgrDevice.create(Module['preinitializedWebGPUDevice']);
+    return WebGPU['mgrDevice']['create'](Module['preinitializedWebGPUDevice']);
   },
 #endif
 
