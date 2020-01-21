@@ -1823,10 +1823,8 @@ def create_fp_accessors(metadata):
     # the name of the original function is generally the normal function
     # name, unless it is legalized, in which case the export is the legalized
     # version, and the original provided by orig$X
-    originalAccessor = ''
     if shared.Settings.LEGALIZE_JS_FFI and not shared.JS.is_legal_sig(sig):
       name = 'orig$' + name
-      originalAccessor = 'if (!func) func = Module["_%s"];' % (name)
 
     accessors.append('''
 Module['%(full)s'] = function() {
@@ -1842,7 +1840,7 @@ Module['%(full)s'] = function() {
   Module['%(full)s'] = function() { return fp };
   return fp;
 }
-''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig, 'originalAccessor': originalAccessor})
+''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig})
 
   return '\n'.join(accessors)
 
