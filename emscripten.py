@@ -1833,15 +1833,9 @@ Module['%(full)s'] = function() {
   %(assert)s
   // Use the original wasm function itself, for the table, from the main module.
   var func = Module['asm']['%(original)s'];
-<<<<<<< HEAD
   // Try an original version from a side module.
   if (!func) func = Module['_%(original)s'];
   // Otherwise, look for a regular function or JS library function.
-=======
-  // If there is no wasm function, this may be a JS library function or
-  // something from another module.
-  %(originalAccessor)s
->>>>>>> Export original version of functions from side module to avoid legalization when making indirect inter-module calls.
   if (!func) func = Module['%(mangled)s'];
   if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
@@ -2214,34 +2208,11 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
   #   * Use the metadata to generate the JS glue that goes with the wasm
-<<<<<<< HEAD
-
-  metadata = finalize_wasm(temp_files, infile, outfile, memfile, DEBUG)
-
-  update_settings_glue(metadata, DEBUG)
-
-  if shared.Settings.SIDE_MODULE:
-    return
-
-  if DEBUG:
-    logger.debug('emscript: js compiler glue')
-
-  if DEBUG:
-    t = time.time()
-  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
-  if DEBUG:
-    logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
-    t = time.time()
-
-    forwarded_json = json.loads(forwarded_data)
-
-=======
   if shared.Settings.MAIN_MODULE:
     # Run compile_settings here to retrieve all the JS library functions.
     # Unfortunately, we need to run it later again to capture the exported functions
     # from the Wasm
     glue, forwarded_data = compile_settings(compiler_engine, temp_files)
->>>>>>> Generate JS lib functions
     forwarded_json = json.loads(forwarded_data)
     library_fns = forwarded_json['Functions']['libraryFunctions']
     library_fns_list = []
