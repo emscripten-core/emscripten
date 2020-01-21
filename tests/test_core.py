@@ -3669,8 +3669,6 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dlfcn
-  @no_asan('ASan does not support dynamic linking')
-  @no_lsan('LSan does not support dynamic linking')
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>
