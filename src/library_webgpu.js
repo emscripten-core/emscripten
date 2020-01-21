@@ -711,6 +711,10 @@ var LibraryWebGPU = {
       var Validation = 0x00000001;
       var OutOfMemory = 0x00000002;
       var type;
+#if ASSERTIONS
+      assert(typeof GPUValidationError !== 'undefined');
+      assert(typeof GPUOutOfMemoryError !== 'undefined');
+#endif
       if (ev.error instanceof GPUValidationError) type = Validation;
       else if (ev.error instanceof GPUOutOfMemoryError) type = OutOfMemory;
       var messagePtr = allocateUTF8(ev.error.message);
@@ -1110,27 +1114,33 @@ var LibraryWebGPU = {
   // Instance
 
   wgpuInstanceReference: function() {
+#if ASSERTIONS
     assert(false, 'No WGPUInstance object should exist.');
+#endif
   },
   wgpuInstanceRelease: function() {
+#if ASSERTIONS
     assert(false, 'No WGPUInstance object should exist.');
+#endif
   },
 
-  wgpuInstanceCreateSurface__deps: ['_findCanvasEventTarget'],
   wgpuInstanceCreateSurface: function(instanceId, descriptor) {
-    assert(instanceId === 0, "WGPUInstance is ignored");
-    assert(descriptor !== 0);
+    {{{ gpu.makeCheck('descriptor') }}}
+    {{{ gpu.makeCheck('instanceId === 0, "WGPUInstance is ignored"') }}}
     var nextInChainPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.nextInChain, '*') }}};
+#if ASSERTIONS
     assert(nextInChainPtr !== 0);
-    assert(/* WGPUSType_SurfaceDescriptorFromHTMLCanvas */ 4 ===
+    assert(/* WGPUSType_SurfaceDescriptorFromHTMLCanvasId */ 4 ===
       {{{ gpu.makeGetU32('nextInChainPtr', C_STRUCTS.WGPUChainedStruct.sType) }}});
-    var descriptorFromHTMLCanvas = nextInChainPtr;
+#endif
+    var descriptorFromHTMLCanvasId = nextInChainPtr;
 
-    {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvas') }}}
-    var targetPtr = {{{ makeGetValue('descriptorFromHTMLCanvas', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvas.target, '*') }}};
-    assert(targetPtr !== 0);
+    {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvasId') }}}
+    var targetPtr = {{{ makeGetValue('descriptorFromHTMLCanvasId', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvasId.target, '*') }}};
+    {{{ gpu.makeCheck('targetPtr') }}}
     var target = UTF8ToString(targetPtr);
-    var canvas = __findCanvasEventTarget(target);
+    var canvas = document.getElementById(target);
+    assert(canvas instanceof HTMLCanvasElement);
 
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.label, '*') }}};
     if (labelPtr) canvas.surfaceLabelWebGPU = UTF8ToString(labelPtr);

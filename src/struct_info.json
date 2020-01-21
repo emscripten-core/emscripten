@@ -1797,7 +1797,7 @@
                 "nextInChain",
                 "label"
             ],
-            "WGPUSurfaceDescriptorFromHTMLCanvas": [
+            "WGPUSurfaceDescriptorFromHTMLCanvasId": [
                 "nextInChain",
                 "sType",
                 "target"
