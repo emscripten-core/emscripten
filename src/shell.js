@@ -75,9 +75,13 @@ ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 // This will allow the former to do things like mount NODEFS.
 // Extended check using process.versions fixes issue #8816.
 // (Also makes redundant the original check that 'require' is a function.)
+#if ENVIRONMENT_MAY_BE_NODE
 ENVIRONMENT_HAS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
 ENVIRONMENT_IS_NODE = ENVIRONMENT_HAS_NODE && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
+#endif //ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_SHELL
 ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
+#endif //ENVIRONMENT_MAY_BE_SHELL
 #endif // ENVIRONMENT
 
 #if ASSERTIONS
@@ -276,13 +280,13 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if USE_PTHREADS
+#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (ENVIRONMENT_HAS_NODE) {
 
 #include "node_shell_read.js"
 
   } else
-#endif
+#endif //USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
   {
 
 #include "web_or_worker_shell_read.js"
