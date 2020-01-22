@@ -33,9 +33,11 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if USE_PTHREADS
     if (!(wasmMemory.buffer instanceof SharedArrayBuffer)) {
       err('requested a shared WebAssembly.Memory but the returned buffer is not a SharedArrayBuffer, indicating that while the browser has SharedArrayBuffer it does not have WebAssembly threads support - you may need to set a flag');
+#if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_HAS_NODE) {
         console.log('(on node you may need: --experimental-wasm-threads --experimental-wasm-bulk-memory and also use a recent version)');
       }
+#endif //ENVIRONMENT_MAY_BE_NODE
       throw Error('bad memory');
     }
 #endif
