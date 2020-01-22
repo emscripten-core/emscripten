@@ -2940,7 +2940,7 @@ class Building(object):
 
   @staticmethod
   def check_binaryen(bindir):
-    finalize = os.path.join(bindir, 'wasm-emscripten-finalize')
+    finalize = os.path.join(bindir, exe_suffix('wasm-emscripten-finalize'))
     if not os.path.exists(finalize):
       exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % finalize)
     try:
