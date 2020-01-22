@@ -95,12 +95,6 @@ class WindowsPopen(object):
       if self.stderr_ is None:
         self.stderr_ = PIPE
 
-    # emscripten.py supports reading args from a response file instead of cmdline.
-    # Use .rsp to avoid cmdline length limitations on Windows.
-    if len(args) >= 2 and args[1].endswith("emscripten.py"):
-      response_filename = response_file.create_response_file(args[2:], TEMP_DIR)
-      args = args[0:2] + ['@' + response_filename]
-
     try:
       # Call the process with fixed streams.
       self.process = subprocess.Popen(args, bufsize, executable, self.stdin_, self.stdout_, self.stderr_, preexec_fn, close_fds, shell, cwd, env, universal_newlines, startupinfo, creationflags)
