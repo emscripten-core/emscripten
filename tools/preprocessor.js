@@ -20,6 +20,7 @@ var ENVIRONMENT_IS_WEB = typeof window === 'object';
 var ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
+#if ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   // Expose functionality in the same simple way that the shells work
   // Note that we pollute the global namespace here, otherwise we break in node
@@ -65,7 +66,10 @@ if (ENVIRONMENT_IS_NODE) {
 
   arguments_ = process['argv'].slice(2);
 
-} else if (ENVIRONMENT_IS_SHELL) {
+} else
+#endif //ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
   // Polyfill over SpiderMonkey/V8 differences
   if (!this['read']) {
     this['read'] = function(f) { snarf(f) };
@@ -92,12 +96,17 @@ if (ENVIRONMENT_IS_NODE) {
   if (this['arguments']) {
     arguments_ = arguments;
   }
-} else if (ENVIRONMENT_IS_WORKER) {
+} else
+#endif //ENVIRONMENT_MAY_BE_SHELL
+#if ENVIRONMENT_MAY_BE_WORKER
+if (ENVIRONMENT_IS_WORKER) {
   // We can do very little here...
 
   this['load'] = importScripts;
 
-} else {
+} else
+#endif //ENVIRONMENT_MAY_BE_WORKER
+{
   throw 'Unknown runtime environment. Where are we?';
 }
 
