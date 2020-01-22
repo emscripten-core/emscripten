@@ -8560,6 +8560,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''', ['abort(stack overflow)', '__handle_stack_overflow'], assert_returncode=None)
 
   @no_fastcomp('WASM backend convert imports to indirect calls')
+  @needs_dlfcn
   def test_dylink_imports_to_indirect_calls(self):
     # The ImportsToIndirectCalls pass in Binaryen should not allocate a new fp$ for
     # imports that are already address taken. Test out both cases whereby the imports
