@@ -30,6 +30,7 @@ function alignUp(x, multiple) {
   return x;
 }
 
+#include "runtime_functions.js"
 #include "runtime_strings.js"
 #include "runtime_sab_polyfill.js"
 

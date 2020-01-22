@@ -2588,7 +2588,7 @@ class Building(object):
            emitting_js and \
            not Settings.ASYNCIFY_LAZY_LOAD_CODE and \
            not Settings.WASM2JS:
-          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
+          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
