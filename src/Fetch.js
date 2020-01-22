@@ -54,7 +54,7 @@ var Fetch = {
 #if USE_FETCH_WORKER
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
 #else
-    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined');
+    var isMainThread = true;
 #endif
 
 #if FETCH_SUPPORT_INDEXEDDB
