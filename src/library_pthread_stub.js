@@ -140,7 +140,7 @@ var LibraryPThreadStub = {
   pthread_attr_setschedparam: function() {},
   pthread_attr_setstacksize: function() {},
 
-  pthread_create: function() {
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
   },
   pthread_cancel: function() {},
@@ -150,7 +150,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_equal: function(x, y) { return x == y },
-  pthread_join: function() {},
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function() {},
   pthread_detach: function() {},
 
   sem_init: function() {},

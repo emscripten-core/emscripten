@@ -1309,7 +1309,10 @@ var LibraryPThread = {
 
   emscripten_receive_on_main_thread_js_callArgs: '=[]',
 
-  emscripten_receive_on_main_thread_js__deps: ['emscripten_proxy_to_main_thread_js', 'emscripten_receive_on_main_thread_js_callArgs'],
+  emscripten_receive_on_main_thread_js__deps: [
+    'emscripten_proxy_to_main_thread_js',
+    'emscripten_receive_on_main_thread_js_callArgs',
+    '$readAsmConstArgs'],
   emscripten_receive_on_main_thread_js: function(index, numCallArgs, args) {
     _emscripten_receive_on_main_thread_js_callArgs.length = numCallArgs;
     var b = args >> 3;

@@ -40,6 +40,9 @@ WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EXPECTED_NODE_VERSION = (4, 1, 1)
+EXPECTED_BINARYEN_VERSION = 90
+
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -446,7 +449,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "10.0"
+    return "11.0"
   else:
     return "6.0"
 
@@ -476,10 +479,10 @@ def get_llc_targets():
     exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
-  except Exception as e:
-    return '(no targets could be identified: ' + str(e) + ')'
+  except subprocess.CalledProcessError:
+    exit_with_error('error running `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
   if 'Registered Targets:' not in llc_version_info:
-    return '(no targets could be identified: ' + llc_version_info + ')'
+    exit_with_error('error parsing output of `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
   pre, targets = llc_version_info.split('Registered Targets:')
   return targets
 
@@ -510,9 +513,6 @@ def check_llvm():
       return False
 
   return True
-
-
-EXPECTED_NODE_VERSION = (4, 1, 1)
 
 
 def check_node_version():
@@ -799,6 +799,18 @@ def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
 
+def replace_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return os.path.splitext(filename)[0] + new_suffix
+
+
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# Retain the original naming scheme in traditional runtime.
+def replace_or_append_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+
+
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG = CLANG_CPP
@@ -967,7 +979,7 @@ def check_vanilla():
     # see which backends it has. we cache this result.
     temp_cache = cache.Cache(use_subdir=False)
 
-    def check_vanilla():
+    def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
       targets = get_llc_targets()
       return has_wasm_target(targets) and not has_asm_js_target(targets)
@@ -977,7 +989,7 @@ def check_vanilla():
       saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
       if os.path.exists(saved_file):
         logger.debug('old: %s\n' % open(saved_file).read())
-      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT + '\n')
+      open(saved_file, 'w').write(('1' if has_vanilla_targets() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
     is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
@@ -992,10 +1004,10 @@ def check_vanilla():
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
         temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
-        is_vanilla = check_vanilla()
+        is_vanilla = has_vanilla_targets()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
-      is_vanilla = check_vanilla()
+      is_vanilla = has_vanilla_targets()
     temp_cache = None
     if is_vanilla:
       logger.debug('check tells us to use wasm backend')
@@ -1470,6 +1482,7 @@ def asmjs_mangle(name):
 class Building(object):
   COMPILER = CLANG
   multiprocessing_pool = None
+  binaryen_checked = False
 
   # internal caches
   internal_nm_cache = {} # cache results of nm - it can be slow to run
@@ -1929,15 +1942,15 @@ class Building(object):
 
     if Settings.LINKABLE:
       cmd.append('--export-all')
+    else:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      if not Settings.STANDALONE_WASM:
+        cmd += ['--export', '__wasm_call_ctors']
 
-    # in standalone mode, crt1 will call the constructors from inside the wasm
-    if not Settings.STANDALONE_WASM:
-      cmd += ['--export', '__wasm_call_ctors']
+      cmd += ['--export', '__data_end']
 
-    cmd += ['--export', '__data_end']
-
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
 
     if Settings.RELOCATABLE:
       if Settings.SIDE_MODULE:
@@ -2606,7 +2619,7 @@ class Building(object):
         export = item['export']
         # wasm backend's exports are prefixed differently inside the wasm
         if Settings.WASM_BACKEND:
-          export = '_' + export
+          export = asmjs_mangle(export)
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     # in standalone wasm, always export the memory
@@ -2926,9 +2939,29 @@ class Building(object):
     return ret
 
   @staticmethod
+  def check_binaryen(bindir):
+    finalize = os.path.join(bindir, exe_suffix('wasm-emscripten-finalize'))
+    if not os.path.exists(finalize):
+      exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % finalize)
+    try:
+      output = run_process([finalize, '--version'], stdout=PIPE).stdout
+    except subprocess.CalledProcessError:
+      exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % finalize)
+    version = output.split()[2]
+    version = int(version)
+    # Allow the expected version or the following one in order avoid needing to update both
+    # emscripten and binaryen in lock step in emscripten-releases.
+    if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):
+      warning('unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+
+  @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    return os.path.join(BINARYEN_ROOT, 'bin')
+    rtn = os.path.join(BINARYEN_ROOT, 'bin')
+    if not Building.binaryen_checked:
+      Building.check_binaryen(rtn)
+      Building.binaryen_checked = True
+    return rtn
 
   @staticmethod
   def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):

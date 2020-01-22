@@ -6576,12 +6576,13 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
+  @no_fastcomp('fails mysteriously on fastcomp (dynCall_viji is not defined); ignored, because fastcomp is deprecated')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
         ('DIRECT', []),
         ('EXPORTED', []),
-        ('FROM_OUTSIDE', ['dynCall_viii'])
+        ('FROM_OUTSIDE', ['dynCall_viji'])
       ]:
       print(which)
       self.emcc_args = emcc_args + ['-D' + which]
@@ -7837,6 +7838,13 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_fastcomp('Fibers are not implemented for fastcomp')
+  def test_fibers_asyncify(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += ['-std=gnu++11']
+    src = open(path_from_root('tests', 'test_fibers.cpp')).read()
+    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
   @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
@@ -8230,10 +8238,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
+    js = open('src.cpp.o.js').read()
+    occurances = js.count('cFunction')
+    if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
+      # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
+      if self.is_wasm():
+        self.assertEqual(occurances, 1)
+      else:
+        # With js the asm module itself also contains a reference for the cFunction name
+        self.assertEqual(occurances, 2)
+    else:
+      print(occurances)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8554,6 +8573,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   def test_fpic_static(self):
     self.emcc_args.append('-fPIC')
+    self.emcc_args.remove('-Werror')
     self.do_run_in_out_file_test('tests', 'core', 'test_hello_world')
 
   @node_pthreads

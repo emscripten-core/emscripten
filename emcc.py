@@ -71,7 +71,7 @@ DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in 
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll',)
 HEADER_ENDINGS = ('.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH')
-WASM_ENDINGS = ('.wasm', '.wast')
+WASM_ENDINGS = ('.wasm',)
 
 SUPPORTED_LINKER_FLAGS = (
     '--start-group', '--end-group',
@@ -341,7 +341,7 @@ class JSOptimizer(object):
     if shared.Settings.PRECISE_F32:
       passes = ['asmPreciseF32'] + passes
     if (self.emit_symbol_map or shared.Settings.CYBERDWARF) and 'minifyNames' in passes:
-      passes += ['symbolMap=' + self.target + '.symbols']
+      passes += ['symbolMap=' + shared.replace_or_append_suffix(self.target, '.symbols')]
     if self.profiling_funcs and 'minifyNames' in passes:
       passes += ['profilingFuncs']
     if self.minify_whitespace and 'last' in passes:
@@ -1046,9 +1046,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       js_target = unsuffixed(target) + '.js'
 
     asm_target = unsuffixed(js_target) + '.asm.js' # might not be used, but if it is, this is the name
-    wasm_text_target = asm_target.replace('.asm.js', '.wast') # ditto, might not be used
+    wasm_text_target = asm_target.replace('.asm.js', '.wat') # ditto, might not be used
     wasm_binary_target = asm_target.replace('.asm.js', '.wasm') # ditto, might not be used
-    wasm_source_map_target = wasm_binary_target + '.map'
+    wasm_source_map_target = shared.replace_or_append_suffix(wasm_binary_target, '.map')
 
     if final_suffix == '.html' and not options.separate_asm and 'PRECISE_F32=2' in settings_changes:
       options.separate_asm = True
@@ -1225,10 +1225,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME:
       # Remove the default exported functions 'memcpy', 'memset', 'malloc', 'free', etc. - those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
-
-    if shared.Settings.USE_PTHREADS:
-      # These runtime methods are called from worker.js
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace', 'dynCall_ii']
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
@@ -1464,8 +1460,18 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
-      # To ensure allocated thread stacks are aligned:
+      shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace']
+
+      # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
+
+      # dynCall_ii is used to call pthread entry points in worker.js (as
+      # metadce does not consider worker.js, which is external, we must
+      # consider it a user export, i.e., one which can never be removed).
+      shared.Building.user_requested_exports += ['dynCall_ii']
+
+      if shared.Settings.PROXY_TO_PTHREAD:
+        shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
 
       # pthread stack setup:
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$establishStackSpaceInJsModule']
@@ -1525,15 +1531,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
 
-    # When MODULARIZE option is used, currently declare all module exports
-    # individually - TODO: this could be optimized
     if shared.Settings.MODULARIZE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-      shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
-      shared.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1, since MODULARIZE currently requires declaring asm.js/wasm module exports in full')
+      # When MODULARIZE option is used, currently requires declaring all module exports
+      # individually - TODO: this could be optimized
+      exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not compatible with MODULARIZE')
 
-    # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as the JS module. This allows code to share same loading function for both JS and asm.js modules,
-    # to save code size. The intent is that loader code captures the function variable from global scope to XHR loader local scope when it finishes loading, to avoid polluting global JS scope with
-    # variables. This provides safety via encapsulation. See src/shell_minimal_runtime.html for an example.
+    # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
+    # the JS module. This allows code to share same loading function for both JS and asm.js modules,
+    # to save code size. The intent is that loader code captures the function variable from global
+    # scope to XHR loader local scope when it finishes loading, to avoid polluting global JS scope
+    # with variables. This provides safety via encapsulation. See src/shell_minimal_runtime.html for
+    # an example.
     if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.SEPARATE_ASM_MODULE_NAME and not shared.Settings.WASM and shared.Settings.MODULARIZE:
       shared.Settings.SEPARATE_ASM_MODULE_NAME = 'var ' + shared.Settings.EXPORT_NAME
 
@@ -1568,7 +1576,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
        (options.shell_path == shared.path_from_root('src', 'shell.html') or options.shell_path == shared.path_from_root('src', 'shell_minimal.html')):
       exit_with_error('Due to collision in variable name "Module", the shell file "' + options.shell_path + '" is not compatible with build options "-s MODULARIZE=1 -s EXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
-    if target.endswith(WASM_ENDINGS):
+    if final_suffix in WASM_ENDINGS:
       # if the output is just a wasm file, it will normally be a standalone one,
       # as there is no JS. an exception are side modules, as we can't tell at
       # compile time whether JS will be involved or not - the main module may
@@ -1617,27 +1625,15 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
 
       # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
-      if not shared.Settings.MINIMAL_RUNTIME:
-        if shared.Settings.WASM_ASYNC_COMPILATION == 1:
-          # async compilation requires a swappable module - we swap it in when it's ready
-          shared.Settings.SWAPPABLE_ASM_MODULE = 1
-        else:
-          # if not wasm-only, we can't do async compilation as the build can run in other
-          # modes than wasm (like asm.js) which may not support an async step
-          shared.Settings.WASM_ASYNC_COMPILATION = 0
-          warning = 'This will reduce performance and compatibility (some browsers limit synchronous compilation), see http://kripken.github.io/emscripten-site/docs/compiling/WebAssembly.html#codegen-effects'
-          if 'WASM_ASYNC_COMPILATION=1' in settings_changes:
-            shared.warning('WASM_ASYNC_COMPILATION requested, but disabled because of user options. ' + warning)
-          elif 'WASM_ASYNC_COMPILATION=0' not in settings_changes and 'BINARYEN_ASYNC_COMPILATION=0' not in settings_changes:
-            shared.warning('WASM_ASYNC_COMPILATION disabled due to user options. ' + warning)
+      if not shared.Settings.MINIMAL_RUNTIME and shared.Settings.WASM_ASYNC_COMPILATION:
+        # async compilation requires a swappable module - we swap it in when it's ready
+        shared.Settings.SWAPPABLE_ASM_MODULE = 1
 
-      if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+      if shared.Settings.SWAPPABLE_ASM_MODULE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
         # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
         # function generated to each function export from wasm module, so cannot use the
         # concise form of grabbing exports that does not need to refer to each export individually.
-        if shared.Settings.SWAPPABLE_ASM_MODULE == 1:
-          shared.Settings.DECLARE_ASM_MODULE_EXPORTS = 1
-          shared.warning('Enabling -s DECLARE_ASM_MODULE_EXPORTS=1 since -s SWAPPABLE_ASM_MODULE=1 is used')
+        exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not comptabible with SWAPPABLE_ASM_MODULE')
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
@@ -1937,6 +1933,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
+      if '-fPIC' in compile_args and not shared.Settings.RELOCATABLE:
+        shared.warning('ignoring -fPIC flag when not building with SIDE_MODULE or MAIN_MODULE')
+        compile_args.remove('-fPIC')
 
       # Bitcode args generation code
       def get_clang_command(input_files):
@@ -2271,11 +2270,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if embed_memfile(options):
         shared.Settings.SUPPORT_BASE64_EMBEDDING = 1
 
-      final = do_emscripten(final, target + '.mem')
+      final = do_emscripten(final, shared.replace_or_append_suffix(target, '.mem'))
       save_intermediate('original')
 
       if shared.Settings.WASM_BACKEND:
-        # we also received wast and wasm at this stage
+        # we also received wat and wasm at this stage
         temp_basename = unsuffixed(final)
         wasm_temp = temp_basename + '.wasm'
         shutil.move(wasm_temp, wasm_binary_target)
@@ -2284,7 +2283,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       if shared.Settings.CYBERDWARF:
         cd_target = final + '.cd'
-        shutil.move(cd_target, target + '.cd')
+        shutil.move(cd_target, shared.replace_or_append_suffix(target, '.cd'))
 
     # exit block 'emscript'
     log_time('emscript (llvm => executable code)')
@@ -2357,11 +2356,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       memfile = None
       if (not shared.Settings.WASM_BACKEND and (shared.Settings.MEM_INIT_METHOD > 0 or embed_memfile(options))) or \
          (shared.Settings.WASM_BACKEND and not shared.Settings.MEM_INIT_IN_WASM):
-        if shared.Settings.MINIMAL_RUNTIME:
-          # Independent of whether user is doing -o a.html or -o a.js, generate the mem init file as a.mem (and not as a.html.mem or a.js.mem)
-          memfile = target.replace('.html', '.mem').replace('.js', '.mem')
-        else:
-          memfile = target + '.mem'
+         memfile = shared.replace_or_append_suffix(target, '.mem')
 
       if memfile:
         if shared.Settings.WASM_BACKEND:
@@ -2533,7 +2528,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bundle symbol data in with the cyberdwarf file
       if shared.Settings.CYBERDWARF:
-        run_process([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), target + '.cd', target + '.symbols'])
+        run_process([shared.PYTHON, shared.path_from_root('tools', 'emdebug_cd_merger.py'), shared.replace_or_append_suffix(target, '.cd'), shared.replace_or_append_suffix(target, '.symbols')])
 
       if use_source_map(options) and not shared.Settings.WASM:
         emit_js_source_maps(target, optimizer.js_transform_tempfiles)
@@ -3036,7 +3031,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if intermediate_debug_info:
       cmd += ['-g']
     if emit_symbol_map:
-      cmd += ['--symbolmap=' + target + '.symbols']
+      cmd += ['--symbolmap=' + shared.replace_or_append_suffix(target, '.symbols')]
     # we prefer to emit a binary, as it is more efficient. however, when we
     # want full debug info support (not just function names), then we must
     # emit text (at least until wasm gains support for debug info in binaries)
@@ -3074,8 +3069,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
-    if DEBUG:
-      shared.Building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
+    shared.Building.save_intermediate(wasm_binary_target, 'pre-byn.wasm')
     args = options.binaryen_passes
     shared.Building.run_wasm_opt(wasm_binary_target,
                                  wasm_binary_target,
@@ -3093,8 +3087,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       logger.debug('running binaryen script: ' + script)
       shared.check_call([shared.PYTHON, os.path.join(binaryen_scripts, script), final, wasm_text_target], env=script_env)
   if shared.Settings.EVAL_CTORS:
-    if DEBUG:
-      shared.Building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
+    shared.Building.save_intermediate(wasm_binary_target, 'pre-ctors.wasm')
     shared.Building.eval_ctors(final, wasm_binary_target, binaryen_bin, debug_info=intermediate_debug_info)
 
   # after generating the wasm, do some final operations
