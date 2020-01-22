@@ -9,7 +9,7 @@ errno: 0
 st_size: 4
 
 ftruncate(-1): -1
-errno: 22
+errno: 28
 st_size: 4
 
 truncate(2): 0
@@ -17,9 +17,9 @@ errno: 0
 st_size: 2
 
 truncate(readonly, 2): -1
-errno: 13
+errno: 2
 st_size: 6
 
 ftruncate(readonly, 4): -1
-errno: 22
+errno: 28
 st_size: 6

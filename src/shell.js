@@ -3,6 +3,10 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
+#if STRICT_JS
+"use strict";
+
+#endif
 #if SIDE_MODULE == 0
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
@@ -43,30 +47,36 @@ for (key in Module) {
   }
 }
 
-Module['arguments'] = [];
-Module['thisProgram'] = './this.program';
-Module['quit'] = function(status, toThrow) {
+var arguments_ = [];
+var thisProgram = './this.program';
+var quit_ = function(status, toThrow) {
   throw toThrow;
 };
-Module['preRun'] = [];
-Module['postRun'] = [];
 
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if ENVIRONMENT
+#if ENVIRONMENT && ENVIRONMENT.indexOf(',') < 0
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT === 'web' }}};
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT === 'worker' }}};
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT === 'node' }}};
+var ENVIRONMENT_HAS_NODE = ENVIRONMENT_IS_NODE;
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT === 'shell' }}};
 #else // ENVIRONMENT
 var ENVIRONMENT_IS_WEB = false;
 var ENVIRONMENT_IS_WORKER = false;
 var ENVIRONMENT_IS_NODE = false;
+var ENVIRONMENT_HAS_NODE = false;
 var ENVIRONMENT_IS_SHELL = false;
 ENVIRONMENT_IS_WEB = typeof window === 'object';
 ENVIRONMENT_IS_WORKER = typeof importScripts === 'function';
-ENVIRONMENT_IS_NODE = typeof process === 'object' && typeof require === 'function' && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
+// A web environment like Electron.js can have Node enabled, so we must
+// distinguish between Node-enabled environments and Node environments per se.
+// This will allow the former to do things like mount NODEFS.
+// Extended check using process.versions fixes issue #8816.
+// (Also makes redundant the original check that 'require' is a function.)
+ENVIRONMENT_HAS_NODE = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';
+ENVIRONMENT_IS_NODE = ENVIRONMENT_HAS_NODE && !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_WORKER;
 ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 #endif // ENVIRONMENT
 
@@ -76,72 +86,62 @@ if (Module['ENVIRONMENT']) {
 }
 #endif
 
-// Three configurations we can be running in:
-// 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
-// 2) We could be the application main() thread proxied to worker. (with Emscripten -s PROXY_TO_WORKER=1) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
-// 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 #if USE_PTHREADS
-var ENVIRONMENT_IS_PTHREAD;
-if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
-var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
-if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
-var currentScriptUrl = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
-#endif // USE_PTHREADS
+#include "shell_pthreads.js"
+#endif
+
+#if USE_PTHREADS && (!MODULARIZE || MODULARIZE_INSTANCE)
+// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// before the page load. In non-MODULARIZE modes generate it here.
+#if EXPORT_ES6
+var _scriptDir = import.meta.url;
+#else
+var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+
+if (ENVIRONMENT_IS_NODE) {
+  _scriptDir = __filename;
+} else if (ENVIRONMENT_IS_WORKER) {
+  _scriptDir = self.location.href;
+}
+#endif
+#endif
 
 // `/` should be present at the end if `scriptDirectory` is not empty
 var scriptDirectory = '';
 function locateFile(path) {
+#if expectToReceiveOnModule('locateFile')
   if (Module['locateFile']) {
     return Module['locateFile'](path, scriptDirectory);
-  } else {
-    return scriptDirectory + path;
   }
+#endif
+  return scriptDirectory + path;
 }
 
+// Hooks that are implemented differently in different runtime environments.
+var read_,
+    readAsync,
+    readBinary,
+    setWindowTitle;
+
 #if ENVIRONMENT_MAY_BE_NODE
+var nodeFS;
+var nodePath;
+
 if (ENVIRONMENT_IS_NODE) {
-  scriptDirectory = __dirname + '/';
 #if ENVIRONMENT
 #if ASSERTIONS
   if (!(typeof process === 'object' && typeof require === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 #endif
+  scriptDirectory = __dirname + '/';
 
-  // Expose functionality in the same simple way that the shells work
-  // Note that we pollute the global namespace here, otherwise we break in node
-  var nodeFS;
-  var nodePath;
-
-  Module['read'] = function shell_read(filename, binary) {
-    var ret;
-#if SUPPORT_BASE64_EMBEDDING
-    ret = tryParseAsDataURI(filename);
-    if (!ret) {
-#endif
-      if (!nodeFS) nodeFS = require('fs');
-      if (!nodePath) nodePath = require('path');
-      filename = nodePath['normalize'](filename);
-      ret = nodeFS['readFileSync'](filename);
-#if SUPPORT_BASE64_EMBEDDING
-    }
-#endif
-    return binary ? ret : ret.toString();
-  };
-
-  Module['readBinary'] = function readBinary(filename) {
-    var ret = Module['read'](filename, true);
-    if (!ret.buffer) {
-      ret = new Uint8Array(ret);
-    }
-    assert(ret.buffer);
-    return ret;
-  };
+#include "node_shell_read.js"
 
   if (process['argv'].length > 1) {
-    Module['thisProgram'] = process['argv'][1].replace(/\\/g, '/');
+    thisProgram = process['argv'][1].replace(/\\/g, '/');
   }
 
-  Module['arguments'] = process['argv'].slice(2);
+  arguments_ = process['argv'].slice(2);
 
 #if MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -159,15 +159,28 @@ if (ENVIRONMENT_IS_NODE) {
     }
   });
 #endif
-  // Currently node will swallow unhandled rejections, but this behavior is
-  // deprecated, and in the future it will exit with error status.
-  process['on']('unhandledRejection', abort);
 
-  Module['quit'] = function(status) {
+#if NODEJS_CATCH_REJECTION
+  process['on']('unhandledRejection', abort);
+#endif
+
+  quit_ = function(status) {
     process['exit'](status);
   };
 
   Module['inspect'] = function () { return '[Emscripten Module object]'; };
+
+#if USE_PTHREADS
+  var nodeWorkerThreads;
+  try {
+    nodeWorkerThreads = require('worker_threads');
+  } catch (e) {
+    console.error('The "worker_threads" module is not supported in this node.js build - perhaps a newer version is needed?');
+    throw e;
+  }
+  Worker = nodeWorkerThreads.Worker;
+#endif
+
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -180,7 +193,7 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
   if (typeof read != 'undefined') {
-    Module['read'] = function shell_read(f) {
+    read_ = function shell_read(f) {
 #if SUPPORT_BASE64_EMBEDDING
       var data = tryParseAsDataURI(f);
       if (data) {
@@ -191,7 +204,7 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  Module['readBinary'] = function readBinary(f) {
+  readBinary = function readBinary(f) {
     var data;
 #if SUPPORT_BASE64_EMBEDDING
     data = tryParseAsDataURI(f);
@@ -208,33 +221,42 @@ if (ENVIRONMENT_IS_SHELL) {
   };
 
   if (typeof scriptArgs != 'undefined') {
-    Module['arguments'] = scriptArgs;
+    arguments_ = scriptArgs;
   } else if (typeof arguments != 'undefined') {
-    Module['arguments'] = arguments;
+    arguments_ = arguments;
   }
 
   if (typeof quit === 'function') {
-    Module['quit'] = function(status) {
+    quit_ = function(status) {
       quit(status);
-    }
+    };
+  }
+
+  if (typeof print !== 'undefined') {
+    // Prefer to use print/printErr where they exist, as they usually work better.
+    if (typeof console === 'undefined') console = {};
+    console.log = print;
+    console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
-#if ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+
+// Note that this includes Node.js workers when relevant (pthreads is enabled).
+// Node.js workers are detected as a combination of ENVIRONMENT_IS_WORKER and
+// ENVIRONMENT_HAS_NODE.
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   if (ENVIRONMENT_IS_WORKER) { // Check worker, not web, since window could be polyfilled
     scriptDirectory = self.location.href;
   } else if (document.currentScript) { // web
     scriptDirectory = document.currentScript.src;
   }
-#if MODULARIZE
-#if MODULARIZE_INSTANCE == 0
+#if MODULARIZE && MODULARIZE_INSTANCE == 0
   // When MODULARIZE (and not _INSTANCE), this JS may be executed later, after document.currentScript
   // is gone, so we saved it, and we use it here instead of any other info.
   if (_scriptDir) {
     scriptDirectory = _scriptDir;
   }
-#endif
 #endif
   // blob urls look like blob:http://site.com/etc/etc and we cannot infer anything from them.
   // otherwise, slice off the final part of the url to find the script directory.
@@ -252,86 +274,44 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 #endif
 #endif
 
-  Module['read'] = function shell_read(url) {
-#if SUPPORT_BASE64_EMBEDDING
-    try {
-#endif
-      var xhr = new XMLHttpRequest();
-      xhr.open('GET', url, false);
-      xhr.send(null);
-      return xhr.responseText;
-#if SUPPORT_BASE64_EMBEDDING
-    } catch (err) {
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        return intArrayToString(data);
-      }
-      throw err;
-    }
-#endif
-  };
+  // Differentiate the Web Worker from the Node Worker case, as reading must
+  // be done differently.
+#if USE_PTHREADS
+  if (ENVIRONMENT_HAS_NODE) {
 
-  if (ENVIRONMENT_IS_WORKER) {
-    Module['readBinary'] = function readBinary(url) {
-#if SUPPORT_BASE64_EMBEDDING
-      try {
+#include "node_shell_read.js"
+
+  } else
 #endif
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', url, false);
-        xhr.responseType = 'arraybuffer';
-        xhr.send(null);
-        return new Uint8Array(xhr.response);
-#if SUPPORT_BASE64_EMBEDDING
-      } catch (err) {
-        var data = tryParseAsDataURI(url);
-        if (data) {
-          return data;
-        }
-        throw err;
-      }
-#endif
-    };
+  {
+
+#include "web_or_worker_shell_read.js"
+
   }
 
-  Module['readAsync'] = function readAsync(url, onload, onerror) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.onload = function xhr_onload() {
-      if (xhr.status == 200 || (xhr.status == 0 && xhr.response)) { // file URLs can return 0
-        onload(xhr.response);
-        return;
-      }
-#if SUPPORT_BASE64_EMBEDDING
-      var data = tryParseAsDataURI(url);
-      if (data) {
-        onload(data.buffer);
-        return;
-      }
-#endif
-      onerror();
-    };
-    xhr.onerror = onerror;
-    xhr.send(null);
-  };
-
-  Module['setWindowTitle'] = function(title) { document.title = title };
+  setWindowTitle = function(title) { document.title = title };
 } else
-#endif // ENVIRONMENT_MAY_BE_WEB_OR_WORKER
+#endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
 {
 #if ASSERTIONS
   throw new Error('environment detection error');
 #endif // ASSERTIONS
 }
 
+#if ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS
+if (ENVIRONMENT_HAS_NODE) {
+  // Polyfill the performance object, which emscripten pthreads support
+  // depends on for good timing.
+  if (typeof performance === 'undefined') {
+    performance = require('perf_hooks').performance;
+  }
+}
+#endif
+
 // Set up the out() and err() hooks, which are how we can print to stdout or
 // stderr, respectively.
-// If the user provided Module.print or printErr, use that. Otherwise,
-// console.log is checked first, as 'print' on the web will open a print dialogue
-// printErr is preferable to console.warn (works better in shells)
-// bind(console) is necessary to fix IE/Edge closed dev tools panel behavior.
-var out = Module['print'] || (typeof console !== 'undefined' ? console.log.bind(console) : (typeof print !== 'undefined' ? print : null));
-var err = Module['printErr'] || (typeof printErr !== 'undefined' ? printErr : ((typeof console !== 'undefined' && console.warn.bind(console)) || out));
+{{{ makeModuleReceiveWithVar('out', 'print',    'console.log.bind(console)',  true) }}}
+{{{ makeModuleReceiveWithVar('err', 'printErr', 'console.warn.bind(console)', true) }}}
 
 // Merge back in the overrides
 for (key in moduleOverrides) {
@@ -341,18 +321,45 @@ for (key in moduleOverrides) {
 }
 // Free the object hierarchy contained in the overrides, this lets the GC
 // reclaim data used e.g. in memoryInitializerRequest, which is a large typed array.
-moduleOverrides = undefined;
+moduleOverrides = null;
+
+// Emit code to handle expected values on the Module object. This applies Module.x
+// to the proper local x. This has two benefits: first, we only emit it if it is
+// expected to arrive, and second, by using a local everywhere else that can be
+// minified.
+{{{ makeModuleReceive('arguments_', 'arguments') }}}
+{{{ makeModuleReceive('thisProgram') }}}
+{{{ makeModuleReceive('quit_', 'quit') }}}
 
 // perform assertions in shell.js after we set up out() and err(), as otherwise if an assertion fails it cannot print the message
 #if ASSERTIONS
+// Assertions on removed incoming Module JS APIs.
 assert(typeof Module['memoryInitializerPrefixURL'] === 'undefined', 'Module.memoryInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['pthreadMainPrefixURL'] === 'undefined', 'Module.pthreadMainPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['cdInitializerPrefixURL'] === 'undefined', 'Module.cdInitializerPrefixURL option was removed, use Module.locateFile instead');
 assert(typeof Module['filePackagePrefixURL'] === 'undefined', 'Module.filePackagePrefixURL option was removed, use Module.locateFile instead');
+assert(typeof Module['read'] === 'undefined', 'Module.read option was removed (modify read_ in JS)');
+assert(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
+assert(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
+assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
+{{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
+{{{ makeRemovedModuleAPIAssert('readAsync') }}}
+{{{ makeRemovedModuleAPIAssert('readBinary') }}}
+// TODO: add when SDL2 is fixed {{{ makeRemovedModuleAPIAssert('setWindowTitle') }}}
+{{{ makeRemovedFSAssert('IDBFS') }}}
+{{{ makeRemovedFSAssert('PROXYFS') }}}
+{{{ makeRemovedFSAssert('WORKERFS') }}}
+{{{ makeRemovedFSAssert('NODEFS') }}}
+
 #if USE_PTHREADS
-assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER, 'Pthreads do not work in non-browser environments yet (need Web Workers, or an alternative to them)');
+assert(ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #endif // USE_PTHREADS
 #endif // ASSERTIONS
+
+// TODO remove when SDL2 is fixed (also see above)
+#if USE_SDL == 2
+Module['setWindowTitle'] = setWindowTitle;
+#endif
 
 {{BODY}}
 

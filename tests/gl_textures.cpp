@@ -10,6 +10,7 @@
 #include <GLES2/gl2.h>
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
 
 void report_result(int result)
 {
@@ -31,8 +32,8 @@ GLuint program;
 
 void draw()
 {
-  int w, h, fs;
-  emscripten_get_canvas_size(&w, &h, &fs);
+  int w, h;
+  emscripten_get_canvas_element_size("#canvas", &w, &h);
   float xs = (float)h / w;
   float ys = 1.0f;
   float mat[] = { xs, 0, 0, 0, 0, ys, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
@@ -41,7 +42,7 @@ void draw()
   glClear(GL_COLOR_BUFFER_BIT);
   glDrawArrays(GL_TRIANGLES, 0, 6);
 
-  unsigned char imageData[256*256*4];
+  unsigned char* imageData = (unsigned char*)malloc(256*256*4*sizeof(unsigned char));
   glReadPixels(0, 0, 256, 256, GL_RGBA, GL_UNSIGNED_BYTE, imageData);
   for(int y = 0; y < 256; ++y)
     for(int x = 0; x < 256; ++x)
@@ -57,15 +58,15 @@ void draw()
 
 int main()
 {
-  emscripten_set_canvas_size(256, 256);
+  emscripten_set_canvas_element_size("#canvas", 256, 256);
   EmscriptenWebGLContextAttributes attr;
   emscripten_webgl_init_context_attributes(&attr);
-  attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.preferLowPowerToHighPerformance = attr.failIfMajorPerformanceCaveat = 0;
+  attr.alpha = attr.depth = attr.stencil = attr.antialias = attr.preserveDrawingBuffer = attr.failIfMajorPerformanceCaveat = 0;
   attr.enableExtensionsByDefault = 1;
   attr.premultipliedAlpha = 0;
   attr.majorVersion = 1;
   attr.minorVersion = 0;
-  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context(0, &attr);
+  EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   const char *vss = "attribute vec4 vPosition; uniform mat4 mat; varying vec2 texCoord; void main() { gl_Position = vPosition; texCoord = (vPosition.xy + vec2(1.0)) * vec2(0.5); }";
@@ -129,7 +130,7 @@ int main()
   glBindTexture(GL_TEXTURE_2D, tex);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
   glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-  float texData[256*256];
+  float* texData = (float*)malloc(256*256*sizeof(float));
   for(int y = 0; y < 256; ++y)
     for(int x = 0; x < 256; ++x)
     {

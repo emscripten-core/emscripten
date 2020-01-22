@@ -7,28 +7,38 @@
 //
 //
 // This file implements the "Auxiliary Runtime APIs"
-// http://www.codesourcery.com/public/cxx-abi/abi-eh.html#cxx-aux
+// http://mentorembedded.github.io/cxx-abi/abi-eh.html#cxx-aux
 //===----------------------------------------------------------------------===//
 
 #include "cxxabi.h"
+#include <new>
 #include <typeinfo>
 
-namespace __cxxabiv1
-{
-
-extern "C"
-{
-
-LIBCXXABI_NORETURN
-void __cxa_bad_cast (void) {
-    throw std::bad_cast();
+namespace __cxxabiv1 {
+extern "C" {
+_LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void __cxa_bad_cast(void) {
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
+  throw std::bad_cast();
+#else
+  std::terminate();
+#endif
 }
 
-LIBCXXABI_NORETURN
-void __cxa_bad_typeid(void) {
-    throw std::bad_typeid();
+_LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void __cxa_bad_typeid(void) {
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
+  throw std::bad_typeid();
+#else
+  std::terminate();
+#endif
 }
 
-}  // extern "C"
-
-}  // abi
+_LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void
+__cxa_throw_bad_array_new_length(void) {
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
+  throw std::bad_array_new_length();
+#else
+  std::terminate();
+#endif
+}
+} // extern "C"
+} // abi

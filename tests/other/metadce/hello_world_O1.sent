@@ -1,0 +1,7 @@
+emscripten_get_sbrk_ptr
+emscripten_memcpy_big
+emscripten_resize_heap
+fd_write
+memory
+setTempRet0
+table

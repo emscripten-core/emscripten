@@ -53,6 +53,28 @@ To build with Emscripten, you would instead use the following commands:
   Some build systems may not properly emit bitcode using the above procedure, and you may see ``is not valid bitcode`` warnings. You can run ``file`` to check if a file contains bitcode (also you can manually check if the contents start with ``BC``). It is also worth running ``emmake make VERBOSE=1`` which will print out the commands it runs - you should see *emcc* being used, and not the native system compiler. If *emcc* is not used, you may need to modify the configure or cmake scripts.
 
 
+.. _building-projects-build-outputs:
+
+Emscripten build output files
+=============================
+
+Emscripten compiler output often consists of several files and not just one. The set of produced files changes depending on the final linker flags passed to `emcc/em++`. Here is a cheat sheet of which files are produced under which conditions:
+
+ - `emcc ... -o output.html` builds a `output.html` file as an output, as well as an accompanying `output.js` launcher file, and a `output.wasm` WebAssembly file.
+ - `emcc ... -o output.js` omits generating a HTML launcher file (expecting you to provide it yourself if you plan to run in browser), and produces two files, `output.js` and `output.wasm`. (that can be run in e.g. node.js shell)
+ - `emcc ... -o output.bc` does not produce a final asm.js/wasm build, but stops at LLVM bitcode generation stage, and produces a single LLVM bitcode file `output.bc`. Likewise only one bitcode file is produced if output suffix is `.ll`, `.o`, '.obj', '.lo', `.lib`, `.dylib` or `.so`.
+ - `emcc ... -o output.a` generates a single archive file `output.a`.
+ - `emcc ... -o output.{html,js} -s WASM=0` causes the compiler to target asm.js, and therefore a `.wasm` file is not produced.
+ - `emcc ... -o output.{html,js} -s WASM=0 --separate-asm` likewise targets asm.js, but splits up the generated code to two files, `output.js` and `output.asm.js`.
+ - `emcc ... -o output.html -s WASM=0 -s PRECISE_F32=2` (combination of targeting .html, asm.js and PRECISE_F32=2) implies as if `--separate-asm` was passed, so also produces `output.asm.js`.
+ - `emcc ... -o output.{html,js} --emit-symbol-map` produces a file `output.{html,js}.symbols` if WebAssembly is being targeted (`-s WASM=0` not specified), or if asm.js is being targeted and `-Os`, `-Oz` or `-O2` or higher is specified, but debug level setting is `-g1` or lower (i.e. if symbols minification did occur).
+ - `emcc ... -o output.{html,js} -s WASM=0 --memory-init-file 1` causes the generation of `output.{html,js}.mem` memory initializer file. Pasing `-O2`, `-Os` or `-Oz` also implies `--memory-init-file 1`.
+ - `emcc ... -o output.{html,js} -g4` generates a source map file `output.wasm.map`. If targeting asm.js with `-s WASM=0`, the filename is `output.{html,js}.map`.
+ - `emcc ... -o output.{html,js} --preload-file xxx` directive generates a preloaded MEMFS filesystem file `output.data`.
+ - `emcc ... -o output.{html,js} -s WASM={0,1} -s SINGLE_FILE=1` merges JavaScript and WebAssembly code in the single output file `output.{html,js}` (in base64) to produce only one file for deployment. (If paired with `--preload-file`, the preloaded `.data` file still exists as a separate file)
+
+This list is not exhaustive, but illustrates most commonly used combinations.
+
 .. _building-projects-optimizations:
 
 Building projects with optimizations
@@ -133,7 +155,7 @@ Using libraries
 
 Built-in support is available for a number of standard libraries: *libc*, *libc++* and *SDL*. These will automatically be linked when you compile code that uses them (you do not even need to add ``-lSDL``, but see below for more SDL-specific details).
 
-If your project uses other libraries, for example `zlib <https://github.com/kripken/emscripten/tree/master/tests/zlib>`_ or *glib*, you will need to build and link them. The normal approach is to build the libraries to bitcode and then compile library and main program bitcode together to JavaScript.
+If your project uses other libraries, for example `zlib <https://github.com/emscripten-core/emscripten/tree/master/tests/zlib>`_ or *glib*, you will need to build and link them. The normal approach is to build the libraries to bitcode and then compile library and main program bitcode together to JavaScript.
 
 For example, consider the case where a project "project" uses a library "libstuff":
 
@@ -181,7 +203,7 @@ You should see some notifications about SDL2 being used, and built if it wasn't 
 
 .. note:: *SDL_net* has also been added to ports, use it with ``-s USE_SDL_NET=2``. To see a list of all available ports, run ``emcc --show-ports``.
 
-.. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/kripken/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
+.. note:: Emscripten also has support for older SDL1, which is built-in. If you do not specify SDL2 as in the command above, then SDL1 is linked in and the SDL1 include paths are used. SDL1 has support for *sdl-config*, which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/master/system/bin/sdl-config>`_. Using the native *sdl-config* may result in compilation or missing-symbol errors. You will need to modify the build system to look for files in **emscripten/system** or **emscripten/system/bin** in order to use the Emscripten *sdl-config*.
 
 Adding more ports
 -----------------
@@ -202,7 +224,7 @@ Build system self-execution
 
 Some large projects generate executables and run them in order to generate input for later parts of the build process (for example, a parser may be built and then run on a grammar, which then generates C/C++ code that implements that grammar). This sort of build process causes problems when using Emscripten because you cannot directly run the code you are generating.
 
-The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/kripken/emscripten/blob/master/tests/python/readme.md>`_ for more details).
+The simplest solution is usually to build the project twice: once natively, and once to JavaScript. When the JavaScript build procedure fails because a generated executable is not present, you can then copy that executable from the native build, and continue to build normally. This approach was successfully used for compiling Python (see `tests/python/readme.md <https://github.com/emscripten-core/emscripten/blob/master/tests/python/readme.md>`_ for more details).
 
 In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
@@ -214,7 +236,7 @@ Emscripten's goal is to generate the fastest and smallest possible code, and for
 
 By default, Emscripten ``.so`` files are the same as ``.bc`` or ``.o`` files, that is, they contain LLVM bitcode. Dynamic libraries that you specify in the final build stage (when generating JavaScript or HTML) are linked in as static libraries. *Emcc* ignores commands to dynamically link libraries when linking together bitcode (i.e., not in the final build stage). This is to ensure that the same dynamic library is not linked multiple times in intermediate build stages, which would result in duplicate symbol errors.
 
-There is `experimental support <https://github.com/kripken/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
+There is `experimental support <https://github.com/emscripten-core/emscripten/wiki/Linking>`_ for true dynamic libraries, loaded as runtime, either via dlopen or as a shared library. See that link for the details and limitations.
 
 
 Configure may run checks that appear to fail
@@ -292,7 +314,7 @@ Emscripten provides the following preprocessor macros that can be used to identi
 Examples / test code
 ====================
 
-The Emscripten test suite (`tests/runner.py <https://github.com/kripken/emscripten/blob/master/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/kripken/emscripten/tree/master/tests/freetype>`_, `openjpeg <https://github.com/kripken/emscripten/tree/master/tests/openjpeg>`_, `zlib <https://github.com/kripken/emscripten/tree/master/tests/zlib>`_, `bullet <https://github.com/kripken/emscripten/tree/master/tests/bullet>`_ and `poppler <https://github.com/kripken/emscripten/tree/master/tests/poppler>`_.
+The Emscripten test suite (`tests/runner.py <https://github.com/emscripten-core/emscripten/blob/master/tests/runner.py>`_) contains a number of good examples — large C/C++ projects that are built using their normal build systems as described above: `freetype <https://github.com/emscripten-core/emscripten/tree/master/tests/freetype>`_, `openjpeg <https://github.com/emscripten-core/emscripten/tree/master/tests/openjpeg>`_, `zlib <https://github.com/emscripten-core/emscripten/tree/master/tests/zlib>`_, `bullet <https://github.com/emscripten-core/emscripten/tree/master/tests/bullet>`_ and `poppler <https://github.com/emscripten-core/emscripten/tree/master/tests/poppler>`_.
 
 It is also worth looking at the build scripts in the `ammo.js <https://github.com/kripken/ammo.js/blob/master/make.py>`_ project.
 
@@ -302,7 +324,17 @@ It is also worth looking at the build scripts in the `ammo.js <https://github.co
 Troubleshooting
 ===============
 
-- Make sure to use bitcode-aware *llvm-ar* instead of *ar* (which may discard code). *emmake* and *emconfigure* set the AR environment variable correctly, but a build system might incorrectly hardcode *ar*.
+- Make sure to use ``emar`` (which calls ``llvm-ar``), as the system ``ar`` may
+  not support our object files. ``emmake`` and ``emconfigure`` set the AR
+  environment variable correctly, but a build system might incorrectly hardcode
+  ``ar``.
+- Similarly, using the system ``ranlib`` instead of ``emranlib`` (which calls
+  ``llvm-ranlib``) may lead to problems, like not supporting our object files
+  and removing the index, leading to
+  ``archive has no index; run ranlib to add one`` from ``wasm-ld``. Again, using
+  ``emmake``/``emconfigure`` should avoid this by setting the env var RANLIB,
+  but a build system might have it hardcoded, or require you to
+  `pass an option <https://github.com/emscripten-core/emscripten/issues/9705#issuecomment-548199052>`_.
 -
   The compilation error ``multiply defined symbol`` indicates that the project has linked a particular static library multiple times. The project will need to be changed so that the problem library is linked only once.
 

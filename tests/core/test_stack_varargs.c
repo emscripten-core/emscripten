@@ -17,7 +17,7 @@ void func(int i) {
       i, i, i, i, i, i, i, i, i, i, i, i, i, i);
 }
 int main() {
-  for (int i = 0; i < 1024; i++) func(i);
+  for (int i = 0; i < 4 * 1024; i++) func(i);
   printf("ok!\n");
   return 0;
 }

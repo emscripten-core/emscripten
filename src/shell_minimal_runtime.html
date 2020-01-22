@@ -1,0 +1,176 @@
+<!doctype html><html lang="en-us"><head><meta charset="utf-8"></head>
+<body>
+<canvas style='display:block; margin:auto;'></canvas>
+<script>
+  function binary(url) { // Downloads a binary file and outputs it in the specified callback
+    return new Promise((ok, err) => {
+      var x = new XMLHttpRequest();
+      x.open('GET', url, true);
+      x.responseType = 'arraybuffer';
+      x.onload = () => { ok(x.response); }
+      x.send(null);
+    });
+  }
+
+  function script(url) { // Downloads a script file and adds it to DOM
+    return new Promise((ok, err) => {
+      var s = document.createElement('script');
+      s.src = url;
+      s.onload = () => {
+#if MODULARIZE
+        var c = {{{ EXPORT_NAME }}};
+        delete {{{ EXPORT_NAME }}};
+        ok(c);
+#else
+        ok();
+#endif
+      };
+      document.body.appendChild(s);
+    });
+  }
+
+#if !MODULARIZE
+  var Module = {};
+#endif
+
+function revokeURL(url) {
+  URL.revokeObjectURL(url)
+}
+
+// Depending on the build flags that one uses, different files need to be downloaded
+// to load the compiled page. What follows is a matrix of all different combinations that
+// affect how code is downloaded. When developing your own shell file, you can copy the whole
+// matrix, or just focus on a single/specific set of download schemes to use.
+
+#if MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 0
+  // Modularize + asm.js embedded in main runtime .js file, no separate .mem init file
+  script('{{{ TARGET_BASENAME }}}.js').then((r) => {
+    r();
+  });
+#endif
+
+#if MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 1
+  // Modularize + asm.js embedded in main runtime .js file, separate .mem init file
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+    var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+    js({ mem: r[1] });
+  });
+#endif
+
+#if MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 0
+  // Modularize + asm.js in its own file, no separate .mem init file
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
+    var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+    js({ asm: r[1] });
+  });
+#endif
+
+#if MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 1
+  // Modularize + asm.js in its own file, separate .mem init file
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+    var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+    js({ asm: r[1], mem: r[2] });
+  });
+#endif
+
+#if !MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 0
+  // No modularize, asm.js embedded in main runtime .js file, no separate .mem init file
+  script('{{{ TARGET_BASENAME }}}.js');
+#endif
+
+#if !MODULARIZE && !WASM && !SEPARATE_ASM && MEM_INIT_METHOD == 1
+  // No modularize, asm.js embedded in main runtime .js file, separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+    Module.mem = r[1];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => { revokeURL(url) });
+  });
+#endif
+
+#if !MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 0
+  // No modularize, asm.js in its own file, no separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js')]).then((r) => {
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => { revokeURL(url) });
+  });
+#endif
+
+#if !MODULARIZE && !WASM && SEPARATE_ASM && MEM_INIT_METHOD == 1
+  // No modularize, asm.js in its own file, separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), script('{{{ TARGET_BASENAME }}}.asm.js'), binary('{{{ TARGET_BASENAME }}}.mem')]).then((r) => {
+    Module.mem = r[2];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => { revokeURL(url) });
+  });
+#endif
+
+#if MODULARIZE && WASM && !MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+  // Modularized wasm, no separate .mem init file
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
+    var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+    js({ wasm: r[1] });
+  });
+#endif
+
+#if MODULARIZE && WASM && MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+  // Modularized wasm, no separate .mem init file
+  Promise.all([script('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
+    var js = r[0]; // Detour the JS code to a separate variable to avoid instantiating with 'r' as this to avoid strict ECMAScript/Firefox GC problems that cause a leak, see https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+    js({ wasm: r[1] });
+  });
+
+  // Modularize, no separate .mem init file, with streaming Wasm instantiation.
+  // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+  // Firefox 52 added Wasm support, but only Firefox 58 added instantiateStreaming.
+  // Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
+  // Node.js and Safari do not support instantiateStreaming.
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+  // Modularize, no separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), WebAssembly.instantiateStreaming && binary('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then((js) => {
+      js({ wasm: r[1] });
+      revokeURL(url);
+    });
+  });
+#else
+  // Modularize: WebAssembly.instantiateStreaming() is unconditionally supported - loading the .js file is very simple:
+  script('{{{ TARGET_BASENAME }}}.js').then((js) => {
+    js();
+  });
+#endif
+
+
+#endif
+
+#if !MODULARIZE && WASM && !MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+  // No modularize, no separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), {{{ DOWNLOAD_WASM }}}]).then((r) => {
+    Module.wasm = r[1];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => { revokeURL(url) });
+  });
+#endif
+
+#if !MODULARIZE && WASM && MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+  // No modularize, no separate .mem init file, with streaming Wasm instantiation.
+  // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
+  // Firefox 52 added Wasm support, but only Firefox 58 added instantiateStreaming.
+  // Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
+  // Node.js and Safari do not support instantiateStreaming.
+#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+  // No modularize, no separate .mem init file
+  Promise.all([binary('{{{ TARGET_BASENAME }}}.js'), WebAssembly.instantiateStreaming && binary('{{{ TARGET_BASENAME }}}.wasm')]).then((r) => {
+    Module.wasm = r[1];
+    var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));
+    script(url).then(() => { revokeURL(url) });
+  });
+#else
+  // WebAssembly.instantiateStreaming() is unconditionally supported - loading the .js file is very simple:
+  script('{{{ TARGET_BASENAME }}}.js');
+#endif
+#endif
+
+</script>
+</body>
+</html>

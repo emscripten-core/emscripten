@@ -22,7 +22,7 @@ The command below shows how to package files for preloading:
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file asset_dir
+    emcc file.cpp -o file.html --preload-file asset_dir
 
 The command generates **file.html**, **file.js** and **file.data**. The **.data** file contains all the files in **asset_dir/**, and is loaded by **file.js**.
 
@@ -33,7 +33,7 @@ The command for embedding is shown below. In this case *emcc* generates **file.h
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --embed-file asset_dir
+    emcc file.cpp -o file.html --embed-file asset_dir
 
 
 By default, the files to be packaged should be nested in or below the compile-time command prompt directory. At runtime the same nested file structure is mapped to the virtual file system, with the root corresponding to the command prompt directory.
@@ -42,7 +42,7 @@ For example, consider a file structure **dir1/dir2/dir3/asset_dir/** where the p
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file dir3/asset_dir
+    emcc file.cpp -o file.html --preload-file dir3/asset_dir
 
 The folder is available at this same location **dir3/asset_dir** in the virtual file system at runtime. Similarly, if we packaged a file in *dir2*, it would be available in the root of the virtual file system at runtime.
 
@@ -54,14 +54,15 @@ The ``@`` symbol can be used to map packaged files from any location in the loca
 Packaging using the file packager tool
 ======================================
 
-You can also run the *file packager* manually using the instructions at the top of `file_packager.py <https://github.com/kripken/emscripten/blob/master/tools/file_packager.py>`_.
+You can also run the *file packager* manually using the instructions at the top of `file_packager.py <https://github.com/emscripten-core/emscripten/blob/master/tools/file_packager.py>`_.
 
 The file packager generates a **.data** file and **.js** file. The **.js** file contains the code to use the data file, and must be loaded *before* loading your main compiled code.
+(For instance, add ``<script>`` tags at the end of your ``--shell-file`` right before ``{{{ SCRIPT }}}```.)
 
 .. note::
 
   -  Using the *file packager* allows you to run file packaging separately from compiling the code.
-  -  You can load multiple datafiles by running the file packager on each and loading the **.js** outputs. See `BananaBread <https://github.com/kripken/BananaBread>`_ for an example of this (`cube2/js/game-setup.js <https://github.com/kripken/BananaBread/blob/master/cube2/js/game-setup.js>`_).
+  -  You can load multiple datafiles by running the file packager on each and loading the **.js** outputs. See `BananaBread <https://github.com/kripken/BananaBread>`_ for an example of dynamic loading (`cube2/js/game-setup.js <https://github.com/kripken/BananaBread/blob/master/cube2/js/game-setup.js>`_).
 
 
 .. _packaging-files-data-file-location:
@@ -87,13 +88,13 @@ For example, we can map the preloaded folder **../../asset_dir** to the root of 
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --preload-file ../../asset_dir@/
+    emcc file.cpp -o file.html --preload-file ../../asset_dir@/
 
 We can also map a new path and filename. For example, to make the embedded file **../res/gen123.png** available as **/main.png** we might do:
 
 .. code-block:: bash
 
-    ./emcc file.cpp -o file.html --embed-file ../res/gen123.png@main.png
+    emcc file.cpp -o file.html --embed-file ../res/gen123.png@main.png
 
 
 .. _packaging-files-file-usage:
@@ -145,4 +146,4 @@ The following formats are supported:
 Test code
 =========
 
-The `test suite <https://github.com/kripken/emscripten/blob/master/tests/>`_ contains many file packaging examples, and is a good place to search for working code.
+The `test suite <https://github.com/emscripten-core/emscripten/blob/master/tests/>`_ contains many file packaging examples, and is a good place to search for working code.

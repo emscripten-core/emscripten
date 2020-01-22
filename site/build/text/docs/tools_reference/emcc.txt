@@ -1,4 +1,3 @@
-
 Emscripten Compiler Frontend (emcc)
 ***********************************
 
@@ -40,28 +39,24 @@ Options that are modified or new in *emcc* are listed below:
    No optimizations (default). This is the recommended setting for
    starting to port a project, as it includes various assertions.
 
+   This and other optimization settings are meaningful both during
+   compile and during link. During compile it affects LLVM
+   optimizations, and during link it affects final optimization of the
+   code in Binaryen as well as optimization of the JS. (For fast
+   incremental builds "-O0" is best, while for release you should link
+   with something higher.)
+
 "-O1"
-   Simple optimizations. These include using **asm.js**, LLVM "-O1"
-   optimizations, relooping, removing runtime assertions and C++
-   exception catching, and enabling "-s ALIASING_FUNCTION_POINTERS=1".
-   This is the recommended setting when you want a reasonably
-   optimized build that is generated as quickly as possible (it builds
-   much faster than "-O2").
-
-   Note:
-
-     * For details on the effects of different optimization levels,
-       see "apply_opt_level()" in tools/shared.py and also
-       src/settings.js.
-
-     * To re-enable C++ exception catching, use -s
-       DISABLE_EXCEPTION_CATCHING=0.
+   Simple optimizations. During the compile step these include LLVM
+   "-O1" optimizations. During the link step this removes various
+   runtime assertions in JS and also runs the Binaryen optimizer (that
+   makes link slower, so even if you compiled with a higher
+   optimization level, you may want to link with "-O0" for fast
+   incremental builds).
 
 "-O2"
-   Like "-O1", but with various JavaScript-level optimizations and
-   LLVM "-O3" optimizations.
-
-   Note: This is a reasonable setting for a release build.
+   Like "-O1", but enables more optimizations. During link this will
+   also enable various JavaScript optimizations.
 
    Note: These JavaScript optimizations can reduce code size by
      removing things that the compiler does not see being used, in
@@ -72,33 +67,30 @@ Options that are modified or new in *emcc* are listed below:
      "EXTRA_EXPORTED_RUNTIME_METHODS", see src/settings.js.
 
 "-O3"
-   Like "-O2", but with additional JavaScript optimizations that can
-   take a significant amount of compilation time.
+   Like "-O2", but with additional optimizations that may take longer
+   to run.
 
    Note: This is a good setting for a release build.
 
 "-Os"
-   Like "-O3", but with extra optimizations that reduce code size at
-   the expense of performance. This can affect both bitcode generation
-   and JavaScript.
+   Like "-O3", but focuses more on code size (and may make tradeoffs
+   with speed). This can affect both wasm and JavaScript.
 
 "-Oz"
-   Like "-Os", but reduces code size even further. This can affect
-   both bitcode generation and JavaScript.
-
-   For JavaScript, this turns on some code size reduction
-   optimizations that can take a significant amount of compilation
-   time.
+   Like "-Os", but reduces code size even further, and may take longer
+   to run. This can affect both wasm and JavaScript.
 
    Note: For more tips on optimizing your code, see Optimizing Code.
 
-"-s OPTION=VALUE"
+"-s OPTION[=VALUE]"
    JavaScript code generation option passed into the Emscripten
    compiler. For the available options, see src/settings.js.
 
    Note: You can prefix boolean options with "NO_" to reverse them.
      For example, "-s EXIT_RUNTIME=1" is the same as "-s
      NO_EXIT_RUNTIME=0".
+
+   Note: If no value is specifed it will default to "1".
 
    Note: For options that are lists, you need quotation marks (")
      around the list in most shells (to avoid errors being raised).
@@ -124,67 +116,37 @@ Options that are modified or new in *emcc* are listed below:
 "-g"
    Preserve debug information.
 
-   * When compiling to bitcode, this is the same as in *Clang* and
-     *gcc* (it adds debug information to the object files).
+   * When compiling to object files, this is the same as in *Clang*
+     and *gcc*, it adds debug information to the object files.
 
-   * When compiling from source to JavaScript or bitcode to
-     JavaScript, it is equivalent to -g3 (discards LLVM debug info
-     including C/C++ line numbers, but otherwise keeps as much debug
-     information as possible). Use -g4 to get line number debugging
-     information in JavaScript.
+   * When linking, this is equivalent to -g3 (preserve JS whitespace
+     and compiled function names).
 
 "-g<level>"
-   Controls how much debug information is kept when compiling from
-   bitcode to JavaScript. Each level builds on the previous level:
+   Controls the level of debuggability. Each level builds on the
+   previous one:
 
-      * "-g0": Make no effort to keep code debuggable. Will discard
-        LLVM debug information (this is done by default in -01 and
-        higher).
+      * "-g0": Make no effort to keep code debuggable.
 
-      * "-g1": Preserve whitespace (do not minify).
+      * "-g1": When linking, preserve whitespace in JavaScript.
 
-              function a(a, b) {
-                      a = a | 0;
-                      b = b | 0;
-                      f(a + b | 0);
-              }
+      * "-g2": When linking, preserve function names in compiled
+        code.
 
-      * "-g2": Preserve function names.
+      * "-g3": When compiling to object files, keep debug info (this
+        is the same as -g).
 
-              function _addAndPrint(a, b) {
-                      a = a | 0;
-                      b = b | 0;
-                      _printAnInteger(a + b | 0); // _printAnInteger is human readable.
-              }
+      * "-g4": When linking, generate a source map using LLVM debug
+        information (which must be present in object files, i.e., they
+        should have been compiled with "-g").
 
-      * "-g3": Preserve variable names (this is the same as -g).
+        Note:
 
-              function _addAndPrint($left, $right) {
-                      $left = $left | 0;
-                      $right = $right | 0;
-                      _printAnInteger($left + $right | 0);
-              }
+          * Source maps allow you to view and debug the *C/C++
+            source code* in your browser's debugger!
 
-           Note: Variable names in the output will not necessarily
-             match the original variable names in source. They are,
-             however, usually similar enough to infer the purpose of
-             the variables.
-
-      * "-g4": Preserve LLVM debug information. This is the highest
-        level of debuggability. If "-g" was used when compiling the
-        C/C++ sources, this shows line number debug comments, and
-        generates source maps.
-
-           Note:
-
-             * This debugging level may make compilation at
-               optimization level -O1 and above significantly slower,
-               because JavaScript optimization will be limited to one
-               core (the default in "-O0").
-
-             * Source maps allow you to view and debug the *C/C++
-               source code* in your browser's debugger! This works in
-               Firefox, Chrome and Safari.
+          * This debugging level may make compilation significantly
+            slower (this is why we only do it on "-g4").
 
 "--profiling"
    Use reasonable defaults when emitting JavaScript to make the build
@@ -223,9 +185,8 @@ Options that are modified or new in *emcc* are listed below:
    optimization level will set a good value.
 
    Note: Some options might override this flag (e.g. "EMTERPRETIFY",
-     "DEAD_FUNCTIONS", "OUTLINING_LIMIT", "SAFE_HEAP" and
-     "SPLIT_MEMORY" override the value with "js-opts=1"), because they
-     depend on the js-optimizer.
+     "DEAD_FUNCTIONS", "SAFE_HEAP" and "SPLIT_MEMORY" override the
+     value with "js-opts=1"), because they depend on the js-optimizer.
 
 "--llvm-opts <level>"
    Enables LLVM optimizations, relevant when we call the LLVM
@@ -482,6 +443,10 @@ Options that are modified or new in *emcc* are listed below:
 
 "--memory-init-file <on>"
    Specifies whether to emit a separate memory initialization file.
+
+      Note: Note that this is only relevant when *not* emitting
+        wasm, as wasm embeds the memory init data in the wasm binary.
+
    Possible "on" values are:
 
       * "0": Do not emit a separate memory initialization file.
@@ -497,21 +462,20 @@ Options that are modified or new in *emcc* are listed below:
         and applied; you cannot call any C functions until it arrives.
         This is the default setting when compiling with -O2 or higher.
 
-           Note: The safest way to ensure that it is safe to call C
-             functions (the initialisation file has loaded) is to call
-             a notifier function from "main()".
+        Note: The safest way to ensure that it is safe to call C
+          functions (the initialisation file has loaded) is to call a
+          notifier function from "main()".
 
-           Note: If you assign a network request to
-             "Module.memoryInitializerRequest" (before the script
-             runs), then it will use that request instead of
-             automatically starting a download for you. This is
-             beneficial in that you can, in your HTML, fire off a
-             request for the memory init file before the script
-             actually arrives. For this to work, the network request
-             should be an XMLHttpRequest with responseType set to
-             "'arraybuffer'". (You can also put any other object here,
-             all it must provide is a ".response" property containing
-             an ArrayBuffer.)
+        Note: If you assign a network request to
+          "Module.memoryInitializerRequest" (before the script runs),
+          then it will use that request instead of automatically
+          starting a download for you. This is beneficial in that you
+          can, in your HTML, fire off a request for the memory init
+          file before the script actually arrives. For this to work,
+          the network request should be an XMLHttpRequest with
+          responseType set to "'arraybuffer'". (You can also put any
+          other object here, all it must provide is a ".response"
+          property containing an ArrayBuffer.)
 
 "-Wwarn-absolute-paths"
    Enables warnings about the use of absolute paths in "-I" and "-L"
@@ -571,15 +535,24 @@ Options that are modified or new in *emcc* are listed below:
    The "target" file name extension defines the output type to be
    generated:
 
-      * <name> **.js** : JavaScript.
+      * <name> **.js** : JavaScript (+ separate **<name>.wasm** file
+        if emitting WebAssembly). (default)
+
+      * <name> **.mjs** : ES6 JavaScript module (+ separate
+        **<name>.wasm** file if emitting WebAssembly).
 
       * <name> **.html** : HTML + separate JavaScript file
-        (**<name>.js**). Having the separate JavaScript file improves
-        page load time.
+        (**<name>.js**; + separate **<name>.wasm** file if emitting
+        WebAssembly).
 
-      * <name> **.bc** : LLVM bitcode (default).
+      * <name> **.bc** : LLVM bitcode.
 
-      * <name> **.o** : LLVM bitcode (same as .bc).
+      * <name> **.o** : LLVM bitcode (same as .bc), unless in
+        *WASM_OBJECT_FILES* mode, in which case it will contain a
+        WebAssembly object.
+
+      * <name> **.wasm** : WebAssembly without JavaScript support
+        code ("standalone wasm"; this enables "STANDALONE_WASM").
 
    Note: If "--memory-init-file" is used, a **.mem** file will be
      created in addition to the generated **.js** and/or **.html**
@@ -618,8 +591,6 @@ Environment variables
    * "EMMAKEN_JUST_CONFIGURE"
 
    * "EMMAKEN_JUST_CONFIGURE_RECURSE"
-
-   * "EMCONFIGURE_JS"
 
    * "CONFIGURE_CC"
 

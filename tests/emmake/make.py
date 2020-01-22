@@ -5,6 +5,7 @@
 
 import os
 
+
 def which(program):
   def is_exe(fpath):
     return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
@@ -20,9 +21,12 @@ def which(program):
         return exe_file
   raise Exception('that is very bad')
 
-def test(what):
-  print(what)
-  print(which(os.getenv(what, '')))
+
+def test(var):
+  val = os.getenv(var, '')
+  print('%s=%s' % (var, val))
+  print(which(val))
+
 
 def check_ar():
   print("Testing...")
@@ -35,5 +39,5 @@ def check_ar():
   test("RANLIB")
   print("Done.")
 
-check_ar()
 
+check_ar()

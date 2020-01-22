@@ -84,18 +84,18 @@ int main()
   printf("Reject the pointer lock request after clicking on canvas.\n");
 
   // Make the canvas area stand out from the background.
-  emscripten_set_canvas_size(400, 300);
+  emscripten_set_canvas_element_size( "#canvas", 400, 300 );
   EM_ASM(Module['canvas'].style.backgroundColor = 'black';);
 
-  EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(0, 0, 1, click_callback);
+  EMSCRIPTEN_RESULT ret = emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, click_callback);
   TEST_RESULT(emscripten_set_click_callback);
-  ret = emscripten_set_pointerlockchange_callback("#window", 0, 1, pointerlockchange_callback);
+  ret = emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, pointerlockchange_callback);
   TEST_RESULT(emscripten_set_pointerlockchange_callback);
-  ret = emscripten_set_pointerlockerror_callback("#window", 0, 1, pointerlockerror_callback);
+  ret = emscripten_set_pointerlockerror_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, pointerlockerror_callback);
   TEST_RESULT(emscripten_set_pointerlockerror_callback);
 
   /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
      Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
-  EM_ASM(Module['noExitRuntime'] = true);
+  EM_ASM(noExitRuntime = true);
   return 0;
 }

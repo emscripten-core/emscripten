@@ -9,24 +9,30 @@ import shutil
 import tempfile
 import atexit
 import stat
+import sys
+
 
 # Attempts to delete given possibly nonexisting or read-only directory tree or filename.
 # If any failures occur, the function silently returns without throwing an error.
 def try_delete(pathname):
   try:
     os.unlink(pathname)
-  except:
+  except OSError:
     pass
-  if not os.path.exists(pathname): return
+  if not os.path.exists(pathname):
+    return
   try:
     shutil.rmtree(pathname, ignore_errors=True)
-  except:
+  except IOError:
     pass
-  if not os.path.exists(pathname): return
+  if not os.path.exists(pathname):
+    return
 
   write_bits = stat.S_IWRITE | stat.S_IWGRP | stat.S_IWOTH
+
   def is_writable(path):
     return (os.stat(path).st_mode & write_bits) == write_bits
+
   def make_writable(path):
     os.chmod(path, os.stat(path).st_mode | write_bits)
 
@@ -38,14 +44,15 @@ def try_delete(pathname):
 
   if os.path.isdir(pathname):
     for directory, subdirs, files in os.walk(pathname):
-      for item in files+subdirs:
+      for item in files + subdirs:
         i = os.path.join(directory, item)
         make_writable(i)
 
   try:
     shutil.rmtree(pathname, ignore_errors=True)
-  except:
+  except IOError:
     pass
+
 
 class TempFiles(object):
   def __init__(self, tmp, save_debug_files=False):
@@ -75,7 +82,8 @@ class TempFiles(object):
         return self_.file.name
 
       def __exit__(self_, type, value, traceback):
-        try_delete(self_.file.name)
+        if not self.save_debug_files:
+          try_delete(self_.file.name)
     return TempFileObject()
 
   def get_dir(self):
@@ -86,7 +94,6 @@ class TempFiles(object):
 
   def clean(self):
     if self.save_debug_files:
-      import sys
       print('not cleaning up temp files since in debug-save mode, see them in %s' % (self.tmp,), file=sys.stderr)
       return
     for filename in self.to_clean:

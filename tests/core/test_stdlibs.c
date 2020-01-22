@@ -23,9 +23,9 @@ int comparer(const void *a, const void *b) {
 
 int main() {
   // timeofday
-  timeval t;
+  struct timeval t;
   gettimeofday(&t, NULL);
-  printf("*%d,%d\n", int(t.tv_sec), int(t.tv_usec)); // should not crash
+  printf("*%d,%d\n", (int)t.tv_sec, (int)t.tv_usec); // should not crash
 
   // atexit
   atexit(clean);
@@ -50,7 +50,7 @@ int main() {
   printf("*%lu*\n", strtoul("0", NULL, 0));
   printf("*%lu*\n", strtoul("-10", NULL, 0));
 
-  malloc(0);
+  free(malloc(0));
   printf("*malloc(0) does not fail horribly (spec allows 0 or non-zero)*\n");
 
   printf("tolower_l: %c\n", tolower_l('A', 0));

@@ -28,7 +28,8 @@ int main()
     emscripten_fetch_close(fetch);
 
 #ifdef REPORT_RESULT
-    REPORT_RESULT(1);
+    // Fetch API appears to sometimes call the handlers more than once, see https://github.com/emscripten-core/emscripten/pull/8191
+    MAYBE_REPORT_RESULT(1);
 #endif
   };
 

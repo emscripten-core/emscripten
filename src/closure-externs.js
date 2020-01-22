@@ -6,7 +6,7 @@
  *
  * This file contains definitions for things that we'd really rather the closure compiler *didn't* minify.
  * See http://code.google.com/p/closure-compiler/wiki/FAQ#How_do_I_write_an_externs_file
- * See also the discussion here: https://github.com/kripken/emscripten/issues/1979
+ * See also the discussion here: https://github.com/emscripten-core/emscripten/issues/1979
  *
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
@@ -14,84 +14,51 @@
 // Closure externs used by library_sockfs.js
 
 /**
- BEGIN_NODE_INCLUDE
- var ws = require('ws');
- END_NODE_INCLUDE
- */
-
-/**
- * @type {Object.<string,*>}
- */
-var ws = {};
-
-/**
- * @param {string} event
- * @param {function()} callback
- */
-ws.on = function(event, callback) {};
-
-/**
- * @param {Object} data
- * @param {Object} flags
- * @param {function()=} callback
- */
-ws.send = function(data, flags, callback) {};
-
-/**
-* @type {boolean}
-*/
-ws.binaryType;
-
-/**
- * @type {Object.<string,*>}
- */
-var wss = ws.Server;
-
-/**
- * @param {string} event
- * @param {function()} callback
- */
-wss.on = function(event, callback) {};
-
-/**
- * @param {function()} callback
- */
-wss.broadcast = function(callback) {};
-
-/**
-* @type {Object.<string,*>}
-*/
-wss._socket;
-
-/**
-* @type {string}
-*/
-wss.url;
-
-/**
-* @type {string}
-*/
-wss._socket.remoteAddress;
-
-/**
-* @type {number}
-*/
-wss._socket.remotePort;
-
-/**
-* @type {Object.<string,*>}
-*/
-var flags = {};
-/**
-* @type {boolean}
-*/
-flags.binary;
-
-/**
  * Backported from latest closure...
  * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/currentScript
  */
 Document.prototype.currentScript;
+
+/**
+ * Don't minify Math.*
+ */
+/**
+ * @suppress {duplicate}
+ */
+var Math = {};
+Math.abs = function() {};
+Math.cos = function() {};
+Math.sin = function() {};
+Math.tan = function() {};
+Math.acos = function() {};
+Math.asin = function() {};
+Math.atan = function() {};
+Math.atan2 = function() {};
+Math.exp = function() {};
+Math.log = function() {};
+Math.sqrt = function() {};
+Math.ceil = function() {};
+Math.floor = function() {};
+Math.pow = function() {};
+Math.imul = function() {};
+Math.fround = function() {};
+Math.round = function() {};
+Math.min = function() {};
+Math.max = function() {};
+Math.clz32 = function() {};
+Math.trunc = function() {};
+
+/**
+ * Atomics
+ */
+
+var Atomics = {};
+Atomics.compareExchange = function() {};
+Atomics.exchange = function() {};
+Atomics.wait = function() {};
+Atomics.notify = function() {};
+Atomics.load = function() {};
+Atomics.store = function() {};
 
 /**
  * SIMD.js support (not in upstream closure yet).
@@ -807,12 +774,8 @@ SIMD.Bool32x4.fromFloat64x2 = function() {};
 SIMD.Bool64x2.fromFloat64x2 = function() {};
 
 /**
- * @suppress {duplicate}
- */
-var GLctx = {};
-
-/**
  * @const
+ * @suppress {duplicate}
  */
 var WebAssembly = {};
 /**
@@ -928,148 +891,6 @@ WebAssembly.Table.prototype.get = function(index) {};
  */
 WebAssembly.Table.prototype.set = function(index, value) {};
 
-// Random SpiderMonkey/V8 externs
-
-/**
- * @param {string} filename
- * @param {string} type
- * @return {string}
- */
-var read = function(filename, type) {};
-/**
- * @param {string} expression
- */
-var print = function(expression) {};
-/**
- * @param {string} expression
- */
-var printErr = function(expression) {};
-/**
- * @param {string} filename
- * @return {ArrayBuffer}
- */
-var readbuffer = function(filename) {};
-/**
- * @const
- */
-var scriptArgs = [];
-/**
- * @const
- */
-var quit = function() {};
-/**
- * @return {number}
- */
-var dateNow = function() {};
-/**
- * This is to prevent Closure Compiler to use `gc` as variable name anywhere, otherwise it might collide with SpiderMonkey's shell `gc()` function
- */
-var gc = function () {};
-
-// WebIDL
-
-/**
- * @suppress {duplicate}
- */
-var WrapperObject;
-/**
- * @suppress {duplicate}
- */
-var getCache;
-/**
- * @suppress {duplicate}
- */
-var wrapPointer;
-/**
- * @suppress {duplicate}
- */
-var castObject;
-/**
- * @suppress {duplicate}
- */
-var destroy;
-/**
- * @suppress {duplicate}
- */
-var compare;
-/**
- * @suppress {duplicate}
- */
-var getPointer;
-/**
- * @suppress {duplicate}
- */
-var getClass;
-/**
- * @suppress {duplicate}
- */
-var ensureCache;
-/**
- * @suppress {duplicate}
- */
-var ensureString;
-/**
- * @suppress {duplicate}
- */
-var ensureInt8;
-/**
- * @suppress {duplicate}
- */
-var ensureInt16;
-/**
- * @suppress {duplicate}
- */
-var ensureInt32;
-/**
- * @suppress {duplicate}
- */
-var ensureFloat32;
-/**
- * @suppress {duplicate}
- */
-var ensureFloat64;
-/**
- * @suppress {duplicate}
- */
-var VoidPtr;
-
-
-// Various Emscripten-specific global variables
-
-/**
- * @suppress {duplicate}
- */
-var tempRet0;
-var tempI64;
-var tempDouble;
-/**
- * @suppress {duplicate}
- */
-var WasmJS;
-
-// Various variables that get into WasmJS of Binaryen, but are not present in final build and never actually used (should probably be fixed in future)
-// These are only needed for `interpret-asm2wasm` and not for `asmjs` or `native-wasm`
-
-/**
- * @suppress {duplicate}
- */
-var Browser;
-/**
- * @suppress {duplicate}
- */
-var SOCKFS = {};
-/**
- * @suppress {duplicate}
- */
-var __read_sockaddr = function(addrp, addrlen) {};
-/**
- * @suppress {duplicate}
- */
-var DNS = {};
-/**
- * @suppress {duplicate}
- */
-var FS;
 /**
  * @suppress {undefinedVars}
  */
@@ -1081,62 +902,7 @@ var wakaUnknownBefore;
 /**
  * @suppress {undefinedVars}
  */
-var _scriptDir;
-/**
- * @suppress {duplicate}
- */
-var env;
-/**
- * @suppress {duplicate}
- */
-var ___cxa_free_exception = function() {};
-
-// On top of node externs to avoid some `declared more than once` errors
-
-/**
- * @suppress {duplicate}
- */
-var assert;
-/**
- * @suppress {duplicate}
- */
-var buffer;
-/**
- * @suppress {duplicate}
- */
-var fs;
-/**
- * @suppress {undefinedVars}
- */
-var FUNCTION_TABLE;
-/**
- * @suppress {undefinedVars}
- */
 var MozBlobBuilder;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var GL;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var WebGLClient;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var SDL;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var SDL2;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var JSEvents;
-/**
- * @suppress {undefinedVars}
- */
-var i64Math;
 
 // Module loaders externs, for AMD etc.
 
@@ -1146,165 +912,15 @@ var i64Math;
 var define = function (wrapper) {};
 
 /**
- * GL functions (https://github.com/kripken/emscripten/commit/97a464a654fdadf5dfb8aa082b48516e6bf8d402#commitcomment-25520648)
- */
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glDrawArrays;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glDrawElements;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glActiveTexture;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glEnable;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glDisable;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glTexEnvf;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glTexEnvi;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glTexEnvfv;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glGetIntegerv;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glIsEnabled;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glGetBooleanv;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glGetString;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glCreateShader;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glShaderSource;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glCompileShader;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glAttachShader;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glDetachShader;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glUseProgram;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glDeleteProgram;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glBindAttribLocation;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glLinkProgram;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glBindBuffer;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glGetFloatv;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glHint;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glEnableVertexAttribArray;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glDisableVertexAttribArray;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _emscripten_glVertexAttribPointer;
-
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glDrawArrays;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glDrawElements;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glTexEnvf;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glTexEnvi;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glTexEnvfv;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glGetTexEnviv;
-/**
- * @suppress {duplicate, undefinedVars}
- */
-var _glGetTexEnvfv;
-
-var _glutPostRedisplay = function() {};
-
-/**
- * @suppress {undefinedVars}
- */
-var emscripten_source_map;
-
-/**
  * @type {Worker}
  */
 var worker;
+
 /**
- * @type {number}
+ * @param {Object} message
  */
-var majorVersion;
-/**
- * @type {number}
- */
-var minorVersion;
+var onmessage = function(message) {};
+var onmessageerror = function() {};
 
 /**
  * @param {string} type
@@ -1313,27 +929,9 @@ var minorVersion;
 var addEventListener = function (type, listener) {};
 
 /**
- * @param {HTMLCanvasElement} canvas
- *
- * @suppress {duplicate}
- * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
+ * @type {Function}
  */
-var __registerRestoreOldStyle = function(canvas) {};
-
-/**
- * @param {HTMLCanvasElement} element
- * @param {number} topBottom
- * @param {number} leftRight
- *
- * @suppress {duplicate}
- * @todo: https://github.com/kripken/emscripten/commit/946a27ee58ddd6cdcfcc896fea0f8187e2263795#commitcomment-25545119
- */
-var __setLetterbox = function(element, topBottom, leftRight) {};
-
-/**
- * @param {Object} message
- */
-var onmessage = function(message) {};
+var close;
 
 // Fetch.js/Fetch Worker
 
@@ -1341,3 +939,36 @@ var onmessage = function(message) {};
  * @suppress {undefinedVars}
  */
 var ENVIRONMENT_IS_FETCH_WORKER;
+
+// Due to the way MODULARIZE works, Closure is run on generated code that does not define _scriptDir,
+// but only after MODULARIZE has finished, _scriptDir is injected to the generated code.
+// Therefore it cannot be minified.
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var _scriptDir;
+
+// Closure run on asm.js uses a hack to execute only on shell code, declare externs needed for it.
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaGlobal;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaEnv;
+/**
+ * @suppress {undefinedVars}
+ */
+var wakaBuffer;
+
+
+// Browser externs on global window object.
+var pageXOffset;
+var pageYOffset;
+var innerWidth;
+var innerHeight;
+var outerWidth;
+var outerHeight;
+var event;
+var devicePixelRatio;

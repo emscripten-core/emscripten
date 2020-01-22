@@ -868,6 +868,7 @@
         "defines": [
             "EOF", 
             "SEEK_END", 
+            "SEEK_CUR", 
             "SEEK_SET"
         ],
         "structs": {}
@@ -894,7 +895,11 @@
     {
         "file": "bits/mman.h",
         "defines": [
-            "MAP_PRIVATE"
+            "MAP_ANONYMOUS",
+            "MAP_FAILED",
+            "MAP_FIXED",
+            "MAP_PRIVATE",
+            "PROT_WRITE"
         ],
         "structs": {}
     },
@@ -1222,6 +1227,12 @@
             "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
             "EMSCRIPTEN_RESULT_FAILED",
             "EMSCRIPTEN_RESULT_NO_DATA",
+            "EMSCRIPTEN_RESULT_TIMED_OUT",
+
+            "EMSCRIPTEN_EVENT_TARGET_INVALID",
+            "EMSCRIPTEN_EVENT_TARGET_DOCUMENT",
+            "EMSCRIPTEN_EVENT_TARGET_WINDOW",
+            "EMSCRIPTEN_EVENT_TARGET_SCREEN",
 
             "EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT",
             "EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH",
@@ -1236,7 +1247,18 @@
 
             "EM_HTML5_SHORT_STRING_LEN_BYTES",
             "EM_HTML5_MEDIUM_STRING_LEN_BYTES",
-            "EM_HTML5_LONG_STRING_LEN_BYTES"
+            "EM_HTML5_LONG_STRING_LEN_BYTES",
+
+            "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW",
+            "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK",
+            "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS",
+
+            "EM_CALLBACK_THREAD_CONTEXT_MAIN_BROWSER_THREAD",
+            "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD",
+
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION",
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY",
+            "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE"
         ],
         "structs": {
             "EmscriptenKeyboardEvent": [
@@ -1255,7 +1277,6 @@
               "which"
             ],
             "EmscriptenMouseEvent": [
-              "timestamp",
               "screenX",
               "screenY",
               "clientX",
@@ -1296,14 +1317,12 @@
               "id"
             ],
             "EmscriptenDeviceOrientationEvent": [
-              "timestamp",
               "alpha",
               "beta",
               "gamma",
               "absolute"
             ],
             "EmscriptenDeviceMotionEvent": [
-              "timestamp",
               "accelerationX",
               "accelerationY",
               "accelerationZ",
@@ -1385,12 +1404,13 @@
               "antialias",
               "premultipliedAlpha",
               "preserveDrawingBuffer",
-              "preferLowPowerToHighPerformance",
+              "powerPreference",
               "failIfMajorPerformanceCaveat",
               "majorVersion",
               "minorVersion",
               "enableExtensionsByDefault",
               "explicitSwapControl",
+              "proxyContextToMainThread",
               "renderViaOffscreenBackBuffer"
             ],
             "EmscriptenFullscreenStrategy": [
@@ -1398,7 +1418,8 @@
               "canvasResolutionScaleMode",
               "filteringMode",
               "canvasResizedCallback",
-              "canvasResizedCallbackUserData"
+              "canvasResizedCallbackUserData",
+              "canvasResizedCallbackTargetThread"
             ]
         }
     },
@@ -1486,12 +1507,31 @@
         "defines": [
             "EM_PROXIED_PTHREAD_CREATE",
             "EM_PROXIED_SYSCALL",
+            "EM_PROXIED_CREATE_CONTEXT",
+            "EM_PROXIED_RESIZE_OFFSCREENCANVAS",
+            "EM_PROXIED_JS_FUNCTION",
+            "EM_QUEUED_CALL_MAX_ARGS",
+            "EM_QUEUED_JS_CALL_MAX_ARGS",
             "EM_THREAD_STATUS_NOTSTARTED",
             "EM_THREAD_STATUS_RUNNING",
             "EM_THREAD_STATUS_SLEEPING",
             "EM_THREAD_STATUS_WAITFUTEX",
             "EM_THREAD_STATUS_WAITPROXY",
-            "EM_THREAD_STATUS_FINISHED"
+            "EM_THREAD_STATUS_FINISHED",
+            "EM_FUNC_SIG_V",
+            "EM_FUNC_SIG_VI",
+            "EM_FUNC_SIG_VII",
+            "EM_FUNC_SIG_VIII",
+            "EM_FUNC_SIG_I",
+            "EM_FUNC_SIG_II",
+            "EM_FUNC_SIG_III",
+            "EM_FUNC_SIG_IIII",
+            "EM_FUNC_SIG_PARAM_I",
+            "EM_FUNC_SIG_PARAM_I64",
+            "EM_FUNC_SIG_PARAM_F",
+            "EM_FUNC_SIG_PARAM_D",
+            "EM_FUNC_SIG_PARAM_B",
+            "EM_FUNC_SIG_PARAM_F2I"
             ]
     },
     {
@@ -1523,6 +1563,88 @@
         "structs": {
             "libc": [
               "global_locale"
+            ]
+        },
+        "defines": [
+            "__WASI_FILETYPE_CHARACTER_DEVICE",
+            "__WASI_FILETYPE_DIRECTORY",
+            "__WASI_FILETYPE_REGULAR_FILE",
+            "__WASI_FILETYPE_SYMBOLIC_LINK"
+        ]
+    },
+    {
+        "file": "wasi/api.h",
+        "structs": {
+            "__wasi_fdstat_t": [
+                "fs_filetype",
+                "fs_flags",
+                "fs_rights_base",
+                "fs_rights_inheriting"
+            ]
+        },
+        "defines": []
+    },
+    {
+        "file": "emscripten/fetch.h",
+        "structs": {
+            "emscripten_fetch_attr_t": [
+                "requestMethod",
+                "userData",
+                "onsuccess",
+                "onerror",
+                "onprogress",
+                "onreadystatechange",
+                "attributes",
+                "timeoutMSecs",
+                "withCredentials",
+                "destinationPath",
+                "userName",
+                "password",
+                "requestHeaders",
+                "overriddenMimeType",
+                "requestData",
+                "requestDataSize"
+            ],
+            "emscripten_fetch_t": [
+                "id",
+                "userData",
+                "url",
+                "data",
+                "numBytes",
+                "dataOffset",
+                "totalBytes",
+                "readyState",
+                "status",
+                "statusText",
+                "__proxyState",
+                "__attributes"
+            ]
+        },
+        "defines": ["EMSCRIPTEN_FETCH_LOAD_TO_MEMORY",
+            "EMSCRIPTEN_FETCH_STREAM_DATA",
+            "EMSCRIPTEN_FETCH_PERSIST_FILE",
+            "EMSCRIPTEN_FETCH_APPEND",
+            "EMSCRIPTEN_FETCH_REPLACE",
+            "EMSCRIPTEN_FETCH_NO_DOWNLOAD",
+            "EMSCRIPTEN_FETCH_SYNCHRONOUS",
+            "EMSCRIPTEN_FETCH_WAITABLE"
+        ]
+    },
+    {
+        "file": "emscripten/fiber.h",
+        "structs": {
+            "asyncify_data_s": [
+                "stack_ptr",
+                "stack_limit",
+                "rewind_id"
+            ],
+            "emscripten_fiber_s": [
+                "stack_base",
+                "stack_limit",
+                "stack_ptr",
+                "entry",
+                "user_data",
+                "asyncify_data"
             ]
         },
         "defines": []

@@ -64,14 +64,14 @@ domain.Domain.prototype.add = function(emitter) {};
 domain.Domain.prototype.remove = function(emitter) {};
 
 /**
- * @param {function(...[*])} callback
- * @return {function(...[*])}
+ * @param {function(...*)} callback
+ * @return {function(...*)}
  */
 domain.Domain.prototype.bind = function(callback) {};
 
 /**
- * @param {function(...[*])} callback
- * @return {function(...[*])}
+ * @param {function(...*)} callback
+ * @return {function(...*)}
  */
 domain.Domain.prototype.intercept = function(callback) {};
 

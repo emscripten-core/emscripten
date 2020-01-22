@@ -10,6 +10,7 @@ import subprocess
 import re
 import json
 import shutil
+import tempfile
 import logging
 import traceback
 
@@ -26,12 +27,11 @@ def process_shell(js_engine, shell, equivalentfn_hash_info=None):
   suffix = '.eliminatedupes'
 
   with temp_files.get_file(suffix + '.js') as temp_file:
-    f = open(temp_file, 'w')
-    f.write(shell)
-    f.write('\n')
+    with open(temp_file, 'w') as f:
+      f.write(shell)
+      f.write('\n')
 
-    f.write(equivalentfn_hash_info)
-    f.close()
+      f.write(equivalentfn_hash_info)
 
     proc = shared.run_process(
         js_engine +
@@ -68,9 +68,8 @@ def run_on_chunk(command):
     assert len(output) and not output.startswith('Assertion failed'), 'Error in optimizer: ' + output
     filename = temp_files.get(os.path.basename(filename) + '.dfjo' + file_suffix).name
 
-    f = open(filename, 'w')
-    f.write(output)
-    f.close()
+    with open(filename, 'w') as f:
+      f.write(output)
     if DEBUG and not shared.WINDOWS:
       print('.', file=sys.stderr) # Skip debug progress indicator on Windows, since it doesn't buffer well with multiple threads printing to console.
     return filename
@@ -252,13 +251,11 @@ def run_on_js(filename, gen_hash_info=False):
   if len(chunks):
     def write_chunk(chunk, i):
       temp_file = temp_files.get('.jsfunc_%d.js' % i).name
-      f = open(temp_file, 'w')
-      f.write(chunk)
-
-      if not gen_hash_info:
-        f.write('\n')
-        f.write(equivalentfn_hash_info)
-      f.close()
+      with open(temp_file, 'w') as f:
+        f.write(chunk)
+        if not gen_hash_info:
+          f.write('\n')
+          f.write(equivalentfn_hash_info)
       return temp_file
     filenames = [write_chunk(chunks[i], i) for i in range(len(chunks))]
   else:
@@ -336,7 +333,7 @@ def save_temp_file(file_to_process):
   if os.environ.get('EMSCRIPTEN_SAVE_TEMP_FILES') and os.environ.get('EMSCRIPTEN_TEMP_FILES_DIR'):
     destinationFile = file_to_process
 
-    temp_dir_name = os.environ.get('TEMP_DIR')
+    temp_dir_name = tempfile.gettempdir()
     destinationFile = destinationFile.replace(temp_dir_name, os.environ.get('EMSCRIPTEN_TEMP_FILES_DIR'))
 
     if not os.path.exists(os.path.dirname(destinationFile)):
@@ -359,7 +356,7 @@ def get_func_names(javascript_file):
     end_off = blob.find(end_tok)
     asm_chunk = blob[start_off:end_off]
 
-    for match in re.finditer('function (\S+?)\s*\(', asm_chunk):
+    for match in re.finditer(r'function (\S+?)\s*\(', asm_chunk):
       func_names.append(match.groups(1)[0])
 
   return func_names

@@ -4,7 +4,7 @@
 // found in the LICENSE file.
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser'],
+  $GLUT__deps: ['$Browser', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -54,11 +54,11 @@ var LibraryGLUT = {
       if (GLUT.buttons == 0 && event.target == Module["canvas"] && GLUT.passiveMotionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Module['dynCall_vii'](GLUT.passiveMotionFunc, lastX, lastY);
+        {{{ makeDynCall('vii') }}}(GLUT.passiveMotionFunc, lastX, lastY);
       } else if (GLUT.buttons != 0 && GLUT.motionFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Module['dynCall_vii'](GLUT.motionFunc, lastX, lastY);
+        {{{ makeDynCall('vii') }}}(GLUT.motionFunc, lastX, lastY);
       }
     },
 
@@ -129,7 +129,7 @@ var LibraryGLUT = {
       if (65 <= keycode && keycode <= 90)
         return event['shiftKey'] ? keycode : keycode + 32;
       if (96 <= keycode && keycode <= 105)
-        return keycode - 48; // numpad numbers    
+        return keycode - 48; // numpad numbers
       if (106 <= keycode && keycode <= 111)
         return keycode - 106 + 42; // *,+-./  TODO handle shift?
 
@@ -166,7 +166,7 @@ var LibraryGLUT = {
           if( GLUT.specialFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            Module['dynCall_viii'](GLUT.specialFunc, key, Browser.mouseX, Browser.mouseY);
+            {{{ makeDynCall('viii') }}}(GLUT.specialFunc, key, Browser.mouseX, Browser.mouseY);
           }
         }
         else
@@ -175,7 +175,7 @@ var LibraryGLUT = {
           if( key !== null && GLUT.keyboardFunc ) {
             event.preventDefault();
             GLUT.saveModifiers(event);
-            Module['dynCall_viii'](GLUT.keyboardFunc, key, Browser.mouseX, Browser.mouseY);
+            {{{ makeDynCall('viii') }}}(GLUT.keyboardFunc, key, Browser.mouseX, Browser.mouseY);
           }
         }
       }
@@ -188,7 +188,7 @@ var LibraryGLUT = {
           if(GLUT.specialUpFunc) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            Module['dynCall_viii'](GLUT.specialUpFunc, key, Browser.mouseX, Browser.mouseY);
+            {{{ makeDynCall('viii') }}}(GLUT.specialUpFunc, key, Browser.mouseX, Browser.mouseY);
           }
         }
         else
@@ -197,7 +197,7 @@ var LibraryGLUT = {
           if( key !== null && GLUT.keyboardUpFunc ) {
             event.preventDefault ();
             GLUT.saveModifiers(event);
-            Module['dynCall_viii'](GLUT.keyboardUpFunc, key, Browser.mouseX, Browser.mouseY);
+            {{{ makeDynCall('viii') }}}(GLUT.keyboardUpFunc, key, Browser.mouseX, Browser.mouseY);
           }
         }
       }
@@ -220,9 +220,9 @@ var LibraryGLUT = {
       }
 
       var simulatedEvent = document.createEvent("MouseEvent");
-      simulatedEvent.initMouseEvent(type, true, true, window, 1, 
-                                    main.screenX, main.screenY, 
-                                    main.clientX, main.clientY, false, 
+      simulatedEvent.initMouseEvent(type, true, true, window, 1,
+                                    main.screenX, main.screenY,
+                                    main.clientX, main.clientY, false,
                                     false, false, false, 0/*main*/, null);
 
       main.target.dispatchEvent(simulatedEvent);
@@ -240,7 +240,7 @@ var LibraryGLUT = {
         } catch (e) {}
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Module['dynCall_viiii'](GLUT.mouseFunc, event['button'], 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('viiii') }}}(GLUT.mouseFunc, event['button'], 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY);
       }
     },
 
@@ -252,7 +252,7 @@ var LibraryGLUT = {
       if (GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Module['dynCall_viiii'](GLUT.mouseFunc, event['button'], 1/*GLUT_UP*/, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('viiii') }}}(GLUT.mouseFunc, event['button'], 1/*GLUT_UP*/, Browser.mouseX, Browser.mouseY);
       }
     },
 
@@ -273,7 +273,7 @@ var LibraryGLUT = {
       if (GLUT.mouseFunc) {
         event.preventDefault();
         GLUT.saveModifiers(event);
-        Module['dynCall_viiii'](GLUT.mouseFunc, button, 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY);
+        {{{ makeDynCall('viiii') }}}(GLUT.mouseFunc, button, 0/*GLUT_DOWN*/, Browser.mouseX, Browser.mouseY);
       }
     },
 
@@ -298,44 +298,19 @@ var LibraryGLUT = {
       /* Can't call _glutReshapeWindow as that requests cancelling fullscreen. */
       if (GLUT.reshapeFunc) {
         // console.log("GLUT.reshapeFunc (from FS): " + width + ", " + height);
-        Module['dynCall_vii'](GLUT.reshapeFunc, width, height);
+        {{{ makeDynCall('vii') }}}(GLUT.reshapeFunc, width, height);
       }
       _glutPostRedisplay();
-    },
-
-    requestFullscreen: function() {
-      Browser.requestFullscreen(/*lockPointer=*/false, /*resizeCanvas=*/false);
-    },
-
-    requestFullScreen: function() {
-      err('GLUT.requestFullScreen() is deprecated. Please call GLUT.requestFullscreen instead.');
-      GLUT.requestFullScreen = function() {
-        return GLUT.requestFullscreen();
-      }
-      return GLUT.requestFullscreen();
-    },
-
-    exitFullscreen: function() {
-      var CFS = document['exitFullscreen'] ||
-                document['cancelFullScreen'] ||
-                document['mozCancelFullScreen'] ||
-                document['webkitCancelFullScreen'] ||
-          (function() {});
-      CFS.apply(document, []);
-    },
-
-    cancelFullScreen: function() {
-      err('GLUT.cancelFullScreen() is deprecated. Please call GLUT.exitFullscreen instead.');
-      GLUT.cancelFullScreen = function() {
-        return GLUT.exitFullscreen();
-      }
-      return GLUT.exitFullscreen();
     }
   },
 
+  glutGetModifiers__proxy: 'sync',
+  glutGetModifiers__sig: 'i',
   glutGetModifiers: function() { return GLUT.modifiers; },
 
   glutInit__deps: ['$Browser'],
+  glutInit__proxy: 'sync',
+  glutInit__sig: 'vii',
   glutInit: function(argcp, argv) {
     // Ignore arguments
     GLUT.initTime = Date.now();
@@ -368,7 +343,7 @@ var LibraryGLUT = {
 
     Browser.resizeListeners.push(function(width, height) {
       if (GLUT.reshapeFunc) {
-        Module['dynCall_vii'](GLUT.reshapeFunc, width, height);
+        {{{ makeDynCall('vii') }}}(GLUT.reshapeFunc, width, height);
       }
     });
 
@@ -393,11 +368,15 @@ var LibraryGLUT = {
     });
   },
 
+  glutInitWindowSize__proxy: 'sync',
+  glutInitWindowSize__sig: 'vii',
   glutInitWindowSize: function(width, height) {
     Browser.setCanvasSize( GLUT.initWindowWidth = width,
                            GLUT.initWindowHeight = height );
   },
 
+  glutInitWindowPosition__proxy: 'sync',
+  glutInitWindowPosition__sig: 'vii',
   glutInitWindowPosition: function(x, y) {
     // Ignore for now
   },
@@ -441,10 +420,12 @@ var LibraryGLUT = {
     }
   },
 
+  glutIdleFunc__proxy: 'sync',
+  glutIdleFunc__sig: 'vi',
   glutIdleFunc: function(func) {
     function callback() {
       if (GLUT.idleFunc) {
-        Module['dynCall_v'](GLUT.idleFunc);
+        {{{ makeDynCall('v') }}}(GLUT.idleFunc);
         Browser.safeSetTimeout(callback, 4); // HTML spec specifies a 4ms minimum delay on the main thread; workers might get more, but we standardize here
       }
     }
@@ -454,46 +435,68 @@ var LibraryGLUT = {
     GLUT.idleFunc = func;
   },
 
+  glutTimerFunc__proxy: 'sync',
+  glutTimerFunc__sig: 'viii',
   glutTimerFunc: function(msec, func, value) {
-    Browser.safeSetTimeout(function() { Module['dynCall_vi'](func, value); }, msec);
+    Browser.safeSetTimeout(function() { {{{ makeDynCall('vi') }}}(func, value); }, msec);
   },
 
+  glutDisplayFunc__proxy: 'sync',
+  glutDisplayFunc__sig: 'vi',
   glutDisplayFunc: function(func) {
     GLUT.displayFunc = func;
   },
 
+  glutKeyboardFunc__proxy: 'sync',
+  glutKeyboardFunc__sig: 'vi',
   glutKeyboardFunc: function(func) {
     GLUT.keyboardFunc = func;
   },
 
+  glutKeyboardUpFunc__proxy: 'sync',
+  glutKeyboardUpFunc__sig: 'vi',
   glutKeyboardUpFunc: function(func) {
     GLUT.keyboardUpFunc = func;
   },
 
+  glutSpecialFunc__proxy: 'sync',
+  glutSpecialFunc__sig: 'vi',
   glutSpecialFunc: function(func) {
     GLUT.specialFunc = func;
   },
 
+  glutSpecialUpFunc__proxy: 'sync',
+  glutSpecialUpFunc__sig: 'vi',
   glutSpecialUpFunc: function(func) {
     GLUT.specialUpFunc = func;
   },
 
+  glutReshapeFunc__proxy: 'sync',
+  glutReshapeFunc__sig: 'vi',
   glutReshapeFunc: function(func) {
     GLUT.reshapeFunc = func;
   },
 
+  glutMotionFunc__proxy: 'sync',
+  glutMotionFunc__sig: 'vi',
   glutMotionFunc: function(func) {
     GLUT.motionFunc = func;
   },
 
+  glutPassiveMotionFunc__proxy: 'sync',
+  glutPassiveMotionFunc__sig: 'vi',
   glutPassiveMotionFunc: function(func) {
     GLUT.passiveMotionFunc = func;
   },
 
+  glutMouseFunc__proxy: 'sync',
+  glutMouseFunc__sig: 'vi',
   glutMouseFunc: function(func) {
     GLUT.mouseFunc = func;
   },
 
+  glutSetCursor__proxy: 'sync',
+  glutSetCursor__sig: 'vi',
   glutSetCursor: function(cursor) {
     var cursorStyle = 'auto';
     switch(cursor) {
@@ -568,8 +571,10 @@ var LibraryGLUT = {
     }
     Module['canvas'].style.cursor = cursorStyle;
   },
-  
+
+  glutCreateWindow__proxy: 'sync',
   glutCreateWindow__deps: ['$Browser'],
+  glutCreateWindow__sig: 'ii',
   glutCreateWindow: function(name) {
     var contextAttributes = {
       antialias: ((GLUT.initDisplayMode & 0x0080 /*GLUT_MULTISAMPLE*/) != 0),
@@ -585,31 +590,39 @@ var LibraryGLUT = {
     return Module.ctx ? 1 /* a new GLUT window ID for the created context */ : 0 /* failure */;
   },
 
+  glutDestroyWindow__proxy: 'sync',
   glutDestroyWindow__deps: ['$Browser'],
+  glutDestroyWindow__sig: 'ii',
   glutDestroyWindow: function(name) {
     Module.ctx = Browser.destroyContext(Module['canvas'], true, true);
     return 1;
   },
 
+  glutReshapeWindow__proxy: 'sync',
   glutReshapeWindow__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutReshapeWindow__sig: 'vi',
   glutReshapeWindow: function(width, height) {
-    GLUT.exitFullscreen();
+    Browser.exitFullscreen();
     Browser.setCanvasSize(width, height, true); // N.B. GLUT.reshapeFunc is also registered as a canvas resize callback.
                                                 // Just call it once here.
     if (GLUT.reshapeFunc) {
-      Module['dynCall_vii'](GLUT.reshapeFunc, width, height);
+      {{{ makeDynCall('vii') }}}(GLUT.reshapeFunc, width, height);
     }
     _glutPostRedisplay();
   },
 
+  glutPositionWindow__proxy: 'sync',
   glutPositionWindow__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutPositionWindow__sig: 'vii',
   glutPositionWindow: function(x, y) {
-    GLUT.exitFullscreen();
+    Browser.exitFullscreen();
     /* TODO */
     _glutPostRedisplay();
   },
 
+  glutFullScreen__proxy: 'sync',
   glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutFullScreen__sig: 'v',
   glutFullScreen: function() {
     GLUT.windowX = 0; // TODO
     GLUT.windowY = 0; // TODO
@@ -618,36 +631,43 @@ var LibraryGLUT = {
     document.addEventListener('fullscreenchange', GLUT.onFullscreenEventChange, true);
     document.addEventListener('mozfullscreenchange', GLUT.onFullscreenEventChange, true);
     document.addEventListener('webkitfullscreenchange', GLUT.onFullscreenEventChange, true);
-    GLUT.requestFullscreen();
+    Browser.requestFullscreen(/*lockPointer=*/false, /*resizeCanvas=*/false);
   },
 
+  glutInitDisplayMode__proxy: 'sync',
+  glutInitDisplayMode__sig: 'vi',
   glutInitDisplayMode: function(mode) {
     GLUT.initDisplayMode = mode;
   },
 
+  glutSwapBuffers__proxy: 'sync',
+  glutSwapBuffers__sig: 'v',
   glutSwapBuffers: function() {},
 
+  glutPostRedisplay__proxy: 'sync',
+  glutPostRedisplay__sig: 'v',
   glutPostRedisplay: function() {
     if (GLUT.displayFunc && !GLUT.requestedAnimationFrame) {
       GLUT.requestedAnimationFrame = true;
       Browser.requestAnimationFrame(function() {
         GLUT.requestedAnimationFrame = false;
         Browser.mainLoop.runIter(function() {
-          Module['dynCall_v'](GLUT.displayFunc);
+          {{{ makeDynCall('v') }}}(GLUT.displayFunc);
         });
       });
     }
   },
 
+  glutMainLoop__proxy: 'sync',
   glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
+  glutMainLoop__sig: 'v',
   glutMainLoop: function() {
     _glutReshapeWindow(Module['canvas'].width, Module['canvas'].height);
     _glutPostRedisplay();
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
 };
 
 autoAddDeps(LibraryGLUT, '$GLUT');
 mergeInto(LibraryManager.library, LibraryGLUT);
-

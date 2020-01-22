@@ -144,9 +144,9 @@ load('utility.js');
 // Load settings, can be overridden by commandline
 
 load('settings.js');
+load('settings_internal.js');
 
 var settings_file = arguments_[0];
-additionalLibraries = Array.prototype.slice.call(arguments_, 1);
 
 if (settings_file) {
   var settings = JSON.parse(read(settings_file));
@@ -168,10 +168,7 @@ if (settings_file) {
 EXPORTED_FUNCTIONS = set(EXPORTED_FUNCTIONS);
 EXCEPTION_CATCHING_WHITELIST = set(EXCEPTION_CATCHING_WHITELIST);
 IMPLEMENTED_FUNCTIONS = set(IMPLEMENTED_FUNCTIONS);
-
-// TODO: Implement support for proper preprocessing, e.g. "#if A || B" and "#if defined(A) || defined(B)" to
-// avoid needing this here.
-USES_GL_EMULATION = FULL_ES2 || LEGACY_GL_EMULATION;
+INCOMING_MODULE_JS_API = set(INCOMING_MODULE_JS_API);
 
 DEAD_FUNCTIONS.forEach(function(dead) {
   DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.push(dead.substr(1));
@@ -184,35 +181,38 @@ RUNTIME_DEBUG = LIBRARY_DEBUG || GL_DEBUG;
 
 if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slow down compilation');
 
-if (!BOOTSTRAPPING_STRUCT_INFO && !ONLY_MY_CODE) {
-  // Load struct and define information.
-  var temp = JSON.parse(read(STRUCT_INFO));
-  C_STRUCTS = temp.structs;
-  C_DEFINES = temp.defines;
-} else {
-  C_STRUCTS = {};
-  C_DEFINES = {};
-}
-
 // Load compiler code
 
 load('modules.js');
 load('parseTools.js');
 load('jsifier.js');
 globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
-Runtime.QUANTUM_SIZE = QUANTUM_SIZE;
+Runtime.QUANTUM_SIZE = 4;
 
 // State computations
 
-ENVIRONMENT_MAY_BE_WEB    = !ENVIRONMENT || ENVIRONMENT === 'web';
-ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENT === 'worker';
-ENVIRONMENT_MAY_BE_NODE   = !ENVIRONMENT || ENVIRONMENT === 'node';
-ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENT === 'shell';
+var ENVIRONMENTS = ENVIRONMENT.split(',');
+ENVIRONMENT_MAY_BE_WEB    = !ENVIRONMENT || ENVIRONMENTS.indexOf('web') >= 0;
+ENVIRONMENT_MAY_BE_NODE   = !ENVIRONMENT || ENVIRONMENTS.indexOf('node') >= 0;
+ENVIRONMENT_MAY_BE_SHELL  = !ENVIRONMENT || ENVIRONMENTS.indexOf('shell') >= 0;
 
-ENVIRONMENT_MAY_BE_WEB_OR_WORKER = ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER;
+// The worker case also includes Node.js workers when pthreads are
+// enabled and Node.js is one of the supported environments for the build to
+// run on. Node.js workers are detected as a combination of
+// ENVIRONMENT_IS_WORKER and ENVIRONMENT_HAS_NODE.
+ENVIRONMENT_MAY_BE_WORKER = !ENVIRONMENT || ENVIRONMENTS.indexOf('worker') >= 0 ||
+                            (ENVIRONMENT_MAY_BE_NODE && USE_PTHREADS);
 
 if (ENVIRONMENT && !(ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL)) {
   throw 'Invalid environment specified in "ENVIRONMENT": ' + ENVIRONMENT + '. Should be one of: web, worker, node, shell.';
+}
+
+if (!ENVIRONMENT_MAY_BE_WORKER && PROXY_TO_WORKER) {
+  throw 'If you specify --proxy-to-worker and specify a "-s ENVIRONMENT=" directive, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
+}
+
+if (!ENVIRONMENT_MAY_BE_WORKER && USE_PTHREADS) {
+  throw 'When building with multithreading enabled and a "-s ENVIRONMENT=" directive is specified, it must include "worker" as a target! (Try e.g. -s ENVIRONMENT=web,worker)';
 }
 
 //===============================
@@ -242,13 +242,13 @@ try {
   } else {
     // Compiler failed on internal compiler error!
     printErr('Internal compiler error in src/compiler.js!');
-    printErr('Please create a bug report at https://github.com/kripken/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
+    printErr('Please create a bug report at https://github.com/emscripten-core/emscripten/issues/ with a log of the build and the input files used to run. Exception message: "' + err + '" | ' + err.stack);
   }
 
   if (ENVIRONMENT_IS_NODE) {
     // Work around a node.js bug where stdout buffer is not flushed at process exit:
     // Instead of process.exit() directly, wait for stdout flush event.
-    // See https://github.com/joyent/node/issues/1669 and https://github.com/kripken/emscripten/issues/2582
+    // See https://github.com/joyent/node/issues/1669 and https://github.com/emscripten-core/emscripten/issues/2582
     // Workaround is based on https://github.com/RReverser/acorn/commit/50ab143cecc9ed71a2d66f78b4aec3bb2e9844f6
     process['stdout']['once']('drain', function () {
       process['exit'](1);

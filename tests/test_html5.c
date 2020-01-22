@@ -51,7 +51,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
     TEST_RESULT(emscripten_get_fullscreen_status);
     if (!fsce.isFullscreen) {
       printf("Requesting fullscreen..\n");
-      ret = emscripten_request_fullscreen(0, 1);
+      ret = emscripten_request_fullscreen("#canvas", 1);
       TEST_RESULT(emscripten_request_fullscreen);
     } else {
       printf("Exiting fullscreen..\n");
@@ -134,11 +134,14 @@ EM_BOOL deviceorientation_callback(int eventType, const EmscriptenDeviceOrientat
 
 EM_BOOL devicemotion_callback(int eventType, const EmscriptenDeviceMotionEvent *e, void *userData)
 {
-  printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g)\n", 
+  printf("%s, accel: (%g, %g, %g), accelInclGravity: (%g, %g, %g), rotationRate: (%g, %g, %g), supportedFields: %s %s %s\n",
     emscripten_event_type_to_string(eventType), 
     e->accelerationX, e->accelerationY, e->accelerationZ,
     e->accelerationIncludingGravityX, e->accelerationIncludingGravityY, e->accelerationIncludingGravityZ,
-    e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma);
+    e->rotationRateAlpha, e->rotationRateBeta, e->rotationRateGamma,
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION" : "",
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ACCELERATION_INCLUDING_GRAVITY" : "",
+    (e->supportedFields & EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE) ? "EMSCRIPTEN_DEVICE_MOTION_EVENT_SUPPORTS_ROTATION_RATE" : "");
 
   return 0;
 }
@@ -188,24 +191,6 @@ EM_BOOL touch_callback(int eventType, const EmscriptenTouchEvent *e, void *userD
   return 0;
 }
 
-EM_BOOL gamepad_callback(int eventType, const EmscriptenGamepadEvent *e, void *userData)
-{
-  printf("%s: timeStamp: %g, connected: %d, index: %ld, numAxes: %d, numButtons: %d, id: \"%s\", mapping: \"%s\"\n",
-    eventType != 0 ? emscripten_event_type_to_string(eventType) : "Gamepad state", e->timestamp, e->connected, e->index, 
-    e->numAxes, e->numButtons, e->id, e->mapping);
-
-  if (e->connected)
-  {
-    for(int i = 0; i < e->numAxes; ++i)
-      printf("Axis %d: %g\n", i, e->axis[i]);
-
-    for(int i = 0; i < e->numButtons; ++i)
-      printf("Button %d: Digital: %d, Analog: %g\n", i, e->digitalButton[i], e->analogButton[i]);
-  }
-
-  return 0;
-}
-
 const char *beforeunload_callback(int eventType, const void *reserved, void *userData)
 {
 #ifdef REPORT_RESULT
@@ -250,51 +235,10 @@ EM_BOOL webglcontext_callback(int eventType, const void *reserved, void *userDat
   return 0;
 }
 
-EmscriptenGamepadEvent prevState[32];
-int prevNumGamepads = 0;
-
-void mainloop()
-{
-  int numGamepads = emscripten_get_num_gamepads();
-  if (numGamepads != prevNumGamepads)
-  {
-    if (numGamepads == EMSCRIPTEN_RESULT_NOT_SUPPORTED) {
-      printf("emscripten_get_num_gamepads returned EMSCRIPTEN_RESULT_NOT_SUPPORTED.\n");
-      emscripten_cancel_main_loop();
-      return;
-    } else {
-      printf("Number of connected gamepads: %d\n", numGamepads);
-    }
-    prevNumGamepads = numGamepads;
-  }
-
-  for(int i = 0; i < numGamepads && i < 32; ++i)
-  {
-    EmscriptenGamepadEvent ge;
-    int ret = emscripten_get_gamepad_status(i, &ge);
-    if (ret == EMSCRIPTEN_RESULT_SUCCESS)
-    {
-      int g = ge.index;
-      for(int j = 0; j < ge.numAxes; ++j)
-      {
-        if (ge.axis[j] != prevState[g].axis[j])
-          printf("Gamepad %d, axis %d: %g\n", g, j, ge.axis[j]);
-      }
-
-      for(int j = 0; j < ge.numButtons; ++j)
-      {
-        if (ge.analogButton[j] != prevState[g].analogButton[j] || ge.digitalButton[j] != prevState[g].digitalButton[j])
-          printf("Gamepad %d, button %d: Digital: %d, Analog: %g\n", g, j, ge.digitalButton[j], ge.analogButton[j]);
-      }
-      prevState[g] = ge;
-    }
-  }
-
-}
-
 #ifdef REPORT_RESULT
 void report_result(void *arg)
 {
+  emscripten_html5_remove_all_event_listeners();
   REPORT_RESULT(0);
 }
 #endif
@@ -302,47 +246,47 @@ void report_result(void *arg)
 int main()
 {
 
-  EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(0, 0, 1, key_callback);
+  EMSCRIPTEN_RESULT ret = emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keypress_callback);
-  ret = emscripten_set_keydown_callback(0, 0, 1, key_callback);
+  ret = emscripten_set_keydown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keydown_callback);
-  ret = emscripten_set_keyup_callback(0, 0, 1, key_callback);
+  ret = emscripten_set_keyup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, key_callback);
   TEST_RESULT(emscripten_set_keyup_callback);
 
-  ret = emscripten_set_click_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_click_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_click_callback);
-  ret = emscripten_set_mousedown_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mousedown_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mousedown_callback);
-  ret = emscripten_set_mouseup_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseup_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseup_callback);
-  ret = emscripten_set_dblclick_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_dblclick_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_dblclick_callback);
-  ret = emscripten_set_mousemove_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mousemove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mousemove_callback);
-  ret = emscripten_set_mouseenter_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseenter_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseenter_callback);
-  ret = emscripten_set_mouseleave_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseleave_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseleave_callback);
-  ret = emscripten_set_mouseover_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseover_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseover_callback);
-  ret = emscripten_set_mouseout_callback(0, 0, 1, mouse_callback);
+  ret = emscripten_set_mouseout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, mouse_callback);
   TEST_RESULT(emscripten_set_mouseout_callback);
 
-  ret = emscripten_set_wheel_callback(0, 0, 1, wheel_callback);
+  ret = emscripten_set_wheel_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, wheel_callback);
   TEST_RESULT(emscripten_set_wheel_callback);
 
-  ret = emscripten_set_resize_callback(0, 0, 1, uievent_callback);
+  ret = emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, uievent_callback);
   TEST_RESULT(emscripten_set_resize_callback);
-  ret = emscripten_set_scroll_callback(0, 0, 1, uievent_callback);
+  ret = emscripten_set_scroll_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, uievent_callback);
   TEST_RESULT(emscripten_set_scroll_callback);
 
-  ret = emscripten_set_blur_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_blur_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_blur_callback);
-  ret = emscripten_set_focus_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_focus_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_focus_callback);
-  ret = emscripten_set_focusin_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_focusin_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_focusin_callback);
-  ret = emscripten_set_focusout_callback(0, 0, 1, focusevent_callback);
+  ret = emscripten_set_focusout_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, focusevent_callback);
   TEST_RESULT(emscripten_set_focusout_callback);
 
   ret = emscripten_set_deviceorientation_callback(0, 1, deviceorientation_callback);
@@ -392,12 +336,12 @@ int main()
     fullscreenchange_callback(EMSCRIPTEN_EVENT_FULLSCREENCHANGE, &fsce, 0);
   }
 
-  ret = emscripten_set_fullscreenchange_callback(0, 0, 1, fullscreenchange_callback);
+  ret = emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, fullscreenchange_callback);
   TEST_RESULT(emscripten_set_fullscreenchange_callback);
 
   // These won't do anything, since fullscreen must be requested in an event handler,
   // but call these anyways to confirm that they don't crash in an exception in the test suite.
-  ret = emscripten_request_fullscreen(0, 1);
+  ret = emscripten_request_fullscreen("#canvas", 1);
   TEST_RESULT(emscripten_request_fullscreen);
   ret = emscripten_exit_fullscreen();
   TEST_RESULT(emscripten_exit_fullscreen);
@@ -410,12 +354,12 @@ int main()
     pointerlockchange_callback(EMSCRIPTEN_EVENT_POINTERLOCKCHANGE, &plce, 0);
   }
 
-  ret = emscripten_set_pointerlockchange_callback(0, 0, 1, pointerlockchange_callback);
+  ret = emscripten_set_pointerlockchange_callback(EMSCRIPTEN_EVENT_TARGET_DOCUMENT, 0, 1, pointerlockchange_callback);
   TEST_RESULT(emscripten_set_pointerlockchange_callback);
 
   // These won't do anything, since pointer lock must be requested in an event handler,
   // but call these anyways to confirm that they don't crash in an exception in the test suite.
-  ret = emscripten_request_pointerlock(0, 1);
+  ret = emscripten_request_pointerlock("#canvas", 1);
   TEST_RESULT(emscripten_request_pointerlock);
   ret = emscripten_exit_pointerlock();
   TEST_RESULT(emscripten_exit_pointerlock);
@@ -439,21 +383,14 @@ int main()
   ret = emscripten_set_visibilitychange_callback(0, 1, visibilitychange_callback);
   TEST_RESULT(emscripten_set_visibilitychange_callback);
 
-  ret = emscripten_set_touchstart_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchstart_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchstart_callback);
-  ret = emscripten_set_touchend_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchend_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchend_callback);
-  ret = emscripten_set_touchmove_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchmove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchmove_callback);
-  ret = emscripten_set_touchcancel_callback(0, 0, 1, touch_callback);
+  ret = emscripten_set_touchcancel_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, 0, 1, touch_callback);
   TEST_RESULT(emscripten_set_touchcancel_callback);
-
-  ret = emscripten_set_gamepadconnected_callback(0, 1, gamepad_callback);
-  TEST_RESULT(emscripten_set_gamepadconnected_callback);
-  ret = emscripten_set_gamepaddisconnected_callback(0, 1, gamepad_callback);
-  TEST_RESULT(emscripten_set_gamepaddisconnected_callback);
-
-  emscripten_set_main_loop(mainloop, 10, 0);
 
   ret = emscripten_set_beforeunload_callback(0, beforeunload_callback);
   TEST_RESULT(emscripten_set_beforeunload_callback);
@@ -471,15 +408,15 @@ int main()
     battery_callback(EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE, &bs, 0);
   }
 
-  ret = emscripten_set_webglcontextlost_callback(0, 0, 1, webglcontext_callback);
+  ret = emscripten_set_webglcontextlost_callback("#canvas", 0, 1, webglcontext_callback);
   TEST_RESULT(emscripten_set_webglcontextlost_callback);
-  ret = emscripten_set_webglcontextrestored_callback(0, 0, 1, webglcontext_callback);
+  ret = emscripten_set_webglcontextrestored_callback("#canvas", 0, 1, webglcontext_callback);
   TEST_RESULT(emscripten_set_webglcontextrestored_callback);
 
   /* For the events to function, one must either call emscripten_set_main_loop or enable Module.noExitRuntime by some other means. 
      Otherwise the application will exit after leaving main(), and the atexit handlers will clean up all event hooks (by design). */
-  EM_ASM(Module['noExitRuntime'] = true);
-  
+  EM_ASM(noExitRuntime = true);
+
 #ifdef REPORT_RESULT
   // Keep the page running for a moment.
   emscripten_async_call(report_result, 0, 5000);

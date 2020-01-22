@@ -5,8 +5,7 @@
  * found in the LICENSE file.
  */
 
-#ifndef __emscripten_h__
-#define __emscripten_h__
+#pragma once
 
 /**
  * This file contains a few useful things for compiling C/C++ code
@@ -27,8 +26,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stdio.h>
 
 #if !__EMSCRIPTEN__
 #include <SDL/SDL.h> /* for SDL_Delay in async_call */
@@ -61,7 +58,7 @@ typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
 
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used)) __attribute__ ((visibility ("default")))
+#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
@@ -173,12 +170,9 @@ int emscripten_async_wget2_data(const char* url, const char* requesttype, const 
 
 void emscripten_async_wget2_abort(int handle);
 
-// wget "sync" (ASYNCIFY)
+// wget "sync"
 
 void emscripten_wget(const char* url, const char* file);
-
-// wget data "sync" (EMTERPRETIFY_ASYNC)
-
 void emscripten_wget_data(const char* url, void** pbuffer, int* pnum, int *perror);
 
 // IDB
@@ -189,7 +183,7 @@ void emscripten_idb_async_delete(const char *db_name, const char *file_id, void*
 typedef void (*em_idb_exists_func)(void*, int);
 void emscripten_idb_async_exists(const char *db_name, const char *file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
 
-// IDB "sync" (EMTERPRETIFY_ASYNC)
+// IDB "sync"
 
 void emscripten_idb_load(const char *db_name, const char *file_id, void** pbuffer, int* pnum, int *perror);
 void emscripten_idb_store(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
@@ -207,6 +201,8 @@ int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload
 
 typedef void (*em_run_preload_plugins_data_onload_func)(void*, const char*);
 void emscripten_run_preload_plugins_data(char* data, int size, const char *suffix, void *arg, em_run_preload_plugins_data_onload_func onload, em_arg_callback_func onerror);
+
+void emscripten_lazy_load_code(void);
 
 // show an error on some renamed methods
 #define emscripten_async_prepare(...) _Pragma("GCC error(\"emscripten_async_prepare has been replaced by emscripten_run_preload_plugins\")")
@@ -229,8 +225,13 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 // misc.
 
 int emscripten_get_compiler_setting(const char *name);
+int emscripten_has_asyncify();
 
 void emscripten_debugger(void);
+
+// Forward declare FILE from musl libc headers to avoid needing to #include <stdio.h> from emscripten.h
+struct _IO_FILE;
+typedef struct _IO_FILE FILE;
 
 char *emscripten_get_preloaded_image_data(const char *path, int *w, int *h);
 char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
@@ -250,6 +251,18 @@ int emscripten_get_callstack(int flags, char *out, int maxbytes);
 
 int emscripten_print_double(double x, char *to, signed max);
 
+typedef void (*em_scan_func)(void*, void*);
+void emscripten_scan_registers(em_scan_func func);
+void emscripten_scan_stack(em_scan_func func);
+
+// Old coroutines API
+// Deprecated and not available in upstream backend; use Fibers instead
+
+typedef void * emscripten_coroutine;
+emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
+int emscripten_coroutine_next(emscripten_coroutine);
+void emscripten_yield(void);
+
 /* ===================================== */
 /* Internal APIs. Be careful with these. */
 /* ===================================== */
@@ -261,15 +274,6 @@ void emscripten_sleep_with_yield(unsigned int ms);
 #define emscripten_sleep SDL_Delay
 #endif
 
-typedef void * emscripten_coroutine;
-emscripten_coroutine emscripten_coroutine_create(em_arg_callback_func func, void *arg, int stack_size);
-int emscripten_coroutine_next(emscripten_coroutine);
-void emscripten_yield(void);
-
-
 #ifdef __cplusplus
 }
 #endif
-
-#endif // __emscripten_h__
-
