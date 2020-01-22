@@ -164,6 +164,10 @@ class sockets(BrowserCore):
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()
 
+    # Use emscripten root for node module lookup
+    print('Setting NODE_PATH=' + path_from_root('node_modules'))
+    os.environ['NODE_PATH'] = path_from_root('node_modules')
+
   def test_sockets_echo(self):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
 

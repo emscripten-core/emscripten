@@ -13,6 +13,15 @@ executors:
       EMCC_CORES: "4"
 
 commands:
+  npm-install:
+    description: "npm install"
+    steps:
+      - run:
+          name: npm install
+          command: |
+            # Will add emsdk version of node to PATH
+            source ~/emsdk-master/emsdk_env.sh
+            npm install
   build-upstream:
     description: "Install emsdk build all libraries using embuilder"
     steps:
@@ -69,6 +78,7 @@ commands:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -87,10 +97,11 @@ commands:
         description: "Test suites to run"
         type: string
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: run tests
           command: |
@@ -103,10 +114,11 @@ commands:
         description: "Test suites to run"
         type: string
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: Install brew package dependencies
           environment:
@@ -120,10 +132,11 @@ commands:
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: download firefox
           command: |
@@ -218,10 +231,11 @@ commands:
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: download chrome
           command: |
@@ -244,7 +258,6 @@ commands:
   test-upstream-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
@@ -253,13 +266,8 @@ commands:
           command: |
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
-      - run:
-          name: install sockets test suite prerequisites
-          command: |
-            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
-            tar -xf node-v12.13.0-linux-x64.tar.xz
-            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
-            npm install ws
+      - checkout
+      - npm-install
       - run:
           name: run sockets tests
           environment:
@@ -276,7 +284,7 @@ commands:
             python3 tests/runner.py sockets
 
 jobs:
-  build:
+  build-fastcomp:
     executor: bionic
     steps:
       - checkout
@@ -308,6 +316,7 @@ jobs:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -530,58 +539,58 @@ workflows:
     jobs:
       - flake8
       - build-docs
-      - build
+      - build-fastcomp
       - test-other:
           requires:
-            - build
+            - build-fastcomp
       - test-browser-firefox:
           requires:
-            - build
+            - build-fastcomp
       - test-browser-chrome:
           requires:
-            - build
+            - build-fastcomp
       - test-ab:
           requires:
-            - build
+            - build-fastcomp
       - test-c:
           requires:
-            - build
+            - build-fastcomp
       - test-d:
           requires:
-            - build
+            - build-fastcomp
       - test-e:
           requires:
-            - build
+            - build-fastcomp
       - test-f:
           requires:
-            - build
+            - build-fastcomp
       - test-ghi:
           requires:
-            - build
+            - build-fastcomp
       - test-jklmno:
           requires:
-            - build
+            - build-fastcomp
       - test-p:
           requires:
-            - build
+            - build-fastcomp
       - test-qrst:
           requires:
-            - build
+            - build-fastcomp
       - test-uvwxyz:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm0:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm2:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm3:
           requires:
-            - build
+            - build-fastcomp
       - test-sanity:
           requires:
-            - build
+            - build-fastcomp
       - build-upstream-linux
       - test-upstream-wasm0:
           requires:
