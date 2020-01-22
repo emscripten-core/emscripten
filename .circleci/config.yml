@@ -18,7 +18,6 @@ commands:
           command: |
             # Will add emsdk version of node to PATH
             source ~/emsdk-master/emsdk_env.sh
-            which node
             npm install
   build-upstream:
     description: "Install emsdk build all libraries using embuilder"
@@ -278,7 +277,6 @@ commands:
             CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
             CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
           command: |
-            which node
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             python3 tests/runner.py sockets
 
