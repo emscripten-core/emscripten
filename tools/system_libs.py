@@ -607,17 +607,19 @@ class CXXLibrary(Library):
 
 
 class NoBCLibrary(Library):
-  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every object in the library.
-  # While the optimizer will readily optimize out most of the unused functions, things like global constructors that
-  # are linked in cannot be optimized out, even though they are not actually needed. If we use .a files for such
-  # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
-  # will be linked in.
+  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every
+  # object in the library.  While the optimizer will readily optimize out most of the unused
+  # functions, things like global constructors that are linked in cannot be optimized out, even
+  # though they are not actually needed. If we use .a files for such libraries, only the object
+  # files, and by extension, their contained global constructors, that are actually needed will be
+  # linked in.
   def get_ext(self):
     return '.a'
 
 
-class libcompiler_rt(Library):
+class libcompiler_rt(NoBCLibrary):
   name = 'libcompiler_rt'
+  force_object_files = True
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']

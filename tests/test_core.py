@@ -8667,12 +8667,12 @@ wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
 
-wasmlto0 = make_run('wasmlto0', emcc_args=['-O0'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto1 = make_run('wasmlto1', emcc_args=['-O1'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto2 = make_run('wasmlto2', emcc_args=['-O2'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES': 0})
-wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
-wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto0 = make_run('wasmlto0', emcc_args=['-O0', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto1 = make_run('wasmlto1', emcc_args=['-O1', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto2 = make_run('wasmlto2', emcc_args=['-O2', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto3 = make_run('wasmlto3', emcc_args=['-O3', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmltos = make_run('wasmltos', emcc_args=['-Os', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmltoz = make_run('wasmltoz', emcc_args=['-Oz', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
 
 if shared.Settings.WASM_BACKEND:
   wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
