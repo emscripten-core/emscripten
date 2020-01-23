@@ -58,10 +58,11 @@ def dir_is_newer(dir_a, dir_b):
 
 def get_cflags(force_object_files=False):
   flags = []
-  if force_object_files:
-    flags += ['-s', 'WASM_OBJECT_FILES=1']
-  elif not shared.Settings.WASM_OBJECT_FILES:
-    flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.WASM_BACKEND:
+    if force_object_files:
+      flags += ['-s', 'WASM_OBJECT_FILES=1']
+    elif not shared.Settings.WASM_OBJECT_FILES:
+      flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
