@@ -200,6 +200,17 @@ var LibraryWebGPU = {
       };
     },
 
+    makeProgrammableStageDescriptor: function(ptr) {
+      if (ptr === 0) return undefined;
+      {{{ gpu.makeCheckDescriptor('ptr') }}}
+      return {
+        "module": WebGPU.mgrShaderModule.get(
+          {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.module, '*') }}}),
+        "entryPoint": UTF8ToString(
+          {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}}),
+      };
+    },
+
     AddressMode: [ 'repeat', 'mirror-repeat', 'clamp-to-edge' ],
     BindingType: [ 'uniform-buffer', 'storage-buffer', 'readonly-storage-buffer', 'sampler', 'sampled-texture', 'storage-texture' ],
     BlendFactor: [
@@ -529,21 +540,23 @@ var LibraryWebGPU = {
     return WebGPU.mgrPipelineLayout.create(device["createPipelineLayout"](desc));
   },
 
-  // TODO: createComputePipeline
+  wgpuDeviceCreateComputePipeline: function(deviceId, descriptor) {
+    {{{ gpu.makeCheckDescriptor('descriptor') }}}
+
+    var desc = {
+      "label": undefined,
+      "computeStage": WebGPU.makeProgrammableStageDescriptor(
+        descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.computeStage }}}),
+    };
+    var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.label, '*') }}};
+    if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+
+    var device = WebGPU["mgrDevice"].get(deviceId);
+    return WebGPU.mgrComputePipeline.create(device["createComputePipeline"](desc));
+  },
 
   wgpuDeviceCreateRenderPipeline: function(deviceId, descriptor) {
     {{{ gpu.makeCheckDescriptor('descriptor') }}}
-
-    function makeStage(ptr) {
-      if (ptr === 0) return undefined;
-      {{{ gpu.makeCheckDescriptor('ptr') }}}
-      return {
-        "module": WebGPU.mgrShaderModule.get(
-          {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.module, '*') }}}),
-        "entryPoint": UTF8ToString(
-          {{{ makeGetValue('ptr', C_STRUCTS.WGPUProgrammableStageDescriptor.entryPoint, '*') }}}),
-      };
-    }
 
     function makeRasterizationState(rsPtr) {
       if (rsPtr === 0) return undefined;
@@ -677,9 +690,9 @@ var LibraryWebGPU = {
       "label": undefined,
       "layout": WebGPU.mgrPipelineLayout.get(
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.layout, '*') }}}),
-      "vertexStage": makeStage(
+      "vertexStage": WebGPU.makeProgrammableStageDescriptor(
         descriptor + {{{ C_STRUCTS.WGPURenderPipelineDescriptor.vertexStage }}}),
-      "fragmentStage": makeStage(
+      "fragmentStage": WebGPU.makeProgrammableStageDescriptor(
         {{{ makeGetValue('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.fragmentStage, '*') }}}),
       "primitiveTopology": WebGPU.PrimitiveTopology[
         {{{ gpu.makeGetU32('descriptor', C_STRUCTS.WGPURenderPipelineDescriptor.primitiveTopology) }}}],
@@ -1009,6 +1022,28 @@ var LibraryWebGPU = {
     return WebGPU.mgrTextureView.create(texture["createView"](desc));
   },
 
+  // wgpuComputePass
+
+  wgpuComputePassEncoderSetPipeline: function(passId, pipelineId) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
+    pass["setPipeline"](pipeline);
+  },
+  wgpuComputePassEncoderDispatch: function(passId, x, y, z) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    pass["dispatch"](x, y, z);
+  },
+  wgpuComputePassEncoderDispatchIndirect: function(passId, indirectBufferId, indirectOffset_l, indirectOffset_h) {
+    var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
+    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_l', 'indirectOffset_h') }}};
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    pass["dispatchIndirect"](indirectBuffer, indirectOffset);
+  },
+  wgpuComputePassEncoderEndPass: function(passId) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    pass["endPass"]();
+  },
+
   // wgpuRenderPass
 
   wgpuRenderPassEncoderSetBindGroup: function(passId, groupIndex, groupId, dynamicOffsetCount, dynamicOffsetsPtr) {
@@ -1058,6 +1093,18 @@ var LibraryWebGPU = {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
     pass["drawIndexed"](indexCount, instanceCount, firstIndex, baseVertex, firstInstance);
   },
+  wgpuRenderPassEncoderDrawIndirect: function(passId, indirectBufferId, indirectOffset_l, indirectOffset_h) {
+    var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
+    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_l', 'indirectOffset_h') }}};
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    pass["drawIndirect"](indirectBuffer, indirectOffset);
+  },
+  wgpuRenderPassEncoderDrawIndexedIndirect: function(passId, indirectBufferId, indirectOffset_l, indirectOffset_h) {
+    var indirectBuffer = WebGPU.mgrBuffer.get(indirectBufferId);
+    var indirectOffset = {{{ gpu.makeU64ToNumber('indirectOffset_l', 'indirectOffset_h') }}};
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    pass["drawIndexedIndirect"](indirectBuffer, indirectOffset);
+  },
   wgpuRenderPassEncoderExecuteBundles: function(passId, count, bundlesPtr) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
 
@@ -1089,7 +1136,8 @@ var LibraryWebGPU = {
       pass["setBindGroup"](groupIndex, group, offsets);
     }
   },
-  wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, offset) {
+  wgpuRenderBundleEncoderSetIndexBuffer: function(bundleId, bufferId, offset_l, offset_h) {
+    var offset = {{{ gpu.makeU64ToNumber('offset_l', 'offset_h') }}};
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     var buffer = WebGPU.mgrBuffer.get(bufferId);
     pass["setIndexBuffer"](buffer, offset);
@@ -1099,7 +1147,8 @@ var LibraryWebGPU = {
     var pipeline = WebGPU.mgrRenderPipeline.get(pipelineId);
     pass["setPipeline"](pipeline);
   },
-  wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, offset) {
+  wgpuRenderBundleEncoderSetVertexBuffer: function(bundleId, slot, bufferId, offset_l, offset_h) {
+    var offset = {{{ gpu.makeU64ToNumber('offset_l', 'offset_h') }}};
     var pass = WebGPU.mgrRenderBundleEncoder.get(bundleId);
     pass["setVertexBuffer"](slot, WebGPU.mgrBuffer.get(bufferId), offset);
   },
