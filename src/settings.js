@@ -1398,15 +1398,15 @@ var PTHREAD_POOL_SIZE = 0;
 // threads, but it would still like to opportunistically speed up initial thread
 // startup time by prewarming a pool of Workers, you can specify the size of
 // the pool with -s PTHREAD_POOL_SIZE=x, but then also specify
-// -s PTHREAD_POOL_DELAY_LOAD=0, which will cause the runtime to not wait up at
+// -s PTHREAD_POOL_DELAY_LOAD=1, which will cause the runtime to not wait up at
 // startup for the Worker pool to finish loading. Instead, the runtime will
 // immediately start up and the Worker pool will asynchronously spin up in
 // parallel on the background. This can shorten the time that pthread_create()
 // calls take to actually start a thread, but without actually slowing down
-// main application startup speed. If PTHREAD_POOL_DELAY_LOAD=1 (default),
+// main application startup speed. If PTHREAD_POOL_DELAY_LOAD=0 (default),
 // then the runtime will wait for the pool to start up before running main().
 // [link] - affects generated JS runtime code at link time
-var PTHREAD_POOL_DELAY_LOAD = 1;
+var PTHREAD_POOL_DELAY_LOAD = 0;
 
 // If not explicitly specified, this is the stack size to use for newly created
 // pthreads.  According to
