@@ -1658,6 +1658,10 @@
         "file": "webgpu/webgpu.h",
         "defines": [],
         "structs": {
+            "WGPUChainedStruct": [
+                "nextInChain",
+                "sType"
+            ],
             "WGPUAdapterProperties": [
                 "nextInChain",
                 "deviceID",
@@ -1700,10 +1704,6 @@
                 "label",
                 "usage",
                 "size"
-            ],
-            "WGPUChainedStruct": [
-                "nextInChain",
-                "sType"
             ],
             "WGPUColor": [
                 "r",
@@ -1830,7 +1830,8 @@
                 "format",
                 "width",
                 "height",
-                "presentMode"
+                "presentMode",
+                "implementation"
             ],
             "WGPUTextureViewDescriptor": [
                 "nextInChain",

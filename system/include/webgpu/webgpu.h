@@ -656,6 +656,7 @@ typedef struct WGPUSwapChainDescriptor {
     uint32_t width;
     uint32_t height;
     WGPUPresentMode presentMode;
+    uint64_t implementation;
 } WGPUSwapChainDescriptor;
 
 typedef struct WGPUTextureViewDescriptor {
