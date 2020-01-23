@@ -143,7 +143,7 @@ Debugging WebAssembly
 
 When you do need to debug a WebAssembly build, the following tips might help you.
 
-WebAssembly doesn't have source maps support yet, but building with ``-g`` will emit both a text and a binary wasm, and it will include function names in both, and also include source file and line number information in the text, for example, building hello world might have this in the ``.wast``:
+WebAssembly doesn't have source maps support yet, but building with ``-g`` will emit both a text and a binary wasm, and it will include function names in both, and also include source file and line number information in the text, for example, building hello world might produce this ``.wat``:
 
 .. code-block:: none
 

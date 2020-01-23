@@ -7838,6 +7838,13 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_fastcomp('Fibers are not implemented for fastcomp')
+  def test_fibers_asyncify(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += ['-std=gnu++11']
+    src = open(path_from_root('tests', 'test_fibers.cpp')).read()
+    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
   @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
@@ -8231,10 +8238,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
+    js = open('src.cpp.o.js').read()
+    occurances = js.count('cFunction')
+    if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
+      # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
+      if self.is_wasm():
+        self.assertEqual(occurances, 1)
+      else:
+        # With js the asm module itself also contains a reference for the cFunction name
+        self.assertEqual(occurances, 2)
+    else:
+      print(occurances)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8569,6 +8587,23 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['-DPOOL']
     test()
+
+  # Tests the emscripten_get_exported_function() API.
+  def test_emscripten_get_exported_function(self):
+    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.emcc_args += ['-lexports.js']
+    self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
+
+  # Tests the emscripten_get_exported_function() API.
+  @no_asan('TODO: ASan with MINIMAL_RUNTIME')
+  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
+  def test_minimal_runtime_emscripten_get_exported_function(self):
+    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.emcc_args += ['-lexports.js', '-s', 'MINIMAL_RUNTIME=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
 
 # Generate tests for everything

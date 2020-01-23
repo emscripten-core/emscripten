@@ -154,6 +154,9 @@ var ENVIRONMENT_MAY_BE_SHELL = 1;
 // at -O1 and higher, but disabled at -g2 and higher.
 var MINIFY_ASMJS_IMPORT_NAMES = 0;
 
+// Whether to minify functions exported from Asm.js/Wasm module.
+var MINIFY_ASMJS_EXPORT_NAMES = 1;
+
 // Internal: represents a browser version that is not supported at all.
 var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 

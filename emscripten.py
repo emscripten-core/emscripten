@@ -705,7 +705,7 @@ def update_settings_glue(metadata, DEBUG):
   if metadata['asmConsts']:
     # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
     # functions in the module.
-    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_read_asm_const_args']
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
 
     # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
     # the compiled code have, each signature will need a proxy function invoker
@@ -2431,7 +2431,7 @@ def create_asm_consts_wasm(forwarded_json, metadata):
 
     asm_const_funcs.append(r'''
 function %s(code, sigPtr, argbuf) {%s
-  var args = _emscripten_read_asm_const_args(sigPtr, argbuf);
+  var args = readAsmConstArgs(sigPtr, argbuf);
   return ASM_CONSTS[code].apply(null, args);
 }''' % (const_name, preamble))
   asm_consts = [(key, value) for key, value in asm_consts.items()]

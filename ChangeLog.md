@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add new Fibers API for context switching, that supercedes the old coroutine
+  API that only ran on fastcomp. See #9859
 
 v1.39.6: 01/15/2020
 -------------------

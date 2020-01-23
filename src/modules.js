@@ -384,6 +384,7 @@ function exportRuntime() {
     'stringToUTF32',
     'lengthBytesUTF32',
     'allocateUTF8',
+    'allocateUTF8OnStack',
     'stackTrace',
     'addOnPreRun',
     'addOnInit',

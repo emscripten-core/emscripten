@@ -40,6 +40,9 @@ WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EXPECTED_NODE_VERSION = (4, 1, 1)
+EXPECTED_BINARYEN_VERSION = 90
+
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -91,12 +94,6 @@ class WindowsPopen(object):
         self.stdout_ = PIPE
       if self.stderr_ is None:
         self.stderr_ = PIPE
-
-    # emscripten.py supports reading args from a response file instead of cmdline.
-    # Use .rsp to avoid cmdline length limitations on Windows.
-    if len(args) >= 2 and args[1].endswith("emscripten.py"):
-      response_filename = response_file.create_response_file(args[2:], TEMP_DIR)
-      args = args[0:2] + ['@' + response_filename]
 
     try:
       # Call the process with fixed streams.
@@ -510,9 +507,6 @@ def check_llvm():
       return False
 
   return True
-
-
-EXPECTED_NODE_VERSION = (4, 1, 1)
 
 
 def check_node_version():
@@ -1482,6 +1476,7 @@ def asmjs_mangle(name):
 class Building(object):
   COMPILER = CLANG
   multiprocessing_pool = None
+  binaryen_checked = False
 
   # internal caches
   internal_nm_cache = {} # cache results of nm - it can be slow to run
@@ -1941,15 +1936,15 @@ class Building(object):
 
     if Settings.LINKABLE:
       cmd.append('--export-all')
+    else:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      if not Settings.STANDALONE_WASM:
+        cmd += ['--export', '__wasm_call_ctors']
 
-    # in standalone mode, crt1 will call the constructors from inside the wasm
-    if not Settings.STANDALONE_WASM:
-      cmd += ['--export', '__wasm_call_ctors']
+      cmd += ['--export', '__data_end']
 
-    cmd += ['--export', '__data_end']
-
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
 
     if Settings.RELOCATABLE:
       if Settings.SIDE_MODULE:
@@ -2587,7 +2582,7 @@ class Building(object):
            emitting_js and \
            not Settings.ASYNCIFY_LAZY_LOAD_CODE and \
            not Settings.WASM2JS:
-          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
+          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2938,9 +2933,29 @@ class Building(object):
     return ret
 
   @staticmethod
+  def check_binaryen(bindir):
+    finalize = os.path.join(bindir, exe_suffix('wasm-emscripten-finalize'))
+    if not os.path.exists(finalize):
+      exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % finalize)
+    try:
+      output = run_process([finalize, '--version'], stdout=PIPE).stdout
+    except subprocess.CalledProcessError:
+      exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % finalize)
+    version = output.split()[2]
+    version = int(version)
+    # Allow the expected version or the following one in order avoid needing to update both
+    # emscripten and binaryen in lock step in emscripten-releases.
+    if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):
+      warning('unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+
+  @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    return os.path.join(BINARYEN_ROOT, 'bin')
+    rtn = os.path.join(BINARYEN_ROOT, 'bin')
+    if not Building.binaryen_checked:
+      Building.check_binaryen(rtn)
+      Building.binaryen_checked = True
+    return rtn
 
   @staticmethod
   def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
