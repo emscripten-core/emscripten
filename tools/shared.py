@@ -2369,6 +2369,8 @@ class Building(object):
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
     cmd = NODE_JS + [optimizer, filename] + passes
+    if acorn and Settings.USE_CLOSURE_COMPILER:
+      cmd += ['--preserveComments']
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)

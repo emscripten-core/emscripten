@@ -868,55 +868,23 @@ function growableHeap(ast) {
   });
 }
 
-// Main
-
-var arguments = process['argv'].slice(2);;
-var infile = arguments[0];
-var passes = arguments.slice(1);
-
-var input = read(infile);
-var extraInfoStart = input.lastIndexOf('// EXTRA_INFO:')
-var extraInfo = null;
-if (extraInfoStart > 0) {
-  extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
-}
-var comments = [];
-var ast = acorn.parse(input, { ecmaVersion: 6, onComment: comments });
-
-var minifyWhitespace = false;
-var noPrint = false;
-
-var registry = {
-  JSDCE: JSDCE,
-  AJSDCE: AJSDCE,
-  applyImportAndExportNameChanges: applyImportAndExportNameChanges,
-  emitDCEGraph: emitDCEGraph,
-  applyDCEGraphRemovals: applyDCEGraphRemovals,
-  minifyWhitespace: function() { minifyWhitespace = true },
-  noPrint: function() { noPrint = true },
-  dump: function() { dump(ast) },
-  growableHeap: growableHeap,
-};
-
-passes.forEach(function(pass) {
-  registry[pass](ast);
-});
-
-if (!noPrint) {
-  var terserAst = terser.AST_Node.from_mozilla_ast(ast);
-
+function reattachComments(ast, comments) {
   var symbols = [];
 
-  terserAst.walk(new terser.TreeWalker(function(node) {
+  // Collect all code symbols
+  ast.walk(new terser.TreeWalker(function(node) {
     if (node.start && node.start.pos) {
       symbols.push(node);
     }
   }));
 
+  // Sort them by ascending line number
   symbols.sort((a,b) => {
     return a.start.pos - b.start.pos;
   })
 
+  // Walk through all comments in ascending line number, and match each
+  // comment to the appropriate code block.
   for(var i = 0, j = 0; i < comments.length; ++i) {
     while(j < symbols.length && symbols[j].start.pos < comments[i].end)
       ++j;
@@ -949,6 +917,59 @@ if (!noPrint) {
         flags: 0
       }));
   }
+}
+
+// Main
+
+var arguments = process['argv'].slice(2);;
+var preserveComments = arguments.indexOf('--preserveComments');
+if (preserveComments > -1) {
+  arguments.splice(preserveComments, 1);
+  preserveComments = true;
+} else {
+  preserveComments = false;  
+}
+
+var infile = arguments[0];
+var passes = arguments.slice(1);
+
+var input = read(infile);
+var extraInfoStart = input.lastIndexOf('// EXTRA_INFO:')
+var extraInfo = null;
+if (extraInfoStart > 0) {
+  extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
+}
+// Collect all JS code comments to this array so that we can retain them in the outputted code
+// if --preserveComments was requested.
+var sourceComments = [];
+var ast = acorn.parse(input, { ecmaVersion: 6, onComment: preserveComments ? sourceComments : undefined });
+
+var minifyWhitespace = false;
+var noPrint = false;
+
+var registry = {
+  JSDCE: JSDCE,
+  AJSDCE: AJSDCE,
+  applyImportAndExportNameChanges: applyImportAndExportNameChanges,
+  emitDCEGraph: emitDCEGraph,
+  applyDCEGraphRemovals: applyDCEGraphRemovals,
+  minifyWhitespace: function() { minifyWhitespace = true },
+  noPrint: function() { noPrint = true },
+  dump: function() { dump(ast) },
+  growableHeap: growableHeap,
+};
+
+passes.forEach(function(pass) {
+  registry[pass](ast);
+});
+
+if (!noPrint) {
+  var terserAst = terser.AST_Node.from_mozilla_ast(ast);
+
+  if (preserveComments) {
+    reattachComments(terserAst, sourceComments);
+  }
+
   var output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
