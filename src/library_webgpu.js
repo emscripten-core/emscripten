@@ -1136,10 +1136,10 @@ var LibraryWebGPU = {
     var descriptorFromHTMLCanvasId = nextInChainPtr;
 
     {{{ gpu.makeCheckDescriptor('descriptorFromHTMLCanvasId') }}}
-    var targetPtr = {{{ makeGetValue('descriptorFromHTMLCanvasId', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvasId.target, '*') }}};
-    {{{ gpu.makeCheck('targetPtr') }}}
-    var target = UTF8ToString(targetPtr);
-    var canvas = document.getElementById(target);
+    var idPtr = {{{ makeGetValue('descriptorFromHTMLCanvasId', C_STRUCTS.WGPUSurfaceDescriptorFromHTMLCanvasId.id, '*') }}};
+    {{{ gpu.makeCheck('idPtr') }}}
+    var id = UTF8ToString(idPtr);
+    var canvas = document.getElementById(id);
     assert(canvas instanceof HTMLCanvasElement);
 
     var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUSurfaceDescriptor.label, '*') }}};

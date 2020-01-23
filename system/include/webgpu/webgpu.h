@@ -625,7 +625,7 @@ typedef struct WGPUSurfaceDescriptor {
 typedef struct WGPUSurfaceDescriptorFromHTMLCanvasId {
     WGPUChainedStruct const * nextInChain;
     WGPUSType sType;
-    char const * target;
+    char const * id;
 } WGPUSurfaceDescriptorFromHTMLCanvasId;
 
 typedef struct WGPUSurfaceDescriptorFromMetalLayer {

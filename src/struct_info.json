@@ -1800,7 +1800,7 @@
             "WGPUSurfaceDescriptorFromHTMLCanvasId": [
                 "nextInChain",
                 "sType",
-                "target"
+                "id"
             ],
             "WGPUSwapChainDescriptor": [
                 "nextInChain",
