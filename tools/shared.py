@@ -2934,15 +2934,21 @@ class Building(object):
 
   @staticmethod
   def check_binaryen(bindir):
-    finalize = os.path.join(bindir, exe_suffix('wasm-emscripten-finalize'))
-    if not os.path.exists(finalize):
-      exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % finalize)
+    opt = os.path.join(bindir, exe_suffix('wasm-opt'))
+    if not os.path.exists(opt):
+      exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
     try:
-      output = run_process([finalize, '--version'], stdout=PIPE).stdout
+      output = run_process([opt, '--version'], stdout=PIPE).stdout
     except subprocess.CalledProcessError:
-      exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % finalize)
-    version = output.split()[2]
-    version = int(version)
+      exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % opt)
+    if output:
+      output = output.splitlines()[0]
+    try:
+      version = output.split()[2]
+      version = int(version)
+    except (IndexError, ValueError):
+      exit_with_error('error parsing binaryen version (%s). Please check your binaryen installation (%s)' % (output, opt))
+
     # Allow the expected version or the following one in order avoid needing to update both
     # emscripten and binaryen in lock step in emscripten-releases.
     if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):

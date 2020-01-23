@@ -56,6 +56,18 @@ def mtime(filename):
   return os.path.getmtime(filename)
 
 
+def make_fake_wasm_opt(filename, version):
+  print('make_fake_wasm_opt: %s' % filename)
+  ensure_dir(os.path.dirname(filename))
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('echo "wasm-opt version %s"\n' % version)
+    f.write('echo "..."\n')
+  shutil.copyfile(filename, filename + '++')
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  os.chmod(filename + '++', stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
 def make_fake_clang(filename, version):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
@@ -872,3 +884,14 @@ fi
     self.do([PYTHON, EMCC, '--clear-cache'])
     run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(root_cache, 'wasm-bc'))
+
+  def test_binaryen_version(self):
+    restore_and_set_up()
+    with open(CONFIG_FILE, 'a') as f:
+      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
+
+    make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+
+    make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected 90)')
