@@ -1651,6 +1651,8 @@
     },
     // ===========================================
     // WebGPU
+    //   This is auto-generated:
+    //   https://dawn.googlesource.com/dawn/+/refs/heads/master/generator/templates/api_struct_info.json
     // ===========================================
     {
         "file": "webgpu/webgpu.h",
