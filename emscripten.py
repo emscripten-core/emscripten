@@ -2226,7 +2226,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   forwarded_json = json.loads(forwarded_data)
   # For the wasm backend the implementedFunctions from compiler.js should
-  # alwasys be empty. This only gets populated for __asm function when using
+  # always be empty. This only gets populated for __asm function when using
   # the JS backend.
   assert not forwarded_json['Functions']['implementedFunctions']
 
