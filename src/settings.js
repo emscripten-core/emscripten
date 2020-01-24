@@ -1171,6 +1171,11 @@ var USE_GLFW = 2;
 // Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
 // startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
 // still make sense there, see that option for more details.
+//
+// Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
+// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
+// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
+// .wasm.js fallback will be used.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
