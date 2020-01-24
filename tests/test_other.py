@@ -9595,9 +9595,9 @@ int main () {
 
     if self.is_wasm_backend():
       test_cases = [
-        (opts, hello_world_sources, {'a.html': 1445, 'a.js': 484, 'a.wasm': 176}),
-        (opts, hello_webgl_sources, {'a.html': 1565, 'a.js': 4663, 'a.wasm': 11809}),
-        (opts, hello_webgl2_sources, {'a.html': 1565, 'a.js': 5172, 'a.wasm': 11809}) # Compare how WebGL2 sizes stack up with WebGL 1
+        (opts, hello_world_sources, {'a.html': 1445, 'a.js': 453, 'a.wasm': 172}),
+        (opts, hello_webgl_sources, {'a.html': 1565, 'a.js': 4632, 'a.wasm': 11731}),
+        (opts, hello_webgl2_sources, {'a.html': 1565, 'a.js': 5140, 'a.wasm': 11731}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
     else:
       test_cases = [
