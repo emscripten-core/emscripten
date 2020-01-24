@@ -1513,6 +1513,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
     # the old, which would break).
     if will_metadce(options) and \
+        options.opt_level >= 2 and \
+        options.debug_level <= 2 and \
         not shared.Settings.LINKABLE and \
         not shared.Settings.STANDALONE_WASM and \
         not shared.Settings.AUTODEBUG and \
