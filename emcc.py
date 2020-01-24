@@ -1506,29 +1506,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.opt_level >= 1 and options.debug_level < 2 and not shared.Settings.WASM:
       shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
 
-    # Enable minification of wasm imports and exports when appropriate, if we
-    # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
-    # Things that process the JS after this operation would be done must disable this.
-    # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names, and wasm2js
-    # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
-    # the old, which would break).
-    if will_metadce(options) and \
-        options.opt_level >= 2 and \
-        options.debug_level <= 2 and \
-        not shared.Settings.LINKABLE and \
-        not shared.Settings.STANDALONE_WASM and \
-        not shared.Settings.AUTODEBUG and \
-        not shared.Settings.ASSERTIONS and \
-        not shared.Settings.RELOCATABLE and \
-        not target.endswith(WASM_ENDINGS) and \
-        not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
-        not shared.Settings.WASM2JS:
-      shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
-      # in fastcomp it's inconvenient to minify module names as there is the
-      # asm2wasm module etc.
-      if shared.Settings.WASM_BACKEND:
-        shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
-
     if shared.Settings.WASM:
       if not shared.Building.need_asm_js_file():
         asm_target = asm_target.replace('.asm.js', '.temp.asm.js')
@@ -1564,6 +1541,30 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Also, if using library_exports.js API, disable minification so that the feature can work.
     if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS or 'exports.js' in [x for _, x in libs]:
       shared.Settings.MINIFY_ASMJS_EXPORT_NAMES = 0
+
+    # Enable minification of wasm imports and exports when appropriate, if we
+    # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
+    # Things that process the JS after this operation would be done must disable this.
+    # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names, and wasm2js
+    # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
+    # the old, which would break).
+    if will_metadce(options) and \
+        options.opt_level >= 2 and \
+        options.debug_level <= 2 and \
+        not shared.Settings.LINKABLE and \
+        not shared.Settings.STANDALONE_WASM and \
+        not shared.Settings.AUTODEBUG and \
+        not shared.Settings.ASSERTIONS and \
+        not shared.Settings.RELOCATABLE and \
+        not target.endswith(WASM_ENDINGS) and \
+        not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
+        not shared.Settings.WASM2JS and \
+        shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
+      shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
+      # in fastcomp it's inconvenient to minify module names as there is the
+      # asm2wasm module etc.
+      if shared.Settings.WASM_BACKEND:
+        shared.Settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
     # In MINIMAL_RUNTIME when modularizing, by default output asm.js module under the same name as
     # the JS module. This allows code to share same loading function for both JS and asm.js modules,
