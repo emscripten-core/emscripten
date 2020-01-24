@@ -1712,13 +1712,17 @@ RUNTIME_ASSERTIONS = '''
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''
-  if not shared.Settings.ASSERTIONS or shared.Settings.MINIMAL_RUNTIME:
-    runtime_assertions = ''
-  else:
+  runtime_assertions = ''
+  if shared.Settings.ASSERTIONS or not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are some support code.
-    # WASM=1 already inserts runtime assertions, so no need to do it again here (see create_receiving_wasm)
-    if not shared.Settings.WASM:
+
+  module_exports = exported_implemented_functions + function_tables(function_table_data)
+  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
+
+  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+    if runtime_assertions:
+      # assert on the runtime being in a valid state when calling into compiled code. The only
+      # exceptions are some support code.
       receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
 
       wrappers = []
@@ -1729,12 +1733,8 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
   return real_%(name)s.apply(null, arguments);
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
-      receiving = '\n'.join(wrappers)
+      receiving += '\n'.join(wrappers)
 
-  module_exports = exported_implemented_functions + function_tables(function_table_data)
-  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
-
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       imported_exports = [s for s in module_exports if s not in initializers]
 
@@ -2631,17 +2631,18 @@ def create_receiving_wasm(exports, initializers):
   runtime_assertions = ''
   if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    for e in exports:
-      receiving.append('''\
+
+  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+    if runtime_assertions:
+      # assert on the runtime being in a valid state when calling into compiled code. The only
+      # exceptions are some support code
+      for e in exports:
+        receiving.append('''\
 var real_%(mangled)s = asm["%(e)s"];
 asm["%(e)s"] = function() {%(assertions)s
   return real_%(mangled)s.apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
         # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
@@ -2681,7 +2682,7 @@ asm["%(e)s"] = function() {%(assertions)s
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      if shared.Settings.ASSERTIONS:
+      if runtime_assertions:
         # With assertions on, don't hot-swap implementation.
         receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
@@ -2692,10 +2693,10 @@ var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
         # With assertions off, hot-swap implementation to avoid garbage via
         # arguments keyword.
         receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
+var %(mangled)s = Module["%(mangled)s"] = function() {
   return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+''' % {'mangled': asmjs_mangle(e), 'e': e})
 
   return '\n'.join(receiving) + '\n'
 
