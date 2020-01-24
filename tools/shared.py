@@ -1904,6 +1904,9 @@ class Building(object):
       args.insert(0, '--whole-archive')
       args.append('--no-whole-archive')
 
+    if Settings.STRICT:
+      args.append('--fatal-warnings')
+
     cmd = [
         WASM_LD,
         '-o',

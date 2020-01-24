@@ -89,6 +89,7 @@ SUPPORTED_LLD_LINKER_FLAG_PREFIXES = (
     '--export')
 
 SUPPORTED_LLD_LINKER_FLAGS = (
+    '--fatal-warnings',
     '--no-check-features',
     '--trace',
     '--no-threads',

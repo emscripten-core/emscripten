@@ -10271,3 +10271,12 @@ int main() {
   def test_webgpu_compiletest(self):
     for args in [[], ['-s', 'ASSERTIONS=1']]:
       run_process([PYTHON, EMCC, path_from_root('tests', 'webgpu_dummy.cpp'), '-s', 'USE_WEBGPU=1'] + args)
+
+  @no_fastcomp('lld only')
+  def test_signature_mismatch(self):
+    create_test_file('a.c', 'void foo(); int main() { foo(); return 0; }')
+    create_test_file('b.c', 'int foo() { return 1; }')
+    stderr = run_process([PYTHON, EMCC, 'a.c', 'b.c'], stderr=PIPE).stderr
+    self.assertContained('function signature mismatch: foo', stderr)
+    self.expect_fail([PYTHON, EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
+    self.expect_fail([PYTHON, EMCC, '-s', 'STRICT', 'a.c', 'b.c'])
