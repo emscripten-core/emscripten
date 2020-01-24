@@ -880,8 +880,12 @@ var wasmOffsetConverter;
 function createWasm() {
   // prepare imports
   var info = {
+#if MINIFY_WASM_IMPORTED_MODULES
+    'a': asmLibraryArg,
+#else // MINIFY_WASM_IMPORTED_MODULES
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+#endif // MINIFY_WASM_IMPORTED_MODULES
 #if WASM_BACKEND == 0
     ,
     'global': {

@@ -2544,7 +2544,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emitting_js):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2570,18 +2570,7 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.acorn_optimizer(js_file, passes)
-        # Also minify the names used between js and wasm, if we are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
-        # Things that process the JS after this operation would be done must disable this.
-        # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names, and wasm2js
-        # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
-        # the old, which would break).
-        if not Settings.STANDALONE_WASM and \
-           not Settings.AUTODEBUG and \
-           not Settings.ASSERTIONS and \
-           not Settings.RELOCATABLE and \
-           emitting_js and \
-           not Settings.ASYNCIFY_LAZY_LOAD_CODE and \
-           not Settings.WASM2JS:
+        if Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
     return js_file
 
@@ -2708,8 +2697,17 @@ class Building(object):
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
+    if minify_exports:
+      # standalone wasm mode means we need to emit a wasi import module.
+      # otherwise, minify even the imported module names.
+      if Settings.MINIFY_WASM_IMPORTED_MODULES:
+        pass_name = '--minify-imports-and-exports-and-modules'
+      else:
+        pass_name = '--minify-imports-and-exports'
+    else:
+      pass_name = '--minify-imports'
     out = Building.run_wasm_opt(wasm_file, wasm_file,
-                                ['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
+                                [pass_name],
                                 debug=debug_info,
                                 stdout=PIPE)
     # get the mapping

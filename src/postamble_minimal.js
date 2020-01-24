@@ -47,10 +47,12 @@ function initRuntime(asm) {
 // Initialize wasm (asynchronous)
 
 var imports = {
+#if MINIFY_WASM_IMPORTED_MODULES
+  'a': asmLibraryArg,
+#else // MINIFY_WASM_IMPORTED_MODULES
   'env': asmLibraryArg
-  // TODO: Fix size bloat coming from WASI properly. The -s FILESYSTEM=1 check is too weak to properly DCE WASI linkage away.
-  // (Emscripten now unconditionally uses WASI for stdio, perhaps replace that with web-friendly stdio)
   , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+#endif // MINIFY_WASM_IMPORTED_MODULES
 #if WASM_BACKEND == 0
   , 'global': {
     'NaN': NaN,
