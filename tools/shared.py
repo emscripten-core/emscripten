@@ -2541,6 +2541,12 @@ class Building(object):
           hint = ' the error message may be clearer with -g1'
         exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, hint)
 
+      # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
+      # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
+      # But it looks like it creates such files on Linux(?) even without setting that command line
+      # flag (and currently we don't), so delete the produced source map file to not leak files in
+      # temp directory.
+      try_delete(outfile + '.map')
       return outfile
 
   # minify the final wasm+JS combination. this is done after all the JS
