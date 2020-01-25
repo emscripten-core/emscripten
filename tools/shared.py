@@ -2369,6 +2369,8 @@ class Building(object):
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
     cmd = NODE_JS + [optimizer, filename] + passes
+    # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
+    # will be carried over to a later Closure run.
     if acorn and Settings.USE_CLOSURE_COMPILER:
       cmd += ['--preserveComments']
     if not return_output:

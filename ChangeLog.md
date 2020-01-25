@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Added support for specifying JSDoc minification annotations for Closure in
+  JS library, pre and post files. See
+  https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler
+  (#10272)
 - Add new Fibers API for context switching, that supercedes the old coroutine
   API that only ran on fastcomp. See #9859
 - Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
