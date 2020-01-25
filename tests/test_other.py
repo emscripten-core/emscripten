@@ -8245,7 +8245,6 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10652,   12,   10, None), # noqa
   })
   @no_fastcomp()
-  @unittest.skip("Allow LLVM roll to proceed")
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
