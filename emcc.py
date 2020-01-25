@@ -211,6 +211,14 @@ def log_time(name):
     TimeLogger.update()
 
 
+def base64_encode(b):
+  b64 = base64.b64encode(b)
+  if type(b64) == bytes:
+    return b64
+  else:
+    return b64.encode('ascii')
+
+
 class EmccOptions(object):
   def __init__(self):
     self.opt_level = 0
@@ -2408,7 +2416,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.MEM_INIT_METHOD == 0 or shared.Settings.SINGLE_FILE):
             # In MINIMAL_RUNTIME emit the base64 memory initializer directly into a HEAPU8.set() statement.
             mem_init_data = re.search(shared.JS.memory_initializer_pattern, open(final).read())
-            src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64.b64encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))).encode('ascii'))
+            src = open(final).read().replace('{{{ BASE64_MEMORY_INITIALIZER }}}', base64_encode(bytearray(parse_mem_bytes(mem_init_data.group(1)))))
             src = re.sub(shared.JS.memory_initializer_pattern, '', src)
           else:
             src = re.sub(shared.JS.memory_initializer_pattern, repl, open(final).read(), count=1)
@@ -3206,7 +3214,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     js = open(final).read()
 
     if '{{{ WASM_BINARY_DATA }}}' in js:
-      js = js.replace('{{{ WASM_BINARY_DATA }}}', base64.b64encode(open(wasm_binary_target, 'rb').read()).encode('ascii'))
+      js = js.replace('{{{ WASM_BINARY_DATA }}}', base64_encode(open(wasm_binary_target, 'rb').read()))
 
     for target, replacement_string, should_embed in (
         (wasm_binary_target,
