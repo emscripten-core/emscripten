@@ -1061,15 +1061,6 @@ var ASM_JS = 1;
 // [fastcomp-only]
 var FINALIZE_ASM_JS = 1;
 
-// If 1, then all exports from the asm/wasm module will be accessed indirectly,
-// which allow the module to be swapped later, simply by replacing
-// Module['asm'].
-//
-// Note: It is very important that the replacement module be built with the same
-// optimizations and so forth, as we depend on them being a drop-in replacement
-// for each other (same globals on the heap at the same locations, etc.)
-var SWAPPABLE_ASM_MODULE = 0;
-
 // see emcc --separate-asm
 // [fastcomp-only]
 var SEPARATE_ASM = 0;
@@ -1738,6 +1729,7 @@ var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tem
 // settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
+  ['SWAPPABLE_ASM_MODULE', [0], 'Removed support SWAPPABLE_ASM_MODULE'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
   ['PGO', [0], 'pgo no longer supported'],

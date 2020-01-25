@@ -1734,7 +1734,7 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
   module_exports = exported_implemented_functions + function_tables(function_table_data)
   shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
 
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+  if shared.Settings.MINIMAL_RUNTIME or not shared.Settings.WASM_ASYNC_COMPILATION:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       imported_exports = [s for s in module_exports if s not in initializers]
 
@@ -2641,7 +2641,7 @@ asm["%(e)s"] = function() {%(assertions)s
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
 
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+  if shared.Settings.MINIMAL_RUNTIME or not shared.Settings.WASM_ASYNC_COMPILATION:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
         # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.

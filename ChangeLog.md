@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove SWAPPABLE_ASM_MODULE option (#10282).
 - Add new Fibers API for context switching, that supercedes the old coroutine
   API that only ran on fastcomp. See #9859
 - Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which

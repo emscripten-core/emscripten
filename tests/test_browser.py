@@ -2791,50 +2791,6 @@ Module["preRun"].push(function () {
     self.btest(path_from_root('tests', 'glfw_events.c'), args=['-s', 'USE_GLFW=2', "-DUSE_GLFW=2", '-lglfw', '-lGL'], expected='1')
     self.btest(path_from_root('tests', 'glfw_events.c'), args=['-s', 'USE_GLFW=3', "-DUSE_GLFW=3", '-lglfw', '-lGL'], expected='1')
 
-  @no_wasm_backend('asm.js')
-  def test_asm_swapping(self):
-    self.clear()
-    create_test_file('run.js', r'''
-Module['onRuntimeInitialized'] = function() {
-  // test proper initial result
-  var result = Module._func();
-  console.log('first: ' + result);
-  if (result !== 10) throw 'bad first result';
-
-  // load second module to be swapped in
-  var second = document.createElement('script');
-  second.onload = function() { console.log('loaded second') };
-  second.src = 'second.js';
-  document.body.appendChild(second);
-  console.log('second appended');
-
-  Module['onAsmSwap'] = function() {
-    console.log('swapped');
-    // verify swapped-in result
-    var result = Module._func();
-    console.log('second: ' + result);
-    if (result !== 22) throw 'bad second result';
-    Module._report(999);
-    console.log('reported');
-  };
-};
-''')
-    for opts in [[], ['-O1'], ['-O2', '-profiling'], ['-O2']]:
-      print(opts)
-      opts += ['-s', 'WASM=0', '--pre-js', 'run.js', '-s', 'SWAPPABLE_ASM_MODULE=1'] # important that both modules are built with the same opts
-      create_test_file('second.cpp', self.with_report_result(open(path_from_root('tests', 'asm_swap2.cpp')).read()))
-      self.compile_btest(['second.cpp'] + opts)
-      run_process([PYTHON, path_from_root('tools', 'distill_asm.py'), 'a.out.js', 'second.js', 'swap-in'])
-      self.assertExists('second.js')
-
-      if SPIDERMONKEY_ENGINE in JS_ENGINES:
-        out = run_js('second.js', engine=SPIDERMONKEY_ENGINE, stderr=PIPE, full_output=True, assert_returncode=None)
-        self.validate_asmjs(out)
-      else:
-        print('Skipping asm validation check, spidermonkey is not configured')
-
-      self.btest(path_from_root('tests', 'asm_swap.cpp'), args=opts, expected='999')
-
   @requires_graphics_hardware
   def test_sdl2_image(self):
     # load an image file, get pixel data. Also O2 coverage for --preload-file, and memory-init

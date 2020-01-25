@@ -40,7 +40,7 @@ from subprocess import PIPE
 
 import emscripten
 from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
-from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
+from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
 import tools.line_endings
@@ -1631,16 +1631,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         options.memory_init_file = True
         shared.Settings.MEM_INIT_IN_WASM = True if shared.Settings.WASM_BACKEND else not shared.Settings.USE_PTHREADS
 
-      # WASM_ASYNC_COMPILATION and SWAPPABLE_ASM_MODULE do not have a meaning in MINIMAL_RUNTIME (always async)
-      if not shared.Settings.MINIMAL_RUNTIME and shared.Settings.WASM_ASYNC_COMPILATION:
-        # async compilation requires a swappable module - we swap it in when it's ready
-        shared.Settings.SWAPPABLE_ASM_MODULE = 1
-
-      if shared.Settings.SWAPPABLE_ASM_MODULE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-        # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
-        # function generated to each function export from wasm module, so cannot use the
-        # concise form of grabbing exports that does not need to refer to each export individually.
-        exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not comptabible with SWAPPABLE_ASM_MODULE')
+      if not shared.Settings.MINIMAL_RUNTIME:
+        if shared.Settings.WASM_ASYNC_COMPILATION and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+          # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
+          # function generated to each function export from wasm module, so cannot use the
+          # concise form of grabbing exports that does not need to refer to each export individually.
+          exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not comptabible with WASM_ASYNC_COMPILATION')
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):
@@ -2919,8 +2915,7 @@ def emterpretify(js_target, optimizer, options):
           final + '.em.js',
           blacklist,
           whitelist,
-          synclist,
-          str(shared.Settings.SWAPPABLE_ASM_MODULE)]
+          synclist]
   if shared.Settings.EMTERPRETIFY_ASYNC:
     args += ['ASYNC=1']
   if shared.Settings.EMTERPRETIFY_ADVISE:
@@ -2956,19 +2951,6 @@ def emterpretify(js_target, optimizer, options):
     optimizer.do_minify()
   optimizer.queue += ['last']
   optimizer.flush('finalizing-emterpreted-code')
-
-  # finalize the original as well, if we will be swapping it in (TODO: add specific option for this)
-  if shared.Settings.SWAPPABLE_ASM_MODULE:
-    real = final
-    original = js_target + '.orig.js' # the emterpretify tool saves the original here
-    final = original
-    logger.debug('finalizing original (non-emterpreted) code at ' + final)
-    if not shared.Settings.WASM:
-      optimizer.do_minify()
-    optimizer.queue += ['last']
-    optimizer.flush('finalizing-original-code')
-    safe_copy(final, original)
-    final = real
 
 
 def emit_js_source_maps(target, js_transform_tempfiles):

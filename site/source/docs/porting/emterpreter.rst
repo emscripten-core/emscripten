@@ -31,18 +31,8 @@ Specific Use Cases
 
 A couple of examples are given below of how the Emterpreter can be useful in general.
 
-Improving Startup 1: Swapping
------------------------------
-
-As mentioned earlier, the Emterpreter and its binary bytecode load faster than JavaScript and asm.js can. Just building with the Emterpreter option gives you that, but it also makes the code run more slowly. A hybrid solution is to start up quickly in the Emterpreter, then switch to faster execution in full asm.js speed later. This is possible by **swapping** the asm.js module - first load the Emterpreted one, then load the fast one in the background and switch to it when it's ready.
-
-To do this, build the project twice:
-
- * Once with the Emterpreter option enabled, and ``SWAPPABLE_ASM_MODULE``. This is the module you will start up with, and swap out when the fast one is ready.
- * Again to normal asm.js, then run ``tools/distill_asm.py infile.js outfile.js swap-in``. The output, ``outfile.js``, will be just the asm module itself. You can then load this in a script tag on the same page, and it will swap itself in when it is ready.
-
-Improving Startup 2: Set Aside Cold Code
-----------------------------------------
+Improving Startup: Set Aside Cold Code
+--------------------------------------
 
 If you have a method that you know will only ever run exactly once, and doesn't need to be fast, you can run that specific method in the Emterpreter: As mentioned above, the JavaScript engine won't need to compile it, and the bytecode is smaller than asm.js, so both download and startup will be faster. Another example is exception-handling or assertion reporting code, something that should never run, and if it does, is ok to run at a slower speed.
 
