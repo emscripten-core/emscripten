@@ -2372,6 +2372,10 @@ class Building(object):
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
     cmd = NODE_JS + [optimizer, filename] + passes
+    # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
+    # will be carried over to a later Closure run.
+    if acorn and Settings.USE_CLOSURE_COMPILER:
+      cmd += ['--preserveComments']
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
@@ -2466,16 +2470,6 @@ class Building(object):
         logger.error('Cannot run closure compiler')
         raise Exception('closure compiler check failed')
 
-      # Closure annotations file contains suppressions and annotations to different symbols
-      CLOSURE_ANNOTATIONS = [path_from_root('src', 'closure-annotations.js')]
-
-      if not Settings.ASMFS:
-        # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
-        if Settings.FILESYSTEM:
-          CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-defined-fs-annotation.js')]
-        else:
-          CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-undefined-fs-annotation.js')]
-
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
       CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs.js')]
@@ -2522,8 +2516,6 @@ class Building(object):
               '-jar', CLOSURE_COMPILER,
               '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
               '--language_in', 'ECMASCRIPT5']
-      for a in CLOSURE_ANNOTATIONS:
-        args += ['--js', a]
       for e in CLOSURE_EXTERNS:
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
@@ -3008,8 +3000,9 @@ class Building(object):
     if DEBUG:
       dst = 'emcc-%d-%s' % (Building.save_intermediate_counter, dst)
       Building.save_intermediate_counter += 1
+      dst = os.path.join(CANONICAL_TEMP_DIR, dst)
       logger.debug('saving debug copy %s' % dst)
-      shutil.copyfile(src, os.path.join(CANONICAL_TEMP_DIR, dst))
+      shutil.copyfile(src, dst)
 
 
 # compatibility with existing emcc, etc. scripts
