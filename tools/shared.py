@@ -509,6 +509,10 @@ def check_llvm():
   return True
 
 
+def get_node_directory():
+  return os.path.dirname(NODE_JS[0] if type(NODE_JS) is list else NODE_JS)
+
+
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
@@ -528,7 +532,9 @@ def check_closure_compiler():
     warning('Closure compiler (%s) does not exist, check the paths in %s. To install Closure compiler, run "npm install" in Emscripten root directory.', CLOSURE_COMPILER, EM_CONFIG)
     return False
   try:
-    proc = subprocess.Popen([CLOSURE_COMPILER, '--version'], stdout=PIPE, stderr=PIPE)
+    env = os.environ.copy()
+    env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+    proc = subprocess.Popen([CLOSURE_COMPILER, '--version'], stdout=PIPE, stderr=PIPE, env=env)
     output = proc.communicate()
     if 'Version:' in str(output[0]):
       return True
@@ -2525,7 +2531,9 @@ class Building(object):
       args += extra_closure_args
       args += ['--js', filename]
       logger.debug('closure compiler: ' + ' '.join(args))
-      proc = run_process(args, stderr=PIPE, check=False)
+      env = os.environ.copy()
+      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      proc = run_process(args, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         hint = ''
