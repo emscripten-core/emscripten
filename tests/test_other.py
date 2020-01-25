@@ -8212,7 +8212,6 @@ int main() {
                   '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028, 46, 47, None), # noqa
   })
   @no_fastcomp()
-  @unittest.skip("Allow LLVM roll to proceed")
   def test_metadce_cxx(self, *args):
     # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', *args)
