@@ -1713,7 +1713,7 @@ RUNTIME_ASSERTIONS = '''
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''
   runtime_assertions = ''
-  if shared.Settings.ASSERTIONS or not shared.Settings.MINIMAL_RUNTIME:
+  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
 
   module_exports = exported_implemented_functions + function_tables(function_table_data)
