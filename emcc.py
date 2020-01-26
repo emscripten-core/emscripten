@@ -1723,9 +1723,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.LINKABLE:
           exit_with_error('LSan does not support dynamic linking')
 
-        if shared.Settings.MINIMAL_RUNTIME:
-          exit_with_error('MINIMAL_RUNTIME is currently not compatible LSan')
-
       if 'address' in sanitize:
         shared.Settings.USE_ASAN = 1
 
