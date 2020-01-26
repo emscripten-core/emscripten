@@ -1,8 +1,10 @@
-#if WASM2JS && 0 // TODO: Enable once Binaryen PR lands
+#if WASM2JS && 0 // TODO: Figure out a way to enable this kind of sharing.
 
 // Binaryen defines the following function if Wasm2JS is being used:
 //   function base64DecodeToExistingUint8Array(uint8Array, offset, b64);
-// so reuse that when available.
+// so should reuse that when available. However that lives inside the asm module
+// for the time being, so cannot access it directly from here. Hence this block
+// is disabled atm.
 
 function base64Decode(b64) {
 #if ASSERTIONS
