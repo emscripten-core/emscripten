@@ -769,6 +769,7 @@ window.close = function() {
     self.btest('sdl_canvas_proxy.c', reference='sdl_canvas_proxy.png', args=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'], manual_reference=True, post_build=self.post_manual_reftest)
 
   @requires_graphics_hardware
+  @no_wasm_backend('This modifies JS code with regexes in such a way that does not currently work in WASM2JS')
   def test_glgears_proxy(self):
     # we modify the asm.js, this is a non-wasm test
     self.btest('hello_world_gles_proxy.c', reference='gears.png', args=['--proxy-to-worker', '-s', 'GL_TESTING=1', '-DSTATIC_GEARS=1', '-lGL', '-lglut', '-s', 'WASM=0'], manual_reference=True, post_build=self.post_manual_reftest)
