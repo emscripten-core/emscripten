@@ -378,7 +378,12 @@ def parse_config_file():
     JS_ENGINES = [NODE_JS]
 
   if CLOSURE_COMPILER is None:
-    CLOSURE_COMPILER = path_from_root('node_modules', '.bin', 'google-closure-compiler' + ('.cmd' if WINDOWS else ''))
+    if WINDOWS:
+      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
+    else:
+      # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+      # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+      CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
@@ -528,19 +533,19 @@ def check_node_version():
 
 
 def check_closure_compiler():
-  if not os.path.exists(CLOSURE_COMPILER):
+  if not os.path.exists(CLOSURE_COMPILER[-1]):
     warning('Closure compiler (%s) does not exist, check the paths in %s. To install Closure compiler, run "npm install" in Emscripten root directory.', CLOSURE_COMPILER, EM_CONFIG)
     return False
   try:
     env = os.environ.copy()
     env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-    proc = subprocess.Popen([CLOSURE_COMPILER, '--version'], stdout=PIPE, stderr=PIPE, env=env)
+    proc = subprocess.Popen(CLOSURE_COMPILER + ['--version'], stdout=PIPE, stderr=PIPE, env=env)
     output = proc.communicate()
     if 'Version:' in str(output[0]):
       return True
     warning('Unrecognized Closure compiler --version output:\n' + str(output[0]) + '\n' + str(output[1]))
   except Exception as e:
-    warning('Closure compiler ("%s --version") did not execute properly!' % CLOSURE_COMPILER)
+    warning('Closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
     warning(str(e))
   return False
 
@@ -2515,7 +2520,7 @@ class Building(object):
 
       outfile = filename + '.cc.js'
 
-      args = [CLOSURE_COMPILER]
+      args = CLOSURE_COMPILER[:]
       args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
                '--language_in', 'ECMASCRIPT5']
       for e in CLOSURE_EXTERNS:
