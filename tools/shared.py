@@ -378,7 +378,12 @@ def parse_config_file():
     JS_ENGINES = [NODE_JS]
 
   if CLOSURE_COMPILER is None:
-    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+    if WINDOWS:
+      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
+    else:
+      # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+      # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+      CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
@@ -509,6 +514,10 @@ def check_llvm():
   return True
 
 
+def get_node_directory():
+  return os.path.dirname(NODE_JS[0] if type(NODE_JS) is list else NODE_JS)
+
+
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
@@ -524,15 +533,21 @@ def check_node_version():
 
 
 def check_closure_compiler():
+  if not os.path.exists(CLOSURE_COMPILER[-1]):
+    warning('Closure compiler (%s) does not exist, check the paths in %s. To install Closure compiler, run "npm install" in Emscripten root directory.', CLOSURE_COMPILER, EM_CONFIG)
+    return False
   try:
-    run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-  except Exception:
-    warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
-    return False
-  if not os.path.exists(CLOSURE_COMPILER):
-    warning('Closure compiler (%s) does not exist, check the paths in %s', CLOSURE_COMPILER, EM_CONFIG)
-    return False
-  return True
+    env = os.environ.copy()
+    env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+    proc = subprocess.Popen(CLOSURE_COMPILER + ['--version'], stdout=PIPE, stderr=PIPE, env=env)
+    output = proc.communicate()
+    if 'Version:' in str(output[0]):
+      return True
+    warning('Unrecognized Closure compiler --version output:\n' + str(output[0]) + '\n' + str(output[1]))
+  except Exception as e:
+    warning('Closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+    warning(str(e))
+  return False
 
 
 def get_emscripten_version(path):
@@ -574,11 +589,6 @@ def perform_sanify_checks():
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-  # Sanity check passed!
-  with ToolchainProfiler.profile_block('sanity closure compiler'):
-    if not check_closure_compiler():
-      warning('closure compiler will not be available')
 
 
 def check_sanity(force=False):
@@ -2467,8 +2477,7 @@ class Building(object):
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
       if not check_closure_compiler():
-        logger.error('Cannot run closure compiler')
-        raise Exception('closure compiler check failed')
+        exit_with_error('google-closure-compiler executable was not found: Cannot run closure compiler')
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2503,19 +2512,17 @@ class Building(object):
       # Web environment specific externs
       if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
         BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
-        BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-        BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                           if name.endswith('.js')]
-        CLOSURE_EXTERNS += BROWSER_EXTERNS
+        if os.path.isdir(BROWSER_EXTERNS_BASE):
+          BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+          BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                             if name.endswith('.js')]
+          CLOSURE_EXTERNS += BROWSER_EXTERNS
 
-      # Something like this (adjust memory as needed):
-      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
       outfile = filename + '.cc.js'
-      args = [JAVA,
-              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
-              '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-              '--language_in', 'ECMASCRIPT5']
+
+      args = CLOSURE_COMPILER[:]
+      args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
+               '--language_in', 'ECMASCRIPT5']
       for e in CLOSURE_EXTERNS:
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
@@ -2529,7 +2536,9 @@ class Building(object):
       args += extra_closure_args
       args += ['--js', filename]
       logger.debug('closure compiler: ' + ' '.join(args))
-      proc = run_process(args, stderr=PIPE, check=False)
+      env = os.environ.copy()
+      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      proc = run_process(args, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         hint = ''
@@ -2537,6 +2546,12 @@ class Building(object):
           hint = ' the error message may be clearer with -g1'
         exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, hint)
 
+      # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
+      # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
+      # But it looks like it creates such files on Linux(?) even without setting that command line
+      # flag (and currently we don't), so delete the produced source map file to not leak files in
+      # temp directory.
+      try_delete(outfile + '.map')
       return outfile
 
   # minify the final wasm+JS combination. this is done after all the JS

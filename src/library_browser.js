@@ -24,6 +24,7 @@ var LibraryBrowser = {
       method: '',
       // Each main loop is numbered with a ID in sequence order. Only one main loop can run at a time. This variable stores the ordinal number of the main loop that is currently
       // allowed to run. All previous main loops will quit themselves. This is incremented whenever a new main loop is created.
+      /** @type{number} */
       currentlyRunningMainloop: 0,
       func: null, // The main loop tick function that will be called at each iteration.
       arg: 0, // The argument that will be passed to the main loop. (of type void*)
@@ -1194,7 +1195,20 @@ var LibraryBrowser = {
       };
     }
 
+#if USE_CLOSURE_COMPILER
+    // Closure compiler bug(?): Closure does not see that the assignment
+    //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
+    // is a value copy of a number (even with the JSDoc @type annotation)
+    // but optimizeis the code as if the assignment was a reference assignment,
+    // which results in Browser.mainLoop.pause() not working. Hence use a
+    // workaround to make Closure believe this is a value copy that should occur:
+    // (TODO: Minimize this down to a small test case and report - was unable
+    // to reproduce in a small written test case)
+    /** @type{number} */
+    var thisMainLoopId = (function(){return Browser.mainLoop.currentlyRunningMainloop; })();
+#else
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
+#endif
 
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
