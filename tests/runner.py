@@ -1623,7 +1623,7 @@ class BrowserCore(RunnerCore):
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
+                 original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
