@@ -214,9 +214,9 @@ def log_time(name):
 def base64_encode(b):
   b64 = base64.b64encode(b)
   if type(b64) == bytes:
-    return b64
+    return b64.decode('ascii')
   else:
-    return b64.encode('ascii')
+    return b64
 
 
 class EmccOptions(object):

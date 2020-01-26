@@ -3928,14 +3928,22 @@ window.close = function() {
   # Tests that spawning a new thread does not cause a reinitialization of the global data section of the application memory area.
   @requires_threads
   def test_pthread_global_data_initialization(self):
-    for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
+    mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
+    if not self.is_wasm_backend():
+      mem_init_modes += [['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]
+
+    for mem_init_mode in mem_init_modes:
       for args in [['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')], ['-O3']]:
         self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
   @requires_threads
   @requires_sync_compilation
   def test_pthread_global_data_initialization_in_sync_compilation_mode(self):
-    for mem_init_mode in [[], ['--memory-init-file', '0'], ['--memory-init-file', '1'], ['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]:
+    mem_init_modes = [[], ['--memory-init-file', '0'], ['--memory-init-file', '1']]
+    if not self.is_wasm_backend():
+      mem_init_modes += [['-s', 'MEM_INIT_METHOD=2', '-s', 'WASM=0']]
+
+    for mem_init_mode in mem_init_modes:
       args = ['-s', 'WASM_ASYNC_COMPILATION=0']
       self.btest(path_from_root('tests', 'pthread', 'test_pthread_global_data_initialization.c'), expected='20', args=args + mem_init_mode + ['-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1', '-s', 'PTHREAD_POOL_SIZE=1'])
 
