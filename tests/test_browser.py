@@ -4417,6 +4417,7 @@ window.close = function() {
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
   # thread proxied to a Worker with -s PROXY_TO_PTHREAD=1 option.
   @requires_threads
+  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_sync_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
@@ -4424,6 +4425,7 @@ window.close = function() {
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
   @requires_threads
+  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_implicit_append(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/example_synchronous_fetch.cpp', expected='200', args=['-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
@@ -4451,10 +4453,12 @@ window.close = function() {
     self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
+  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_idb_store(self):
     self.btest('fetch/idb_store.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
+  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_idb_delete(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/idb_delete.cpp', expected='0', args=['-s', 'USE_PTHREADS=1', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'PROXY_TO_PTHREAD=1'])
@@ -4596,6 +4600,7 @@ window.close = function() {
 
   # Tests that it is possible to load the main .js file of the application manually via a Blob URL, and still use pthreads.
   @requires_threads
+  @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_load_js_from_blob_with_pthreads(self):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     src = 'src.c'
