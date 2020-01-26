@@ -5152,7 +5152,6 @@ main( int argv, char ** argc ) {
       self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   @no_emterpreter
   def test_minimal_runtime_utf8_invalid(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
@@ -8272,7 +8271,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   @no_emterpreter
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8282,7 +8280,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   @no_emterpreter
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   def test_minimal_runtime_hello_world(self):
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
@@ -8294,7 +8291,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_emterpreter
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   def test_minimal_runtime_hello_world_printf(self):
     for fs in [['-s', 'NO_FILESYSTEM=1'], ['-s', 'FORCE_FILESYSTEM=1']]:
       self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + fs
@@ -8303,7 +8299,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
   @no_emterpreter
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   def test_minimal_runtime_safe_heap(self):
     self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SAFE_HEAP=1']
     self.maybe_closure()
@@ -8311,7 +8306,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests global initializer with -s MINIMAL_RUNTIME=1
   @no_emterpreter
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
@@ -8615,7 +8609,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
   # Tests the emscripten_get_exported_function() API.
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
   def test_minimal_runtime_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
     self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
