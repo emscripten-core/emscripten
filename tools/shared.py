@@ -534,20 +534,17 @@ def check_node_version():
 
 def check_closure_compiler():
   if not os.path.exists(CLOSURE_COMPILER[-1]):
-    warning('Closure compiler (%s) does not exist, check the paths in %s. To install Closure compiler, run "npm install" in Emscripten root directory.', CLOSURE_COMPILER, EM_CONFIG)
-    return False
+    exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
   try:
     env = os.environ.copy()
     env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
     proc = subprocess.Popen(CLOSURE_COMPILER + ['--version'], stdout=PIPE, stderr=PIPE, env=env)
     output = proc.communicate()
-    if 'Version:' in str(output[0]):
-      return True
-    warning('Unrecognized Closure compiler --version output:\n' + str(output[0]) + '\n' + str(output[1]))
+    if 'Version:' not in str(output[0]):
+      exit_with_error('Unrecognized Closure compiler --version output:\n' + str(output[0]) + '\n' + str(output[1]))
   except Exception as e:
-    warning('Closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
     warning(str(e))
-  return False
+    exit_with_error('Closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
 
 
 def get_emscripten_version(path):
@@ -2476,8 +2473,7 @@ class Building(object):
   @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      if not check_closure_compiler():
-        exit_with_error('google-closure-compiler executable was not found: Cannot run closure compiler')
+      check_closure_compiler()
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
