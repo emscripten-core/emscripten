@@ -33,8 +33,6 @@ NODE_JS = os.path.expanduser(os.getenv('NODE', '{{{ NODE }}}')) # executable
 
 JAVA = 'java' # executable
 
-# CLOSURE_COMPILER = '..' # define this to not use the bundled version
-
 ################################################################################
 #
 # Test suite options:
