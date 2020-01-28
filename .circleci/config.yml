@@ -11,6 +11,14 @@ executors:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
+      EMSDK_NOTTY: "1"
+      PYTHON_BIN: "python2"
+  mac:
+    environment:
+      EMSDK_NOTTY: "1"
+      PYTHON_BIN: "python3"
+    macos:
+      xcode: "9.0"
 
 commands:
   npm-install:
@@ -105,8 +113,8 @@ commands:
       - run:
           name: run tests
           command: |
-            python3 tests/runner.py << parameters.test_targets >>
-            tools/check_clean.py
+            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
+            $PYTHON_BIN tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
@@ -426,9 +434,6 @@ jobs:
           test_targets: "sanity"
   build-upstream-linux:
     executor: bionic
-    environment:
-      EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python2"
     steps:
       - checkout
       - run:
@@ -514,6 +519,10 @@ jobs:
           command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
       - build-upstream
   test-upstream-other-windows:
+    environment:
+      PYTHON_BIN: "/c/python27amd64/python.exe"
+      PYTHONUNBUFFERED: "1"
+      EMSDK_NOTTY: "1"
     executor:
       name: win/vs2019
       shell: bash.exe
@@ -521,11 +530,7 @@ jobs:
       - run-tests:
           test_targets: "wasm2"
   build-upstream-mac:
-    macos:
-      xcode: "9.0"
-    environment:
-      EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python3"
+    executor: mac
     steps:
       - run:
           name: Install brew package dependencies
@@ -535,8 +540,7 @@ jobs:
       - checkout
       - build-upstream
   test-upstream-other-mac:
-    macos:
-      xcode: "9.0"
+    executor: mac
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
