@@ -224,18 +224,13 @@ var SyscallsLibrary = {
     }
   },
 
-  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS',
+  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS', 'getpagesize',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
-    'getpagesize'
-#endif
   ],
   _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
     var PAGE_SIZE = _getpagesize();
-#endif
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
