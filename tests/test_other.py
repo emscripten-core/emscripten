@@ -8208,10 +8208,10 @@ int main() {
   @parameterized({
     'noexcept': (['-O2'],                    19, [], ['waka'], 218988, 17, 33, None), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    52, [], ['waka'], 279827, 46, 46, None), # noqa
+    'except':   (['-O2', '-fexceptions'],    52, [], ['waka'], 279827, 47, 46, None), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028, 46, 47, None), # noqa
+                  '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028, 47, 47, None), # noqa
   })
   @no_fastcomp()
   def test_metadce_cxx(self, *args):
@@ -8232,10 +8232,10 @@ int main() {
   @parameterized({
     'O0': ([],      10, [], ['waka'], 22874,  9,  18, 58), # noqa
     'O1': (['-O1'],  7, [], ['waka'], 10415,  6,  14, 30), # noqa
-    'O2': (['-O2'],  7, [], ['waka'], 10256,  6,  14, 25), # noqa
+    'O2': (['-O2'],  7, [], ['waka'], 10256,  6,  14, 24), # noqa
     'O3': (['-O3'],  4, [], [],        1957,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  4, [], [],        1963,  4,   2, 13), # noqa
-    'Oz': (['-Oz'],  4, [], [],        2031,  4,   2, 13), # noqa
+    'Os': (['-Os'],  4, [], [],        1963,  4,   2, 12), # noqa
+    'Oz': (['-Oz'],  4, [], [],        2031,  4,   2, 12), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
@@ -9597,17 +9597,17 @@ int main () {
 
     if self.is_wasm_backend():
       test_cases = [
-        (opts, hello_world_sources, {'a.html': 1445, 'a.js': 484, 'a.wasm': 176}),
-        (opts, hello_webgl_sources, {'a.html': 1565, 'a.js': 4663, 'a.wasm': 11809}),
-        (opts, hello_webgl2_sources, {'a.html': 1565, 'a.js': 5172, 'a.wasm': 11809}) # Compare how WebGL2 sizes stack up with WebGL 1
+        (opts, hello_world_sources, {'a.html': 1205, 'a.js': 450, 'a.wasm': 172}),
+        (opts, hello_webgl_sources, {'a.html': 1335, 'a.js': 4629, 'a.wasm': 11731}),
+        (opts, hello_webgl2_sources, {'a.html': 1335, 'a.js': 5137, 'a.wasm': 11731}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
     else:
       test_cases = [
-        (asmjs + opts, hello_world_sources, {'a.html': 1481, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-        (opts, hello_world_sources, {'a.html': 1445, 'a.js': 633, 'a.wasm': 86}),
-        (asmjs + opts, hello_webgl_sources, {'a.html': 1605, 'a.js': 4921, 'a.asm.js': 11129, 'a.mem': 321}),
-        (opts, hello_webgl_sources, {'a.html': 1565, 'a.js': 4874, 'a.wasm': 8932}),
-        (opts, hello_webgl2_sources, {'a.html': 1565, 'a.js': 5361, 'a.wasm': 8932}) # Compare how WebGL2 sizes stack up with WebGL 1
+        (asmjs + opts, hello_world_sources, {'a.html': 1223, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+        (opts, hello_world_sources, {'a.html': 1205, 'a.js': 633, 'a.wasm': 86}),
+        (asmjs + opts, hello_webgl_sources, {'a.html': 1353, 'a.js': 4921, 'a.asm.js': 11129, 'a.mem': 321}),
+        (opts, hello_webgl_sources, {'a.html': 1335, 'a.js': 4874, 'a.wasm': 8932}),
+        (opts, hello_webgl2_sources, {'a.html': 1335, 'a.js': 5361, 'a.wasm': 8932}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
 
     success = True
@@ -10267,3 +10267,17 @@ int main() {
     self.assertNotContained('hello, world!', test([]))
     # but work with it
     self.assertContained('hello, world!', test(['-s', 'LEGACY_VM_SUPPORT']))
+
+  # Compile-test for -s USE_WEBGPU=1 and library_webgpu.js.
+  def test_webgpu_compiletest(self):
+    for args in [[], ['-s', 'ASSERTIONS=1']]:
+      run_process([PYTHON, EMCC, path_from_root('tests', 'webgpu_dummy.cpp'), '-s', 'USE_WEBGPU=1'] + args)
+
+  @no_fastcomp('lld only')
+  def test_signature_mismatch(self):
+    create_test_file('a.c', 'void foo(); int main() { foo(); return 0; }')
+    create_test_file('b.c', 'int foo() { return 1; }')
+    stderr = run_process([PYTHON, EMCC, 'a.c', 'b.c'], stderr=PIPE).stderr
+    self.assertContained('function signature mismatch: foo', stderr)
+    self.expect_fail([PYTHON, EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
+    self.expect_fail([PYTHON, EMCC, '-s', 'STRICT', 'a.c', 'b.c'])

@@ -2036,6 +2036,7 @@ void *getBindBuffer() {
     self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_firefox('fails on CI but works locally')
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
     self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
@@ -4245,7 +4246,7 @@ window.close = function() {
     size = os.path.getsize('test.js')
     print('size:', size)
     # Note that this size includes test harness additions (for reporting the result, etc.).
-    self.assertLess(abs(size - 5680), 100)
+    self.assertLess(abs(size - 5661), 100)
 
   # Tests that it is possible to initialize and render WebGL content in a pthread by using OffscreenCanvas.
   # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING: Tests that it is possible to transfer WebGL canvas in a chain from main thread -> thread 1 -> thread 2 and then init and render WebGL content there.
@@ -4917,3 +4918,23 @@ window.close = function() {
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
     self.btest(path_from_root('tests', 'browser', 'test_emscripten_unwind_to_js_event_loop.c'), '1', args=['-s', 'NO_EXIT_RUNTIME=1'])
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js_fallback(self):
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      src = 'src.cpp'
+      create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
+      self.compile_btest([src, '-s', 'WASM=2', '-o', 'test.html'] + args)
+
+      # First run with WebAssembly support enabled
+      # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
+      os.rename('test.wasm.js', 'test.wasm.js.unused')
+      self.run_browser('test.html', 'hello!', '/report_result?0')
+      os.rename('test.wasm.js.unused', 'test.wasm.js')
+
+      # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
+      html = open('test.html', 'r').read()
+      html = html.replace('<body>', '<body><script>delete WebAssembly;</script>')
+      open('test.html', 'w').write(html)
+      os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
+      self.run_browser('test.html', 'hello!', '/report_result?0')

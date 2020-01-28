@@ -16,17 +16,17 @@ out = err = function(){};
 {{{ makeModuleReceiveWithVar('wasmBinary') }}}
 {{{ makeModuleReceiveWithVar('noExitRuntime') }}}
 
-#if MAYBE_WASM2JS && !WASM2JS
+#if WASM != 2 && MAYBE_WASM2JS
+#if !WASM2JS
 if (Module['doWasm2JS']) {
 #endif
-#if MAYBE_WASM2JS
 #include "wasm2js.js"
-#endif
-#if MAYBE_WASM2JS && !WASM2JS
+#if !WASM2JS
 }
 #endif
+#endif
 
-#if WASM
+#if WASM == 1
 if (typeof WebAssembly !== 'object') {
 #if ASSERTIONS
   abort('No WebAssembly support found. Build with -s WASM=0 to target JavaScript instead.');
@@ -880,8 +880,12 @@ var wasmOffsetConverter;
 function createWasm() {
   // prepare imports
   var info = {
+#if MINIFY_WASM_IMPORTED_MODULES
+    'a': asmLibraryArg,
+#else // MINIFY_WASM_IMPORTED_MODULES
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+#endif // MINIFY_WASM_IMPORTED_MODULES
 #if WASM_BACKEND == 0
     ,
     'global': {

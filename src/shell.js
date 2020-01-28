@@ -181,6 +181,14 @@ if (ENVIRONMENT_IS_NODE) {
   Worker = nodeWorkerThreads.Worker;
 #endif
 
+#if WASM == 2
+  // If target shell does not support Wasm, load the JS version of the code.
+  if (typeof WebAssembly === 'undefined') {
+    var fs = require('fs');
+    eval(fs.readFileSync(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
+  }
+#endif
+
 } else
 #endif // ENVIRONMENT_MAY_BE_NODE
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -238,6 +246,14 @@ if (ENVIRONMENT_IS_SHELL) {
     console.log = print;
     console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
   }
+
+#if WASM == 2
+  // If target shell does not support Wasm, load the JS version of the code.
+  if (typeof WebAssembly === 'undefined') {
+    eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
+  }
+#endif
+
 } else
 #endif // ENVIRONMENT_MAY_BE_SHELL
 

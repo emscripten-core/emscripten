@@ -47,10 +47,12 @@ function initRuntime(asm) {
 // Initialize wasm (asynchronous)
 
 var imports = {
+#if MINIFY_WASM_IMPORTED_MODULES
+  'a': asmLibraryArg,
+#else // MINIFY_WASM_IMPORTED_MODULES
   'env': asmLibraryArg
-  // TODO: Fix size bloat coming from WASI properly. The -s FILESYSTEM=1 check is too weak to properly DCE WASI linkage away.
-  // (Emscripten now unconditionally uses WASI for stdio, perhaps replace that with web-friendly stdio)
   , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+#endif // MINIFY_WASM_IMPORTED_MODULES
 #if WASM_BACKEND == 0
   , 'global': {
     'NaN': NaN,
@@ -84,7 +86,7 @@ var asm;
 // Chrome 57 added Wasm support, but only Chrome 61 added instantiateStreaming.
 // Node.js and Safari do not support instantiateStreaming.
 #if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-#if ASSERTIONS
+#if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!WebAssembly.instantiateStreaming && !Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
@@ -96,7 +98,7 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 #endif
 
 #else // Non-streaming instantiation
-#if ASSERTIONS
+#if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
@@ -172,9 +174,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
 
 // Initialize asm.js (synchronous)
-#if ASSERTIONS
-if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
-#endif
 initRuntime(asm);
 ready();
 
