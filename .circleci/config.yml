@@ -528,7 +528,7 @@ jobs:
       shell: bash.exe
     steps:
       - run-tests:
-          test_targets: "wasm2"
+          test_targets: "other.test_closure_externs other.test_binaryen_debug"
   build-upstream-mac:
     executor: mac
     steps:
