@@ -302,14 +302,10 @@ LibraryManager.library = {
   },
   getpagesize: function() {
     // int getpagesize(void);
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
 #if WASM
     return {{{ WASM_PAGE_SIZE }}};
 #else
     return {{{ ASMJS_PAGE_SIZE }}};
-#endif
-#else
-    return PAGE_SIZE;
 #endif
   },
 
