@@ -1739,7 +1739,7 @@ class Building(object):
     return (args, env)
 
   @staticmethod
-  def configure(args, stdout=None, stderr=None, env=None, cflags=[]):
+  def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     if not args:
       return
     if env is None:
@@ -1758,12 +1758,12 @@ class Building(object):
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
-    run_process(args, stdout=stdout, stderr=stderr, env=env)
+    run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
     if 'EMMAKEN_JUST_CONFIGURE' in env:
       del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
-  def make(args, stdout=None, stderr=None, env=None, cflags=[]):
+  def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     if env is None:
       env = Building.get_building_env(cflags=cflags)
     if not args:
@@ -1788,7 +1788,7 @@ class Building(object):
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
     print('make: ' + str(args), file=sys.stderr)
-    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
+    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
 
   @staticmethod
   def make_paths_absolute(f):
