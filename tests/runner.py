@@ -1676,60 +1676,63 @@ def build_library(name,
     shutil.rmtree(project_dir)
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
-  with chdir(project_dir):
-    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-    env = Building.get_building_env(native, True, cflags=cflags)
-    for k, v in env_init.items():
-      env[k] = v
-    if configure:
-      try:
-        with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
-          with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-            stdout = out if EM_BUILD_VERBOSE < 2 else None
-            stderr = err if EM_BUILD_VERBOSE < 1 else None
-            Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError:
-        with open(os.path.join(project_dir, 'configure_out')) as f:
-          print('-- configure stdout --')
-          print(f.read())
-          print('-- end configure stdout --')
-        with open(os.path.join(project_dir, 'configure_err')) as f:
-          print('-- configure stderr --')
-          print(f.read())
-          print('-- end configure stderr --')
-        raise
-
-    def open_make_out(mode='r'):
-      return open(os.path.join(project_dir, 'make.out'), mode)
-
-    def open_make_err(mode='r'):
-      return open(os.path.join(project_dir, 'make.err'), mode)
-
-    if EM_BUILD_VERBOSE >= 3:
-      make_args += ['VERBOSE=1']
-
+  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
+  env = Building.get_building_env(native, True, cflags=cflags)
+  for k, v in env_init.items():
+    env[k] = v
+  if configure:
     try:
-      with open_make_out('w') as make_out:
-        with open_make_err('w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+      with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
+        with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
+          stdout = out if EM_BUILD_VERBOSE < 2 else None
+          stderr = err if EM_BUILD_VERBOSE < 1 else None
+          Building.configure(configure + configure_args, env=env,
+                             stdout=stdout,
+                             stderr=stderr,
+                             cwd=project_dir)
     except subprocess.CalledProcessError:
-      with open_make_out() as f:
-        print('-- make stdout --')
+      with open(os.path.join(project_dir, 'configure_out')) as f:
+        print('-- configure stdout --')
         print(f.read())
-        print('-- end make stdout --')
-      with open_make_err() as f:
-        print('-- make stderr --')
+        print('-- end configure stdout --')
+      with open(os.path.join(project_dir, 'configure_err')) as f:
+        print('-- configure stderr --')
         print(f.read())
-        print('-- end stderr --')
+        print('-- end configure stderr --')
       raise
 
-    if cache is not None:
-      cache[cache_name] = []
-      for f in generated_libs:
-        basename = os.path.basename(f)
-        cache[cache_name].append((basename, open(f, 'rb').read()))
+  def open_make_out(mode='r'):
+    return open(os.path.join(project_dir, 'make.out'), mode)
+
+  def open_make_err(mode='r'):
+    return open(os.path.join(project_dir, 'make.err'), mode)
+
+  if EM_BUILD_VERBOSE >= 3:
+    make_args += ['VERBOSE=1']
+
+  try:
+    with open_make_out('w') as make_out:
+      with open_make_err('w') as make_err:
+        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
+                      cwd=project_dir)
+  except subprocess.CalledProcessError:
+    with open_make_out() as f:
+      print('-- make stdout --')
+      print(f.read())
+      print('-- end make stdout --')
+    with open_make_err() as f:
+      print('-- make stderr --')
+      print(f.read())
+      print('-- end stderr --')
+    raise
+
+  if cache is not None:
+    cache[cache_name] = []
+    for f in generated_libs:
+      basename = os.path.basename(f)
+      cache[cache_name].append((basename, open(f, 'rb').read()))
 
   return generated_libs
 

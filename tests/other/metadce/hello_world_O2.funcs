@@ -6,7 +6,6 @@ $__growWasmMemory
 $__overflow
 $__stdio_write
 $__towrite
-$__wasi_syscall_ret
 $__wasm_call_ctors
 $dlfree
 $dlmalloc

@@ -1056,6 +1056,7 @@ var LibraryGL = {
                                              "OES_element_index_uint", "EXT_texture_filter_anisotropic", "EXT_frag_depth",
                                              "WEBGL_draw_buffers", "ANGLE_instanced_arrays", "OES_texture_float_linear",
                                              "OES_texture_half_float_linear", "EXT_blend_minmax", "EXT_shader_texture_lod",
+                                             "EXT_texture_norm16",
                                              // Community approved WebGL extensions ordered by number:
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",

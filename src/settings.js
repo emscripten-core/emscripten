@@ -499,6 +499,9 @@ var GL_FFP_ONLY = 0;
 // WebGL initialization afterwards will use this GL context to render.
 var GL_PREINITIALIZED_CONTEXT = 0;
 
+// Enables support for WebGPU (via "webgpu/webgpu.h").
+var USE_WEBGPU = 0;
+
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
 // decoders. The benefit is that this can be done synchronously, however, it
@@ -1171,6 +1174,11 @@ var USE_GLFW = 2;
 // Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
 // startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
 // still make sense there, see that option for more details.
+//
+// Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
+// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
+// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
+// .wasm.js fallback will be used.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
