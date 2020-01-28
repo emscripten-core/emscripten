@@ -1364,17 +1364,16 @@ var SyscallsLibrary = {
   // This is the set of syscalls that use the FS etc. APIs. The rest is in
   // library_wasi.js.
 
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-    var fflush = Module["_fflush"];
-    if (fflush) fflush(0);
+    if (typeof _fflush !== 'undefined') _fflush(0);
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
+#if EXIT_RUNTIME == 1
   fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif

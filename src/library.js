@@ -703,7 +703,7 @@ LibraryManager.library = {
     _exit(-1234);
   },
 
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !EXIT_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
   __cxa_thread_atexit: function(){},
@@ -2163,7 +2163,7 @@ LibraryManager.library = {
   //       compact to do it in JS.
   strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
 #if MINIMAL_RUNTIME
-    , '$intArrayFromString'
+    , '$intArrayFromString', '$writeArrayToMemory'
 #endif
   ],
   strftime: function(s, maxsize, format, tm) {

@@ -233,6 +233,20 @@ def no_lsan(note):
   return decorator
 
 
+def no_minimal_runtime(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if 'MINIMAL_RUNTIME=1' in self.emcc_args or self.get_setting('MINIMAL_RUNTIME'):
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.is_wasm_backend() and not self.get_setting('WASM')
@@ -1971,7 +1985,7 @@ int main(int argc, char **argv) {
   def test_em_js(self, args):
     if 'MAIN_MODULE' in args and self.get_setting('WASM') == 0:
       self.skipTest('main module support for non-wasm')
-    self.emcc_args += args
+    self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
 
@@ -5133,20 +5147,27 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'utime', 'test_utime.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+  @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc',])
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32'])
+    else:
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
   def test_utf8(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
-                     ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
+    else:
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
+                      ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.emcc_args += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
@@ -6588,6 +6609,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
   @no_fastcomp('fails mysteriously on fastcomp (dynCall_viji is not defined); ignored, because fastcomp is deprecated')
+  @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [

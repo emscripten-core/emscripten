@@ -41,7 +41,7 @@ var LibraryJSEvents = {
 #endif
     },
 
-#if !MINIMAL_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
+#if !MINIMAL_RUNTIME || EXIT_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
         __ATEXIT__.push(JSEvents.removeAllEventListeners);
