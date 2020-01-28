@@ -513,6 +513,13 @@ jobs:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
       - build-upstream
+  test-upstream-other-windows:
+    executor:
+      name: win/vs2019
+      shell: bash.exe
+    steps:
+      - run-tests:
+          test_targets: "wasm2"
   build-upstream-mac:
     macos:
       xcode: "9.0"
@@ -617,6 +624,9 @@ workflows:
           requires:
             - build-upstream-linux
       - build-upstream-windows
+      - test-upstream-other-windows:
+          requires:
+            - build-upstream-windows
       - build-upstream-mac
       - test-upstream-other-mac:
           requires:
