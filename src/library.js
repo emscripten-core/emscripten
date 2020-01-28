@@ -746,7 +746,7 @@ LibraryManager.library = {
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV'],
+  __buildEnvironment__deps: ['$ENV', '_get_executable_name'],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -765,7 +765,7 @@ LibraryManager.library = {
       ENV['HOME'] = '/home/web_user';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = thisProgram;
+      ENV['_'] = __get_executable_name();
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -1844,12 +1844,12 @@ LibraryManager.library = {
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8'],
+  dladdr__deps: ['$stringToNewUTF8', '_get_executable_name'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(thisProgram || './this.program'); // XXX leak
+    var fname = __get_executable_name(); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -2068,6 +2068,9 @@ LibraryManager.library = {
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
   tzset__proxy: 'sync',
   tzset__sig: 'v',
+#if MINIMAL_RUNTIME
+  tzset__deps: ['$allocateUTF8'],
+#endif
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (_tzset.called) return;
@@ -2091,8 +2094,8 @@ LibraryManager.library = {
     };
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
-    var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
-    var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
+    var winterNamePtr = allocateUTF8(winterName);
+    var summerNamePtr = allocateUTF8(summerName);
     if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
@@ -2158,7 +2161,11 @@ LibraryManager.library = {
 
   // Note: this is not used in STANDALONE_WASM mode, because it is more
   //       compact to do it in JS.
-  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
+  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
+#if MINIMAL_RUNTIME
+    , '$intArrayFromString'
+#endif
+  ],
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
@@ -2481,7 +2488,11 @@ LibraryManager.library = {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
-  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
+  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
+#if MINIMAL_RUNTIME
+    , '$intArrayFromString'
+#endif
+  ],
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -5148,6 +5159,19 @@ LibraryManager.library = {
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
+  },
+
+  _get_executable_name: function() {
+#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
+      return process['argv'][1].replace(/\\/g, '/');
+    }
+#endif
+    return "./this.program";
+#else
+    return thisProgram || './this.program';
+#endif
   },
 };
 

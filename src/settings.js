@@ -1626,7 +1626,7 @@ var SUPPORT_ERRNO = 1;
 // opts are quite hacky, and work around limitations in Closure and other parts
 // of the build system, so they may not work in all generated programs (But can
 // be useful for really small programs)
-var MINIMAL_RUNTIME = 0;
+var MINIMAL_RUNTIME = 1;
 
 // If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly compilation,
 // where WebAssembly module is compiled already while it is being downloaded.

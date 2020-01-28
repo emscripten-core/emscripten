@@ -743,6 +743,9 @@ var SyscallsLibrary = {
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
+#if MINIMAL_RUNTIME
+  __syscall122__deps: ['$writeAsciiToMemory'],
+#endif
   __syscall122: function(which, varargs) { // uname
     var buf = SYSCALLS.get();
     if (!buf) return -{{{ cDefine('EFAULT') }}}
