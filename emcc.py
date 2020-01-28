@@ -1560,7 +1560,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         not target.endswith(WASM_ENDINGS) and \
         not shared.Settings.ASYNCIFY_LAZY_LOAD_CODE and \
         not shared.Settings.WASM2JS and \
-        shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
+            shared.Settings.MINIFY_ASMJS_EXPORT_NAMES:
       shared.Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
       # in fastcomp it's inconvenient to minify module names as there is the
       # asm2wasm module etc.
