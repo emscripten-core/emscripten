@@ -628,10 +628,10 @@ workflows:
           requires:
             - build-upstream-mac
       - test-upstream-wasm0-mac:
-          # Limit mac testing the to incoming branch since it adds to much
-          # time and cost to run it on every incoming PR
+          # Limit mac testing the to master branch since it adds too much
+          # time and cost to run it on every PR
           filters:
             branches:
-              only: incoming
+              only: master
           requires:
             - build-upstream-mac
