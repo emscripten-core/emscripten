@@ -2036,6 +2036,7 @@ void *getBindBuffer() {
     self.btest('cubegeom_normal_dap_far_glda.c', reference='cubegeom_normal_dap_far_glda.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
+  @no_firefox('fails on CI but works locally')
   def test_cubegeom_normal_dap_far_glda_quad(self): # with quad
     self.btest('cubegeom_normal_dap_far_glda_quad.c', reference='cubegeom_normal_dap_far_glda_quad.png', args=['-s', 'LEGACY_GL_EMULATION=1', '-lGL', '-lSDL'])
 
