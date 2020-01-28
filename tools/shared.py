@@ -518,6 +518,15 @@ def get_node_directory():
   return os.path.dirname(NODE_JS[0] if type(NODE_JS) is list else NODE_JS)
 
 
+# When we run some tools from npm (closure, html-minifier-terser), those
+# expect that the tools have node.js accessible in PATH. Place our node
+# there when invoking those tools.
+def env_with_node_in_path():
+  env = os.environ.copy()
+  env['PATH'] = get_node_directory() + os.pathsep + env['PATH']
+  return env
+
+
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
