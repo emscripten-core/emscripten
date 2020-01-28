@@ -58,10 +58,11 @@ def dir_is_newer(dir_a, dir_b):
 
 def get_cflags(force_object_files=False):
   flags = []
-  if force_object_files:
-    flags += ['-s', 'WASM_OBJECT_FILES=1']
-  elif not shared.Settings.WASM_OBJECT_FILES:
-    flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.WASM_BACKEND:
+    if force_object_files:
+      flags += ['-s', 'WASM_OBJECT_FILES=1']
+    elif not shared.Settings.WASM_OBJECT_FILES:
+      flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
@@ -413,7 +414,7 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return '.a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else '.bc'
+    return '.a' if shared.Settings.WASM_BACKEND else '.bc'
 
   def get_filename(self):
     """
@@ -607,17 +608,21 @@ class CXXLibrary(Library):
 
 
 class NoBCLibrary(Library):
-  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every object in the library.
-  # While the optimizer will readily optimize out most of the unused functions, things like global constructors that
-  # are linked in cannot be optimized out, even though they are not actually needed. If we use .a files for such
-  # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
-  # will be linked in.
+  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every
+  # object in the library.  While the optimizer will readily optimize out most of the unused
+  # functions, things like global constructors that are linked in cannot be optimized out, even
+  # though they are not actually needed. If we use .a files for such libraries, only the object
+  # files, and by extension, their contained global constructors, that are actually needed will be
+  # linked in.
   def get_ext(self):
     return '.a'
 
 
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
+  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
+  # restriction soon: https://reviews.llvm.org/D71738
+  force_object_files = True
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
@@ -1171,8 +1176,10 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     return 'libpthread' if self.is_mt else 'libpthread_stub'
 
 
-class CompilerRTWasmLibrary(NoBCLibrary):
+class CompilerRTWasmLibrary(Library):
   cflags = ['-O2', '-fno-builtin']
+  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
+  # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
   def can_build(self):

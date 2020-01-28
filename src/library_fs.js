@@ -27,6 +27,10 @@ mergeInto(LibraryManager.library, {
     addAtMain('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
     return 'FS.staticInit();' +
+#if USE_CLOSURE_COMPILER
+           // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.init()
+           '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
+#endif
            // Get module methods from settings
            '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
   },

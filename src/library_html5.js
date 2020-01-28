@@ -2759,6 +2759,16 @@ var LibraryJSEvents = {
     return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
   },
 
+#if USE_WEBGPU
+  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
+  emscripten_webgpu_get_device__deps: ['$WebGPU'],
+  emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
+  emscripten_webgpu_get_device: function() {
+    assert(Module['preinitializedWebGPUDevice']);
+    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
+  },
+#endif
+
 #if USE_PTHREADS
   emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '_findCanvasEventTarget'],
   emscripten_set_canvas_element_size_calling_thread: function(target, width, height) {

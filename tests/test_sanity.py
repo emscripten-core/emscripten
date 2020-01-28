@@ -56,6 +56,18 @@ def mtime(filename):
   return os.path.getmtime(filename)
 
 
+def make_fake_wasm_opt(filename, version):
+  print('make_fake_wasm_opt: %s' % filename)
+  ensure_dir(os.path.dirname(filename))
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('echo "wasm-opt version %s"\n' % version)
+    f.write('echo "..."\n')
+  shutil.copyfile(filename, filename + '++')
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  os.chmod(filename + '++', stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
 def make_fake_clang(filename, version):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
@@ -232,34 +244,6 @@ class sanity(RunnerCore):
           self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
         elif 'runner.py' not in ' '.join(command):
           self.assertContained('ERROR', output) # sanity check should fail
-
-  def test_closure_compiler(self):
-    CLOSURE_FATAL = 'fatal: closure compiler'
-    CLOSURE_WARNING = 'does not exist'
-
-    # Sanity check should find closure
-    restore_and_set_up()
-    output = self.check_working(EMCC)
-    self.assertNotContained(CLOSURE_FATAL, output)
-    self.assertNotContained(CLOSURE_WARNING, output)
-
-    # Append a bad path for closure, will warn
-    f = open(CONFIG_FILE, 'a')
-    f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
-    f.close()
-    output = self.check_working(EMCC, CLOSURE_WARNING)
-
-    # And if you actually try to use the bad path, will be fatal
-    f = open(CONFIG_FILE, 'a')
-    f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
-    f.close()
-    output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], CLOSURE_FATAL)
-
-    # With a working path, all is well
-    restore_and_set_up()
-    try_delete('a.out.js')
-    output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], '')
-    self.assertExists('a.out.js', output)
 
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
@@ -872,3 +856,14 @@ fi
     self.do([PYTHON, EMCC, '--clear-cache'])
     run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(root_cache, 'wasm-bc'))
+
+  def test_binaryen_version(self):
+    restore_and_set_up()
+    with open(CONFIG_FILE, 'a') as f:
+      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
+
+    make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+
+    make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected 90)')

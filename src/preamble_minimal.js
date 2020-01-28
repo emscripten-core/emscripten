@@ -30,6 +30,17 @@ function alignUp(x, multiple) {
   return x;
 }
 
+#if WASM != 2 && MAYBE_WASM2JS
+#if !WASM2JS
+if (Module['doWasm2JS']) {
+#endif
+#include "wasm2js.js"
+#if !WASM2JS
+}
+#endif
+#endif
+
+#include "runtime_functions.js"
 #include "runtime_strings.js"
 #include "runtime_sab_polyfill.js"
 
@@ -140,7 +151,10 @@ var HEAPF32 = new Float32Array(buffer);
 var HEAPF64 = new Float64Array(buffer);
 #endif
 
-#if !WASM
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+#if ASSERTIONS
+if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
+#endif
 HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
 #endif
 

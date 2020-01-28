@@ -4847,6 +4847,7 @@ Pass: 0.000012 0.000012''')
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
       self.emcc_args += ['--closure', '2', '-Wno-almost-asm'] # Use closure 2 here for some additional coverage
+      return self.skipTest('TODO: currently skipped because CI runs out of memory running Closure in this test!')
 
     self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1', '--pre-js', 'pre.js']
 
@@ -8017,6 +8018,26 @@ extern "C" {
     # verify that it runs
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
 
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js_fallback(self):
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2'] + args
+      run_process(cmd)
+
+      # First run with WebAssembly support enabled
+      # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
+      os.rename('a.out.wasm.js', 'a.out.wasm.js.unused')
+      self.assertContained('hello!', run_js('a.out.js'))
+      os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
+
+      # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
+      open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
+      os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
+      self.assertContained('hello!', run_js('b.out.js'))
+
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
     self.do_run(r'''
@@ -8264,10 +8285,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_emterpreter
   @no_asan('TODO: ASan with MINIMAL_RUNTIME')
   @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
-  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
   def test_minimal_runtime_hello_world(self):
     self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
+      print(str(args))
       self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
       self.set_setting('MINIMAL_RUNTIME', 1)
       self.maybe_closure()
@@ -8588,6 +8609,23 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+  # Tests the emscripten_get_exported_function() API.
+  def test_emscripten_get_exported_function(self):
+    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.emcc_args += ['-lexports.js']
+    self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
+
+  # Tests the emscripten_get_exported_function() API.
+  @no_asan('TODO: ASan with MINIMAL_RUNTIME')
+  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
+  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
+  def test_minimal_runtime_emscripten_get_exported_function(self):
+    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.emcc_args += ['-lexports.js', '-s', 'MINIMAL_RUNTIME=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
@@ -8650,12 +8688,12 @@ wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
 
-wasmlto0 = make_run('wasmlto0', emcc_args=['-O0'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto1 = make_run('wasmlto1', emcc_args=['-O1'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto2 = make_run('wasmlto2', emcc_args=['-O2'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES': 0})
-wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
-wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto0 = make_run('wasmlto0', emcc_args=['-O0', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto1 = make_run('wasmlto1', emcc_args=['-O1', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto2 = make_run('wasmlto2', emcc_args=['-O2', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto3 = make_run('wasmlto3', emcc_args=['-O3', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmltos = make_run('wasmltos', emcc_args=['-Os', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmltoz = make_run('wasmltoz', emcc_args=['-Oz', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
 
 if shared.Settings.WASM_BACKEND:
   wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})
