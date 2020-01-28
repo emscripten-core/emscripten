@@ -14,14 +14,14 @@ executors:
 
 commands:
   npm-install:
-    description: "npm install"
+    description: "npm ci"
     steps:
       - run:
-          name: npm install
+          name: npm ci
           command: |
             # Will add emsdk version of node to PATH
             source ~/emsdk-master/emsdk_env.sh
-            npm install
+            npm ci
   build-upstream:
     description: "Install emsdk build all libraries using embuilder"
     steps:
