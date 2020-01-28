@@ -23,17 +23,11 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
-function warnOnce(a, msg) {
-  if (!msg) {
-    msg = a;
-    a = false;
-  }
-  if (!a) {
-    if (!warnOnce.msgs) warnOnce.msgs = {};
-    if (msg in warnOnce.msgs) return;
-    warnOnce.msgs[msg] = true;
-    printErr('warning: ' + msg);
-  }
+function warnOnce(msg) {
+  if (!warnOnce.msgs) warnOnce.msgs = {};
+  if (msg in warnOnce.msgs) return;
+  warnOnce.msgs[msg] = true;
+  printErr('warning: ' + msg);
 }
 
 function set(args) {
