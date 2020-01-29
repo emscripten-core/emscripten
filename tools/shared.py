@@ -2538,7 +2538,6 @@ class Building(object):
       # this is will only try the native and javascriptn version.
       java_home = os.path.dirname(JAVA)
       if java_home:
-        print(java_home)
         env.setdefault('JAVA_HOME', java_home)
       proc = run_process(args, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
