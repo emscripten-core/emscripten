@@ -302,10 +302,14 @@ LibraryManager.library = {
   },
   getpagesize: function() {
     // int getpagesize(void);
+#if MINIMAL_RUNTIME
 #if WASM
     return {{{ WASM_PAGE_SIZE }}};
 #else
     return {{{ ASMJS_PAGE_SIZE }}};
+#endif
+#else
+    return PAGE_SIZE;
 #endif
   },
 
