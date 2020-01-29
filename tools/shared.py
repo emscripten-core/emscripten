@@ -2535,7 +2535,7 @@ class Building(object):
       env = os.environ.copy()
       env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
       # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
-      # this is will only try the native and javascriptn version.
+      # this it will only try the native and JavaScript versions of the compiler.
       java_home = os.path.dirname(JAVA)
       if java_home:
         env.setdefault('JAVA_HOME', java_home)
