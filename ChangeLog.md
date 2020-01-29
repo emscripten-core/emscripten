@@ -15,32 +15,186 @@ full changeset diff at the end of each section.
 
 See docs/process.md for how version tagging works.
 
-
 Current Trunk
 -------------
+- Added support for specifying JSDoc minification annotations for Closure in
+  JS library, pre and post files. See
+  https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler
+  (#10272)
+- Add new Fibers API for context switching, that supercedes the old coroutine
+  API that only ran on fastcomp. See #9859
+- Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
+  falls back to using a JavaScript version if WebAssembly is not supported in
+  target browser/shell. (#10118)
+
+v1.39.6: 01/15/2020
+-------------------
+- Development has switched from "incoming" branches to "master".
+- Added new system header <emscripten/heap.h>, which enables querying information
+  about the current WebAssembly heap state.
+- Reduced default geometric memory overgrowth rate from very generous 2x factor
+  to a more memory conserving +20% factor, and capped maximum reservation to 96MB
+  at most.
+- Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
+  to allow customizing the heap growth rates.
+- Renamed MEMORY_GROWTH_STEP option to MEMORY_GROWTH_LINEAR_STEP option.
+- Added new linker option -s HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0
+  (default enabled) to allow disabling support for deferred fullscreen mode and
+  pointer lock requests for applications that do not need deferring support.
+
+v1.39.5: 12/20/2019
+-------------------
+- Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
+- All ports now install their headers into a shared directory under
+  `EM_CACHE`.  This should not really be a user visible change although one
+  side effect is that once a give ports is built its headers are then
+  universally accessible, just like the library is universally available as
+  `-l<name>`.
+- Removed `timestamp` field from mouse, wheel, devicemotion and
+  deviceorientation events. The presence of a `timestamp` on these events was
+  slightly arbitrary, and populating this field caused a small profileable
+  overhead that all users might not care about. It is easy to get a timestamp of
+  an event by calling `emscripten_get_now()` or `emscripten_performance_now()`
+  inside the event handler function of any event.
+- Add fine-grained options for specific legacy browser support,
+  `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
+  `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`
+  option sets all of them to 0, that is, maximal backwards compatibility.
+  Note that going forwards we will use these settings in more places, so if
+  you do need very old legacy browser support, you may need to set either
+  `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
+- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
+  With this change the old deprecated HTML5 API event target lookup behavior is
+  disabled. There is no "Module.canvas" object, no magic "null" default handling,
+  and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
+  of referring to DOM IDs. For more information see:
+  <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
+- WASI API updated from `wasi_unstable` to `wasi_snapshot_preview1`. This
+  is mostly an implementation detail, but if you use `STANDALONE_WASM` it means
+  that the output of emscripten now requires a runtime with
+  `wasi_snapshot_preview1` support.
+- `SAFE_STACK` has been removed, as it overlaps with `STACK_OVERFLOW_CHECK`.
+   Replace `SAFE_STACK=1` with `STACK_OVERFLOW_CHECK=2` (note the value is 2).
+   This also has the effect of enabling stack checking on upstream builds when
+   `ASSERTIONS` are enabled (as assertions enable `STACK_OVERFLOW_CHECK=2`).
+
+v1.39.4: 12/03/2019
+-------------------
+- Remove deprecated `requestFullScreen` method from `library_browser.js`, please
+  use `requestFullscreen` (without the capital S).
+- Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
+- Remove deprecated `requestFullScreen` and `cancelFullScreen`from `library_glfw.js`
+- Fix SDL2_mixer support for ogg vorbis. See #9849
+- Various source maps fixes, see #9926 #9882 #9837 #9814
+
+v1.39.3: 11/14/2019
+------------------
+
+v1.39.2: 11/06/2019
+------------------
+ - Archives with missing indexes will now have ranlib run on them automatically
+   at link time.  This avoids linker errors when using GNU ar to build archive
+   files.
+ - `ERROR_ON_MISSING_LIBRARIES` now also applies to internal symbols that start
+   with `emscripten_`.  Prior to this change such missing symbols would result
+   in a runtime error, now they are reported at compile time.
+ - Pthread blocking on the main thread will now warn in the console. If
+   `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
+ - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
+   but without blocking.
+ - New function `emscripten_has_asyncify()`.
+ - Add support for pthreads in Node.js, using Node Workers. See #9745
+
+v1.39.1: 10/30/2019
+-------------------
+ - Only MEMFS is included by default, others (NODEFS, IDBFS, WORKERFS, PROXYFS)
+   must be linked in explicitly, using `-lnodefs.js`, `-lidbfs.js`',
+   `-lworkerfs.js`, `-lproxyfs.js`. See #9645
+
+v1.39.0: 10/18/2019
+-------------------
+ - The emsdk defaults to the upstream backend (instead of fastcomp) from this
+   release onward (but both backends are still fully supported).
+ - Add support for overriding `.emscripten` config variables using environment
+   variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
+   environment.
+ - `-Werror` now also turns warnings in the python driver code into errors.
+ - Internal settings have moved from `settings.js` to `settings_internal.js`.
+   These are settings that are for internal use only and are not set-able from
+   the command line.  If we misclassified any of these please open a bug.
+ - `STANDALONE_WASM` mode now supports settings up argv via wasi APIs.
+ - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
+
+v1.38.48: 10/11/2019
+--------------------
+ - Add support for `MAIN_THREAD_EM_ASM` in wasm backend. #9560
+ - Add ability to disable FETCH worker in Fastcomp backend via
+   `USE_FETCH_WORKER=0`.  This is useful for people who use FETCH, but don't
+   perform any synchronous fetches on the main thread. #9567
+ - Remove `EMCONFIGURE_JS`. Since #6269 we have set it to "2" which means never
+   use native, always use JS.
+
+v1.38.47: 10/02/2019
+--------------------
+ - Add support for FETCH API in WASM backend. This doesn't support FETCH in the
+   main thread (`USE_FETCH_WORKER=0` is enforced). #9490
+ - Redefine errno values to be consistent with wasi. This will let us avoid
+   needing to convert the values back and forth as we use more wasi APIs.
+   This is an ABI change, which should not be noticeable from user code
+   unless you use errno defines (like EAGAIN) *and* keep around binaries
+   compiled with an older version that you link against. In that case, you
+   should rebuild them. See #9545.
+ - Removed build option `-s ONLY_MY_CODE` as we now have much better solutions
+   for that, like building to a wasm object file or using `STANDALONE_WASM`
+   etc. (see
+   https://github.com/emscripten-core/emscripten/wiki/WebAssembly-Standalone).
+ - Emscripten now supports the config file (.emscripten) being placed in the
+   emscripten directory rather that the current user's home directory.
+   See #9543
+
+v1.38.46: 09/25/2019
+--------------------
+ - Rename libpthreads to libpthread to match its normal name on other platforms.
+   This change should be completely internal to emscripten.
+ - Remove redundant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+   node as the compiler engine so just use a single `NODE_JS` option for that.
+ - Module.abort is no longer exported by default. It can be exported in the normal
+   way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
+   the past, forgetting to export it will show a clear error in `ASSERTIONS` mode.
+ - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
+   that we want the wasm to be as standalone as possible. We may still emit JS in
+   that case, but the JS would just be a convenient way to run the wasm on the Web
+   or in Node.js.
+ - `ASYNCIFY_BLACKLIST` and `ASYNCIFY_WHITELIST` now support simple '\*' wildcard matching
+
+v1.38.45: 09/12/2019
+--------------------
+
+v1.38.44: 09/11/2019
+--------------------
  - Remove Binaryen from the ports system. This means that emscripten will
    no longer automatically build Binaryen from source. Instead, either use
    the emsdk (binaries are provided automatically, just like for LLVM), or
-   build it yourself and point BINARYEN_ROOT in .emscripten to it. See #9409
+   build it yourself and point `BINARYEN_ROOT` in .emscripten to it. See #9409
 
-v.1.38.43: 08/30/2019
+v1.38.43: 08/30/2019
 ---------------------
  - noExitRuntime is no longer a property on the Module object. Use `noExitRuntime`
    instead of `Module.noExitRuntime`.
 
-v.1.38.42: 08/19/2019
-----------------------
+v1.38.42: 08/19/2019
+--------------------
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html)
    and standalone [leak sanitizer](https://clang.llvm.org/docs/LeakSanitizer.html)
    with multiple threads. (#9060, #9076)
- - Remove ERROR_ON_MISSING_LIBRARIES setting (it's always on now)
+ - Remove `ERROR_ON_MISSING_LIBRARIES` setting (it's always on now)
  - Remove the ability to use Python operators in flags that support KB/MB/GB/TB
    suffixes, e.g. `TOTAL_MEMORY`. This means that `-s TOTAL_MEMORY=1024*1024`
    will no longer work. This is done because the mechanism may result in
    execution of arbitrary code via command line flags.
 
-v.1.38.41: 08/07/2019
----------------------
+v1.38.41: 08/07/2019
+--------------------
  - Remove fastcomp's implementation of Asyncify. This has been deprecated for
    a long time, since we added Emterpreter-Async, and now we have a new Asyncify
    implementation in the upstream wasm backend. It is recommended to upgrade to
@@ -62,29 +216,30 @@ v.1.38.41: 08/07/2019
  - Internal API update: one can now specialize embind's (un)marshalling for a
    group of types via SFINAE, instead of a single type. (#9089)
 
-v.1.38.40: 07/24/2019
----------------------
+v1.38.40: 07/24/2019
+--------------------
  - LLVM backend pthread builds no longer use external memory initialization
    files, replacing them with passive data segments.
  - LLVM backend now supports thread local storage via the C extension `__thread`
    and C11/C++11 keyword `thread_local`. (#8976)
  - Internal API change: Move read, readAsync, readBinary, setWindowTitle from
    the Module object to normal JS variables. If you use those internal APIs,
-   you must change Module.readAsync()/Module['readAsync']() to readAsync().
-   Note that read is also renamed to read_ (since "read" is an API call in
+   you must change `Module.readAsync()/Module['readAsync']()` to `readAsync()`.
+   Note that read is also renamed to `read_` (since "`read`" is an API call in
    the SpiderMonkey shell). In builds with ASSERTIONS an error message is
    shown about the API change. This change allows better JS minification
    (the names read, readAsync etc. can be minified, and if the variables are
    not used they can be removed entirely). Defining these APIs on Module
    (which was never documented or intended, but happened to work) is also
-   no longer allowed (but you can override read_ etc. from JS).
+   no longer allowed (but you can override `read_` etc. from JS).
 
 v1.38.39: 07/16/2019
 --------------------
  - Add support for [address sanitizer](https://clang.llvm.org/docs/AddressSanitizer.html). (#8884)
    - Currently, only supports one thread without dynamic linking.
- - Rename Bysyncify (the name used during development) to Asyncify. This keeps the name consistent
-   with the old ASYNCIFY flag, no need for a new one, as they do basically the same thing.
+ - Rename Bysyncify (the name used during development) to Asyncify. This keeps
+   the name consistent with the old ASYNCIFY flag, no need for a new one, as
+   they do basically the same thing.
 
 v1.38.38: 07/08/2019
 --------------------
@@ -124,8 +279,8 @@ v1.38.35: 06/13/2019
 v1.38.34: 06/01/2019
 --------------------
  - Add support for [undefined behavior sanitizer](https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html).
-     - This allows `emcc -fsanitize=undefined` to work. (#8651)
-     - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
+    - This allows `emcc -fsanitize=undefined` to work. (#8651)
+    - The minimal runtime (`-fsanitize-minimal-runtime`) also works. (#8617)
 
 v1.38.33: 05/23/2019
 --------------------
@@ -136,21 +291,21 @@ v1.38.33: 05/23/2019
 
 v1.38.32: SKIPPED
 -----------------
- - The transition from the old to the new CI occured around here. To avoid ambiguity while
-   both CIs were still generating builds, we just tagged a new one (1.38.33) on the new CI
-   and skipped 1.38.32.
- - The transition also moves all builds and downloads away from the old mozilla-games
-   infrastructure to the new chromium ones. As a result all links to *mozilla-games* URLs
-   will not work (these were never documented, but could be seen from the internals of the
-   emsdk; the new emsdk uses the proper new URLs, so you can either use the sdk normally
-   or find the URLs from there).
+ - The transition from the old to the new CI occurred around here. To avoid
+   ambiguity while both CIs were still generating builds, we just tagged a new
+   one (1.38.33) on the new CI and skipped 1.38.32.
+ - The transition also moves all builds and downloads away from the old
+   mozilla-games infrastructure to the new chromium ones. As a result all links
+   to *mozilla-games* URLs will not work (these were never documented, but could
+   be seen from the internals of the emsdk; the new emsdk uses the proper new
+   URLs, so you can either use the sdk normally or find the URLs from there).
 
 v1.38.31: 04/24/2019
 --------------------
- - Change ino_t/off_t to 64-bits. (#8467)
+ - Change `ino_t/off_t` to 64-bits. (#8467)
  - Add port for bzip2 library (`libbz2.a`). (#8349)
  - Add port for libjpeg library. (#8361)
- - Enable ERROR_ON_MISSING_LIBRARIES by by default (#8461)
+ - Enable `ERROR_ON_MISSING_LIBRARIES` by by default (#8461)
 
 v1.38.30: 03/21/2019
 --------------------
@@ -163,7 +318,7 @@ v1.38.29: 03/11/2019
 
 v1.38.28: 02/22/2019
 --------------------
- - Option -s EMTERPRETIFY_WHITELIST now accepts shell-style wildcards;
+ - Option `-s EMTERPRETIFY_WHITELIST` now accepts shell-style wildcards;
    this allows matching static functions with conflicting names that
    the linker distinguishes by appending a random suffix.
  - Normalize mouse wheel delta in `library_browser.js`. This changes the scroll
@@ -171,9 +326,9 @@ v1.38.28: 02/22/2019
 
 v1.38.27: 02/10/2019
 --------------------
- - Change how EMCC_LOCAL_PORTS works, to be more usable. See #7963
+ - Change how `EMCC_LOCAL_PORTS` works, to be more usable. See #7963
  - Remove deprecated Pointer_stringify (use UTF8ToString instead). See #8011
- - Added a new option -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1 that
+ - Added a new option `-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1` that
    changes the lookup semantics of DOM elements in html5.h event handler
    callback and WebGL context creation. New behavior is to use CSS selector
    strings to look up DOM elements over the old behavior, which was somewhat
@@ -192,7 +347,7 @@ v1.38.26: 02/04/2019
 v1.38.25: 01/18/2019
 --------------------
  - Move kripken/emscripten,emscripten-fastcomp,emscripten-fastcomp-clang to
-   emscripten-core/*
+   emscripten-core/\*
 
 v1.38.24: 01/17/2019
 --------------------
@@ -208,7 +363,7 @@ v1.38.22: 01/08/2019
 --------------------
  - Add Regal port. See #7674
  - System libraries have been renamed to include the `lib` prefix.  If you use
-   EMCC_FORCE_STDLIBS or EMCC_ONLY_FORCED_STDLIBS to select system libraries
+   `EMCC_FORCE_STDLIBS` or `EMCC_ONLY_FORCED_STDLIBS` to select system libraries
    you may need to add the `lib` prefix.
  - Rename `pthread-main.js` to `NAME.worker.js`, where `NAME` is the main
    name of your application, that is, if you emit `program.js` then you'll get
@@ -495,11 +650,6 @@ v1.37.17: 7/25/2017
  - Updated to libc++'s "v2" ABI, which provides better alignment for string data
    and other improvements. This is an ABI-incompatible change, so bitcode files
    from previous versions will not be compatible.
- - To see a list of commits in the active development branch 'incoming', which
-   have not yet been packaged in a release, see
-    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.13...incoming
-    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.13...incoming
-    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.13...incoming
 
 v1.37.13: 5/26/2017
 -------------------

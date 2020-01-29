@@ -14,6 +14,8 @@ int main()
 {
   EmscriptenWebGLContextAttributes attrs;
   emscripten_webgl_init_context_attributes(&attrs);
+  // Test that creating a context with #canvas target when -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0
+  // will create a canvas against Module.canvas
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   assert(context > 0); // Must have received a valid context.
   EMSCRIPTEN_RESULT res = emscripten_webgl_make_context_current(context);

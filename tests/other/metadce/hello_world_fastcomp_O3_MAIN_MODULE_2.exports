@@ -1,0 +1,9 @@
+___errno_location
+__apply_relocations
+_main
+_malloc
+dynCall_X
+dynCall_ii
+dynCall_iiii
+dynCall_iiiii
+stackAlloc

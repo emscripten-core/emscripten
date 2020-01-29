@@ -1,0 +1,10 @@
+___errno_location
+_add
+_emscripten_get_sbrk_ptr
+_free
+_malloc
+_memcpy
+_memset
+stackAlloc
+stackRestore
+stackSave

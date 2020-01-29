@@ -8,8 +8,10 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullScreen"] = function Module_requestFullScreen(lockPointer, resizeCanvas, vrDevice) { err("Module.requestFullScreen is deprecated. Please call Module.requestFullscreen instead."); Module["requestFullScreen"] = Module["requestFullscreen"]; Browser.requestFullScreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
-                     'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+#if ASSERTIONS
+                     'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
+#endif
                      'Module["requestAnimationFrame"] = function Module_requestAnimationFrame(func) { Browser.requestAnimationFrame(func) };\n' +
                      'Module["setCanvasSize"] = function Module_setCanvasSize(width, height, noUpdates) { Browser.setCanvasSize(width, height, noUpdates) };\n' +
                      'Module["pauseMainLoop"] = function Module_pauseMainLoop() { Browser.mainLoop.pause() };\n' +
@@ -22,6 +24,7 @@ var LibraryBrowser = {
       method: '',
       // Each main loop is numbered with a ID in sequence order. Only one main loop can run at a time. This variable stores the ordinal number of the main loop that is currently
       // allowed to run. All previous main loops will quit themselves. This is incremented whenever a new main loop is created.
+      /** @type{number} */
       currentlyRunningMainloop: 0,
       func: null, // The main loop tick function that will be called at each iteration.
       arg: 0, // The argument that will be passed to the main loop. (of type void*)
@@ -310,10 +313,14 @@ var LibraryBrowser = {
         var contextAttributes = {
           antialias: false,
           alpha: false,
-#if USE_WEBGL2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
+#if MIN_WEBGL_VERSION >= 2
+          majorVersion: 2,
+#else
+#if MAX_WEBGL_VERSION >= 2 // library_browser.js defaults: use the WebGL version chosen at compile time (unless overridden below)
           majorVersion: (typeof WebGL2RenderingContext !== 'undefined') ? 2 : 1,
 #else
           majorVersion: 1,
+#endif
 #endif
         };
 
@@ -420,13 +427,11 @@ var LibraryBrowser = {
       }
     },
 
-    requestFullScreen: function(lockPointer, resizeCanvas, vrDevice) {
-        err('Browser.requestFullScreen() is deprecated. Please call Browser.requestFullscreen instead.');
-        Browser.requestFullScreen = function(lockPointer, resizeCanvas, vrDevice) {
-          return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
-        }
-        return Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice);
+#if ASSERTIONS
+    requestFullScreen: function() {
+      abort('Module.requestFullScreen has been replaced by Module.requestFullscreen (without a capital S)');
     },
+#endif
 
     exitFullscreen: function() {
       // This is workaround for chrome. Trying to exit from fullscreen
@@ -1190,7 +1195,20 @@ var LibraryBrowser = {
       };
     }
 
+#if USE_CLOSURE_COMPILER
+    // Closure compiler bug(?): Closure does not see that the assignment
+    //   var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop
+    // is a value copy of a number (even with the JSDoc @type annotation)
+    // but optimizeis the code as if the assignment was a reference assignment,
+    // which results in Browser.mainLoop.pause() not working. Hence use a
+    // workaround to make Closure believe this is a value copy that should occur:
+    // (TODO: Minimize this down to a small test case and report - was unable
+    // to reproduce in a small written test case)
+    /** @type{number} */
+    var thisMainLoopId = (function(){return Browser.mainLoop.currentlyRunningMainloop; })();
+#else
     var thisMainLoopId = Browser.mainLoop.currentlyRunningMainloop;
+#endif
 
     Browser.mainLoop.runner = function Browser_mainLoop_runner() {
       if (ABORT) return;
@@ -1254,10 +1272,12 @@ var LibraryBrowser = {
       }
 #endif
 
+#if ASSERTIONS
       if (Browser.mainLoop.method === 'timeout' && Module.ctx) {
-        err('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
+        warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
         Browser.mainLoop.method = ''; // just warn once per call to set main loop
       }
+#endif
 
       Browser.mainLoop.runIter(browserIterationFunc);
 
@@ -1285,7 +1305,7 @@ var LibraryBrowser = {
     }
 
     if (simulateInfiniteLoop) {
-      throw 'SimulateInfiniteLoop';
+      throw 'unwind';
     }
   },
 
@@ -1352,7 +1372,7 @@ var LibraryBrowser = {
   // Callable in pthread without __proxy needed.
   emscripten_exit_with_live_runtime: function() {
     noExitRuntime = true;
-    throw 'SimulateInfiniteLoop';
+    throw 'unwind';
   },
 
   emscripten_force_exit__proxy: 'sync',

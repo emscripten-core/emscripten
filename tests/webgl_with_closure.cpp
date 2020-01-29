@@ -76,11 +76,11 @@ int main()
     attrs.majorVersion = 2;
     attrs.minorVersion = 0;
 
-    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( 0, &attrs );
+    EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context( "#canvas", &attrs );
     if (!context)
     {
         attrs.majorVersion = 1;
-        context = emscripten_webgl_create_context( 0, &attrs );
+        context = emscripten_webgl_create_context( "#canvas", &attrs );
         if (context) printf("Skipping test: WebGL 2.0 is not available.\n");
         else printf("Test failed: WebGL is not available!\n");
 #ifdef REPORT_RESULT

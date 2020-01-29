@@ -28,7 +28,7 @@ import WebIDL
 # Anything else defaults to legacy mode for backward compatibility.
 CHECKS = os.environ.get('IDL_CHECKS') or 'DEFAULT'
 # DEBUG=1 will print debug info in render_function
-DEBUG = os.environ.get('IDL_VERBOSE') is '1'
+DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 
 if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
@@ -96,6 +96,7 @@ Module['{name}'] = {name};
 mid_js += ['''
 // Bindings utilities
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function WrapperObject() {
 }
 ''']
@@ -103,11 +104,13 @@ function WrapperObject() {
 mid_js += build_constructor('WrapperObject')
 
 mid_js += ['''
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function getCache(__class__) {
   return (__class__ || WrapperObject).__cache__;
 }
 Module['getCache'] = getCache;
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function wrapPointer(ptr, __class__) {
   var cache = getCache(__class__);
   var ret = cache[ptr];
@@ -118,6 +121,7 @@ function wrapPointer(ptr, __class__) {
 }
 Module['wrapPointer'] = wrapPointer;
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function castObject(obj, __class__) {
   return wrapPointer(obj.ptr, __class__);
 }
@@ -125,6 +129,7 @@ Module['castObject'] = castObject;
 
 Module['NULL'] = wrapPointer(0);
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function destroy(obj) {
   if (!obj['__destroy__']) throw 'Error: Cannot destroy object. (Did you create it yourself?)';
   obj['__destroy__']();
@@ -133,16 +138,19 @@ function destroy(obj) {
 }
 Module['destroy'] = destroy;
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function compare(obj1, obj2) {
   return obj1.ptr === obj2.ptr;
 }
 Module['compare'] = compare;
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function getPointer(obj) {
   return obj.ptr;
 }
 Module['getPointer'] = getPointer;
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function getClass(obj) {
   return obj.__class__;
 }
@@ -150,6 +158,7 @@ Module['getClass'] = getClass;
 
 // Converts big (string or array) values into a C-style storage, in temporary space
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 var ensureCache = {
   buffer: 0,  // the main buffer of temporary storage
   size: 0,   // the size of buffer
@@ -211,6 +220,7 @@ var ensureCache = {
   },
 };
 
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureString(value) {
   if (typeof value === 'string') {
     var intArray = intArrayFromString(value);
@@ -220,6 +230,7 @@ function ensureString(value) {
   }
   return value;
 }
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt8(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAP8);
@@ -228,6 +239,7 @@ function ensureInt8(value) {
   }
   return value;
 }
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt16(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAP16);
@@ -236,6 +248,7 @@ function ensureInt16(value) {
   }
   return value;
 }
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureInt32(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAP32);
@@ -244,6 +257,7 @@ function ensureInt32(value) {
   }
   return value;
 }
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureFloat32(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAPF32);
@@ -252,6 +266,7 @@ function ensureFloat32(value) {
   }
   return value;
 }
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
 function ensureFloat64(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAPF64);
@@ -525,7 +540,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer, copy,
 
     pre = ''
 
-    basic_return = 'return ' if constructor or return_type is not 'Void' else ''
+    basic_return = 'return ' if constructor or return_type != 'Void' else ''
     return_prefix = basic_return
     return_postfix = ''
     if non_pointer:

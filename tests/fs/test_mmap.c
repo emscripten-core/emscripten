@@ -126,5 +126,55 @@ int main() {
     fclose(fd);
   }
 
+  // MAP_SHARED with offset
+  {
+    const char* text = "written shared mmap with offset";
+    const char* path = "/yolo/sharedoffset.txt";
+
+    int fd = open(path, O_RDWR | O_CREAT | O_TRUNC, (mode_t)0600);
+    assert(fd != -1);
+
+    size_t textsize = strlen(text) + 1; // + \0 null character
+    // offset must be a multiple of the page size as returned by sysconf(_SC_PAGE_SIZE).
+    size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
+
+    assert(lseek(fd, textsize + offset - 1, SEEK_SET) != -1);
+
+    // need to write something first to allow us to mmap
+    assert(write(fd, "", 1) != -1);
+
+    char *map;
+    map = (char*)mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset - 1);
+    // assert failure if offset is not a multiple of page size
+    assert(map == MAP_FAILED);
+
+    map = (char*)mmap(0, textsize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+    assert(map != MAP_FAILED);
+
+    for (size_t i = 0; i < textsize; i++) {
+      map[i] = text[i];
+    }
+
+    assert(msync(map, textsize, MS_SYNC) != -1);
+
+    assert(munmap(map, textsize) != -1);
+
+    close(fd);
+  }
+
+  {
+    FILE* fd = fopen("/yolo/sharedoffset.txt", "r");
+    if (fd == NULL) {
+      printf("failed to open /yolo/sharedoffset.txt\n");
+      return 1;
+    }
+    size_t offset = sysconf(_SC_PAGE_SIZE) * 2;
+    
+    char buffer[offset + 31];
+    fread(buffer, 1, offset + 32, fd);
+    // expect text written from mmap operation to appear at offset in the file
+    printf("/yolo/sharedoffset.txt content=%s %d\n", buffer + offset, offset);
+    fclose(fd);
+  }
   return 0;
 }

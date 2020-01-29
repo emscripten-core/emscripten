@@ -2,10 +2,10 @@ F_DUPFD: 1
 errno: 0
 
 F_DUPFD/error1: -1
-errno: 9
+errno: 8
 
 F_DUPFD/error2: -1
-errno: 22
+errno: 28
 
 F_GETFD: 0
 errno: 0
@@ -33,10 +33,10 @@ F_SETLKW: 0
 errno: 0
 
 F_SETOWN: -1
-errno: 22
+errno: 28
 
 F_GETOWN: -1
-errno: 22
+errno: 28
 
 INVALID: -1
-errno: 22
+errno: 28

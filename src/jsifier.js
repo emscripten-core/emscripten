@@ -40,11 +40,13 @@ var proxiedFunctionInvokers = {};
 // But we can avoid emitting all the others in many cases.
 var NEED_ALL_ASM2WASM_IMPORTS = BINARYEN_TRAP_MODE == 'js';
 
-// used internally. set when there is a main() function.
-// also set when in a linkable module, as the main() function might
+// Used internally. set when there is a main() function.
+// Also set when in a linkable module, as the main() function might
 // arrive from a dynamically-linked library, and not necessarily
 // the current compilation unit.
-var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE;
+// Also set for STANDALONE_WASM since the _start function is needed to call
+// static ctors, even if there is no user main.
+var HAS_MAIN = ('_main' in IMPLEMENTED_FUNCTIONS) || MAIN_MODULE || SIDE_MODULE || STANDALONE_WASM;
 
 // Mangles the given C/JS side function name to assembly level function name (adds an underscore)
 function mangleCSymbolName(f) {
@@ -108,25 +110,26 @@ function JSify(data, functionsOnly) {
                   '}).apply(this, arguments); if (runtimeDebug && typeof ret !== "undefined") err("  [     return:" + prettyPrint(ret)); return ret; \n}\n';
         });
       }
-      if (WASM_BACKEND && ASYNCIFY && ASSERTIONS && ASYNCIFY_IMPORTS.indexOf(ident) < 0) {
-        // Only functions in the list of known relevant imports are allowed to change the state.
-        snippet = modifyFunction(snippet, function(name, args, body) {
-          return 'function ' + name + '(' + args + ') {\n' +
-                 '  var originalAsyncifyState = Asyncify.state;\n' +
-                 '  try {\n' +
-                 body + '\n' +
-                 '  } finally {\n' +
-                 '    if (Asyncify.state !== originalAsyncifyState) throw "import ' + ident + ' was not in ASYNCIFY_IMPORTS, but changed the state";\n' +
-                 '  }\n' +
-                 '}\n';
-        });
-      }
     }
     return snippet;
   }
 
   // functionStub
   function functionStubHandler(item) {
+    // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
+    // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
+    // that variadically processes all of these functions using JS 'arguments' object.
+    if (item.ident.startsWith('___cxa_find_matching_catch_')) {
+      if (DISABLE_EXCEPTION_THROWING) {
+        error('DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but exception catching code appears. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-except (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.');
+        return;
+      }
+      var num = +item.ident.split('_').slice(-1)[0];
+      addCxaCatch(num);
+      // Continue, with the code below emitting the proper JavaScript based on
+      // what we just added to the library.
+    }
+
     function addFromLibrary(ident) {
       if (ident in addedLibraryItems) return '';
       addedLibraryItems[ident] = true;
@@ -158,16 +161,12 @@ function JSify(data, functionsOnly) {
         usedExternPrimitives[ident] = 1;
         return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
-        if (!(finalName in IMPLEMENTED_FUNCTIONS)) {
-          if (VERBOSE || ident.substr(0, 11) !== 'emscripten_') { // avoid warning on emscripten_* functions which are for internal usage anyhow
-            if (!LINKABLE) {
-              if (ERROR_ON_UNDEFINED_SYMBOLS) {
-                error('undefined symbol: ' + ident);
-                warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
-              } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
-                warn('undefined symbol: ' + ident);
-              }
-            }
+        if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+          if (ERROR_ON_UNDEFINED_SYMBOLS) {
+            error('undefined symbol: ' + ident);
+            warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
+          } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
+            warn('undefined symbol: ' + ident);
           }
         }
         if (!RELOCATABLE) {
@@ -424,12 +423,14 @@ function JSify(data, functionsOnly) {
 
       if (!SIDE_MODULE && !WASM_BACKEND) {
         if (USE_PTHREADS) {
-          print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
+          print('// Pthreads fill their tempDoublePtr memory area into the pthread stack when the thread is run.')
+          // Main thread still statically allocate tempDoublePtr - although it could theorerically also use its stack
+          // (that might allow removing the whole tempDoublePtr variable altogether from the codebase? but would need
+          // more refactoring)
+          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : ' + makeStaticAlloc(8) + ';');
         } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
+          print('var tempDoublePtr = ' + makeStaticAlloc(8) + ';');
         }
-        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);');
         print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
         print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');

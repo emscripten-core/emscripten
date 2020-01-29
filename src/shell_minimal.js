@@ -27,13 +27,56 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+// Wasm or Wasm2JS loading:
+#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && !WASM2JS) || WASM == 2)
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
-  Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+#if WASM == 2
+  if (typeof WebAssembly !== 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
 #else
+  Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+#endif
+#else
+#if SEPARATE_ASM
   eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
+#endif
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && !WASM2JS) || WASM == 2)
+if (ENVIRONMENT_IS_SHELL) {
+#if WASM
+#if WASM == 2
+  if (typeof WebAssembly !== 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+  else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
+#else
+  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+#endif
+#else
+  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
+#endif
+}
+#endif
+
+// asm.js loading in fastcomp backend:
+#if !WASM && !WASM_BACKEND
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+#if SEPARATE_ASM
+  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif
 }
@@ -41,13 +84,13 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_SHELL) {
-#if WASM
-  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
-#else
   eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
+#endif
+
 #endif
 
 // Redefine these in a --pre-js to override behavior. If you would like to
@@ -77,27 +120,30 @@ function ready() {
 
 #if USE_PTHREADS
 
+#if !MODULARIZE
+// In MODULARIZE mode _scriptDir needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
+// before the page load. In non-MODULARIZE modes generate it here.
+var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
+#endif
+
 var ENVIRONMENT_IS_PTHREAD;
 if (!ENVIRONMENT_IS_PTHREAD) ENVIRONMENT_IS_PTHREAD = false; // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread.
-var PthreadWorkerInit; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
-if (!ENVIRONMENT_IS_PTHREAD) PthreadWorkerInit = {};
 
 if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {
   // ENVIRONMENT_IS_PTHREAD=true will have been preset in pthread-main.js. Make it false in the main runtime thread. 
   // N.B. this line needs to appear without 'var' keyword to avoid 'var hoisting' from occurring. (https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/var)
   ENVIRONMENT_IS_PTHREAD = false;
-  var PthreadWorkerInit = {}; // Collects together variables that are needed at initialization time for the web workers that host pthreads.
-} else {
+}
+#if MODULARIZE
+else {
   var buffer = {{{EXPORT_NAME}}}.buffer;
-  var tempDoublePtr = {{{EXPORT_NAME}}}.tempDoublePtr;
   var STATICTOP = {{{EXPORT_NAME}}}.STATICTOP;
-  var DYNAMIC_BASE = {{{EXPORT_NAME}}}.DYNAMIC_BASE;
   var DYNAMICTOP_PTR = {{{EXPORT_NAME}}}.DYNAMICTOP_PTR;
-  var PthreadWorkerInit = {{{EXPORT_NAME}}}.PthreadWorkerInit;
   var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;
   var STACKTOP = {{{EXPORT_NAME}}}.STACKTOP;
   var STACK_MAX = {{{EXPORT_NAME}}}.STACK_MAX;
 }
+#endif
 
 var currentScriptUrl = typeof _scriptDir !== 'undefined' ? _scriptDir : ((typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined);
 #endif // USE_PTHREADS

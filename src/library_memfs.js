@@ -272,20 +272,27 @@ mergeInto(LibraryManager.library, {
       //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
       //         of bytes anymore since their contents now represent file data inside the filesystem.
       write: function(stream, buffer, offset, length, position, canOwn) {
-#if ALLOW_MEMORY_GROWTH
-        // If memory can grow, we don't want to hold on to references of
-        // the memory Buffer, as they may get invalidated. That means
-        // we need to do a copy here.
 #if ASSERTIONS
-        // FIXME: this is inefficient as the file packager may have
-        //        copied the data into memory already - we may want to
-        //        integrate more there and let the file packager loading
-        //        code be able to query if memory growth is on or off.
-        if (canOwn) {
-          warnOnce('file packager has copied file data into memory, but in memory growth we are forced to copy it again (see --no-heap-copy)');
-        }
+        // The data buffer should be a typed array view
+        assert(!(buffer instanceof ArrayBuffer));
+#endif
+#if ALLOW_MEMORY_GROWTH
+        // If the buffer is located in main memory (HEAP), and if
+        // memory can grow, we can't hold on to references of the
+        // memory buffer, as they may get invalidated. That means we
+        // need to do copy its contents.
+        if (buffer.buffer === HEAP8.buffer) {
+#if ASSERTIONS
+          // FIXME: this is inefficient as the file packager may have
+          //        copied the data into memory already - we may want to
+          //        integrate more there and let the file packager loading
+          //        code be able to query if memory growth is on or off.
+          if (canOwn) {
+            warnOnce('file packager has copied file data into memory, but in memory growth we are forced to copy it again (see --no-heap-copy)');
+          }
 #endif // ASSERTIONS
-        canOwn = false;
+          canOwn = false;
+        }
 #endif // ALLOW_MEMORY_GROWTH
 
         if (!length) return 0;
@@ -324,9 +331,9 @@ mergeInto(LibraryManager.library, {
 
       llseek: function(stream, offset, whence) {
         var position = offset;
-        if (whence === 1) {  // SEEK_CUR.
+        if (whence === {{{ cDefine('SEEK_CUR') }}}) {
           position += stream.position;
-        } else if (whence === 2) {  // SEEK_END.
+        } else if (whence === {{{ cDefine('SEEK_END') }}}) {
           if (FS.isFile(stream.node.mode)) {
             position += stream.node.usedBytes;
           }
@@ -341,6 +348,10 @@ mergeInto(LibraryManager.library, {
         stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap: function(stream, buffer, offset, length, position, prot, flags) {
+#if ASSERTIONS
+        // The data buffer should be a typed array view
+        assert(!(buffer instanceof ArrayBuffer));
+#endif
         if (!FS.isFile(stream.node.mode)) {
           throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
         }
@@ -349,7 +360,7 @@ mergeInto(LibraryManager.library, {
         var contents = stream.node.contents;
         // Only make a new copy when MAP_PRIVATE is specified.
         if ( !(flags & {{{ cDefine('MAP_PRIVATE') }}}) &&
-              (contents.buffer === buffer || contents.buffer === buffer.buffer) ) {
+              contents.buffer === buffer.buffer ) {
           // We can't emulate MAP_SHARED when the file is not backed by the buffer
           // we're mapping to (e.g. the HEAP buffer).
           allocated = false;

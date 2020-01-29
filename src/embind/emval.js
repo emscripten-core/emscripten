@@ -220,8 +220,8 @@ var LibraryEmVal = {
     }
     if (typeof global === 'object' && testGlobal(global)) {
       $$$embind_global$$$ = global;
-    } else if (typeof window === 'object' && testGlobal(window)) {
-      $$$embind_global$$$ = window;
+    } else if (typeof self === 'object' && testGlobal(self)) {
+      $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
     }
     if (typeof $$$embind_global$$$ === 'object') {
       return $$$embind_global$$$;

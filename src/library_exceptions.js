@@ -325,10 +325,9 @@ var LibraryExceptions = {
 // In LLVM, exceptions generate a set of functions of form __cxa_find_matching_catch_1(), __cxa_find_matching_catch_2(), etc.
 // where the number specifies the number of arguments. In Emscripten, route all these to a single function '__cxa_find_matching_catch'
 // that variadically processes all of these functions using JS 'arguments' object.
-var maxExceptionArgs = 10; // arbitrary upper limit
-for (var n = 0; n < maxExceptionArgs; ++n) {
-  LibraryExceptions['__cxa_find_matching_catch_' + n] = '__cxa_find_matching_catch';
-  LibraryExceptions['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
-}
+addCxaCatch = function(n) {
+  LibraryManager.library['__cxa_find_matching_catch_' + n] = LibraryExceptions['__cxa_find_matching_catch'];
+  LibraryManager.library['__cxa_find_matching_catch_' + n + '__sig'] = new Array(n + 2).join('i');
+};
 
 mergeInto(LibraryManager.library, LibraryExceptions);

@@ -110,20 +110,8 @@ mergeInto(LibraryManager.library, {
             var buf = Buffer.alloc ? Buffer.alloc(BUFSIZE) : new Buffer(BUFSIZE);
             var bytesRead = 0;
 
-            var isPosixPlatform = (process.platform != 'win32'); // Node doesn't offer a direct check, so test by exclusion
-
-            var fd = process.stdin.fd;
-            if (isPosixPlatform) {
-              // Linux and Mac cannot use process.stdin.fd (which isn't set up as sync)
-              var usingDevice = false;
-              try {
-                fd = fs.openSync('/dev/stdin', 'r');
-                usingDevice = true;
-              } catch (e) {}
-            }
-
             try {
-              bytesRead = fs.readSync(fd, buf, 0, BUFSIZE, null);
+              bytesRead = nodeFS.readSync(process.stdin.fd, buf, 0, BUFSIZE, null);
             } catch(e) {
               // Cross-platform differences: on Windows, reading EOF throws an exception, but on other OSes,
               // reading EOF returns 0. Uniformize behavior by treating the EOF exception to return 0.
@@ -131,7 +119,6 @@ mergeInto(LibraryManager.library, {
               else throw e;
             }
 
-            if (usingDevice) { fs.closeSync(fd); }
             if (bytesRead > 0) {
               result = buf.slice(0, bytesRead).toString('utf-8');
             } else {
