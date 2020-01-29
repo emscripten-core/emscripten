@@ -1967,9 +1967,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return any(flag.startswith(x) for x in ('-l', '-L', '-Wl,'))
 
       compile_args = [a for a in newargs if a and not is_link_flag(a)]
-      if '-fPIC' in compile_args and not shared.Settings.RELOCATABLE:
-        shared.warning('ignoring -fPIC flag when not building with SIDE_MODULE or MAIN_MODULE')
-        compile_args.remove('-fPIC')
 
       # Bitcode args generation code
       def get_clang_command(input_files):
