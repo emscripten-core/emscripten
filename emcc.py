@@ -1603,7 +1603,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.AUTO_JS_LIBRARIES = 0
 
       # In asm.js always use memory init file to get the best code size, other modes are not currently supported.
-      if not shared.Settings.WASM:
+      if not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
         options.memory_init_file = True
 
     if shared.Settings.MODULARIZE and not shared.Settings.MODULARIZE_INSTANCE and shared.Settings.EXPORT_NAME == 'Module' and final_suffix == '.html' and \

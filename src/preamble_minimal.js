@@ -165,6 +165,16 @@ HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
 #include "runtime_stack_check.js"
 #include "runtime_assertions.js"
 
+#if LOAD_SOURCE_MAP
+var wasmSourceMap;
+#include "source_map_support.js"
+#endif
+
+#if USE_OFFSET_CONVERTER
+var wasmOffsetConverter;
+#include "wasm_offset_converter.js"
+#endif
+
 #if ASSERTIONS
 var runtimeInitialized = false;
 

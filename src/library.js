@@ -302,13 +302,28 @@ LibraryManager.library = {
   },
   getpagesize: function() {
     // int getpagesize(void);
+#if MINIMAL_RUNTIME
+#if WASM
+    return {{{ WASM_PAGE_SIZE }}};
+#else
+    return {{{ ASMJS_PAGE_SIZE }}};
+#endif
+#else
     return PAGE_SIZE;
+#endif
   },
 
-  sysconf__deps: ['__setErrNo'],
+  sysconf__deps: ['__setErrNo'
+#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
+  , 'getpagesize'
+#endif
+  ],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
+#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
+    var PAGE_SIZE = _getpagesize();
+#endif
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
@@ -4451,7 +4466,11 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+#if MINIMAL_RUNTIME
+    , '$allocateUTF8'
+#endif
+  ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
@@ -4548,9 +4567,9 @@ LibraryManager.library = {
 
   emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
   emscripten_with_builtin_malloc: function (func) {
-    var prev_malloc = _malloc;
-    var prev_memalign = _memalign;
-    var prev_free = _free;
+    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
