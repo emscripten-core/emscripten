@@ -23,7 +23,7 @@ By default, Emscripten targets the WebGL-friendly subset of OpenGL ES 2.0. This 
 
 To program against the WebGL subset of OpenGL ES, one uses the GL ES 2.0 header files and the GL ES 2.0 API, while adhering to the limitations specified in Chapter 6 of the WebGL specification.
 
-This mode is used by default because it best matches the WebGL features brovided by browsers.
+This mode is used by default because it best matches the WebGL features provided by browsers.
 
 To target WebGL 2, pass the linker flag ``-s USE_WEBGL2=1``. Specifying this flag enables (and defaults to, unless otherwise specified at context creation time) the creation of WebGL 2 contexts at runtime, but it is still possible to create WebGL 1 contexts, so applications can choose whether to require WebGL 2 or whether to support a fallback to WebGL 1.
 
