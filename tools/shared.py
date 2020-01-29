@@ -2516,6 +2516,8 @@ class Building(object):
 
       outfile = filename + '.cc.js'
 
+      # TODO: Remove the --platform argument once the upstream issues are addressed:
+      # https://github.com/emscripten-core/emscripten/issues/10304
       args = CLOSURE_COMPILER[:]
       args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
                '--language_in', 'ECMASCRIPT5']
@@ -2534,6 +2536,10 @@ class Building(object):
       logger.debug('closure compiler: ' + ' '.join(args))
       env = os.environ.copy()
       env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      java_home = os.path.dirname(JAVA)
+      if java_home:
+        print(java_home)
+        env.setdefault('JAVA_HOME', java_home)
       proc = run_process(args, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
