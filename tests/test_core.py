@@ -1019,6 +1019,13 @@ base align: 0, 0, 0, 0'''])
   def test_longjmp2(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
 
+  @needs_dlfcn
+  def test_longjmp2_main_module(self):
+    # Test for binaryen regression:
+    # https://github.com/WebAssembly/binaryen/issues/2180
+    self.set_setting('MAIN_MODULE')
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
+
   def test_longjmp3(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp3')
 
