@@ -7422,7 +7422,7 @@ err = err = function(){};
         while '  ' in line:
           line = line.replace('  ', ' ')
         addr, line, col = line.split(' ')[:3]
-        src_to_addr[(int(line), int(col))] = addr#int(addr, 0)
+        src_to_addr[(int(line), int(col))] = addr
     # the two lines of foo()
     self.assertIn((6, 9), src_to_addr)
     self.assertIn((7, 9), src_to_addr)
