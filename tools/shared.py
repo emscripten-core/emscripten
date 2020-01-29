@@ -2516,8 +2516,6 @@ class Building(object):
 
       outfile = filename + '.cc.js'
 
-      # TODO: Remove the --platform argument once the upstream issues are addressed:
-      # https://github.com/emscripten-core/emscripten/issues/10304
       args = CLOSURE_COMPILER[:]
       args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
                '--language_in', 'ECMASCRIPT5']
@@ -2536,6 +2534,8 @@ class Building(object):
       logger.debug('closure compiler: ' + ' '.join(args))
       env = os.environ.copy()
       env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
+      # this is will only try the native and javascriptn version.
       java_home = os.path.dirname(JAVA)
       if java_home:
         print(java_home)
