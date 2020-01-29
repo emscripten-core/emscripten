@@ -22,7 +22,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
@@ -7349,6 +7349,93 @@ err = err = function(){};
       assert seen_lines.issuperset([11, 12]), seen_lines
     else:
       assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
+
+  @no_wasm2js('TODO: source maps in wasm2js')
+  @no_fastcomp('DWARF is only supported in upstream')
+  def test_dwarf(self):
+    self.emcc_args.append('-gforce_dwarf')
+    self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
+
+    create_test_file('src.cpp', '''
+      #include <stdio.h>
+      #include <assert.h>
+
+      __attribute__((noinline)) int foo() {
+        printf("hi"); // line 6
+        return 1; // line 7
+      }
+
+      int main() {
+        printf("%d", foo()); // line 11
+        return 0; // line 12
+      }
+    ''')
+
+    js_filename = 'a.out.js'
+    wasm_filename = 'a.out.wasm'
+
+    Building.emcc('src.cpp',
+                  self.serialize_settings() + self.emcc_args,
+                  js_filename)
+
+    LLVM_DWARFDUMP = os.path.join(LLVM_ROOT, 'llvm-dwarfdump')
+    out = run_process([LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
+
+    # parse the sections
+    sections = {}
+    curr_section_name = ''
+    curr_section_body = ''
+
+    def add_section():
+      if curr_section_name:
+        sections[curr_section_name] = curr_section_body
+
+    for line in out.splitlines():
+      if ' contents:' in line:
+        # a new section, a line like ".debug_str contents:"
+        add_section()
+        curr_section_name = line.split(' ')[0]
+        curr_section_body = ''
+      else:
+        # possibly a line in a section
+        if curr_section_name:
+          curr_section_body += line + '\n'
+    add_section()
+
+    # make sure the right sections exist
+    self.assertIn('.debug_abbrev', sections)
+    self.assertIn('.debug_info', sections)
+    self.assertIn('.debug_line', sections)
+    self.assertIn('.debug_str', sections)
+    self.assertIn('.debug_ranges', sections)
+
+    # verify some content in the sections
+    self.assertIn('"src.cpp"', sections['.debug_info'])
+
+    # the line section looks like this:
+    # Address            Line   Column File   ISA Discriminator Flags
+    # ------------------ ------ ------ ------ --- ------------- -------------
+    # 0x000000000000000b      5      0      3   0             0  is_stmt
+    src_to_addr = {}
+    for line in sections['.debug_line'].splitlines():
+      if line.startswith('0x'):
+        while '  ' in line:
+          line = line.replace('  ', ' ')
+        addr, line, col = line.split(' ')[:3]
+        src_to_addr[(int(line), int(col))] = addr#int(addr, 0)
+    # the two lines of foo()
+    self.assertIn((6, 9), src_to_addr)
+    self.assertIn((7, 9), src_to_addr)
+    # line 6 will naturally be emitted before 7 as it executes before
+    self.assertLess(src_to_addr[(6, 9)], src_to_addr[(7, 9)])
+    # if not optimizing, more lines appear
+    if not is_optimizing(self.emcc_args):
+      self.assertIn((11, 9), src_to_addr)
+      self.assertIn((12, 9), src_to_addr)
+      self.assertLess(src_to_addr[(11, 9)], src_to_addr[(12, 9)])
+      # llvm orders functions in the same order as in the source, and binaryen
+      # doesn't mess with that when not optimizing
+      self.assertLess(src_to_addr[(7, 9)], src_to_addr[(11, 9)])
 
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
