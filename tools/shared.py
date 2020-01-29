@@ -2534,6 +2534,11 @@ class Building(object):
       logger.debug('closure compiler: ' + ' '.join(args))
       env = os.environ.copy()
       env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
+      # this it will only try the native and JavaScript versions of the compiler.
+      java_home = os.path.dirname(JAVA)
+      if java_home:
+        env.setdefault('JAVA_HOME', java_home)
       proc = run_process(args, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
