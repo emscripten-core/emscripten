@@ -8728,6 +8728,16 @@ end
     # The default behavior is to add archive indexes automatically.
     run_process([PYTHON, EMCC, 'libfoo.a', 'hello_world.o'])
 
+  def test_archive_non_objects(self):
+    create_test_file('file.txt', 'test file')
+    # llvm-nm has issues with files that start with two or more null bytes since it thinks they
+    # are COFF files.  Ensure that we correctly ignore such files when we process them.
+    create_test_file('zeros.bin', '\0\0\0\0')
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
+    # No index added.
+    run_process([PYTHON, EMAR, 'crS', 'libfoo.a', 'file.txt', 'zeros.bin', 'hello_world.o'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), 'libfoo.a'])
+
   def test_flag_aliases(self):
     def assert_aliases_match(flag1, flag2, flagarg, extra_args):
       results = {}
