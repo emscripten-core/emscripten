@@ -518,7 +518,7 @@ jobs:
           name: Add python to bash path
           command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
       - build-upstream
-  test-upstream-other-windows:
+  test-upstream-minimal-windows:
     environment:
       PYTHON_BIN: "/c/python27amd64/python.exe"
       PYTHONUNBUFFERED: "1"
@@ -528,7 +528,7 @@ jobs:
       shell: bash.exe
     steps:
       - run-tests:
-          test_targets: "other.test_closure_externs other.test_binaryen_debug"
+          test_targets: "wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug"
   build-upstream-mac:
     executor: mac
     steps:
@@ -628,7 +628,7 @@ workflows:
           requires:
             - build-upstream-linux
       - build-upstream-windows
-      - test-upstream-other-windows:
+      - test-upstream-minimal-windows:
           requires:
             - build-upstream-windows
       - build-upstream-mac
