@@ -283,97 +283,94 @@ var LibraryPThread = {
     // onFinishedLoading: A callback function that will be called once all of the workers have been initialized and are
     //                    ready to host pthreads.
     loadWasmModuleToWorker: function(worker, onFinishedLoading) {
-      // Add the onmessage listener.
-      (function(worker) {
-        worker.onmessage = function(e) {
-          var d = e['data'];
-          var cmd = d['cmd'];
-          // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
-          if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
+      worker.onmessage = function(e) {
+        var d = e['data'];
+        var cmd = d['cmd'];
+        // Sometimes we need to backproxy events to the calling thread (e.g. HTML5 DOM events handlers such as emscripten_set_mousemove_callback()), so keep track in a globally accessible variable about the thread that initiated the proxying.
+        if (worker.pthread) PThread.currentProxiedOperationCallerThread = worker.pthread.threadInfoStruct;
 
-          // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
-          if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
-            var thread = PThread.pthreads[d.targetThread];
-            if (thread) {
-              thread.worker.postMessage(e.data, d['transferList']);
-            } else {
-              console.error('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
-            }
-            PThread.currentProxiedOperationCallerThread = undefined;
-            return;
-          }
-
-          if (cmd === 'processQueuedMainThreadWork') {
-            // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
-            _emscripten_main_thread_process_queued_calls();
-          } else if (cmd === 'spawnThread') {
-            __spawn_thread(e.data);
-          } else if (cmd === 'cleanupThread') {
-            __cleanup_thread(d['thread']);
-          } else if (cmd === 'killThread') {
-            __kill_thread(d['thread']);
-          } else if (cmd === 'cancelThread') {
-            __cancel_thread(d['thread']);
-          } else if (cmd === 'loaded') {
-            worker.loaded = true;
-            if (onFinishedLoading) onFinishedLoading(worker);
-            // If this Worker is already pending to start running a thread, launch the thread now
-            if (worker.runPthread) {
-              worker.runPthread();
-              delete worker.runPthread;
-            }
-          } else if (cmd === 'print') {
-            out('Thread ' + d['threadId'] + ': ' + d['text']);
-          } else if (cmd === 'printErr') {
-            err('Thread ' + d['threadId'] + ': ' + d['text']);
-          } else if (cmd === 'alert') {
-            alert('Thread ' + d['threadId'] + ': ' + d['text']);
-          } else if (cmd === 'exit') {
-            var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
-            if (detached) {
-              PThread.returnWorkerToPool(worker);
-            }
-#if EXIT_RUNTIME // If building with -s EXIT_RUNTIME=0, no thread will post this message, so don't even compile it in.
-          } else if (cmd === 'exitProcess') {
-            // A pthread has requested to exit the whole application process (runtime).
-            noExitRuntime = false;
-            try {
-              exit(d['returnCode']);
-            } catch (e) {
-              if (e instanceof ExitStatus) return;
-              throw e;
-            }
-#endif
-          } else if (cmd === 'cancelDone') {
-            PThread.returnWorkerToPool(worker);
-          } else if (cmd === 'objectTransfer') {
-            PThread.receiveObjectTransfer(e.data);
-          } else if (e.data.target === 'setimmediate') {
-            worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
+        // If this message is intended to a recipient that is not the main thread, forward it to the target thread.
+        if (d['targetThread'] && d['targetThread'] != _pthread_self()) {
+          var thread = PThread.pthreads[d.targetThread];
+          if (thread) {
+            thread.worker.postMessage(e.data, d['transferList']);
           } else {
-            err("worker sent an unknown command " + cmd);
+            console.error('Internal error! Worker sent a message "' + cmd + '" to target pthread ' + d['targetThread'] + ', but that thread no longer exists!');
           }
           PThread.currentProxiedOperationCallerThread = undefined;
-        };
+          return;
+        }
 
-        worker.onerror = function(e) {
-          err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
-        };
+        if (cmd === 'processQueuedMainThreadWork') {
+          // TODO: Must post message to main Emscripten thread in PROXY_TO_WORKER mode.
+          _emscripten_main_thread_process_queued_calls();
+        } else if (cmd === 'spawnThread') {
+          __spawn_thread(e.data);
+        } else if (cmd === 'cleanupThread') {
+          __cleanup_thread(d['thread']);
+        } else if (cmd === 'killThread') {
+          __kill_thread(d['thread']);
+        } else if (cmd === 'cancelThread') {
+          __cancel_thread(d['thread']);
+        } else if (cmd === 'loaded') {
+          worker.loaded = true;
+          if (onFinishedLoading) onFinishedLoading(worker);
+          // If this Worker is already pending to start running a thread, launch the thread now
+          if (worker.runPthread) {
+            worker.runPthread();
+            delete worker.runPthread;
+          }
+        } else if (cmd === 'print') {
+          out('Thread ' + d['threadId'] + ': ' + d['text']);
+        } else if (cmd === 'printErr') {
+          err('Thread ' + d['threadId'] + ': ' + d['text']);
+        } else if (cmd === 'alert') {
+          alert('Thread ' + d['threadId'] + ': ' + d['text']);
+        } else if (cmd === 'exit') {
+          var detached = worker.pthread && Atomics.load(HEAPU32, (worker.pthread.thread + {{{ C_STRUCTS.pthread.detached }}}) >> 2);
+          if (detached) {
+            PThread.returnWorkerToPool(worker);
+          }
+#if EXIT_RUNTIME // If building with -s EXIT_RUNTIME=0, no thread will post this message, so don't even compile it in.
+        } else if (cmd === 'exitProcess') {
+          // A pthread has requested to exit the whole application process (runtime).
+          noExitRuntime = false;
+          try {
+            exit(d['returnCode']);
+          } catch (e) {
+            if (e instanceof ExitStatus) return;
+            throw e;
+          }
+#endif
+        } else if (cmd === 'cancelDone') {
+          PThread.returnWorkerToPool(worker);
+        } else if (cmd === 'objectTransfer') {
+          PThread.receiveObjectTransfer(e.data);
+        } else if (e.data.target === 'setimmediate') {
+          worker.postMessage(e.data); // Worker wants to postMessage() to itself to implement setImmediate() emulation.
+        } else {
+          err("worker sent an unknown command " + cmd);
+        }
+        PThread.currentProxiedOperationCallerThread = undefined;
+      };
+
+      worker.onerror = function(e) {
+        err('pthread sent an error! ' + e.filename + ':' + e.lineno + ': ' + e.message);
+      };
 
 #if ENVIRONMENT_MAY_BE_NODE
-        if (ENVIRONMENT_HAS_NODE) {
-          worker.on('message', function(data) {
-            worker.onmessage({ data: data });
-          });
-          worker.on('error', function(data) {
-            worker.onerror(data);
-          });
-          worker.on('exit', function(data) {
-            console.log('worker exited - TODO: update the worker queue?');
-          });
-        }
+      if (ENVIRONMENT_HAS_NODE) {
+        worker.on('message', function(data) {
+          worker.onmessage({ data: data });
+        });
+        worker.on('error', function(data) {
+          worker.onerror(data);
+        });
+        worker.on('exit', function(data) {
+          console.log('worker exited - TODO: update the worker queue?');
+        });
+      }
 #endif
-      }(worker));
 
 #if ASSERTIONS && WASM
       assert(wasmMemory, 'WebAssembly memory should have been loaded by now!');
