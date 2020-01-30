@@ -300,34 +300,20 @@ LibraryManager.library = {
       return -1;
     }
   },
+
   getpagesize: function() {
     // int getpagesize(void);
-#if MINIMAL_RUNTIME
-#if WASM
-    return {{{ WASM_PAGE_SIZE }}};
-#else
-    return {{{ ASMJS_PAGE_SIZE }}};
-#endif
-#else
-    return PAGE_SIZE;
-#endif
+    return {{{ FS_PAGE_SIZE }}};
   },
 
-  sysconf__deps: ['__setErrNo'
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
-  , 'getpagesize'
-#endif
-  ],
+  sysconf__deps: ['__setErrNo'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
-    var PAGE_SIZE = _getpagesize();
-#endif
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
-      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
+      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ FS_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
 #if WASM
         var maxHeapSize = 2*1024*1024*1024 - 65536;
@@ -340,7 +326,7 @@ LibraryManager.library = {
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
 #endif
-        return maxHeapSize / PAGE_SIZE;
+        return maxHeapSize / {{{ FS_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
@@ -577,7 +563,7 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    var PAGE_MULTIPLE = {{{ FS_PAGE_SIZE }}};
 
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)

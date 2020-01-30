@@ -1546,6 +1546,9 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
+// Page size of the virtual filesystem.
+var FS_PAGE_SIZE = 16384;
+
 // In wasm, the heap size must be a multiple of 64KB.
 // In asm.js, it must be a multiple of 16MB.
 var WASM_PAGE_SIZE = 65536;
