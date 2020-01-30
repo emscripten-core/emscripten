@@ -224,13 +224,12 @@ var SyscallsLibrary = {
     }
   },
 
-  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS', 'getpagesize',
+  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
   _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
-    var PAGE_SIZE = _getpagesize();
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;

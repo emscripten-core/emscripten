@@ -302,28 +302,13 @@ LibraryManager.library = {
   },
   getpagesize: function() {
     // int getpagesize(void);
-#if MINIMAL_RUNTIME
-#if WASM
-    return {{{ WASM_PAGE_SIZE }}};
-#else
-    return {{{ ASMJS_PAGE_SIZE }}};
-#endif
-#else
     return PAGE_SIZE;
-#endif
   },
 
-  sysconf__deps: ['__setErrNo'
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
-  , 'getpagesize'
-#endif
-  ],
+  sysconf__deps: ['__setErrNo'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
-    var PAGE_SIZE = _getpagesize();
-#endif
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
