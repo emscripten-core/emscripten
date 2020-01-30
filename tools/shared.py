@@ -538,13 +538,12 @@ def check_closure_compiler():
   try:
     env = os.environ.copy()
     env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-    proc = subprocess.Popen(CLOSURE_COMPILER + ['--version'], stdout=PIPE, stderr=PIPE, env=env)
-    output = proc.communicate()
-    if 'Version:' not in str(output[0]):
-      exit_with_error('Unrecognized Closure compiler --version output:\n' + str(output[0]) + '\n' + str(output[1]))
+    output = run_process(CLOSURE_COMPILER + ['--version'], stdout=PIPE, env=env).stdout
   except Exception as e:
     warning(str(e))
-    exit_with_error('Closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+    exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+  if 'Version:' not in output:
+    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
 
 
 def get_emscripten_version(path):
@@ -2534,6 +2533,11 @@ class Building(object):
       logger.debug('closure compiler: ' + ' '.join(args))
       env = os.environ.copy()
       env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
+      # this it will only try the native and JavaScript versions of the compiler.
+      java_home = os.path.dirname(JAVA)
+      if java_home:
+        env.setdefault('JAVA_HOME', java_home)
       proc = run_process(args, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)

@@ -40,6 +40,11 @@ if (Module['doWasm2JS']) {
 #endif
 #endif
 
+#if SINGLE_FILE && WASM == 1 && !WASM2JS
+#include "base64Decode.js"
+Module['wasm'] = base64Decode('{{{ getQuoted("WASM_BINARY_DATA") }}}');
+#endif
+
 #include "runtime_functions.js"
 #include "runtime_strings.js"
 #include "runtime_sab_polyfill.js"
@@ -151,11 +156,16 @@ var HEAPF32 = new Float32Array(buffer);
 var HEAPF64 = new Float64Array(buffer);
 #endif
 
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
 HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
+#endif
+
+#if SINGLE_FILE && !WASM && !WASM_BACKEND
+#include "base64Decode.js"
+HEAPU8.set(base64Decode('{{{ getQuoted("BASE64_MEMORY_INITIALIZER") }}}'), GLOBAL_BASE);
 #endif
 
 #if USES_DYNAMIC_ALLOC

@@ -27,6 +27,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
+#if !SINGLE_FILE
 // Wasm or Wasm2JS loading:
 #if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
 if (ENVIRONMENT_IS_NODE) {
@@ -96,6 +97,8 @@ if (ENVIRONMENT_IS_SHELL) {
 #endif
 
 #endif
+
+#endif // !SINGLE_FILE
 
 // Redefine these in a --pre-js to override behavior. If you would like to
 // remove out() or err() altogether, you can no-op it out to function() {},

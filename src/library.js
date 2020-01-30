@@ -563,7 +563,7 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ 4 * FS_PAGE_SIZE }}};
+    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
 
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
@@ -2756,7 +2756,7 @@ LibraryManager.library = {
     var now;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -2782,7 +2782,7 @@ LibraryManager.library = {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -4078,11 +4078,10 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
-  emscripten_get_now_is_monotonic: function() {
-    // return whether emscripten_get_now is guaranteed monotonic; the Date.now
-    // implementation is not :(
-    return (0
+  // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
+  // implementation is not :(
+  emscripten_get_now_is_monotonic: `
+     (0
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
@@ -4099,8 +4098,7 @@ LibraryManager.library = {
 #endif
 
 #endif
-      );
-  },
+      );`,
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {

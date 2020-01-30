@@ -1554,7 +1554,7 @@ var FS_PAGE_SIZE = 16384;
 var WASM_PAGE_SIZE = 65536;
 var ASMJS_PAGE_SIZE = 16777216;
 
-function getPageSize() {
+function getMemoryPageSize() {
   return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
 
