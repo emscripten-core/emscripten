@@ -252,7 +252,18 @@ var emscriptenMemoryProfiler = {
       div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas><input type='checkbox' id='showHeapResizes' onclick='emscriptenMemoryProfiler.updateUi()'>Display heap and sbrk() resizes. Filter sbrk() and heap resize callstacks by keywords: <input type='text' id='sbrkFilter'><br/>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
     }
     var populateHtmlBody = function() {
-      if (div) document.body.appendChild(div);
+      if (div) { 
+        document.body.appendChild(div);
+
+        function getValueOfParam(key) {
+          var results = (new RegExp("[\\?&]"+key+"=([^&#]*)")).exec(location.href);
+          return results ? results[1] : '';
+        }
+        // Allow specifying a precreated filter in page URL ?query parameters for convenience.
+        if (document.getElementById('sbrkFilter').value = getValueOfParam('sbrkFilter')) {
+          document.getElementById('showHeapResizes').checked = true;  
+        }
+      }
       var self = emscriptenMemoryProfiler;
       self.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
       self.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
