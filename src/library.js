@@ -563,7 +563,7 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ FS_PAGE_SIZE }}};
+    var PAGE_MULTIPLE = {{{ 4 * FS_PAGE_SIZE }}};
 
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
