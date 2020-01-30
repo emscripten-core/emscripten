@@ -33,9 +33,9 @@ function base64Decode(b64) {
 #if ENVIRONMENT_MAY_BE_NODE
   if (typeof ENVIRONMENT_IS_NODE !== 'undefined' && ENVIRONMENT_IS_NODE) {
     try {
-      var buf = Buffer.from(s, 'base64');
+      var buf = Buffer.from(b64, 'base64');
     } catch (_) {
-      var buf = new Buffer(s, 'base64');
+      var buf = new Buffer(b64, 'base64');
     }
     return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
   }
