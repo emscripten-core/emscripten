@@ -418,7 +418,11 @@ mergeInto(LibraryManager.library, {
   },
 
   // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
-  printf__deps: ['_formatString'],
+  printf__deps: ['_formatString'
+#if MINIMAL_RUNTIME
+    , '$intArrayToString'
+#endif
+    ],
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html
