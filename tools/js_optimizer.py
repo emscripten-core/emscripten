@@ -381,7 +381,7 @@ EMSCRIPTEN_FUNCS();
       passes = list(filter(check_symbol_mapping, passes))
       asm_shell_pre, asm_shell_post = minifier.minify_shell(asm_shell, 'minifyWhitespace' in passes, source_map).split('EMSCRIPTEN_FUNCS();')
       if not shared.Settings.WASM_BACKEND:
-      # Restore a comment for Closure Compiler
+        # Restore a comment for Closure Compiler
         asm_open_bracket = asm_shell_pre.find('(')
         asm_shell_pre = asm_shell_pre[:asm_open_bracket + 1] + '/** @suppress {uselessCode} */' + asm_shell_pre[asm_open_bracket + 1:]
       asm_shell_post = asm_shell_post.replace('});', '})')
