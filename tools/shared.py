@@ -2468,7 +2468,7 @@ class Building(object):
       exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
 
   @staticmethod
-  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
+  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
     with ToolchainProfiler.profile_block('closure_compiler'):
       env = os.environ.copy()
 
@@ -2476,10 +2476,12 @@ class Building(object):
         env['PATH'] = env['PATH'] + os.pathsep + dirname
 
       add_to_path(get_node_directory())
-      args = list(extra_closure_args)
-      env_args = os.environ.get('EMCC_CLOSURE_ARGS', '')
+      user_args = []
+      env_args = os.environ.get('EMCC_CLOSURE_ARGS')
       if env_args:
-        args += shlex.split(env_args)
+        user_args += shlex.split(env_args)
+      if extra_closure_args:
+        user_args += extra_closure_args
 
       # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
       # to enable use the java backend.  Without this it will only try the native and JavaScript
@@ -2490,12 +2492,12 @@ class Building(object):
         java_home = os.path.dirname(java_bin)
         env.setdefault('JAVA_HOME', java_home)
 
-      if WINDOWS and not any(a.startswith('--platform') for a in args):
+      if WINDOWS and not any(a.startswith('--platform') for a in user_args):
         # Disable native compiler on windows until upstream issue is fixed:
         # https://github.com/google/closure-compiler-npm/issues/147
-        args.append('--platform=java')
+        user_args.append('--platform=java')
 
-      Building.check_closure_compiler(args, env)
+      Building.check_closure_compiler(user_args, env)
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2538,8 +2540,8 @@ class Building(object):
 
       outfile = filename + '.cc.js'
 
-      args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-               '--language_in', 'ECMASCRIPT5']
+      args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
+              '--language_in', 'ECMASCRIPT5']
       for e in CLOSURE_EXTERNS:
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
@@ -2548,9 +2550,8 @@ class Building(object):
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
-      args += extra_closure_args
       args += ['--js', filename]
-      cmd = CLOSURE_COMPILER + args
+      cmd = CLOSURE_COMPILER + args + user_args
       logger.debug('closure compiler: ' + ' '.join(cmd))
 
       proc = run_process(cmd, stderr=PIPE, check=False, env=env)
