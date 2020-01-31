@@ -76,7 +76,13 @@ var LibraryManager = {
       libraries.push('library_exceptions_stub.js');
     }
 
-    if (!MINIMAL_RUNTIME) {
+    if (MINIMAL_RUNTIME) {
+      // Classic runtime brings in string-related functions in the runtime preamble, by including
+      // runtime_strings_extra.js that contain the same contents as library_strings.js does. In
+      // MINIMAL_RUNTIME those string functions are available as JS library functions instead from
+      // library_strings.js, to avoid unconditionally bringing in extra code to the build.
+      libraries.push('library_strings.js');
+    } else {
       libraries.push('library_browser.js');
     }
 
@@ -140,6 +146,10 @@ var LibraryManager = {
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
+    }
+
+    if (USE_WEBGPU) {
+      libraries.push('library_webgpu.js');
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
@@ -380,6 +390,7 @@ function exportRuntime() {
     'stringToUTF32',
     'lengthBytesUTF32',
     'allocateUTF8',
+    'allocateUTF8OnStack',
     'stackTrace',
     'addOnPreRun',
     'addOnInit',
@@ -429,7 +440,9 @@ function exportRuntime() {
     runtimeElements.push('stackSave');
     runtimeElements.push('stackRestore');
     runtimeElements.push('stackAlloc');
-    runtimeElements.push('establishStackSpace');
+    if (USE_PTHREADS) {
+      runtimeElements.push('establishStackSpace');
+    }
   }
 
   if (STACK_OVERFLOW_CHECK) {
@@ -444,7 +457,7 @@ function exportRuntime() {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    var threadExports = ['PThread', 'ExitStatus', 'tempDoublePtr', '_pthread_self'];
+    var threadExports = ['PThread', 'ExitStatus', '_pthread_self'];
     if (WASM) {
       threadExports.push('wasmMemory');
     }
@@ -524,16 +537,3 @@ var PassManager = {
     */
   }
 };
-
-// Given a list of dependencies, maybe add GL to it, if it was linked in
-// (note that the item with this list of dependencies should not call GL code
-// if it is not; this just avoids even adding a dependency that would error).
-// This only matters in strict mode (specifically AUTO_JS_LIBRARIES=0), as in
-// non-strict mode the GL library is always linked in anyhow.
-function maybeAddGLDep(deps) {
-  if (AUTO_JS_LIBRARIES ||
-      SYSTEM_JS_LIBRARIES.indexOf('library_webgl.js') >= 0) {
-    deps.push('$GL');
-  }
-  return deps;
-}

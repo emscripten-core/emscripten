@@ -40,6 +40,9 @@ WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+EXPECTED_NODE_VERSION = (4, 1, 1)
+EXPECTED_BINARYEN_VERSION = 90
+
 
 # can add  %(asctime)s  to see timestamps
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s',
@@ -91,12 +94,6 @@ class WindowsPopen(object):
         self.stdout_ = PIPE
       if self.stderr_ is None:
         self.stderr_ = PIPE
-
-    # emscripten.py supports reading args from a response file instead of cmdline.
-    # Use .rsp to avoid cmdline length limitations on Windows.
-    if len(args) >= 2 and args[1].endswith("emscripten.py"):
-      response_filename = response_file.create_response_file(args[2:], TEMP_DIR)
-      args = args[0:2] + ['@' + response_filename]
 
     try:
       # Call the process with fixed streams.
@@ -381,7 +378,12 @@ def parse_config_file():
     JS_ENGINES = [NODE_JS]
 
   if CLOSURE_COMPILER is None:
-    CLOSURE_COMPILER = path_from_root('third_party', 'closure-compiler', 'compiler.jar')
+    if WINDOWS:
+      CLOSURE_COMPILER = [path_from_root('node_modules', '.bin', 'google-closure-compiler.cmd')]
+    else:
+      # Work around an issue that Closure compiler can take up a lot of memory and crash in an error
+      # "FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory"
+      CLOSURE_COMPILER = [NODE_JS, '--max_old_space_size=8192', path_from_root('node_modules', '.bin', 'google-closure-compiler')]
 
   if JAVA is None:
     logger.debug('JAVA not defined in ' + hint_config_file_location() + ', using "java"')
@@ -446,7 +448,7 @@ actual_clang_version = None
 
 def expected_llvm_version():
   if get_llvm_target() == WASM_TARGET:
-    return "10.0"
+    return "11.0"
   else:
     return "6.0"
 
@@ -476,10 +478,10 @@ def get_llc_targets():
     exit_with_error('llc executable not found at `%s`' % LLVM_COMPILER)
   try:
     llc_version_info = run_process([LLVM_COMPILER, '--version'], stdout=PIPE).stdout
-  except Exception as e:
-    return '(no targets could be identified: ' + str(e) + ')'
+  except subprocess.CalledProcessError:
+    exit_with_error('error running `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
   if 'Registered Targets:' not in llc_version_info:
-    return '(no targets could be identified: ' + llc_version_info + ')'
+    exit_with_error('error parsing output of `llc --version`.  Check your llvm installation (%s)' % LLVM_COMPILER)
   pre, targets = llc_version_info.split('Registered Targets:')
   return targets
 
@@ -512,7 +514,8 @@ def check_llvm():
   return True
 
 
-EXPECTED_NODE_VERSION = (4, 1, 1)
+def get_node_directory():
+  return os.path.dirname(NODE_JS[0] if type(NODE_JS) is list else NODE_JS)
 
 
 def check_node_version():
@@ -527,18 +530,6 @@ def check_node_version():
   except Exception as e:
     warning('cannot check node version: %s', e)
     return False
-
-
-def check_closure_compiler():
-  try:
-    run_process([JAVA, '-version'], stdout=PIPE, stderr=PIPE)
-  except Exception:
-    warning('java does not seem to exist, required for closure compiler, which is optional (define JAVA in ' + hint_config_file_location() + ' if you want it)')
-    return False
-  if not os.path.exists(CLOSURE_COMPILER):
-    warning('Closure compiler (%s) does not exist, check the paths in %s', CLOSURE_COMPILER, EM_CONFIG)
-    return False
-  return True
 
 
 def get_emscripten_version(path):
@@ -580,11 +571,6 @@ def perform_sanify_checks():
     for cmd in [CLANG, LLVM_AR, LLVM_AS, LLVM_NM]:
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('Cannot find %s, check the paths in %s', cmd, EM_CONFIG)
-
-  # Sanity check passed!
-  with ToolchainProfiler.profile_block('sanity closure compiler'):
-    if not check_closure_compiler():
-      warning('closure compiler will not be available')
 
 
 def check_sanity(force=False):
@@ -799,6 +785,18 @@ def exe_suffix(cmd):
   return cmd + '.exe' if WINDOWS else cmd
 
 
+def replace_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return os.path.splitext(filename)[0] + new_suffix
+
+
+# In MINIMAL_RUNTIME mode, keep suffixes of generated files simple ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
+# Retain the original naming scheme in traditional runtime.
+def replace_or_append_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return replace_suffix(filename, new_suffix) if Settings.MINIMAL_RUNTIME else filename + new_suffix
+
+
 CLANG_CC = os.path.expanduser(build_clang_tool_path(exe_suffix('clang')))
 CLANG_CPP = os.path.expanduser(build_clang_tool_path(exe_suffix('clang++')))
 CLANG = CLANG_CPP
@@ -967,7 +965,7 @@ def check_vanilla():
     # see which backends it has. we cache this result.
     temp_cache = cache.Cache(use_subdir=False)
 
-    def check_vanilla():
+    def has_vanilla_targets():
       logger.debug('testing for asm.js target, because if not present (i.e. this is plain vanilla llvm, not emscripten fastcomp), we will use the wasm target instead (set EMCC_WASM_BACKEND to skip this check)')
       targets = get_llc_targets()
       return has_wasm_target(targets) and not has_asm_js_target(targets)
@@ -977,7 +975,7 @@ def check_vanilla():
       saved_file = os.path.join(temp_cache.dirname, 'is_vanilla.txt')
       if os.path.exists(saved_file):
         logger.debug('old: %s\n' % open(saved_file).read())
-      open(saved_file, 'w').write(('1' if check_vanilla() else '0') + ':' + LLVM_ROOT + '\n')
+      open(saved_file, 'w').write(('1' if has_vanilla_targets() else '0') + ':' + LLVM_ROOT + '\n')
       return saved_file
 
     is_vanilla_file = temp_cache.get('is_vanilla.txt', get_vanilla_file)
@@ -992,10 +990,10 @@ def check_vanilla():
       if llvm_used != LLVM_ROOT:
         logger.debug('regenerating vanilla check since other llvm (%s vs %s)`', llvm_used, LLVM_ROOT)
         temp_cache.get('is_vanilla.txt', get_vanilla_file, force=True)
-        is_vanilla = check_vanilla()
+        is_vanilla = has_vanilla_targets()
     except Exception as e:
       logger.debug('failed to use vanilla file, will re-check: ' + str(e))
-      is_vanilla = check_vanilla()
+      is_vanilla = has_vanilla_targets()
     temp_cache = None
     if is_vanilla:
       logger.debug('check tells us to use wasm backend')
@@ -1309,7 +1307,7 @@ def verify_settings():
     exit_with_error('emcc: ASM_JS can only be set to either 1 or 2')
 
   if Settings.SAFE_HEAP not in [0, 1]:
-    exit_with_error('emcc: SAVE_HEAP must be 0 or 1 in fastcomp')
+    exit_with_error('emcc: SAFE_HEAP must be 0 or 1 in fastcomp')
 
   if Settings.WASM and Settings.EXPORT_FUNCTION_TABLES:
       exit_with_error('emcc: EXPORT_FUNCTION_TABLES incompatible with WASM')
@@ -1320,6 +1318,9 @@ def verify_settings():
       # we still compile to wasm normally, but we compile the final output
       # to js.
       Settings.WASM = 1
+      Settings.WASM2JS = 1
+    if Settings.WASM == 2:
+      # Requesting both Wasm and Wasm2JS support
       Settings.WASM2JS = 1
 
     if Settings.CYBERDWARF:
@@ -1470,6 +1471,7 @@ def asmjs_mangle(name):
 class Building(object):
   COMPILER = CLANG
   multiprocessing_pool = None
+  binaryen_checked = False
 
   # internal caches
   internal_nm_cache = {} # cache results of nm - it can be slow to run
@@ -1722,7 +1724,7 @@ class Building(object):
     return (args, env)
 
   @staticmethod
-  def configure(args, stdout=None, stderr=None, env=None, cflags=[]):
+  def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     if not args:
       return
     if env is None:
@@ -1741,12 +1743,12 @@ class Building(object):
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
-    run_process(args, stdout=stdout, stderr=stderr, env=env)
+    run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
     if 'EMMAKEN_JUST_CONFIGURE' in env:
       del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
-  def make(args, stdout=None, stderr=None, env=None, cflags=[]):
+  def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     if env is None:
       env = Building.get_building_env(cflags=cflags)
     if not args:
@@ -1771,7 +1773,7 @@ class Building(object):
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
     print('make: ' + str(args), file=sys.stderr)
-    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS)
+    run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
 
   @staticmethod
   def make_paths_absolute(f):
@@ -1894,6 +1896,9 @@ class Building(object):
       args.insert(0, '--whole-archive')
       args.append('--no-whole-archive')
 
+    if Settings.STRICT:
+      args.append('--fatal-warnings')
+
     cmd = [
         WASM_LD,
         '-o',
@@ -1929,15 +1934,15 @@ class Building(object):
 
     if Settings.LINKABLE:
       cmd.append('--export-all')
+    else:
+      # in standalone mode, crt1 will call the constructors from inside the wasm
+      if not Settings.STANDALONE_WASM:
+        cmd += ['--export', '__wasm_call_ctors']
 
-    # in standalone mode, crt1 will call the constructors from inside the wasm
-    if not Settings.STANDALONE_WASM:
-      cmd += ['--export', '__wasm_call_ctors']
+      cmd += ['--export', '__data_end']
 
-    cmd += ['--export', '__data_end']
-
-    for export in Settings.EXPORTED_FUNCTIONS:
-      cmd += ['--export', export[1:]] # Strip the leading underscore
+      for export in Settings.EXPORTED_FUNCTIONS:
+        cmd += ['--export', export[1:]] # Strip the leading underscore
 
     if Settings.RELOCATABLE:
       if Settings.SIDE_MODULE:
@@ -2359,6 +2364,10 @@ class Building(object):
         f.write('// EXTRA_INFO: ' + extra_info)
       filename = temp
     cmd = NODE_JS + [optimizer, filename] + passes
+    # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
+    # will be carried over to a later Closure run.
+    if acorn and Settings.USE_CLOSURE_COMPILER:
+      cmd += ['--preserveComments']
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
@@ -2447,21 +2456,37 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
+  def check_closure_compiler(args, env):
+    if not os.path.exists(CLOSURE_COMPILER[-1]):
+      exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
+    try:
+      output = run_process(CLOSURE_COMPILER + args + ['--version'], stdout=PIPE, env=env).stdout
+    except Exception as e:
+      warning(str(e))
+      exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+    if 'Version:' not in output:
+      exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
+
+  @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      if not check_closure_compiler():
-        logger.error('Cannot run closure compiler')
-        raise Exception('closure compiler check failed')
+      env = os.environ.copy()
+      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      user_args = os.environ.get('EMCC_CLOSURE_ARGS', '')
 
-      # Closure annotations file contains suppressions and annotations to different symbols
-      CLOSURE_ANNOTATIONS = [path_from_root('src', 'closure-annotations.js')]
+      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
+      # this it will only try the native and JavaScript versions of the compiler.
+      java_home = os.path.dirname(JAVA)
+      if java_home:
+        env.setdefault('JAVA_HOME', java_home)
 
-      if not Settings.ASMFS:
-        # If we have filesystem disabled, tell Closure not to bark when there are syscalls emitted that still reference the nonexisting FS object.
-        if Settings.FILESYSTEM:
-          CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-defined-fs-annotation.js')]
-        else:
-          CLOSURE_ANNOTATIONS += [path_from_root('src', 'closure-undefined-fs-annotation.js')]
+      args = []
+      if WINDOWS and '--platform' not in user_args:
+        # Disable native compiler on windows until upstream issue is fixed:
+        # https://github.com/google/closure-compiler-npm/issues/147
+        args.append('--platform=java')
+
+      Building.check_closure_compiler(args, env)
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2496,21 +2521,16 @@ class Building(object):
       # Web environment specific externs
       if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
         BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
-        BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-        BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                           if name.endswith('.js')]
-        CLOSURE_EXTERNS += BROWSER_EXTERNS
+        if os.path.isdir(BROWSER_EXTERNS_BASE):
+          BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
+          BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
+                             if name.endswith('.js')]
+          CLOSURE_EXTERNS += BROWSER_EXTERNS
 
-      # Something like this (adjust memory as needed):
-      #   java -Xmx1024m -jar CLOSURE_COMPILER --compilation_level ADVANCED_OPTIMIZATIONS --variable_map_output_file src.cpp.o.js.vars --js src.cpp.o.js --js_output_file src.cpp.o.cc.js
       outfile = filename + '.cc.js'
-      args = [JAVA,
-              '-Xmx' + (os.environ.get('JAVA_HEAP_SIZE') or '1024m'), # if you need a larger Java heap, use this environment variable
-              '-jar', CLOSURE_COMPILER,
-              '--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-              '--language_in', 'ECMASCRIPT5']
-      for a in CLOSURE_ANNOTATIONS:
-        args += ['--js', a]
+
+      args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
+               '--language_in', 'ECMASCRIPT5']
       for e in CLOSURE_EXTERNS:
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
@@ -2519,12 +2539,14 @@ class Building(object):
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
-      if os.environ.get('EMCC_CLOSURE_ARGS'):
-        args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
+      if user_args:
+        args += shlex.split(user_args)
       args += extra_closure_args
       args += ['--js', filename]
-      logger.debug('closure compiler: ' + ' '.join(args))
-      proc = run_process(args, stderr=PIPE, check=False)
+      cmd = CLOSURE_COMPILER + args
+      logger.debug('closure compiler: ' + ' '.join(cmd))
+
+      proc = run_process(cmd, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         hint = ''
@@ -2532,12 +2554,18 @@ class Building(object):
           hint = ' the error message may be clearer with -g1'
         exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, hint)
 
+      # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
+      # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
+      # But it looks like it creates such files on Linux(?) even without setting that command line
+      # flag (and currently we don't), so delete the produced source map file to not leak files in
+      # temp directory.
+      try_delete(outfile + '.map')
       return outfile
 
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emitting_js):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2563,19 +2591,8 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.acorn_optimizer(js_file, passes)
-        # Also minify the names used between js and wasm, if we are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
-        # Things that process the JS after this operation would be done must disable this.
-        # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names, and wasm2js
-        # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
-        # the old, which would break).
-        if not Settings.STANDALONE_WASM and \
-           not Settings.AUTODEBUG and \
-           not Settings.ASSERTIONS and \
-           not Settings.RELOCATABLE and \
-           emitting_js and \
-           not Settings.ASYNCIFY_LAZY_LOAD_CODE and \
-           not Settings.WASM2JS:
-          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.DECLARE_ASM_MODULE_EXPORTS, debug_info=debug_info)
+        if Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
+          js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
     return js_file
 
   # run binaryen's wasm-metadce to dce both js and wasm
@@ -2606,7 +2623,7 @@ class Building(object):
         export = item['export']
         # wasm backend's exports are prefixed differently inside the wasm
         if Settings.WASM_BACKEND:
-          export = '_' + export
+          export = asmjs_mangle(export)
         if export in Building.user_requested_exports or Settings.EXPORT_ALL:
           item['root'] = True
     # in standalone wasm, always export the memory
@@ -2701,8 +2718,17 @@ class Building(object):
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
+    if minify_exports:
+      # standalone wasm mode means we need to emit a wasi import module.
+      # otherwise, minify even the imported module names.
+      if Settings.MINIFY_WASM_IMPORTED_MODULES:
+        pass_name = '--minify-imports-and-exports-and-modules'
+      else:
+        pass_name = '--minify-imports-and-exports'
+    else:
+      pass_name = '--minify-imports'
     out = Building.run_wasm_opt(wasm_file, wasm_file,
-                                ['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
+                                [pass_name],
                                 debug=debug_info,
                                 stdout=PIPE)
     # get the mapping
@@ -2792,8 +2818,6 @@ class Building(object):
     js_file = js_file + '.wasm2js.js'
     with open(js_file, 'w') as f:
       f.write(all_js)
-    if not DEBUG:
-      try_delete(wasm_file)
     return js_file
 
   @staticmethod
@@ -2890,7 +2914,9 @@ class Building(object):
     library_files = []
     if library_name in js_system_libraries:
       if len(js_system_libraries[library_name]):
-        library_files += js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        lib = js_system_libraries[library_name] if isinstance(js_system_libraries[library_name], list) else [js_system_libraries[library_name]]
+        library_files += lib
+        logger.debug('Linking in JS library ' + str(lib))
 
     elif library_name.endswith('.js') and os.path.isfile(path_from_root('src', 'library_' + library_name)):
       library_files += ['library_' + library_name]
@@ -2924,9 +2950,35 @@ class Building(object):
     return ret
 
   @staticmethod
+  def check_binaryen(bindir):
+    opt = os.path.join(bindir, exe_suffix('wasm-opt'))
+    if not os.path.exists(opt):
+      exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
+    try:
+      output = run_process([opt, '--version'], stdout=PIPE).stdout
+    except subprocess.CalledProcessError:
+      exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % opt)
+    if output:
+      output = output.splitlines()[0]
+    try:
+      version = output.split()[2]
+      version = int(version)
+    except (IndexError, ValueError):
+      exit_with_error('error parsing binaryen version (%s). Please check your binaryen installation (%s)' % (output, opt))
+
+    # Allow the expected version or the following one in order avoid needing to update both
+    # emscripten and binaryen in lock step in emscripten-releases.
+    if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):
+      warning('unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+
+  @staticmethod
   def get_binaryen_bin():
     assert Settings.WASM, 'non wasm builds should not ask for binaryen'
-    return os.path.join(BINARYEN_ROOT, 'bin')
+    rtn = os.path.join(BINARYEN_ROOT, 'bin')
+    if not Building.binaryen_checked:
+      Building.check_binaryen(rtn)
+      Building.binaryen_checked = True
+    return rtn
 
   @staticmethod
   def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
@@ -2969,8 +3021,9 @@ class Building(object):
     if DEBUG:
       dst = 'emcc-%d-%s' % (Building.save_intermediate_counter, dst)
       Building.save_intermediate_counter += 1
+      dst = os.path.join(CANONICAL_TEMP_DIR, dst)
       logger.debug('saving debug copy %s' % dst)
-      shutil.copyfile(src, os.path.join(CANONICAL_TEMP_DIR, dst))
+      shutil.copyfile(src, dst)
 
 
 # compatibility with existing emcc, etc. scripts

@@ -58,10 +58,11 @@ def dir_is_newer(dir_a, dir_b):
 
 def get_cflags(force_object_files=False):
   flags = []
-  if force_object_files:
-    flags += ['-s', 'WASM_OBJECT_FILES=1']
-  elif not shared.Settings.WASM_OBJECT_FILES:
-    flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.WASM_BACKEND:
+    if force_object_files:
+      flags += ['-s', 'WASM_OBJECT_FILES=1']
+    elif not shared.Settings.WASM_OBJECT_FILES:
+      flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
@@ -413,7 +414,7 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return '.a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else '.bc'
+    return '.a' if shared.Settings.WASM_BACKEND else '.bc'
 
   def get_filename(self):
     """
@@ -607,17 +608,21 @@ class CXXLibrary(Library):
 
 
 class NoBCLibrary(Library):
-  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every object in the library.
-  # While the optimizer will readily optimize out most of the unused functions, things like global constructors that
-  # are linked in cannot be optimized out, even though they are not actually needed. If we use .a files for such
-  # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
-  # will be linked in.
+  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every
+  # object in the library.  While the optimizer will readily optimize out most of the unused
+  # functions, things like global constructors that are linked in cannot be optimized out, even
+  # though they are not actually needed. If we use .a files for such libraries, only the object
+  # files, and by extension, their contained global constructors, that are actually needed will be
+  # linked in.
   def get_ext(self):
     return '.a'
 
 
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
+  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
+  # restriction soon: https://reviews.llvm.org/D71738
+  force_object_files = True
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
@@ -919,12 +924,9 @@ class libmalloc(MTLibrary, NoBCLibrary):
     self.is_debug = kwargs.pop('is_debug')
     self.use_errno = kwargs.pop('use_errno')
     self.is_tracing = kwargs.pop('is_tracing')
+    self.use_64bit_ops = kwargs.pop('use_64bit_ops')
 
     super(libmalloc, self).__init__(**kwargs)
-
-    if self.malloc != 'dlmalloc':
-      assert not self.is_mt
-      assert not self.is_tracing
 
   def get_files(self):
     malloc = shared.path_from_root('system', 'lib', {
@@ -944,6 +946,8 @@ class libmalloc(MTLibrary, NoBCLibrary):
       cflags += ['-DMALLOC_FAILURE_ACTION=', '-DEMSCRIPTEN_NO_ERRNO']
     if self.is_tracing:
       cflags += ['--tracing']
+    if self.use_64bit_ops:
+      cflags += ['-DEMMALLOC_USE_64BIT_OPS=1']
     return cflags
 
   def get_base_name_prefix(self):
@@ -958,6 +962,8 @@ class libmalloc(MTLibrary, NoBCLibrary):
       name += '-noerrno'
     if self.is_tracing:
       name += '-tracing'
+    if self.use_64bit_ops:
+      name += '-64bit'
     return name
 
   def can_use(self):
@@ -965,7 +971,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
 
   @classmethod
   def vary_on(cls):
-    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing']
+    return super(libmalloc, cls).vary_on() + ['is_debug', 'use_errno', 'is_tracing', 'use_64bit_ops']
 
   @classmethod
   def get_default_variation(cls, **kwargs):
@@ -974,15 +980,15 @@ class libmalloc(MTLibrary, NoBCLibrary):
       is_debug=shared.Settings.DEBUG_LEVEL >= 3,
       use_errno=shared.Settings.SUPPORT_ERRNO,
       is_tracing=shared.Settings.EMSCRIPTEN_TRACING,
+      use_64bit_ops=shared.Settings.MALLOC == 'emmalloc' and (shared.Settings.WASM == 1 or (shared.Settings.WASM_BACKEND and shared.Settings.WASM2JS == 0)),
       **kwargs
     )
 
   @classmethod
   def variations(cls):
     combos = super(libmalloc, cls).variations()
-    return ([dict(malloc='dlmalloc', **combo) for combo in combos] +
-            [dict(malloc='emmalloc', **combo) for combo in combos
-             if not combo['is_mt'] and not combo['is_tracing']])
+    return ([dict(malloc='dlmalloc', **combo) for combo in combos if not combo['use_64bit_ops']] +
+            [dict(malloc='emmalloc', **combo) for combo in combos])
 
 
 class libal(Library):
@@ -1170,8 +1176,10 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     return 'libpthread' if self.is_mt else 'libpthread_stub'
 
 
-class CompilerRTWasmLibrary(NoBCLibrary):
+class CompilerRTWasmLibrary(Library):
   cflags = ['-O2', '-fno-builtin']
+  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
+  # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
   def can_build(self):

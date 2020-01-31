@@ -36,6 +36,9 @@ This section lists Emscripten's public API, organised by header file. At a very 
 - :ref:`vr-h`:
   API for using WebVR from native code.
 
+- :ref:`fiber-h`:
+  API for working with Fibers (co-operative threads)
+
 - :ref:`api-reference-advanced-apis`:
   APIs for advanced users/core developers.
 
@@ -53,6 +56,7 @@ This section lists Emscripten's public API, organised by header file. At a very 
    bind.h
    trace.h
    vr.h
+   fiber.h
    advanced-apis
 
 

@@ -2388,7 +2388,11 @@ var LibraryJSEvents = {
   // for all the messages, one of which is this GL-using one. This won't be
   // called if GL is not linked in, but also make sure to not add a dep on
   // GL unnecessarily from here, as that would cause a linker error.
-  emscripten_webgl_do_create_context__deps: maybeAddGLDep(['$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget']),
+  emscripten_webgl_do_create_context__deps: [
+#if LibraryManager.has('library_webgl.js')
+  '$GL',
+#endif
+  '$JSEvents', '_emscripten_webgl_power_preferences', '_findEventTarget', '_findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: function(target, attributes) {
 #if ASSERTIONS
@@ -2754,6 +2758,16 @@ var LibraryJSEvents = {
 #endif
     return !GL.contexts[target] || GL.contexts[target].GLctx.isContextLost(); // No context ~> lost context.
   },
+
+#if USE_WEBGPU
+  // TODO(kainino0x): make it possible to actually create devices through webgpu.h
+  emscripten_webgpu_get_device__deps: ['$WebGPU'],
+  emscripten_webgpu_get_device__postset: 'WebGPU.initManagers();',
+  emscripten_webgpu_get_device: function() {
+    assert(Module['preinitializedWebGPUDevice']);
+    return WebGPU["mgrDevice"].create(Module['preinitializedWebGPUDevice']);
+  },
+#endif
 
 #if USE_PTHREADS
   emscripten_set_canvas_element_size_calling_thread__deps: ['$JSEvents', 'emscripten_set_offscreencanvas_size_on_target_thread', '_findCanvasEventTarget'],

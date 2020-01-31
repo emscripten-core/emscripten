@@ -511,7 +511,6 @@ $dynCall_viii
 $dynCall_viiii
 $dynCall_viiiii
 $dynCall_viiiiii
-$establishStackSpace
 $globalCtors
 $legalstub$dynCall_iiiiij
 $legalstub$dynCall_jiji

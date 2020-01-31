@@ -114,8 +114,8 @@ var TOTAL_MEMORY = 16777216;
 //  * emmalloc - a simple and compact malloc designed for emscripten
 //  * none     - no malloc() implementation is provided, but you must implement
 //               malloc() and free() yourself.
-// dlmalloc is necessary for multithreading, split memory, and other special
-// modes, and will be used automatically in those cases.
+// dlmalloc is necessary for split memory and other special modes, and will be
+// used automatically in those cases.
 // In general, if you don't need one of those special modes, and if you don't
 // allocate very many small objects, you should use emmalloc since it's
 // smaller. Otherwise, if you do allocate many small objects, dlmalloc
@@ -499,6 +499,9 @@ var GL_FFP_ONLY = 0;
 // WebGL initialization afterwards will use this GL context to render.
 var GL_PREINITIALIZED_CONTEXT = 0;
 
+// Enables support for WebGPU (via "webgpu/webgpu.h").
+var USE_WEBGPU = 0;
+
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
 // decoders. The benefit is that this can be done synchronously, however, it
@@ -621,6 +624,7 @@ var ASYNCIFY_IMPORTS = [
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
+  'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
 ];
 
@@ -785,9 +789,12 @@ var NODE_CODE_CACHING = 0;
 // there, you are in effect removing it).
 var EXPORTED_FUNCTIONS = ['_main'];
 
-// If true, we export all the symbols. Note that this does *not* affect LLVM, so
-// it can still eliminate functions as dead. This just exports them on the
-// Module object.
+// If true, we export all the symbols that are present in JS onto the Module
+// object. This does not affect which symbols will be present - it does not
+// prevent DCE or cause anything to be included in linking. It only does
+//   Module['X'] = X;
+// for all X that end up in the JS file. This is useful to export the JS
+// library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
 // Export all bindings generator functions (prefixed with emscripten_bind_). This
@@ -1167,6 +1174,11 @@ var USE_GLFW = 2;
 // Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
 // startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
 // still make sense there, see that option for more details.
+//
+// Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
+// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
+// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
+// .wasm.js fallback will be used.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1389,11 +1401,6 @@ var PTHREAD_POOL_DELAY_LOAD = 0;
 // those that have their addresses taken, or ones that are too large to fit as
 // local vars in asm.js/wasm code.
 var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
-
-// Specifies the value returned by the function emscripten_num_logical_cores()
-// if navigator.hardwareConcurrency is not supported. Pass in a negative number
-// to show a popup dialog at startup so the user can configure this dynamically.
-var PTHREAD_HINT_NUM_CORES = 4;
 
 // True when building with --threadprofiler
 var PTHREADS_PROFILING = 0;

@@ -302,13 +302,28 @@ LibraryManager.library = {
   },
   getpagesize: function() {
     // int getpagesize(void);
+#if MINIMAL_RUNTIME
+#if WASM
+    return {{{ WASM_PAGE_SIZE }}};
+#else
+    return {{{ ASMJS_PAGE_SIZE }}};
+#endif
+#else
     return PAGE_SIZE;
+#endif
   },
 
-  sysconf__deps: ['__setErrNo'],
+  sysconf__deps: ['__setErrNo'
+#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
+  , 'getpagesize'
+#endif
+  ],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
   sysconf: function(name) {
+#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
+    var PAGE_SIZE = _getpagesize();
+#endif
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
@@ -1334,6 +1349,7 @@ LibraryManager.library = {
   },
 #endif
 
+#if USE_PTHREADS
   $establishStackSpace__asm: true,
   $establishStackSpace__sig: 'vii',
   $establishStackSpace: function(stackBase, stackMax) {
@@ -1342,6 +1358,7 @@ LibraryManager.library = {
     STACKTOP = stackBase;
     STACK_MAX = stackMax;
   },
+#endif
 
 #if WASM_BACKEND == 0
   $setThrew__asm: true,
@@ -2753,7 +2770,7 @@ LibraryManager.library = {
     var now;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -2779,7 +2796,7 @@ LibraryManager.library = {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -3970,9 +3987,22 @@ LibraryManager.library = {
   // pwd.h
 
   getpwnam: function() { throw 'getpwnam: TODO' },
+  getpwnam_r: function() { throw 'getpwnam_r: TODO' },
+  getpwuid: function() { throw 'getpwuid: TODO' },
+  getpwuid_r: function() { throw 'getpwuid_r: TODO' },
   setpwent: function() { throw 'setpwent: TODO' },
   getpwent: function() { throw 'getpwent: TODO' },
   endpwent: function() { throw 'endpwent: TODO' },
+
+  // grp.h
+
+  getgrgid: function() { throw 'getgrgid: TODO' },
+  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
+  getgrnam: function() { throw 'getgrnam: TODO' },
+  getgrnam_r: function() { throw 'getgrnam_r: TODO' },
+  getgrent: function() { throw 'getgrent: TODO' },
+  endgrent: function() { throw 'endgrent: TODO' },
+  setgrent: function() { throw 'setgrent: TODO' },
 
   // ==========================================================================
   // emscripten.h
@@ -4062,11 +4092,10 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
-  emscripten_get_now_is_monotonic: function() {
-    // return whether emscripten_get_now is guaranteed monotonic; the Date.now
-    // implementation is not :(
-    return (0
+  // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
+  // implementation is not :(
+  emscripten_get_now_is_monotonic: `
+     (0
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
@@ -4083,8 +4112,7 @@ LibraryManager.library = {
 #endif
 
 #endif
-      );
-  },
+      );`,
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
@@ -4436,7 +4464,11 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+#if MINIMAL_RUNTIME
+    , '$allocateUTF8'
+#endif
+  ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
@@ -4524,14 +4556,18 @@ LibraryManager.library = {
   },
 
   emscripten_get_module_name: function(buf, length) {
+#if MINIMAL_RUNTIME
+    return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
+#else
     return stringToUTF8(wasmBinaryFile, buf, length);
+#endif
   },
 
   emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
   emscripten_with_builtin_malloc: function (func) {
-    var prev_malloc = _malloc;
-    var prev_memalign = _memalign;
-    var prev_free = _free;
+    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
@@ -4565,6 +4601,71 @@ LibraryManager.library = {
   emscripten_get_stack_base: function() {
     return STACK_BASE;
   },
+
+  $readAsmConstArgs: function(sigPtr, buf) {
+    if (!readAsmConstArgs.array) {
+      readAsmConstArgs.array = [];
+    }
+    var args = readAsmConstArgs.array;
+    args.length = 0;
+    var ch;
+    while (ch = HEAPU8[sigPtr++]) {
+      if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
+        buf = (buf + 7) & ~7;
+        args.push(HEAPF64[(buf >> 3)]);
+        buf += 8;
+      } else
+#if ASSERTIONS
+      if (ch === 105 /*'i'*/)
+#endif
+      {
+        buf = (buf + 3) & ~3;
+        args.push(HEAP32[(buf >> 2)]);
+        buf += 4;
+      }
+#if ASSERTIONS
+      else abort("unexpected char in asm const signature " + ch);
+#endif
+    }
+    return args;
+  },
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
+  // at runtime rather than statically in JS code.
+  $exportAsmFunctions: function(asm) {
+#if WASM_BACKEND
+    var asmjsMangle = function(x) {
+      var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+    };
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WEB
+    var global_object = (typeof process !== "undefined" ? global : this);
+#else
+    var global_object = global;
+#endif
+#else
+    var global_object = this;
+#endif
+
+    for (var __exportedFunc in asm) {
+#if WASM_BACKEND
+      var jsname = asmjsMangle(__exportedFunc);
+#else
+      var jsname = __exportedFunc;
+#endif
+#if MINIMAL_RUNTIME
+      global_object[jsname] = asm[__exportedFunc];
+#else
+      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+#endif
+    }
+
+  },
+#endif
 
   //============================
   // i64 math
@@ -4673,16 +4774,6 @@ LibraryManager.library = {
 
   _Unwind_DeleteException: function(ex) {
     err('TODO: Unwind_DeleteException');
-  },
-
-  // error handling
-
-  $runAndAbortIfError: function(func) {
-    try {
-      return func();
-    } catch (e) {
-      abort(e);
-    }
   },
 
   // autodebugging

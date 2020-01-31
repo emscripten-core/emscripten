@@ -27,32 +27,78 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if !SINGLE_FILE
+// Wasm or Wasm2JS loading:
+#if ENVIRONMENT_MAY_BE_NODE && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
 if (ENVIRONMENT_IS_NODE) {
   var fs = require('fs');
 #if WASM
+#if WASM == 2
+  if (typeof WebAssembly !== 'undefined') Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
+#else
+#if !WASM2JS
   Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+#endif
+#endif
 #else
 #if SEPARATE_ASM
   eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
 #endif
-#if MEM_INIT_METHOD == 1
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL && ((WASM == 1 && (!WASM2JS || !MEM_INIT_IN_WASM)) || WASM == 2)
+if (ENVIRONMENT_IS_SHELL) {
+#if WASM
+#if WASM == 2
+  if (typeof WebAssembly !== 'undefined') Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+  else eval(read('{{{ TARGET_BASENAME }}}.wasm.js')+'');
+#else
+#if !WASM2JS
+  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
+#endif
+#endif
+#else
+  eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+  Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
+#endif
+}
+#endif
+
+// asm.js loading in fastcomp backend:
+#if !WASM && !WASM_BACKEND
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) {
+  var fs = require('fs');
+#if SEPARATE_ASM
+  eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.asm.js')+'');
+#endif
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
+  Module['mem'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.mem');
 #endif
 }
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
 if (ENVIRONMENT_IS_SHELL) {
-#if WASM
-  Module['wasm'] = read('{{{ TARGET_BASENAME }}}.wasm', 'binary');
-#else
   eval(read('{{{ TARGET_BASENAME }}}.asm.js')+'');
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM
   Module['mem'] = read('{{{ TARGET_BASENAME }}}.mem', 'binary');
 #endif
 }
 #endif
+
+#endif
+
+#endif // !SINGLE_FILE
 
 // Redefine these in a --pre-js to override behavior. If you would like to
 // remove out() or err() altogether, you can no-op it out to function() {},
@@ -98,7 +144,6 @@ if (typeof ENVIRONMENT_IS_PTHREAD === 'undefined') {
 #if MODULARIZE
 else {
   var buffer = {{{EXPORT_NAME}}}.buffer;
-  var tempDoublePtr = {{{EXPORT_NAME}}}.tempDoublePtr;
   var STATICTOP = {{{EXPORT_NAME}}}.STATICTOP;
   var DYNAMICTOP_PTR = {{{EXPORT_NAME}}}.DYNAMICTOP_PTR;
   var STACK_BASE = {{{EXPORT_NAME}}}.STACK_BASE;

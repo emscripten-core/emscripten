@@ -275,7 +275,8 @@ def compute_minimal_runtime_initializer_and_exports(post, initializers, exports,
   post = post.replace('/*** RUN_GLOBAL_INITIALIZERS(); ***/', '\n'.join(["asm['" + x + "']();" for x in global_initializer_funcs(initializers)]))
 
   if shared.Settings.WASM:
-    # Declare all exports out to global JS scope so that JS library functions can access them in a way that minifies well with Closure
+    # Declare all exports out to global JS scope so that JS library functions can access them in a
+    # way that minifies well with Closure
     # e.g. var a,b,c,d,e,f;
     exports_that_are_not_initializers = [x for x in exports if x not in initializers]
     if shared.Settings.WASM_BACKEND:
@@ -701,20 +702,25 @@ def update_settings_glue(metadata, DEBUG):
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
   shared.Settings.IMPLEMENTED_FUNCTIONS = metadata['implementedFunctions']
 
-  # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
-  # the compiled code have, each signature will need a proxy function invoker
-  # generated for it.
-  def read_proxied_function_signatures(asmConsts):
-    proxied_function_signatures = set()
-    for _, sigs, proxying_types in asmConsts.values():
-      for sig, proxying_type in zip(sigs, proxying_types):
-        if proxying_type == 'sync_on_main_thread_':
-          proxied_function_signatures.add(sig + '_sync')
-        elif proxying_type == 'async_on_main_thread_':
-          proxied_function_signatures.add(sig + '_async')
-    return list(proxied_function_signatures)
+  if metadata['asmConsts']:
+    # emit the EM_ASM signature-reading helper function only if we have any EM_ASM
+    # functions in the module.
+    shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$readAsmConstArgs']
 
-  shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
+    # Extract the list of function signatures that MAIN_THREAD_EM_ASM blocks in
+    # the compiled code have, each signature will need a proxy function invoker
+    # generated for it.
+    def read_proxied_function_signatures(asmConsts):
+      proxied_function_signatures = set()
+      for _, sigs, proxying_types in asmConsts.values():
+        for sig, proxying_type in zip(sigs, proxying_types):
+          if proxying_type == 'sync_on_main_thread_':
+            proxied_function_signatures.add(sig + '_sync')
+          elif proxying_type == 'async_on_main_thread_':
+            proxied_function_signatures.add(sig + '_async')
+      return list(proxied_function_signatures)
+
+    shared.Settings.PROXIED_FUNCTION_SIGNATURES = read_proxied_function_signatures(metadata['asmConsts'])
 
   shared.Settings.STATIC_BUMP = align_static_bump(metadata)
 
@@ -937,7 +943,10 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
   if shared.Settings.ALLOW_MEMORY_GROWTH:
     funcs.append('_emscripten_replace_memory')
   if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
+    if shared.Settings.USE_PTHREADS:
+      funcs += ['establishStackSpace']
+
   if shared.Settings.EMTERPRETIFY:
     funcs += ['emterpret']
     if shared.Settings.EMTERPRETIFY_ASYNC:
@@ -1666,7 +1675,9 @@ def create_exports(exported_implemented_functions, in_table, function_table_data
 def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
-    funcs += ['stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace']
+    funcs += ['stackAlloc', 'stackSave', 'stackRestore']
+    if shared.Settings.USE_PTHREADS:
+      funcs += ['establishStackSpace']
   return funcs
 
 
@@ -1701,13 +1712,17 @@ RUNTIME_ASSERTIONS = '''
 
 def create_receiving(function_table_data, function_tables_defs, exported_implemented_functions, initializers):
   receiving = ''
-  if not shared.Settings.ASSERTIONS or shared.Settings.MINIMAL_RUNTIME:
-    runtime_assertions = ''
-  else:
+  runtime_assertions = ''
+  if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are some support code.
-    # WASM=1 already inserts runtime assertions, so no need to do it again here (see create_receiving_wasm)
-    if not shared.Settings.WASM:
+
+  module_exports = exported_implemented_functions + function_tables(function_table_data)
+  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
+
+  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+    if runtime_assertions:
+      # assert on the runtime being in a valid state when calling into compiled code. The only
+      # exceptions are some support code.
       receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
 
       wrappers = []
@@ -1718,12 +1733,8 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
   return real_%(name)s.apply(null, arguments);
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
-      receiving = '\n'.join(wrappers)
+      receiving += '\n'.join(wrappers)
 
-  module_exports = exported_implemented_functions + function_tables(function_table_data)
-  shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
-
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       imported_exports = [s for s in module_exports if s not in initializers]
 
@@ -1743,19 +1754,7 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
         else:
           receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"];' for s in module_exports]) + '\n'
     else:
-      if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
-        global_object = '(typeof process !== "undefined" ? global : this)'
-      elif shared.Settings.target_environment_may_be('node'):
-        global_object = 'global'
-      else:
-        global_object = 'this'
-
-      if shared.Settings.MINIMAL_RUNTIME:
-        module_assign = ''
-      else:
-        module_assign = 'Module[__exportedFunc] = '
-
-      receiving += 'for(var __exportedFunc in asm) ' + global_object + '[__exportedFunc] = ' + module_assign + 'asm[__exportedFunc];\n'
+      receiving += 'exportAsmFunctions(asm);'
   else:
     receiving += 'Module["asm"] = asm;\n'
     wrappers = []
@@ -1818,10 +1817,11 @@ def create_fp_accessors(metadata):
     accessors.append('''
 Module['%(full)s'] = function() {
   %(assert)s
-  // Use the wasm function itself, for the table.
+  // Use the original wasm function itself, for the table, from the main module.
   var func = Module['asm']['%(original)s'];
-  // If there is no wasm function, this may be a JS library function or
-  // something from another module.
+  // Try an original version from a side module.
+  if (!func) func = Module['_%(original)s'];
+  // Otherwise, look for a regular function or JS library function.
   if (!func) func = Module['%(mangled)s'];
   if (!func) func = %(mangled)s;
   var fp = addFunction(func, '%(sig)s');
@@ -1887,13 +1887,19 @@ function stackRestore(top) {
   top = top|0;
   STACKTOP = top;
 }
+''' % stack_check]
+
+  if shared.Settings.USE_PTHREADS:
+    funcs.append('''
 function establishStackSpace(stackBase, stackMax) {
   stackBase = stackBase|0;
   stackMax = stackMax|0;
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
+  tempDoublePtr = STACKTOP;
+  STACKTOP = (STACKTOP + 8)|0;
 }
-''' % stack_check]
+''')
 
   if shared.Settings.MINIMAL_RUNTIME:
     # MINIMAL_RUNTIME moves stack functions to library.
@@ -2208,7 +2214,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   forwarded_json = json.loads(forwarded_data)
   # For the wasm backend the implementedFunctions from compiler.js should
-  # alwasys be empty. This only gets populated for __asm function when using
+  # always be empty. This only gets populated for __asm function when using
   # the JS backend.
   assert not forwarded_json['Functions']['implementedFunctions']
 
@@ -2387,37 +2393,6 @@ def create_asm_consts_wasm(forwarded_json, metadata):
       all_sigs.append((sig, call_type))
 
   asm_const_funcs = []
-
-  if all_sigs:
-    # emit the signature-reading helper function only if we have any EM_ASM
-    # functions in the module
-    check_int = ''
-    check = ''
-    if shared.Settings.ASSERTIONS:
-      check_int = "if (ch === 105 /*'i'*/)"
-      check = ' else abort("unexpected char in asm const signature " + ch);'
-    asm_const_funcs.append(r'''
-// Avoid creating a new array
-var _readAsmConstArgsArray = [];
-
-function readAsmConstArgs(sigPtr, buf) {
-  var args = _readAsmConstArgsArray;
-  args.length = 0;
-  var ch;
-  while (ch = HEAPU8[sigPtr++]) {
-    if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
-      buf = (buf + 7) & ~7;
-      args.push(HEAPF64[(buf >> 3)]);
-      buf += 8;
-    } else %s {
-      buf = (buf + 3) & ~3;
-      args.push(HEAP32[(buf >> 2)]);
-      buf += 4;
-    }%s
-  }
-  return args;
-}
-''' % (check_int, check))
 
   for sig, call_type in set(all_sigs):
     const_name = '_emscripten_asm_const_' + call_type + sig
@@ -2644,17 +2619,18 @@ def create_receiving_wasm(exports, initializers):
   runtime_assertions = ''
   if shared.Settings.ASSERTIONS and not shared.Settings.MINIMAL_RUNTIME:
     runtime_assertions = RUNTIME_ASSERTIONS
-    # assert on the runtime being in a valid state when calling into compiled code. The only exceptions are
-    # some support code
-    for e in exports:
-      receiving.append('''\
+
+  if not shared.Settings.SWAPPABLE_ASM_MODULE:
+    if runtime_assertions:
+      # assert on the runtime being in a valid state when calling into compiled code. The only
+      # exceptions are some support code
+      for e in exports:
+        receiving.append('''\
 var real_%(mangled)s = asm["%(e)s"];
 asm["%(e)s"] = function() {%(assertions)s
   return real_%(mangled)s.apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
     if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
         # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
@@ -2672,29 +2648,11 @@ asm["%(e)s"] = function() {%(assertions)s
         else:
           receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
     else:
-      if shared.Settings.target_environment_may_be('node') and shared.Settings.target_environment_may_be('web'):
-        global_object = '(typeof process !== "undefined" ? global : this)'
-      elif shared.Settings.target_environment_may_be('node'):
-        global_object = 'global'
-      else:
-        global_object = 'this'
-
-      if shared.Settings.MINIMAL_RUNTIME:
-        module_assign = ''
-      else:
-        module_assign = 'Module[asmjs_mangle(__exportedFunc)] = '
-
-      receiving.append('''
-  function asmjs_mangle(x) {
-    var unmangledSymbols = %s;
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-  }
-''' % shared.Settings.WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED)
-      receiving.append('for(var __exportedFunc in asm) ' + global_object + '[asmjs_mangle(__exportedFunc)] = ' + module_assign + 'asm[__exportedFunc];')
+      receiving.append('exportAsmFunctions(asm);')
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
-      if shared.Settings.ASSERTIONS:
+      if runtime_assertions:
         # With assertions on, don't hot-swap implementation.
         receiving.append('''\
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
@@ -2705,10 +2663,10 @@ var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
         # With assertions off, hot-swap implementation to avoid garbage via
         # arguments keyword.
         receiving.append('''\
-var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
+var %(mangled)s = Module["%(mangled)s"] = function() {
   return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };
-''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
+''' % {'mangled': asmjs_mangle(e), 'e': e})
 
   return '\n'.join(receiving) + '\n'
 

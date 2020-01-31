@@ -423,12 +423,14 @@ function JSify(data, functionsOnly) {
 
       if (!SIDE_MODULE && !WASM_BACKEND) {
         if (USE_PTHREADS) {
-          print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
+          print('// Pthreads fill their tempDoublePtr memory area into the pthread stack when the thread is run.')
+          // Main thread still statically allocate tempDoublePtr - although it could theorerically also use its stack
+          // (that might allow removing the whole tempDoublePtr variable altogether from the codebase? but would need
+          // more refactoring)
+          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : ' + makeStaticAlloc(8) + ';');
         } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
+          print('var tempDoublePtr = ' + makeStaticAlloc(8) + ';');
         }
-        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);');
         print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
         print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
@@ -492,7 +494,7 @@ function JSify(data, functionsOnly) {
       print(preprocess(read('arrayUtils.js')));
     }
 
-    if (SUPPORT_BASE64_EMBEDDING) {
+    if (SUPPORT_BASE64_EMBEDDING && !MINIMAL_RUNTIME) {
       print(preprocess(read('base64Utils.js')));
     }
 

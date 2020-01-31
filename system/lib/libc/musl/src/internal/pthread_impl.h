@@ -22,7 +22,6 @@ struct pthread {
 	// by direct pointer arithmetic in worker.js.
 	int threadStatus; // 0: thread not exited, 1: exited.
 	int threadExitCode; // Thread exit code.
-	int tempDoublePtr[3]; // Temporary memory area for double operations in runtime.
 	void *profilerBlock; // If --threadprofiling is enabled, this pointer is allocated to contain internal information about the thread state for profiling purposes.
 #endif
 
