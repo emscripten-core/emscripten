@@ -235,7 +235,7 @@ var SyscallsLibrary = {
     var allocated = false;
 
     // addr argument must be page aligned if MAP_FIXED flag is set.
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ FS_PAGE_SIZE }}}) !== 0) {
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ POSIX_PAGE_SIZE }}}) !== 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
 
@@ -243,7 +243,7 @@ var SyscallsLibrary = {
     // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = _memalign({{{ FS_PAGE_SIZE }}}, len);
+      ptr = _memalign({{{ POSIX_PAGE_SIZE }}}, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;

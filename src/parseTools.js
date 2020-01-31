@@ -1546,9 +1546,6 @@ function makeRetainedCompilerSettings() {
   return ret;
 }
 
-// Page size of the virtual filesystem.
-var FS_PAGE_SIZE = 16384;
-
 // In wasm, the heap size must be a multiple of 64KB.
 // In asm.js, it must be a multiple of 16MB.
 var WASM_PAGE_SIZE = 65536;
@@ -1557,6 +1554,13 @@ var ASMJS_PAGE_SIZE = 16777216;
 function getMemoryPageSize() {
   return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
+
+// Page size reported by some POSIX calls, mostly filesystem. This does not
+// depend on the memory page size which differs between wasm and asm.js, and
+// makes us report a consistent value despite the compile target. However,
+// perhaps we should unify all the page sizes (especially after fastcomp is
+// gone TODO).
+var POSIX_PAGE_SIZE = 16384;
 
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out name, arguments, and body of the

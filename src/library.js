@@ -303,7 +303,7 @@ LibraryManager.library = {
 
   getpagesize: function() {
     // int getpagesize(void);
-    return {{{ FS_PAGE_SIZE }}};
+    return {{{ POSIX_PAGE_SIZE }}};
   },
 
   sysconf__deps: ['__setErrNo'],
@@ -313,7 +313,7 @@ LibraryManager.library = {
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
-      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ FS_PAGE_SIZE }}};
+      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
 #if WASM
         var maxHeapSize = 2*1024*1024*1024 - 65536;
@@ -326,7 +326,7 @@ LibraryManager.library = {
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
 #endif
-        return maxHeapSize / {{{ FS_PAGE_SIZE }}};
+        return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
