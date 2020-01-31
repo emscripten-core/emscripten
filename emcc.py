@@ -1159,7 +1159,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if options.use_closure_compiler:
       shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
-      shared.check_closure_compiler()
       # when we emit asm.js, closure 2 would break that, so warn (note that
       # with wasm2js in the wasm backend, we don't emit asm.js anyhow)
       if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1 and not shared.Settings.WASM_BACKEND:

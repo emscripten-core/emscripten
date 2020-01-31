@@ -532,20 +532,6 @@ def check_node_version():
     return False
 
 
-def check_closure_compiler():
-  if not os.path.exists(CLOSURE_COMPILER[-1]):
-    exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
-  try:
-    env = os.environ.copy()
-    env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-    output = run_process(CLOSURE_COMPILER + ['--version'], stdout=PIPE, env=env).stdout
-  except Exception as e:
-    warning(str(e))
-    exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
-  if 'Version:' not in output:
-    exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
-
-
 def get_emscripten_version(path):
   return open(path).read().strip().replace('"', '')
 
@@ -2470,9 +2456,37 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
+  def check_closure_compiler(args, env):
+    if not os.path.exists(CLOSURE_COMPILER[-1]):
+      exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
+    try:
+      output = run_process(CLOSURE_COMPILER + args + ['--version'], stdout=PIPE, env=env).stdout
+    except Exception as e:
+      warning(str(e))
+      exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+    if 'Version:' not in output:
+      exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
+
+  @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      check_closure_compiler()
+      env = os.environ.copy()
+      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
+      user_args = os.environ.get('EMCC_CLOSURE_ARGS')
+
+      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
+      # this it will only try the native and JavaScript versions of the compiler.
+      java_home = os.path.dirname(JAVA)
+      if java_home:
+        env.setdefault('JAVA_HOME', java_home)
+
+      args = []
+      if WINDOWS and '--platform' not in user_args:
+        # Disable native compiler on windows until upstream issue is fixed:
+        # https://github.com/google/closure-compiler-npm/issues/147
+        args.append('--platform=java')
+
+      Building.check_closure_compiler(args, env)
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2515,7 +2529,6 @@ class Building(object):
 
       outfile = filename + '.cc.js'
 
-      args = CLOSURE_COMPILER[:]
       args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
                '--language_in', 'ECMASCRIPT5']
       for e in CLOSURE_EXTERNS:
@@ -2526,25 +2539,14 @@ class Building(object):
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
-      user_args = os.environ.get('EMCC_CLOSURE_ARGS')
       if user_args:
         args += shlex.split(user_args)
       args += extra_closure_args
       args += ['--js', filename]
-      logger.debug('closure compiler: ' + ' '.join(args))
-      env = os.environ.copy()
-      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
-      # this it will only try the native and JavaScript versions of the compiler.
-      java_home = os.path.dirname(JAVA)
-      if java_home:
-        env.setdefault('JAVA_HOME', java_home)
-      if WINDOWS and '--platform' not in user_args:
-        # Disable native compiler on windows until upstream issue is fixed:
-        # https://github.com/google/closure-compiler-npm/issues/147
-        args.append('--platform=java')
+      cmd = CLOSURE_COMPILER + args
+      logger.debug('closure compiler: ' + ' '.join(cmd))
 
-      proc = run_process(args, stderr=PIPE, check=False, env=env)
+      proc = run_process(cmd, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         hint = ''
