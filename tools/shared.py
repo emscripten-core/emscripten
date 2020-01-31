@@ -2470,10 +2470,11 @@ class Building(object):
   @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
+      env = os.environ.copy()
+
       def add_to_path(dirname):
         env['PATH'] = env['PATH'] + os.pathsep + dirname
 
-      env = os.environ.copy()
       add_to_path(get_node_directory())
       args = list(extra_closure_args)
       env_args = os.environ.get('EMCC_CLOSURE_ARGS', '')
