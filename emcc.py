@@ -2458,6 +2458,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         with open(worker_output, 'w') as f:
           f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
+        # Minify the worker.js file in optimized builds
+        if (options.opt_level >= 1 or options.shrink_level >= 1) and not options.debug_level:
+          minified_worker = shared.Building.js_optimizer_no_asmjs(worker_output, ['minifyWhitespace'], acorn=True, return_output=True)
+          open(worker_output, 'w').write(minified_worker)
+
       # Generate the fetch.js worker script for multithreaded emscripten_fetch() support if targeting pthreads.
       if shared.Settings.USE_FETCH_WORKER:
         shared.make_fetch_worker(final, shared.Settings.FETCH_WORKER_FILE)
