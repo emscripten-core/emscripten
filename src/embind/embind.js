@@ -747,6 +747,7 @@ var LibraryEmbind = {
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
+            // Code mostly taken from _embind_register_std_string fromWireType
             var length = HEAPU32[value >> 2];
             var HEAP = getHeap();
             var str;
