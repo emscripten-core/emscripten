@@ -2472,7 +2472,7 @@ class Building(object):
     with ToolchainProfiler.profile_block('closure_compiler'):
       env = os.environ.copy()
       env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-      user_args = os.environ.get('EMCC_CLOSURE_ARGS')
+      user_args = os.environ.get('EMCC_CLOSURE_ARGS', '')
 
       # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
       # this it will only try the native and JavaScript versions of the compiler.
