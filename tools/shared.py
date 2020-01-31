@@ -2470,18 +2470,26 @@ class Building(object):
   @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      env = os.environ.copy()
-      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-      user_args = os.environ.get('EMCC_CLOSURE_ARGS', '')
+      def add_to_path(dirname):
+        env['PATH'] = env['PATH'] + os.pathsep + dirname
 
-      # Closure compiler expects JAVA_HOME to be set in order to enable the java backend.  Without
-      # this it will only try the native and JavaScript versions of the compiler.
-      java_home = os.path.dirname(JAVA)
-      if java_home:
+      env = os.environ.copy()
+      add_to_path(get_node_directory())
+      args = list(extra_closure_args)
+      env_args = os.environ.get('EMCC_CLOSURE_ARGS', '')
+      if env_args:
+        args += shlex.split(env_args)
+
+      # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
+      # to enable use the java backend.  Without this it will only try the native and JavaScript
+      # versions of the compiler.
+      java_bin = os.path.dirname(JAVA)
+      if java_bin:
+        add_to_path(java_bin)
+        java_home = os.path.dirname(java_bin)
         env.setdefault('JAVA_HOME', java_home)
 
-      args = []
-      if WINDOWS and '--platform' not in user_args:
+      if WINDOWS and not any(a.startswith('--platform') for a in args):
         # Disable native compiler on windows until upstream issue is fixed:
         # https://github.com/google/closure-compiler-npm/issues/147
         args.append('--platform=java')
@@ -2539,8 +2547,6 @@ class Building(object):
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
-      if user_args:
-        args += shlex.split(user_args)
       args += extra_closure_args
       args += ['--js', filename]
       cmd = CLOSURE_COMPILER + args
