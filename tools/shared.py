@@ -2540,7 +2540,7 @@ class Building(object):
       if java_home:
         env.setdefault('JAVA_HOME', java_home)
       if WINDOWS and '--platform' not in user_args:
-        # Disable native compiler on windows until upstream issue if fixes
+        # Disable native compiler on windows until upstream issue is fixed:
         # https://github.com/google/closure-compiler-npm/issues/147
         args.append('--platform=java')
 
