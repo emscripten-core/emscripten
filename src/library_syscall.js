@@ -70,7 +70,7 @@ var SyscallsLibrary = {
       return 0;
     },
     doMsync: function(addr, stream, len, flags, offset) {
-      var buffer = new Uint8Array(HEAPU8.subarray(addr, addr + len));
+      var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
     doMkdir: function(path, mode) {
