@@ -2526,8 +2526,9 @@ class Building(object):
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
-      if 'EMCC_CLOSURE_ARGS' in os.environ:
-        args += shlex.split(os.environ['EMCC_CLOSURE_ARGS'])
+      user_args = os.environ.get('EMCC_CLOSURE_ARGS')
+      if user_args:
+        args += shlex.split(user_args)
       args += extra_closure_args
       args += ['--js', filename]
       logger.debug('closure compiler: ' + ' '.join(args))
@@ -2538,7 +2539,7 @@ class Building(object):
       java_home = os.path.dirname(JAVA)
       if java_home:
         env.setdefault('JAVA_HOME', java_home)
-      if WINDOWS and '--platform' not in os.environ.get('EMCC_CLOSURE_ARGS'):
+      if WINDOWS and '--platform' not in user_args:
         # Disable native compiler on windows until upstream issue if fixes
         # https://github.com/google/closure-compiler-npm/issues/147
         args.append('--platform=java')
