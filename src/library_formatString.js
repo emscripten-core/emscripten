@@ -10,7 +10,9 @@ mergeInto(LibraryManager.library, {
   // Returns the resulting string string as a character array.
   _formatString__deps: ['_reallyNegative'],
   _formatString: function(format, varargs) {
+#if ASSERTIONS
     assert((varargs & 3) === 0);
+#endif
     var textIndex = format;
     var argIndex = varargs;
     // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
@@ -19,11 +21,15 @@ mergeInto(LibraryManager.library, {
       if (type === 'double' || type === 'i64') {
         // move so the load is aligned
         if (ptr & 7) {
+#if ASSERTIONS
           assert((ptr & 7) === 4);
+#endif
           ptr += 4;
         }
       } else {
+#if ASSERTIONS
         assert((ptr & 3) === 0);
+#endif
       }
       return ptr;
     }
@@ -40,7 +46,9 @@ mergeInto(LibraryManager.library, {
                {{{ makeGetValue('argIndex', 4, 'i32', undefined, undefined, true, 4) }}}];
         argIndex += 8;
       } else {
+#if ASSERTIONS
         assert((argIndex & 3) === 0);
+#endif
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true) }}};
         argIndex += 4;
