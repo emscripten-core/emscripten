@@ -155,7 +155,11 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
                                   memfile, optimizer):
   logger.debug('generating HTML for minimal runtime')
   shell = open(options.shell_path, 'r').read()
-  shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
+  if shared.Settings.SINGLE_FILE:
+    # No extra files needed to download in a SINGLE_FILE build.
+    shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
+  else:
+    shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', generate_minimal_runtime_load_statement(target_basename))
 
   temp_files = shared.configuration.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
@@ -167,6 +171,14 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename,
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
   shell = shell.replace('{{{ EXPORT_NAME }}}', shared.Settings.EXPORT_NAME)
+
+  # In SINGLE_FILE build, embed the main .js file into the .html output
+  if shared.Settings.SINGLE_FILE:
+    js_contents = open(js_target).read()
+    shared.try_delete(js_target)
+  else:
+    js_contents = ''
+  shell = shell.replace('{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}', js_contents)
   shell = line_endings.convert_line_endings(shell, '\n', options.output_eol)
   with open(target, 'wb') as f:
     f.write(shared.asbytes(shell))

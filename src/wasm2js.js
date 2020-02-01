@@ -57,6 +57,7 @@ WebAssembly = {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // XXX hack to get an atob implementation
+    // TODO: Remove this once https://github.com/WebAssembly/binaryen/pull/2623 lands
 #include base64Utils.js
     var atob = decodeBase64;
     // This will be replaced by the actual wasm2js code.

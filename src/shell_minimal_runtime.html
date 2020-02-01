@@ -13,8 +13,18 @@
 // Depending on the build flags that one uses, different files need to be downloaded
 // to load the compiled page. The right set of files will be expanded to be downloaded
 // via the directive below.
-
 {{{ DOWNLOAD_JS_AND_WASM_FILES }}}
+
+#if SINGLE_FILE
+// If we are doing a SINGLE_FILE=1 build, inlined JS runtime code follows here:
+{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}
+
+#if MODULARIZE
+// Launch the MODULARIZEd build.
+{{{ EXPORT_NAME }}}({});
+#endif
+
+#endif
 
 </script>
 </body>
