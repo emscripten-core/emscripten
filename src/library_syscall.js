@@ -228,9 +228,6 @@ var SyscallsLibrary = {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
-#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global PAGE_SIZE runtime variable.
-    'getpagesize'
-#endif
   ],
   _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
 #endif
