@@ -23,6 +23,8 @@
 // THE SOFTWARE.
 //==============================================================================
 
+/** @suppress{duplicate} This is already defined in from Closure's built-in
+    externs.zip//es6.js, Closure should not yell when seeing this again. */
 var Promise = (function() {
   function noop() {}
 
