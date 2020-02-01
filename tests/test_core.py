@@ -7362,17 +7362,12 @@ err = err = function(){};
     self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
 
     create_test_file('src.cpp', '''
-      #include <stdio.h>
-      #include <assert.h>
-
-      __attribute__((noinline)) int foo() {
-        printf("hi"); // line 6
-        return 1; // line 7
-      }
-
+      #include <emscripten.h>
+      EM_JS(void, out_to_js, (int x), {})
       int main() {
-        printf("%d", foo()); // line 11
-        return 0; // line 12
+        out_to_js(0); // line 5
+        out_to_js(1); // line 6
+        out_to_js(2); // line 7
       }
     ''')
 
@@ -7416,7 +7411,7 @@ err = err = function(){};
 
     # verify some content in the sections
     self.assertIn('"src.cpp"', sections['.debug_info'])
-
+    print(sections['.debug_line'])
     # the line section looks like this:
     # Address            Line   Column File   ISA Discriminator Flags
     # ------------------ ------ ------ ------ --- ------------- -------------
@@ -7427,20 +7422,49 @@ err = err = function(){};
         while '  ' in line:
           line = line.replace('  ', ' ')
         addr, line, col = line.split(' ')[:3]
-        src_to_addr[(int(line), int(col))] = addr
-    # the two lines of foo()
+        key = (int(line), int(col))
+        src_to_addr.setdefault(key, []).append(addr)
+    print(src_to_addr)
+    '''
+    # each of the calls must remain in the binary, and be mapped
+    self.assertIn((5, 9), src_to_addr)
     self.assertIn((6, 9), src_to_addr)
     self.assertIn((7, 9), src_to_addr)
-    # line 6 will naturally be emitted before 7 as it executes before
-    self.assertLess(src_to_addr[(6, 9)], src_to_addr[(7, 9)])
-    # if not optimizing, more lines appear
-    if not is_optimizing(self.emcc_args):
-      self.assertIn((11, 9), src_to_addr)
-      self.assertIn((12, 9), src_to_addr)
-      self.assertLess(src_to_addr[(11, 9)], src_to_addr[(12, 9)])
-      # llvm orders functions in the same order as in the source, and binaryen
-      # doesn't mess with that when not optimizing
-      self.assertLess(src_to_addr[(7, 9)], src_to_addr[(11, 9)])
+
+    def get_addr(line, col):
+      addrs = src_to_addr[(line, col)]
+      assert len(addrs) == 1, 'we assume the simple calls have one address'
+      return addrs[0]
+
+    # the lines must appear in sequence (as calls to JS, the optimizer cannot
+    # reorder them)
+    self.assertLess(get_addr(5, 9), get_addr(6, 9))
+    self.assertLess(get_addr(6, 9), get_addr(7, 9))
+    '''
+    # check things match up properly
+    wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+                       wasm_filename, '-g', '--print'], stdout=PIPE).stdout
+
+    # we expect to see a pattern like this, as in both debug and opt builds
+    # there isn't much that can change with such calls to JS:
+    #
+    #   ;; code offset: 0x..
+    #   (call $out_to_js
+    #    ;; code offset: 0x..
+    #    (local.get ..) or (i32.const 0)
+    #   )
+    #   ;; code offset: 0x..
+    #   (call $out_to_js
+    #    ;; code offset: 0x..
+    #    (local.get ..) or (i32.const 1)
+    #   )
+    #   ;; code offset: 0x..
+    #   (call $out_to_js
+    #    ;; code offset: 0x..
+    #    (local.get ..) or (i32.const 2)
+    #   )
+    #
+    print(wat)
 
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
