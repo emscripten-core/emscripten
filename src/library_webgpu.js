@@ -130,6 +130,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('CommandBuffer') }}}
       {{{ gpu.makeInitManager('CommandEncoder') }}}
       {{{ gpu.makeInitManager('RenderPassEncoder') }}}
+      {{{ gpu.makeInitManager('ComputePassEncoder') }}}
 
       {{{ gpu.makeInitManager('BindGroup') }}}
       {{{ gpu.makeInitManager('Buffer') }}}
@@ -140,6 +141,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('BindGroupLayout') }}}
       {{{ gpu.makeInitManager('PipelineLayout') }}}
       {{{ gpu.makeInitManager('RenderPipeline') }}}
+      {{{ gpu.makeInitManager('ComputePipeline') }}}
       {{{ gpu.makeInitManager('ShaderModule') }}}
 
       {{{ gpu.makeInitManager('RenderBundleEncoder') }}}
@@ -465,6 +467,7 @@ var LibraryWebGPU = {
   {{{ gpu.makeReferenceRelease('CommandBuffer') }}}
   {{{ gpu.makeReferenceRelease('CommandEncoder') }}}
   {{{ gpu.makeReferenceRelease('RenderPassEncoder') }}}
+  {{{ gpu.makeReferenceRelease('ComputePassEncoder') }}}
 
   {{{ gpu.makeReferenceRelease('BindGroup') }}}
   {{{ gpu.makeReferenceRelease('Buffer') }}}
@@ -475,6 +478,7 @@ var LibraryWebGPU = {
   {{{ gpu.makeReferenceRelease('BindGroupLayout') }}}
   {{{ gpu.makeReferenceRelease('PipelineLayout') }}}
   {{{ gpu.makeReferenceRelease('RenderPipeline') }}}
+  {{{ gpu.makeReferenceRelease('ComputePipeline') }}}
   {{{ gpu.makeReferenceRelease('ShaderModule') }}}
 
   {{{ gpu.makeReferenceRelease('RenderBundleEncoder') }}}
@@ -741,6 +745,8 @@ var LibraryWebGPU = {
 
     var desc = {
       "label": undefined,
+      "layout":  WebGPU.mgrPipelineLayout.get(
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}}),
       "computeStage": WebGPU.makeProgrammableStageDescriptor(
         descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.computeStage }}}),
     };
@@ -1036,6 +1042,18 @@ var LibraryWebGPU = {
     return WebGPU.mgrRenderBundleEncoder.create(device["createRenderBundleEncoder"](desc));
   },
 
+  wgpuCommandEncoderBeginComputePass: function(encoderId, descriptor) {
+    var desc;
+    if (descriptor) {
+      {{{ gpu.makeCheckDescriptor('descriptor') }}}
+      desc = {};
+      var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.label, '*') }}};
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    }
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    return WebGPU.mgrComputePassEncoder.create(commandEncoder["beginComputePass"](desc));
+  },
+
   wgpuCommandEncoderBeginRenderPass: function(encoderId, descriptor) {
     {{{ gpu.makeCheck('descriptor') }}}
 
@@ -1137,6 +1155,13 @@ var LibraryWebGPU = {
       WebGPU.makeTextureCopyView(srcPtr), WebGPU.makeBufferCopyView(dstPtr), copySize);
   },
 
+  wgpuCommandEncoderCopyTextureToTexture: function(encoderId, srcPtr, dstPtr, copySizePtr) {
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    var copySize = WebGPU.makeExtent3D(copySizePtr);
+    commandEncoder["copyTextureToTexture"](
+      WebGPU.makeTextureCopyView(srcPtr), WebGPU.makeTextureCopyView(dstPtr), copySize);
+  },
+
   // wgpuBuffer
 
   wgpuBufferSetSubData: function(bufferId, start_l, start_h, count_l, count_h, data) {
@@ -1220,6 +1245,19 @@ var LibraryWebGPU = {
 
   // wgpuComputePass
 
+  wgpuComputePassEncoderSetBindGroup: function(passId, groupIndex, groupId, dynamicOffsetCount, dynamicOffsetsPtr) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    var group = WebGPU.mgrBindGroup.get(groupId);
+    if (dynamicOffsetCount == 0) {
+      pass["setBindGroup"](groupIndex, group);
+    } else {
+      var offsets = [];
+      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
+        offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
+      }
+      pass["setBindGroup"](groupIndex, group, offsets);
+    }
+  },
   wgpuComputePassEncoderSetPipeline: function(passId, pipelineId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
@@ -1254,6 +1292,11 @@ var LibraryWebGPU = {
       }
       pass["setBindGroup"](groupIndex, group, offsets);
     }
+  },
+  wgpuRenderPassEncoderSetBlendColor: function(passId, colorPtr) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    var color = WebGPU.makeColor(colorPtr);
+    pass["setBlendColor"](color);
   },
   wgpuRenderPassEncoderSetIndexBuffer: function(passId, bufferId, offset) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);
