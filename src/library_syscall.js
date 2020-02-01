@@ -230,7 +230,6 @@ var SyscallsLibrary = {
 #endif
   ],
   _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
-#endif
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
