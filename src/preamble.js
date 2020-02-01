@@ -312,7 +312,7 @@ function getMemory(size) {
 
 // Memory management
 
-var PAGE_SIZE = 16384;
+var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 
