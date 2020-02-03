@@ -1037,7 +1037,7 @@ function createWasm() {
     try {
       binary = getBinary();
 #if NODE_CODE_CACHING
-      if (ENVIRONMENT_HAS_NODE) {
+      if (ENVIRONMENT_IS_NODE) {
         var v8 = require('v8');
         // Include the V8 version in the cache name, so that we don't try to
         // load cached code from another version, which fails silently (it seems
@@ -1062,7 +1062,7 @@ err(module);
       if (!module) {
         module = new WebAssembly.Module(binary);
       }
-      if (ENVIRONMENT_HAS_NODE) {
+      if (ENVIRONMENT_IS_NODE) {
         if (!hasCached) {
 #if RUNTIME_LOGGING
           err('NODE_CODE_CACHING: saving module');
