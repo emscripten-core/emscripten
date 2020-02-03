@@ -92,10 +92,10 @@ var _scriptDir = import.meta.url;
 #else
 var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? document.currentScript.src : undefined;
 
-if (ENVIRONMENT_IS_NODE) {
-  _scriptDir = __filename;
-} else if (ENVIRONMENT_IS_WORKER) {
+if (ENVIRONMENT_IS_WORKER) {
   _scriptDir = self.location.href;
+} else if (ENVIRONMENT_IS_NODE) {
+  _scriptDir = __filename;
 }
 #endif
 #endif
@@ -127,7 +127,11 @@ if (ENVIRONMENT_IS_NODE) {
   if (!(typeof process === 'object' && typeof require === 'function')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 #endif
-  scriptDirectory = __dirname + '/';
+  if (ENVIRONMENT_IS_WORKER) {
+    scriptDirectory = require('path').dirname(scriptDirectory) + '/';
+  } else {
+    scriptDirectory = __dirname + '/';
+  }
 
 #include "node_shell_read.js"
 
