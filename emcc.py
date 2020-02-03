@@ -1109,6 +1109,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
 
+    if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes:
+      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
+      for to_remove in ['malloc', 'free', 'memcpy', 'memset', 'emscripten_get_heap_size']:
+        if to_remove in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+          shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.remove(to_remove)
+
     shared.verify_settings()
 
     def filter_out_dynamic_libs(inputs):
@@ -1248,12 +1254,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       return False
 
     link_flags = [f for f in link_flags if is_supported_link_flag(f[1])]
-
-    if shared.Settings.MINIMAL_RUNTIME:
-      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
-      for to_remove in ['malloc', 'free', 'memcpy', 'memset']:
-        if to_remove in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
-          shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.remove(to_remove)
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:

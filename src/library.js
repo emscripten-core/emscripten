@@ -467,7 +467,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_heap_size: function() {
-    return HEAP8.length;
+    return HEAPU8.length;
   },
 
   emscripten_get_sbrk_ptr__asm: true,
