@@ -1250,9 +1250,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     link_flags = [f for f in link_flags if is_supported_link_flag(f[1])]
 
     if shared.Settings.MINIMAL_RUNTIME:
-      # Remove the default exported functions 'malloc', 'free' - those should only be linked in if used
-      for to_remove in ['malloc', 'free']:
-        shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.remove(to_remove)
+      # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
+      for to_remove in ['malloc', 'free', 'memcpy', 'memset']:
+        if to_remove in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+          shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.remove(to_remove)
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
