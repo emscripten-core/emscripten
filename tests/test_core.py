@@ -247,6 +247,7 @@ def no_minimal_runtime(note):
     return decorated
   return decorator
 
+
 class TestCoreBase(RunnerCore):
   def is_wasm2js(self):
     return self.is_wasm_backend() and not self.get_setting('WASM')
@@ -5150,7 +5151,7 @@ main( int argv, char ** argc ) {
   @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc',])
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue', 'UTF8ToString', 'stringToUTF8'])
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
@@ -5167,7 +5168,7 @@ main( int argv, char ** argc ) {
       self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
     else:
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
-                      ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
+                       ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.emcc_args += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
