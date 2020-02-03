@@ -227,3 +227,13 @@ void emscripten_webgl_getSupportedAstcProfiles(GLsizei bufSize, GLsizei *length,
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT1_EXT 0x8C4D
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT3_EXT 0x8C4E
 #define GL_COMPRESSED_SRGB_ALPHA_S3TC_DXT5_EXT 0x8C4F
+
+// 44. https://www.khronos.org/registry/webgl/extensions/EXT_texture_norm16/
+#define GL_R16_EXT 0x822A
+#define GL_RG16_EXT 0x822C
+#define GL_RGB16_EXT 0x8054
+#define GL_RGBA16_EXT 0x805B
+#define GL_R16_SNORM_EXT 0x8F98
+#define GL_RG16_SNORM_EXT 0x8F99
+#define GL_RGB16_SNORM_EXT 0x8F9A
+#define GL_RGBA16_SNORM_EXT 0x8F9B

@@ -308,10 +308,11 @@ function getMemory(size) {
 }
 
 #include "runtime_strings.js"
+#include "runtime_strings_extra.js"
 
 // Memory management
 
-var PAGE_SIZE = 16384;
+var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 
@@ -880,8 +881,12 @@ var wasmOffsetConverter;
 function createWasm() {
   // prepare imports
   var info = {
+#if MINIFY_WASM_IMPORTED_MODULES
+    'a': asmLibraryArg,
+#else // MINIFY_WASM_IMPORTED_MODULES
     'env': asmLibraryArg,
     '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+#endif // MINIFY_WASM_IMPORTED_MODULES
 #if WASM_BACKEND == 0
     ,
     'global': {

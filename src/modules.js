@@ -76,7 +76,13 @@ var LibraryManager = {
       libraries.push('library_exceptions_stub.js');
     }
 
-    if (!MINIMAL_RUNTIME) {
+    if (MINIMAL_RUNTIME) {
+      // Classic runtime brings in string-related functions in the runtime preamble, by including
+      // runtime_strings_extra.js that contain the same contents as library_strings.js does. In
+      // MINIMAL_RUNTIME those string functions are available as JS library functions instead from
+      // library_strings.js, to avoid unconditionally bringing in extra code to the build.
+      libraries.push('library_strings.js');
+    } else {
       libraries.push('library_browser.js');
     }
 

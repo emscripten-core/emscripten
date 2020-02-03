@@ -2179,6 +2179,8 @@ int f() {
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
+      (path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emittedJSPreservesParens.js'), open(path_from_root('tests', 'optimizer', 'emittedJSPreservesParens-output.js')).read(),
        ['asm']),
       (path_from_root('tests', 'optimizer', 'test-growableHeap.js'), open(path_from_root('tests', 'optimizer', 'test-growableHeap-output.js')).read(),
@@ -9595,9 +9597,9 @@ int main () {
 
     if self.is_wasm_backend():
       test_cases = [
-        (opts, hello_world_sources, {'a.html': 1205, 'a.js': 484, 'a.wasm': 176}),
-        (opts, hello_webgl_sources, {'a.html': 1335, 'a.js': 4663, 'a.wasm': 11809}),
-        (opts, hello_webgl2_sources, {'a.html': 1335, 'a.js': 5172, 'a.wasm': 11809}) # Compare how WebGL2 sizes stack up with WebGL 1
+        (opts, hello_world_sources, {'a.html': 1205, 'a.js': 450, 'a.wasm': 172}),
+        (opts, hello_webgl_sources, {'a.html': 1335, 'a.js': 4629, 'a.wasm': 11731}),
+        (opts, hello_webgl2_sources, {'a.html': 1335, 'a.js': 5137, 'a.wasm': 11731}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
     else:
       test_cases = [

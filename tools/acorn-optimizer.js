@@ -23,6 +23,13 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
+function warnOnce(msg) {
+  if (!warnOnce.msgs) warnOnce.msgs = {};
+  if (msg in warnOnce.msgs) return;
+  warnOnce.msgs[msg] = true;
+  printErr('warning: ' + msg);
+}
+
 function set(args) {
   var ret = {};
   for (var i = 0; i < args.length; i++) {
@@ -700,7 +707,15 @@ function emitDCEGraph(ast) {
         if (defunInfo) {
           defunInfo.reaches[reached] = 1; // defun reaches it
         } else {
-          infos[reached].root = true; // in global scope, root it
+          if (infos[reached]) {
+            infos[reached].root = true; // in global scope, root it
+          } else {
+            // An info might not exist for the identifer if it is missing, for
+            // example, we might call Module.dynCall_vi in library code, but it
+            // won't exist in a standalone (non-JS) build anyhow. We can ignore
+            // it in that case as the JS won't be used, but warn to be safe.
+            warnOnce('metadce: missing declaration for ' + reached);
+          }
         }
       }
       if (typeof reached === 'string') {

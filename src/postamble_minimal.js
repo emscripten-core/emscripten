@@ -47,10 +47,12 @@ function initRuntime(asm) {
 // Initialize wasm (asynchronous)
 
 var imports = {
+#if MINIFY_WASM_IMPORTED_MODULES
+  'a': asmLibraryArg,
+#else // MINIFY_WASM_IMPORTED_MODULES
   'env': asmLibraryArg
-  // TODO: Fix size bloat coming from WASI properly. The -s FILESYSTEM=1 check is too weak to properly DCE WASI linkage away.
-  // (Emscripten now unconditionally uses WASI for stdio, perhaps replace that with web-friendly stdio)
   , '{{{ WASI_MODULE_NAME }}}': asmLibraryArg
+#endif // MINIFY_WASM_IMPORTED_MODULES
 #if WASM_BACKEND == 0
   , 'global': {
     'NaN': NaN,
@@ -128,39 +130,13 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   asm = output.instance.exports;
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS == 0
-
-#if WASM_BACKEND
-  // XXX Hack: some function names need to be mangled when exporting them from wasm module, others do not. 
-  // https://github.com/emscripten-core/emscripten/issues/10054
-  // Keep in sync with emscripten.py function treat_as_user_function(name).
-  function asmjs_mangle(x) {
-    var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
-    return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
-  }
-
-#if ENVIRONMENT_MAY_BE_NODE
-  for(var i in asm) (typeof process !== "undefined" ? global : this)[asmjs_mangle(i)] = asm[i];
-#else
-  for(var i in asm) this[asmjs_mangle(i)] = asm[i];
+#if USE_OFFSET_CONVERTER
+  wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
 
-#else
-
-#if ENVIRONMENT_MAY_BE_NODE
-  for(var i in asm) (typeof process !== "undefined" ? global : this)[i] = asm[i];
-#else
-  for(var i in asm) this[i] = asm[i];
-#endif
-
-#endif
-
-#else
   /*** ASM_MODULE_EXPORTS ***/
-#endif
-
-    initRuntime(asm);
-    ready();
+  initRuntime(asm);
+  ready();
 })
 #if ASSERTIONS
 .catch(function(error) {

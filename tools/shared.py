@@ -532,21 +532,6 @@ def check_node_version():
     return False
 
 
-def check_closure_compiler():
-  if not os.path.exists(CLOSURE_COMPILER[-1]):
-    exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
-  try:
-    env = os.environ.copy()
-    env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-    proc = subprocess.Popen(CLOSURE_COMPILER + ['--version'], stdout=PIPE, stderr=PIPE, env=env)
-    output = proc.communicate()
-    if 'Version:' not in str(output[0]):
-      exit_with_error('Unrecognized Closure compiler --version output:\n' + str(output[0]) + '\n' + str(output[1]))
-  except Exception as e:
-    warning(str(e))
-    exit_with_error('Closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
-
-
 def get_emscripten_version(path):
   return open(path).read().strip().replace('"', '')
 
@@ -2471,9 +2456,48 @@ class Building(object):
       return {'reachable': list(advised), 'total_funcs': len(can_call)}
 
   @staticmethod
-  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=[]):
+  def check_closure_compiler(args, env):
+    if not os.path.exists(CLOSURE_COMPILER[-1]):
+      exit_with_error('google-closure-compiler executable (%s) does not exist, check the paths in %s.  To install closure compiler, run "npm install" in emscripten root directory.', CLOSURE_COMPILER[-1], EM_CONFIG)
+    try:
+      output = run_process(CLOSURE_COMPILER + args + ['--version'], stdout=PIPE, env=env).stdout
+    except Exception as e:
+      warning(str(e))
+      exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
+    if 'Version:' not in output:
+      exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
+
+  @staticmethod
+  def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      check_closure_compiler()
+      env = os.environ.copy()
+
+      def add_to_path(dirname):
+        env['PATH'] = env['PATH'] + os.pathsep + dirname
+
+      add_to_path(get_node_directory())
+      user_args = []
+      env_args = os.environ.get('EMCC_CLOSURE_ARGS')
+      if env_args:
+        user_args += shlex.split(env_args)
+      if extra_closure_args:
+        user_args += extra_closure_args
+
+      # Closure compiler expects JAVA_HOME to be set *and* java.exe to be in the PATH in order
+      # to enable use the java backend.  Without this it will only try the native and JavaScript
+      # versions of the compiler.
+      java_bin = os.path.dirname(JAVA)
+      if java_bin:
+        add_to_path(java_bin)
+        java_home = os.path.dirname(java_bin)
+        env.setdefault('JAVA_HOME', java_home)
+
+      if WINDOWS and not any(a.startswith('--platform') for a in user_args):
+        # Disable native compiler on windows until upstream issue is fixed:
+        # https://github.com/google/closure-compiler-npm/issues/147
+        user_args.append('--platform=java')
+
+      Building.check_closure_compiler(user_args, env)
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
@@ -2516,9 +2540,8 @@ class Building(object):
 
       outfile = filename + '.cc.js'
 
-      args = CLOSURE_COMPILER[:]
-      args += ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
-               '--language_in', 'ECMASCRIPT5']
+      args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
+              '--language_in', 'ECMASCRIPT5']
       for e in CLOSURE_EXTERNS:
         args += ['--externs', e]
       args += ['--js_output_file', outfile]
@@ -2527,14 +2550,11 @@ class Building(object):
         args.append('--jscomp_off=*')
       if pretty:
         args += ['--formatting', 'PRETTY_PRINT']
-      if os.environ.get('EMCC_CLOSURE_ARGS'):
-        args += shlex.split(os.environ.get('EMCC_CLOSURE_ARGS'))
-      args += extra_closure_args
       args += ['--js', filename]
-      logger.debug('closure compiler: ' + ' '.join(args))
-      env = os.environ.copy()
-      env['PATH'] = env['PATH'] + os.pathsep + get_node_directory()
-      proc = run_process(args, stderr=PIPE, check=False, env=env)
+      cmd = CLOSURE_COMPILER + args + user_args
+      logger.debug('closure compiler: ' + ' '.join(cmd))
+
+      proc = run_process(cmd, stderr=PIPE, check=False, env=env)
       if proc.returncode != 0:
         sys.stderr.write(proc.stderr)
         hint = ''
@@ -2553,7 +2573,7 @@ class Building(object):
   # minify the final wasm+JS combination. this is done after all the JS
   # and wasm optimizations; here we do the very final optimizations on them
   @staticmethod
-  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info, emitting_js):
+  def minify_wasm_js(js_file, wasm_file, expensive_optimizations, minify_whitespace, debug_info):
     # start with JSDCE, to clean up obvious JS garbage. When optimizing for size,
     # use AJSDCE (aggressive JS DCE, performs multiple iterations). Clean up
     # whitespace if necessary too.
@@ -2579,18 +2599,7 @@ class Building(object):
           passes.append('minifyWhitespace')
         logger.debug('running post-meta-DCE cleanup on shell code: ' + ' '.join(passes))
         js_file = Building.acorn_optimizer(js_file, passes)
-        # Also minify the names used between js and wasm, if we are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
-        # Things that process the JS after this operation would be done must disable this.
-        # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names, and wasm2js
-        # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
-        # the old, which would break).
-        if not Settings.STANDALONE_WASM and \
-           not Settings.AUTODEBUG and \
-           not Settings.ASSERTIONS and \
-           not Settings.RELOCATABLE and \
-           emitting_js and \
-           not Settings.ASYNCIFY_LAZY_LOAD_CODE and \
-           not Settings.WASM2JS:
+        if Settings.MINIFY_WASM_IMPORTS_AND_EXPORTS:
           js_file = Building.minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace=minify_whitespace, minify_exports=Settings.MINIFY_ASMJS_EXPORT_NAMES, debug_info=debug_info)
     return js_file
 
@@ -2717,8 +2726,17 @@ class Building(object):
   def minify_wasm_imports_and_exports(js_file, wasm_file, minify_whitespace, minify_exports, debug_info):
     logger.debug('minifying wasm imports and exports')
     # run the pass
+    if minify_exports:
+      # standalone wasm mode means we need to emit a wasi import module.
+      # otherwise, minify even the imported module names.
+      if Settings.MINIFY_WASM_IMPORTED_MODULES:
+        pass_name = '--minify-imports-and-exports-and-modules'
+      else:
+        pass_name = '--minify-imports-and-exports'
+    else:
+      pass_name = '--minify-imports'
     out = Building.run_wasm_opt(wasm_file, wasm_file,
-                                ['--minify-imports-and-exports' if minify_exports else '--minify-imports'],
+                                [pass_name],
                                 debug=debug_info,
                                 stdout=PIPE)
     # get the mapping

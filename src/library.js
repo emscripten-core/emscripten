@@ -300,9 +300,10 @@ LibraryManager.library = {
       return -1;
     }
   },
+
   getpagesize: function() {
     // int getpagesize(void);
-    return PAGE_SIZE;
+    return {{{ POSIX_PAGE_SIZE }}};
   },
 
   sysconf__deps: ['__setErrNo'],
@@ -312,7 +313,7 @@ LibraryManager.library = {
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
-      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
+      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
 #if WASM
         var maxHeapSize = 2*1024*1024*1024 - 65536;
@@ -325,7 +326,7 @@ LibraryManager.library = {
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
 #endif
-        return maxHeapSize / PAGE_SIZE;
+        return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
@@ -562,7 +563,7 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getPageSize() }}};
+    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
 
     // Memory resize rules:
     // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
@@ -2755,7 +2756,7 @@ LibraryManager.library = {
     var now;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -2781,7 +2782,7 @@ LibraryManager.library = {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -4077,11 +4078,10 @@ LibraryManager.library = {
 #endif
   },
 
-  emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
-  emscripten_get_now_is_monotonic: function() {
-    // return whether emscripten_get_now is guaranteed monotonic; the Date.now
-    // implementation is not :(
-    return (0
+  // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
+  // implementation is not :(
+  emscripten_get_now_is_monotonic: `
+     (0
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
@@ -4098,8 +4098,7 @@ LibraryManager.library = {
 #endif
 
 #endif
-      );
-  },
+      );`,
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
@@ -4451,7 +4450,11 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+#if MINIMAL_RUNTIME
+    , '$allocateUTF8'
+#endif
+  ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
@@ -4548,9 +4551,9 @@ LibraryManager.library = {
 
   emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
   emscripten_with_builtin_malloc: function (func) {
-    var prev_malloc = _malloc;
-    var prev_memalign = _memalign;
-    var prev_free = _free;
+    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
@@ -4612,6 +4615,43 @@ LibraryManager.library = {
     }
     return args;
   },
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
+  // at runtime rather than statically in JS code.
+  $exportAsmFunctions: function(asm) {
+#if WASM_BACKEND
+    var asmjsMangle = function(x) {
+      var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+    };
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WEB
+    var global_object = (typeof process !== "undefined" ? global : this);
+#else
+    var global_object = global;
+#endif
+#else
+    var global_object = this;
+#endif
+
+    for (var __exportedFunc in asm) {
+#if WASM_BACKEND
+      var jsname = asmjsMangle(__exportedFunc);
+#else
+      var jsname = __exportedFunc;
+#endif
+#if MINIMAL_RUNTIME
+      global_object[jsname] = asm[__exportedFunc];
+#else
+      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+#endif
+    }
+
+  },
+#endif
 
   //============================
   // i64 math
