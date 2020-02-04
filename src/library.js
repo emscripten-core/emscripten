@@ -4620,7 +4620,6 @@ LibraryManager.library = {
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
   $exportAsmFunctions: function(asm) {
-    //console.log('exportAsmFunctions');
 #if WASM_BACKEND
     var asmjsMangle = function(x) {
       var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
