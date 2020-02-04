@@ -7367,7 +7367,7 @@ err = err = function(){};
   def test_dwarf(self):
     # FIXME
     if is_optimizing(self.emcc_args) and '-O1' not in self.emcc_args:
-      self.skipTest('optimizations about O1 remove too much DWARF atm')
+      self.skipTest('optimizations above -O1 remove too much DWARF atm')
 
     self.emcc_args.append('-gforce_dwarf')
     self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
@@ -7455,7 +7455,7 @@ err = err = function(){};
     self.assertLess(get_dwarf_addr(5, 9), get_dwarf_addr(6, 9))
     self.assertLess(get_dwarf_addr(6, 9), get_dwarf_addr(7, 9))
 
-    # check things match up properly
+    # get the wat, printing with -g which has binary offsets
     wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
                        wasm_filename, '-g', '--print'], stdout=PIPE).stdout
 
@@ -7476,7 +7476,7 @@ err = err = function(){};
     #   local.get or i32.const
     #   call $out_to_js
     #   drop
-    #
+
     # get_wat_addr gets the address of one of the 3 interesting calls, by its
     # index (0,1,2).
     def get_wat_addr(call_index):
