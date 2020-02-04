@@ -61,8 +61,7 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript_fastcomp(infile, outfile, memfile, compiler_engine,
-                      temp_files, DEBUG):
+def emscript_fastcomp(infile, outfile, memfile, temp_files, DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -92,7 +91,7 @@ def emscript_fastcomp(infile, outfile, memfile, compiler_engine,
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, compiler_engine, temp_files, DEBUG)
+      glue, forwarded_data = compiler_glue(metadata, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
@@ -229,7 +228,7 @@ def fixup_functions(funcs, metadata):
   return funcs
 
 
-def compiler_glue(metadata, compiler_engine, temp_files, DEBUG):
+def compiler_glue(metadata, temp_files, DEBUG):
   if DEBUG:
     logger.debug('emscript: js compiler glue')
     t = time.time()
@@ -242,7 +241,7 @@ def compiler_glue(metadata, compiler_engine, temp_files, DEBUG):
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
 
-  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
+  glue, forwarded_data = compile_settings(temp_files)
 
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -760,7 +759,7 @@ def apply_forwarded_data(forwarded_data):
   StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
-def compile_settings(compiler_engine, temp_files):
+def compile_settings(temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
@@ -769,7 +768,7 @@ def compile_settings(compiler_engine, temp_files):
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
-    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), compiler_engine,
+    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), shared.NODE_JS,
                             [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
@@ -2187,8 +2186,7 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
-                          temp_files, DEBUG):
+def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -2206,7 +2204,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   if DEBUG:
     t = time.time()
-  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
+  glue, forwarded_data = compile_settings(temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -2791,5 +2789,5 @@ def run(infile, outfile, memfile):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, memfile, shared.NODE_JS, temp_files, shared.DEBUG)
+      infile, outfile_obj, memfile, temp_files, shared.DEBUG)
   )
