@@ -924,7 +924,7 @@ function createWasm() {
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
     if (!ENVIRONMENT_IS_PTHREAD) {
-#if PTHREAD_POOL_SIZE > 0
+#if PTHREAD_POOL_SIZE
       var numWorkersToLoad = PThread.unusedWorkers.length;
       PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
 #if !PTHREAD_POOL_DELAY_LOAD
@@ -934,7 +934,7 @@ function createWasm() {
 #endif
       })});
 #endif
-#if PTHREAD_POOL_DELAY_LOAD || PTHREAD_POOL_SIZE == 0
+#if PTHREAD_POOL_DELAY_LOAD || !PTHREAD_POOL_SIZE
       // PTHREAD_POOL_DELAY_LOAD==1 (or no preloaded pool in use): do not wait up for the Workers to
       // instantiate the Wasm module, but proceed with main() immediately.
       removeRunDependency('wasm-instantiate');

@@ -31,9 +31,10 @@ var LibraryPThread = {
     initMainThreadBlock: function() {
       if (ENVIRONMENT_IS_PTHREAD) return;
 
-#if PTHREAD_POOL_SIZE > 0
+#if PTHREAD_POOL_SIZE
+      var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
       // Start loading up the Worker pool, if requested.
-      for(var i = 0; i < {{{PTHREAD_POOL_SIZE}}}; ++i) {
+      for(var i = 0; i < pthreadPoolSize; ++i) {
         PThread.allocateUnusedWorker();
       }
 #endif
@@ -41,7 +42,7 @@ var LibraryPThread = {
       // In asm.js we do not need to wait for Wasm Module to compile on the main thread, so can load
       // up each Worker immediately. (in asm.js mode ignore PTHREAD_POOL_DELAY_LOAD altogether for
       // simplicity, as multithreading performance optimizations are not interesting there)
-#if !WASM && PTHREAD_POOL_SIZE > 0
+#if !WASM && PTHREAD_POOL_SIZE
       addOnPreRun(function() { addRunDependency('pthreads'); });
       var numWorkersToLoad = PThread.unusedWorkers.length;
       PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
