@@ -1395,7 +1395,7 @@ var USE_PTHREADS = 0;
 // (directly, with no extra quotes) so that if you set it to '5' then 5 workers
 // will be used in the pool, and so forth. The benefit of this being a string
 // is that you can set it to something like
-// 'nagivator.hardwareConcurrency' (which will use the number of cores the
+// 'navigator.hardwareConcurrency' (which will use the number of cores the
 // browser reports, and is how you can get exactly enough workers for a
 // threadpool equal to the number of cores).
 // [link] - affects generated JS runtime code at link time
