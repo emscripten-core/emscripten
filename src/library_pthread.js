@@ -359,7 +359,7 @@ var LibraryPThread = {
       };
 
 #if ENVIRONMENT_MAY_BE_NODE
-      if (ENVIRONMENT_HAS_NODE) {
+      if (ENVIRONMENT_IS_NODE) {
         worker.on('message', function(data) {
           worker.onmessage({ data: data });
         });
@@ -910,7 +910,7 @@ var LibraryPThread = {
     else PThread.threadExit(status);
 #if WASM_BACKEND
     // pthread_exit is marked noReturn, so we must not return from it.
-    if (ENVIRONMENT_HAS_NODE) {
+    if (ENVIRONMENT_IS_NODE) {
       // exit the pthread properly on node, as a normal JS exception will halt
       // the entire application.
       process.exit(status);
