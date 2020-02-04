@@ -476,7 +476,7 @@ LibraryManager.library = {
     return {{{ DYNAMICTOP_PTR }}};
   },
 
-#if ABORTING_MALLOC
+#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if WASM
@@ -532,7 +532,7 @@ LibraryManager.library = {
 #if ASSERTIONS == 2
   , 'emscripten_get_now'
 #endif
-#if ABORTING_MALLOC
+#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
   , '$abortOnCannotGrowMemory'
 #endif
 #if ALLOW_MEMORY_GROWTH
