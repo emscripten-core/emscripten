@@ -793,7 +793,7 @@ var LibraryEmbind = {
             var valueIsOfTypeString = (typeof value === 'string');
 
             if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
-                throwBindingError('Cannot pass non-string to std::basic_string');
+                throwBindingError('Cannot pass non-string to C++ string type ' + name);
             }
 
             // assumes 4-byte alignment
