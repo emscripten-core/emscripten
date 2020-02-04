@@ -8728,6 +8728,7 @@ end
     # The default behavior is to add archive indexes automatically.
     run_process([PYTHON, EMCC, 'libfoo.a', 'hello_world.o'])
 
+  @no_fastcomp('AUTO_ARCHIVE_INDEXES only applies to wasm backend')
   def test_archive_non_objects(self):
     create_test_file('file.txt', 'test file')
     # llvm-nm has issues with files that start with two or more null bytes since it thinks they
