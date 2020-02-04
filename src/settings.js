@@ -1391,9 +1391,10 @@ var USE_PTHREADS = 0;
 // in which case the specified number of Workers will be preloaded into a pool
 // before the application starts, and that many threads can then be available
 // for synchronous creation.
-// Note that this setting is a string, and will be emitted in the JS code, so
-// if you set it to '5' then 5 workers will be used in the pool, etc. The
-// benefit of this being a string is that you can set it to something like
+// Note that this setting is a string, and will be emitted in the JS code
+// (directly, with no extra quotes) so that if you set it to '5' then 5 workers
+// will be used in the pool, and so forth. The benefit of this being a string
+// is that you can set it to something like
 // 'nagivator.hardwareConcurrency' (which will use the number of cores the
 // browser reports, and is how you can get exactly enough workers for a
 // threadpool equal to the number of cores).
