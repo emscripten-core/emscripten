@@ -499,7 +499,7 @@ def is_ar_file_with_missing_index(archive_file):
 
   name = file_header[:16].strip()
   # If '/' is the name of the first file we have an index
-  return name != '/'
+  return name != b'/'
 
 
 def ensure_archive_index(archive_file):
