@@ -7506,8 +7506,8 @@ err = err = function(){};
     for i in range(3):
       dwarf_addr = get_dwarf_addr(5 + i, 9)
       start_wat_addr, end_wat_addr = get_wat_addr(i)
-      # the dwarf may match any of the 3 instructions that form the call, in
-      # theory
+      # the dwarf may match any of the 3 instructions that form the stream of
+      # of instructions implementing the call in the source code, in theory
       self.assertLessEqual(start_wat_addr, dwarf_addr)
       self.assertLessEqual(dwarf_addr, end_wat_addr)
 
