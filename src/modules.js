@@ -67,7 +67,8 @@ var LibraryManager = {
       'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
-      'library_wasi.js'
+      'library_wasi.js',
+      'library_int53.js'
     ];
 
     if (!DISABLE_EXCEPTION_THROWING) {
