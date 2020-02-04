@@ -1105,9 +1105,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
-      for to_remove in ['malloc', 'free', 'memcpy', 'memset', 'emscripten_get_heap_size']:
-        if to_remove in shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
-          shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.remove(to_remove)
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
     # Set ASM_JS default here so that we can override it from the command line.
     shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
