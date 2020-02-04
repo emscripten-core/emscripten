@@ -2769,11 +2769,8 @@ def normalize_line_endings(text):
   return text
 
 
-def run(infile, outfile, memfile):
-  temp_files = get_configuration().get_temp_files()
-  infile, outfile = substitute_response_files([infile, outfile])
-
-  if not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
+def generate_struct_info():
+  if not shared.Settings.STRUCT_INFO and not shared.Settings.BOOTSTRAPPING_STRUCT_INFO:
     generated_struct_info_name = 'generated_struct_info.json'
 
     def generate_struct_info():
@@ -2784,6 +2781,12 @@ def run(infile, outfile, memfile):
 
     shared.Settings.STRUCT_INFO = shared.Cache.get(generated_struct_info_name, generate_struct_info)
   # do we need an else, to define it for the bootstrap case?
+
+
+def run(infile, outfile, memfile):
+  temp_files = get_configuration().get_temp_files()
+  infile, outfile = substitute_response_files([infile, outfile])
+  generate_struct_info()
 
   outfile_obj = open(outfile, 'w')
 

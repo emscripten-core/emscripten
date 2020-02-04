@@ -162,11 +162,15 @@ function JSify(data, functionsOnly) {
         return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+          var msg = 'undefined symbol: ' + ident;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
-            error('undefined symbol: ' + ident);
+            error(msg);
+            if (WASM_BACKEND) {
+              warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
+            }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
-            warn('undefined symbol: ' + ident);
+            warn(msg);
           }
         }
         if (!RELOCATABLE) {

@@ -1733,6 +1733,13 @@ var DISABLE_EXCEPTION_THROWING = 0;
 // across function boundaries.
 var USE_OFFSET_CONVERTER = 0;
 
+// If set to 1, the JS compiler is run before wasm-ld so that the linker can
+// report undefined symbols within the binary.  Without this option that linker
+// doesn't know which symmbols might be defined JS and so reporting of undefined
+// symbols is deleyed until the JS compiler is run.
+// [link]
+var LLD_REPORT_UNDEFINED = 0;
+
 //===========================================
 // Internal, used for testing only, from here
 //===========================================
