@@ -47,15 +47,13 @@ int main()
 
   // This test should be run with a prewarmed pool of size 4. None
   // of the threads are allocated yet.
-  assert(EM_ASM_INT(return PThread.preallocatedWorkers.length) == 4);
-  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 0);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 4);
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
 
   CreateThread(0);
 
   // We have one running thread, allocated on demand.
-  assert(EM_ASM_INT(return PThread.preallocatedWorkers.length) == 3);
-  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 0);
+  assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 3);
   assert(EM_ASM_INT(return PThread.runningWorkers.length) == 1);
 
   for (int i = 1; i < 5; ++i) {

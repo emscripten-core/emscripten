@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.7: 02/03/2020
+-------------------
 - Added support for specifying JSDoc minification annotations for Closure in
   JS library, pre and post files. See
   https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler

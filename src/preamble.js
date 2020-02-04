@@ -312,7 +312,7 @@ function getMemory(size) {
 
 // Memory management
 
-var PAGE_SIZE = 16384;
+var PAGE_SIZE = {{{ POSIX_PAGE_SIZE }}};
 var WASM_PAGE_SIZE = {{{ WASM_PAGE_SIZE }}};
 var ASMJS_PAGE_SIZE = {{{ ASMJS_PAGE_SIZE }}};
 
@@ -781,11 +781,6 @@ var memoryInitializer = null;
 #include "memoryprofiler.js"
 #endif
 
-#if PTHREAD_POOL_SIZE > 0 && PTHREAD_POOL_DELAY_LOAD != 1
-// To work around https://bugzilla.mozilla.org/show_bug.cgi?id=1049079, warm up a worker pool before starting up the application.
-if (!ENVIRONMENT_IS_PTHREAD) addOnPreRun(function() { if (typeof SharedArrayBuffer !== 'undefined') { addRunDependency('pthreads'); PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, function() { removeRunDependency('pthreads'); }); }});
-#endif
-
 #if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
 // show errors on likely calls to FS when it was not included
 var FS = {
@@ -909,6 +904,11 @@ function createWasm() {
     exports = Asyncify.instrumentWasmExports(exports);
 #endif
     Module['asm'] = exports;
+#if !DECLARE_ASM_MODULE_EXPORTS
+    // If we didn't declare the asm exports as top level enties this function
+    // is in charge of programatically exporting them on the global object.
+    exportAsmFunctions(exports);
+#endif
 #if STANDALONE_WASM
     // In pure wasm mode the memory is created in the wasm (not imported), and
     // then exported.
@@ -920,11 +920,27 @@ function createWasm() {
 #endif
 #endif
 #if USE_PTHREADS
-    // Keep a reference to the compiled module so we can post it to the workers.
+    // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
     // Instantiation is synchronous in pthreads and we assert on run dependencies.
-    if (!ENVIRONMENT_IS_PTHREAD) removeRunDependency('wasm-instantiate');
-#else
+    if (!ENVIRONMENT_IS_PTHREAD) {
+#if PTHREAD_POOL_SIZE > 0
+      var numWorkersToLoad = PThread.unusedWorkers.length;
+      PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
+#if !PTHREAD_POOL_DELAY_LOAD
+        // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the Worker pool
+        // has loaded up. If all Workers have finished loading up the Wasm Module, proceed with main()
+        if (!--numWorkersToLoad) removeRunDependency('wasm-instantiate');
+#endif
+      })});
+#endif
+#if PTHREAD_POOL_DELAY_LOAD || PTHREAD_POOL_SIZE == 0
+      // PTHREAD_POOL_DELAY_LOAD==1 (or no preloaded pool in use): do not wait up for the Workers to
+      // instantiate the Wasm module, but proceed with main() immediately.
+      removeRunDependency('wasm-instantiate');
+#endif
+    }
+#else // singlethreaded build:
     removeRunDependency('wasm-instantiate');
 #endif
   }
@@ -1021,7 +1037,7 @@ function createWasm() {
     try {
       binary = getBinary();
 #if NODE_CODE_CACHING
-      if (ENVIRONMENT_HAS_NODE) {
+      if (ENVIRONMENT_IS_NODE) {
         var v8 = require('v8');
         // Include the V8 version in the cache name, so that we don't try to
         // load cached code from another version, which fails silently (it seems
@@ -1046,7 +1062,7 @@ err(module);
       if (!module) {
         module = new WebAssembly.Module(binary);
       }
-      if (ENVIRONMENT_HAS_NODE) {
+      if (ENVIRONMENT_IS_NODE) {
         if (!hasCached) {
 #if RUNTIME_LOGGING
           err('NODE_CODE_CACHING: saving module');

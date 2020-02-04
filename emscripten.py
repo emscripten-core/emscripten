@@ -61,8 +61,7 @@ def access_quote(prop):
     return '.' + prop
 
 
-def emscript_fastcomp(infile, outfile, memfile, compiler_engine,
-                      temp_files, DEBUG):
+def emscript_fastcomp(infile, outfile, memfile, temp_files, DEBUG):
   """Runs the emscripten LLVM-to-JS compiler.
 
   Args:
@@ -92,7 +91,7 @@ def emscript_fastcomp(infile, outfile, memfile, compiler_engine,
       fixup_metadata_tables(metadata)
       funcs = fixup_functions(funcs, metadata)
     with ToolchainProfiler.profile_block('compiler_glue'):
-      glue, forwarded_data = compiler_glue(metadata, compiler_engine, temp_files, DEBUG)
+      glue, forwarded_data = compiler_glue(metadata, temp_files, DEBUG)
 
     with ToolchainProfiler.profile_block('function_tables_and_exports'):
       (post, function_table_data, bundled_args) = (
@@ -229,7 +228,7 @@ def fixup_functions(funcs, metadata):
   return funcs
 
 
-def compiler_glue(metadata, compiler_engine, temp_files, DEBUG):
+def compiler_glue(metadata, temp_files, DEBUG):
   if DEBUG:
     logger.debug('emscript: js compiler glue')
     t = time.time()
@@ -242,7 +241,7 @@ def compiler_glue(metadata, compiler_engine, temp_files, DEBUG):
   assert not (metadata['simd'] and shared.Settings.WASM), 'SIMD is used, but not supported in WASM mode yet'
   assert not (shared.Settings.SIMD and shared.Settings.WASM), 'SIMD is requested, but not supported in WASM mode yet'
 
-  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
+  glue, forwarded_data = compile_settings(temp_files)
 
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
@@ -760,7 +759,7 @@ def apply_forwarded_data(forwarded_data):
   StaticCodeHooks.atexits = str(forwarded_json['ATEXITS'])
 
 
-def compile_settings(compiler_engine, temp_files):
+def compile_settings(temp_files):
   # Save settings to a file to work around v8 issue 1579
   with temp_files.get_file('.txt') as settings_file:
     with open(settings_file, 'w') as s:
@@ -769,7 +768,7 @@ def compile_settings(compiler_engine, temp_files):
     # Call js compiler
     env = os.environ.copy()
     env['EMCC_BUILD_DIR'] = os.getcwd()
-    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), compiler_engine,
+    out = jsrun.run_js_tool(path_from_root('src', 'compiler.js'), shared.NODE_JS,
                             [settings_file], stdout=subprocess.PIPE, stderr=STDERR_FILE,
                             cwd=path_from_root('src'), env=env)
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
@@ -1719,23 +1718,24 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
   module_exports = exported_implemented_functions + function_tables(function_table_data)
   shared.Settings.MODULE_EXPORTS = [(f, f) for f in module_exports]
 
-  if not shared.Settings.SWAPPABLE_ASM_MODULE:
-    if runtime_assertions:
-      # assert on the runtime being in a valid state when calling into compiled code. The only
-      # exceptions are some support code.
-      receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+  if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+    receiving += 'exportAsmFunctions(asm);'
+  else:
+    if not shared.Settings.SWAPPABLE_ASM_MODULE:
+      if runtime_assertions:
+        # assert on the runtime being in a valid state when calling into compiled code. The only
+        # exceptions are some support code.
+        receiving_functions = [f for f in exported_implemented_functions if f not in ('_memcpy', '_memset', '_emscripten_replace_memory', '__start_module')]
+        wrappers = []
+        for name in receiving_functions:
+          wrappers.append('''\
+  var real_%(name)s = asm["%(name)s"];
+  asm["%(name)s"] = function() {%(runtime_assertions)s
+    return real_%(name)s.apply(null, arguments);
+  };
+  ''' % {'name': name, 'runtime_assertions': runtime_assertions})
+        receiving += '\n'.join(wrappers)
 
-      wrappers = []
-      for name in receiving_functions:
-        wrappers.append('''\
-var real_%(name)s = asm["%(name)s"];
-asm["%(name)s"] = function() {%(runtime_assertions)s
-  return real_%(name)s.apply(null, arguments);
-};
-''' % {'name': name, 'runtime_assertions': runtime_assertions})
-      receiving += '\n'.join(wrappers)
-
-    if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
       imported_exports = [s for s in module_exports if s not in initializers]
 
       if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
@@ -1754,18 +1754,16 @@ asm["%(name)s"] = function() {%(runtime_assertions)s
         else:
           receiving += '\n'.join(['var ' + s + ' = Module["' + s + '"] = asm["' + s + '"];' for s in module_exports]) + '\n'
     else:
-      receiving += 'exportAsmFunctions(asm);'
-  else:
-    receiving += 'Module["asm"] = asm;\n'
-    wrappers = []
-    for name in module_exports:
-      wrappers.append('''\
+      receiving += 'Module["asm"] = asm;\n'
+      wrappers = []
+      for name in module_exports:
+        wrappers.append('''\
 var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
 ''' % {'name': name, 'runtime_assertions': runtime_assertions})
 
-    receiving += '\n'.join(wrappers)
+      receiving += '\n'.join(wrappers)
 
   if shared.Settings.EXPORT_FUNCTION_TABLES and not shared.Settings.WASM:
     for table in function_table_data.values():
@@ -2188,8 +2186,7 @@ HEAP_TYPE_INFOS = [
 ]
 
 
-def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
-                          temp_files, DEBUG):
+def emscript_wasm_backend(infile, outfile, memfile, temp_files, DEBUG):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
   #     to use emscripten's wasm<->JS ABI
@@ -2207,7 +2204,7 @@ def emscript_wasm_backend(infile, outfile, memfile, compiler_engine,
 
   if DEBUG:
     t = time.time()
-  glue, forwarded_data = compile_settings(compiler_engine, temp_files)
+  glue, forwarded_data = compile_settings(temp_files)
   if DEBUG:
     logger.debug('  emscript: glue took %s seconds' % (time.time() - t))
     t = time.time()
@@ -2613,6 +2610,11 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
 
 def create_receiving_wasm(exports, initializers):
+  # When not declaring asm exports this section is empty and we instead programatically export
+  # synbols on the global object by calling exportAsmFunctions after initialization
+  if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
+    return ''
+
   exports_that_are_not_initializers = [x for x in exports if x not in initializers]
 
   receiving = []
@@ -2631,24 +2633,21 @@ asm["%(e)s"] = function() {%(assertions)s
   return real_%(mangled)s.apply(null, arguments);
 };
 ''' % {'mangled': asmjs_mangle(e), 'e': e, 'assertions': runtime_assertions})
-    if shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-      if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
-        # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
-        # var _main;
-        # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
-        # var asm = output.instance.exports;
-        # _main = asm["_main"];
-        receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
-      else:
-        if shared.Settings.MINIMAL_RUNTIME:
-          # In wasm2js exports can be directly processed at top level, i.e.
-          # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
-          # var _main = asm["_main"];
-          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
-        else:
-          receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
+    if shared.Settings.WASM and shared.Settings.MINIMAL_RUNTIME:
+      # In Wasm exports are assigned inside a function to variables existing in top level JS scope, i.e.
+      # var _main;
+      # WebAssembly.instantiate(Module["wasm"], imports).then((function(output) {
+      # var asm = output.instance.exports;
+      # _main = asm["_main"];
+      receiving += [asmjs_mangle(s) + ' = asm["' + s + '"];' for s in exports_that_are_not_initializers]
     else:
-      receiving.append('exportAsmFunctions(asm);')
+      if shared.Settings.MINIMAL_RUNTIME:
+        # In wasm2js exports can be directly processed at top level, i.e.
+        # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
+        # var _main = asm["_main"];
+        receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
+      else:
+        receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
   else:
     receiving.append('Module["asm"] = asm;')
     for e in exports:
@@ -2790,5 +2789,5 @@ def run(infile, outfile, memfile):
 
   emscripter = emscript_wasm_backend if shared.Settings.WASM_BACKEND else emscript_fastcomp
   return temp_files.run_and_clean(lambda: emscripter(
-      infile, outfile_obj, memfile, shared.NODE_JS, temp_files, shared.DEBUG)
+      infile, outfile_obj, memfile, temp_files, shared.DEBUG)
   )

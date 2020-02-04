@@ -480,21 +480,36 @@ def do_emscripten(infile, memfile):
   return outfile
 
 
+def is_ar_file_with_missing_index(archive_file):
+  # We parse the archive header outselves because llvm-nm --print-armap is slower and less
+  # reliable.
+  # See: https://github.com/emscripten-core/emscripten/issues/10195
+  archive_header = b'!<arch>\n'
+  file_header_size = 60
+
+  with open(archive_file, 'rb') as f:
+    header = f.read(len(archive_header))
+    if header != archive_header:
+      # This is not even an ar file
+      return False
+    file_header = f.read(file_header_size)
+    if len(file_header) != file_header_size:
+      # We don't have any file entires at all so we don't consider the index missing
+      return False
+
+  name = file_header[:16].strip()
+  # If '/' is the name of the first file we have an index
+  return name != '/'
+
+
 def ensure_archive_index(archive_file):
   # Fastcomp linking works without archive indexes.
   if not shared.Settings.WASM_BACKEND or not shared.Settings.AUTO_ARCHIVE_INDEXES:
     return
-  # Ignore stderr since llvm-nm prints "no symbols" to stderr for each object that has no symbols
-  stdout = run_process([shared.LLVM_NM, '--print-armap', archive_file], stdout=PIPE, stderr=PIPE).stdout
-  stdout = stdout.strip()
-  # Ignore empty archives
-  if not stdout:
-    return
-  if stdout.startswith('Archive map\n') or stdout.startswith('Archive index\n'):
-    return
-  shared.warning('%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
-  shared.warning('%s: adding index', archive_file)
-  run_process([shared.LLVM_RANLIB, archive_file])
+  if is_ar_file_with_missing_index(archive_file):
+    shared.warning('%s: archive is missing an index; Use emar when creating libraries to ensure an index is created', archive_file)
+    shared.warning('%s: adding index', archive_file)
+    run_process([shared.LLVM_RANLIB, archive_file])
 
 
 #
@@ -1673,12 +1688,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       if not shared.Settings.MINIMAL_RUNTIME and shared.Settings.WASM_ASYNC_COMPILATION:
         # async compilation requires a swappable module - we swap it in when it's ready
         shared.Settings.SWAPPABLE_ASM_MODULE = 1
-
-      if shared.Settings.SWAPPABLE_ASM_MODULE and not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
-        # Swappable wasm module/asynchronous wasm compilation requires an indirect stub
-        # function generated to each function export from wasm module, so cannot use the
-        # concise form of grabbing exports that does not need to refer to each export individually.
-        exit_with_error('DECLARE_ASM_MODULE_EXPORTS=0 is not comptabible with SWAPPABLE_ASM_MODULE')
 
       # wasm side modules have suffix .wasm
       if shared.Settings.SIDE_MODULE and target.endswith('.js'):

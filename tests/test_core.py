@@ -3646,7 +3646,7 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False, **kwargs)
 
-  def do_basic_dylink_test(self):
+  def do_basic_dylink_test(self, need_reverse=True):
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3661,10 +3661,15 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'extern "C" int sidey();')
+    ''', 'other says 11.', 'extern "C" int sidey();', need_reverse=need_reverse)
 
   @needs_dlfcn
   def test_dylink_basics(self):
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  def test_dylink_no_export(self):
+    self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
 
   @needs_dlfcn
@@ -5949,6 +5954,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_relocatable_void_function')
 
   @wasm_simd
+  @unittest.skip("Temporarily disabled to update LLVM")
   def test_wasm_builtin_simd(self, js_engines):
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
@@ -5957,6 +5963,7 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
+  @unittest.skip("Temporarily disabled to update LLVM")
   def test_wasm_intrinsics_simd(self, js_engines):
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall'])
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
@@ -8414,7 +8421,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   @parameterized({
     'fs': (['-s', 'FORCE_FILESYSTEM=1'],),
     'nofs': (['-s', 'NO_FILESYSTEM=1'],),

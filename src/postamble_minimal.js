@@ -129,12 +129,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
   asm = output.instance.exports;
 #endif
-
 #if USE_OFFSET_CONVERTER
   wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
-
+#if !DECLARE_ASM_MODULE_EXPORTS
+  exportAsmFunctions(asm);
+#else
   /*** ASM_MODULE_EXPORTS ***/
+#endif
   initRuntime(asm);
   ready();
 })
