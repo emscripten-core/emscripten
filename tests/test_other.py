@@ -8728,6 +8728,19 @@ end
     # The default behavior is to add archive indexes automatically.
     run_process([PYTHON, EMCC, 'libfoo.a', 'hello_world.o'])
 
+  @no_fastcomp('AUTO_ARCHIVE_INDEXES only applies to wasm backend')
+  def test_archive_non_objects(self):
+    create_test_file('file.txt', 'test file')
+    # llvm-nm has issues with files that start with two or more null bytes since it thinks they
+    # are COFF files.  Ensure that we correctly ignore such files when we process them.
+    create_test_file('zeros.bin', '\0\0\0\0')
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
+    # No index added.
+    # --format=darwin (the default on OSX has a strange issue where it add extra
+    # newlines to files: https://bugs.llvm.org/show_bug.cgi?id=42562
+    run_process([PYTHON, EMAR, 'crS', '--format=gnu', 'libfoo.a', 'file.txt', 'zeros.bin', 'hello_world.o'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), 'libfoo.a'])
+
   def test_flag_aliases(self):
     def assert_aliases_match(flag1, flag2, flagarg, extra_args):
       results = {}
