@@ -786,13 +786,7 @@ var LibraryEmbind = {
             return str;
         },
         'toWireType': function(destructors, value) {
-            if (value instanceof ArrayBuffer) {
-                value = new Uint8Array(value);
-            }
-
-            var valueIsOfTypeString = (typeof value === 'string');
-
-            if (!(valueIsOfTypeString || value instanceof Uint8Array || value instanceof Uint8ClampedArray || value instanceof Int8Array)) {
+            if (!(typeof value === 'string')) {
                 throwBindingError('Cannot pass non-string to C++ string type ' + name);
             }
 
