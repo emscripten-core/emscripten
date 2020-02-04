@@ -9536,10 +9536,6 @@ int main () {
   def test_function_exports_are_small(self):
     def test(wasm, closure, opt):
       extra_args = wasm + opt + closure
-      if self.is_wasm_backend() and 'WASM_ASYNC_COMPILATION=0' not in extra_args:
-        # TODO: re-enable once we allow WASM_ASYNC_COMPILATION+DECLARE_ASM_MODULE_EXPORTS
-        # https://github.com/emscripten-core/emscripten/issues/10217
-        return
       print(extra_args)
       args = [PYTHON, EMCC, path_from_root('tests', 'long_function_name_in_export.c'), '-o', 'a.html', '-s', 'ENVIRONMENT=web', '-s', 'DECLARE_ASM_MODULE_EXPORTS=0', '-Werror'] + extra_args
       run_process(args)
