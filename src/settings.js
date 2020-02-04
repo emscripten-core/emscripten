@@ -1379,15 +1379,33 @@ var IN_TEST_HARNESS = 0;
 // [compile+link] - affects user code at compile and system libraries at link
 var USE_PTHREADS = 0;
 
-// PTHREAD_POOL_SIZE specifies the number of web workers that are created
-// before the main runtime is initialized. If 0, workers are created on
-// demand. If PTHREAD_POOL_DELAY_LOAD = 0, then the workers will be fully
-// loaded (available for use) prior to the main runtime being initialized. If
-// PTHREAD_POOL_DELAY_LOAD = 1, then the workers will only be created and
-// have their runtimes loaded on demand after the main runtime is initialized.
-// Note that this means that the workers cannot be joined from the main thread
-// unless PROXY_TO_PTHREAD is used.
+// In web browsers, Workers cannot be created while the main browser thread
+// is executing JS/Wasm code, but the main thread must regularly yield back
+// to the browser event loop for Worker initialization to occur.
+// This means that pthread_create() is essentially an asynchronous operation
+// when called from the main browser thread, and the main thread must
+// repeatedly yield back to the JS event loop in order for the thread to
+// actually start.
+// If your application needs to be able to synchronously create new threads,
+// you can pre-create a pthread pool by specifying -s PTHREAD_POOL_SIZE=x,
+// in which case the specified number of Workers will be preloaded into a pool
+// before the application starts, and that many threads can then be available
+// for synchronous creation.
+// [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_SIZE = 0;
+
+// If your application does not need the ability to synchronously create
+// threads, but it would still like to opportunistically speed up initial thread
+// startup time by prewarming a pool of Workers, you can specify the size of
+// the pool with -s PTHREAD_POOL_SIZE=x, but then also specify
+// -s PTHREAD_POOL_DELAY_LOAD=1, which will cause the runtime to not wait up at
+// startup for the Worker pool to finish loading. Instead, the runtime will
+// immediately start up and the Worker pool will asynchronously spin up in
+// parallel on the background. This can shorten the time that pthread_create()
+// calls take to actually start a thread, but without actually slowing down
+// main application startup speed. If PTHREAD_POOL_DELAY_LOAD=0 (default),
+// then the runtime will wait for the pool to start up before running main().
+// [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_DELAY_LOAD = 0;
 
 // If not explicitly specified, this is the stack size to use for newly created
