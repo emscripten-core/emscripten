@@ -8735,7 +8735,9 @@ end
     create_test_file('zeros.bin', '\0\0\0\0')
     run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c')])
     # No index added.
-    run_process([PYTHON, EMAR, 'crS', 'libfoo.a', 'file.txt', 'zeros.bin', 'hello_world.o'])
+    # --format=darwin (the default on OSX has a strange issue where it add extra
+    # newlines to files: https://bugs.llvm.org/show_bug.cgi?id=42562
+    run_process([PYTHON, EMAR, 'crS', '--format=gnu', 'libfoo.a', 'file.txt', 'zeros.bin', 'hello_world.o'])
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), 'libfoo.a'])
 
   def test_flag_aliases(self):
