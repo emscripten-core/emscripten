@@ -2612,7 +2612,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
 
 def create_receiving_wasm(exports, initializers):
-  # When not declaring asm exports this section is empty and we instead programiatically export
+  # When not declaring asm exports this section is empty and we instead programatically export
   # synbols on the global object by calling exportAsmFunctions after initialization
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
