@@ -22,7 +22,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
@@ -7361,6 +7361,155 @@ err = err = function(){};
       assert seen_lines.issuperset([11, 12]), seen_lines
     else:
       assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
+
+  @no_wasm2js('TODO: source maps in wasm2js')
+  @no_fastcomp('DWARF is only supported in upstream')
+  def test_dwarf(self):
+    # FIXME
+    if is_optimizing(self.emcc_args) and '-O1' not in self.emcc_args:
+      self.skipTest('optimizations above -O1 remove too much DWARF atm')
+
+    self.emcc_args.append('-gforce_dwarf')
+    self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
+
+    create_test_file('src.cpp', '''
+      #include <emscripten.h>
+      EM_JS(int, out_to_js, (int x), {})
+      void foo() {
+        out_to_js(0); // line 5
+        out_to_js(1); // line 6
+        out_to_js(2); // line 7
+        // A silly possible recursion to avoid binaryen doing any inlining.
+        if (out_to_js(3)) foo();
+      }
+      int main() {
+        foo();
+      }
+    ''')
+
+    js_filename = 'a.out.js'
+    wasm_filename = 'a.out.wasm'
+
+    Building.emcc('src.cpp',
+                  self.serialize_settings() + self.emcc_args,
+                  js_filename)
+
+    LLVM_DWARFDUMP = os.path.join(LLVM_ROOT, 'llvm-dwarfdump')
+    out = run_process([LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
+
+    # parse the sections
+    sections = {}
+    curr_section_name = ''
+    curr_section_body = ''
+
+    def add_section():
+      if curr_section_name:
+        sections[curr_section_name] = curr_section_body
+
+    for line in out.splitlines():
+      if ' contents:' in line:
+        # a new section, a line like ".debug_str contents:"
+        add_section()
+        curr_section_name = line.split(' ')[0]
+        curr_section_body = ''
+      else:
+        # possibly a line in a section
+        if curr_section_name:
+          curr_section_body += line + '\n'
+    add_section()
+
+    # make sure the right sections exist
+    self.assertIn('.debug_abbrev', sections)
+    self.assertIn('.debug_info', sections)
+    self.assertIn('.debug_line', sections)
+    self.assertIn('.debug_str', sections)
+    self.assertIn('.debug_ranges', sections)
+
+    # verify some content in the sections
+    self.assertIn('"src.cpp"', sections['.debug_info'])
+    # the line section looks like this:
+    # Address            Line   Column File   ISA Discriminator Flags
+    # ------------------ ------ ------ ------ --- ------------- -------------
+    # 0x000000000000000b      5      0      3   0             0  is_stmt
+    src_to_addr = {}
+    for line in sections['.debug_line'].splitlines():
+      if line.startswith('0x'):
+        while '  ' in line:
+          line = line.replace('  ', ' ')
+        addr, line, col = line.split(' ')[:3]
+        key = (int(line), int(col))
+        src_to_addr.setdefault(key, []).append(addr)
+
+    # each of the calls must remain in the binary, and be mapped
+    self.assertIn((5, 9), src_to_addr)
+    self.assertIn((6, 9), src_to_addr)
+    self.assertIn((7, 9), src_to_addr)
+
+    def get_dwarf_addr(line, col):
+      addrs = src_to_addr[(line, col)]
+      assert len(addrs) == 1, 'we assume the simple calls have one address'
+      return int(addrs[0], 0)
+
+    # the lines must appear in sequence (as calls to JS, the optimizer cannot
+    # reorder them)
+    self.assertLess(get_dwarf_addr(5, 9), get_dwarf_addr(6, 9))
+    self.assertLess(get_dwarf_addr(6, 9), get_dwarf_addr(7, 9))
+
+    # get the wat, printing with -g which has binary offsets
+    wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+                       wasm_filename, '-g', '--print'], stdout=PIPE).stdout
+
+    # we expect to see a pattern like this, as in both debug and opt builds
+    # there isn't much that can change with such calls to JS (they can't be
+    # reordered or anything else):
+    #
+    #   ;; code offset: 0x?
+    #   (drop
+    #    ;; code offset: 0x?
+    #    (call $out_to_js
+    #     ;; code offset: 0x?
+    #     (local.get ?) or (i32.const ?)
+    #    )
+    #   )
+    #
+    # In stacky stream of instructions form, it is
+    #   local.get or i32.const
+    #   call $out_to_js
+    #   drop
+
+    # get_wat_addr gets the address of one of the 3 interesting calls, by its
+    # index (0,1,2).
+    def get_wat_addr(call_index):
+      # find the call_index-th call
+      call_loc = -1
+      for i in range(call_index + 1):
+        call_loc = wat.find('call $out_to_js', call_loc + 1)
+        assert call_loc > 0
+      # the call begins with the local.get/i32.const printed below it, which is
+      # the first instruction in the stream, so it has the lowest address
+      start_addr_loc = wat.find('0x', call_loc)
+      assert start_addr_loc > 0
+      start_addr_loc_end = wat.find('\n', start_addr_loc)
+      start_addr = int(wat[start_addr_loc:start_addr_loc_end], 0)
+      # the call ends with the drop, which is the last in the stream, at the
+      # highest address
+      end_addr_loc = wat.rfind('drop', 0, call_loc)
+      assert end_addr_loc > 0
+      end_addr_loc = wat.rfind('0x', 0, end_addr_loc)
+      assert end_addr_loc > 0
+      end_addr_loc_end = wat.find('\n', end_addr_loc)
+      assert end_addr_loc_end > 0
+      end_addr = int(wat[end_addr_loc:end_addr_loc_end], 0)
+      return (start_addr, end_addr)
+
+    # match up the DWARF and the wat
+    for i in range(3):
+      dwarf_addr = get_dwarf_addr(5 + i, 9)
+      start_wat_addr, end_wat_addr = get_wat_addr(i)
+      # the dwarf may match any of the 3 instructions that form the stream of
+      # of instructions implementing the call in the source code, in theory
+      self.assertLessEqual(start_wat_addr, dwarf_addr)
+      self.assertLessEqual(dwarf_addr, end_wat_addr)
 
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
