@@ -12,7 +12,7 @@ executors:
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
-      PYTHON_BIN: "python2"
+      PYTHON_BIN: "python3"
   mac:
     environment:
       EMSDK_NOTTY: "1"
