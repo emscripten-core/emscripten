@@ -4110,7 +4110,7 @@ int main(int argc, char **argv) {
     print('dd', sizes_dd)
 
     for sizes in [sizes_ii, sizes_dd]:
-      self.assertExists(sizes[-1], sizes[1]) # default is to alias
+      self.assertEqual(sizes[-1], sizes[1]) # default is to alias
       self.assertLess(sizes[1], sizes[0]) # without aliasing, we have more unique values and fat tables
 
   def test_bad_export(self):
@@ -4534,11 +4534,12 @@ dir
       }
     ''')
     run_process([PYTHON, EMCC, 'src.cpp'])
-    self.assertContained(r'''\
+    expected = '''\
 major: %d
 minor: %d
 tiny: %d
-''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY), run_js('a.out.js'))
+''' % (shared.EMSCRIPTEN_VERSION_MAJOR, shared.EMSCRIPTEN_VERSION_MINOR, shared.EMSCRIPTEN_VERSION_TINY)
+    self.assertContained(expected, run_js('a.out.js'))
 
   def test_libc_files_without_syscalls(self):
     # a program which includes FS due to libc js library support, but has no syscalls,
