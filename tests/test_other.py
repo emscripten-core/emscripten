@@ -8298,7 +8298,7 @@ int main() {
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
-    exports = ['stackSave', 'stackRestore', 'stackAlloc']
+    exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-Os', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=%s' % str(exports)])
     js = open('a.out.js').read()
     for export in exports:
