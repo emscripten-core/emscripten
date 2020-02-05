@@ -2572,12 +2572,6 @@ class Building(object):
       logger.debug('closure compiler: ' + ' '.join(cmd))
 
       proc = run_process(cmd, stderr=PIPE, check=False, env=env)
-      if proc.returncode != 0:
-        sys.stderr.write(proc.stderr)
-        hint = ''
-        if not pretty:
-          hint = ' the error message may be clearer with -g1'
-        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, hint)
 
       # XXX Closure bug: if Closure is invoked with --create_source_map, Closure should create a
       # outfile.map source map file (https://github.com/google/closure-compiler/wiki/Source-Maps)
@@ -2585,6 +2579,22 @@ class Building(object):
       # flag (and currently we don't), so delete the produced source map file to not leak files in
       # temp directory.
       try_delete(outfile + '.map')
+
+      if len(proc.stderr.strip()) > 0:
+        logger.debug(open(filename, 'r').read())
+
+        if proc.returncode != 0:
+          logger.error('Closure compiler run failed:\n')
+          logger.error(proc.stderr)
+          exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
+        else:
+          logger.warn('Closure compiler completed with warnings:\n')
+          logger.warn(proc.stderr)
+          if not pretty:
+            logger.warn('(rerun with -g1 linker flag for an unminified output)')
+          elif not os.getenv('EMCC_DEBUG'):
+            logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
+
       return outfile
 
   # minify the final wasm+JS combination. this is done after all the JS
