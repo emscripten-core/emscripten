@@ -2580,20 +2580,21 @@ class Building(object):
       # temp directory.
       try_delete(outfile + '.map')
 
-      if len(proc.stderr.strip()) > 0:
+      if os.getenv('EMCC_DEBUG') and (proc.returncode != 0 or len(proc.stderr.strip()) > 0):
         logger.debug(open(filename, 'r').read())
 
-        if proc.returncode != 0:
-          logger.error('Closure compiler run failed:\n')
-          logger.error(proc.stderr)
-          exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
-        else:
-          logger.warn('Closure compiler completed with warnings:\n')
-          logger.warn(proc.stderr)
-          if not pretty:
-            logger.warn('(rerun with -g1 linker flag for an unminified output)')
-          elif not os.getenv('EMCC_DEBUG'):
-            logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
+      if proc.returncode != 0:
+        logger.error('Closure compiler run failed:\n')
+        logger.error(proc.stderr)
+        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
+
+      if len(proc.stderr.strip()) > 0:
+        logger.warn('Closure compiler completed with warnings:\n')
+        logger.warn(proc.stderr)
+        if not pretty:
+          logger.warn('(rerun with -g1 linker flag for an unminified output)')
+        elif not os.getenv('EMCC_DEBUG'):
+          logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
 
       return outfile
 
