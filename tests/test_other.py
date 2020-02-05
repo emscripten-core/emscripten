@@ -284,6 +284,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         print('skip because windows')
         continue
       target = args[1] if len(args) == 2 else 'hello_world.o'
+      self.clear()
       run_process([PYTHON, compiler, path_from_root('tests', 'hello_world' + suffix)] + args)
       if args[-1] == '/dev/null':
         print('(no output)')
@@ -5253,7 +5254,7 @@ main(const int argc, const char * const * const argv)
     ''')
     run_process([PYTHON, EMCC, 'src.cpp', '-s', 'EXIT_RUNTIME=1', '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
     self.assertContained('Constructed locale "C"\nThis locale is the global locale.\nThis locale is the C locale.', run_js('a.out.js', args=['C']))
-    self.assertContained('Can\'t construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka', run_js('a.out.js', args=['waka'], assert_returncode=1))
+    self.assertContained('''Can't construct locale "waka": collate_byname<char>::collate_byname failed to construct for waka''', run_js('a.out.js', args=['waka'], assert_returncode=1))
 
   def test_cleanup_os(self):
     # issue 2644
