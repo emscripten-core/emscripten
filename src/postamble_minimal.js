@@ -94,6 +94,21 @@ var asm;
 
 #if USE_PTHREADS && WASM
 var wasmModule;
+#if PTHREAD_POOL_SIZE > 0
+function loadWasmModuleToWorkers() {
+#if PTHREAD_POOL_DELAY_LOAD
+  PThread.unusedWorkers.forEach(PThread.loadWasmModuleToWorker);
+#else
+  var numWorkersToLoad = PThread.unusedWorkers.length;
+  PThread.unusedWorkers.forEach(function(w) { PThread.loadWasmModuleToWorker(w, function() {
+    // PTHREAD_POOL_DELAY_LOAD==0: we wanted to synchronously wait until the Worker pool
+    // has loaded up. If all Workers have finished loading up the Wasm Module, proceed with main()
+    if (!--numWorkersToLoad) ready();
+  })});
+#endif
+}
+#endif
+
 #endif
 
 #if DECLARE_ASM_MODULE_EXPORTS
@@ -170,9 +185,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
   initRuntime(asm);
-#if PTHREAD_POOL_SIZE
-  if (!ENVIRONMENT_IS_PTHREAD) PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, ready);
-  else ready();
+#if USE_PTHREADS && PTHREAD_POOL_SIZE
+  if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
+#if !PTHREAD_POOL_DELAY_LOAD  
+  else
+#endif
+    ready();
 #else
   ready();
 #endif
@@ -189,9 +207,12 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 // Initialize asm.js (synchronous)
 initRuntime(asm);
 
-#if PTHREAD_POOL_SIZE
-if (!ENVIRONMENT_IS_PTHREAD) PThread.allocateUnusedWorkers({{{PTHREAD_POOL_SIZE}}}, ready);
-else ready();
+#if USE_PTHREADS && PTHREAD_POOL_SIZE
+if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
+#if !PTHREAD_POOL_DELAY_LOAD  
+else
+#endif
+  ready();
 #else
 ready();
 #endif

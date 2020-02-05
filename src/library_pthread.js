@@ -29,7 +29,9 @@ var LibraryPThread = {
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
     initMainThreadBlock: function() {
-      if (ENVIRONMENT_IS_PTHREAD) return;
+#if ASSERTIONS
+      assert(!ENVIRONMENT_IS_PTHREAD);
+#endif
 
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
