@@ -459,9 +459,9 @@ function exportRuntime() {
       'allocateUTF8OnStack'
     ]);
 
-    if (USE_PTHREADS) {
-      runtimeElements.push('establishStackSpace');
-    }
+  }
+  if (USE_PTHREADS) {
+    runtimeElements.push('establishStackSpace');
   }
 
   if (STACK_OVERFLOW_CHECK) {

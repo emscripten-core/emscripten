@@ -943,8 +943,8 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
     funcs.append('_emscripten_replace_memory')
   if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore']
-    if shared.Settings.USE_PTHREADS:
-      funcs += ['establishStackSpace']
+  if shared.Settings.USE_PTHREADS:
+    funcs += ['establishStackSpace']
 
   if shared.Settings.EMTERPRETIFY:
     funcs += ['emterpret']
@@ -1675,8 +1675,8 @@ def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore']
-    if shared.Settings.USE_PTHREADS:
-      funcs += ['establishStackSpace']
+  if shared.Settings.USE_PTHREADS:
+    funcs += ['establishStackSpace']
   return funcs
 
 
@@ -1887,6 +1887,10 @@ function stackRestore(top) {
 }
 ''' % stack_check]
 
+  if shared.Settings.MINIMAL_RUNTIME:
+    # MINIMAL_RUNTIME moves stack functions to library.
+    funcs = []
+
   if shared.Settings.USE_PTHREADS:
     funcs.append('''
 function establishStackSpace(stackBase, stackMax) {
@@ -1898,10 +1902,6 @@ function establishStackSpace(stackBase, stackMax) {
   STACKTOP = (STACKTOP + 8)|0;
 }
 ''')
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # MINIMAL_RUNTIME moves stack functions to library.
-    funcs = []
 
   if shared.Settings.EMTERPRETIFY:
     funcs.append('''

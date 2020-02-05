@@ -92,6 +92,10 @@ var imports = {
 var asm;
 #endif
 
+#if USE_PTHREADS && WASM
+var wasmModule;
+#endif
+
 #if DECLARE_ASM_MODULE_EXPORTS
 /*** ASM_MODULE_EXPORTS_DECLARES ***/
 #endif
@@ -125,6 +129,11 @@ Module['wasmInstance'] =
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
+#if USE_PTHREADS
+  // Export Wasm module for pthread creation to access.
+  wasmModule = output.module || Module['wasm'];
+#endif
+
 #if !(LibraryManager.has('library_exports.js') && (WASM || WASM_BACKEND))
   // If not using the emscripten_get_exported_function() API, keep the 'asm' exports
   // variable in local scope to this instantiate function. (otherwise access it without
@@ -144,7 +153,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || ENVIRONMENT_MAY_BE_NODE || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED || USE_PTHREADS
   // In pthreads, Module['wasm'] is an already compiled WebAssembly.Module. In that case, 'output' is a WebAssembly.Instance.
   // In main thread, Module['wasm'] is either a typed array or a fetch stream. In that case, 'output.instance' is the WebAssembly.Instance.
-  var asm = (output.instance || output).exports;
+  asm = (output.instance || output).exports;
 #else
   asm = output.exports;
 #endif

@@ -173,20 +173,16 @@ var HEAPF32 = new Float32Array(buffer);
 var HEAPF64 = new Float64Array(buffer);
 #endif
 
-#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
-
-#if USE_PTHREADS
+#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || (SINGLE_FILE && !WASM && !WASM_BACKEND) || USES_DYNAMIC_ALLOC)
 if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
+
+#if MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE
 
 #if ASSERTIONS
 if (!Module['mem']) throw 'Must load memory initializer as an ArrayBuffer in to variable Module.mem before adding compiled output .js script to the DOM';
 #endif
 HEAPU8.set(new Uint8Array(Module['mem']), GLOBAL_BASE);
-
-#if USE_PTHREADS
-}
-#endif
 
 #endif
 
@@ -199,7 +195,7 @@ HEAPU8.set(base64Decode('{{{ getQuoted("BASE64_MEMORY_INITIALIZER") }}}'), GLOBA
   HEAP32[DYNAMICTOP_PTR>>2] = {{{ getQuoted('DYNAMIC_BASE') }}};
 #endif
 
-#if USE_PTHREADS
+#if USE_PTHREADS && ((MEM_INIT_METHOD == 1 && !MEM_INIT_IN_WASM && !SINGLE_FILE) || (SINGLE_FILE && !WASM && !WASM_BACKEND) || USES_DYNAMIC_ALLOC)
 }
 #endif
 

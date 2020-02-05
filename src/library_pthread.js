@@ -374,8 +374,8 @@ var LibraryPThread = {
 #endif
 
 #if ASSERTIONS && WASM
-      assert(wasmMemory, 'WebAssembly memory should have been loaded by now!');
-      assert(wasmModule, 'WebAssembly Module should have been loaded by now!');
+      assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
+      assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
 #endif
 
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
@@ -389,11 +389,7 @@ var LibraryPThread = {
         'urlOrBlob': Module['mainScriptUrlOrBlob'] || _scriptDir,
 #if WASM
         'wasmMemory': wasmMemory,
-#if MINIMAL_RUNTIME
-        wasmModule: Module['wasm'],
-#else
-        wasmModule: wasmModule,
-#endif
+        'wasmModule': wasmModule,
 #if LOAD_SOURCE_MAP
         'wasmSourceMap': wasmSourceMap,
 #endif
