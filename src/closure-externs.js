@@ -975,3 +975,16 @@ var outerWidth;
 var outerHeight;
 var event;
 var devicePixelRatio;
+
+// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
+// to be able to remove all the variables below:
+
+// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
+// the names need to match:
+// BUG: None of these variables work properly with USE_PTHREADS + MODULARIZE builds.
+var threadInfoStruct;
+var selfThreadId;
+var noExitRuntime;
+
+// Technically only needed for MINIMAL_RUNTIME use of USE_PTHREADS + !MODULARIZE, but enabled here for all modes for now.
+var ENVIRONMENT_IS_PTHREAD;
