@@ -626,21 +626,12 @@ class libcompiler_rt(Library):
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
-  src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
   if shared.Settings.WASM_BACKEND:
-    src_files += ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c', 'clzti2.c',
-                  'divtf3.c', 'divti3.c', 'udivmodti4.c',
-                  'extenddftf2.c', 'extendsftf2.c',
-                  'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
-                  'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
-                  'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c', 'floattitf.c',
-                  'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
-                  'modti3.c', 'multc3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
-                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
-                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
-                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
+    filelist = shared.path_from_root('system', 'lib', 'compiler-rt', 'filelist.txt')
+    src_files = open(filelist).read().splitlines()
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
-
+  else:
+    src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
   name = 'libc'
