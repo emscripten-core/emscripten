@@ -33,6 +33,8 @@ v1.39.7: 02/03/2020
 - Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
   falls back to using a JavaScript version if WebAssembly is not supported in
   target browser/shell. (#10118)
+- Added new linker option -s CLOSURE_WARNINGS_ARE_ERRORS=1 that allows aborting
+  the build if Closure compiler produced any warnings.
 
 v1.39.6: 01/15/2020
 -------------------

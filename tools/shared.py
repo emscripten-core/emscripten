@@ -2589,12 +2589,20 @@ class Building(object):
         exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
 
       if len(proc.stderr.strip()) > 0:
-        logger.warn('Closure compiler completed with warnings:\n')
-        logger.warn(proc.stderr)
+        if Settings.CLOSURE_WARNINGS_ARE_ERRORS:
+          logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS_ARE_ERRORS=1 enabled, aborting!\n')
+          logger.error(proc.stderr)
+        else:
+          logger.warn('Closure compiler completed with warnings:\n')
+          logger.warn(proc.stderr)
+
         if not pretty:
           logger.warn('(rerun with -g1 linker flag for an unminified output)')
         elif not os.getenv('EMCC_DEBUG'):
           logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
+
+        if Settings.CLOSURE_WARNINGS_ARE_ERRORS:
+          exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS_ARE_ERRORS=1 enabled')
 
       return outfile
 

@@ -10312,5 +10312,9 @@ int main() {
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
-    stderr = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1'], stderr=PIPE).stderr
-    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', stderr)
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1'], stderr=PIPE)
+    assert proc.returncode == 0
+    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
+
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS_ARE_ERRORS=1'], stderr=PIPE, check=False)
+    assert proc.returncode != 0
