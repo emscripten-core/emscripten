@@ -1410,9 +1410,15 @@ var SyscallsLibrary = {
     return 0;
   },
   fd_read: function(fd, iov, iovcnt, pnum) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
+#else
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+#endif
     return 0;
   },
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
@@ -1439,6 +1445,7 @@ var SyscallsLibrary = {
     return 0;
   },
   fd_fdstat_get: function(fd, pbuf) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     // All character devices are terminals (other things a Linux system would
     // assume is a character device, like the mouse, we have special APIs for).
@@ -1446,6 +1453,10 @@ var SyscallsLibrary = {
                FS.isDir(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_DIRECTORY') }}} :
                FS.isLink(stream.mode) ? {{{ cDefine('__WASI_FILETYPE_SYMBOLIC_LINK') }}} :
                {{{ cDefine('__WASI_FILETYPE_REGULAR_FILE') }}};
+#else
+    // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
+    var type = fd == 1 || fd == 2 ? {{{ cDefine('__WASI_FILETYPE_CHARACTER_DEVICE') }}} : abort();
+#endif
     {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_filetype, 'type', 'i8') }}};
     // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_flags, '?', 'i16') }}};
     // TODO {{{ makeSetValue('pbuf', C_STRUCTS.__wasi_fdstat_t.fs_rights_base, '?', 'i64') }}};
@@ -1456,6 +1467,7 @@ var SyscallsLibrary = {
   fd_sync__deps: ['$EmterpreterAsync'],
 #endif
   fd_sync: function(fd) {
+#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function(resume) {
@@ -1497,6 +1509,12 @@ var SyscallsLibrary = {
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // WASM_BACKEND && ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
+#else // SYSCALLS_REQUIRE_FILESYSTEM
+#if ASSERTIONS
+    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+    return 0;
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 };
 
