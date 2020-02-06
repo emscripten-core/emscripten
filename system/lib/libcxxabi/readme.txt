@@ -6,7 +6,7 @@ git: d2298e74235598f15594fe2c99bbac870a507c59
 Update Instructions
 -------------------
 
-Run system/lib/update_libcxxabi.py.
+Run `system/lib/update_libcxxabi.py path/to/llvm-root`
 
 Local Modification
 ------------------
