@@ -1547,7 +1547,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
         shared.Settings.EXPORTED_FUNCTIONS += [name]
 
-      include_and_export('establishStackSpaceInJsModule')
+      include_and_export('establishStackSpace')
       include_and_export('getNoExitRuntime')
 
       if shared.Settings.MODULARIZE:

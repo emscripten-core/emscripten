@@ -222,7 +222,7 @@ this.onmessage = function(e) {
 #endif
 #endif
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
-      Module['establishStackSpaceInJsModule'](top, max);
+      Module['establishStackSpace'](top, max);
 #if WASM_BACKEND
       {{{ makeAsmExportsAccessInPthread('_emscripten_tls_init') }}}();
 #endif

@@ -1311,7 +1311,7 @@ var LibraryPThread = {
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
-  $establishStackSpaceInJsModule: function(stackTop, stackMax) {
+  $establishStackSpace: function(stackTop, stackMax) {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
 
