@@ -7386,10 +7386,6 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_fastcomp('DWARF is only supported in upstream')
   def test_dwarf(self):
-    # FIXME
-    if is_optimizing(self.emcc_args) and '-O1' not in self.emcc_args:
-      self.skipTest('optimizations above -O1 remove too much DWARF atm')
-
     self.emcc_args.append('-gforce_dwarf')
     self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
 
