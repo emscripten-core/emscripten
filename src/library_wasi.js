@@ -11,7 +11,7 @@ var WasiLibrary = {
     return _exit(code);
   },
 
-  emscripten_get_environ__deps: ['$ENV', '_get_executable_name'],
+  emscripten_get_environ__deps: ['$ENV', '_getExecutableName'],
   emscripten_get_environ: function() {
     if (!_emscripten_get_environ.strings) {
       // Default values.
@@ -23,7 +23,7 @@ var WasiLibrary = {
         'HOME': '/home/web_user',
         // Browser language detection #8751
         'LANG': ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8',
-        '_': __get_executable_name()
+        '_': __getExecutableName()
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {

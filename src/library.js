@@ -746,7 +746,7 @@ LibraryManager.library = {
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV', '_get_executable_name'],
+  __buildEnvironment__deps: ['$ENV', '_getExecutableName'],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -765,7 +765,7 @@ LibraryManager.library = {
       ENV['HOME'] = '/home/web_user';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = __get_executable_name();
+      ENV['_'] = __getExecutableName();
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -1844,12 +1844,12 @@ LibraryManager.library = {
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8', '_get_executable_name'],
+  dladdr__deps: ['$stringToNewUTF8', '_getExecutableName'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(__get_executable_name()); // XXX leak
+    var fname = stringToNewUTF8(__getExecutableName()); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -5161,7 +5161,7 @@ LibraryManager.library = {
     abort('stack overflow')
   },
 
-  _get_executable_name: function() {
+  _getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
