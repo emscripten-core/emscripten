@@ -512,6 +512,41 @@ def ensure_archive_index(archive_file):
     run_process([shared.LLVM_RANLIB, archive_file])
 
 
+def get_all_js_library_funcs(temp_files):
+  # Runs the js compiler to generate a list of all functions available in the JS
+  # libraries.  This must be done separately for each linker invokation since the
+  # list of library functions depends on what settings are used.
+  # TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
+  # mode of the js compiler that would generate a list of all possible symbols
+  # that could be checked in.
+  old_full = shared.Settings.INCLUDE_FULL_LIBRARY
+  old_linkable = shared.Settings.LINKABLE
+  try:
+    # Temporarily define INCLUDE_FULL_LIBRARY since we want a full list
+    # of all available JS library functions.
+    shared.Settings.INCLUDE_FULL_LIBRARY = True
+    # Temporarily set LINKABLE so that the jscompiler doesn't report
+    # undefined symbolls itself.
+    shared.Settings.LINKABLE = True
+    emscripten.generate_struct_info()
+    glue, forwarded_data = emscripten.compile_settings(temp_files)
+    forwarded_json = json.loads(forwarded_data)
+    library_fns = forwarded_json['Functions']['libraryFunctions']
+    library_fns_list = []
+    for name in library_fns:
+      if shared.is_c_symbol(name):
+        name = shared.demangle_c_symbol_name(name)
+        library_fns_list.append(name)
+        # TODO(sbc): wasm-ld shouldn't be reporting errors for symbols
+        # such as __wasi_fd_write which are defined with import_name attibutes
+        # but it currently does.  Remove this once we fix wasm-ld.
+        library_fns_list.append('__wasi_' + name)
+  finally:
+    shared.Settings.INCLUDE_FULL_LIBRARY = old_full
+    shared.Settings.LINKABLE = old_linkable
+  return library_fns_list
+
+
 #
 # Main run() function
 #
@@ -2210,7 +2245,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             lto_level = options.opt_level
           else:
             lto_level = 0
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level)
+          all_externals = None
+          if shared.Settings.LLD_REPORT_UNDEFINED:
+            all_externals = get_all_js_library_funcs(misc_temp_files)
+            log_time('JS symbol generation')
+            # TODO(sbc): This is an incomplete list of __invoke functions.  Perhaps add
+            # support for wildcard to wasm-ld.
+            all_externals += ['emscripten_longjmp_jmpbuf', '__invoke_void', '__invoke_i32_i8*_...']
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level, all_external_symbols=all_externals)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:

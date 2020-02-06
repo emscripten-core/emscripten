@@ -10302,3 +10302,10 @@ int main() {
     self.assertContained('function signature mismatch: foo', stderr)
     self.expect_fail([PYTHON, EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
     self.expect_fail([PYTHON, EMCC, '-s', 'STRICT', 'a.c', 'b.c'])
+
+  @no_fastcomp('lld only')
+  def test_lld_report_undefined(self):
+    create_test_file('main.c', 'void foo(); int main() { foo(); return 0; }')
+    stderr = self.expect_fail([PYTHON, EMCC, '-s', 'LLD_REPORT_UNDEFINED', 'main.c'])
+    self.assertContained('wasm-ld: error:', stderr)
+    self.assertContained('main_0.o: undefined symbol: foo', stderr)
