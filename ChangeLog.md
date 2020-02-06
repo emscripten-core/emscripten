@@ -29,7 +29,6 @@ v1.39.7: 02/03/2020
 - Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
   falls back to using a JavaScript version if WebAssembly is not supported in
   target browser/shell. (#10118)
-- Fixed file endings with .C to be compiled as C instead of C++.
 
 v1.39.6: 01/15/2020
 -------------------
