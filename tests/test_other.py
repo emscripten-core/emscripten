@@ -10302,3 +10302,7 @@ int main() {
     self.assertContained('function signature mismatch: foo', stderr)
     self.expect_fail([PYTHON, EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
     self.expect_fail([PYTHON, EMCC, '-s', 'STRICT', 'a.c', 'b.c'])
+
+  def test_capital_c_ending(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'compiles_as_c_only.C')])
+    run_process([PYTHON, EMCC, '-x', 'c++', path_from_root('tests', 'compiles_as_cxx_only.C')])

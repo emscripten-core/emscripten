@@ -1987,7 +1987,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Bitcode args generation code
       def get_clang_command(input_files):
-        args = [clang_compiler] + compile_args + input_files
+        # Clang bug/mismatch: File "a.C" (with capital file suffix) is treated to be C++
+        # and not C.
+        all_files_are_c = all(os.path.splitext(filename)[1] in C_ENDINGS for filename in input_files)
+
+        args = [clang_compiler] + compile_args
+        if all_files_are_c and '-x' not in compile_args:
+          args += ['-x', 'c']
+        args += input_files
         if not shared.Building.can_inline():
           args.append('-fno-inline-functions')
         # For fastcomp backend, no LLVM IR functions should ever be annotated
