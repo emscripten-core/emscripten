@@ -354,10 +354,23 @@ static void resize_region(void *ptr, uint32_t size)
   assert(HAS_ALIGNMENT(ptr, sizeof(uint32_t)));
   assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
   assert(size >= sizeof(Region));
+
+  // We are resizing an existing region that is either in free or used state. The newly resized region
+  // should preserve this free/used status, so look at the existing region and its in-use status,
+  // and propagate the state to the new region.
+  uint32_t oldSize = (int32_t)region_ceiling_size((Region*)ptr);
+
+  // Free regions have all the size bits reversed (highest bit tells it is a free region)
+  uint32_t usedMask = (uint32_t)(((int32_t)oldSize) >> 31); // Sign extend the highest bit to whole word
+
+  // Write new region size:
   *(uint32_t*)ptr = size;
-  uint32_t *sizeAtEnd = (uint32_t*)ptr + (size>>2) - 1;
-  uint32_t usedMask = (*(int32_t*)sizeAtEnd) >> 31;
-  *sizeAtEnd = size ^ usedMask;
+  uint32_t *newRegionEnd = (uint32_t*)((uintptr_t)ptr + size);
+  newRegionEnd[-1] = size ^ (usedMask >> 31);
+
+#ifdef EMMALLOC_DEBUG_LOG
+  MAIN_THREAD_ASYNC_EM_ASM(console.log('Resized ' + ($0?'free':'used') + ' memory region from ' + $1 + ' bytes to ' + $2 + ' bytes.'), usedMask, oldSize, size);
+#endif
 }
 
 static void prepend_to_free_list(Region *region, Region *prependTo)
@@ -905,6 +918,16 @@ void emmalloc_free(void *ptr)
   MALLOC_ACQUIRE();
 
   uint32_t size = region->size;
+#ifdef EMMALLOC_DEBUG_LOG
+  if (size < sizeof(Region) || !region_is_in_use(region))
+  {
+    if (debug_region_is_consistent(region))
+      // LLVM wasm backend bug: cannot use MAIN_THREAD_ASYNC_EM_ASM() here, that generates internal compiler error
+      EM_ASM(console.error('Double free at region ptr ' + $0.toString(16) + ', region->size: ' + $1.toString(16) + ', region->sizeAtCeiling: ' + $2.toString(16) + ')'), region, size, region_ceiling_size(region));
+    else
+      MAIN_THREAD_ASYNC_EM_ASM(console.error('Corrupt region at region ptr ' + $0.toString(16) + ' region->size:' + $1.toString(16) + ', region->sizeAtCeiling:' + $2.toString(16) + ')'), region, size, region_ceiling_size(region));
+  }
+#endif
   assert(size >= sizeof(Region));
   assert(region_is_in_use(region));
 

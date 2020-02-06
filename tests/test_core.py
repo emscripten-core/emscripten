@@ -959,6 +959,11 @@ base align: 0, 0, 0, 0'''])
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_trim')
 
+  # Test case against https://github.com/emscripten-core/emscripten/issues/10363
+  def test_emmalloc_memalign_corruption(self, *args):
+    self.set_setting('MALLOC', 'emmalloc')
+    self.do_run_in_out_file_test('tests', 'core', 'emmalloc_memalign_corruption')
+
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')
 
