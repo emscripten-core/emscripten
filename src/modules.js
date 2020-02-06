@@ -376,21 +376,11 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'AsciiToString',
-    'stringToAscii',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
     'stringToUTF8',
     'lengthBytesUTF8',
-    'UTF16ToString',
-    'stringToUTF16',
-    'lengthBytesUTF16',
-    'UTF32ToString',
-    'stringToUTF32',
-    'lengthBytesUTF32',
-    'allocateUTF8',
-    'allocateUTF8OnStack',
     'stackTrace',
     'addOnPreRun',
     'addOnInit',
@@ -436,10 +426,24 @@ function exportRuntime() {
   ];
 
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('warnOnce');
-    runtimeElements.push('stackSave');
-    runtimeElements.push('stackRestore');
-    runtimeElements.push('stackAlloc');
+    // MINIMAL_RUNTIME has moved these functions to library_strings.js
+    runtimeElements = runtimeElements.concat([
+      'warnOnce',
+      'stackSave',
+      'stackRestore',
+      'stackAlloc',
+      'AsciiToString',
+      'stringToAscii',
+      'UTF16ToString',
+      'stringToUTF16',
+      'lengthBytesUTF16',
+      'UTF32ToString',
+      'stringToUTF32',
+      'lengthBytesUTF32',
+      'allocateUTF8',
+      'allocateUTF8OnStack'
+    ]);
+
     if (USE_PTHREADS) {
       runtimeElements.push('establishStackSpace');
     }

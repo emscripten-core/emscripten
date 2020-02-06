@@ -14,6 +14,22 @@ function run() {
     var ret = _proxy_main();
 #else
     var ret = _main();
+
+#if EXIT_RUNTIME
+    callRuntimeCallbacks(__ATEXIT__);
+    {{{ getQuoted('ATEXITS') }}}
+#endif
+
+#if IN_TEST_HARNESS
+    // fflush() filesystem stdio for test harness, since there are existing tests that depend on this behavior.
+    // For production use, instead print full lines to avoid this kind of lazy behavior.
+    if (typeof _fflush !== 'undefined') _fflush();
+#endif
+
+#if ASSERTIONS
+    runtimeExited = true;
+#endif
+
 #endif
 
 #if STACK_OVERFLOW_CHECK

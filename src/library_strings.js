@@ -1,6 +1,7 @@
 #if MINIMAL_RUNTIME
 
 #include "runtime_strings_extra.js"
+#include "arrayUtils.js"
 
 mergeInto(LibraryManager.library, {
   $AsciiToString: AsciiToString,
@@ -15,7 +16,9 @@ mergeInto(LibraryManager.library, {
   $allocateUTF8OnStack: allocateUTF8OnStack,
   $writeStringToMemory: writeStringToMemory,
   $writeArrayToMemory: writeArrayToMemory,
-  $writeAsciiToMemory: writeAsciiToMemory
+  $writeAsciiToMemory: writeAsciiToMemory,
+  $intArrayFromString: intArrayFromString,
+  $intArrayToString: intArrayToString
 });
 
 #endif
