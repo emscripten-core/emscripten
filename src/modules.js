@@ -460,9 +460,6 @@ function exportRuntime() {
     ]);
 
   }
-  if (USE_PTHREADS) {
-    runtimeElements.push('establishStackSpace');
-  }
 
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');

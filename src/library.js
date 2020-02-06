@@ -1359,23 +1359,6 @@ LibraryManager.library = {
   },
 #endif
 
-#if USE_PTHREADS
-  $establishStackSpace__asm: true,
-  $establishStackSpace__sig: 'vii',
-  $establishStackSpace: function(stackBase, stackMax) {
-#if WASM_BACKEND
-    // The wasm backend path does not have a way to set the stack max, so ignore
-    // the stack max parameter, this function only resets the stack base.
-    stackRestore(stackBase);
-#else
-    stackBase = stackBase|0;
-    stackMax = stackMax|0;
-    STACKTOP = stackBase;
-    STACK_MAX = stackMax;
-#endif
-  },
-#endif
-
 #if WASM_BACKEND == 0
   $setThrew__asm: true,
   $setThrew__sig: 'vii',

@@ -815,12 +815,6 @@ GLOBAL_BASE = alignMemory(GLOBAL_BASE, {{{ MAX_GLOBAL_ALIGN || 1 }}});
 #endif
 
 #if WASM_BACKEND && USE_PTHREADS
-// The wasm backend path does not have a way to set the stack max, so ignore
-// the stack max parameter, this function only resets the stack base.
-function establishStackSpace(base/*, max*/) {
-  stackRestore(base);
-}
-
 // JS library code refers to Atomics in the manner used from asm.js, provide
 // the same API here.
 var Atomics_load = Atomics.load;

@@ -1333,7 +1333,7 @@ var LibraryPThread = {
     writeStackCookie();
 #endif
     // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
-    establishStackSpace(stackTop, stackMax);
+    stackRestore(stackTop);
   },
 
   // allow pthreads to check if noExitRuntime from worker.js

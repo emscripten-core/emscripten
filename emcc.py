@@ -1528,9 +1528,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
-      if not shared.Settings.MINIMAL_RUNTIME:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace']
-
       # memalign is used to ensure allocated thread stacks are aligned.
       shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_malloc']
 
