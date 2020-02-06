@@ -392,8 +392,6 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
-    'ENV',
-    'FS',
     'FS_createFolder',
     'FS_createPath',
     'FS_createDataFile',
@@ -402,7 +400,6 @@ function exportRuntime() {
     'FS_createLink',
     'FS_createDevice',
     'FS_unlink',
-    'GL',
     'dynamicAlloc',
     'loadDynamicLibrary',
     'loadWebAssemblyModule',
@@ -424,6 +421,14 @@ function exportRuntime() {
     'callMain',
     'abort',
   ];
+
+  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
+  // '$ which indicates they are JS methods.
+  for (var ident in LibraryManager.library) {
+    if (ident[0] === '$') {
+      runtimeElements.push(ident.substr(1));
+    }
+  }
 
   if (!MINIMAL_RUNTIME) {
     // MINIMAL_RUNTIME has moved these functions to library_strings.js

@@ -684,8 +684,8 @@ var ASYNCIFY_DEBUG = 0;
 // included (either automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
-// element, and not just methods. For example, we export the Runtime object by
-// having "Runtime" in this list.
+// element, and not just methods. For example, we can export the FS object by
+// having "FS" in this list.
 var EXPORTED_RUNTIME_METHODS = [];
 
 // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
