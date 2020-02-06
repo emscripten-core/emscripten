@@ -58,8 +58,8 @@ except ImportError:
 logger = logging.getLogger('emcc')
 
 # endings = dot + a suffix, safe to test by  filename.endswith(endings)
-C_ENDINGS = ('.c', '.C', '.i')
-CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.CC', '.C++', '.ii')
+C_ENDINGS = ('.c', '.i')
+CXX_ENDINGS = ('.cpp', '.cxx', '.cc', '.c++', '.CPP', '.CXX', '.C', '.CC', '.C++', '.ii')
 OBJC_ENDINGS = ('.m', '.mi')
 OBJCXX_ENDINGS = ('.mm', '.mii')
 SPECIAL_ENDINGLESS_FILENAMES = ('/dev/null' if not WINDOWS else 'NUL',)
