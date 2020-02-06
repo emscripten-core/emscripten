@@ -264,6 +264,7 @@ var SyscallsLibrary = {
 #endif
   ],
   _emscripten_syscall_munmap: function(addr, len) {
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
@@ -280,6 +281,9 @@ var SyscallsLibrary = {
       }
     }
     return 0;
+#else // no filesystem support; report lack of support
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported features
+#endif
   },
 
   __syscall1: function(which, varargs) { // exit
