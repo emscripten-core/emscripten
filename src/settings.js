@@ -499,6 +499,9 @@ var GL_FFP_ONLY = 0;
 // WebGL initialization afterwards will use this GL context to render.
 var GL_PREINITIALIZED_CONTEXT = 0;
 
+// Enables support for WebGPU (via "webgpu/webgpu.h").
+var USE_WEBGPU = 0;
+
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
 // decoders. The benefit is that this can be done synchronously, however, it
@@ -621,6 +624,7 @@ var ASYNCIFY_IMPORTS = [
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
+  'emscripten_fiber_swap',
   'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
 ];
 
@@ -680,8 +684,8 @@ var ASYNCIFY_DEBUG = 0;
 // included (either automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
-// element, and not just methods. For example, we export the Runtime object by
-// having "Runtime" in this list.
+// element, and not just methods. For example, we can export the FS object by
+// having "FS" in this list.
 var EXPORTED_RUNTIME_METHODS = [];
 
 // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
@@ -1170,6 +1174,11 @@ var USE_GLFW = 2;
 // Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
 // startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
 // still make sense there, see that option for more details.
+//
+// Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
+// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
+// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
+// .wasm.js fallback will be used.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1370,15 +1379,40 @@ var IN_TEST_HARNESS = 0;
 // [compile+link] - affects user code at compile and system libraries at link
 var USE_PTHREADS = 0;
 
-// PTHREAD_POOL_SIZE specifies the number of web workers that are created
-// before the main runtime is initialized. If 0, workers are created on
-// demand. If PTHREAD_POOL_DELAY_LOAD = 0, then the workers will be fully
-// loaded (available for use) prior to the main runtime being initialized. If
-// PTHREAD_POOL_DELAY_LOAD = 1, then the workers will only be created and
-// have their runtimes loaded on demand after the main runtime is initialized.
-// Note that this means that the workers cannot be joined from the main thread
-// unless PROXY_TO_PTHREAD is used.
-var PTHREAD_POOL_SIZE = 0;
+// In web browsers, Workers cannot be created while the main browser thread
+// is executing JS/Wasm code, but the main thread must regularly yield back
+// to the browser event loop for Worker initialization to occur.
+// This means that pthread_create() is essentially an asynchronous operation
+// when called from the main browser thread, and the main thread must
+// repeatedly yield back to the JS event loop in order for the thread to
+// actually start.
+// If your application needs to be able to synchronously create new threads,
+// you can pre-create a pthread pool by specifying -s PTHREAD_POOL_SIZE=x,
+// in which case the specified number of Workers will be preloaded into a pool
+// before the application starts, and that many threads can then be available
+// for synchronous creation.
+// Note that this setting is a string, and will be emitted in the JS code
+// (directly, with no extra quotes) so that if you set it to '5' then 5 workers
+// will be used in the pool, and so forth. The benefit of this being a string
+// is that you can set it to something like
+// 'navigator.hardwareConcurrency' (which will use the number of cores the
+// browser reports, and is how you can get exactly enough workers for a
+// threadpool equal to the number of cores).
+// [link] - affects generated JS runtime code at link time
+var PTHREAD_POOL_SIZE = '';
+
+// If your application does not need the ability to synchronously create
+// threads, but it would still like to opportunistically speed up initial thread
+// startup time by prewarming a pool of Workers, you can specify the size of
+// the pool with -s PTHREAD_POOL_SIZE=x, but then also specify
+// -s PTHREAD_POOL_DELAY_LOAD=1, which will cause the runtime to not wait up at
+// startup for the Worker pool to finish loading. Instead, the runtime will
+// immediately start up and the Worker pool will asynchronously spin up in
+// parallel on the background. This can shorten the time that pthread_create()
+// calls take to actually start a thread, but without actually slowing down
+// main application startup speed. If PTHREAD_POOL_DELAY_LOAD=0 (default),
+// then the runtime will wait for the pool to start up before running main().
+// [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_DELAY_LOAD = 0;
 
 // If not explicitly specified, this is the stack size to use for newly created
@@ -1698,6 +1732,13 @@ var DISABLE_EXCEPTION_THROWING = 0;
 // binary in stack traces, as well as for avoiding using source map entries
 // across function boundaries.
 var USE_OFFSET_CONVERTER = 0;
+
+// If set to 1, the JS compiler is run before wasm-ld so that the linker can
+// report undefined symbols within the binary.  Without this option that linker
+// doesn't know which symmbols might be defined JS and so reporting of undefined
+// symbols is deleyed until the JS compiler is run.
+// [link]
+var LLD_REPORT_UNDEFINED = 0;
 
 //===========================================
 // Internal, used for testing only, from here

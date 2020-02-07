@@ -164,6 +164,11 @@ class sockets(BrowserCore):
     print('Running the socket tests. Make sure the browser allows popups from localhost.')
     print()
 
+    # Use emscripten root for node module lookup.  This is needed because the unit tests each
+    # run with CWD set to a temporary directory outside the emscripten tree.
+    print('Setting NODE_PATH=' + path_from_root('node_modules'))
+    os.environ['NODE_PATH'] = path_from_root('node_modules')
+
   def test_sockets_echo(self):
     sockets_include = '-I' + path_from_root('tests', 'sockets')
 

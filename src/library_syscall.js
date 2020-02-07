@@ -70,7 +70,7 @@ var SyscallsLibrary = {
       return 0;
     },
     doMsync: function(addr, stream, len, flags, offset) {
-      var buffer = new Uint8Array(HEAPU8.subarray(addr, addr + len));
+      var buffer = HEAPU8.slice(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
     doMkdir: function(path, mode) {
@@ -235,7 +235,7 @@ var SyscallsLibrary = {
     var allocated = false;
 
     // addr argument must be page aligned if MAP_FIXED flag is set.
-    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % PAGE_SIZE) !== 0) {
+    if ((flags & {{{ cDefine('MAP_FIXED') }}}) !== 0 && (addr % {{{ POSIX_PAGE_SIZE }}}) !== 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
 
@@ -243,7 +243,7 @@ var SyscallsLibrary = {
     // but it is widely used way to allocate memory pages on Linux, BSD and Mac.
     // In this case fd argument is ignored.
     if ((flags & {{{ cDefine('MAP_ANONYMOUS') }}}) !== 0) {
-      ptr = _memalign(PAGE_SIZE, len);
+      ptr = _memalign({{{ POSIX_PAGE_SIZE }}}, len);
       if (!ptr) return -{{{ cDefine('ENOMEM') }}};
       _memset(ptr, 0, len);
       allocated = true;
@@ -264,6 +264,7 @@ var SyscallsLibrary = {
 #endif
   ],
   _emscripten_syscall_munmap: function(addr, len) {
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
@@ -280,6 +281,9 @@ var SyscallsLibrary = {
       }
     }
     return 0;
+#else // no filesystem support; report lack of support
+    return -{{{ cDefine('ENOSYS') }}}; // unsupported features
+#endif
   },
 
   __syscall1: function(which, varargs) { // exit
@@ -739,6 +743,9 @@ var SyscallsLibrary = {
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
+#if MINIMAL_RUNTIME
+  __syscall122__deps: ['$writeAsciiToMemory'],
+#endif
   __syscall122: function(which, varargs) { // uname
     var buf = SYSCALLS.get();
     if (!buf) return -{{{ cDefine('EFAULT') }}}
@@ -1357,17 +1364,16 @@ var SyscallsLibrary = {
   // This is the set of syscalls that use the FS etc. APIs. The rest is in
   // library_wasi.js.
 
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM: function() {
     // flush anything remaining in the buffers during shutdown
-    var fflush = Module["_fflush"];
-    if (fflush) fflush(0);
+    if (typeof _fflush !== 'undefined') _fflush(0);
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
   },
   fd_write__deps: ['$flush_NO_FILESYSTEM'],
-#if EXIT_RUNTIME == 1 && !MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have __ATEXIT__ (so it does not get flushed stdout at program exit - programs in MINIMAL_RUNTIME do not have a concept of exiting)
+#if EXIT_RUNTIME == 1
   fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif

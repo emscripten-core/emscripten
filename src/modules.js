@@ -76,7 +76,13 @@ var LibraryManager = {
       libraries.push('library_exceptions_stub.js');
     }
 
-    if (!MINIMAL_RUNTIME) {
+    if (MINIMAL_RUNTIME) {
+      // Classic runtime brings in string-related functions in the runtime preamble, by including
+      // runtime_strings_extra.js that contain the same contents as library_strings.js does. In
+      // MINIMAL_RUNTIME those string functions are available as JS library functions instead from
+      // library_strings.js, to avoid unconditionally bringing in extra code to the build.
+      libraries.push('library_strings.js');
+    } else {
       libraries.push('library_browser.js');
     }
 
@@ -140,6 +146,10 @@ var LibraryManager = {
 
     if (LEGACY_GL_EMULATION) {
       libraries.push('library_glemu.js');
+    }
+
+    if (USE_WEBGPU) {
+      libraries.push('library_webgpu.js');
     }
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
@@ -366,20 +376,11 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'AsciiToString',
-    'stringToAscii',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
     'stringToUTF8',
     'lengthBytesUTF8',
-    'UTF16ToString',
-    'stringToUTF16',
-    'lengthBytesUTF16',
-    'UTF32ToString',
-    'stringToUTF32',
-    'lengthBytesUTF32',
-    'allocateUTF8',
     'stackTrace',
     'addOnPreRun',
     'addOnInit',
@@ -391,8 +392,6 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
-    'ENV',
-    'FS',
     'FS_createFolder',
     'FS_createPath',
     'FS_createDataFile',
@@ -401,7 +400,6 @@ function exportRuntime() {
     'FS_createLink',
     'FS_createDevice',
     'FS_unlink',
-    'GL',
     'dynamicAlloc',
     'loadDynamicLibrary',
     'loadWebAssemblyModule',
@@ -424,11 +422,33 @@ function exportRuntime() {
     'abort',
   ];
 
+  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
+  // '$ which indicates they are JS methods.
+  for (var ident in LibraryManager.library) {
+    if (ident[0] === '$') {
+      runtimeElements.push(ident.substr(1));
+    }
+  }
+
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('warnOnce');
-    runtimeElements.push('stackSave');
-    runtimeElements.push('stackRestore');
-    runtimeElements.push('stackAlloc');
+    // MINIMAL_RUNTIME has moved these functions to library_strings.js
+    runtimeElements = runtimeElements.concat([
+      'warnOnce',
+      'stackSave',
+      'stackRestore',
+      'stackAlloc',
+      'AsciiToString',
+      'stringToAscii',
+      'UTF16ToString',
+      'stringToUTF16',
+      'lengthBytesUTF16',
+      'UTF32ToString',
+      'stringToUTF32',
+      'lengthBytesUTF32',
+      'allocateUTF8',
+      'allocateUTF8OnStack'
+    ]);
+
     if (USE_PTHREADS) {
       runtimeElements.push('establishStackSpace');
     }

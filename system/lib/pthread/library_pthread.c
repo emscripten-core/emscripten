@@ -911,9 +911,7 @@ void* __emscripten_thread_main(void* param) {
 
 static main_args _main_arguments;
 
-// TODO: Create a separate library of this to be able to drop EMSCRIPTEN_KEEPALIVE from this
-// definition.
-int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
+int proxy_main(int argc, char** argv) {
   if (emscripten_has_threading_support()) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);

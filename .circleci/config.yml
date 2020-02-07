@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  win: circleci/windows@1.0.0
+
 executors:
   bionic:
     docker:
@@ -8,8 +11,25 @@ executors:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
+      EMSDK_NOTTY: "1"
+      PYTHON_BIN: "python3"
+  mac:
+    environment:
+      EMSDK_NOTTY: "1"
+      PYTHON_BIN: "python3"
+    macos:
+      xcode: "9.0"
 
 commands:
+  npm-install:
+    description: "npm ci"
+    steps:
+      - run:
+          name: npm ci
+          command: |
+            # Will add emsdk version of node to PATH
+            source ~/emsdk-master/emsdk_env.sh
+            npm ci
   build-upstream:
     description: "Install emsdk build all libraries using embuilder"
     steps:
@@ -45,27 +65,28 @@ commands:
       - run:
           name: embuilder build ALL
           command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build ALL
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            python3 ./embuilder.py build SYSTEM --pic
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build SYSTEM --pic
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -84,15 +105,16 @@ commands:
         description: "Test suites to run"
         type: string
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: run tests
           command: |
-            python3 tests/runner.py << parameters.test_targets >>
-            tools/check_clean.py
+            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
+            $PYTHON_BIN tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
@@ -100,10 +122,11 @@ commands:
         description: "Test suites to run"
         type: string
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: Install brew package dependencies
           environment:
@@ -117,10 +140,11 @@ commands:
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: download firefox
           command: |
@@ -215,10 +239,11 @@ commands:
   test-chrome:
     description: "Runs emscripten browser tests under chrome"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: download chrome
           command: |
@@ -241,7 +266,6 @@ commands:
   test-upstream-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
@@ -250,13 +274,8 @@ commands:
           command: |
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             dpkg -i ~/chrome.deb
-      - run:
-          name: install sockets test suite prerequisites
-          command: |
-            wget https://nodejs.org/dist/v12.13.0/node-v12.13.0-linux-x64.tar.xz
-            tar -xf node-v12.13.0-linux-x64.tar.xz
-            export PATH="`pwd`/node-v12.13.0-linux-x64/bin:${PATH}"
-            npm install ws
+      - checkout
+      - npm-install
       - run:
           name: run sockets tests
           environment:
@@ -273,7 +292,7 @@ commands:
             python3 tests/runner.py sockets
 
 jobs:
-  build:
+  build-fastcomp:
     executor: bionic
     steps:
       - checkout
@@ -305,6 +324,7 @@ jobs:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -480,11 +500,37 @@ jobs:
     executor: bionic
     steps:
       - test-upstream-sockets-chrome
-  build-upstream-mac:
-    macos:
-      xcode: "9.0"
+  build-upstream-windows:
+    executor:
+      name: win/vs2019
+      shell: bash.exe
     environment:
+      # We need python installed before we can test anytyhing.
+      # There seems to be undocument copy of python installed here. Hopefully
+      # if this disappears there will be another way of getting a re-installed
+      # version.
+      PYTHON_BIN: "/c/python27amd64/python.exe"
+      PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
+    steps:
+      - checkout
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
+      - build-upstream
+  test-upstream-minimal-windows:
+    environment:
+      PYTHON_BIN: "/c/python27amd64/python.exe"
+      PYTHONUNBUFFERED: "1"
+      EMSDK_NOTTY: "1"
+    executor:
+      name: win/vs2019
+      shell: bash.exe
+    steps:
+      - run-tests:
+          test_targets: "wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug"
+  build-upstream-mac:
+    executor: mac
     steps:
       - run:
           name: Install brew package dependencies
@@ -494,8 +540,7 @@ jobs:
       - checkout
       - build-upstream
   test-upstream-other-mac:
-    macos:
-      xcode: "9.0"
+    executor: mac
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
@@ -505,58 +550,58 @@ workflows:
     jobs:
       - flake8
       - build-docs
-      - build
+      - build-fastcomp
       - test-other:
           requires:
-            - build
+            - build-fastcomp
       - test-browser-firefox:
           requires:
-            - build
+            - build-fastcomp
       - test-browser-chrome:
           requires:
-            - build
+            - build-fastcomp
       - test-ab:
           requires:
-            - build
+            - build-fastcomp
       - test-c:
           requires:
-            - build
+            - build-fastcomp
       - test-d:
           requires:
-            - build
+            - build-fastcomp
       - test-e:
           requires:
-            - build
+            - build-fastcomp
       - test-f:
           requires:
-            - build
+            - build-fastcomp
       - test-ghi:
           requires:
-            - build
+            - build-fastcomp
       - test-jklmno:
           requires:
-            - build
+            - build-fastcomp
       - test-p:
           requires:
-            - build
+            - build-fastcomp
       - test-qrst:
           requires:
-            - build
+            - build-fastcomp
       - test-uvwxyz:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm0:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm2:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm3:
           requires:
-            - build
+            - build-fastcomp
       - test-sanity:
           requires:
-            - build
+            - build-fastcomp
       - build-upstream-linux
       - test-upstream-wasm0:
           requires:
@@ -582,6 +627,10 @@ workflows:
       - test-upstream-sockets-chrome:
           requires:
             - build-upstream-linux
+      - build-upstream-windows
+      - test-upstream-minimal-windows:
+          requires:
+            - build-upstream-windows
       - build-upstream-mac
       - test-upstream-other-mac:
           requires:

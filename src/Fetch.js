@@ -54,7 +54,7 @@ var Fetch = {
 #if USE_FETCH_WORKER
     var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined' && !ENVIRONMENT_IS_PTHREAD);
 #else
-    var isMainThread = (typeof ENVIRONMENT_IS_FETCH_WORKER === 'undefined');
+    var isMainThread = true;
 #endif
 
 #if FETCH_SUPPORT_INDEXEDDB
@@ -325,7 +325,9 @@ function __emscripten_fetch_xhr(fetch, onsuccess, onerror, onprogress, onreadyst
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
+#if ASSERTIONS
   assert(!fetchAttrStreamData, 'streaming uses moz-chunked-arraybuffer which is no longer supported; TODO: rewrite using fetch()');
+#endif
   xhr.responseType = 'arraybuffer';
 
   if (overriddenMimeType) {

@@ -1,6 +1,6 @@
 ![emscripten logo](media/switch_logo.png)
 
-[![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/incoming)
+[![CircleCI](https://circleci.com/gh/emscripten-core/emscripten.svg?style=svg)](https://circleci.com/gh/emscripten-core/emscripten/tree/master)
 
 Main project page: <http://emscripten.org>
 

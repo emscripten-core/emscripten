@@ -23,6 +23,13 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
+function warnOnce(msg) {
+  if (!warnOnce.msgs) warnOnce.msgs = {};
+  if (msg in warnOnce.msgs) return;
+  warnOnce.msgs[msg] = true;
+  printErr('warning: ' + msg);
+}
+
 function set(args) {
   var ret = {};
   for (var i = 0; i < args.length; i++) {
@@ -700,7 +707,15 @@ function emitDCEGraph(ast) {
         if (defunInfo) {
           defunInfo.reaches[reached] = 1; // defun reaches it
         } else {
-          infos[reached].root = true; // in global scope, root it
+          if (infos[reached]) {
+            infos[reached].root = true; // in global scope, root it
+          } else {
+            // An info might not exist for the identifer if it is missing, for
+            // example, we might call Module.dynCall_vi in library code, but it
+            // won't exist in a standalone (non-JS) build anyhow. We can ignore
+            // it in that case as the JS won't be used, but warn to be safe.
+            warnOnce('metadce: missing declaration for ' + reached);
+          }
         }
       }
       if (typeof reached === 'string') {
@@ -868,9 +883,68 @@ function growableHeap(ast) {
   });
 }
 
+function reattachComments(ast, comments) {
+  var symbols = [];
+
+  // Collect all code symbols
+  ast.walk(new terser.TreeWalker(function(node) {
+    if (node.start && node.start.pos) {
+      symbols.push(node);
+    }
+  }));
+
+  // Sort them by ascending line number
+  symbols.sort((a,b) => {
+    return a.start.pos - b.start.pos;
+  })
+
+  // Walk through all comments in ascending line number, and match each
+  // comment to the appropriate code block.
+  for(var i = 0, j = 0; i < comments.length; ++i) {
+    while(j < symbols.length && symbols[j].start.pos < comments[i].end)
+      ++j;
+    if (j >= symbols.length)
+      break;
+    if (symbols[j].start.pos - comments[i].end > 20) {
+      // This comment is too far away to refer to the given symbol. Drop
+      // the comment altogether.
+      continue;
+    }
+    if (!Array.isArray(symbols[j].start.comments_before)) {
+      symbols[j].start.comments_before = [];
+    }
+    symbols[j].start.comments_before.push(new terser.AST_Token({
+        end: undefined,
+        quote: undefined,
+        raw: undefined,
+        file: '0',
+        comments_after: undefined,
+        comments_before: undefined,
+        nlb: false,
+        endpos: undefined,
+        endcol: undefined,
+        endline: undefined,
+        pos: undefined,
+        col: undefined,
+        line: undefined,
+        value: comments[i].value,
+        type: comments[i].type == 'Line' ? 'comment' : 'comment2',
+        flags: 0
+      }));
+  }
+}
+
 // Main
 
 var arguments = process['argv'].slice(2);;
+var preserveComments = arguments.indexOf('--preserveComments');
+if (preserveComments > -1) {
+  arguments.splice(preserveComments, 1);
+  preserveComments = true;
+} else {
+  preserveComments = false;  
+}
+
 var infile = arguments[0];
 var passes = arguments.slice(1);
 
@@ -880,7 +954,10 @@ var extraInfo = null;
 if (extraInfoStart > 0) {
   extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
 }
-var ast = acorn.parse(input, { ecmaVersion: 6 });
+// Collect all JS code comments to this array so that we can retain them in the outputted code
+// if --preserveComments was requested.
+var sourceComments = [];
+var ast = acorn.parse(input, { ecmaVersion: 6, onComment: preserveComments ? sourceComments : undefined });
 
 var minifyWhitespace = false;
 var noPrint = false;
@@ -903,10 +980,16 @@ passes.forEach(function(pass) {
 
 if (!noPrint) {
   var terserAst = terser.AST_Node.from_mozilla_ast(ast);
+
+  if (preserveComments) {
+    reattachComments(terserAst, sourceComments);
+  }
+
   var output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
+    comments: true // for closure as well
   });
   print(output);
 }

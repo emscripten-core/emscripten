@@ -8,7 +8,7 @@
 
 // Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
 // mode, we can't use a "var" since it would prevent normal wasm from working.
-#if WASM2JS
+#if WASM2JS || WASM == 2
 var
 #endif
 WebAssembly = {
@@ -57,6 +57,7 @@ WebAssembly = {
     // TODO: use the module and info somehow - right now the wasm2js output is embedded in
     // the main JS
     // XXX hack to get an atob implementation
+    // TODO: Remove this once https://github.com/WebAssembly/binaryen/pull/2623 lands
 #include base64Utils.js
     var atob = decodeBase64;
     // This will be replaced by the actual wasm2js code.
@@ -68,10 +69,14 @@ WebAssembly = {
 
   instantiate: function(binary, info) {
     return {
-      then: function(ok, err) {
+      then: function(ok) {
         ok({
           'instance': new WebAssembly.Instance(new WebAssembly.Module(binary, info))
         });
+#if ASSERTIONS
+        // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.
+        return { catch: function() {} };
+#endif
       }
     };
   },
@@ -79,6 +84,7 @@ WebAssembly = {
   RuntimeError: Error
 };
 
+#if !MINIMAL_RUNTIME
 // We don't need to actually download a wasm binary, mark it as present but empty.
 wasmBinary = [];
-
+#endif

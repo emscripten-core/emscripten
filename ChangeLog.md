@@ -17,6 +17,26 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add LLD_REPORT_UNDEFINED option that should allow for more detailed
+  diagnostics when symbols are undefined at link time.  This currently has
+  some limitations and is not enabled by default. For example, EM_JS symbols
+  are reported as undefined at link time, as are `__invoke_*` functions.
+
+v1.39.7: 02/03/2020
+-------------------
+- Added support for specifying JSDoc minification annotations for Closure in
+  JS library, pre and post files. See
+  https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler
+  (#10272)
+- Add new Fibers API for context switching, that supercedes the old coroutine
+  API that only ran on fastcomp. See #9859
+- Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
+  falls back to using a JavaScript version if WebAssembly is not supported in
+  target browser/shell. (#10118)
+
+v1.39.6: 01/15/2020
+-------------------
+- Development has switched from "incoming" branches to "master".
 - Added new system header <emscripten/heap.h>, which enables querying information
   about the current WebAssembly heap state.
 - Reduced default geometric memory overgrowth rate from very generous 2x factor
@@ -637,11 +657,6 @@ v1.37.17: 7/25/2017
  - Updated to libc++'s "v2" ABI, which provides better alignment for string data
    and other improvements. This is an ABI-incompatible change, so bitcode files
    from previous versions will not be compatible.
- - To see a list of commits in the active development branch 'incoming', which
-   have not yet been packaged in a release, see
-    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.13...incoming
-    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.13...incoming
-    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.13...incoming
 
 v1.37.13: 5/26/2017
 -------------------

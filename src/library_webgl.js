@@ -164,9 +164,6 @@ var LibraryGL = {
     unpackAlignment: 4, // default alignment is 4 bytes
 
     init: function() {
-#if FULL_ES2 || LEGACY_GL_EMULATION
-      GL.createLog2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
-#endif
 #if GL_POOL_TEMP_BUFFERS
       var miniTempFloatBuffer = new Float32Array(GL.MINI_TEMP_BUFFER_SIZE);
       for (var i = 0; i < GL.MINI_TEMP_BUFFER_SIZE; i++) {
@@ -220,23 +217,12 @@ var LibraryGL = {
     // Precompute a lookup table for the function ceil(log2(x)), i.e. how many bits are needed to represent x, or,
     // if x was rounded up to next pow2, which index is the single '1' bit at?
     // Then log2ceilLookup[x] returns ceil(log2(x)).
-    log2ceilLookup: null,
-    createLog2ceilLookup: function(maxValue) {
-      GL.log2ceilLookup = new Uint8Array(maxValue+1);
-      var log2 = 0;
-      var pow2 = 1;
-      GL.log2ceilLookup[0] = 0;
-      for (var i = 1; i <= maxValue; ++i) {
-        if (i > pow2) {
-          pow2 <<= 1;
-          ++log2;
-        }
-        GL.log2ceilLookup[i] = log2;
-      }
+    log2ceilLookup: function(i) {
+      return 32 - Math.clz32(i-1);
     },
 
     generateTempBuffers: function(quads, context) {
-      var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
+      var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
       context.tempVertexBufferCounters1 = [];
       context.tempVertexBufferCounters2 = [];
       context.tempVertexBufferCounters1.length = context.tempVertexBufferCounters2.length = largestIndex+1;
@@ -287,7 +273,7 @@ var LibraryGL = {
     },
 
     getTempVertexBuffer: function getTempVertexBuffer(sizeBytes) {
-      var idx = GL.log2ceilLookup[sizeBytes];
+      var idx = GL.log2ceilLookup(sizeBytes);
       var ringbuffer = GL.currentContext.tempVertexBuffers1[idx];
       var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
       GL.currentContext.tempVertexBufferCounters1[idx] = (GL.currentContext.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
@@ -304,7 +290,7 @@ var LibraryGL = {
     },
 
     getTempIndexBuffer: function getTempIndexBuffer(sizeBytes) {
-      var idx = GL.log2ceilLookup[sizeBytes];
+      var idx = GL.log2ceilLookup(sizeBytes);
       var ibo = GL.currentContext.tempIndexBuffers[idx];
       if (ibo) {
         return ibo;
@@ -330,7 +316,7 @@ var LibraryGL = {
       vb = GL.currentContext.tempVertexBufferCounters1;
       GL.currentContext.tempVertexBufferCounters1 = GL.currentContext.tempVertexBufferCounters2;
       GL.currentContext.tempVertexBufferCounters2 = vb;
-      var largestIndex = GL.log2ceilLookup[GL.MAX_TEMP_BUFFER_SIZE];
+      var largestIndex = GL.log2ceilLookup(GL.MAX_TEMP_BUFFER_SIZE);
       for (var i = 0; i <= largestIndex; ++i) {
         GL.currentContext.tempVertexBufferCounters1[i] = 0;
       }
@@ -1056,6 +1042,7 @@ var LibraryGL = {
                                              "OES_element_index_uint", "EXT_texture_filter_anisotropic", "EXT_frag_depth",
                                              "WEBGL_draw_buffers", "ANGLE_instanced_arrays", "OES_texture_float_linear",
                                              "OES_texture_half_float_linear", "EXT_blend_minmax", "EXT_shader_texture_lod",
+                                             "EXT_texture_norm16",
                                              // Community approved WebGL extensions ordered by number:
                                              "WEBGL_compressed_texture_pvrtc", "EXT_color_buffer_half_float", "WEBGL_color_buffer_float",
                                              "EXT_sRGB", "WEBGL_compressed_texture_etc1", "EXT_disjoint_timer_query",

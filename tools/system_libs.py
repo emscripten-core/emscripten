@@ -58,10 +58,11 @@ def dir_is_newer(dir_a, dir_b):
 
 def get_cflags(force_object_files=False):
   flags = []
-  if force_object_files:
-    flags += ['-s', 'WASM_OBJECT_FILES=1']
-  elif not shared.Settings.WASM_OBJECT_FILES:
-    flags += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.WASM_BACKEND:
+    if force_object_files:
+      flags += ['-s', 'WASM_OBJECT_FILES=1']
+    elif not shared.Settings.WASM_OBJECT_FILES:
+      flags += ['-s', 'WASM_OBJECT_FILES=0']
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
@@ -413,7 +414,7 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return '.a' if shared.Settings.WASM_BACKEND and shared.Settings.WASM_OBJECT_FILES else '.bc'
+    return '.a' if shared.Settings.WASM_BACKEND else '.bc'
 
   def get_filename(self):
     """
@@ -607,34 +608,30 @@ class CXXLibrary(Library):
 
 
 class NoBCLibrary(Library):
-  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every object in the library.
-  # While the optimizer will readily optimize out most of the unused functions, things like global constructors that
-  # are linked in cannot be optimized out, even though they are not actually needed. If we use .a files for such
-  # libraries, only the object files, and by extension, their contained global constructors, that are actually needed
-  # will be linked in.
+  # Some libraries cannot be compiled as .bc files. This is because .bc files will link in every
+  # object in the library.  While the optimizer will readily optimize out most of the unused
+  # functions, things like global constructors that are linked in cannot be optimized out, even
+  # though they are not actually needed. If we use .a files for such libraries, only the object
+  # files, and by extension, their contained global constructors, that are actually needed will be
+  # linked in.
   def get_ext(self):
     return '.a'
 
 
 class libcompiler_rt(Library):
   name = 'libcompiler_rt'
+  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
+  # restriction soon: https://reviews.llvm.org/D71738
+  force_object_files = True
 
   cflags = ['-O2', '-fno-builtin']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'builtins']
-  src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
   if shared.Settings.WASM_BACKEND:
-    src_files += ['addtf3.c', 'ashlti3.c', 'ashrti3.c', 'atomic.c', 'comparetf2.c', 'clzti2.c',
-                  'divtf3.c', 'divti3.c', 'udivmodti4.c',
-                  'extenddftf2.c', 'extendsftf2.c',
-                  'fixdfti.c', 'fixsfti.c', 'fixtfdi.c', 'fixtfsi.c', 'fixtfti.c',
-                  'fixunsdfti.c', 'fixunssfti.c', 'fixunstfdi.c', 'fixunstfsi.c', 'fixunstfti.c',
-                  'floatditf.c', 'floatsitf.c', 'floattidf.c', 'floattisf.c', 'floattitf.c',
-                  'floatunditf.c', 'floatunsitf.c', 'floatuntidf.c', 'floatuntisf.c', 'lshrti3.c',
-                  'modti3.c', 'multc3.c', 'multf3.c', 'multi3.c', 'subtf3.c', 'udivti3.c', 'umodti3.c', 'ashrdi3.c',
-                  'ashldi3.c', 'fixdfdi.c', 'floatdidf.c', 'lshrdi3.c', 'moddi3.c',
-                  'trunctfdf2.c', 'trunctfsf2.c', 'umoddi3.c', 'fixunsdfdi.c', 'muldi3.c',
-                  'divdi3.c', 'divmoddi4.c', 'udivdi3.c', 'udivmoddi4.c']
+    filelist = shared.path_from_root('system', 'lib', 'compiler-rt', 'filelist.txt')
+    src_files = open(filelist).read().splitlines()
     src_files.append(shared.path_from_root('system', 'lib', 'compiler-rt', 'extras.c'))
+  else:
+    src_files = ['divdc3.c', 'divsc3.c', 'muldc3.c', 'mulsc3.c']
 
 
 class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
@@ -1171,8 +1168,10 @@ class libpthread(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
     return 'libpthread' if self.is_mt else 'libpthread_stub'
 
 
-class CompilerRTWasmLibrary(NoBCLibrary):
+class CompilerRTWasmLibrary(Library):
   cflags = ['-O2', '-fno-builtin']
+  # compiler_rt files can't currently be part of LTO although we are hoping to remove this
+  # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
   def can_build(self):

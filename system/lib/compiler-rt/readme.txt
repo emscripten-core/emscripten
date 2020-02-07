@@ -1,11 +1,13 @@
-These files are from compiler-rt,
+These files are from llvm-project/compiler-rt,
 
 Last Changed Rev: 266813
 Last Changed Date: Tue Apr 19 13:29:59 2016
 
 ===========================================================================
 
- No changes from upstream (but not all files are included).
+ No changes from upstream, but not all files are included.
+
+ The list of included files from lib/builtins/ is in filelist.txt.
 
 ===========================================================================
 

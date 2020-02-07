@@ -22,7 +22,7 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py')
 
 from tools.shared import Building, STDOUT, PIPE, run_js, run_process, try_delete
-from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER
+from tools.shared import NODE_JS, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, PYTHON, EMCC, EMAR, WINDOWS, MACOS, AUTODEBUGGER, LLVM_ROOT
 from tools import jsrun, shared
 from runner import RunnerCore, path_from_root, EMTEST_SKIP_SLOW
 from runner import skip_if, no_wasm_backend, no_fastcomp, needs_dlfcn, no_windows, no_asmjs, env_modify, with_env_modify, is_slow_test, create_test_file, parameterized
@@ -227,6 +227,21 @@ def no_lsan(note):
     @wraps(f)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=leak' in self.emcc_args:
+        self.skipTest(note)
+      f(self, *args, **kwargs)
+    return decorated
+  return decorator
+
+
+def no_minimal_runtime(note):
+  assert not callable(note)
+
+  def decorator(f):
+    assert callable(f)
+
+    @wraps(f)
+    def decorated(self, *args, **kwargs):
+      if 'MINIMAL_RUNTIME=1' in self.emcc_args or self.get_setting('MINIMAL_RUNTIME'):
         self.skipTest(note)
       f(self, *args, **kwargs)
     return decorated
@@ -1017,6 +1032,13 @@ base align: 0, 0, 0, 0'''])
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp')
 
   def test_longjmp2(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
+
+  @needs_dlfcn
+  def test_longjmp2_main_module(self):
+    # Test for binaryen regression:
+    # https://github.com/WebAssembly/binaryen/issues/2180
+    self.set_setting('MAIN_MODULE')
     self.do_run_in_out_file_test('tests', 'core', 'test_longjmp2')
 
   def test_longjmp3(self):
@@ -1964,7 +1986,7 @@ int main(int argc, char **argv) {
   def test_em_js(self, args):
     if 'MAIN_MODULE' in args and self.get_setting('WASM') == 0:
       self.skipTest('main module support for non-wasm')
-    self.emcc_args += args
+    self.emcc_args += args + ['-s', 'EXPORTED_FUNCTIONS=["_main","_malloc"]']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js')
     self.do_run_in_out_file_test('tests', 'core', 'test_em_js', force_c=True)
 
@@ -1973,7 +1995,6 @@ int main(int argc, char **argv) {
     self.do_run(src, 'success')
 
   # Tests that -s MINIMAL_RUNTIME=1 builds can utilize -s ALLOW_MEMORY_GROWTH=1 option.
-  @no_wasm2js('MINIMAL_RUNTIME not yet working with WASM2JS')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -3640,7 +3661,7 @@ ok
       print('flip')
       self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False, **kwargs)
 
-  def do_basic_dylink_test(self):
+  def do_basic_dylink_test(self, need_reverse=True):
     self.dylink_test(r'''
       #include <stdio.h>
       #include "header.h"
@@ -3655,10 +3676,15 @@ ok
       int sidey() {
         return 11;
       }
-    ''', 'other says 11.', 'extern "C" int sidey();')
+    ''', 'other says 11.', 'extern "C" int sidey();', need_reverse=need_reverse)
 
   @needs_dlfcn
   def test_dylink_basics(self):
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
+  def test_dylink_no_export(self):
+    self.set_setting('NO_DECLARE_ASM_MODULE_EXPORTS')
     self.do_basic_dylink_test()
 
   @needs_dlfcn
@@ -4847,6 +4873,7 @@ Pass: 0.000012 0.000012''')
     elif '-O3' in self.emcc_args and not self.is_wasm():
       print('closure 2')
       self.emcc_args += ['--closure', '2', '-Wno-almost-asm'] # Use closure 2 here for some additional coverage
+      return self.skipTest('TODO: currently skipped because CI runs out of memory running Closure in this test!')
 
     self.emcc_args += ['-s', 'FORCE_FILESYSTEM=1', '--pre-js', 'pre.js']
 
@@ -5121,6 +5148,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'utime', 'test_utime.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+  @no_minimal_runtime('MINIMAL_RUNTIME does not have getValue() and setValue() (TODO add it to a JS library function to get it in)')
   def test_utf(self):
     self.banned_js_engines = [SPIDERMONKEY_ENGINE] # only node handles utf well
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_malloc'])
@@ -5128,13 +5156,19 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'core', 'test_utf')
 
   def test_utf32(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$UTF32ToString', '$stringToUTF32', '$lengthBytesUTF32'])
+    else:
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF32ToString', 'stringToUTF32', 'lengthBytesUTF32'])
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.')
     self.do_run(open(path_from_root('tests', 'utf32.cpp')).read(), 'OK.', args=['-fshort-wchar'])
 
   def test_utf8(self):
-    self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
-                     ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$AsciiToString', '$stringToAscii', '$writeAsciiToMemory'])
+    else:
+      self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
+                       ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.emcc_args += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
@@ -5152,7 +5186,6 @@ main( int argv, char ** argc ) {
       self.do_run(open(path_from_root('tests', 'utf8_invalid.cpp')).read(), 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
-  @no_wasm_backend("TODO: MINIMAL_RUNTIME not yet available with wasm backend")
   @no_emterpreter
   def test_minimal_runtime_utf8_invalid(self):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
@@ -6576,12 +6609,14 @@ return malloc(size);
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['dynCall', 'addFunction', 'lengthBytesUTF8', 'getTempRet0', 'setTempRet0'])
     self.do_run_in_out_file_test('tests', 'core', 'EXTRA_EXPORTED_RUNTIME_METHODS')
 
+  @no_fastcomp('fails mysteriously on fastcomp (dynCall_viji is not defined); ignored, because fastcomp is deprecated')
+  @no_minimal_runtime('MINIMAL_RUNTIME does not blindly export all symbols to Module to save code size')
   def test_dyncall_specific(self):
     emcc_args = self.emcc_args[:]
     for which, exported_runtime_methods in [
         ('DIRECT', []),
         ('EXPORTED', []),
-        ('FROM_OUTSIDE', ['dynCall_viii'])
+        ('FROM_OUTSIDE', ['dynCall_viji'])
       ]:
       print(which)
       self.emcc_args = emcc_args + ['-D' + which]
@@ -7348,6 +7383,151 @@ err = err = function(){};
     else:
       assert seen_lines.issuperset([6, 7, 11, 12]), seen_lines
 
+  @no_wasm2js('TODO: source maps in wasm2js')
+  @no_fastcomp('DWARF is only supported in upstream')
+  def test_dwarf(self):
+    self.emcc_args.append('-gforce_dwarf')
+    self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
+
+    create_test_file('src.cpp', '''
+      #include <emscripten.h>
+      EM_JS(int, out_to_js, (int x), {})
+      void foo() {
+        out_to_js(0); // line 5
+        out_to_js(1); // line 6
+        out_to_js(2); // line 7
+        // A silly possible recursion to avoid binaryen doing any inlining.
+        if (out_to_js(3)) foo();
+      }
+      int main() {
+        foo();
+      }
+    ''')
+
+    js_filename = 'a.out.js'
+    wasm_filename = 'a.out.wasm'
+
+    Building.emcc('src.cpp',
+                  self.serialize_settings() + self.emcc_args,
+                  js_filename)
+
+    LLVM_DWARFDUMP = os.path.join(LLVM_ROOT, 'llvm-dwarfdump')
+    out = run_process([LLVM_DWARFDUMP, wasm_filename, '-all'], stdout=PIPE).stdout
+
+    # parse the sections
+    sections = {}
+    curr_section_name = ''
+    curr_section_body = ''
+
+    def add_section():
+      if curr_section_name:
+        sections[curr_section_name] = curr_section_body
+
+    for line in out.splitlines():
+      if ' contents:' in line:
+        # a new section, a line like ".debug_str contents:"
+        add_section()
+        curr_section_name = line.split(' ')[0]
+        curr_section_body = ''
+      else:
+        # possibly a line in a section
+        if curr_section_name:
+          curr_section_body += line + '\n'
+    add_section()
+
+    # make sure the right sections exist
+    self.assertIn('.debug_abbrev', sections)
+    self.assertIn('.debug_info', sections)
+    self.assertIn('.debug_line', sections)
+    self.assertIn('.debug_str', sections)
+    self.assertIn('.debug_ranges', sections)
+
+    # verify some content in the sections
+    self.assertIn('"src.cpp"', sections['.debug_info'])
+    # the line section looks like this:
+    # Address            Line   Column File   ISA Discriminator Flags
+    # ------------------ ------ ------ ------ --- ------------- -------------
+    # 0x000000000000000b      5      0      3   0             0  is_stmt
+    src_to_addr = {}
+    for line in sections['.debug_line'].splitlines():
+      if line.startswith('0x'):
+        while '  ' in line:
+          line = line.replace('  ', ' ')
+        addr, line, col = line.split(' ')[:3]
+        key = (int(line), int(col))
+        src_to_addr.setdefault(key, []).append(addr)
+
+    # each of the calls must remain in the binary, and be mapped
+    self.assertIn((5, 9), src_to_addr)
+    self.assertIn((6, 9), src_to_addr)
+    self.assertIn((7, 9), src_to_addr)
+
+    def get_dwarf_addr(line, col):
+      addrs = src_to_addr[(line, col)]
+      assert len(addrs) == 1, 'we assume the simple calls have one address'
+      return int(addrs[0], 0)
+
+    # the lines must appear in sequence (as calls to JS, the optimizer cannot
+    # reorder them)
+    self.assertLess(get_dwarf_addr(5, 9), get_dwarf_addr(6, 9))
+    self.assertLess(get_dwarf_addr(6, 9), get_dwarf_addr(7, 9))
+
+    # get the wat, printing with -g which has binary offsets
+    wat = run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'),
+                       wasm_filename, '-g', '--print'], stdout=PIPE).stdout
+
+    # we expect to see a pattern like this, as in both debug and opt builds
+    # there isn't much that can change with such calls to JS (they can't be
+    # reordered or anything else):
+    #
+    #   ;; code offset: 0x?
+    #   (drop
+    #    ;; code offset: 0x?
+    #    (call $out_to_js
+    #     ;; code offset: 0x?
+    #     (local.get ?) or (i32.const ?)
+    #    )
+    #   )
+    #
+    # In stacky stream of instructions form, it is
+    #   local.get or i32.const
+    #   call $out_to_js
+    #   drop
+
+    # get_wat_addr gets the address of one of the 3 interesting calls, by its
+    # index (0,1,2).
+    def get_wat_addr(call_index):
+      # find the call_index-th call
+      call_loc = -1
+      for i in range(call_index + 1):
+        call_loc = wat.find('call $out_to_js', call_loc + 1)
+        assert call_loc > 0
+      # the call begins with the local.get/i32.const printed below it, which is
+      # the first instruction in the stream, so it has the lowest address
+      start_addr_loc = wat.find('0x', call_loc)
+      assert start_addr_loc > 0
+      start_addr_loc_end = wat.find('\n', start_addr_loc)
+      start_addr = int(wat[start_addr_loc:start_addr_loc_end], 0)
+      # the call ends with the drop, which is the last in the stream, at the
+      # highest address
+      end_addr_loc = wat.rfind('drop', 0, call_loc)
+      assert end_addr_loc > 0
+      end_addr_loc = wat.rfind('0x', 0, end_addr_loc)
+      assert end_addr_loc > 0
+      end_addr_loc_end = wat.find('\n', end_addr_loc)
+      assert end_addr_loc_end > 0
+      end_addr = int(wat[end_addr_loc:end_addr_loc_end], 0)
+      return (start_addr, end_addr)
+
+    # match up the DWARF and the wat
+    for i in range(3):
+      dwarf_addr = get_dwarf_addr(5 + i, 9)
+      start_wat_addr, end_wat_addr = get_wat_addr(i)
+      # the dwarf may match any of the 3 instructions that form the stream of
+      # of instructions implementing the call in the source code, in theory
+      self.assertLessEqual(start_wat_addr, dwarf_addr)
+      self.assertLessEqual(dwarf_addr, end_wat_addr)
+
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -7837,6 +8017,13 @@ extern "C" {
   def test_coroutine_asyncify(self):
     self.do_test_coroutine({'ASYNCIFY': 1})
 
+  @no_fastcomp('Fibers are not implemented for fastcomp')
+  def test_fibers_asyncify(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.emcc_args += ['-std=gnu++11']
+    src = open(path_from_root('tests', 'test_fibers.cpp')).read()
+    self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
+
   @no_wasm_backend('ASYNCIFY is not supported in the LLVM wasm backend')
   @no_fastcomp('ASYNCIFY has been removed from fastcomp')
   def test_asyncify_unused(self):
@@ -8008,6 +8195,26 @@ extern "C" {
     os.remove('src.c.o.wasm')
     # verify that it runs
     self.assertContained('hello, world!', run_js('do_wasm2js.js'))
+
+  @no_fastcomp('wasm-backend specific feature')
+  def test_wasm2js_fallback(self):
+    if self.get_setting('WASM') == 0:
+      self.skipTest('redundant to test wasm2js in wasm2js* mode')
+
+    for args in [[], ['-s', 'MINIMAL_RUNTIME=1']]:
+      cmd = [PYTHON, EMCC, path_from_root('tests', 'small_hello_world.c'), '-s', 'WASM=2'] + args
+      run_process(cmd)
+
+      # First run with WebAssembly support enabled
+      # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
+      os.rename('a.out.wasm.js', 'a.out.wasm.js.unused')
+      self.assertContained('hello!', run_js('a.out.js'))
+      os.rename('a.out.wasm.js.unused', 'a.out.wasm.js')
+
+      # Then disable WebAssembly support in VM, and try again.. Should still work with Wasm2JS fallback.
+      open('b.out.js', 'w').write('WebAssembly = undefined;\n' + open('a.out.js', 'r').read())
+      os.remove('a.out.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
+      self.assertContained('hello!', run_js('b.out.js'))
 
   def test_cxx_self_assign(self):
     # See https://github.com/emscripten-core/emscripten/pull/2688 and http://llvm.org/bugs/show_bug.cgi?id=18735
@@ -8230,10 +8437,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.maybe_closure()
     self.do_run(open(path_from_root('tests', 'declare_asm_module_exports.cpp')).read(), 'jsFunction: 1')
+    js = open('src.cpp.o.js').read()
+    occurances = js.count('cFunction')
+    if is_optimizing(self.emcc_args) and '-g' not in self.emcc_args:
+      # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
+      if self.is_wasm():
+        self.assertEqual(occurances, 1)
+      else:
+        # With js the asm module itself also contains a reference for the cFunction name
+        self.assertEqual(occurances, 2)
+    else:
+      print(occurances)
 
   # Tests that building with -s DECLARE_ASM_MODULE_EXPORTS=0 works
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_no_declare_asm_module_exports(self):
     self.set_setting('DECLARE_ASM_MODULE_EXPORTS', 0)
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8243,29 +8460,33 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests that -s MINIMAL_RUNTIME=1 works well in different build modes
   @no_emterpreter
-  @no_asan('TODO: ASan with MINIMAL_RUNTIME')
-  @no_lsan('TODO: LSan with MINIMAL_RUNTIME')
-  @no_wasm2js('TODO: MINIMAL_RUNTIME with WASM2JS')
-  def test_minimal_runtime_hello_world(self):
-    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE] # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
-    for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1'], ['-s', 'DECLARE_ASM_MODULE_EXPORTS=0']]:
-      self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
-      self.set_setting('MINIMAL_RUNTIME', 1)
-      self.maybe_closure()
-      self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
+  @parameterized({
+    'default': ([],),
+    'streaming': (['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1'],),
+    'streaming_inst': (['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1'],),
+    'no_export': (['-s', 'DECLARE_ASM_MODULE_EXPORTS=0'],)
+  })
+  def test_minimal_runtime_hello_world(self, args):
+    # TODO: Support for non-Node.js shells has not yet been added to MINIMAL_RUNTIME
+    self.banned_js_engines = [V8_ENGINE, SPIDERMONKEY_ENGINE]
+    self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
+    self.set_setting('MINIMAL_RUNTIME', 1)
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'small_hello_world.c')).read(), 'hello')
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
-  def test_minimal_runtime_hello_world_printf(self):
-    for fs in [['-s', 'NO_FILESYSTEM=1'], ['-s', 'FORCE_FILESYSTEM=1']]:
-      self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + fs
-      self.maybe_closure()
-      self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
+  @parameterized({
+    'fs': (['-s', 'FORCE_FILESYSTEM=1'],),
+    'nofs': (['-s', 'NO_FILESYSTEM=1'],),
+  })
+  def test_minimal_runtime_hello_printf(self, args):
+    self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1'] + args
+    self.maybe_closure()
+    self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
   # Tests that -s MINIMAL_RUNTIME=1 works well with SAFE_HEAP
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_safe_heap(self):
     self.emcc_args = ['-s', 'MINIMAL_RUNTIME=1', '-s', 'SAFE_HEAP=1']
     self.maybe_closure()
@@ -8273,7 +8494,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   # Tests global initializer with -s MINIMAL_RUNTIME=1
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_minimal_runtime_global_initializer(self):
     self.set_setting('MINIMAL_RUNTIME', 1)
     self.maybe_closure()
@@ -8568,6 +8788,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+  # Tests the emscripten_get_exported_function() API.
+  def test_emscripten_get_exported_function(self):
+    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.emcc_args += ['-lexports.js']
+    self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
+
+  # Tests the emscripten_get_exported_function() API.
+  def test_minimal_runtime_emscripten_get_exported_function(self):
+    # Could also test with -s ALLOW_TABLE_GROWTH=1
+    self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
+    self.emcc_args += ['-lexports.js', '-s', 'MINIMAL_RUNTIME=1']
+    self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
+
 
 # Generate tests for everything
 def make_run(name, emcc_args, settings=None, env=None):
@@ -8630,12 +8864,12 @@ wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
 
-wasmlto0 = make_run('wasmlto0', emcc_args=['-O0'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto1 = make_run('wasmlto1', emcc_args=['-O1'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto2 = make_run('wasmlto2', emcc_args=['-O2'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto3 = make_run('wasmlto3', emcc_args=['-O3'], settings={'WASM_OBJECT_FILES': 0})
-wasmltos = make_run('wasmltos', emcc_args=['-Os'], settings={'WASM_OBJECT_FILES': 0})
-wasmltoz = make_run('wasmltoz', emcc_args=['-Oz'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto0 = make_run('wasmlto0', emcc_args=['-O0', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto1 = make_run('wasmlto1', emcc_args=['-O1', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto2 = make_run('wasmlto2', emcc_args=['-O2', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto3 = make_run('wasmlto3', emcc_args=['-O3', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmltos = make_run('wasmltos', emcc_args=['-Os', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmltoz = make_run('wasmltoz', emcc_args=['-Oz', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
 
 if shared.Settings.WASM_BACKEND:
   wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})

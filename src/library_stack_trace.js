@@ -1,7 +1,7 @@
 var LibraryStackTrace = {
 
   $demangle__deps: [
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !WASM_BACKEND
   '$stackSave', '$stackAlloc', '$stackRestore'
 #if ASSERTIONS
     , '$warnOnce'
@@ -66,7 +66,7 @@ var LibraryStackTrace = {
       // IE10+ special cases: It does have callstack info, but it is only populated if an Error object is thrown,
       // so try that as a special-case.
       try {
-        throw new Error(0);
+        throw new Error();
       } catch(e) {
         err = e;
       }
