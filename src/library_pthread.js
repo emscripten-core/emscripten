@@ -1322,6 +1322,11 @@ var LibraryPThread = {
     establishStackSpace(stackTop, stackMax);
   },
 
+  // allow pthreads to check if noExitRuntime from worker.js
+  $getNoExitRuntime: function() {
+    return noExitRuntime;
+  },
+
   // This function is called internally to notify target thread ID that it has messages it needs to
   // process in its message queue inside the Wasm heap. As a helper, the caller must also pass the
   // ID of the main browser thread to this function, to avoid needlessly ping-ponging between JS and
