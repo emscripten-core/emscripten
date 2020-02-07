@@ -130,6 +130,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('CommandBuffer') }}}
       {{{ gpu.makeInitManager('CommandEncoder') }}}
       {{{ gpu.makeInitManager('RenderPassEncoder') }}}
+      {{{ gpu.makeInitManager('ComputePassEncoder') }}}
 
       {{{ gpu.makeInitManager('BindGroup') }}}
       {{{ gpu.makeInitManager('Buffer') }}}
@@ -140,6 +141,7 @@ var LibraryWebGPU = {
       {{{ gpu.makeInitManager('BindGroupLayout') }}}
       {{{ gpu.makeInitManager('PipelineLayout') }}}
       {{{ gpu.makeInitManager('RenderPipeline') }}}
+      {{{ gpu.makeInitManager('ComputePipeline') }}}
       {{{ gpu.makeInitManager('ShaderModule') }}}
 
       {{{ gpu.makeInitManager('RenderBundleEncoder') }}}
@@ -465,6 +467,7 @@ var LibraryWebGPU = {
   {{{ gpu.makeReferenceRelease('CommandBuffer') }}}
   {{{ gpu.makeReferenceRelease('CommandEncoder') }}}
   {{{ gpu.makeReferenceRelease('RenderPassEncoder') }}}
+  {{{ gpu.makeReferenceRelease('ComputePassEncoder') }}}
 
   {{{ gpu.makeReferenceRelease('BindGroup') }}}
   {{{ gpu.makeReferenceRelease('Buffer') }}}
@@ -475,6 +478,7 @@ var LibraryWebGPU = {
   {{{ gpu.makeReferenceRelease('BindGroupLayout') }}}
   {{{ gpu.makeReferenceRelease('PipelineLayout') }}}
   {{{ gpu.makeReferenceRelease('RenderPipeline') }}}
+  {{{ gpu.makeReferenceRelease('ComputePipeline') }}}
   {{{ gpu.makeReferenceRelease('ShaderModule') }}}
 
   {{{ gpu.makeReferenceRelease('RenderBundleEncoder') }}}
@@ -741,6 +745,8 @@ var LibraryWebGPU = {
 
     var desc = {
       "label": undefined,
+      "layout":  WebGPU.mgrPipelineLayout.get(
+        {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePipelineDescriptor.layout, '*') }}}),
       "computeStage": WebGPU.makeProgrammableStageDescriptor(
         descriptor + {{{ C_STRUCTS.WGPUComputePipelineDescriptor.computeStage }}}),
     };
@@ -952,13 +958,13 @@ var LibraryWebGPU = {
     var fence = WebGPU.mgrFence.get(fenceId);
     var completionValue = {{{ gpu.makeU64ToNumber('completionValue_l', 'completionValue_h') }}};
 
-    var DAWN_FENCE_COMPLETION_STATUS_SUCCESS = 0;
-    var DAWN_FENCE_COMPLETION_STATUS_ERROR = 1;
+    var WEBGPU_FENCE_COMPLETION_STATUS_SUCCESS = 0;
+    var WEBGPU_FENCE_COMPLETION_STATUS_ERROR = 1;
 
     fence.onCompletion(completionValue).then(function() {
-      dynCall('vii', callback, [DAWN_FENCE_COMPLETION_STATUS_SUCCESS, userdata]);
+      dynCall('vii', callback, [WEBGPU_FENCE_COMPLETION_STATUS_SUCCESS, userdata]);
     }, function() {
-      dynCall('vii', callback, [DAWN_FENCE_COMPLETION_STATUS_ERROR, userdata]);
+      dynCall('vii', callback, [WEBGPU_FENCE_COMPLETION_STATUS_ERROR, userdata]);
     });
   },
 
@@ -1034,6 +1040,18 @@ var LibraryWebGPU = {
     var desc = makeRenderBundleEncoderDescriptor(descriptor);
     var device = WebGPU["mgrDevice"].get(deviceId);
     return WebGPU.mgrRenderBundleEncoder.create(device["createRenderBundleEncoder"](desc));
+  },
+
+  wgpuCommandEncoderBeginComputePass: function(encoderId, descriptor) {
+    var desc;
+    if (descriptor) {
+      {{{ gpu.makeCheckDescriptor('descriptor') }}}
+      desc = {};
+      var labelPtr = {{{ makeGetValue('descriptor', C_STRUCTS.WGPUComputePassDescriptor.label, '*') }}};
+      if (labelPtr) desc["label"] = UTF8ToString(labelPtr);
+    }
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    return WebGPU.mgrComputePassEncoder.create(commandEncoder["beginComputePass"](desc));
   },
 
   wgpuCommandEncoderBeginRenderPass: function(encoderId, descriptor) {
@@ -1137,6 +1155,13 @@ var LibraryWebGPU = {
       WebGPU.makeTextureCopyView(srcPtr), WebGPU.makeBufferCopyView(dstPtr), copySize);
   },
 
+  wgpuCommandEncoderCopyTextureToTexture: function(encoderId, srcPtr, dstPtr, copySizePtr) {
+    var commandEncoder = WebGPU.mgrCommandEncoder.get(encoderId);
+    var copySize = WebGPU.makeExtent3D(copySizePtr);
+    commandEncoder["copyTextureToTexture"](
+      WebGPU.makeTextureCopyView(srcPtr), WebGPU.makeTextureCopyView(dstPtr), copySize);
+  },
+
   // wgpuBuffer
 
   wgpuBufferSetSubData: function(bufferId, start_l, start_h, count_l, count_h, data) {
@@ -1152,17 +1177,17 @@ var LibraryWebGPU = {
     var buffer = bufferEntry.object;
 
     buffer["mapReadAsync"]().then(function(mapped) {
-      var DAWN_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
+      var WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
       var data = _malloc(mapped.byteLength);
       HEAPU8.set(new Uint8Array(mapped), data);
       var dataLength_h = (mapped.byteLength / 0x100000000) | 0;
       var dataLength_l = mapped.byteLength | 0;
       // WGPUBufferMapAsyncStatus status, const void* data, uint64_t dataLength, void* userdata
-      dynCall('viiji', callback, [DAWN_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
+      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
     }, function() {
       // TODO(kainino0x): Figure out how to pick other error status values.
-      var DAWN_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
-      dynCall('viiji', callback, [DAWN_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
+      var WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
+      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
     });
   },
 
@@ -1170,8 +1195,8 @@ var LibraryWebGPU = {
     var bufferWrapper = WebGPU.mgrBuffer.objects[bufferId];
     var buffer = bufferWrapper.object;
 
-    var DAWN_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
-    var DAWN_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
+    var WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS = 0;
+    var WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR = 1;
     buffer["mapWriteAsync"]().then(function(mapped) {
       WebGPU.trackMapWrite(bufferWrapper, mapped);
 
@@ -1179,10 +1204,10 @@ var LibraryWebGPU = {
       var dataLength_h = (mapped.byteLength / 0x100000000) | 0;
       var dataLength_l = mapped.byteLength | 0;
       // WGPUBufferMapAsyncStatus status, void* data, uint64_t dataLength, void* userdata
-      dynCall('viiji', callback, [DAWN_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
+      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_SUCCESS, data, dataLength_l, dataLength_h, userdata]);
     }, function() {
       // TODO(kainino0x): Figure out how to pick other error status values.
-      dynCall('viiji', callback, [DAWN_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
+      dynCall('viiji', callback, [WEBGPU_BUFFER_MAP_ASYNC_STATUS_ERROR, 0, 0, 0, userdata]);
     });
   },
 
@@ -1220,6 +1245,19 @@ var LibraryWebGPU = {
 
   // wgpuComputePass
 
+  wgpuComputePassEncoderSetBindGroup: function(passId, groupIndex, groupId, dynamicOffsetCount, dynamicOffsetsPtr) {
+    var pass = WebGPU.mgrComputePassEncoder.get(passId);
+    var group = WebGPU.mgrBindGroup.get(groupId);
+    if (dynamicOffsetCount == 0) {
+      pass["setBindGroup"](groupIndex, group);
+    } else {
+      var offsets = [];
+      for (var i = 0; i < dynamicOffsetCount; i++, dynamicOffsetsPtr += 4) {
+        offsets.push({{{ gpu.makeGetU32('dynamicOffsetsPtr', 0) }}});
+      }
+      pass["setBindGroup"](groupIndex, group, offsets);
+    }
+  },
   wgpuComputePassEncoderSetPipeline: function(passId, pipelineId) {
     var pass = WebGPU.mgrComputePassEncoder.get(passId);
     var pipeline = WebGPU.mgrComputePipeline.get(pipelineId);
@@ -1254,6 +1292,11 @@ var LibraryWebGPU = {
       }
       pass["setBindGroup"](groupIndex, group, offsets);
     }
+  },
+  wgpuRenderPassEncoderSetBlendColor: function(passId, colorPtr) {
+    var pass = WebGPU.mgrRenderPassEncoder.get(passId);
+    var color = WebGPU.makeColor(colorPtr);
+    pass["setBlendColor"](color);
   },
   wgpuRenderPassEncoderSetIndexBuffer: function(passId, bufferId, offset) {
     var pass = WebGPU.mgrRenderPassEncoder.get(passId);

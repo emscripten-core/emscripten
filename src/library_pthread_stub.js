@@ -163,23 +163,15 @@ var LibraryPThreadStub = {
   emscripten_main_browser_thread_id: function() { return _pthread_self(); },
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
+  usleep__deps: ['emscripten_get_now'],
   usleep: function(useconds) {
     // int usleep(useconds_t useconds);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
-    var msec = useconds / 1000;
-    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
-      var start = self['performance']['now']();
-      while (self['performance']['now']() - start < msec) {
-        // Do nothing.
-      }
-    } else {
-      var start = Date.now();
-      while (Date.now() - start < msec) {
-        // Do nothing.
-      }
+    var start = _emscripten_get_now();
+    while (_emscripten_get_now() - start < useconds / 1000) {
+      // Do nothing.
     }
-    return 0;
   },
 
   nanosleep__deps: ['usleep', '__setErrNo'],

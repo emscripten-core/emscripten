@@ -376,21 +376,11 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'AsciiToString',
-    'stringToAscii',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
     'stringToUTF8',
     'lengthBytesUTF8',
-    'UTF16ToString',
-    'stringToUTF16',
-    'lengthBytesUTF16',
-    'UTF32ToString',
-    'stringToUTF32',
-    'lengthBytesUTF32',
-    'allocateUTF8',
-    'allocateUTF8OnStack',
     'stackTrace',
     'addOnPreRun',
     'addOnInit',
@@ -402,8 +392,6 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
-    'ENV',
-    'FS',
     'FS_createFolder',
     'FS_createPath',
     'FS_createDataFile',
@@ -412,7 +400,6 @@ function exportRuntime() {
     'FS_createLink',
     'FS_createDevice',
     'FS_unlink',
-    'GL',
     'dynamicAlloc',
     'loadDynamicLibrary',
     'loadWebAssemblyModule',
@@ -435,11 +422,33 @@ function exportRuntime() {
     'abort',
   ];
 
+  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
+  // '$ which indicates they are JS methods.
+  for (var ident in LibraryManager.library) {
+    if (ident[0] === '$') {
+      runtimeElements.push(ident.substr(1));
+    }
+  }
+
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('warnOnce');
-    runtimeElements.push('stackSave');
-    runtimeElements.push('stackRestore');
-    runtimeElements.push('stackAlloc');
+    // MINIMAL_RUNTIME has moved these functions to library_strings.js
+    runtimeElements = runtimeElements.concat([
+      'warnOnce',
+      'stackSave',
+      'stackRestore',
+      'stackAlloc',
+      'AsciiToString',
+      'stringToAscii',
+      'UTF16ToString',
+      'stringToUTF16',
+      'lengthBytesUTF16',
+      'UTF32ToString',
+      'stringToUTF32',
+      'lengthBytesUTF32',
+      'allocateUTF8',
+      'allocateUTF8OnStack'
+    ]);
+
     if (USE_PTHREADS) {
       runtimeElements.push('establishStackSpace');
     }

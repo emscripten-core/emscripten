@@ -1,7 +1,7 @@
 var LibraryStackTrace = {
 
   $demangle__deps: [
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !WASM_BACKEND
   '$stackSave', '$stackAlloc', '$stackRestore'
 #if ASSERTIONS
     , '$warnOnce'

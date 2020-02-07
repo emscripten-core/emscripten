@@ -684,8 +684,8 @@ var ASYNCIFY_DEBUG = 0;
 // included (either automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
-// element, and not just methods. For example, we export the Runtime object by
-// having "Runtime" in this list.
+// element, and not just methods. For example, we can export the FS object by
+// having "FS" in this list.
 var EXPORTED_RUNTIME_METHODS = [];
 
 // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
@@ -1732,6 +1732,13 @@ var DISABLE_EXCEPTION_THROWING = 0;
 // binary in stack traces, as well as for avoiding using source map entries
 // across function boundaries.
 var USE_OFFSET_CONVERTER = 0;
+
+// If set to 1, the JS compiler is run before wasm-ld so that the linker can
+// report undefined symbols within the binary.  Without this option that linker
+// doesn't know which symmbols might be defined JS and so reporting of undefined
+// symbols is deleyed until the JS compiler is run.
+// [link]
+var LLD_REPORT_UNDEFINED = 0;
 
 //===========================================
 // Internal, used for testing only, from here

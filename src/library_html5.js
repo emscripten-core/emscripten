@@ -41,7 +41,7 @@ var LibraryJSEvents = {
 #endif
     },
 
-#if !MINIMAL_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
+#if !MINIMAL_RUNTIME || EXIT_RUNTIME // In minimal runtime, there is no concept of the page running vs being closed, and hence __ATEXIT__ is not present
     registerRemoveEventListeners: function() {
       if (!JSEvents.removeEventListenersRegistered) {
         __ATEXIT__.push(JSEvents.removeAllEventListeners);
@@ -175,7 +175,7 @@ var LibraryJSEvents = {
     },
 
 #if USE_PTHREADS
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !WASM_BACKEND
     queueEventHandlerOnThread_iiii__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
 #endif
     queueEventHandlerOnThread_iiii: function(targetThread, eventHandlerFunc, eventTypeId, eventData, userData) {
@@ -2824,7 +2824,7 @@ var LibraryJSEvents = {
   },
 
   emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !WASM_BACKEND
   , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
   ],
@@ -2887,7 +2887,7 @@ var LibraryJSEvents = {
 #endif
 
   _set_canvas_element_size__deps: ['emscripten_set_canvas_element_size'
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !WASM_BACKEND
   , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
   ],
@@ -2964,7 +2964,7 @@ var LibraryJSEvents = {
 
   // JavaScript-friendly API, returns pair [width, height]
   _get_canvas_element_size__deps: ['emscripten_get_canvas_element_size'
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !WASM_BACKEND
   , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
   ],

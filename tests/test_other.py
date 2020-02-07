@@ -8309,7 +8309,7 @@ int main() {
 
   # ensures runtime exports work, even with metadce
   def test_extra_runtime_exports(self):
-    exports = ['stackSave', 'stackRestore', 'stackAlloc']
+    exports = ['stackSave', 'stackRestore', 'stackAlloc', 'FS']
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=1', '-Os', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=%s' % str(exports)])
     js = open('a.out.js').read()
     for export in exports:
@@ -9624,11 +9624,11 @@ int main () {
       ]
     else:
       test_cases = [
-        (asmjs + opts, hello_world_sources, {'a.html': 1223, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-        (opts, hello_world_sources, {'a.html': 1205, 'a.js': 633, 'a.wasm': 86}),
-        (asmjs + opts, hello_webgl_sources, {'a.html': 1353, 'a.js': 4921, 'a.asm.js': 11129, 'a.mem': 321}),
-        (opts, hello_webgl_sources, {'a.html': 1335, 'a.js': 4874, 'a.wasm': 8932}),
-        (opts, hello_webgl2_sources, {'a.html': 1335, 'a.js': 5361, 'a.wasm': 8932}) # Compare how WebGL2 sizes stack up with WebGL 1
+        (asmjs + opts, hello_world_sources, {'a.html': 1222, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
+        (opts, hello_world_sources, {'a.html': 1204, 'a.js': 630, 'a.wasm': 86}),
+        (asmjs + opts, hello_webgl_sources, {'a.html': 1352, 'a.js': 4896, 'a.asm.js': 11129, 'a.mem': 321}),
+        (opts, hello_webgl_sources, {'a.html': 1334, 'a.js': 4850, 'a.wasm': 8932}),
+        (opts, hello_webgl2_sources, {'a.html': 1334, 'a.js': 5357, 'a.wasm': 8932}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
 
     success = True
@@ -10302,3 +10302,10 @@ int main() {
     self.assertContained('function signature mismatch: foo', stderr)
     self.expect_fail([PYTHON, EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
     self.expect_fail([PYTHON, EMCC, '-s', 'STRICT', 'a.c', 'b.c'])
+
+  @no_fastcomp('lld only')
+  def test_lld_report_undefined(self):
+    create_test_file('main.c', 'void foo(); int main() { foo(); return 0; }')
+    stderr = self.expect_fail([PYTHON, EMCC, '-s', 'LLD_REPORT_UNDEFINED', 'main.c'])
+    self.assertContained('wasm-ld: error:', stderr)
+    self.assertContained('main_0.o: undefined symbol: foo', stderr)

@@ -34,11 +34,15 @@ mergeInto(LibraryManager.library, {
     },
     convertNodeCode: function(e) {
       var code = e.code;
+#if ASSERTIONS
       assert(code in ERRNO_CODES);
+#endif
       return ERRNO_CODES[code];
     },
     mount: function (mount) {
+#if ASSERTIONS
       assert(ENVIRONMENT_IS_NODE);
+#endif
       return NODEFS.createNode(null, '/', NODEFS.getMode(mount.opts.root), 0);
     },
     createNode: function (parent, name, mode, dev) {
