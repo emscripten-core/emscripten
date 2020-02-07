@@ -103,6 +103,22 @@ Why do I get ``error while loading shared libraries: libtinfo.so.5``?
 
 LLVM and clang link libtinfo dynamically. On some recent Linuxes you may have only ``libtinfo.so.6`` (while our builders target the last Ubuntu LTS). To fix this, you can do something like ``apt-get install libtinfo5`` on Debian or Ubuntu, or on Fedora something like ``dnf install ncurses-compat-libs``.
 
+Why do I get ``machine type must be wasm32`` errors during linking?
+===================================================================
+
+That error means the linker was given files that contain something other than
+wasm object code. You can run the ``file`` command-line utility to see what
+they contain. Common issues are:
+
+* LLVM IR from the old backend, if you built the project with a version before
+  1.39.0 (which used the old backend by default), and are doing an incremental
+  rebuild now. To fix that, do a complete rebuild from scratch of all your
+  project's files, including libraries (this error often happens if you have
+  prebuilt libraries from a third party; those must be recompiled too with the
+  new backend).
+* The build system was run without emscripten integration, and emitted native
+  code. To fix that, use emconfigure/emmake, see :ref:`Building-Projects`.
+
 
 Why does my code fail to compile with an error message about inline assembly (or ``{"text":"asm"}``)?
 =====================================================================================================
