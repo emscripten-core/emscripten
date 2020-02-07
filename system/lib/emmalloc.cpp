@@ -348,31 +348,6 @@ static void create_free_region(void *ptr, uint32_t size)
   ((uint32_t*)ptr)[(size>>2)-1] = ~size;
 }
 
-static void resize_region(void *ptr, uint32_t size)
-{
-  assert(ptr);
-  assert(HAS_ALIGNMENT(ptr, sizeof(uint32_t)));
-  assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
-  assert(size >= sizeof(Region));
-
-  // We are resizing an existing region that is either in free or used state. The newly resized region
-  // should preserve this free/used status, so look at the existing region and its in-use status,
-  // and propagate the state to the new region.
-  uint32_t oldSize = (int32_t)region_ceiling_size((Region*)ptr);
-
-  // Free regions have all the size bits reversed (highest bit tells it is a free region)
-  uint32_t usedMask = (uint32_t)(((int32_t)oldSize) >> 31); // Sign extend the highest bit to whole word
-
-  // Write new region size:
-  *(uint32_t*)ptr = size;
-  uint32_t *newRegionEnd = (uint32_t*)((uintptr_t)ptr + size);
-  newRegionEnd[-1] = size ^ (usedMask >> 31);
-
-#ifdef EMMALLOC_DEBUG_LOG
-  MAIN_THREAD_ASYNC_EM_ASM(console.log('Resized ' + ($0?'free':'used') + ' memory region from ' + $1 + ' bytes to ' + $2 + ' bytes.'), usedMask, oldSize, size);
-#endif
-}
-
 static void prepend_to_free_list(Region *region, Region *prependTo)
 {
   assert(region);
@@ -660,9 +635,12 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   if (payloadStartPtr != payloadStartPtrAligned)
   {
     Region *prevRegion = prev_region((Region*)freeRegion);
+    // We never have two free regions adjacent to each other, so the region before this free
+    // region should be in use.
+    assert(region_is_in_use(prevRegion));
     size_t regionBoundaryBumpAmount = payloadStartPtrAligned - payloadStartPtr;
     size_t newThisRegionSize = freeRegion->size - regionBoundaryBumpAmount;
-    resize_region(prevRegion, prevRegion->size + regionBoundaryBumpAmount);
+    create_used_region(prevRegion, prevRegion->size + regionBoundaryBumpAmount);
     freeRegion = (Region *)((uint8_t*)freeRegion + regionBoundaryBumpAmount);
     freeRegion->size = newThisRegionSize;
   }
