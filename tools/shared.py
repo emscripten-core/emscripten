@@ -2584,33 +2584,36 @@ class Building(object):
       if proc.returncode != 0:
         logger.error('Closure compiler run failed:\n')
       elif len(proc.stderr.strip()) > 0:
-        if Settings.CLOSURE_WARNINGS_ARE_ERRORS:
-          logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS_ARE_ERRORS=1 enabled, aborting!\n')
-        else:
+        if Settings.CLOSURE_WARNINGS == 'error':
+          logger.error('Closure compiler completed with warnings and -s CLOSURE_WARNINGS=error enabled, aborting!\n')
+        elif Settings.CLOSURE_WARNINGS == 'warn':
           logger.warn('Closure compiler completed with warnings:\n')
 
       # Print input file (long wall of text!)
-      if os.getenv('EMCC_DEBUG') and (proc.returncode != 0 or len(proc.stderr.strip()) > 0):
+      if os.getenv('EMCC_DEBUG') and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
         logger.debug(open(filename, 'r').read())
 
       if proc.returncode != 0:
         logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
+
+        # Exit and print final hint to get clearer output
         exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
 
-      if len(proc.stderr.strip()) > 0:
+      if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet':
         # print list of warnings (possibly long wall of text if input was minified)
-        if Settings.CLOSURE_WARNINGS_ARE_ERRORS:
+        if Settings.CLOSURE_WARNINGS == 'error':
           logger.error(proc.stderr)
         else:
           logger.warn(proc.stderr)
 
+        # Exit and/or print final hint to get clearer output
         if not pretty:
           logger.warn('(rerun with -g1 linker flag for an unminified output)')
         elif not os.getenv('EMCC_DEBUG'):
           logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
 
-        if Settings.CLOSURE_WARNINGS_ARE_ERRORS:
-          exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS_ARE_ERRORS=1 enabled')
+        if Settings.CLOSURE_WARNINGS == 'error':
+          exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
 
       return outfile
 
