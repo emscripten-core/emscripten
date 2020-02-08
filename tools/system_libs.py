@@ -19,7 +19,7 @@ from glob import iglob
 
 from . import ports
 from . import shared
-from tools.shared import check_call, mangle_c_symbol_name, demangle_c_symbol_name
+from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
 
 stdout = None
 stderr = None
