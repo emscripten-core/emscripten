@@ -23,6 +23,7 @@ except Exception:
   # Swallowing the error here means that this file can always be imported, but won't work if actually used on Windows,
   # which is the same behavior as before.
   pass
+import clang_native
 from runner import BrowserCore, no_windows, chdir
 from tools import shared
 from tools.shared import PYTHON, EMCC, NODE_JS, path_from_root, Popen, PIPE, WINDOWS, run_process, run_js, JS_ENGINES, CLANG_CC
@@ -62,7 +63,7 @@ class WebsockifyServerHarness(object):
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      proc = run_process([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + shared.get_clang_native_args() + self.args, env=shared.get_clang_native_env(), stdout=PIPE, stderr=PIPE)
+      proc = run_process([CLANG_CC, path_from_root('tests', self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args, env=shared.get_clang_native_env(), stdout=PIPE, stderr=PIPE)
       print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
