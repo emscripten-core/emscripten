@@ -937,12 +937,14 @@ function reattachComments(ast, comments) {
 // Main
 
 var arguments = process['argv'].slice(2);;
-var preserveComments = arguments.indexOf('--preserveComments');
-if (preserveComments > -1) {
-  arguments.splice(preserveComments, 1);
-  preserveComments = true;
+// If enabled, output retains parentheses and comments so that the
+// output can further be passed out to Closure.
+var closureFriendly = arguments.indexOf('--closureFriendly');
+if (closureFriendly > -1) {
+  arguments.splice(closureFriendly, 1);
+  closureFriendly = true;
 } else {
-  preserveComments = false;  
+  closureFriendly = false;
 }
 
 var infile = arguments[0];
@@ -955,9 +957,9 @@ if (extraInfoStart > 0) {
   extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
 }
 // Collect all JS code comments to this array so that we can retain them in the outputted code
-// if --preserveComments was requested.
+// if --closureFriendly was requested.
 var sourceComments = [];
-var ast = acorn.parse(input, { ecmaVersion: 6, preserveParens: preserveComments, onComment: preserveComments ? sourceComments : undefined });
+var ast = acorn.parse(input, { ecmaVersion: 6, preserveParens: closureFriendly, onComment: closureFriendly ? sourceComments : undefined });
 
 var minifyWhitespace = false;
 var noPrint = false;
@@ -981,7 +983,7 @@ passes.forEach(function(pass) {
 if (!noPrint) {
   var terserAst = terser.AST_Node.from_mozilla_ast(ast);
 
-  if (preserveComments) {
+  if (closureFriendly) {
     reattachComments(terserAst, sourceComments);
   }
 
