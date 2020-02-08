@@ -2479,12 +2479,7 @@ class Building(object):
   @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      env = os.environ.copy()
-
-      def add_to_path(dirname):
-        env['PATH'] = env['PATH'] + os.pathsep + dirname
-
-      add_to_path(get_node_directory())
+      env = env_with_node_in_path()
       user_args = []
       env_args = os.environ.get('EMCC_CLOSURE_ARGS')
       if env_args:
@@ -2497,6 +2492,8 @@ class Building(object):
       # versions of the compiler.
       java_bin = os.path.dirname(JAVA)
       if java_bin:
+        def add_to_path(dirname):
+          env['PATH'] = env['PATH'] + os.pathsep + dirname
         add_to_path(java_bin)
         java_home = os.path.dirname(java_bin)
         env.setdefault('JAVA_HOME', java_home)
