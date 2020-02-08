@@ -1201,6 +1201,7 @@ var LibraryGL = {
     return ret;
   },
 
+  $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGet: function(name_, p, type) {
     // Guard against user passing a null pointer.
     // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
@@ -1362,19 +1363,19 @@ var LibraryGL = {
   },
 
   glGetIntegerv__sig: 'vii',
-  glGetIntegerv__deps: ['$emscriptenWebGLGet', '$writeI53ToI64'],
+  glGetIntegerv__deps: ['$emscriptenWebGLGet'],
   glGetIntegerv: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}});
   },
 
   glGetFloatv__sig: 'vii',
-  glGetFloatv__deps: ['$emscriptenWebGLGet', '$writeI53ToI64'],
+  glGetFloatv__deps: ['$emscriptenWebGLGet'],
   glGetFloatv: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}});
   },
 
   glGetBooleanv__sig: 'vii',
-  glGetBooleanv__deps: ['$emscriptenWebGLGet', '$writeI53ToI64'],
+  glGetBooleanv__deps: ['$emscriptenWebGLGet'],
   glGetBooleanv: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}});
   },

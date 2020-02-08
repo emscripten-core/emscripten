@@ -1,7 +1,4 @@
 mergeInto(LibraryManager.library, {
-  // Writes the given JavaScript Number to the WebAssembly heap as a 64-bit integer variable.
-  // If the given number is not in the range [-2^53, 2^53] (inclusive), then an unexpectedly
-  // rounded or incorrect number can be written to the heap. ("garbage in, garbage out")
 #if ASSERTIONS
   $writeI53ToI64__deps: ['$readI53FromI64', '$readI53FromU64'
 #if MINIMAL_RUNTIME
@@ -9,6 +6,12 @@ mergeInto(LibraryManager.library, {
 #endif
   ],
 #endif
+  // Writes the given JavaScript Number to the WebAssembly heap as a 64-bit integer variable.
+  // If the given number is not in the range [-2^53, 2^53] (inclusive), then an unexpectedly
+  // rounded or incorrect number can be written to the heap. ("garbage in, garbage out")
+  // Note that unlike the most other function variants in this library, there is no separate
+  // function $writeI53ToU64(): the implementation would be identical, and it is up to the
+  // C/C++ side code to interpret the resulting number as signed or unsigned as is desirable.
   $writeI53ToI64: function(ptr, num) {
     HEAPU32[ptr>>2] = num;
     HEAPU32[ptr+4>>2] = (num - HEAPU32[ptr>>2])/4294967296;
@@ -39,7 +42,7 @@ mergeInto(LibraryManager.library, {
 #if ASSERTIONS
       throw 'RangeError in writeI53ToI64Signaling(): input value ' + num + ' is out of range of int64';
 #else
-      throw 'RangeError:'+num;
+      throw 'RangeError:' + num;
 #endif
     }
     HEAPU32[ptr>>2] = num;
@@ -88,16 +91,19 @@ mergeInto(LibraryManager.library, {
   // represent 53 bits of precision.
   // TODO: Add $convertI32PairToI53Signaling() variant.
   $convertI32PairToI53: function(lo, hi) {
-    lo = lo >>> 0;
-    return lo + hi * 4294967296;
+#if ASSERTIONS
+    // This function should not be getting called with too large unsigned numbers
+    // in high part (if hi >= 0x7FFFFFFFF, one should have been calling
+    // convertU32PairToI53())
+    assert(hi === (hi|0));
+#endif
+    return (lo >>> 0) + hi * 4294967296;
   },
 
   // Converts the given unsigned 32-bit low-high pair to a JavaScript Number that can
   // represent 53 bits of precision.
   // TODO: Add $convertU32PairToI53Signaling() variant.
   $convertU32PairToI53: function(lo, hi) {
-    lo = lo >>> 0;
-    hi = hi >>> 0;
-    return lo + hi * 4294967296;
+    return (lo >>> 0) + (hi >>> 0) * 4294967296;
   }
 });
