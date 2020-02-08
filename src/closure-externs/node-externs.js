@@ -70,9 +70,20 @@ var assert;
 /**
  * @suppress {duplicate}
  */
-var buffer;
+var fs;
 
 /**
- * @suppress {duplicate}
+ * @param {...*} var_args
+ * @constructor
+ * @nosideeffects
  */
-var fs;
+var Buffer = function(var_args) {};
+
+/**
+ * @param {ArrayBuffer|SharedArrayBuffer} arrayBuffer
+ * @param {number=} byteOffset
+ * @param {number=} length
+ * @return {buffer.Buffer}
+ * @nosideeffects
+ */
+Buffer.from = function(arrayBuffer, byteOffset, length) {};
