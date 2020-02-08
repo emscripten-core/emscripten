@@ -518,6 +518,15 @@ def get_node_directory():
   return os.path.dirname(NODE_JS[0] if type(NODE_JS) is list else NODE_JS)
 
 
+# When we run some tools from npm (closure, html-minifier-terser), those
+# expect that the tools have node.js accessible in PATH. Place our node
+# there when invoking those tools.
+def env_with_node_in_path():
+  env = os.environ.copy()
+  env['PATH'] = get_node_directory() + os.pathsep + env['PATH']
+  return env
+
+
 def check_node_version():
   jsrun.check_engine(NODE_JS)
   try:
@@ -2487,12 +2496,7 @@ class Building(object):
   @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
     with ToolchainProfiler.profile_block('closure_compiler'):
-      env = os.environ.copy()
-
-      def add_to_path(dirname):
-        env['PATH'] = env['PATH'] + os.pathsep + dirname
-
-      add_to_path(get_node_directory())
+      env = env_with_node_in_path()
       user_args = []
       env_args = os.environ.get('EMCC_CLOSURE_ARGS')
       if env_args:
@@ -2505,6 +2509,8 @@ class Building(object):
       # versions of the compiler.
       java_bin = os.path.dirname(JAVA)
       if java_bin:
+        def add_to_path(dirname):
+          env['PATH'] = env['PATH'] + os.pathsep + dirname
         add_to_path(java_bin)
         java_home = os.path.dirname(java_bin)
         env.setdefault('JAVA_HOME', java_home)
