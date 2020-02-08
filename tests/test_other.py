@@ -10318,4 +10318,4 @@ int main() {
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=warn'], stderr=PIPE)
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
-    self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'], stderr=PIPE, check=False)
+    self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'])
