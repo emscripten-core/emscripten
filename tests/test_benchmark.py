@@ -947,7 +947,9 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
 
-  def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_zzz_bullet(self):
+    self.emcc_args.remove('-Werror')
     src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read()
     src += open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
@@ -977,7 +979,7 @@ class benchmark(runner.RunnerCore):
   def test_zzz_sqlite(self):
     src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'TOTAL...', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
+    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
 
   def test_zzz_poppler(self):
     with open('pre.js', 'w') as f:
