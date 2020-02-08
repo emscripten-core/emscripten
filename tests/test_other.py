@@ -10309,3 +10309,13 @@ int main() {
     stderr = self.expect_fail([PYTHON, EMCC, '-s', 'LLD_REPORT_UNDEFINED', 'main.c'])
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
+
+  # Verifies that warning messages that Closure outputs are recorded to console
+  def test_closure_warnings(self):
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=quiet'], stderr=PIPE)
+    self.assertNotContained('WARNING', proc.stderr)
+
+    proc = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=warn'], stderr=PIPE)
+    self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
+
+    self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'], stderr=PIPE, check=False)

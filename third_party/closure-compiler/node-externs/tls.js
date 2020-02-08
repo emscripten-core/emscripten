@@ -61,7 +61,7 @@ tls.ConnectOptions;
 tls.connect = function(port, host, options, callback) {};
 
 /**
- * @param {crypto.Credentials=} credentials
+ * XXX EMSCRIPTEN removed annotation on param {crypto.Credentials=} credentials, as it gives a warning [JSC_UNRECOGNIZED_TYPE_ERROR] Bad type annotation. Unknown type crypto.Credentials
  * @param {boolean=} isServer
  * @param {boolean=} requestCert
  * @param {boolean=} rejectUnauthorized

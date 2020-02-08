@@ -248,6 +248,12 @@ var SIMD = 0;
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
 
+// Specifies how warnings emitted by Closure are treated. Possible
+// options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are printed
+// out to console. If set to 'error', Closure warnings are treated like errors,
+// similar to -Werror compiler flag.
+var CLOSURE_WARNINGS = 'quiet';
+
 // If set to 1, each asm.js/wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
 // However, this does increase code size (especially if you have many such

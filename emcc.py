@@ -1219,6 +1219,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
         shared.Settings.ASM_JS = 2
 
+    if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
+      exit_with_error('Invalid option -s CLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % shared.Settings.CLOSURE_WARNINGS)
+
     if shared.Settings.MAIN_MODULE:
       assert not shared.Settings.SIDE_MODULE
       if shared.Settings.MAIN_MODULE == 1:
