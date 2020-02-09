@@ -1300,6 +1300,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MODULARIZE_INSTANCE:
       shared.Settings.MODULARIZE = 1
 
+      assert not shared.Settings.MINIMAL_RUNTIME, 'MINIMAL_RUNTIME does not support -s MODULARIZE_INSTANCE=1 (Minimal runtime loader shell already behaves like MODULARIZE_INSTANCE=1, follow that pattern for the same effect)'
+
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
       # MODULARIZE's .then() method uses onRuntimeInitialized currently, so make sure
