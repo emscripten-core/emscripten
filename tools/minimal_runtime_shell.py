@@ -136,9 +136,9 @@ def generate_minimal_runtime_load_statement(target_basename):
     # immediately start the download, but can control when we add the script to the
     # DOM.
     if shared.Settings.USE_PTHREADS:
-      script_load = "script(url)";
+      script_load = "script(url)"
     else:
-      script_load = "script(url).then(() => { URL.revokeObjectURL(url) });";
+      script_load = "script(url).then(() => { URL.revokeObjectURL(url) });"
 
     files_to_load[0] = "binary('%s')" % (target_basename + '.js')
     then_statements += ["var url = URL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));",
