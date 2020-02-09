@@ -40,21 +40,6 @@ function threadAlert() {
 var err = threadPrintErr;
 this.alert = threadAlert;
 
-#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
-// When using postMessage to send an object, it is processed by the structured clone algorithm.
-// The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
-// This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  for (var key in attrs) {
-    if (attrs.hasOwnProperty(key)) {
-      object[key] = attrs[key];
-    }
-  }
-  return object;
-}
-#endif
-
 #if WASM && !MINIMAL_RUNTIME
 Module['instantiateWasm'] = function(info, receiveInstance) {
   // Instantiate from the module posted from the main thread.
@@ -171,13 +156,10 @@ this.onmessage = function(e) {
       HEAPU32 = Module['HEAPU32'];
 #endif
 
-#if MINIMAL_RUNTIME && WASM
-      Module['wasmInstance'].then(() => {
+#if !MINIMAL_RUNTIME || !WASM
+      postMessage({ cmd: 'loaded' });
 #endif
-        postMessage({ cmd: 'loaded' });
-#if MINIMAL_RUNTIME && WASM
-      });
-#endif
+
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
       PThread.receiveObjectTransfer(e.data);

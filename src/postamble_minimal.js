@@ -137,10 +137,6 @@ WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
 // Module['wasm'] should contain a typed array of the Wasm object data, or a precompiled WebAssembly Module.
 if (!Module['wasm']) throw 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM';
 #endif
-#if USE_PTHREADS
-// Store the Wasm instance to be able to post it to pthreads.
-Module['wasmInstance'] =
-#endif
 WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
@@ -175,9 +171,15 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
   asm = output.instance.exports;
 #endif
+
 #if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
+  wasmOffsetConverter =
+#if USE_PTHREADS
+    ENVIRONMENT_IS_PTHREAD ? resetPrototype(WasmOffsetConverter, wasmOffsetData) :
 #endif
+    new WasmOffsetConverter(Module['wasm'], output.module);
+#endif
+
 #if !DECLARE_ASM_MODULE_EXPORTS
   exportAsmFunctions(asm);
 #else
@@ -194,6 +196,14 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #else
   ready();
 #endif
+
+#if USE_PTHREADS
+  // This Worker is now ready to host pthreads, tell the main thread we can proceed.
+  if (ENVIRONMENT_IS_PTHREAD) {
+    postMessage({ cmd: 'loaded' });
+  }
+#endif
+
 })
 #if ASSERTIONS
 .catch(function(error) {

@@ -558,7 +558,7 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -1341,6 +1341,19 @@ var LibraryPThread = {
   // allow pthreads to check if noExitRuntime from worker.js
   $getNoExitRuntime: function() {
     return noExitRuntime;
+  },
+
+  // When using postMessage to send an object, it is processed by the structured clone algorithm.
+  // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+  // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+  $resetPrototype: function(constructor, attrs) {
+    var object = Object.create(constructor.prototype);
+    for (var key in attrs) {
+      if (attrs.hasOwnProperty(key)) {
+        object[key] = attrs[key];
+      }
+    }
+    return object;
   },
 
   // This function is called internally to notify target thread ID that it has messages it needs to
