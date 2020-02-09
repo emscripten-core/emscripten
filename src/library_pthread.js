@@ -1071,9 +1071,11 @@ var LibraryPThread = {
   pthread_cleanup_push: function(routine, arg) {
     if (PThread.exitHandlers === null) {
       PThread.exitHandlers = [];
+#if EXIT_RUNTIME
       if (!ENVIRONMENT_IS_PTHREAD) {
         __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
+#endif
     }
     PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
