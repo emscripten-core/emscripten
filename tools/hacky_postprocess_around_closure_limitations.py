@@ -15,7 +15,9 @@ if '"use asm";' in f:
 else:
   # The following are introduced to the output after Closure has run, so need to manually optimize them out.
   f = re.sub(r'\s*//\s*EMSCRIPTEN_START_ASM\s*', '', f)
+  f = re.sub(r'\s*//\s*EMSCRIPTEN_START_FUNCS\s*', '', f)
   f = re.sub(r'\s*//\s*EMSCRIPTEN_END_ASM\s*', '', f)
+  f = re.sub(r'\s*//\s*EMSCRIPTEN_END_FUNCS\s*', '', f)
 
   # https://github.com/google/closure-compiler/issues/3185
   f = re.sub(r';new Int8Array\(\w+\);', ';', f)
