@@ -777,18 +777,25 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-#if ASSERTIONS
+#if MINIMAL_RUNTIME
+  emscripten_check_blocking_allowed__deps: ['$warnOnce'],
+#endif
   emscripten_check_blocking_allowed: function() {
-    assert(ENVIRONMENT_IS_WEB);
+#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) return;
+#endif
+
     warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
     abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #endif
-  },
+
 #endif
+  },
 
   _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait',
-#if ASSERTIONS
+#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
   'emscripten_check_blocking_allowed'
 #endif
   ],
@@ -817,8 +824,8 @@ var LibraryPThread = {
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
 
-#if ASSERTIONS
-    if (block && ENVIRONMENT_IS_WEB) {
+#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+    if (block) {
       _emscripten_check_blocking_allowed();
     }
 #endif

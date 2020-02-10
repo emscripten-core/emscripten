@@ -251,8 +251,8 @@ var runtimeExited = false;
 
 var memoryInitializer = null;
 
-#if MEMORYPROFILER
 #include "memoryprofiler.js"
-#endif
+
+#include "runtime_debug.js"
 
 // === Body ===

@@ -777,9 +777,7 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 
 var memoryInitializer = null;
 
-#if MEMORYPROFILER
 #include "memoryprofiler.js"
-#endif
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
 // show errors on likely calls to FS when it was not included

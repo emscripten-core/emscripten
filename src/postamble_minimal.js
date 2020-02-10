@@ -94,7 +94,7 @@ var asm;
 
 #if USE_PTHREADS && WASM
 var wasmModule;
-#if PTHREAD_POOL_SIZE > 0
+#if PTHREAD_POOL_SIZE
 function loadWasmModuleToWorkers() {
 #if PTHREAD_POOL_DELAY_LOAD
   PThread.unusedWorkers.forEach(PThread.loadWasmModuleToWorker);
@@ -186,6 +186,15 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   /*** ASM_MODULE_EXPORTS ***/
 #endif
 
+#if USE_PTHREADS
+  //Export needed variables that worker.js needs to Module.
+#if WASM_BACKEND
+  Module['_emscripten_tls_init'] = _emscripten_tls_init;
+#endif
+  Module['HEAPU32'] = HEAPU32;
+  Module['dynCall_ii'] = dynCall_ii;
+#endif
+
   initRuntime(asm);
 #if USE_PTHREADS && PTHREAD_POOL_SIZE
   if (!ENVIRONMENT_IS_PTHREAD) loadWasmModuleToWorkers();
@@ -200,7 +209,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #if USE_PTHREADS
   // This Worker is now ready to host pthreads, tell the main thread we can proceed.
   if (ENVIRONMENT_IS_PTHREAD) {
-    postMessage({ cmd: 'loaded' });
+    postMessage({ 'cmd': 'loaded' });
   }
 #endif
 

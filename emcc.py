@@ -1294,13 +1294,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
       else:
         shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
 
     if shared.Settings.MODULARIZE_INSTANCE:
       shared.Settings.MODULARIZE = 1
-
-      assert not shared.Settings.MINIMAL_RUNTIME, 'MINIMAL_RUNTIME does not support -s MODULARIZE_INSTANCE=1 (Minimal runtime loader shell already behaves like MODULARIZE_INSTANCE=1, follow that pattern for the same effect)'
 
     if shared.Settings.MODULARIZE:
       assert not options.proxy_to_worker, '-s MODULARIZE=1 and -s MODULARIZE_INSTANCE=1 are not compatible with --proxy-to-worker (if you want to run in a worker with -s MODULARIZE=1, you likely want to do the worker side setup manually)'
@@ -1550,7 +1549,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.EXPORTED_FUNCTIONS += [name]
 
       include_and_export('establishStackSpace')
-      include_and_export('getNoExitRuntime')
+      if not shared.Settings.MINIMAL_RUNTIME:
+        # noExitRuntime does not apply to MINIMAL_RUNTIME.
+        include_and_export('getNoExitRuntime')
 
       if shared.Settings.MODULARIZE:
         # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
@@ -3430,8 +3431,7 @@ def module_export_name_substitution():
     src = src.replace(shared.JS.module_export_name_substitution_pattern, replacement)
     # For Node.js and other shell environments, create an unminified Module object so that
     # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-    if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or
-                                            shared.Settings.target_environment_may_be('shell')):
+    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.MODULARIZE_INSTANCE and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
       src = 'if(typeof Module==="undefined"){var Module={};}' + src
     f.write(src)
   save_intermediate('module_export_name_substitution')

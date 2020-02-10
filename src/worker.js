@@ -16,12 +16,6 @@ var parentThreadId = 0; // The ID of the parent pthread that launched this threa
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
 
-// These modes need to assign to these variables because of how scoping works in them.
-#if (EXPORT_ES6 || MODULARIZE) && !MINIMAL_RUNTIME
-var PThread;
-var HEAPU32;
-#endif
-
 #if ASSERTIONS
 function assert(condition, text) {
   if (!condition) abort('Assertion failed: ' + text);
@@ -68,8 +62,12 @@ var wasmOffsetData;
 this.onmessage = function(e) {
   try {
     if (e.data.cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
-#if MINIMAL_RUNTIME && MODULARIZE
+#if MINIMAL_RUNTIME
+#if MODULARIZE_INSTANCE
+      var imports = Module;
+#else
       var imports = {};
+#endif
 #endif
 
 #if !WASM_BACKEND
@@ -134,7 +132,7 @@ this.onmessage = function(e) {
 #if MODULARIZE && EXPORT_ES6
       import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
         Module = {{{ EXPORT_NAME }}}.default(Module);
-        postMessage({ cmd: 'loaded' });
+        postMessage({ 'cmd': 'loaded' });
       });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
@@ -151,18 +149,14 @@ this.onmessage = function(e) {
       Module = {{{ EXPORT_NAME }}}(Module);
 #endif
 #endif
-#if !MINIMAL_RUNTIME || MODULARIZE
-      PThread = Module['PThread'];
-      HEAPU32 = Module['HEAPU32'];
-#endif
 
 #if !MINIMAL_RUNTIME || !WASM
-      postMessage({ cmd: 'loaded' });
+      postMessage({ 'cmd': 'loaded' });
 #endif
 
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
-      PThread.receiveObjectTransfer(e.data);
+      Module['PThread'].receiveObjectTransfer(e.data);
     } else if (e.data.cmd === 'run') {
       // This worker was idle, and now should start executing its pthread entry
       // point.
@@ -178,7 +172,7 @@ this.onmessage = function(e) {
       threadInfoStruct = e.data.threadInfoStruct;
 
       // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
-      {{{ makeAsmExportsAccessInPthread('__register_pthread_ptr') }}}(threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
+      Module['__register_pthread_ptr'](threadInfoStruct, /*isMainBrowserThread=*/0, /*isMainRuntimeThread=*/0);
 
       selfThreadId = e.data.selfThreadId;
       parentThreadId = e.data.parentThreadId;
@@ -206,14 +200,14 @@ this.onmessage = function(e) {
       // Also call inside JS module to set up the stack frame for this pthread in JS module scope
       Module['establishStackSpace'](top, max);
 #if WASM_BACKEND
-      {{{ makeAsmExportsAccessInPthread('_emscripten_tls_init') }}}();
+      Module['_emscripten_tls_init']();
 #endif
 #if STACK_OVERFLOW_CHECK
-      {{{ makeAsmExportsAccessInPthread('writeStackCookie') }}}();
+      Module['writeStackCookie']();
 #endif
 
-      PThread.receiveObjectTransfer(e.data);
-      PThread.setThreadStatus({{{ makeAsmExportsAccessInPthread('_pthread_self') }}}(), 1/*EM_THREAD_STATUS_RUNNING*/);
+      Module['PThread'].receiveObjectTransfer(e.data);
+      Module['PThread'].setThreadStatus(Module['_pthread_self'](), 1/*EM_THREAD_STATUS_RUNNING*/);
 
       try {
         // pthread entry points are always of signature 'void *ThreadMain(void *arg)'
@@ -223,26 +217,29 @@ this.onmessage = function(e) {
         // enable that to work. If you find the following line to crash, either change the signature
         // to "proper" void *ThreadMain(void *arg) form, or try linking with the Emscripten linker
         // flag -s EMULATE_FUNCTION_POINTER_CASTS=1 to add in emulation for this x86 ABI extension.
-        var result = {{{ makeAsmExportsAccessInPthread('dynCall_ii') }}}(e.data.start_routine, e.data.arg);
+        var result = Module['dynCall_ii'](e.data.start_routine, e.data.arg);
 
 #if STACK_OVERFLOW_CHECK
-        {{{ makeAsmExportsAccessInPthread('checkStackCookie') }}}();
+        Module['checkStackCookie']();
 #endif
+#if !MINIMAL_RUNTIME // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to pthreads. To exit a pthread with live runtime, use the function emscripten_unwind_to_js_event_loop() in the pthread body.
         // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!Module['getNoExitRuntime']()) PThread.threadExit(result);
+        if (!Module['getNoExitRuntime']())
+#endif
+          Module['PThread'].threadExit(result);
       } catch(ex) {
         if (ex === 'Canceled!') {
-          PThread.threadCancel();
+          Module['PThread'].threadCancel();
         } else if (ex != 'unwind') {
 #if MINIMAL_RUNTIME
           // ExitStatus not present in MINIMAL_RUNTIME
-          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
 #else
-          Atomics.store(HEAPU32, (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 4 /*C_STRUCTS.pthread.threadExitCode*/ ) >> 2, (ex instanceof Module['ExitStatus']) ? ex.status : -2 /*A custom entry specific to Emscripten denoting that the thread crashed.*/);
 #endif
 
-          Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
+          Atomics.store(Module['HEAPU32'], (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
             err("Thread Initialisation failed.");
@@ -251,7 +248,7 @@ this.onmessage = function(e) {
 #endif
           Module['_emscripten_futex_wake'](threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/, 0x7FFFFFFF/*INT_MAX*/); // Wake all threads waiting on this thread to finish.
 #if MINIMAL_RUNTIME
-          throw e; // ExitStatus not present in MINIMAL_RUNTIME
+          throw ex; // ExitStatus not present in MINIMAL_RUNTIME
 #else
           if (!(ex instanceof Module['ExitStatus'])) throw ex;
 #endif
@@ -264,7 +261,7 @@ this.onmessage = function(e) {
       }
     } else if (e.data.cmd === 'cancel') { // Main thread is asking for a pthread_cancel() on this thread.
       if (threadInfoStruct) {
-        PThread.threadCancel();
+        Module['PThread'].threadCancel();
       }
     } else if (e.data.target === 'setimmediate') {
       // no-op
@@ -279,7 +276,7 @@ this.onmessage = function(e) {
   } catch(ex) {
     console.error('worker.js onmessage() captured an uncaught exception: ' + ex);
     if (ex.stack) console.error(ex.stack);
-    throw e;
+    throw ex;
   }
 };
 
