@@ -1049,7 +1049,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             has_source_inputs = True
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
-      elif arg.startswith('-r'):
+      elif arg == '-r':
         link_to_object = True
         newargs[i] = ''
       elif arg.startswith('-L'):
