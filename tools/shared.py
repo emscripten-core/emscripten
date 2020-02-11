@@ -2437,6 +2437,8 @@ class Building(object):
                              if name.endswith('.js')]
           CLOSURE_EXTERNS += BROWSER_EXTERNS
 
+      if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
+        CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
       outfile = filename + '.cc.js'
 
       args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',

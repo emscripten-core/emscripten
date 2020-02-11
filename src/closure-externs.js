@@ -985,8 +985,3 @@ var threadInfoStruct;
 var selfThreadId;
 /** @suppress {duplicate} */
 var noExitRuntime;
-
-// Technically only needed for MINIMAL_RUNTIME use of USE_PTHREADS + !MODULARIZE, but enabled here for all modes for now.
-var ENVIRONMENT_IS_PTHREAD;
-/** @suppress {duplicate} */
-var wasmMemory;
