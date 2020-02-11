@@ -3185,7 +3185,7 @@ var LibraryJSEvents = {
     // Save a little bit of code space: all Wasm-capable browsers support devicePixelRatio.
     return devicePixelRatio;
 #else
-    return devicePixelRatio || 1.0;
+    return (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
 #endif
   }
 };
