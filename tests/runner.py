@@ -284,8 +284,6 @@ if shared.Settings.WASM_BACKEND:
     'wasm2ss',
   ]
 
-test_index = 0
-
 
 def parameterized(parameters):
   """
@@ -430,7 +428,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
     self.save_dir = EMTEST_SAVE_DIR
-    self.save_JS = False
     self.env = {}
     self.temp_files_before_run = []
 
@@ -526,13 +523,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
-
-  def hardcode_arguments(self, filename, args):
-    # Hardcode in the arguments, so js is portable without manual commandlinearguments
-    if not args:
-      return
-    js = open(filename).read()
-    create_test_file(filename, js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
     # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
@@ -1174,12 +1164,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         except Exception:
           print('(test did not pass in JS engine: %s)' % engine)
           raise
-
-    if self.save_JS:
-      global test_index
-      self.hardcode_arguments(js_file, args)
-      shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
-      test_index += 1
 
   def get_freetype_library(self):
     if '-Werror' in self.emcc_args:
