@@ -1656,14 +1656,6 @@ class Building(object):
     env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
     return env
 
-  # if we are in emmake mode, i.e., we changed the env to run emcc etc., then show the message and abort
-  @staticmethod
-  def ensure_no_emmake(message):
-    non_native = Building.get_building_env()
-    if os.environ.get('CC') == non_native.get('CC'):
-      # the environment CC is the one we change to when forcing our em* tools
-      exit_with_error(message)
-
   # Finds the given executable 'program' in PATH. Operates like the Unix tool 'which'.
   @staticmethod
   def which(program):
