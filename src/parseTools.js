@@ -1659,16 +1659,6 @@ function buildStringArray(array) {
   }
 }
 
-// Generates access to a JS exports scope variable in pthreads worker.js. In MODULARIZE mode the JS scope is not directly accessible, so all the relevant variables
-// are exported via Module. In non-MODULARIZE mode, we can directly access the variables in global scope.
-function makeAsmExportsAccessInPthread(variable) {
-  if (MODULARIZE || !MINIMAL_RUNTIME) {
-    return "Module['" + variable + "']"; // 'Module' is defined in worker.js local scope, so not EXPORT_NAME in this case.
-  } else {
-    return variable;
-  }
-}
-
 // Generates access to a JS imports scope variable in pthreads worker.js. In MODULARIZE mode these flow into the imports object for the Module.
 // In non-MODULARIZE mode, we can directly access the variables in global scope.
 function makeAsmImportsAccessInPthread(variable) {
