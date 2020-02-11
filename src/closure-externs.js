@@ -981,7 +981,9 @@ var devicePixelRatio;
 
 // Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
 // the names need to match:
+/** @suppress {duplicate} */
 var threadInfoStruct;
+/** @suppress {duplicate} */
 var selfThreadId;
 /** @suppress {duplicate} */
 var noExitRuntime;
