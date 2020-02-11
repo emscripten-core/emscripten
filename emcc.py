@@ -2845,6 +2845,9 @@ def parse_args(newargs):
       newargs[i] = ''
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
+      # XXX Hack: dependencies to _free are not seen from deps_info.json, so manually make sure to export
+      # _free() when using embind.
+      shared.Settings.EXPORTED_FUNCTIONS += ['_free']
       if options.default_cxx_std:
         # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
         options.default_cxx_std = '-std=c++11'
