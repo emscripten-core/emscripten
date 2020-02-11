@@ -674,7 +674,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
-        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
+        'getgrouplist.c', 'initgroups.c', 'timer_create.c',
         'faccessat.c',
     ]
 
