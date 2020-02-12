@@ -595,17 +595,20 @@ mergeInto(LibraryManager.library, {
                     ASYNCIFY_IMPORTS.indexOf(x) < 0 &&
                     !(x.startsWith('invoke_') && {{{ !ASYNCIFY_IGNORE_INDIRECT }}})) {
                   // Check wildcards too.
+                  var ok = false;
                   for (var i = 0; i < ASYNCIFY_IMPORTS.length; i++) {
                     var imp = ASYNCIFY_IMPORTS[i];
                     if (imp.indexOf('*') >= 0) {
                       var prefix = imp.split('*')[0];
                       if (x.startsWith(prefix)) {
                         // It's ok.
-                        return;
+                        ok = true;
                       }
                     }
                   }
-                  throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                  if (!ok) {
+                    throw 'import ' + x + ' was not in ASYNCIFY_IMPORTS, but changed the state';
+                  }
                 }
               }
             }
