@@ -36,6 +36,7 @@ from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
 from tools import jsrun, shared
+import clang_native
 import tools.line_endings
 import tools.js_optimizer
 import tools.tempfiles
@@ -3797,7 +3798,7 @@ int main()
       vs_env = shared.get_clang_native_env()
     except Exception:
       self.skipTest('Native clang env not found')
-    run_process([CLANG, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + shared.get_clang_native_args(), env=vs_env)
+    run_process([CLANG, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     if self.is_wasm_backend():
       self.assertContained('machine type must be wasm32', err)
