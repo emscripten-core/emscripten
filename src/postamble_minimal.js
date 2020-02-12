@@ -193,6 +193,8 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
   Module['HEAPU32'] = HEAPU32;
   Module['dynCall_ii'] = dynCall_ii;
+  Module['__register_pthread_ptr'] = __register_pthread_ptr;
+  Module['_pthread_self'] = _pthread_self;
 #endif
 
   initRuntime(asm);
