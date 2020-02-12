@@ -1343,8 +1343,14 @@ var LibraryPThread = {
 #if STACK_OVERFLOW_CHECK
     writeStackCookie();
 #endif
-    // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
+
+#if WASM_BACKEND
+    // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
     stackRestore(stackTop);
+#else
+    // In old asm.js backend, use a dedicated function to establish the stack frame.
+    asmJsEstablishStackFrame(stackTop, stackMax);
+#endif
   },
 
   // allow pthreads to check if noExitRuntime from worker.js
