@@ -9783,8 +9783,8 @@ int main () {
       with open('src.c', 'w') as f:
         f.write('''
           #include <stdio.h>
+          void* unknown_value;
           int main() {
-            volatile void* unknown_value;
             %s
           }
         ''' % code)
@@ -9798,11 +9798,14 @@ int main () {
     print(i, f, lf, both)
 
     # iprintf is much smaller than printf with float support
-    assert f - 3400 <= i <= f - 3000
+    self.assertGreater(i, f - 3400)
+    self.assertLess(i, f - 3000)
     # __small_printf is somewhat smaller than printf with long double support
-    assert lf - 900 <= f <= lf - 500
+    self.assertGreater(f, lf - 900)
+    self.assertLess(f, lf - 500)
     # both is a little bigger still
-    assert both - 100 <= lf <= both - 50
+    self.assertGreater(lf, both - 100)
+    self.assertLess(lf, both - 50)
 
   # Tests that passing -s MALLOC=none will not include system malloc() to the build.
   def test_malloc_none(self):
