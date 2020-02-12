@@ -4578,7 +4578,8 @@ window.close = function() {
       for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
-  def test_minimal_runtime_pthread_hello_thread(self):
+  # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
+  def test_minimal_runtime_hello_pthread(self):
     for opts in [[], ['-O3']]:
       for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '-s', 'MINIMAL_RUNTIME=1']]:
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
@@ -4931,11 +4932,6 @@ window.close = function() {
   def test_minimal_runtime_hello_world(self):
     for args in [[], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION=1', '--closure', '1'], ['-s', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION=1', '--closure', '1']]:
       self.btest(path_from_root('tests', 'small_hello_world.c'), '0', args=args + ['-s', 'MINIMAL_RUNTIME=1'])
-
-  # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
-  def test_minimal_runtime_hello_pthread(self):
-    for args in [[], ['-s', 'MODULARIZE=1']]:
-      self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), '1', args=args + ['-s', 'MINIMAL_RUNTIME=1', '-s', 'USE_PTHREADS=1'])
 
   @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')
