@@ -50,8 +50,14 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
 
 class Benchmarker(object):
+  # called when we init the object, which is during startup, even if we are
+  # not running benchmarks
   def __init__(self, name):
     self.name = name
+
+  # called when we actually start to run benchmarks
+  def prepare(self):
+    pass
 
   def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
     self.times = []
@@ -177,8 +183,11 @@ class EmscriptenBenchmarker(Benchmarker):
     for k, v in env.items():
       self.env[k] = v
     self.binaryen_opts = binaryen_opts[:]
+
+  def prepare(self):
     # add the feature flags to build commands for libraries as well (easier
-    # this way than editing each one separately)
+    # this way than editing each one separately). this isn't needed for
+    # native builds, so the comparison is still apples-to-apples.
     assert not os.environ.get('EMMAKEN_CFLAGS')
     os.environ['EMMAKEN_CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS)
 
@@ -352,6 +361,9 @@ class benchmark(runner.RunnerCore):
   @classmethod
   def setUpClass(cls):
     super(benchmark, cls).setUpClass()
+
+    for benchmarker in benchmarkers:
+      benchmarker.prepare()
 
     fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
     try:
