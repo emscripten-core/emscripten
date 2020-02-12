@@ -786,6 +786,8 @@ var LibraryPThread = {
     if (ENVIRONMENT_IS_NODE) return;
 #endif
 
+    if (ENVIRONMENT_IS_PTHREAD) return; // Blocking in a pthread is fine.
+
     warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
     abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
