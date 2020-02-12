@@ -177,6 +177,10 @@ class EmscriptenBenchmarker(Benchmarker):
     for k, v in env.items():
       self.env[k] = v
     self.binaryen_opts = binaryen_opts[:]
+    # add the feature flags to build commands for libraries as well (easier
+    # this way than editing each one separately)
+    assert not os.environ.get('EMMAKEN_CFLAGS')
+    os.environ['EMMAKEN_CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS)
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
@@ -938,6 +942,18 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('zlib', src, '''ok.''',
                       force_c=True, shared_args=['-I' + path_from_root('tests', 'zlib')], lib_builder=lib_builder)
+
+  def test_zzz_coremark(self): # Called thus so it runs late in the alphabetical cycle... it is long
+    src = open(path_from_root('tests', 'benchmark', 'coremark', 'core_main.c'), 'r').read()
+
+    def lib_builder(name, native, env_init):
+      return self.get_library('benchmark/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+
+    def output_parser(output):
+      iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
+      return 100000.0 / float(iters_sec)
+
+    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'benchmark', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
