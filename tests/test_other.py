@@ -36,6 +36,7 @@ from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
 from tools import jsrun, shared
+import clang_native
 import tools.line_endings
 import tools.js_optimizer
 import tools.tempfiles
@@ -3797,7 +3798,7 @@ int main()
       vs_env = shared.get_clang_native_env()
     except Exception:
       self.skipTest('Native clang env not found')
-    run_process([CLANG, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + shared.get_clang_native_args(), env=vs_env)
+    run_process([CLANG, 'minimal.cpp', '-target', 'x86_64-linux', '-c', '-emit-llvm', '-o', 'a.bc'] + clang_native.get_clang_native_args(), env=vs_env)
     err = run_process([PYTHON, EMCC, 'a.bc'], stdout=PIPE, stderr=PIPE, check=False).stderr
     if self.is_wasm_backend():
       self.assertContained('machine type must be wasm32', err)
@@ -9619,9 +9620,9 @@ int main () {
 
     if self.is_wasm_backend():
       test_cases = [
-        (wasm2js + opts, hello_world_sources, {'a.html': 697, 'a.js': 2227, 'a.mem': 6}),
+        (wasm2js + opts, hello_world_sources, {'a.html': 697, 'a.js': 2179, 'a.mem': 6}),
         (opts, hello_world_sources, {'a.html': 665, 'a.js': 450, 'a.wasm': 172}),
-        (wasm2js + opts, hello_webgl_sources, {'a.html': 588, 'a.js': 25932, 'a.mem': 3168}),
+        (wasm2js + opts, hello_webgl_sources, {'a.html': 588, 'a.js': 25884, 'a.mem': 3168}),
         (opts, hello_webgl_sources, {'a.html': 563, 'a.js': 4629, 'a.wasm': 11731}),
         (opts, hello_webgl2_sources, {'a.html': 563, 'a.js': 5137, 'a.wasm': 11731}) # Compare how WebGL2 sizes stack up with WebGL 1
       ]
@@ -9782,8 +9783,8 @@ int main () {
       with open('src.c', 'w') as f:
         f.write('''
           #include <stdio.h>
+          void* unknown_value;
           int main() {
-            volatile void* unknown_value;
             %s
           }
         ''' % code)
@@ -9797,11 +9798,14 @@ int main () {
     print(i, f, lf, both)
 
     # iprintf is much smaller than printf with float support
-    assert f - 3400 <= i <= f - 3000
+    self.assertGreater(i, f - 3400)
+    self.assertLess(i, f - 3000)
     # __small_printf is somewhat smaller than printf with long double support
-    assert lf - 900 <= f <= lf - 500
+    self.assertGreater(f, lf - 900)
+    self.assertLess(f, lf - 500)
     # both is a little bigger still
-    assert both - 100 <= lf <= both - 50
+    self.assertGreater(lf, both - 100)
+    self.assertLess(lf, both - 50)
 
   # Tests that passing -s MALLOC=none will not include system malloc() to the build.
   def test_malloc_none(self):

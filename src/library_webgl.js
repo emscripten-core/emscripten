@@ -1201,6 +1201,7 @@ var LibraryGL = {
     return ret;
   },
 
+  $emscriptenWebGLGet__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGet: function(name_, p, type) {
     // Guard against user passing a null pointer.
     // Note that GLES2 spec does not say anything about how passing a null pointer should be treated.
@@ -1351,9 +1352,9 @@ var LibraryGL = {
     }
 
     switch (type) {
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: {{{ makeSetValue('p', '0', 'ret', 'i64') }}};    break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}};    break;
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}};  break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: writeI53ToI64(p, ret); break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('p', '0', 'ret', 'i32') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}:   {{{ makeSetValue('p', '0', 'ret', 'float') }}}; break;
       case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('p', '0', 'ret ? 1 : 0', 'i8') }}}; break;
 #if GL_ASSERTIONS
       default: throw 'internal glGet error, bad type: ' + type;
@@ -1870,6 +1871,7 @@ var LibraryGL = {
   glGetQueryObjectuivEXT: 'glGetQueryObjectivEXT',
 
   glGetQueryObjecti64vEXT__sig: 'viii',
+  glGetQueryObjecti64vEXT__deps: ['$writeI53ToI64'],
   glGetQueryObjecti64vEXT: function(id, pname, params) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -1891,7 +1893,7 @@ var LibraryGL = {
     } else {
       ret = param;
     }
-    {{{ makeSetValue('params', '0', 'ret', 'i64') }}};
+    writeI53ToI64(params, ret);
   },
   glGetQueryObjectui64vEXT: 'glGetQueryObjecti64vEXT',
 
