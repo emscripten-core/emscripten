@@ -86,8 +86,4 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
     *d++ = *s++;
   }
   return dest;
-
-
-  for (; n; n--) *d++ = *s++;
-  return dest;
 }
