@@ -340,6 +340,7 @@ var SyscallsLibrary = {
   __syscall20: function(which, varargs) { // getpid
     return {{{ PROCINFO.pid }}};
   },
+  __syscall29__proxy: false,
   __syscall29: function(which, varargs) { // pause
     return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
@@ -347,6 +348,7 @@ var SyscallsLibrary = {
     var path = SYSCALLS.getStr(), amode = SYSCALLS.get();
     return SYSCALLS.doAccess(path, amode);
   },
+  __syscall34__proxy: false,
   __syscall34: function(which, varargs) { // nice
     var inc = SYSCALLS.get();
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
