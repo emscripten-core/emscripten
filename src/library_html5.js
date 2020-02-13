@@ -3180,8 +3180,7 @@ var LibraryJSEvents = {
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio__sig: 'd',
-// https://caniuse.com/#search=devicePixelRatio
-#if ENVIRONMENT == 'web' && MIN_IE_VERSION > 11 && MIN_FIREFOX_VERSION >= 18
+#if WASM && ENVIRONMENT == 'web'
   emscripten_get_device_pixel_ratio: function() {
     // Save a little bit of code space: all Wasm-capable browsers support devicePixelRatio.
     return devicePixelRatio;
