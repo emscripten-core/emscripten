@@ -3180,19 +3180,14 @@ var LibraryJSEvents = {
 
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio__sig: 'd',
-#if WASM && ENVIRONMENT == 'web'
   emscripten_get_device_pixel_ratio: function() {
+#if WASM && ENVIRONMENT == 'web'
     // Save a little bit of code space: all Wasm-capable browsers support devicePixelRatio.
     return devicePixelRatio;
-  }
 #else
-  emscripten_get_device_pixel_ratio: (function() {
-    var localDpr = (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
-    return function() {
-      return localDpr;
-    };
-  })()
+    return (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
 #endif
+  }
 };
 
 mergeInto(LibraryManager.library, LibraryJSEvents);
