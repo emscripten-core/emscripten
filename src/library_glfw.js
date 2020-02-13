@@ -405,9 +405,12 @@ var LibraryGLFW = {
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
       // not get called
-      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
-        event.preventDefault();
-      }
+
+        // When this code used, browsers backspace and tab keys are disabled. 
+        // So I suggest to comment below code. 
+      // if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+      //   event.preventDefault();
+      // }
     },
 
     onKeyup: function(event) {
@@ -1094,6 +1097,10 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].addEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
@@ -1117,6 +1124,10 @@ var LibraryGLFW = {
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
     window.removeEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].removeEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].removeEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].removeEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);
