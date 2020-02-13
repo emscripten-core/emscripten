@@ -114,6 +114,8 @@ void EMSCRIPTEN_KEEPALIVE __embind_register_native_and_builtin_types() {
   _embind_register_std_string(
     TypeID<std::basic_string<unsigned char>>::get(), "std::basic_string<unsigned char>");
   _embind_register_std_wstring(TypeID<std::wstring>::get(), sizeof(wchar_t), "std::wstring");
+  _embind_register_std_wstring(TypeID<std::u16string>::get(), sizeof(char16_t), "std::u16string");
+  _embind_register_std_wstring(TypeID<std::u32string>::get(), sizeof(char32_t), "std::u32string");
   _embind_register_emval(TypeID<val>::get(), "emscripten::val");
 
   // Some of these types are aliases for each other. Luckily,
