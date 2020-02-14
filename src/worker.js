@@ -89,7 +89,11 @@ this.onmessage = function(e) {
 #if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
-      {{{ makeAsmImportsAccessInPthread('wasm') }}} = e.data.wasmModule;
+#if MODULARIZE
+      imports['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in an imports object for the MODULARIZEd build.
+#else
+      Module['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
+#endif
 #else
       Module['wasmModule'] = e.data.wasmModule;
 #endif
@@ -147,6 +151,9 @@ this.onmessage = function(e) {
 #endif
 
 #if !MINIMAL_RUNTIME || !WASM
+      // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
+      // regular runtime and asm.js are loaded synchronously, so in those cases
+      // we are now loaded, and can post back to main thread.
       postMessage({ 'cmd': 'loaded' });
 #endif
 
