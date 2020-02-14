@@ -158,7 +158,10 @@ var LibraryManager = {
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
 
-    // TODO: deduplicate libraries (not needed for correctness, but avoids unnecessary work)
+    // Deduplicate libraries to avoid processing any library file multiple times
+    libraries = libraries.filter(function(item, pos) {
+      return libraries.indexOf(item) == pos;
+    });
 
     // Save the list for has() queries later.
     this.libraries = libraries;
