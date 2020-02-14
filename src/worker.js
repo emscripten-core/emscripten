@@ -89,11 +89,7 @@ this.onmessage = function(e) {
 #if WASM
       // Module and memory were sent from main thread
 #if MINIMAL_RUNTIME
-#if MODULARIZE
-      imports['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in an imports object for the MODULARIZEd build.
-#else
-      Module['wasm'] = e.data.wasmModule; // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
-#endif
+      {{{ makeAsmImportsAccessInPthread('wasm') }}} = e.data.wasmModule;
 #else
       Module['wasmModule'] = e.data.wasmModule;
 #endif
