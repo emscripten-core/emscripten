@@ -3006,6 +3006,9 @@ class JS(object):
     if data_uri is None:
       data_uri = Settings.SINGLE_FILE
     if data_uri:
+      # if the path does not exist, then there is no data to encode
+      if not os.path.exists(path):
+        return ''
       with open(path, 'rb') as f:
         data = base64.b64encode(f.read())
       return 'data:application/octet-stream;base64,' + asstr(data)
