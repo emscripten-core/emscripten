@@ -348,18 +348,6 @@ static void create_free_region(void *ptr, uint32_t size)
   ((uint32_t*)ptr)[(size>>2)-1] = ~size;
 }
 
-static void resize_region(void *ptr, uint32_t size)
-{
-  assert(ptr);
-  assert(HAS_ALIGNMENT(ptr, sizeof(uint32_t)));
-  assert(HAS_ALIGNMENT(size, sizeof(uint32_t)));
-  assert(size >= sizeof(Region));
-  *(uint32_t*)ptr = size;
-  uint32_t *sizeAtEnd = (uint32_t*)ptr + (size>>2) - 1;
-  uint32_t usedMask = (*(int32_t*)sizeAtEnd) >> 31;
-  *sizeAtEnd = size ^ usedMask;
-}
-
 static void prepend_to_free_list(Region *region, Region *prependTo)
 {
   assert(region);
@@ -647,9 +635,12 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   if (payloadStartPtr != payloadStartPtrAligned)
   {
     Region *prevRegion = prev_region((Region*)freeRegion);
+    // We never have two free regions adjacent to each other, so the region before this free
+    // region should be in use.
+    assert(region_is_in_use(prevRegion));
     size_t regionBoundaryBumpAmount = payloadStartPtrAligned - payloadStartPtr;
     size_t newThisRegionSize = freeRegion->size - regionBoundaryBumpAmount;
-    resize_region(prevRegion, prevRegion->size + regionBoundaryBumpAmount);
+    create_used_region(prevRegion, prevRegion->size + regionBoundaryBumpAmount);
     freeRegion = (Region *)((uint8_t*)freeRegion + regionBoundaryBumpAmount);
     freeRegion->size = newThisRegionSize;
   }
@@ -905,6 +896,16 @@ void emmalloc_free(void *ptr)
   MALLOC_ACQUIRE();
 
   uint32_t size = region->size;
+#ifdef EMMALLOC_DEBUG_LOG
+  if (size < sizeof(Region) || !region_is_in_use(region))
+  {
+    if (debug_region_is_consistent(region))
+      // LLVM wasm backend bug: cannot use MAIN_THREAD_ASYNC_EM_ASM() here, that generates internal compiler error
+      EM_ASM(console.error('Double free at region ptr ' + $0.toString(16) + ', region->size: ' + $1.toString(16) + ', region->sizeAtCeiling: ' + $2.toString(16) + ')'), region, size, region_ceiling_size(region));
+    else
+      MAIN_THREAD_ASYNC_EM_ASM(console.error('Corrupt region at region ptr ' + $0.toString(16) + ' region->size:' + $1.toString(16) + ', region->sizeAtCeiling:' + $2.toString(16) + ')'), region, size, region_ceiling_size(region));
+  }
+#endif
   assert(size >= sizeof(Region));
   assert(region_is_in_use(region));
 

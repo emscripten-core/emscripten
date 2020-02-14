@@ -337,6 +337,12 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_sintvars',
                                  force_c=True)
 
+  def test_int53(self):
+    self.emcc_args += ['-s', 'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE=[$convertI32PairToI53,$convertU32PairToI53,$readI53FromU64,$readI53FromI64,$writeI53ToI64,$writeI53ToI64Clamped,$writeI53ToU64Clamped,$writeI53ToI64Signaling,$writeI53ToU64Signaling]']
+    if not self.is_wasm_backend():
+      self.emcc_args += ['-s', 'BINARYEN_TRAP_MODE=js']
+    self.do_run_in_out_file_test('tests', 'core', 'test_int53')
+
   def test_i64(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64')
 
@@ -958,6 +964,11 @@ base align: 0, 0, 0, 0'''])
     self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_trim')
+
+  # Test case against https://github.com/emscripten-core/emscripten/issues/10363
+  def test_emmalloc_memalign_corruption(self, *args):
+    self.set_setting('MALLOC', 'emmalloc')
+    self.do_run_in_out_file_test('tests', 'core', 'emmalloc_memalign_corruption')
 
   def test_newstruct(self):
     self.do_run(self.gen_struct_src.replace('{{gen_struct}}', 'new S').replace('{{del_struct}}', 'delete'), '*51,62*')

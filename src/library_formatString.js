@@ -8,7 +8,11 @@ mergeInto(LibraryManager.library, {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['_reallyNegative'],
+  _formatString__deps: ['_reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53'
+#if MINIMAL_RUNTIME
+    , '$intArrayFromString'
+#endif
+  ],
   _formatString: function(format, varargs) {
 #if ASSERTIONS
     assert((varargs & 3) === 0);
@@ -185,7 +189,7 @@ mergeInto(LibraryManager.library, {
             var argText;
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
-              currArg = makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
+              currArg = next == {{{ charCode('u') }}} ? convertU32PairToI53(currArg[0], currArg[1]) : convertI32PairToI53(currArg[0], currArg[1]);
             }
             // Truncate to requested size.
             if (argSize <= 4) {

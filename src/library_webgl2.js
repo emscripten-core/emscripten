@@ -54,7 +54,7 @@ var LibraryWebGL2 = {
   },
 
   glGetInteger64v__sig: 'vii',
-  glGetInteger64v__deps: ['$emscriptenWebGLGet'],
+  glGetInteger64v__deps: ['$emscriptenWebGLGet', '$writeI53ToI64'],
   glGetInteger64v: function(name_, p) {
     emscriptenWebGLGet(name_, p, {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}});
   },
@@ -103,6 +103,7 @@ var LibraryWebGL2 = {
   },
 
   glGetBufferParameteri64v__sig: 'viii',
+  glGetBufferParameteri64v__deps: ['$writeI53ToI64'],
   glGetBufferParameteri64v: function(target, value, data) {
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -113,7 +114,7 @@ var LibraryWebGL2 = {
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
     }
-    {{{ makeSetValue('data', '0', 'GLctx.getBufferParameter(target, value)', 'i64') }}};
+    writeI53ToI64(data, GLctx.getBufferParameter(target, value));
   },
 
   glInvalidateFramebuffer__deps: ['_tempFixedLengthArray'],
@@ -417,6 +418,7 @@ var LibraryWebGL2 = {
     if (type) {{{ makeSetValue('type', '0', 'info.type', 'i32') }}};
   },
 
+  $emscriptenWebGLGetIndexed__deps: ['$writeI53ToI64'],
   $emscriptenWebGLGetIndexed: function(target, index, data, type) {
     if (!data) {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
@@ -470,7 +472,7 @@ var LibraryWebGL2 = {
     }
 
     switch (type) {
-      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: {{{ makeSetValue('data', '0', 'ret', 'i64') }}}; break;
+      case {{{ cDefine('EM_FUNC_SIG_PARAM_I64') }}}: writeI53ToI64(data, ret); break;
       case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
       case {{{ cDefine('EM_FUNC_SIG_PARAM_F') }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
       case {{{ cDefine('EM_FUNC_SIG_PARAM_B') }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
@@ -695,24 +697,20 @@ var LibraryWebGL2 = {
   },
 
   glClientWaitSync__sig: 'iiiii',
+  glClientWaitSync__deps: ['$convertI32PairToI53'],
   glClientWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
     // WebGL2 vs GLES3 differences: in GLES3, the timeout parameter is a uint64, where 0xFFFFFFFFFFFFFFFFULL means GL_TIMEOUT_IGNORED.
     // In JS, there's no 64-bit value types, so instead timeout is taken to be signed, and GL_TIMEOUT_IGNORED is given value -1.
     // Inherently the value accepted in the timeout is lossy, and can't take in arbitrary u64 bit pattern (but most likely doesn't matter)
     // See https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15
-    timeoutLo = timeoutLo >>> 0;
-    timeoutHi = timeoutHi >>> 0;
-    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : makeBigInt(timeoutLo, timeoutHi, true);
-    return GLctx.clientWaitSync(GL.syncs[sync], flags, timeout);
+    return GLctx.clientWaitSync(GL.syncs[sync], flags, convertI32PairToI53(timeoutLo, timeoutHi));
   },
 
   glWaitSync__sig: 'viiii',
+  glWaitSync__deps: ['$convertI32PairToI53'],
   glWaitSync: function(sync, flags, timeoutLo, timeoutHi) {
     // See WebGL2 vs GLES3 difference on GL_TIMEOUT_IGNORED above (https://www.khronos.org/registry/webgl/specs/latest/2.0/#5.15)
-    timeoutLo = timeoutLo >>> 0;
-    timeoutHi = timeoutHi >>> 0;
-    var timeout = (timeoutLo == 0xFFFFFFFF && timeoutHi == 0xFFFFFFFF) ? -1 : makeBigInt(timeoutLo, timeoutHi, true);
-    GLctx.waitSync(GL.syncs[sync], flags, timeout);
+    GLctx.waitSync(GL.syncs[sync], flags, convertI32PairToI53(timeoutLo, timeoutHi));
   },
 
   glGetSynciv__sig: 'viiiii',
@@ -742,9 +740,7 @@ var LibraryWebGL2 = {
 
   glIsSync__sig: 'ii',
   glIsSync: function(sync) {
-    var sync = GL.syncs[sync];
-    if (!sync) return 0;
-    return GLctx.isSync(sync);
+    return GLctx.isSync(GL.syncs[sync]);
   },
 
   glGetUniformuiv__sig: 'viii',

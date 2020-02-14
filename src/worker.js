@@ -12,8 +12,6 @@ var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (share
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
 
-var noExitRuntime;
-
 // Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
 // Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
@@ -201,7 +199,7 @@ this.onmessage = function(e) {
 #endif
         // The thread might have finished without calling pthread_exit(). If so, then perform the exit operation ourselves.
         // (This is a no-op if explicit pthread_exit() had been called prior.)
-        if (!noExitRuntime) PThread.threadExit(result);
+        if (!Module['getNoExitRuntime']()) PThread.threadExit(result);
       } catch(ex) {
         if (ex === 'Canceled!') {
           PThread.threadCancel();
