@@ -4956,6 +4956,7 @@ window.close = function() {
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
   # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
+  @no_fastcomp('more work would be needed for this to work in deprecated fastcomp')
   @requires_threads
   def test_pthread_modularize_export_name(self):
     create_test_file('shell.html', '''
