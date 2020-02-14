@@ -4964,7 +4964,7 @@ window.close = function() {
         </body>
       ''')
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
-        expected='0',
-        args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s',
-              'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
-              '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
+               expected='0',
+               args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s',
+                     'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
+                     '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
