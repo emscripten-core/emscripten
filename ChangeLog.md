@@ -24,6 +24,12 @@ v1.39.8: 02/14/2020
   diagnostics when symbols are undefined at link time.  This currently has
   some limitations and is not enabled by default. For example, EM_JS symbols
   are reported as undefined at link time, as are `__invoke_*` functions.
+- wasm2js optimizations. See binaryen#2623.
+- WebGPU Compute fixes. Simple examples now work. See #10367.
+- Many DWARF debug info fixes. Emitting of DWARF is correct as far as we know,
+  including when optimizing (a few passes are disabled for now, but almost all
+  work). We still only generate it behind the `-gforce_dwarf` flag for now,
+  though (but that should be removed soon).
 
 v1.39.7: 02/03/2020
 -------------------
