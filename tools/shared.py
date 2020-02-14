@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import errno
 
 if sys.version_info < (2, 7, 0):
   print('emscripten requires python 2.7.0 or above (python 2.7.12 or newer is recommended, older python versions are known to run into SSL related issues, https://github.com/emscripten-core/emscripten/issues/6275)', file=sys.stderr)
@@ -37,6 +38,7 @@ from . import response_file
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
+MSYS = os.getenv('SHELL') if WINDOWS and os.getenv('MSYSTEM') else False
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -185,7 +187,13 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
   if input is not None:
     kw['stdin'] = subprocess.PIPE
-  proc = Popen(cmd, *args, **kw)
+  try:
+    proc = Popen(cmd, *args, **kw)
+  except OSError as e:
+    if MSYS and e.errno is errno.ENOEXEC:
+      return run_process([MSYS, '-i'] + cmd, check, input, *args, **kw)
+    else:
+      raise e
   stdout, stderr = proc.communicate(input)
   result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
   if check:
@@ -1645,6 +1653,16 @@ class Building(object):
     env['EMSCRIPTEN'] = path_from_root()
     env['PATH'] = path_from_root('system', 'bin') + os.pathsep + env['PATH']
     env['CROSS_COMPILE'] = path_from_root('em') # produces /path/to/emscripten/em , which then can have 'cc', 'ar', etc appended to it
+    if MSYS:
+      env['CC'] = quote(unsuffixed_basename(EMCC))
+      env['CXX'] = quote(unsuffixed_basename(EMXX))
+      env['AR'] = quote(unsuffixed_basename(EMAR))
+      env['LD'] = quote(unsuffixed_basename(EMCC))
+      env['NM'] = quote(unsuffixed_basename(LLVM_NM))
+      env['LDSHARED'] = quote(unsuffixed_basename(EMCC))
+      env['RANLIB'] = quote(unsuffixed_basename(EMRANLIB))
+      env['HOST_CC'] = quote(unsuffixed_basename(CLANG_CC))
+      env['HOST_CXX'] = quote(unsuffixed_basename(CLANG_CPP))
     return env
 
   # if we are in emmake mode, i.e., we changed the env to run emcc etc., then show the message and abort
