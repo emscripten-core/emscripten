@@ -1416,19 +1416,12 @@ var SyscallsLibrary = {
     return 0;
   },
   fd_read: function(fd, iov, iovcnt, pnum) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
     return 0;
   },
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
     // use an unsigned operator on low and shift high by 32-bits
@@ -1443,11 +1436,6 @@ var SyscallsLibrary = {
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
     return 0;
   },
   fd_fdstat_get: function(fd, pbuf) {
@@ -1473,7 +1461,6 @@ var SyscallsLibrary = {
   fd_sync__deps: ['$EmterpreterAsync'],
 #endif
   fd_sync: function(fd) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function(resume) {
@@ -1515,12 +1502,6 @@ var SyscallsLibrary = {
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // WASM_BACKEND && ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
-#else // SYSCALLS_REQUIRE_FILESYSTEM
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-    return 0;
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 };
 
@@ -1909,6 +1890,16 @@ for (var x in SyscallsLibrary) {
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
   t = t.toString();
+  // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
+  // has disabled the filesystem or we have proven some other way that this will
+  // not be called in practice, and do not need that code.
+  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
+    t = modifyFunction(t, function(name, args, body) {
+      return 'function ' + name + '(' + args + ') {\n' +
+             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM')" : '') +
+             '}';
+    });
+  }
   var pre = '', post = '';
   if (which) {
     pre += 'SYSCALLS.varargs = varargs;\n';
