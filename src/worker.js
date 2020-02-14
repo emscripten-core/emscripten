@@ -7,14 +7,24 @@
 // This is the entry point file that is loaded first by each Web Worker
 // that executes pthreads on the Emscripten application.
 
+// Note on logging: In this file we should use console.* directly to log, as
+// using out()/err() assumes we have access to the internals the emscripten
+// JS, but in MODULARIZE* mode that isn't true. If we move this file into the
+// main JS then we can change that.
+
 // Thread-local:
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
 
-// Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
-// Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
+
+// If we use a custom export name, refer to Module from it as well, so that
+// we connect properly to the modularized instance which is the only thing
+// in the global scope.
+#if MODULARIZE_INSTANCE && EXPORT_NAME != 'Module'
+var {{{ EXPORT_NAME }}} = Module;
+#endif
 
 // These modes need to assign to these variables because of how scoping works in them.
 #if EXPORT_ES6 || MODULARIZE
@@ -208,7 +218,7 @@ this.onmessage = function(e) {
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
-            err("Thread Initialisation failed.");
+            console.error("Thread Initialisation failed.");
             throw ex;
           }
 #endif
@@ -217,7 +227,7 @@ this.onmessage = function(e) {
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          out('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          console.log('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
 #endif
         }
       }
@@ -232,7 +242,7 @@ this.onmessage = function(e) {
         Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {
-      err('worker.js received unknown command ' + e.data.cmd);
+      console.error('worker.js received unknown command ' + e.data.cmd);
       console.error(e.data);
     }
   } catch(ex) {
