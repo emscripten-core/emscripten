@@ -631,36 +631,34 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
 
             var str;
-            if(stdStringIsUTF8) {
+            if (stdStringIsUTF8) {
                 //ensure null termination at one-past-end byte if not present yet
                 var endChar = HEAPU8[value + 4 + length];
                 var endCharSwap = 0;
-                if(endChar != 0)
-                {
-                  endCharSwap = endChar;
-                  HEAPU8[value + 4 + length] = 0;
+                if (endChar != 0) {
+                    endCharSwap = endChar;
+                    HEAPU8[value + 4 + length] = 0;
                 }
 
                 var decodeStartPtr = value + 4;
-                //looping here to support possible embedded '0' bytes
+                // Looping here to support possible embedded '0' bytes
                 for (var i = 0; i <= length; ++i) {
-                  var currentBytePtr = value + 4 + i;
-                  if(HEAPU8[currentBytePtr] == 0)
-                  {
-                    var stringSegment = UTF8ToString(decodeStartPtr);
-                    if(str === undefined)
-                      str = stringSegment;
-                    else
-                    {
-                      str += String.fromCharCode(0);
-                      str += stringSegment;
+                    var currentBytePtr = value + 4 + i;
+                    if (HEAPU8[currentBytePtr] == 0) {
+                        var stringSegment = UTF8ToString(decodeStartPtr);
+                        if (str === undefined) {
+                            str = stringSegment;
+                        } else {
+                            str += String.fromCharCode(0);
+                            str += stringSegment;
+                        }
+                        decodeStartPtr = currentBytePtr + 1;
                     }
-                    decodeStartPtr = currentBytePtr + 1;
-                  }
                 }
 
-                if(endCharSwap != 0)
-                  HEAPU8[value + 4 + length] = endCharSwap;
+                if (endCharSwap != 0) {
+                    HEAPU8[value + 4 + length] = endCharSwap;
+                }
             } else {
                 var a = new Array(length);
                 for (var i = 0; i < length; ++i) {
@@ -698,7 +696,7 @@ var LibraryEmbind = {
             if (stdStringIsUTF8 && valueIsOfTypeString) {
                 stringToUTF8(value, ptr + 4, length + 1);
             } else {
-                if(valueIsOfTypeString) {
+                if (valueIsOfTypeString) {
                     for (var i = 0; i < length; ++i) {
                         var charCode = value.charCodeAt(i);
                         if (charCode > 255) {
@@ -740,7 +738,7 @@ var LibraryEmbind = {
     } else if (charSize === 4) {
         decodeString = UTF32ToString;
         encodeString = stringToUTF32;
-        lengthBytesUTF = lengthBytesUTF32
+        lengthBytesUTF = lengthBytesUTF32;
         getHeap = function() { return HEAPU32; };
         shift = 2;
     }
@@ -751,26 +749,23 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
             var HEAP = getHeap();
             var str;
-            //ensure null termination at one-past-end byte if not present yet
+            // Ensure null termination at one-past-end byte if not present yet
             var endChar = HEAP[(value + 4 + length * charSize) >> shift];
             var endCharSwap = 0;
-            if(endChar != 0)
-            {
+            if (endChar != 0) {
                 endCharSwap = endChar;
                 HEAP[(value + 4 + length * charSize) >> shift] = 0;
             }
 
             var decodeStartPtr = value + 4;
-            //looping here to support possible embedded '0' bytes
+            // Looping here to support possible embedded '0' bytes
             for (var i = 0; i <= length; ++i) {
                 var currentBytePtr = value + 4 + i * charSize;
-                if(HEAP[currentBytePtr >> shift] == 0)
-                {
+                if (HEAP[currentBytePtr >> shift] == 0) {
                     var stringSegment = decodeString(decodeStartPtr);
-                    if(str === undefined)
+                    if (str === undefined) {
                         str = stringSegment;
-                    else
-                    {
+                    } else {
                         str += String.fromCharCode(0);
                         str += stringSegment;
                     }
@@ -778,8 +773,9 @@ var LibraryEmbind = {
                 }
             }
 
-            if(endCharSwap != 0)
+            if (endCharSwap != 0) {
                 HEAP[(value + 4 + length * charSize) >> shift] = endCharSwap;
+            }
 
             _free(value);
 
