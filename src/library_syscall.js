@@ -1997,9 +1997,15 @@ for (var x in SyscallsLibrary) {
   if (!SyscallsLibrary[x + '__deps']) SyscallsLibrary[x + '__deps'] = [];
   SyscallsLibrary[x + '__deps'].push('$SYSCALLS');
 #if USE_PTHREADS
-  // Proxy all syscalls synchronously, for their return values, except for ones
-  // we know are ok to run directly, that are marked as not being proxied
-  // with __proxy: false
+  // Most syscalls need to happen on the main JS thread (e.g. because the
+  // filesystem is in JS and on that thread). Proxy synchronously to there.
+  // There are some exceptions, syscalls that we know are ok to just run in
+  // any thread; those are marked as not being proxied with
+  //  __proxy: false
+  // A syscall without a return value could perhaps be proxied asynchronously
+  // instead of synchronously, and marked with
+  //  __proxy: 'async'
+  // (but essentially all syscalls do have return values).
   if (SyscallsLibrary[x + '__proxy'] === undefined) {
     SyscallsLibrary[x + '__proxy'] = 'sync';
   }
