@@ -24,6 +24,10 @@ Current Trunk
 
 v1.39.7: 02/03/2020
 -------------------
+- The checked-in copy of closure compiler was removed in favor of getting it
+  from npm.  This means that developers now need to run `npm install` checking
+  out emscripten if they want to use closure (--closure).  emsdk users are not
+  effected because emsdk runs this as a post install step (#9989).
 - Added support for specifying JSDoc minification annotations for Closure in
   JS library, pre and post files. See
   https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler
