@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.8: 02/14/2020
+-------------------
 - Add LLD_REPORT_UNDEFINED option that should allow for more detailed
   diagnostics when symbols are undefined at link time.  This currently has
   some limitations and is not enabled by default. For example, EM_JS symbols
