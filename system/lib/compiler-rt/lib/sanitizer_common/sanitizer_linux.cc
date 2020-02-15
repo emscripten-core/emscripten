@@ -104,6 +104,7 @@ extern struct ps_strings *__ps_strings;
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+#include <syscall.h>
 #include <emscripten/threading.h>
 #include <math.h>
 #include <wasi/api.h>
@@ -172,8 +173,6 @@ namespace __sanitizer {
 #include "sanitizer_syscall_linux_aarch64.inc"
 #elif SANITIZER_LINUX && defined(__arm__)
 #include "sanitizer_syscall_linux_arm.inc"
-#elif SANITIZER_EMSCRIPTEN
-#include "sanitizer_syscall_emscripten.inc"
 #else
 #include "sanitizer_syscall_generic.inc"
 #endif
