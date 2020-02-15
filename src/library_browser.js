@@ -1176,6 +1176,7 @@ var LibraryBrowser = {
 #else
   emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
 #endif
+  emscripten_set_main_loop__docs: '/** @param {number|boolean=} noSetTiming */',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     noExitRuntime = true;
 

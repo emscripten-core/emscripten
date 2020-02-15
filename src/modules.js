@@ -220,6 +220,11 @@ var LibraryManager = {
             var args = genArgSequence(argCount).join(',');
             lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
           } else {
+            // The alias we generate uses `arguments` to forward the call. If there is no explicit documentation for the alias, mark
+            // it variadic for Closure type checking to know.
+            if (!lib[x + '__docs'] || (lib[x + '__docs'].indexOf('@type') == -1 && lib[x + '__docs'].indexOf('@param') == -1)) {
+              lib[x + '__docs'] = (lib[x + '__docs'] || '') + '/** @type {function(...*):?} */';
+            }
             lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           }
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
