@@ -2269,7 +2269,7 @@ class Building(object):
     # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
     # will be carried over to a later Closure run.
     if acorn and Settings.USE_CLOSURE_COMPILER:
-      cmd += ['--preserveComments']
+      cmd += ['--closureFriendly']
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
