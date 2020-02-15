@@ -129,7 +129,6 @@ long __syscall295(int which, ...);
 long __syscall296(int which, ...);
 long __syscall297(int which, ...);
 long __syscall298(int which, ...);
-long __syscall299(int which, ...);
 long __syscall300(int which, ...);
 long __syscall301(int which, ...);
 long __syscall302(int which, ...);
@@ -148,8 +147,6 @@ long __syscall334(int which, ...);
 long __syscall337(int which, ...);
 long __syscall340(int which, ...);
 long __syscall345(int which, ...);
-
-#undef SYS_futimesat
 
 #ifdef __cplusplus
 }

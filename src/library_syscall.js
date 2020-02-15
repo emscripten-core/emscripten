@@ -1201,9 +1201,6 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall299: function(which, varargs) { // futimesat
-    abort('futimesat is obsolete');
-  },
   __syscall300: function(which, varargs) { // fstatat64
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), buf = SYSCALLS.get(), flags = SYSCALLS.get();
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
@@ -1602,7 +1599,6 @@ var SYSCALL_CODE_TO_NAME = {
   296: "mkdirat",
   297: "mknodat",
   298: "fchownat",
-  299: "futimesat",
   300: "fstatat64",
   301: "unlinkat",
   302: "renameat",

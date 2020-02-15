@@ -95,7 +95,6 @@
 #define __NR_mkdirat		296
 #define __NR_mknodat		297
 #define __NR_fchownat		298
-#define __NR_futimesat		299
 #define __NR_fstatat64		300
 #define __NR_unlinkat		301
 #define __NR_renameat		302
