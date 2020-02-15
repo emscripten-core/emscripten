@@ -495,7 +495,7 @@ var emscriptenCpuProfiler = {
 
   enableTraceWebGL: function() {
     document.getElementById("toggle_webgl_trace").style.background = '#00FF00';
-    this.logWebGLCallsSlowerThan = parseInt(document.getElementById('trace_limit').value);
+    this.logWebGLCallsSlowerThan = parseInt(document.getElementById('trace_limit').value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
   },
 
   disableTraceWebGL: function() {
