@@ -111,7 +111,6 @@ var LibraryManager = {
       libraries = libraries.concat([
         'library_webgl.js',
         'library_openal.js',
-        'library_vr.js',
         'library_sdl.js',
         'library_glut.js',
         'library_xlib.js',
