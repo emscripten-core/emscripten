@@ -707,6 +707,7 @@ function makeBigInt(low, high, unsigned) {
   return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
 }
 
+/** @param {Array=} args */
 function dynCall(sig, ptr, args) {
   if (args && args.length) {
 #if ASSERTIONS
