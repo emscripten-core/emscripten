@@ -6,8 +6,8 @@
 #if SIDE_MODULE == 0
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-var Module;
-if (!Module) Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
+var /** @type{Object} */ Module;
+if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER

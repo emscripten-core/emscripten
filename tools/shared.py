@@ -2986,7 +2986,7 @@ class JS(object):
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
-  module_export_name_substitution_pattern = '"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"'
+  module_export_name_substitution_pattern = '{"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1}'
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
