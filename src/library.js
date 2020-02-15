@@ -2127,7 +2127,9 @@ LibraryManager.library = {
 
   _arraySum: function(array, index) {
     var sum = 0;
-    for (var i = 0; i <= index; sum += array[i++]);
+    for (var i = 0; i <= index; sum += array[i++]) {
+      // no-op
+    }
     return sum;
   },
 
@@ -4038,16 +4040,16 @@ LibraryManager.library = {
   emscripten_get_now__postset:
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
+                               "  _emscripten_get_now = /** @type{function(): number} */(function _emscripten_get_now_actual() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
-                               "  };\n" +
+                               "  });\n" +
                                "} else " +
 #endif
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = /** @type{function(): number} */(function() { return performance['now']() - Module['__performance_now_clock_drift']; });\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -4091,25 +4093,20 @@ LibraryManager.library = {
 
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
   emscripten_get_now_is_monotonic: `
-     (0
+     ((typeof performance === 'object' && performance && typeof performance['now'] === 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
       || (typeof dateNow !== 'undefined')
 #endif
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-      || (typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+    );`,
 #else
-      // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-      || 1
+  // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
+  emscripten_get_now_is_monotonic: 'true;',
 #endif
-
-#endif
-      );`,
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {

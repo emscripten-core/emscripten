@@ -598,8 +598,9 @@ function getUniqueRunDependency(id) {
     if (!runDependencyTracking[id]) return id;
     id = orig + Math.random();
   }
-#endif
+#else
   return id;
+#endif
 }
 
 function addRunDependency(id) {
@@ -687,6 +688,7 @@ Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 var abortDecorators = [];
 #endif
 
+/** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
   if (Module['onAbort']) {

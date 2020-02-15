@@ -409,10 +409,10 @@ mergeInto(LibraryManager.library, {
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
       if (!FS.FSStream) {
-        FS.FSStream = function(){};
         FS.FSStream.prototype = {};
         // compatibility
         Object.defineProperties(FS.FSStream.prototype, {
+        FS.FSStream = /** @constructor */ function(){};
           object: {
             get: function() { return this.node; },
             set: function(val) { this.node = val; }
@@ -1425,9 +1425,9 @@ mergeInto(LibraryManager.library, {
     },
     ensureErrnoError: function() {
       if (FS.ErrnoError) return;
-      FS.ErrnoError = function ErrnoError(errno, node) {
+      FS.ErrnoError = /** @this{Object} */ function ErrnoError(errno, node) {
         this.node = node;
-        this.setErrno = function(errno) {
+        this.setErrno = /** @this{Object} */ function(errno) {
           this.errno = errno;
 #if ASSERTIONS
           for (var key in ERRNO_CODES) {
@@ -1705,11 +1705,11 @@ mergeInto(LibraryManager.library, {
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile: function(parent, name, url, canRead, canWrite) {
       // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-      function LazyUint8Array() {
+      /** @constructor */ function LazyUint8Array() {
         this.lengthKnown = false;
         this.chunks = []; // Loaded chunks. Index is the chunk number
       }
-      LazyUint8Array.prototype.get = function LazyUint8Array_get(idx) {
+      LazyUint8Array.prototype.get = /** @this{Object} */ function LazyUint8Array_get(idx) {
         if (idx > this.length-1 || idx < 0) {
           return undefined;
         }
@@ -1758,7 +1758,7 @@ mergeInto(LibraryManager.library, {
           xhr.send(null);
           if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
           if (xhr.response !== undefined) {
-            return new Uint8Array(xhr.response || []);
+            return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
           } else {
             return intArrayFromString(xhr.responseText || '', true);
           }
@@ -1792,7 +1792,7 @@ mergeInto(LibraryManager.library, {
         var lazyArray = new LazyUint8Array();
         Object.defineProperties(lazyArray, {
           length: {
-            get: function() {
+            get: /** @this{Object} */ function() {
               if(!this.lengthKnown) {
                 this.cacheLength();
               }
@@ -1800,7 +1800,7 @@ mergeInto(LibraryManager.library, {
             }
           },
           chunkSize: {
-            get: function() {
+            get: /** @this{Object} */ function() {
               if(!this.lengthKnown) {
                 this.cacheLength();
               }

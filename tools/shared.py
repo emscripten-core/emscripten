@@ -2400,7 +2400,7 @@ class Building(object):
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
-      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs.js')]
+      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
 
       # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
       # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
@@ -2420,17 +2420,17 @@ class Building(object):
         NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
         NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                         if name.endswith('.js')]
-        CLOSURE_EXTERNS += [path_from_root('src', 'node-externs.js')] + NODE_EXTERNS
+        CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
 
       # V8/SpiderMonkey shell specific externs
       if Settings.target_environment_may_be('shell'):
-        V8_EXTERNS = [path_from_root('src', 'v8-externs.js')]
-        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'spidermonkey-externs.js')]
+        V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
+        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
         CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
       # Web environment specific externs
       if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
-        BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+        BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
         if os.path.isdir(BROWSER_EXTERNS_BASE):
           BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
           BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS

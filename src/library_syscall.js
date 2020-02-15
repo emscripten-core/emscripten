@@ -1365,9 +1365,9 @@ var SyscallsLibrary = {
   // library_wasi.js.
 
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0 && (!MINIMAL_RUNTIME || EXIT_RUNTIME)
-  $flush_NO_FILESYSTEM: function() {
+  $flush_NO_FILESYSTEM: function(stream) {
     // flush anything remaining in the buffers during shutdown
-    if (typeof _fflush !== 'undefined') _fflush(0);
+    if (typeof _fflush !== 'undefined') _fflush(stream);
     var buffers = SYSCALLS.buffers;
     if (buffers[1].length) SYSCALLS.printChar(1, {{{ charCode("\n") }}});
     if (buffers[2].length) SYSCALLS.printChar(2, {{{ charCode("\n") }}});
