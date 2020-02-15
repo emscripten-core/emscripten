@@ -2936,10 +2936,13 @@ class Building(object):
     if emit_source_map:
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
-    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL < 3:
-      # remove any dwarf debug info sections, as currently we are not able to
-      # properly update it anyhow, and in the case of source maps, we have
-      # that info in the map anyhow
+    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
+      # remove any dwarf debug info sections, if the debug level is <3, as
+      # we don't need them; also remove them if we the level is 4, as then we
+      # want a source map, which is implemented separately from dwarf
+      # TODO: once fastcomp is gone, either remove source maps entirely, or
+      #       support them by emitting a source map at the end from the dwarf,
+      #       and use llvm-objcpy to remove that final dwarf
       cmd += ['--strip-dwarf']
 
     ret = check_call(cmd, stdout=stdout).stdout
