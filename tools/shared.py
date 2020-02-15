@@ -2936,7 +2936,7 @@ class Building(object):
     if emit_source_map:
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
-    if outfile and tool == 'wasm-opt' and not Settings.FULL_DWARF:
+    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL < 3:
       # remove any dwarf debug info sections, as currently we are not able to
       # properly update it anyhow, and in the case of source maps, we have
       # that info in the map anyhow

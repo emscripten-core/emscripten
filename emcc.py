@@ -221,8 +221,6 @@ def base64_encode(b):
 
 class EmccOptions(object):
   def __init__(self):
-    self.opt_level = 0
-    self.debug_level = 0
     self.shrink_level = 0
     self.requested_debug = ''
     self.profiling = False
@@ -270,11 +268,11 @@ class EmccOptions(object):
 
 
 def use_source_map(options):
-  return options.debug_level >= 4
+  return shared.Settings.DEBUG_LEVEL >= 4
 
 
 def will_metadce(options):
-  return options.opt_level >= 3 or options.shrink_level >= 1
+  return shared.Settings.OPT_LEVEL >= 3 or options.shrink_level >= 1
 
 
 class JSOptimizer(object):
@@ -287,8 +285,8 @@ class JSOptimizer(object):
     self.cleanup_shell = False
 
     self.target = target
-    self.opt_level = options.opt_level
-    self.debug_level = options.debug_level
+    self.opt_level = shared.Settings.OPT_LEVEL
+    self.debug_level = shared.Settings.DEBUG_LEVEL
     self.emit_symbol_map = options.emit_symbol_map
     self.profiling_funcs = options.profiling_funcs
     self.use_closure_compiler = options.use_closure_compiler
@@ -851,7 +849,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     return '-O0' not in opts
 
   def need_llvm_debug_info(options):
-    return options.debug_level >= 3 or shared.Settings.CYBERDWARF or shared.Settings.FULL_DWARF
+    return shared.Settings.DEBUG_LEVEL >= 3 or shared.Settings.CYBERDWARF
 
   with ToolchainProfiler.profile_block('parse arguments and setup'):
     ## Parse args
@@ -900,20 +898,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       options.post_js += open(shared.path_from_root('src', 'threadprofiler.js')).read() + '\n'
 
     if options.js_opts is None:
-      options.js_opts = options.opt_level >= 2
+      options.js_opts = shared.Settings.OPT_LEVEL >= 2
 
     if options.llvm_opts is None:
-      options.llvm_opts = LLVM_OPT_LEVEL[options.opt_level]
+      options.llvm_opts = LLVM_OPT_LEVEL[shared.Settings.OPT_LEVEL]
     elif type(options.llvm_opts) == int:
       options.llvm_opts = ['-O%d' % options.llvm_opts]
 
     if options.memory_init_file is None:
-      options.memory_init_file = options.opt_level >= 2
+      options.memory_init_file = shared.Settings.OPT_LEVEL >= 2
 
     # TODO: support source maps with js_transform
     if options.js_transform and use_source_map(options):
       logger.warning('disabling source maps because a js transform is being done')
-      options.debug_level = 3
+      shared.Settings.DEBUG_LEVEL = 3
 
     if DEBUG:
       start_time = time.time() # done after parsing arguments, which might affect debug state
@@ -1131,7 +1129,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.WarningManager.warn('SEPARATE_ASM')
 
     # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
+    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=options.shrink_level, noisy=True)
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
@@ -1143,7 +1141,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
     # Set ASM_JS default here so that we can override it from the command line.
-    shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
+    shared.Settings.ASM_JS = 1 if shared.Settings.OPT_LEVEL > 0 else 2
 
     # Apply -s settings in newargs here (after optimization levels, so they can override them)
     apply_settings(settings_changes)
@@ -1193,7 +1191,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # Use settings
 
-    if options.debug_level > 1 and options.use_closure_compiler:
+    if shared.Settings.DEBUG_LEVEL > 1 and options.use_closure_compiler:
       shared.warning('disabling closure because debug info was requested')
       options.use_closure_compiler = False
 
@@ -1575,7 +1573,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         exit_with_error('-s PROXY_TO_PTHREAD=1 requires -s USE_PTHREADS to work!')
 
     # Enable minification of asm.js imports on -O1 and higher if -g1 or lower is used.
-    if options.opt_level >= 1 and options.debug_level < 2 and not shared.Settings.WASM:
+    if shared.Settings.OPT_LEVEL >= 1 and shared.Settings.DEBUG_LEVEL < 2 and not shared.Settings.WASM:
       shared.Settings.MINIFY_ASMJS_IMPORT_NAMES = 1
 
     if shared.Settings.WASM:
@@ -1621,8 +1619,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # needs to use the getTempRet0 imports (otherwise, it may create new ones to replace
     # the old, which would break).
     if will_metadce(options) and \
-        options.opt_level >= 2 and \
-        options.debug_level <= 2 and \
+        shared.Settings.OPT_LEVEL >= 2 and \
+        shared.Settings.DEBUG_LEVEL <= 2 and \
         not shared.Settings.LINKABLE and \
         not shared.Settings.STANDALONE_WASM and \
         not shared.Settings.AUTODEBUG and \
@@ -1809,19 +1807,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           # and doing so is never bad for code size
           # FIXME however, don't do it with DWARF for now, as inlining is not
           #       fully handled in DWARF updating yet
-          if not shared.Settings.FULL_DWARF:
+          if shared.Settings.DEBUG_LEVEL < 3:
             passes += ['--inline-main']
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
-          if options.opt_level > 0 or options.shrink_level > 0:
-            passes += [shared.Building.opt_level_to_str(options.opt_level, options.shrink_level)]
+          if shared.Settings.OPT_LEVEL > 0 or options.shrink_level > 0:
+            passes += [shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, options.shrink_level)]
           elif shared.Settings.STANDALONE_WASM:
             # even if not optimizing, make an effort to remove all unused imports and
             # exports, to make the wasm as standalone as possible
             passes += ['--remove-unused-module-elements']
           if shared.Settings.GLOBAL_BASE >= 1024: # hardcoded value in the binaryen pass
             passes += ['--low-memory-unused']
-          if options.debug_level < 3:
+          if shared.Settings.DEBUG_LEVEL < 3:
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
@@ -1950,7 +1948,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RUNNING_JS_OPTS = 1
 
     if shared.Settings.CYBERDWARF:
-      options.debug_level = max(options.debug_level, 2)
+      shared.Settings.DEBUG_LEVEL = max(shared.Settings.DEBUG_LEVEL, 2)
       shared.Settings.BUNDLED_CD_DEBUG_FILE = target + ".cd"
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_cyberdwarf.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'library_debugger_toolkit.js'))
@@ -1978,7 +1976,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # We leave the -O option in place so that the clang front-end runs in that
       # optimization mode, but we disable the actual optimization passes, as we'll
       # run them separately.
-      if options.opt_level > 0:
+      if shared.Settings.OPT_LEVEL > 0:
         newargs.append('-mllvm')
         newargs.append('-disable-llvm-optzns')
 
@@ -1986,8 +1984,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
-    shared.Settings.OPT_LEVEL = options.opt_level
-    shared.Settings.DEBUG_LEVEL = options.debug_level
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs
     shared.Settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
@@ -2022,7 +2018,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         return run_process([clang_compiler] + args, check=False).returncode
 
       # For asm.js, the generated JavaScript could preserve LLVM value names, which can be useful for debugging.
-      if options.debug_level >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
+      if shared.Settings.DEBUG_LEVEL >= 3 and not shared.Settings.WASM and not shared.Settings.WASM_BACKEND:
         newargs.append('-fno-discard-value-names')
 
       def is_link_flag(flag):
@@ -2252,7 +2248,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.WASM_BACKEND:
           # If LTO is enabled then use the -O opt level as the LTO level
           if options.llvm_lto:
-            lto_level = options.opt_level
+            lto_level = shared.Settings.OPT_LEVEL
           else:
             lto_level = 0
           all_externals = None
@@ -2520,7 +2516,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
         # Minify the worker.js file in optimized builds
-        if (options.opt_level >= 1 or options.shrink_level >= 1) and not options.debug_level:
+        if (shared.Settings.OPT_LEVEL >= 1 or options.shrink_level >= 1) and not shared.Settings.DEBUG_LEVEL:
           minified_worker = shared.Building.js_optimizer_no_asmjs(worker_output, ['minifyWhitespace'], acorn=True, return_output=True)
           open(worker_output, 'w').write(minified_worker)
 
@@ -2543,7 +2539,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         optimizer.queue += ['eliminateDeadFuncs']
         optimizer.extra_info['dead_functions'] = shared.Settings.DEAD_FUNCTIONS
 
-      if options.opt_level >= 1 and options.js_opts:
+      if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
         logger.debug('running js post-opts')
 
         if DEBUG == 2:
@@ -2556,7 +2552,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           else:
             return 'eliminate'
 
-        if options.opt_level >= 2:
+        if shared.Settings.OPT_LEVEL >= 2:
           optimizer.queue += [get_eliminate()]
 
           if shared.Settings.AGGRESSIVE_VARIABLE_ELIMINATION:
@@ -2573,12 +2569,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # add explicit label setting, as we will run aggressiveVariableElimination late, *after* 'label' is no longer notable by name
         optimizer.queue += ['safeLabelSetting']
 
-      if options.opt_level >= 1 and options.js_opts:
-        if options.opt_level >= 2:
+      if shared.Settings.OPT_LEVEL >= 1 and options.js_opts:
+        if shared.Settings.OPT_LEVEL >= 2:
           # simplify ifs if it is ok to make the code somewhat unreadable,
           # with commaified code breaks late aggressive variable elimination)
           # do not do this with binaryen, as commaifying confuses binaryen call type detection (FIXME, in theory, but unimportant)
-          debugging = options.debug_level == 0 or options.profiling
+          debugging = shared.Settings.DEBUG_LEVEL == 0 or options.profiling
           if shared.Settings.SIMPLIFY_IFS and debugging and not shared.Settings.WASM:
             optimizer.queue += ['simplifyIfs']
 
@@ -2589,14 +2585,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.SAFE_HEAP and not shared.Building.is_wasm_only():
           optimizer.queue += ['safeHeap']
 
-        if options.opt_level >= 2 and options.debug_level < 3:
-          if options.opt_level >= 3 or options.shrink_level > 0:
+        if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL < 3:
+          if shared.Settings.OPT_LEVEL >= 3 or options.shrink_level > 0:
             optimizer.queue += ['registerizeHarder']
           else:
             optimizer.queue += ['registerize']
 
         # NOTE: Important that this comes after registerize/registerizeHarder
-        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and options.opt_level >= 2:
+        if shared.Settings.ELIMINATE_DUPLICATE_FUNCTIONS and shared.Settings.OPT_LEVEL >= 2:
           optimizer.flush()
           shared.Building.eliminate_duplicate_funcs(final)
           save_intermediate('dfe')
@@ -2611,7 +2607,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if not shared.Settings.EMTERPRETIFY and not shared.Settings.WASM:
           optimizer.do_minify()
 
-        if options.opt_level >= 2:
+        if shared.Settings.OPT_LEVEL >= 2:
           optimizer.queue += ['asmLastOpts']
 
         if shared.Settings.FINALIZE_ASM_JS:
@@ -2625,7 +2621,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         logger.debug('running closure')
         # no need to add this to js_transform_tempfiles, because closure and
         # debug_level > 0 are never simultaneously true
-        final = shared.Building.closure_compiler(final, pretty=options.debug_level >= 1,
+        final = shared.Building.closure_compiler(final, pretty=shared.Settings.DEBUG_LEVEL >= 1,
                                                  extra_closure_args=options.closure_args)
         save_intermediate('closure')
 
@@ -2668,7 +2664,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
       # Run a final regex pass to clean up items that were not possible to optimize by Closure, or unoptimalities that were left behind
       # by processing steps that occurred after Closure.
-      if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and options.debug_level == 0 and not shared.Settings.SINGLE_FILE:
+      if shared.Settings.MINIMAL_RUNTIME == 2 and shared.Settings.USE_CLOSURE_COMPILER and shared.Settings.DEBUG_LEVEL == 0 and not shared.Settings.SINGLE_FILE:
         # Process .js runtime file
         shared.run_process([shared.PYTHON, shared.path_from_root('tools', 'hacky_postprocess_around_closure_limitations.py'), final])
         # Process .asm.js file
@@ -2734,7 +2730,7 @@ def parse_args(newargs):
         options.requested_level = 2
         options.shrink_level = 2
         settings_changes.append('INLINING_LIMIT=25')
-      options.opt_level = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
+      shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
       check_bad_eq(newargs[i])
       options.js_opts = int(newargs[i + 1])
@@ -2781,7 +2777,7 @@ def parse_args(newargs):
     elif newargs[i].startswith('--minify'):
       check_bad_eq(newargs[i])
       assert newargs[i + 1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
-      options.debug_level = max(1, options.debug_level)
+      shared.Settings.DEBUG_LEVEL = max(1, shared.Settings.DEBUG_LEVEL)
       newargs[i] = ''
       newargs[i + 1] = ''
     elif newargs[i].startswith('-g'):
@@ -2789,30 +2785,22 @@ def parse_args(newargs):
       requested_level = newargs[i][2:] or '3'
       if is_int(requested_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
-        options.debug_level = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
+        shared.Settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'Invalid debug level: ' + newargs[i])
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
-        if options.debug_level < 3:
+        if shared.Settings.DEBUG_LEVEL < 3:
           newargs[i] = ''
-        else:
-          # until we support full DWARF info, limit the clang frontend to just
-          # emit line tables, which can be represented in source maps
-          newargs[i] = '-gline-tables-only'
       else:
         if requested_level.startswith('force_dwarf'):
-          # Force clang to generate full debug info using -g. Set the FULL_DWARF
-          # setting to avoid stripping it out later.
-          newargs[i] = '-g'
-          shared.Settings.FULL_DWARF = 1
-          shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
+          exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
         # debug info during link (during compile, this does not make a
         # difference).
-        options.debug_level = 3
+        shared.Settings.DEBUG_LEVEL = 3
     elif newargs[i] == '-profiling' or newargs[i] == '--profiling':
-      options.debug_level = max(options.debug_level, 2)
+      shared.Settings.DEBUG_LEVEL = max(shared.Settings.DEBUG_LEVEL, 2)
       options.profiling = True
       newargs[i] = ''
     elif newargs[i] == '-profiling-funcs' or newargs[i] == '--profiling-funcs':
@@ -3105,7 +3093,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     logger.warning("Wasm source map won't be usable in a browser without --source-map-base")
   binaryen_bin = shared.Building.get_binaryen_bin()
   # whether we need to emit -g (function name debug info) in the final wasm
-  debug_info = options.debug_level >= 2 or options.profiling_funcs
+  debug_info = shared.Settings.DEBUG_LEVEL >= 2 or options.profiling_funcs
   # whether we need to emit -g in the intermediate binaryen invocations (but not necessarily at the very end).
   # this is necessary for emitting a symbol map at the end.
   intermediate_debug_info = bool(debug_info or options.emit_symbol_map or shared.Settings.ASYNCIFY_WHITELIST or shared.Settings.ASYNCIFY_BLACKLIST)
@@ -3122,8 +3110,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if shared.Settings.BINARYEN_IGNORE_IMPLICIT_TRAPS:
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
-    if options.opt_level > 0:
-      cmd.append(shared.Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if shared.Settings.OPT_LEVEL > 0:
+      cmd.append(shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, options.shrink_level))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
     import_mem_init = mem_file_exists and shared.Settings.MEM_INIT_IN_WASM
@@ -3152,7 +3140,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     # we prefer to emit a binary, as it is more efficient. however, when we
     # want full debug info support (not just function names), then we must
     # emit text (at least until wasm gains support for debug info in binaries)
-    target_binary = options.debug_level < 3
+    target_binary = shared.Settings.DEBUG_LEVEL < 3
     if target_binary:
       cmd += ['-o', wasm_binary_target]
     else:
@@ -3227,7 +3215,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
     final = shared.Building.apply_wasm_memory_growth(final)
 
-  if options.opt_level >= 2 and options.debug_level <= 2:
+  if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
     save_intermediate_with_wasm('preclean', wasm_binary_target)
@@ -3274,7 +3262,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
     wasm2js = shared.Building.wasm2js(wasm2js_template,
                                       wasm_binary_target,
-                                      opt_level=options.opt_level,
+                                      opt_level=shared.Settings.OPT_LEVEL,
                                       minify_whitespace=optimizer.minify_whitespace,
                                       use_closure_compiler=options.use_closure_compiler,
                                       debug_info=intermediate_debug_info,
@@ -3633,7 +3621,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
 def minify_html(filename, options):
   opts = []
   # -g1 and greater retain whitespace and comments in source
-  if options.debug_level == 0:
+  if shared.Settings.DEBUG_LEVEL == 0:
     opts += ['--collapse-whitespace',
              '--collapse-inline-tag-whitespace',
              '--remove-comments',
@@ -3641,7 +3629,7 @@ def minify_html(filename, options):
              '--sort-attributes',
              '--sort-class-name']
   # -g2 and greater do not minify HTML at all
-  if options.debug_level <= 1:
+  if shared.Settings.DEBUG_LEVEL <= 1:
     opts += ['--decode-entities',
              '--collapse-boolean-attributes',
              '--remove-attribute-quotes',
@@ -3660,7 +3648,7 @@ def minify_html(filename, options):
   # '--remove-empty-elements': removes all elements with empty contents.
   #                            (Breaks at least browser.test_asm_swapping)
 
-  if options.debug_level >= 2:
+  if shared.Settings.DEBUG_LEVEL >= 2:
     return
 
   logger.debug('minifying HTML file ' + filename)
@@ -3696,7 +3684,7 @@ def generate_html(target, options, js_target, target_basename,
     generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
                                       wasm_binary_target, memfile, optimizer)
 
-  if shared.Settings.MINIFY_HTML and (options.opt_level >= 1 or options.shrink_level >= 1):
+  if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or options.shrink_level >= 1):
     minify_html(target, options)
 
 

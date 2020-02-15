@@ -7397,8 +7397,7 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_fastcomp('DWARF is only supported in upstream')
   def test_dwarf(self):
-    self.emcc_args.append('-gforce_dwarf')
-    self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
+    self.emcc_args.append('-g')
 
     create_test_file('src.cpp', '''
       #include <emscripten.h>
