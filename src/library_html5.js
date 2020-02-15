@@ -1734,7 +1734,11 @@ var LibraryJSEvents = {
   },
 
   _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '_specialEventTargets'],
-  _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
+  _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+#if USE_PTHREADS
+    targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
+#endif
+
     var pointerlockErrorEventHandlerFunc = function(ev) {
       var e = ev || event;
 
