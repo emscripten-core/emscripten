@@ -206,7 +206,6 @@
 #define SYS_mkdirat		296
 #define SYS_mknodat		297
 #define SYS_fchownat		298
-#define SYS_futimesat		299
 #define SYS_fstatat64		300
 #define SYS_unlinkat		301
 #define SYS_renameat		302
