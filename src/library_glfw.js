@@ -968,7 +968,9 @@ var LibraryGLFW = {
 
     createWindow: function(width, height, title, monitor, share) {
       var i, id;
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++);
+      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
+        // no-op
+      }
       if (i > 0) throw "glfwCreateWindow only supports one window at time currently";
 
       // id for window
@@ -984,7 +986,9 @@ var LibraryGLFW = {
       }
 
       // Create context when there are no existing alive windows
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++);
+      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
+        // no-op
+      }
       if (i == GLFW.windows.length) {
         var contextAttributes = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES

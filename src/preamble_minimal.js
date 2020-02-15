@@ -11,6 +11,7 @@ function assert(condition, text) {
 }
 #endif
 
+/** @param {string|number=} what */
 function abort(what) {
 #if ASSERTIONS
   throw new Error(what);
