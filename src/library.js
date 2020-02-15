@@ -1046,7 +1046,11 @@ LibraryManager.library = {
       }
       dest = ret;
     } else {
+#if WASM_BACKEND // Mute Closure warning about a redundant asm.js |0 operation
+      _memcpy(dest, src, num);
+#else
       _memcpy(dest, src, num) | 0;
+#endif
     }
     return dest | 0;
   },
