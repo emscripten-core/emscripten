@@ -1336,11 +1336,15 @@ var LibraryGLFW = {
   },
 
   glfwIconifyWindow: function(winid) {
-    GLFW.iconifyWindow(winid);
+#if ASSERTIONS
+    warnOnce('glfwIconifyWindow is not implemented');
+#endif
   },
 
   glfwRestoreWindow: function(winid) {
-    GLFW.restoreWindow(winid);
+#if ASSERTIONS
+    warnOnce('glfwRestoreWindow is not implemented');
+#endif
   },
 
   glfwShowWindow: function(winid) {},
@@ -1629,11 +1633,15 @@ var LibraryGLFW = {
   },
 
   glfwIconifyWindow: function() {
-    GLFW.iconifyWindow(GLFW.active.id);
+#if ASSERTIONS
+    warnOnce('glfwIconifyWindow is not implemented');
+#endif
   },
 
   glfwRestoreWindow: function() {
-    GLFW.restoreWindow(GLFW.active.id);
+#if ASSERTIONS
+    warnOnce('glfwRestoreWindow is not implemented');
+#endif
   },
 
   glfwSwapBuffers: function() {

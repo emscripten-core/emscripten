@@ -105,7 +105,7 @@ var LibraryJSEvents = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
-        call.targetFunction.apply(this, call.argsList);
+        call.targetFunction.apply(null, call.argsList);
       }
     },
 
@@ -959,7 +959,7 @@ var LibraryJSEvents = {
   },
 
   _fillOrientationChangeEventData__deps: ['_screenOrientation'],
-  _fillOrientationChangeEventData: function(eventStruct, e) {
+  _fillOrientationChangeEventData: function(eventStruct) {
     var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
     var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
 
@@ -989,7 +989,7 @@ var LibraryJSEvents = {
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
 #endif
 
-      __fillOrientationChangeEventData(orientationChangeEvent, e);
+      __fillOrientationChangeEventData(orientationChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
@@ -1016,7 +1016,7 @@ var LibraryJSEvents = {
   emscripten_set_orientationchange_callback_on_thread__sig: 'iiiii',
   emscripten_set_orientationchange_callback_on_thread__deps: ['_registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    if (!screen || !screen.addEventListener) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!screen) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_ORIENTATIONCHANGE') }}}, "orientationchange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1075,9 +1075,10 @@ var LibraryJSEvents = {
   },
 
   _fillFullscreenChangeEventData__deps: ['$JSEvents'],
-  _fillFullscreenChangeEventData: function(eventStruct, e) {
+  _fillFullscreenChangeEventData: function(eventStruct) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
+    /** @suppress{checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
@@ -1112,7 +1113,7 @@ var LibraryJSEvents = {
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
 #endif
 
-      __fillFullscreenChangeEventData(fullscreenChangeEvent, e);
+      __fillFullscreenChangeEventData(fullscreenChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
@@ -1667,9 +1668,10 @@ var LibraryJSEvents = {
   },
 
   _fillPointerlockChangeEventData__deps: ['$JSEvents'],
-  _fillPointerlockChangeEventData: function(eventStruct, e) {
+  _fillPointerlockChangeEventData: function(eventStruct) {
     var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
     var isPointerlocked = !!pointerLockElement;
+    /** @suppress {checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
@@ -1692,7 +1694,7 @@ var LibraryJSEvents = {
 #else
       var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
 #endif
-      __fillPointerlockChangeEventData(pointerlockChangeEvent, e);
+      __fillPointerlockChangeEventData(pointerlockChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
@@ -1924,10 +1926,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _fillVisibilityChangeEventData: function(eventStruct, e) {
+  _fillVisibilityChangeEventData: function(eventStruct) {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
+    // Assigning a boolean to HEAP32 with expected type coercion.
+    /** @suppress {checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
@@ -1948,7 +1952,7 @@ var LibraryJSEvents = {
       var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
 #endif
 
-      __fillVisibilityChangeEventData(visibilityChangeEvent, e);
+      __fillVisibilityChangeEventData(visibilityChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
@@ -2134,7 +2138,9 @@ var LibraryJSEvents = {
       if (typeof(e.buttons[i]) === 'object') {
         {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
       } else {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
+        // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
+        /** @suppress {checkTypes} */
+        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i32') }}};
       }
     }
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};

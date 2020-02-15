@@ -902,7 +902,7 @@ var LibraryBrowser = {
         // if the destination directory does not yet exist, create it
         FS.mkdirTree(destinationDirectory);
 
-        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
           var stack = stackSave();
           {{{ makeDynCall('viii') }}}(onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
@@ -963,7 +963,7 @@ var LibraryBrowser = {
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
-        var byteArray = new Uint8Array(http.response);
+        var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         if (onload) {{{ makeDynCall('viiii') }}}(onload, handle, arg, buffer, byteArray.length);
