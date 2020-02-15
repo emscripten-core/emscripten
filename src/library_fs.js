@@ -26,7 +26,55 @@ mergeInto(LibraryManager.library, {
     addAtInit('if (!Module["noFSInit"] && !FS.init.initialized) FS.init();');
     addAtMain('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
-    return 'FS.staticInit();' +
+    // We must statically create FS.FSNode here so that it is created in a manner
+    // that is visible to Closure compiler. That lets us use type annotations for
+    // Closure to the "this" pointer in various node creation functions.
+    return 'var FSNode = /** @constructor */ function(parent, name, mode, rdev) {\n'+
+             'if (!parent) {\n'+
+               'parent = this;  // root node sets parent to itself\n'+
+             '}\n'+
+             'this.parent = parent;\n'+
+             'this.mount = parent.mount;\n'+
+             'this.mounted = null;\n'+
+             'this.id = FS.nextInode++;\n'+
+             'this.name = name;\n'+
+             'this.mode = mode;\n'+
+             'this.node_ops = {};\n'+
+             'this.stream_ops = {};\n'+
+             'this.rdev = rdev;\n'+
+           '};\n'+
+           'var readMode = 292/*{{{ cDefine("S_IRUGO") }}}*/ | 73/*{{{ cDefine("S_IXUGO") }}}*/;\n'+
+           'var writeMode = 146/*{{{ cDefine("S_IWUGO") }}}*/;\n'+
+           'Object.defineProperties(FSNode.prototype, {\n'+
+            'read: {\n'+
+             'get: /** @this{FSNode} */function() {\n'+
+              'return (this.mode & readMode) === readMode;\n'+
+             '},\n'+
+             'set: /** @this{FSNode} */function(val) {\n'+
+              'val ? this.mode |= readMode : this.mode &= ~readMode;\n'+
+             '}\n'+
+            '},\n'+
+            'write: {\n'+
+             'get: /** @this{FSNode} */function() {\n'+
+              'return (this.mode & writeMode) === writeMode;\n'+
+             '},\n'+
+             'set: /** @this{FSNode} */function(val) {\n'+
+              'val ? this.mode |= writeMode : this.mode &= ~writeMode;\n'+
+             '}\n'+
+            '},\n'+
+            'isFolder: {\n'+
+             'get: /** @this{FSNode} */function() {\n'+
+              'return FS.isDir(this.mode);\n'+
+             '}\n'+
+            '},\n'+
+            'isDevice: {\n'+
+             'get: /** @this{FSNode} */function() {\n'+
+              'return FS.isChrdev(this.mode);\n'+
+             '}\n'+
+            '}\n'+
+           '});\n'+
+           'FS.FSNode = FSNode;\n' +
+           'FS.staticInit();' +
 #if USE_CLOSURE_COMPILER
            // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.init()
            '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
@@ -204,48 +252,6 @@ mergeInto(LibraryManager.library, {
       return FS.lookup(parent, name);
     },
     createNode: function(parent, name, mode, rdev) {
-      if (!FS.FSNode) {
-        FS.FSNode = function(parent, name, mode, rdev) {
-          if (!parent) {
-            parent = this;  // root node sets parent to itself
-          }
-          this.parent = parent;
-          this.mount = parent.mount;
-          this.mounted = null;
-          this.id = FS.nextInode++;
-          this.name = name;
-          this.mode = mode;
-          this.node_ops = {};
-          this.stream_ops = {};
-          this.rdev = rdev;
-        };
-
-        FS.FSNode.prototype = {};
-
-        // compatibility
-        var readMode = {{{ cDefine('S_IRUGO') }}} | {{{ cDefine('S_IXUGO') }}};
-        var writeMode = {{{ cDefine('S_IWUGO') }}};
-
-        // NOTE we must use Object.defineProperties instead of individual calls to
-        // Object.defineProperty in order to make closure compiler happy
-        Object.defineProperties(FS.FSNode.prototype, {
-          read: {
-            get: function() { return (this.mode & readMode) === readMode; },
-            set: function(val) { val ? this.mode |= readMode : this.mode &= ~readMode; }
-          },
-          write: {
-            get: function() { return (this.mode & writeMode) === writeMode; },
-            set: function(val) { val ? this.mode |= writeMode : this.mode &= ~writeMode; }
-          },
-          isFolder: {
-            get: function() { return FS.isDir(this.mode); }
-          },
-          isDevice: {
-            get: function() { return FS.isChrdev(this.mode); }
-          }
-        });
-      }
-
       var node = new FS.FSNode(parent, name, mode, rdev);
 
       FS.hashAddNode(node);
@@ -409,10 +415,8 @@ mergeInto(LibraryManager.library, {
     // SOCKFS is completed.
     createStream: function(stream, fd_start, fd_end) {
       if (!FS.FSStream) {
-        FS.FSStream = function(){};
-        FS.FSStream.prototype = {};
-        // compatibility
-        Object.defineProperties(FS.FSStream.prototype, {
+        FS.FSStream = /** @constructor */ function(){};
+        FS.FSStream.prototype = {
           object: {
             get: function() { return this.node; },
             set: function(val) { this.node = val; }
@@ -426,7 +430,7 @@ mergeInto(LibraryManager.library, {
           isAppend: {
             get: function() { return (this.flags & {{{ cDefine('O_APPEND') }}}); }
           }
-        });
+        };
       }
       // clone it, so we can return an instance of FSStream
       var newStream = new FS.FSStream();
@@ -1827,7 +1831,7 @@ mergeInto(LibraryManager.library, {
       // Add a function that defers querying the file size until it is asked the first time.
       Object.defineProperties(node, {
         usedBytes: {
-          get: function() { return this.contents.length; }
+          get: /** @this {FSNode} */ function() { return this.contents.length; }
         }
       });
       // override each stream op with one that tries to force load the lazy file first
