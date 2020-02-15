@@ -2353,30 +2353,34 @@ int f() {
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.out.wasm'] + compile_args)
 
     no_size, line_size, full_size = test(compile_to_object)
-
     self.assertLess(no_size, line_size)
-    # currently we don't support full debug info anyhow, so line tables
-    # is all we have
-    self.assertEqual(line_size, full_size)
+    self.assertLess(line_size, full_size)
 
-    def compile_to_executable(compile_args):
+    def compile_to_executable(compile_args, link_args):
       # compile with the specified args
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.o'] + compile_args)
       # link with debug info
-      run_process([PYTHON, EMCC, 'a.o', '-g'])
+      run_process([PYTHON, EMCC, 'a.o'] + link_args)
 
-    no_size, line_size, full_size = test(compile_to_executable)
+    def compile_to_debug_executable(compile_args):
+      return compile_to_executable(compile_args, ['-g'])
 
-    # currently we strip all debug info from the final wasm anyhow, until
-    # we have full dwarf support
+    no_size, line_size, full_size = test(compile_to_debug_executable)
+    self.assertLess(no_size, line_size)
+    self.assertLess(line_size, full_size)
+
+    def compile_to_release_executable(compile_args):
+      return compile_to_executable(compile_args, [])
+
+    no_size, line_size, full_size = test(compile_to_release_executable)
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   @no_fastcomp()
-  def test_force_dwarf(self):
+  def test_dwarf(self):
     def compile_with_dwarf(args, output):
-      # Test that the -gforce_dwarf flag forces enabling dwarf info in object files and linked wasm
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-gforce_dwarf'] + args)
+      # Test that -g enables dwarf info in object files and linked wasm
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-g'] + args)
 
     def verify(output):
       info = run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout

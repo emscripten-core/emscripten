@@ -2790,6 +2790,9 @@ def parse_args(newargs):
         # for clang
         if shared.Settings.DEBUG_LEVEL < 3:
           newargs[i] = ''
+        else:
+          # for 3+, report -g to clang as -g4 is not accepted
+          newargs[i] = '-g'
       else:
         if requested_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
