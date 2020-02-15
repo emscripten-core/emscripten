@@ -25,7 +25,7 @@ void *memcpy(void *restrict dest, const void *restrict src, size_t n)
   unsigned char *block_aligned_d_end;
   unsigned char *d_end;
 
-  if (n >= 8192) {
+  if (n >= 512) {
     emscripten_memcpy_big(dest, src, n);
     return dest;
   }

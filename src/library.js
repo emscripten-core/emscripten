@@ -923,9 +923,17 @@ LibraryManager.library = {
     return ret;
   },
 
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin
+  emscripten_memcpy_big: ';if (HEAPU8.copyWithin) {\n' +
+    '  _emscripten_memcpy_big = function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); };\n' +
+    '} else {\n' +
+    '  _emscripten_memcpy_big = function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); };\n' +
+    '}',
+#else
   emscripten_memcpy_big: function(dest, src, num) {
-    HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
+    HEAPU8.copyWithin(dest, src, src + num);
   },
+#endif
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
@@ -936,8 +944,8 @@ LibraryManager.library = {
     var aligned_dest_end = 0;
     var block_aligned_dest_end = 0;
     var dest_end = 0;
-    // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
-    if ((num|0) >= 8192) {
+    // Test against a benchmarked cutoff limit for when HEAPU8.copyWithin() becomes faster to use.
+    if ((num|0) >= 512) {
       _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
       return dest|0;
     }
