@@ -923,9 +923,24 @@ LibraryManager.library = {
     return ret;
   },
 
+#if COPYWITHIN == 0
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
   },
+#else
+#if COPYWITHIN == 2
+  emscripten_memcpy_big: function(dest, src, num) {
+    HEAPU8.copyWithin(dest, src, src+num);
+  },
+#else
+  emscripten_memcpy_big__postset:
+    "if (typeof Uint8Array.prototype.copyWithin == 'function') {\n" +
+    "  emscripten_memcpy_big = function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); };\n" +
+    "} else {\n" +
+    "  emscripten_memcpy_big = function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); };\n" +
+    "}\n" +
+#endif
+#endif
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',

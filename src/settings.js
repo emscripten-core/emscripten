@@ -1507,6 +1507,12 @@ var BUNDLED_CD_DEBUG_FILE = "";
 // any JS code to fall back if it is missing.
 var TEXTDECODER = 1;
 
+// If enabled, use the TypedArray.copyWithin() method for the JS memcpy implementation.
+// Disabled by default, set this to 1 to enable.
+// If set to 2, we do not check for the method availability and assume an external
+// polyfill is in place.
+var COPYWITHIN = 0;
+
 // Embind specific: If enabled, assume UTF-8 encoded data in std::string binding.
 // Disable this to support binary data transfer.
 var EMBIND_STD_STRING_IS_UTF8 = 1;
