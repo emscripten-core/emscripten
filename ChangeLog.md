@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
+  specification has been obsoleted in favor of the upcoming WebXR specification.
+  (#10460)
 
 v1.39.8: 02/14/2020
 -------------------
