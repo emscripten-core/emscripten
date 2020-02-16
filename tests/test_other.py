@@ -9597,7 +9597,7 @@ int main () {
                                '-s', 'MIN_CHROME_VERSION=58',
                                '-s', 'NO_FILESYSTEM=1',
                                '--output_eol', 'linux',
-                               '-O3',
+                               '-Oz',
                                '--closure', '1',
                                '-DNDEBUG',
                                '-ffast-math']
