@@ -2673,6 +2673,7 @@ var LibraryOpenAL = {
         AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
         return 0;
       }
+      break;
     default:
       if (index === 0) {
         return _alcGetString(deviceId, param);
