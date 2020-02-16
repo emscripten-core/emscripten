@@ -95,7 +95,6 @@
 #define __NR_mkdirat		296
 #define __NR_mknodat		297
 #define __NR_fchownat		298
-#define __NR_futimesat		299
 #define __NR_fstatat64		300
 #define __NR_unlinkat		301
 #define __NR_renameat		302
@@ -207,7 +206,6 @@
 #define SYS_mkdirat		296
 #define SYS_mknodat		297
 #define SYS_fchownat		298
-#define SYS_futimesat		299
 #define SYS_fstatat64		300
 #define SYS_unlinkat		301
 #define SYS_renameat		302
