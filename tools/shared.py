@@ -2472,14 +2472,16 @@ class Building(object):
           logger.warn('Closure compiler completed with warnings:\n')
 
       # Print input file (long wall of text!)
-      if os.getenv('EMCC_DEBUG') and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
-        logger.debug(open(filename, 'r').read())
+      if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
+        input_file = open(filename, 'r').read().splitlines()
+        for i in range(len(input_file)):
+          sys.stderr.write(str(i + 1) + ': ' + input_file[i] + '\n')
 
       if proc.returncode != 0:
         logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
         # Exit and print final hint to get clearer output
-        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
+        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set')
 
       if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet':
         # print list of warnings (possibly long wall of text if input was minified)
@@ -2491,8 +2493,8 @@ class Building(object):
         # Exit and/or print final hint to get clearer output
         if not pretty:
           logger.warn('(rerun with -g1 linker flag for an unminified output)')
-        elif not os.getenv('EMCC_DEBUG'):
-          logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
+        elif DEBUG != 2:
+          logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
         if Settings.CLOSURE_WARNINGS == 'error':
           exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
