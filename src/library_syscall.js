@@ -159,16 +159,27 @@ var SyscallsLibrary = {
 #else
     // MEMFS filesystem disabled lite handling of stdout and stderr:
     buffers: [null, [], []], // 1 => stdout, 2 => stderr
-    printChar: function(stream, curr) {
+    printChar: function(stream, ch) {
       var buffer = SYSCALLS.buffers[stream];
 #if ASSERTIONS
       assert(buffer);
 #endif
-      if (curr === 0 || curr === {{{ charCode('\n') }}}) {
-        (stream === 1 ? out : err)(UTF8ArrayToString(buffer, 0));
+      if (ch === 0 || ch === {{{ charCode('\n') }}}) {
+        var str;
+        if (!buffer.hasUtf) str = String.fromCharCode.apply(null, buffer);
+        else {
+#if TEXTDECODER == 2
+          str = UTF8Decoder.decode(new Uint8Array(buffer));
+#else
+          str = UTF8ArrayToString(buffer, 0);
+#endif
+        }
+        (stream === 1 ? out : err)(str);
+        buffer.hasUtf = 0;
         buffer.length = 0;
       } else {
-        buffer.push(curr);
+        if (!buffer.hasUtf) buffer.hasUtf = (ch & 0x80);
+        buffer.push(ch);
       }
     },
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
