@@ -337,9 +337,11 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall20__deps: ['$PROCINFO'],
+  __syscall20__nothrow: true,
   __syscall20: function(which, varargs) { // getpid
     return PROCINFO.pid;
   },
+  __syscall29__nothrow: true,
   __syscall29: function(which, varargs) { // pause
     return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
@@ -351,6 +353,7 @@ var SyscallsLibrary = {
     var inc = SYSCALLS.get();
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
   },
+  __syscall36__nothrow: true,
   __syscall36: function(which, varargs) { // sync
     return 0;
   },
@@ -387,6 +390,7 @@ var SyscallsLibrary = {
 
     return 0;
   },
+  __syscall51__nothrow: true,
   __syscall51: function(which, varargs) { // acct
     return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
@@ -466,16 +470,20 @@ var SyscallsLibrary = {
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __syscall64__deps: ['$PROCINFO'],
+  __syscall64__nothrow: true,
   __syscall64: function(which, varargs) { // getppid
     return PROCINFO.ppid;
   },
   __syscall65__deps: ['$PROCINFO'],
+  __syscall65__nothrow: true,
   __syscall65: function(which, varargs) { // getpgrp
     return PROCINFO.pgid;
   },
+  __syscall66__nothrow: true,
   __syscall66: function(which, varargs) { // setsid
     return 0; // no-op
   },
+  __syscall75__nothrow: true,
   __syscall75: function(which, varargs) { // setrlimit
     return 0; // no-op
   },
@@ -510,9 +518,11 @@ var SyscallsLibrary = {
     FS.fchmod(fd, mode);
     return 0;
   },
+  __syscall96__nothrow: true,
   __syscall96: function(which, varargs) { // getpriority
     return 0;
   },
+  __syscall97__nothrow: true,
   __syscall97: function(which, varargs) { // setpriority
     return -{{{ cDefine('EPERM') }}};
   },
@@ -734,12 +744,14 @@ var SyscallsLibrary = {
     }
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
+  __syscall104__nothrow: true,
   __syscall104: function(which, varargs) { // setitimer
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
   },
+  __syscall121__nothrow: true,
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
@@ -761,6 +773,7 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
+  __syscall125__nothrow: true,
   __syscall125: function(which, varargs) { // mprotect
     return 0; // let's not and say we did
   },
@@ -881,9 +894,11 @@ var SyscallsLibrary = {
   __syscall151: '__syscall153',     // munlock
   __syscall152__sig: 'iii',
   __syscall152: '__syscall153',     // mlockall
+  __syscall153__nothrow: true,
   __syscall153: function(which, varargs) { // munlockall
     return 0;
   },
+  __syscall163__nothrow: true,
   __syscall163: function(which, varargs) { // mremap
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
@@ -908,6 +923,7 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall178__nothrow: true,
   __syscall178: function(which, varargs) { // rt_sigqueueinfo
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_rt_sigqueueinfo');
@@ -980,6 +996,7 @@ var SyscallsLibrary = {
   __syscall200: '__syscall202',     // getgid32
   __syscall201__sig: 'iii',
   __syscall201: '__syscall202',     // geteuid32
+  __syscall202__nothrow: true,
   __syscall202: function(which, varargs) { // getgid32
     return 0;
   },
@@ -1029,9 +1046,11 @@ var SyscallsLibrary = {
     {{{ makeSetValue('suid', '0', '0', 'i32') }}};
     return 0;
   },
+  __syscall218__nothrow: true,
   __syscall218: function(which, varargs) { // mincore
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
+  __syscall219__nothrow: true,
   __syscall219: function(which, varargs) { // madvise
     return 0; // advice is welcome, but ignored
   },
@@ -1162,6 +1181,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), size = SYSCALLS.get(), buf = SYSCALLS.get();
     return ___syscall([268, 0, size, buf], 0);
   },
+  __syscall272__nothrow: true,
   __syscall272: function(which, varargs) { // fadvise64_64
     return 0; // your advice is important to us (but we can't use it)
   },
@@ -1233,6 +1253,7 @@ var SyscallsLibrary = {
     FS.rename(oldpath, newpath);
     return 0;
   },
+  __syscall303__nothrow: true,
   __syscall303: function(which, varargs) { // linkat
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
@@ -1276,6 +1297,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doAccess(path, amode);
   },
+  __syscall308__nothrow: true,
   __syscall308: function(which, varargs) { // pselect
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1317,6 +1339,7 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
+  __syscall331__nothrow: true,
   __syscall331: function(which, varargs) { // pipe2
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1334,6 +1357,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
+  __syscall337__nothrow: true,
   __syscall337: function(which, varargs) { // recvmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_recvmmsg');
@@ -1350,6 +1374,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall345__nothrow: true,
   __syscall345: function(which, varargs) { // sendmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_sendmmsg');
@@ -1681,23 +1706,28 @@ for (var x in SyscallsLibrary) {
   post += "err('syscall return: ' + ret);\n";
   post += "return ret;\n";
 #endif
-  pre += 'try {\n';
-  var handler =
-  "} catch (e) {\n" +
-  "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);\n";
+  var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
+  delete SyscallsLibrary[x + '__nothrow'];
+  var handler = '';
+  if (canThrow) {
+    pre += 'try {\n';
+    handler +=
+    "} catch (e) {\n" +
+    "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);\n";
 #if SYSCALL_DEBUG
-  handler +=
-  "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
-  "  canWarn = false;\n";
+    handler +=
+    "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
+    "  canWarn = false;\n";
 #endif
-  if (wasi) {
-    handler += "  return e.errno;\n";
-  } else {
-    // Musl syscalls are negated.
-    handler += "  return -e.errno;\n";
+    if (wasi) {
+      handler += "  return e.errno;\n";
+    } else {
+      // Musl syscalls are negated.
+      handler += "  return -e.errno;\n";
+    }
+    handler +=
+    "}\n";
   }
-  handler +=
-  "}\n";
   post = handler + post;
 
   if (pre) {
