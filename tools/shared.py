@@ -2475,7 +2475,7 @@ class Building(object):
       if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
         input_file = open(filename, 'r').read().splitlines()
         for i in range(len(input_file)):
-          sys.stderr.write(str(i+1) + ': ' + input_file[i] + '\n')
+          sys.stderr.write(str(i + 1) + ': ' + input_file[i] + '\n')
 
       if proc.returncode != 0:
         logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
