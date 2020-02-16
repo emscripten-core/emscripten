@@ -2472,8 +2472,8 @@ class Building(object):
           logger.warn('Closure compiler completed with warnings:\n')
 
       # Print input file (long wall of text!)
-      if os.getenv('EMCC_DEBUG') == '2' and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
-        input_file = open(filename, 'r').read().split('\n')
+      if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
+        input_file = open(filename, 'r').read().splitlines()
         for i in range(len(input_file)):
           sys.stderr.write(str(i+1) + ': ' + input_file[i] + '\n')
 
@@ -2493,7 +2493,7 @@ class Building(object):
         # Exit and/or print final hint to get clearer output
         if not pretty:
           logger.warn('(rerun with -g1 linker flag for an unminified output)')
-        elif os.getenv('EMCC_DEBUG') != '2':
+        elif DEBUG != 2:
           logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
         if Settings.CLOSURE_WARNINGS == 'error':
