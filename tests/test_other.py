@@ -9722,6 +9722,8 @@ int main () {
           total_output_size_gz += size_gz
           total_expected_size_gz += expected_size_gz
 
+        obtained_results['total'] = total_output_size
+        obtained_results['total_gz'] = total_output_size_gz
         print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
         print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
