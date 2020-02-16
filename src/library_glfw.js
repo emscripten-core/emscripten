@@ -35,11 +35,6 @@
  */
 
 var LibraryGLFW = {
-  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
-#if FILESYSTEM
-    , '$FS'
-#endif
-  ],
   $GLFW_Window__docs: '/** @constructor */',
   $GLFW_Window: function(id, width, height, title, monitor, share) {
       this.id = id;
@@ -83,6 +78,11 @@ var LibraryGLFW = {
       this.userptr = null;
     },
 
+  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+#if FILESYSTEM
+    , '$FS'
+#endif
+  ],
   $GLFW: {
     WindowFromId: function(id) {
       if (id <= 0 || !GLFW.windows) return null;
