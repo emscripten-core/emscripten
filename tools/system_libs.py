@@ -1491,7 +1491,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.USE_ASAN:
     force_include.add('libasan_rt_wasm')
-    dd_library(system_libs_map['libasan_rt_wasm'])
+    add_library(system_libs_map['libasan_rt_wasm'])
 
   if shared.Settings.STANDALONE_WASM:
     add_library(system_libs_map['libstandalonewasm'])
