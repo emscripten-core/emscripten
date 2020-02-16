@@ -1747,22 +1747,4 @@ for (var x in SyscallsLibrary) {
 #endif
 }
 
-#if USE_PTHREADS
-// emscripten_syscall is a switch over all compiled-in syscalls, used for proxying to the main thread
-var switcher =
-  'function(which, varargs) {\n' +
-  '  switch (which) {\n';
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.forEach(function(func) {
-  var m = /^__syscall(\d+)$/.exec(func);
-  if (!m) return;
-  var which = +m[1];
-  switcher += '    case ' + which + ': return ___syscall' + which + '(which, varargs);\n';
-});
-switcher +=
-  '    default: throw "surprising proxied syscall: " + which;\n' +
-  '  }\n' +
-  '}\n';
-SyscallsLibrary.emscripten_syscall = eval('(' + switcher + ')');
-#endif
-
 mergeInto(LibraryManager.library, SyscallsLibrary);
