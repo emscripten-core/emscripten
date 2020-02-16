@@ -90,6 +90,10 @@ def run_commands(commands):
     pool.map_async(run_build_command, commands, chunksize=1).get(999999)
 
 
+def static_library_ext():
+  return '.a' if shared.Settings.WASM_BACKEND else '.bc'
+
+
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = os.path.splitext(libname)[1]
@@ -414,7 +418,7 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return '.a' if shared.Settings.WASM_BACKEND else '.bc'
+    return static_library_ext()
 
   def get_filename(self):
     """
@@ -1487,7 +1491,7 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
 
   if shared.Settings.USE_ASAN:
     force_include.add('libasan_rt_wasm')
-    add_library(system_libs_map['libasan_rt_wasm'])
+    dd_library(system_libs_map['libasan_rt_wasm'])
 
   if shared.Settings.STANDALONE_WASM:
     add_library(system_libs_map['libstandalonewasm'])
@@ -1530,7 +1534,7 @@ class Ports(object):
 
   @staticmethod
   def get_lib_name(name):
-    return shared.static_library_name(name)
+    return name + static_library_ext()
 
   @staticmethod
   def get_include_dir():

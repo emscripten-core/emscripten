@@ -1325,13 +1325,6 @@ def print_compiler_stage(cmd):
     sys.stderr.flush()
 
 
-def static_library_name(name):
-  if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
-    return name + '.a'
-  else:
-    return name + '.bc'
-
-
 def mangle_c_symbol_name(name):
   return '_' + name if not name.startswith('$') else name[1:]
 
