@@ -1337,6 +1337,7 @@ var LibrarySDL = {
 
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
+  SDL_Init__docs: '/** @param{number=} initFlags */', 
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
     SDL.initFlags = initFlags;
@@ -1745,6 +1746,7 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState__proxy: 'sync',
   SDL_GetKeyboardState__sig: 'ii',
+  SDL_GetKeyboardState__docs: '/** @param {number=} numKeys */',
   SDL_GetKeyboardState: function(numKeys) {
     if (numKeys) {
       {{{ makeSetValue('numKeys', 0, 0x10000, 'i32') }}};
@@ -1871,6 +1873,7 @@ var LibrarySDL = {
 
   SDL_ConvertSurface__proxy: 'sync',
   SDL_ConvertSurface__sig: 'iiii',
+  SDL_ConvertSurface__docs: '/** @param {number=} format @param {number=} flags */',
   SDL_ConvertSurface: function(surf, format, flags) {
     if  (format) {
       SDL.checkPixelFormat(format);
@@ -2752,6 +2755,7 @@ var LibrarySDL = {
   Mix_LoadWAV_RW__deps: ['$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
+  Mix_LoadWAV_RW__docs: '/** @param {number|boolean=} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
@@ -3665,6 +3669,7 @@ var LibrarySDL = {
 
   SDL_RWFromFile__proxy: 'sync',
   SDL_RWFromFile__sig: 'iii',
+  SDL_RWFromFile__docs: '/** @param {number=} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     var name = UTF8ToString(_name)
