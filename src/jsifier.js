@@ -233,6 +233,10 @@ function JSify(data, functionsOnly) {
           if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
             Functions.libraryFunctions[finalName] = 1;
           }
+        } else if (snippet.indexOf('function(') != -1) {
+          // Assume this is an inline defined function (like emscripten_memcpy_big), and it possibly
+          // needs to be imported to asm.js/wasm scope.
+          Functions.libraryFunctions[finalName] = 1;
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);

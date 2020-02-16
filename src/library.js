@@ -924,11 +924,9 @@ LibraryManager.library = {
   },
 
 #if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin
-  emscripten_memcpy_big: ';if (HEAPU8.copyWithin) {\n' +
-    '  _emscripten_memcpy_big = function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); };\n' +
-    '} else {\n' +
-    '  _emscripten_memcpy_big = function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); };\n' +
-    '}',
+  emscripten_memcpy_big: '= HEAPU8.copyWithin\n' +
+    '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
+    '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
 #else
   emscripten_memcpy_big: function(dest, src, num) {
     HEAPU8.copyWithin(dest, src, src + num);
