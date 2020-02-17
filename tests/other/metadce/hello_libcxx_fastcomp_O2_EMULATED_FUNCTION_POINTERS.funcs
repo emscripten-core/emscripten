@@ -409,6 +409,7 @@ $___floatscan
 $___fwritex
 $___get_locale
 $___intscan
+$___isxdigit_l
 $___loc_is_allocated
 $___munmap
 $___newlocale
@@ -448,7 +449,6 @@ $_getint
 $_hexfloat
 $_isdigit
 $_isspace
-$_isxdigit_l
 $_main
 $_malloc
 $_mbrtowc
