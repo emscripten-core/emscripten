@@ -7052,7 +7052,7 @@ Resolved: "/" => "/"
     for lto in lto_levels:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '--llvm-lto', str(lto)]
       if self.is_wasm_backend():
-        cmd += ['-s', 'WASM_OBJECT_FILES=0']
+        cmd += ['-flto']
       print(cmd)
       run_process(cmd)
       self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7760,7 +7760,7 @@ int main() {
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
     cmd = [PYTHON, EMCC, 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1']
     if self.is_wasm_backend():
-      cmd += ['-s', 'WASM_OBJECT_FILES=0']
+      cmd += ['-flto']
     run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
@@ -8485,7 +8485,7 @@ int main() {
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
       self.assertIn(b'dylink', open(target, 'rb').read())
 
-  @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
+  @no_fastcomp('test wasm object files')
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
 
@@ -8500,37 +8500,36 @@ int main() {
       self.assertFalse(shared.Building.is_bitcode('hello_obj.o'))
 
       print('bitcode in object')
-      run_process([PYTHON, EMXX, src] + args + ['-c', '-o', 'hello_bitcode.o', '-s', 'WASM_OBJECT_FILES=0'])
+      run_process([PYTHON, EMXX, src] + args + ['-c', '-o', 'hello_bitcode.o', '-flto'])
       self.assertFalse(shared.Building.is_wasm('hello_bitcode.o'))
       self.assertTrue(shared.Building.is_bitcode('hello_bitcode.o'))
 
       print('use bitcode object (LTO)')
-      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-flto'])
       self.assertContained('hello, world!', run_js('a.out.js'))
       print('use bitcode object (non-LTO)')
-      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
+      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args)
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       print('use native object (LTO)')
-      run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-flto'])
       self.assertContained('hello, world!', run_js('a.out.js'))
       print('use native object (non-LTO)')
-      run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
+      run_process([PYTHON, EMXX, 'hello_obj.o'] + args)
       self.assertContained('hello, world!', run_js('a.out.js'))
 
   @parameterized({
     'except': [],
     'noexcept': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
   })
-  @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
+  @no_fastcomp('test wasm object files')
   def test_wasm_backend_lto_libcxx(self, *args):
-    run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')] + ['-s', 'WASM_OBJECT_FILES=0'] + list(args))
+    run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-flto'] + list(args))
 
   @no_fastcomp('wasm backend lto specific')
   def test_lto_flags(self):
     for flags, expect_bitcode in [
       ([], False),
-      (['-s', 'WASM_OBJECT_FILES=0'], True),
       (['-flto'], True),
     ]:
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + flags + ['-c', '-o', 'a.o'])

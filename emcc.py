@@ -1178,11 +1178,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASSERTIONS:
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
-    if shared.Settings.WASM_OBJECT_FILES and not shared.Settings.WASM_BACKEND:
-      if 'WASM_OBJECT_FILES=1' in settings_changes:
-        exit_with_error('WASM_OBJECT_FILES can only be used with wasm backend')
-      shared.Settings.WASM_OBJECT_FILES = 0
-
     if shared.Settings.STRICT:
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
@@ -1248,8 +1243,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
     # Reconfigure the cache now that settings have been applied. Some settings
-    # such as WASM_OBJECT_FILES and SIDE_MODULE/MAIN_MODULE effect which cache
-    # directory we use.
+    # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
     if not compile_only:
@@ -1269,7 +1263,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.warning('Assuming object file output in the absence of `-c`, based on output filename. Please add with `-c` or `-r` to avoid this warning')
       link_to_object = True
 
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
 
     def is_supported_link_flag(f):
       if f in SUPPORTED_LINKER_FLAGS:
@@ -1834,7 +1828,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
-          if shared.Settings.AUTODEBUG and shared.Settings.WASM_OBJECT_FILES:
+          if shared.Settings.AUTODEBUG and not shared.Settings.LTO:
             # adding '--flatten' here may make these even more effective
             passes += ['--instrument-locals']
             passes += ['--log-execution']
@@ -2080,9 +2074,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
           cmd.append('-fPIC')
           cmd.append('-fvisibility=default')
-        if shared.Settings.WASM_OBJECT_FILES:
-          for a in shared.Building.llvm_backend_args():
-            cmd += ['-mllvm', a]
+        if shared.Settings.WASM_BACKEND:
+          if shared.Settings.LTO:
+            cmd.append('-flto=' + shared.Settings.LTO)
+          else:
+            for a in shared.Building.llvm_backend_args():
+              cmd += ['-mllvm', a]
         else:
           cmd.append('-emit-llvm')
         shared.print_compiler_stage(cmd)
@@ -2753,6 +2750,11 @@ def parse_args(newargs):
       options.llvm_opts = parse_value(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
+    elif newargs[i].startswith('-flto'):
+      if '=' in newargs[i]:
+        shared.Settings.LTO = newargs[i].split('=')[1]
+      else:
+        shared.Settings.LTO = "full"
     elif newargs[i].startswith('--llvm-lto'):
       check_bad_eq(newargs[i])
       options.llvm_lto = int(newargs[i + 1])

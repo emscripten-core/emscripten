@@ -20,6 +20,8 @@ Current Trunk
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
+- Remove WASM_OBJECT_FILES settting.  There are many standard ways to enable
+  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
 
 v1.39.8: 02/14/2020
 -------------------
