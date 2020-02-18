@@ -619,9 +619,9 @@ f.close()
     }
 
     if WINDOWS:
-      emconfigure = path_from_root('emconfigure.bat')
+      emcmake = path_from_root('emcmake.bat')
     else:
-      emconfigure = path_from_root('emconfigure')
+      emcmake = path_from_root('emcmake')
 
     for generator in generators:
       conf = configurations[generator]
@@ -658,7 +658,7 @@ f.close()
         cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
         with temp_directory(self.get_dir()) as tempdirname:
           # Run Cmake
-          cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+          cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
           env = os.environ.copy()
           # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
@@ -704,12 +704,12 @@ f.close()
       native_features = run_process(cmd, stdout=PIPE).stdout
 
     if WINDOWS:
-      emconfigure = path_from_root('emcmake.bat')
+      emcmake = path_from_root('emcmake.bat')
     else:
-      emconfigure = path_from_root('emcmake')
+      emcmake = path_from_root('emcmake')
 
     with temp_directory(self.get_dir()):
-      cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
+      cmd = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = run_process(cmd, stdout=PIPE).stdout
 
@@ -6086,7 +6086,7 @@ Descriptor desc;
     check('emmake', ['make'], fail=False)
     check('emconfigure', ['configure'], fail=False)
     check('emconfigure', ['./configure'], fail=False)
-    check('emconfigure', ['cmake'], fail=False)
+    check('emcmake', ['cmake'], fail=False)
 
     create_test_file('test.py', '''
 import os
