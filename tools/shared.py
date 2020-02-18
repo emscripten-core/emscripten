@@ -944,7 +944,8 @@ def emsdk_cflags():
 
   cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
-    path_from_root('system', 'lib', 'libcxxabi', 'include')
+    path_from_root('system', 'lib', 'libcxxabi', 'include'),
+    path_from_root('system', 'lib', 'libunwind', 'include')
   ]
 
   def include_directive(paths):
