@@ -69,10 +69,8 @@ def get_cflags(force_object_files=False):
 
 
 def run_build_command(cmd):
-  # this must only be called on a standard build command
-  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
-  # add standard cflags, but also allow the cmd to override them
-  cmd = cmd[:2] + get_cflags() + cmd[2:]
+  if shared.EM_BUILD_VERBOSE:
+    print(' '.join(cmd))
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
 
 
@@ -1585,13 +1583,18 @@ class Ports(object):
       commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    run_commands(commands)
+    Ports.run_commands(commands)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands): # make easily available for port objects
-    run_commands(commands)
+  def run_commands(commands):
+    def add_args(cmd):
+      # this must only be called on a standard build command
+      assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+      # add standard cflags, but also allow the cmd to override them
+      return cmd[:2] + get_cflags() + cmd[2:]
+    run_commands([add_args(c) for c in commands])
 
   @staticmethod
   def create_lib(libname, inputs): # make easily available for port objects
