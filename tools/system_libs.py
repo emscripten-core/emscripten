@@ -68,8 +68,8 @@ def get_cflags(force_object_files=False):
   return flags
 
 
-def _run_one_command(cmd):
-  # Helper function used by run_build_commands
+def run_one_command(cmd):
+  # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
     print(' '.join(cmd))
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
@@ -79,14 +79,14 @@ def run_build_commands(commands):
   cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
     for command in commands:
-      _run_one_command(command)
+      run_one_command(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(_run_one_command, commands, chunksize=1).get(999999)
+    pool.map_async(run_one_command, commands, chunksize=1).get(999999)
 
 
 def static_library_ext():
@@ -1590,6 +1590,8 @@ class Ports(object):
 
   @staticmethod
   def run_commands(commands):
+    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
+    # that the ports are built in the correct configuration.
     def add_args(cmd):
       # this must only be called on a standard build command
       assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
