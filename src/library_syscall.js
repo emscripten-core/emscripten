@@ -1713,6 +1713,9 @@ for (var x in SyscallsLibrary) {
   var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
   delete SyscallsLibrary[x + '__nothrow'];
   var handler = '';
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  canThrow = false;
+#endif
   if (canThrow) {
     pre += 'try {\n';
     handler +=
