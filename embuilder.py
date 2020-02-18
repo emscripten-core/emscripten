@@ -27,6 +27,25 @@ SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 # It is not a system library, but it needs to be built before running with FROZEN_CACHE.
 SYSTEM_TASKS += ['struct_info']
 
+# Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+MINIMAL_TASKS = [
+    'libcompiler_rt',
+    'libc',
+    'libc++abi',
+    'libc++abi-noexcept',
+    'libc++',
+    'libc++-noexcept',
+    'libal',
+    'libdlmalloc',
+    'libdlmalloc-debug',
+    'libemmalloc',
+    'libemmalloc-64bit',
+    'libpthread_stub',
+    'libc_rt_wasm',
+    'struct_info',
+    'libc-wasm'
+]
+
 USER_TASKS = [
     'binaryen',
     'boost_headers',
@@ -161,6 +180,9 @@ def main():
     auto_tasks = True
   elif 'USER' in tasks:
     tasks = USER_TASKS
+    auto_tasks = True
+  elif 'MINIMAL' in tasks:
+    tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
     tasks = SYSTEM_TASKS + USER_TASKS
