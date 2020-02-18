@@ -38,15 +38,19 @@ function assert(condition, text) {
 }
 #endif
 
+function threadPrintOut() {
+  var text = Array.prototype.slice.call(arguments).join(' ');
+  console.log(text);
+}
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   console.error(text);
-  console.error(new Error().stack);
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
 }
+var out = threadPrintOut;
 var err = threadPrintErr;
 this.alert = threadAlert;
 
@@ -218,7 +222,7 @@ this.onmessage = function(e) {
           Atomics.store(HEAPU32, (threadInfoStruct + 0 /*C_STRUCTS.pthread.threadStatus*/ ) >> 2, 1); // Mark the thread as no longer running.
 #if ASSERTIONS
           if (typeof(Module['_emscripten_futex_wake']) !== "function") {
-            console.error("Thread Initialisation failed.");
+            err("Thread Initialisation failed.");
             throw ex;
           }
 #endif
@@ -227,7 +231,7 @@ this.onmessage = function(e) {
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          console.log('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          err('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
 #endif
         }
       }
@@ -242,12 +246,12 @@ this.onmessage = function(e) {
         Module['_emscripten_current_thread_process_queued_calls']();
       }
     } else {
-      console.error('worker.js received unknown command ' + e.data.cmd);
-      console.error(e.data);
+      err('worker.js received unknown command ' + e.data.cmd);
+      err(e.data);
     }
   } catch(ex) {
-    console.error('worker.js onmessage() captured an uncaught exception: ' + ex);
-    if (ex.stack) console.error(ex.stack);
+    err('worker.js onmessage() captured an uncaught exception: ' + ex);
+    if (ex.stack) err(ex.stack);
     throw e;
   }
 };
