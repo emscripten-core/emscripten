@@ -8094,9 +8094,9 @@ int main() {
       self.fail('Test expectation file not found: ' + filename + '.\n' +
                 'Run with EMTEST_REBASELINE to generate.')
     expected_content = open(filename).read()
-    message = ("Content mismach in: %s\n" % filename +
-               "Run with EMTEST_REBASELINE=1 to automatically update expectations")
-    self.assertTextDataIdentical(expected_content, contents, message)
+    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
+    self.assertTextDataIdentical(expected_content, contents, message,
+                                 filename, filename + '.new')
 
   def run_metadce_test(self, filename, args, expected_sent, expected_exists,
                        expected_not_exists, expected_size, check_imports=True,
