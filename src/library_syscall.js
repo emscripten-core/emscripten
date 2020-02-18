@@ -1153,6 +1153,10 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  
+#if MINIMAL_RUNTIME
+  __syscall252__deps: ['$exit'],
+#endif
   __syscall252: function(which, varargs) { // exit_group
     var status = SYSCALLS.get();
     exit(status);

@@ -975,3 +975,15 @@ var outerWidth;
 var outerHeight;
 var event;
 var devicePixelRatio;
+
+// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
+// to be able to remove all the variables below:
+
+// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
+// the names need to match:
+/** @suppress {duplicate} */
+var threadInfoStruct;
+/** @suppress {duplicate} */
+var selfThreadId;
+/** @suppress {duplicate} */
+var noExitRuntime;
