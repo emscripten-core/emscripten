@@ -16,7 +16,14 @@
         __builtin_##func(d1, d2),     \
         __builtin_##func##l(l1, l2));
 
+#define TESTI(func)                    \
+    printf("%f : %f : %Lf\n",         \
+        __builtin_##func##f(f1, i1),  \
+        __builtin_##func(d1, i1),     \
+        __builtin_##func##l(l1, i1));
+
 int test_builtins() {
+    int i1 = 88;
     float f1 = 0.1234f;
     float f2 = 0.5678f;
     double d1 = 1.0101;
@@ -26,6 +33,9 @@ int test_builtins() {
     TEST(fmax)
     TEST(fmin)
     TEST(fmod)
+
+    TEST(pow)
+    TESTI(powi)
     return 0;
 }
 

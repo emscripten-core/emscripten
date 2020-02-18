@@ -111,7 +111,6 @@ var LibraryManager = {
       libraries = libraries.concat([
         'library_webgl.js',
         'library_openal.js',
-        'library_vr.js',
         'library_sdl.js',
         'library_glut.js',
         'library_xlib.js',
@@ -220,6 +219,12 @@ var LibraryManager = {
             var args = genArgSequence(argCount).join(',');
             lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
           } else {
+            // The alias we generate uses `arguments` to forward the call. If there is no explicit documentation for the alias, mark
+            // it variadic for Closure type checking to know.
+            var docs = lib[x + '__docs'];
+            if (!docs || (docs.indexOf('@type') == -1 && docs.indexOf('@param') == -1)) {
+              lib[x + '__docs'] = (docs || '') + '/** @type {function(...*):?} */';
+            }
             lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           }
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];

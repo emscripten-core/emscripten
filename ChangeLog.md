@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
+  specification has been obsoleted in favor of the upcoming WebXR specification.
+  (#10460)
 
 v1.39.8: 02/14/2020
 -------------------
@@ -33,6 +36,10 @@ v1.39.8: 02/14/2020
 
 v1.39.7: 02/03/2020
 -------------------
+- The checked-in copy of closure compiler was removed in favor of getting it
+  from npm.  This means that developers now need to run `npm install` after
+  checking out emscripten if they want to use closure (--closure).  emsdk users
+  are not effected because emsdk runs this as a post install step (#9989).
 - Added support for specifying JSDoc minification annotations for Closure in
   JS library, pre and post files. See
   https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler

@@ -8090,18 +8090,22 @@ int main() {
         f.write(contents)
       return
 
+    if not os.path.exists(filename):
+      self.fail('Test expectation file not found: ' + filename + '.\n' +
+                'Run with EMTEST_REBASELINE to generate.')
     expected_content = open(filename).read()
     message = ("Content mismach in: %s\n" % filename +
                "Run with EMTEST_REBASELINE=1 to automatically update expectations")
     self.assertTextDataIdentical(expected_content, contents, message)
 
   def run_metadce_test(self, filename, args, expected_sent, expected_exists,
-                       expected_not_exists, expected_size, expected_imports,
-                       expected_exports, expected_funcs):
+                       expected_not_exists, expected_size, check_imports=True,
+                       check_exports=True, check_funcs=True):
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running metadce test: %s:' % filename, args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+    print('Running metadce test: %s:' % filename, args, expected_sent, expected_exists,
+          expected_not_exists, expected_size, check_imports, check_exports, check_funcs)
     filename = path_from_root('tests', 'other', 'metadce', filename)
 
     def clean_arg(arg):
@@ -8172,68 +8176,64 @@ int main() {
 
     funcs = [strip_numeric_suffixes(f) for f in funcs]
 
-    if expected_imports is not None:
+    if check_imports:
       filename = expected_basename + '.imports'
       data = '\n'.join(imports) + '\n'
       self.assertFileContents(filename, data)
-      self.assertEqual(len(imports), expected_imports)
 
-    if expected_exports is not None:
+    if check_exports:
       filename = expected_basename + '.exports'
       data = '\n'.join(exports) + '\n'
       self.assertFileContents(filename, data)
-      self.assertEqual(len(exports), expected_exports)
 
-    if expected_funcs is not None:
+    if check_funcs:
       filename = expected_basename + '.funcs'
       data = '\n'.join(funcs) + '\n'
       self.assertFileContents(filename, data)
-      self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],       7, [], ['waka'],  9766,  6, 13, 19), # noqa
-    'O1': (['-O1'],  4, [], ['waka'],  7886,  2, 11, 12), # noqa
-    'O2': (['-O2'],  4, [], ['waka'],  7871,  2, 11, 11), # noqa
+    'O0': ([],       7, [], ['waka'],  9766), # noqa
+    'O1': (['-O1'],  4, [], ['waka'],  7886), # noqa
+    'O2': (['-O2'],  4, [], ['waka'],  7871), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],  2, [], [],          85,  0,  2,  2), # noqa
-    'Os': (['-Os'],  2, [], [],          85,  0,  2,  2), # noqa
-    'Oz': (['-Oz'],  2, [], [],          85,  0,  2,  2), # noqa
+    'O3': (['-O3'],  2, [], [],          85), # noqa
+    'Os': (['-Os'],  2, [], [],          85), # noqa
+    'Oz': (['-Oz'],  2, [], [],          85), # noqa
   })
   @no_fastcomp()
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 14, 28), # noqa
-    'O1': (['-O1'], 16, ['abort'], ['waka'], 10450,  4, 10, 11), # noqa
-    'O2': (['-O2'], 16, ['abort'], ['waka'], 10440,  4, 10, 11), # noqa
+    'O0': ([],      25, ['abort'], ['waka'], 22712), # noqa
+    'O1': (['-O1'], 16, ['abort'], ['waka'], 10450), # noqa
+    'O2': (['-O2'], 16, ['abort'], ['waka'], 10440), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],  4, [],        [],          55,  0,  1, 1), # noqa
-    'Os': (['-Os'],  4, [],        [],          55,  0,  1, 1), # noqa
-    'Oz': (['-Oz'],  4, [],        [],          55,  0,  1, 1), # noqa
+    'O3': (['-O3'],  4, [],        [],          55), # noqa
+    'Os': (['-Os'],  4, [],        [],          55), # noqa
+    'Oz': (['-Oz'],  4, [],        [],          55), # noqa
   })
   @no_wasm_backend()
   def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'noexcept': (['-O2'],                    19, [], ['waka'], 218988, 17, 33, None), # noqa
+    'noexcept': (['-O2'],                    19, [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    52, [], ['waka'], 279827, 47, 46, None), # noqa
+    'except':   (['-O2', '-fexceptions'],    52, [], ['waka'], 279827), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028, 47, 47, None), # noqa
+                  '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028), # noqa
   })
   @no_fastcomp()
   def test_metadce_cxx(self, *args):
-    # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'normal': (['-O2'], 40, ['abort'], ['waka'], 186423, 23, 36, 540), # noqa
+    'normal': (['-O2'], 40, ['abort'], ['waka'], 186423),
     'emulated_function_pointers':
               (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        40, ['abort'], ['waka'], 188310, 23, 37, 520), # noqa
+               40, ['abort'], ['waka'], 188310),
   })
   @no_wasm_backend()
   def test_metadce_cxx_fastcomp(self, *args):

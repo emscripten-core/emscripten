@@ -1566,11 +1566,22 @@ var POSIX_PAGE_SIZE = 16384;
 // function, to which we pass the parsed-out name, arguments, and body of the
 // function. Returns the output of that function.
 function modifyFunction(text, func) {
-  var match = text.match(/\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
-  assert(match, 'could not match function ' + text + '.');
-  var name = match[1];
-  var args = match[2];
-  var rest = text.substr(match[0].length);
+  // Match a function with a name.
+  var match = text.match(/^\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  var name, args, rest;
+  if (match) {
+    name = match[1];
+    args = match[2];
+    rest = text.substr(match[0].length);
+  } else {
+    // Match a function without a name (we could probably use a single regex
+    // for both, but it would be more complex).
+    match = text.match(/^\s*function\(([^)]*)\)/);
+    assert(match, 'could not match function ' + text + '.');
+    name = '';
+    args = match[1];
+    rest = text.substr(match[0].length);
+  }
   var bodyStart = rest.indexOf('{');
   assert(bodyStart >= 0);
   var bodyEnd = rest.lastIndexOf('}');

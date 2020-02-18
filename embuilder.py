@@ -16,11 +16,11 @@ import subprocess
 import sys
 
 from tools import shared
-from tools.system_libs import Library
+from tools import system_libs
 
 C_BARE = 'int main() {}'
 
-SYSTEM_LIBRARIES = Library.get_all_variations()
+SYSTEM_LIBRARIES = system_libs.Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 
 # This is needed to build the generated_struct_info.json file.
@@ -152,7 +152,7 @@ def main():
     force = True
 
   # process tasks
-  libname = shared.static_library_name
+  libname = system_libs.Ports.get_lib_name
 
   auto_tasks = False
   tasks = args.targets

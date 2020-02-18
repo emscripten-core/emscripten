@@ -8,7 +8,7 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
 #if ASSERTIONS
                      'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
 #endif
@@ -362,13 +362,11 @@ var LibraryBrowser = {
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullscreen: function(lockPointer, resizeCanvas, vrDevice) {
+    requestFullscreen: function(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
-      Browser.vrDevice = vrDevice;
       if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
-      if (typeof Browser.vrDevice === 'undefined') Browser.vrDevice = null;
 
       var canvas = Module['canvas'];
       function fullscreenChange() {
@@ -420,11 +418,7 @@ var LibraryBrowser = {
                                          (canvasContainer['webkitRequestFullscreen'] ? function() { canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null) ||
                                          (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
 
-      if (vrDevice) {
-        canvasContainer.requestFullscreen({ vrDisplay: vrDevice });
-      } else {
-        canvasContainer.requestFullscreen();
-      }
+      canvasContainer.requestFullscreen();
     },
 
 #if ASSERTIONS
@@ -1176,6 +1170,7 @@ var LibraryBrowser = {
 #else
   emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
 #endif
+  emscripten_set_main_loop__docs: '/** @param {number|boolean=} noSetTiming */',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     noExitRuntime = true;
 

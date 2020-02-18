@@ -337,9 +337,11 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall20__deps: ['$PROCINFO'],
+  __syscall20__nothrow: true,
   __syscall20: function(which, varargs) { // getpid
     return PROCINFO.pid;
   },
+  __syscall29__nothrow: true,
   __syscall29: function(which, varargs) { // pause
     return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
@@ -351,6 +353,7 @@ var SyscallsLibrary = {
     var inc = SYSCALLS.get();
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
   },
+  __syscall36__nothrow: true,
   __syscall36: function(which, varargs) { // sync
     return 0;
   },
@@ -387,6 +390,7 @@ var SyscallsLibrary = {
 
     return 0;
   },
+  __syscall51__nothrow: true,
   __syscall51: function(which, varargs) { // acct
     return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
@@ -466,16 +470,20 @@ var SyscallsLibrary = {
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __syscall64__deps: ['$PROCINFO'],
+  __syscall64__nothrow: true,
   __syscall64: function(which, varargs) { // getppid
     return PROCINFO.ppid;
   },
   __syscall65__deps: ['$PROCINFO'],
+  __syscall65__nothrow: true,
   __syscall65: function(which, varargs) { // getpgrp
     return PROCINFO.pgid;
   },
+  __syscall66__nothrow: true,
   __syscall66: function(which, varargs) { // setsid
     return 0; // no-op
   },
+  __syscall75__nothrow: true,
   __syscall75: function(which, varargs) { // setrlimit
     return 0; // no-op
   },
@@ -510,9 +518,11 @@ var SyscallsLibrary = {
     FS.fchmod(fd, mode);
     return 0;
   },
+  __syscall96__nothrow: true,
   __syscall96: function(which, varargs) { // getpriority
     return 0;
   },
+  __syscall97__nothrow: true,
   __syscall97: function(which, varargs) { // setpriority
     return -{{{ cDefine('EPERM') }}};
   },
@@ -734,12 +744,14 @@ var SyscallsLibrary = {
     }
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
+  __syscall104__nothrow: true,
   __syscall104: function(which, varargs) { // setitimer
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall114: function(which, varargs) { // wait4
     abort('cannot wait on child processes');
   },
+  __syscall121__nothrow: true,
   __syscall121: function(which, varargs) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
@@ -761,6 +773,7 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
+  __syscall125__nothrow: true,
   __syscall125: function(which, varargs) { // mprotect
     return 0; // let's not and say we did
   },
@@ -881,9 +894,11 @@ var SyscallsLibrary = {
   __syscall151: '__syscall153',     // munlock
   __syscall152__sig: 'iii',
   __syscall152: '__syscall153',     // mlockall
+  __syscall153__nothrow: true,
   __syscall153: function(which, varargs) { // munlockall
     return 0;
   },
+  __syscall163__nothrow: true,
   __syscall163: function(which, varargs) { // mremap
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
@@ -908,6 +923,7 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
+  __syscall178__nothrow: true,
   __syscall178: function(which, varargs) { // rt_sigqueueinfo
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_rt_sigqueueinfo');
@@ -980,6 +996,7 @@ var SyscallsLibrary = {
   __syscall200: '__syscall202',     // getgid32
   __syscall201__sig: 'iii',
   __syscall201: '__syscall202',     // geteuid32
+  __syscall202__nothrow: true,
   __syscall202: function(which, varargs) { // getgid32
     return 0;
   },
@@ -1029,9 +1046,11 @@ var SyscallsLibrary = {
     {{{ makeSetValue('suid', '0', '0', 'i32') }}};
     return 0;
   },
+  __syscall218__nothrow: true,
   __syscall218: function(which, varargs) { // mincore
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
+  __syscall219__nothrow: true,
   __syscall219: function(which, varargs) { // madvise
     return 0; // advice is welcome, but ignored
   },
@@ -1162,6 +1181,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), size = SYSCALLS.get(), buf = SYSCALLS.get();
     return ___syscall([268, 0, size, buf], 0);
   },
+  __syscall272__nothrow: true,
   __syscall272: function(which, varargs) { // fadvise64_64
     return 0; // your advice is important to us (but we can't use it)
   },
@@ -1201,9 +1221,6 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall299: function(which, varargs) { // futimesat
-    abort('futimesat is obsolete');
-  },
   __syscall300: function(which, varargs) { // fstatat64
     var dirfd = SYSCALLS.get(), path = SYSCALLS.getStr(), buf = SYSCALLS.get(), flags = SYSCALLS.get();
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
@@ -1236,6 +1253,7 @@ var SyscallsLibrary = {
     FS.rename(oldpath, newpath);
     return 0;
   },
+  __syscall303__nothrow: true,
   __syscall303: function(which, varargs) { // linkat
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
@@ -1279,6 +1297,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doAccess(path, amode);
   },
+  __syscall308__nothrow: true,
   __syscall308: function(which, varargs) { // pselect
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1320,6 +1339,7 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
+  __syscall331__nothrow: true,
   __syscall331: function(which, varargs) { // pipe2
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1337,6 +1357,7 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(), iov = SYSCALLS.get(), iovcnt = SYSCALLS.get(), offset = SYSCALLS.get();
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
+  __syscall337__nothrow: true,
   __syscall337: function(which, varargs) { // recvmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_recvmmsg');
@@ -1353,6 +1374,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
+  __syscall345__nothrow: true,
   __syscall345: function(which, varargs) { // sendmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_sendmmsg');
@@ -1416,19 +1438,12 @@ var SyscallsLibrary = {
     return 0;
   },
   fd_read: function(fd, iov, iovcnt, pnum) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
     return 0;
   },
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
     // use an unsigned operator on low and shift high by 32-bits
@@ -1443,11 +1458,6 @@ var SyscallsLibrary = {
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
-#else
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-#endif
     return 0;
   },
   fd_fdstat_get: function(fd, pbuf) {
@@ -1473,7 +1483,6 @@ var SyscallsLibrary = {
   fd_sync__deps: ['$EmterpreterAsync'],
 #endif
   fd_sync: function(fd) {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if EMTERPRETIFY_ASYNC
     return EmterpreterAsync.handle(function(resume) {
@@ -1515,367 +1524,126 @@ var SyscallsLibrary = {
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // WASM_BACKEND && ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
-#else // SYSCALLS_REQUIRE_FILESYSTEM
-#if ASSERTIONS
-    abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM');
-#endif
-    return 0;
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 };
 
-if (SYSCALL_DEBUG) {
-  var SYSCALL_NAME_TO_CODE = {
-    SYS_restart_syscall: 0,
-    SYS_exit: 1,
-    SYS_fork: 2,
-    SYS_read: 3,
-    SYS_write: 4,
-    SYS_open: 5,
-    SYS_close: 6,
-    SYS_waitpid: 7,
-    SYS_creat: 8,
-    SYS_link: 9,
-    SYS_unlink: 10,
-    SYS_execve: 11,
-    SYS_chdir: 12,
-    SYS_time: 13,
-    SYS_mknod: 14,
-    SYS_chmod: 15,
-    SYS_lchown: 16,
-    SYS_break: 17,
-    SYS_oldstat: 18,
-    SYS_lseek: 19,
-    SYS_getpid: 20,
-    SYS_mount: 21,
-    SYS_umount: 22,
-    SYS_setuid: 23,
-    SYS_getuid: 24,
-    SYS_stime: 25,
-    SYS_ptrace: 26,
-    SYS_alarm: 27,
-    SYS_oldfstat: 28,
-    SYS_pause: 29,
-    SYS_utime: 30,
-    SYS_stty: 31,
-    SYS_gtty: 32,
-    SYS_access: 33,
-    SYS_nice: 34,
-    SYS_ftime: 35,
-    SYS_sync: 36,
-    SYS_kill: 37,
-    SYS_rename: 38,
-    SYS_mkdir: 39,
-    SYS_rmdir: 40,
-    SYS_dup: 41,
-    SYS_pipe: 42,
-    SYS_times: 43,
-    SYS_prof: 44,
-    SYS_brk: 45,
-    SYS_setgid: 46,
-    SYS_getgid: 47,
-    SYS_signal: 48,
-    SYS_geteuid: 49,
-    SYS_getegid: 50,
-    SYS_acct: 51,
-    SYS_umount2: 52,
-    SYS_lock: 53,
-    SYS_ioctl: 54,
-    SYS_fcntl: 55,
-    SYS_mpx: 56,
-    SYS_setpgid: 57,
-    SYS_ulimit: 58,
-    SYS_oldolduname: 59,
-    SYS_umask: 60,
-    SYS_chroot: 61,
-    SYS_ustat: 62,
-    SYS_dup2: 63,
-    SYS_getppid: 64,
-    SYS_getpgrp: 65,
-    SYS_setsid: 66,
-    SYS_sigaction: 67,
-    SYS_sgetmask: 68,
-    SYS_ssetmask: 69,
-    SYS_setreuid: 70,
-    SYS_setregid: 71,
-    SYS_sigsuspend: 72,
-    SYS_sigpending: 73,
-    SYS_sethostname: 74,
-    SYS_setrlimit: 75,
-    SYS_getrlimit: 76   /* Back compatible 2Gig limited rlimit */,
-    SYS_getrusage: 77,
-    SYS_gettimeofday: 78,
-    SYS_settimeofday: 79,
-    SYS_getgroups: 80,
-    SYS_setgroups: 81,
-    SYS_select: 82,
-    SYS_symlink: 83,
-    SYS_oldlstat: 84,
-    SYS_readlink: 85,
-    SYS_uselib: 86,
-    SYS_swapon: 87,
-    SYS_reboot: 88,
-    SYS_readdir: 89,
-    SYS_mmap: 90,
-    SYS_munmap: 91,
-    SYS_truncate: 92,
-    SYS_ftruncate: 93,
-    SYS_fchmod: 94,
-    SYS_fchown: 95,
-    SYS_getpriority: 96,
-    SYS_setpriority: 97,
-    SYS_profil: 98,
-    SYS_statfs: 99,
-    SYS_fstatfs: 100,
-    SYS_ioperm: 101,
-    SYS_socketcall: 102,
-    SYS_syslog: 103,
-    SYS_setitimer: 104,
-    SYS_getitimer: 105,
-    SYS_stat: 106,
-    SYS_lstat: 107,
-    SYS_fstat: 108,
-    SYS_olduname: 109,
-    SYS_iopl: 110,
-    SYS_vhangup: 111,
-    SYS_idle: 112,
-    SYS_vm86old: 113,
-    SYS_wait4: 114,
-    SYS_swapoff: 115,
-    SYS_sysinfo: 116,
-    SYS_ipc: 117,
-    SYS_fsync: 118,
-    SYS_sigreturn: 119,
-    SYS_clone: 120,
-    SYS_setdomainname: 121,
-    SYS_uname: 122,
-    SYS_modify_ldt: 123,
-    SYS_adjtimex: 124,
-    SYS_mprotect: 125,
-    SYS_sigprocmask: 126,
-    SYS_create_module: 127,
-    SYS_init_module: 128,
-    SYS_delete_module: 129,
-    SYS_get_kernel_syms: 130,
-    SYS_quotactl: 131,
-    SYS_getpgid: 132,
-    SYS_fchdir: 133,
-    SYS_bdflush: 134,
-    SYS_sysfs: 135,
-    SYS_personality: 136,
-    SYS_afs_syscall: 137,
-    SYS_setfsuid: 138,
-    SYS_setfsgid: 139,
-    SYS__llseek: 140,
-    SYS_getdents: 141,
-    SYS__newselect: 142,
-    SYS_flock: 143,
-    SYS_msync: 144,
-    SYS_readv: 145,
-    SYS_writev: 146,
-    SYS_getsid: 147,
-    SYS_fdatasync: 148,
-    SYS__sysctl: 149,
-    SYS_mlock: 150,
-    SYS_munlock: 151,
-    SYS_mlockall: 152,
-    SYS_munlockall: 153,
-    SYS_sched_setparam: 154,
-    SYS_sched_getparam: 155,
-    SYS_sched_setscheduler: 156,
-    SYS_sched_getscheduler: 157,
-    SYS_sched_yield: 158,
-    SYS_sched_get_priority_max: 159,
-    SYS_sched_get_priority_min: 160,
-    SYS_sched_rr_get_interval: 161,
-    SYS_nanosleep: 162,
-    SYS_mremap: 163,
-    SYS_setresuid: 164,
-    SYS_getresuid: 165,
-    SYS_vm86: 166,
-    SYS_query_module: 167,
-    SYS_poll: 168,
-    SYS_nfsservctl: 169,
-    SYS_setresgid: 170,
-    SYS_getresgid: 171,
-    SYS_prctl: 172,
-    SYS_rt_sigreturn: 173,
-    SYS_rt_sigaction: 174,
-    SYS_rt_sigprocmask: 175,
-    SYS_rt_sigpending: 176,
-    SYS_rt_sigtimedwait: 177,
-    SYS_rt_sigqueueinfo: 178,
-    SYS_rt_sigsuspend: 179,
-    SYS_pread64: 180,
-    SYS_pwrite64: 181,
-    SYS_chown: 182,
-    SYS_getcwd: 183,
-    SYS_capget: 184,
-    SYS_capset: 185,
-    SYS_sigaltstack: 186,
-    SYS_sendfile: 187,
-    SYS_getpmsg: 188,
-    SYS_putpmsg: 189,
-    SYS_vfork: 190,
-    SYS_ugetrlimit: 191,
-    SYS_mmap2: 192,
-    SYS_truncate64: 193,
-    SYS_ftruncate64: 194,
-    SYS_stat64: 195,
-    SYS_lstat64: 196,
-    SYS_fstat64: 197,
-    SYS_lchown32: 198,
-    SYS_getuid32: 199,
-    SYS_getgid32: 200,
-    SYS_geteuid32: 201,
-    SYS_getegid32: 202,
-    SYS_setreuid32: 203,
-    SYS_setregid32: 204,
-    SYS_getgroups32: 205,
-    SYS_setgroups32: 206,
-    SYS_fchown32: 207,
-    SYS_setresuid32: 208,
-    SYS_getresuid32: 209,
-    SYS_setresgid32: 210,
-    SYS_getresgid32: 211,
-    SYS_chown32: 212,
-    SYS_setuid32: 213,
-    SYS_setgid32: 214,
-    SYS_setfsuid32: 215,
-    SYS_setfsgid32: 216,
-    SYS_pivot_root: 217,
-    SYS_mincore: 218,
-    SYS_madvise: 219,
-    SYS_madvise1: 219,
-    SYS_getdents64: 220,
-    SYS_fcntl64: 221 /* 223 is unused */,
-    SYS_gettid: 224,
-    SYS_readahead: 225,
-    SYS_setxattr: 226,
-    SYS_lsetxattr: 227,
-    SYS_fsetxattr: 228,
-    SYS_getxattr: 229,
-    SYS_lgetxattr: 230,
-    SYS_fgetxattr: 231,
-    SYS_listxattr: 232,
-    SYS_llistxattr: 233,
-    SYS_flistxattr: 234,
-    SYS_removexattr: 235,
-    SYS_lremovexattr: 236,
-    SYS_fremovexattr: 237,
-    SYS_tkill: 238,
-    SYS_sendfile64: 239,
-    SYS_futex: 240,
-    SYS_sched_setaffinity: 241,
-    SYS_sched_getaffinity: 242,
-    SYS_set_thread_area: 243,
-    SYS_get_thread_area: 244,
-    SYS_io_setup: 245,
-    SYS_io_destroy: 246,
-    SYS_io_getevents: 247,
-    SYS_io_submit: 248,
-    SYS_io_cancel: 249,
-    SYS_fadvise64: 250 /* 251 is available for reuse (was briefly sys_set_zone_reclaim) */,
-    SYS_exit_group: 252,
-    SYS_lookup_dcookie: 253,
-    SYS_epoll_create: 254,
-    SYS_epoll_ctl: 255,
-    SYS_epoll_wait: 256,
-    SYS_remap_file_pages: 257,
-    SYS_set_tid_address: 258,
-    SYS_timer_create: 259,
-    SYS_timer_settime: 260,
-    SYS_timer_gettime: 261,
-    SYS_timer_getoverrun: 262,
-    SYS_timer_delete: 263,
-    SYS_clock_settime: 264,
-    SYS_clock_gettime: 265,
-    SYS_clock_getres: 266,
-    SYS_clock_nanosleep: 267,
-    SYS_statfs64: 268,
-    SYS_fstatfs64: 269,
-    SYS_tgkill: 270,
-    SYS_utimes: 271,
-    SYS_fadvise64_64: 272,
-    SYS_vserver: 273,
-    SYS_mbind: 274,
-    SYS_get_mempolicy: 275,
-    SYS_set_mempolicy: 276,
-    SYS_mq_open : 277,
-    SYS_mq_unlink: 278,
-    SYS_mq_timedsend: 279,
-    SYS_mq_timedreceive: 280,
-    SYS_mq_notify: 281,
-    SYS_mq_getsetattr: 282,
-    SYS_kexec_load: 283,
-    SYS_waitid: 284 /* SYS_sys_setaltroot: 285 */,
-    SYS_add_key: 286,
-    SYS_request_key: 287,
-    SYS_keyctl: 288,
-    SYS_ioprio_set: 289,
-    SYS_ioprio_get: 290,
-    SYS_inotify_init: 291,
-    SYS_inotify_add_watch: 292,
-    SYS_inotify_rm_watch: 293,
-    SYS_migrate_pages: 294,
-    SYS_openat: 295,
-    SYS_mkdirat: 296,
-    SYS_mknodat: 297,
-    SYS_fchownat: 298,
-    SYS_futimesat: 299,
-    SYS_fstatat64: 300,
-    SYS_unlinkat: 301,
-    SYS_renameat: 302,
-    SYS_linkat: 303,
-    SYS_symlinkat: 304,
-    SYS_readlinkat: 305,
-    SYS_fchmodat: 306,
-    SYS_faccessat: 307,
-    SYS_pselect6: 308,
-    SYS_ppoll: 309,
-    SYS_unshare: 310,
-    SYS_set_robust_list: 311,
-    SYS_get_robust_list: 312,
-    SYS_splice: 313,
-    SYS_sync_file_range: 314,
-    SYS_tee: 315,
-    SYS_vmsplice: 316,
-    SYS_move_pages: 317,
-    SYS_getcpu: 318,
-    SYS_epoll_pwait: 319,
-    SYS_utimensat: 320,
-    SYS_signalfd: 321,
-    SYS_timerfd_create: 322,
-    SYS_eventfd: 323,
-    SYS_fallocate: 324,
-    SYS_timerfd_settime: 325,
-    SYS_timerfd_gettime: 326,
-    SYS_signalfd4: 327,
-    SYS_eventfd2: 328,
-    SYS_epoll_create1: 329,
-    SYS_dup3: 330,
-    SYS_pipe2: 331,
-    SYS_inotify_init1: 332,
-    SYS_preadv: 333,
-    SYS_pwritev: 334,
-    SYS_recvmmsg: 337,
-    SYS_prlimit64: 340,
-    SYS_name_to_handle_at: 341,
-    SYS_open_by_handle_at: 342,
-    SYS_clock_adjtime: 343,
-    SYS_syncfs: 344,
-    SYS_sendmmsg: 345,
-    SYS_setns: 346,
-    SYS_process_vm_readv: 347,
-    SYS_process_vm_writev: 348,
-    SYS_kcmp: 349,
-    SYS_finit_module: 350
-  };
-  var SYSCALL_CODE_TO_NAME = {};
-  for (var name in SYSCALL_NAME_TO_CODE) {
-    SYSCALL_CODE_TO_NAME[SYSCALL_NAME_TO_CODE[name]] = name;
-  }
-}
+#if SYSCALL_DEBUG
+// This list is derived from musl/arch/emscripten/bits/syscall.h.in using:
+// awk '{ printf "%3s: \"%s\",\n", $3, $2 }' syscall.h.in | sed "s/__NR_//"
+var SYSCALL_CODE_TO_NAME = {
+    1: "exit",
+    3: "read",
+    4: "write",
+    5: "open",
+    9: "link",
+   10: "unlink",
+   12: "chdir",
+   14: "mknod",
+   15: "chmod",
+   20: "getpid",
+   29: "pause",
+   33: "access",
+   34: "nice",
+   36: "sync",
+   38: "rename",
+   39: "mkdir",
+   40: "rmdir",
+   41: "dup",
+   42: "pipe",
+   51: "acct",
+   54: "ioctl",
+   57: "setpgid",
+   60: "umask",
+   63: "dup2",
+   64: "getppid",
+   65: "getpgrp",
+   66: "setsid",
+   75: "setrlimit",
+   77: "getrusage",
+   83: "symlink",
+   85: "readlink",
+   91: "munmap",
+   94: "fchmod",
+   96: "getpriority",
+   97: "setpriority",
+  102: "socketcall",
+  104: "setitimer",
+  114: "wait4",
+  121: "setdomainname",
+  122: "uname",
+  125: "mprotect",
+  132: "getpgid",
+  133: "fchdir",
+  142: "_newselect",
+  144: "msync",
+  147: "getsid",
+  148: "fdatasync",
+  150: "mlock",
+  151: "munlock",
+  152: "mlockall",
+  153: "munlockall",
+  163: "mremap",
+  168: "poll",
+  178: "rt_sigqueueinfo",
+  180: "pread64",
+  181: "pwrite64",
+  183: "getcwd",
+  191: "ugetrlimit",
+  192: "mmap2",
+  193: "truncate64",
+  194: "ftruncate64",
+  195: "stat64",
+  196: "lstat64",
+  197: "fstat64",
+  198: "lchown32",
+  199: "getuid32",
+  200: "getgid32",
+  201: "geteuid32",
+  202: "getegid32",
+  203: "setreuid32",
+  204: "setregid32",
+  205: "getgroups32",
+  207: "fchown32",
+  208: "setresuid32",
+  209: "getresuid32",
+  210: "setresgid32",
+  211: "getresgid32",
+  212: "chown32",
+  213: "setuid32",
+  214: "setgid32",
+  218: "mincore",
+  219: "madvise",
+  219: "madvise1",
+  220: "getdents64",
+  221: "fcntl64",
+  252: "exit_group",
+  268: "statfs64",
+  269: "fstatfs64",
+  272: "fadvise64_64",
+  295: "openat",
+  296: "mkdirat",
+  297: "mknodat",
+  298: "fchownat",
+  300: "fstatat64",
+  301: "unlinkat",
+  302: "renameat",
+  303: "linkat",
+  304: "symlinkat",
+  305: "readlinkat",
+  306: "fchmodat",
+  307: "faccessat",
+  308: "pselect6",
+  320: "utimensat",
+  324: "fallocate",
+  330: "dup3",
+  331: "pipe2",
+  333: "preadv",
+  334: "pwritev",
+  337: "recvmmsg",
+  340: "prlimit64",
+  345: "sendmmsg",
+};
+#endif
 
 var WASI_SYSCALLS = set([
   'fd_write',
@@ -1909,6 +1677,16 @@ for (var x in SyscallsLibrary) {
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
   t = t.toString();
+  // If a syscall uses FS, but !SYSCALLS_REQUIRE_FILESYSTEM, then the user
+  // has disabled the filesystem or we have proven some other way that this will
+  // not be called in practice, and do not need that code.
+  if (!SYSCALLS_REQUIRE_FILESYSTEM && t.indexOf('FS.') >= 0) {
+    t = modifyFunction(t, function(name, args, body) {
+      return 'function ' + name + '(' + args + ') {\n' +
+             (ASSERTIONS ? "abort('it should not be possible to operate on streams when !SYSCALLS_REQUIRE_FILESYSTEM')" : '') +
+             '}';
+    });
+  }
   var pre = '', post = '';
   if (which) {
     pre += 'SYSCALLS.varargs = varargs;\n';
@@ -1928,23 +1706,28 @@ for (var x in SyscallsLibrary) {
   post += "err('syscall return: ' + ret);\n";
   post += "return ret;\n";
 #endif
-  pre += 'try {\n';
-  var handler =
-  "} catch (e) {\n" +
-  "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);\n";
+  var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
+  delete SyscallsLibrary[x + '__nothrow'];
+  var handler = '';
+  if (canThrow) {
+    pre += 'try {\n';
+    handler +=
+    "} catch (e) {\n" +
+    "  if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) abort(e);\n";
 #if SYSCALL_DEBUG
-  handler +=
-  "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
-  "  canWarn = false;\n";
+    handler +=
+    "  err('error: syscall failed with ' + e.errno + ' (' + ERRNO_MESSAGES[e.errno] + ')');\n" +
+    "  canWarn = false;\n";
 #endif
-  if (wasi) {
-    handler += "  return e.errno;\n";
-  } else {
-    // Musl syscalls are negated.
-    handler += "  return -e.errno;\n";
+    if (wasi) {
+      handler += "  return e.errno;\n";
+    } else {
+      // Musl syscalls are negated.
+      handler += "  return -e.errno;\n";
+    }
+    handler +=
+    "}\n";
   }
-  handler +=
-  "}\n";
   post = handler + post;
 
   if (pre) {

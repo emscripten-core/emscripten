@@ -33,11 +33,13 @@
 extern "C" {
 #endif
 
+// Generted from arch/emscripten/bits/syscall.h.in via:
+// grep __NR_ arch/emscripten/bits/syscall.h.in | awk '{ printf "long __syscall%s(int which, ...);\n", $3 }'
+//
 long __syscall1(int which, ...);
 long __syscall3(int which, ...);
 long __syscall4(int which, ...);
 long __syscall5(int which, ...);
-long __syscall6(int which, ...);
 long __syscall9(int which, ...);
 long __syscall10(int which, ...);
 long __syscall12(int which, ...);
@@ -72,17 +74,13 @@ long __syscall97(int which, ...);
 long __syscall102(int which, ...);
 long __syscall104(int which, ...);
 long __syscall114(int which, ...);
-long __syscall118(int which, ...);
 long __syscall121(int which, ...);
 long __syscall122(int which, ...);
 long __syscall125(int which, ...);
 long __syscall132(int which, ...);
 long __syscall133(int which, ...);
-long __syscall140(int which, ...);
 long __syscall142(int which, ...);
 long __syscall144(int which, ...);
-long __syscall145(int which, ...);
-long __syscall146(int which, ...);
 long __syscall147(int which, ...);
 long __syscall148(int which, ...);
 long __syscall150(int which, ...);
@@ -113,14 +111,17 @@ long __syscall205(int which, ...);
 long __syscall207(int which, ...);
 long __syscall208(int which, ...);
 long __syscall209(int which, ...);
+long __syscall210(int which, ...);
 long __syscall211(int which, ...);
 long __syscall212(int which, ...);
+long __syscall213(int which, ...);
+long __syscall214(int which, ...);
 long __syscall218(int which, ...);
+long __syscall219(int which, ...);
 long __syscall219(int which, ...);
 long __syscall220(int which, ...);
 long __syscall221(int which, ...);
 long __syscall252(int which, ...);
-long __syscall265(int which, ...);
 long __syscall268(int which, ...);
 long __syscall269(int which, ...);
 long __syscall272(int which, ...);
@@ -128,7 +129,6 @@ long __syscall295(int which, ...);
 long __syscall296(int which, ...);
 long __syscall297(int which, ...);
 long __syscall298(int which, ...);
-long __syscall299(int which, ...);
 long __syscall300(int which, ...);
 long __syscall301(int which, ...);
 long __syscall302(int which, ...);
@@ -147,8 +147,6 @@ long __syscall334(int which, ...);
 long __syscall337(int which, ...);
 long __syscall340(int which, ...);
 long __syscall345(int which, ...);
-
-#undef SYS_futimesat
 
 #ifdef __cplusplus
 }

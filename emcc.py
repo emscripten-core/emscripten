@@ -3285,6 +3285,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
     if shared.Settings.WASM != 2:
       final = wasm2js
+      # if we only target JS, we don't need the wasm any more
+      shared.try_delete(wasm_binary_target)
 
     save_intermediate('wasm2js')
 
@@ -3318,11 +3320,6 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shared.try_delete(target)
     with open(final, 'w') as f:
       f.write(js)
-
-  # if targeting only JS, delete the redundant temporary
-  # .wasm output file
-  if shared.Settings.WASM == 1 and shared.Settings.WASM2JS:
-    shared.try_delete(wasm_binary_target)
 
 
 def modularize():
