@@ -405,12 +405,9 @@ var LibraryGLFW = {
       // This logic comes directly from the sdl implementation. We cannot
       // call preventDefault on all keydown events otherwise onKeyPress will
       // not get called
-
-        // When this code used, browsers backspace and tab keys are disabled. 
-        // So I suggest to comment below code. 
-      // if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
-      //   event.preventDefault();
-      // }
+      if (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */) {
+        event.preventDefault();
+      }
     },
 
     onKeyup: function(event) {
