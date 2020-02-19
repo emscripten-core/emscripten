@@ -59,10 +59,8 @@ def dir_is_newer(dir_a, dir_b):
 def get_cflags(force_object_files=False):
   flags = []
   if shared.Settings.WASM_BACKEND:
-    if force_object_files:
-      flags += ['-s', 'WASM_OBJECT_FILES=1']
-    elif not shared.Settings.WASM_OBJECT_FILES:
-      flags += ['-s', 'WASM_OBJECT_FILES=0']
+    if shared.Settings.LTO and not force_object_files:
+      flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
@@ -262,7 +260,7 @@ class Library(object):
   src_glob = None
   src_glob_exclude = None
 
-  # Whether to always generate WASM object files, even though WASM_OBJECT_FILES=0.
+  # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
 
   def __init__(self):
@@ -568,7 +566,6 @@ class NoExceptLibrary(Library):
 class MuslInternalLibrary(Library):
   includes = [
     ['system', 'lib', 'libc', 'musl', 'src', 'internal'],
-    ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
   cflags = [

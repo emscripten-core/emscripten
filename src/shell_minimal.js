@@ -5,9 +5,9 @@
 
 #if SIDE_MODULE == 0
 #if USE_CLOSURE_COMPILER
-// if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-var Module;
-if (!Module) Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
+// if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with the object below
+var /** @type{Object} */ Module;
+if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #else
 var Module = {{{ EXPORT_NAME }}};
 #endif // USE_CLOSURE_COMPILER
@@ -129,12 +129,18 @@ function err(text) {
 // compilation is ready. In that callback, call the function run() to start
 // the program.
 function ready() {
+#if INVOKE_RUN && hasExportedFunction('_main')
 #if USE_PTHREADS
   if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
     run();
 #if USE_PTHREADS
   }
+#endif
+#else
+#if ASSERTIONS
+  console.log('ready() called, and INVOKE_RUN=0. The runtime is now ready for you to call run() to invoke application _main(). You can also override ready() in a --pre-js file to get this signal as a callback')
+#endif
 #endif
 }
 

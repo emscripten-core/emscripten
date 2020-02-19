@@ -120,6 +120,15 @@ f = open(filename, 'r')
 data = f.read()
 f.close()
 
+summaries = re.search(r'\^0 = module:', data)
+if summaries:
+  summaries_start = summaries.start()
+  # Strip ThinLTO summaries since we don't want to have to generate
+  # summaries for the functions we are adding.  Currently llvm-as will
+  # assert if it finds summaries for some, but not all, functions.
+  print("warning: stripping ThinLTO summaries", file=sys.stderr)
+  data = data[:summaries_start]
+
 if not re.search(r'(declare.*@printf\(|define.*@printf\()', data):
   POSTAMBLE += '''
 ; [#uses=1]

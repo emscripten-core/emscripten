@@ -25,9 +25,19 @@ Current Trunk
   be able to build with -g and use a debugger. Before this change only the
   -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
   and background see #10325.
+- Refactor syscall interface: Syscalls are no longer variadic (except those
+  that are inherantly such as open) and no longer take the syscall number as
+  arg0.  This should be invisible to most users but will effect any external
+  projects that try to implement/emulate the emscripten syscall interface.
+  See #10474
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
+- Remove WASM_OBJECT_FILES settting.  There are many standard ways to enable
+  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+- Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
+  option that has become unsupported by WebGL. Access
+  EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 
 v1.39.8: 02/14/2020
 -------------------
