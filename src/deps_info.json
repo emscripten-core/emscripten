@@ -94,5 +94,11 @@
   "_embind_register_std_string": ["malloc", "free"],
   "_embind_register_std_wstring": ["malloc", "free"],
   "__syscall192": ["emscripten_builtin_memalign"],
-  "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"]
+  "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"],
+  "$getTypeName": ["free"],
+  "_embind_register_std_string": ["free"],
+  "_embind_register_std_wstring": ["free"],
+  "_embind_register_function": ["free"],
+  "_embind_register_class": ["free"],
+  "_embind_register_enum_value": ["free"]
 }

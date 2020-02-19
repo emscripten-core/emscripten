@@ -1674,3 +1674,7 @@ function makeAsmImportsAccessInPthread(variable) {
     return variable;
   }
 }
+
+function hasExportedFunction(func) {
+  return Object.keys(EXPORTED_FUNCTIONS).indexOf(func) != -1;
+}
