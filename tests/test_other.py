@@ -9701,9 +9701,9 @@ int main () {
           obtained_results[f] = size
           obtained_results[f_gz] = size_gz
 
-          if size != expected_size:
-            logger.info('Contents of ' + f + ': ')
-            logger.info(open(f, 'r').read())
+          if size != expected_size and f.endswith('.js'):
+            print('Contents of ' + f + ': ')
+            print(open(f, 'r').read())
 
           print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
           print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
