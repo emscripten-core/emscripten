@@ -17,14 +17,6 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Enable DWARF support: with building with -g, normal DWARF emitting happens,
-  and when linking with -g we preserve that and update it. This is a change
-  from before, where we assumed DWARF was unneeded and did not emit it, so this
-  can increase the size of debug builds (i.e. builds compiling and/or linking
-  with -g). This change is necessary for full debugging support, that is, to
-  be able to build with -g and use a debugger. Before this change only the
-  -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
-  and background see #10325.
 - Refactor syscall interface: Syscalls are no longer variadic (except those
   that are inherantly such as open) and no longer take the syscall number as
   arg0.  This should be invisible to most users but will effect any external
@@ -38,6 +30,14 @@ Current Trunk
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
+- Enable DWARF support: with building with -g, normal DWARF emitting happens,
+  and when linking with -g we preserve that and update it. This is a change
+  from before, where we assumed DWARF was unneeded and did not emit it, so this
+  can increase the size of debug builds (i.e. builds compiling and/or linking
+  with -g). This change is necessary for full debugging support, that is, to
+  be able to build with -g and use a debugger. Before this change only the
+  -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
+  and background see #10325.
 
 v1.39.8: 02/14/2020
 -------------------
