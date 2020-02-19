@@ -16,16 +16,35 @@ import subprocess
 import sys
 
 from tools import shared
-from tools.system_libs import Library
+from tools import system_libs
 
 C_BARE = 'int main() {}'
 
-SYSTEM_LIBRARIES = Library.get_all_variations()
+SYSTEM_LIBRARIES = system_libs.Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 
 # This is needed to build the generated_struct_info.json file.
 # It is not a system library, but it needs to be built before running with FROZEN_CACHE.
 SYSTEM_TASKS += ['struct_info']
+
+# Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+MINIMAL_TASKS = [
+    'libcompiler_rt',
+    'libc',
+    'libc++abi',
+    'libc++abi-noexcept',
+    'libc++',
+    'libc++-noexcept',
+    'libal',
+    'libdlmalloc',
+    'libdlmalloc-debug',
+    'libemmalloc',
+    'libemmalloc-64bit',
+    'libpthread_stub',
+    'libc_rt_wasm',
+    'struct_info',
+    'libc-wasm'
+]
 
 USER_TASKS = [
     'binaryen',
@@ -152,7 +171,7 @@ def main():
     force = True
 
   # process tasks
-  libname = shared.static_library_name
+  libname = system_libs.Ports.get_lib_name
 
   auto_tasks = False
   tasks = args.targets
@@ -161,6 +180,9 @@ def main():
     auto_tasks = True
   elif 'USER' in tasks:
     tasks = USER_TASKS
+    auto_tasks = True
+  elif 'MINIMAL' in tasks:
+    tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
     tasks = SYSTEM_TASKS + USER_TASKS

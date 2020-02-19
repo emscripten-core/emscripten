@@ -4,17 +4,30 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import subprocess
+from __future__ import print_function
 import sys
 from tools import shared
+from subprocess import CalledProcessError
 
 
 #
 # Main run() function
 #
 def run():
-  configure_path = shared.path_from_root('emconfigure')
-  return subprocess.call([shared.PYTHON, configure_path] + sys.argv[1:])
+  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+    print('''\
+emcmake is a helper for cmake, setting various environment
+variables so that emcc etc. are used. Typical usage:
+
+  emcmake cmake [FLAGS]
+''', file=sys.stderr)
+    return 1
+
+  try:
+    shared.Building.configure(sys.argv[1:])
+    return 0
+  except CalledProcessError as e:
+    return e.returncode
 
 
 if __name__ == '__main__':

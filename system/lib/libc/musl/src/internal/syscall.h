@@ -17,10 +17,16 @@
 typedef long syscall_arg_t;
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 __attribute__((visibility("hidden")))
 long __syscall_ret(unsigned long), __syscall(syscall_arg_t, ...),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
+#ifdef __cplusplus
+}
+#endif
 
 #ifndef __EMSCRIPTEN__
 #ifdef SYSCALL_NO_INLINE

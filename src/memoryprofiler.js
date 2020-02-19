@@ -1,3 +1,5 @@
+#if MEMORYPROFILER
+
 // Copyright 2015 The Emscripten Authors.  All rights reserved.
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -597,3 +599,5 @@ var emscriptenMemoryProfiler = {
 function memoryprofiler_add_hooks() { emscriptenMemoryProfiler.initialize(); }
 
 if (typeof Module !== 'undefined' && typeof document !== 'undefined' && typeof window !== 'undefined' && typeof process === 'undefined') emscriptenMemoryProfiler.initialize();
+
+#endif

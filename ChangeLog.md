@@ -25,6 +25,9 @@ Current Trunk
   be able to build with -g and use a debugger. Before this change only the
   -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
   and background see #10325.
+- Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
+  specification has been obsoleted in favor of the upcoming WebXR specification.
+  (#10460)
 
 v1.39.8: 02/14/2020
 -------------------
