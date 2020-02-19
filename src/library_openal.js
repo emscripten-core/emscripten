@@ -2331,7 +2331,7 @@ var LibraryOpenAL = {
     // Spec says :
     // Using a NULL handle is legal, but only the
     // tokens defined by the AL core are guaranteed.
-    if (deviceId !== 0 && !deviceId in AL.deviceRefCounts) {
+    if (deviceId !== 0 && !(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.error('alcGetEnumValue() called with an invalid device');
 #endif
@@ -2486,7 +2486,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x1002 /* ALC_ATTRIBUTES_SIZE */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
@@ -2498,7 +2498,7 @@ var LibraryOpenAL = {
       {{{ makeSetValue('pValues', '0', 'AL.currentCtx.attrs.length', 'i32') }}};
       break;
     case 0x1003 /* ALC_ALL_ATTRIBUTES */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
@@ -2512,7 +2512,7 @@ var LibraryOpenAL = {
       }
       break;
     case 0x1007 /* ALC_FREQUENCY */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
@@ -2525,7 +2525,7 @@ var LibraryOpenAL = {
       break;
     case 0x1010 /* ALC_MONO_SOURCES */:
     case 0x1011 /* ALC_STEREO_SOURCES */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
@@ -2538,7 +2538,7 @@ var LibraryOpenAL = {
       break;
     case 0x1992 /* ALC_HRTF_SOFT */:
     case 0x1993 /* ALC_HRTF_STATUS_SOFT */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
@@ -2553,14 +2553,14 @@ var LibraryOpenAL = {
       {{{ makeSetValue('pValues', '0', 'hrtfStatus', 'i32') }}};
       break;
     case 0x1994 /* ALC_NUM_HRTF_SPECIFIERS_SOFT */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
       {{{ makeSetValue('pValues', '0', '1', 'i32') }}};
       break;
     case 0x20003 /* ALC_MAX_AUXILIARY_SENDS */:
-      if (!deviceId in AL.deviceRefCounts) {
+      if (!(deviceId in AL.deviceRefCounts)) {
         AL.alcErr = 0xA001 /* ALC_INVALID_DEVICE */;
         return;
       }
@@ -2593,7 +2593,7 @@ var LibraryOpenAL = {
   emscripten_alcDevicePauseSOFT__proxy: 'sync',
   emscripten_alcDevicePauseSOFT__sig: 'vi',
   emscripten_alcDevicePauseSOFT: function(deviceId) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcDevicePauseSOFT() called with an invalid device');
 #endif
@@ -2621,7 +2621,7 @@ var LibraryOpenAL = {
   emscripten_alcDeviceResumeSOFT__proxy: 'sync',
   emscripten_alcDeviceResumeSOFT__sig: 'vi',
   emscripten_alcDeviceResumeSOFT: function(deviceId) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcDeviceResumeSOFT() called with an invalid device');
 #endif
@@ -2649,7 +2649,7 @@ var LibraryOpenAL = {
   emscripten_alcGetStringiSOFT__sig: 'iiii',
   emscripten_alcGetStringiSOFT__deps: ['alcGetString'],
   emscripten_alcGetStringiSOFT: function(deviceId, param, index) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcGetStringiSOFT() called with an invalid device');
 #endif
@@ -2673,6 +2673,7 @@ var LibraryOpenAL = {
         AL.alcErr = 0xA004 /* ALC_INVALID_VALUE */;
         return 0;
       }
+      break;
     default:
       if (index === 0) {
         return _alcGetString(deviceId, param);
@@ -2693,7 +2694,7 @@ var LibraryOpenAL = {
   emscripten_alcResetDeviceSOFT__proxy: 'sync',
   emscripten_alcResetDeviceSOFT__sig: 'iii',
   emscripten_alcResetDeviceSOFT: function(deviceId, pAttrList) {
-    if (!deviceId in AL.deviceRefCounts) {
+    if (!(deviceId in AL.deviceRefCounts)) {
 #if OPENAL_DEBUG
       console.log('alcResetDeviceSOFT() called with an invalid device');
 #endif

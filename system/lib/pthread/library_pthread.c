@@ -219,9 +219,6 @@ static void _do_call(em_queued_call* q) {
         pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
 #endif
       break;
-    case EM_PROXIED_SYSCALL:
-      q->returnValue.i = emscripten_syscall(q->args[0].i, q->args[1].vp);
-      break;
     case EM_PROXIED_CREATE_CONTEXT:
       q->returnValue.i = emscripten_webgl_create_context(q->args[0].cp, q->args[1].vp);
       break;

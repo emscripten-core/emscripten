@@ -17,13 +17,29 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
+  specification has been obsoleted in favor of the upcoming WebXR specification.
+  (#10460)
+
+v1.39.8: 02/14/2020
+-------------------
 - Add LLD_REPORT_UNDEFINED option that should allow for more detailed
   diagnostics when symbols are undefined at link time.  This currently has
   some limitations and is not enabled by default. For example, EM_JS symbols
   are reported as undefined at link time, as are `__invoke_*` functions.
+- wasm2js optimizations. See binaryen#2623.
+- WebGPU Compute fixes. Simple examples now work. See #10367.
+- Many DWARF debug info fixes. Emitting of DWARF is correct as far as we know,
+  including when optimizing (a few passes are disabled for now, but almost all
+  work). We still only generate it behind the `-gforce_dwarf` flag for now,
+  though (but that should be removed soon).
 
 v1.39.7: 02/03/2020
 -------------------
+- The checked-in copy of closure compiler was removed in favor of getting it
+  from npm.  This means that developers now need to run `npm install` after
+  checking out emscripten if they want to use closure (--closure).  emsdk users
+  are not effected because emsdk runs this as a post install step (#9989).
 - Added support for specifying JSDoc minification annotations for Closure in
   JS library, pre and post files. See
   https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler

@@ -107,6 +107,7 @@ mergeInto(LibraryManager.library, {
   },
 
   // Convert a 'compact' form UUID to a string, if the upper parameter is supplied make the string upper case.
+  uuid_unparse__docs: '/** @param {number|boolean=} upper */',
   uuid_unparse: function(uu, out, upper) {
     // void uuid_unparse(const uuid_t uu, char *out);
     var i = 0;

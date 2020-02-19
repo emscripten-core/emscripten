@@ -3701,6 +3701,7 @@ window.close = function() {
     test([])
     test(['-O3'])
     test(['-s', 'MODULARIZE_INSTANCE=1'])
+    test(['-s', 'MINIMAL_RUNTIME=1'])
 
   # Test that preallocating worker threads work.
   @requires_threads
@@ -4575,6 +4576,12 @@ window.close = function() {
   def test_pthread_hello_thread(self):
     for opts in [[], ['-O3']]:
       for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '--shell-file', path_from_root('tests', 'shell_that_launches_modularize.html')]]:
+        self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
+
+  # Tests that a pthreads build of -s MINIMAL_RUNTIME=1 works well in different build modes
+  def test_minimal_runtime_hello_pthread(self):
+    for opts in [[], ['-O3']]:
+      for modularize in [[], ['-s', 'MODULARIZE=1', '-s', 'EXPORT_NAME=MyModule', '-s', 'MINIMAL_RUNTIME=1']]:
         self.btest(path_from_root('tests', 'pthread', 'hello_thread.c'), expected='1', args=['-s', 'USE_PTHREADS=1'] + modularize + opts)
 
   # Tests memory growth in pthreads mode, but still on the main thread.

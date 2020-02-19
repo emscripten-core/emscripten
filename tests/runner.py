@@ -805,20 +805,27 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two multiline text content are identical, modulo line
   # ending differences (\r\n on Windows, \n on Unix).
-  def assertTextDataIdentical(self, text1, text2, msg=None):
+  def assertTextDataIdentical(self, text1, text2, msg=None,
+                              fromfile='expected', tofile='actual'):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
-    return self.assertIdentical(text1, text2, msg)
+    return self.assertIdentical(text1, text2, msg, fromfile, tofile)
 
-  def assertIdentical(self, values, y, msg=None):
-    if type(values) not in [list, tuple]:
+  def assertIdentical(self, values, y, msg=None,
+                      fromfile='expected', tofile='actual'):
+    if type(values) not in (list, tuple):
       values = [values]
     for x in values:
       if x == y:
         return # success
-    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')
+    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
+                                      fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
-    fail_message = "Expected to have '%s' == '%s', diff:\n\n%s" % (limit_size(values[0]), limit_size(y), limit_size(diff))
+    if EMTEST_VERBOSE:
+      print("Expected to have '%s' == '%s'" % limit_size(values[0]), limit_size(y))
+    fail_message = 'Unexpected difference:\n' + limit_size(diff)
+    if not EMTEST_VERBOSE:
+      fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)

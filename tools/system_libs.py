@@ -68,26 +68,29 @@ def get_cflags(force_object_files=False):
   return flags
 
 
-def run_build_command(cmd):
-  # this must only be called on a standard build command
-  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
-  # add standard cflags, but also allow the cmd to override them
-  cmd = cmd[:2] + get_cflags() + cmd[2:]
+def run_one_command(cmd):
+  # Helper function used by run_build_commands.
+  if shared.EM_BUILD_VERBOSE:
+    print(' '.join(cmd))
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
 
 
-def run_commands(commands):
+def run_build_commands(commands):
   cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
     for command in commands:
-      run_build_command(command)
+      run_one_command(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(run_build_command, commands, chunksize=1).get(999999)
+    pool.map_async(run_one_command, commands, chunksize=1).get(999999)
+
+
+def static_library_ext():
+  return '.a' if shared.Settings.WASM_BACKEND else '.bc'
 
 
 def create_lib(libname, inputs):
@@ -362,7 +365,7 @@ class Library(object):
       o = self.in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
       objects.append(o)
-    run_commands(commands)
+    run_build_commands(commands)
     return objects
 
   def build(self):
@@ -414,7 +417,7 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return '.a' if shared.Settings.WASM_BACKEND else '.bc'
+    return static_library_ext()
 
   def get_filename(self):
     """
@@ -1197,6 +1200,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
+  includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal']]
   js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
@@ -1529,7 +1533,7 @@ class Ports(object):
 
   @staticmethod
   def get_lib_name(name):
-    return shared.static_library_name(name)
+    return name + static_library_ext()
 
   @staticmethod
   def get_include_dir():
@@ -1580,13 +1584,20 @@ class Ports(object):
       commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    run_commands(commands)
+    Ports.run_commands(commands)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands): # make easily available for port objects
-    run_commands(commands)
+  def run_commands(commands):
+    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
+    # that the ports are built in the correct configuration.
+    def add_args(cmd):
+      # this must only be called on a standard build command
+      assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+      # add standard cflags, but also allow the cmd to override them
+      return cmd[:2] + get_cflags() + cmd[2:]
+    run_build_commands([add_args(c) for c in commands])
 
   @staticmethod
   def create_lib(libname, inputs): # make easily available for port objects

@@ -32,15 +32,13 @@ from subprocess import CalledProcessError
 #
 def run():
   if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
-    print('''
-  emmake is a helper for make, setting various environment
-  variables so that emcc etc. are used. Typical usage:
+    print('''\
+emmake is a helper for make, setting various environment
+variables so that emcc etc. are used. Typical usage:
 
-    emmake make [FLAGS]
+  emmake make [FLAGS]
 
-  (but you can run any command instead of make)
-
-  ''', file=sys.stderr)
+(but you can run any command instead of make)''', file=sys.stderr)
     return 1
 
   try:
