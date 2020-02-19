@@ -27,6 +27,9 @@ Current Trunk
   (#10460)
 - Remove WASM_OBJECT_FILES settting.  There are many standard ways to enable
   bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+- Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
+  option that has become unsupported by WebGL. Access
+  EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 
 v1.39.8: 02/14/2020
 -------------------

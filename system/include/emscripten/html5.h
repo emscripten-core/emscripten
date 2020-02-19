@@ -446,10 +446,7 @@ typedef struct EmscriptenWebGLContextAttributes {
   EM_BOOL antialias;
   EM_BOOL premultipliedAlpha;
   EM_BOOL preserveDrawingBuffer;
-  union {
-    EM_BOOL preferLowPowerToHighPerformance; // DEPRECATED: do not access. (though aliases to same set of values as EM_WEBGL_POWER_PREFERENCE (false:EM_WEBGL_POWER_PREFERENCE_DEFAULT, true:EM_WEBGL_POWER_PREFERENCE_LOW_POWER) for backwards compatibility)
-    EM_WEBGL_POWER_PREFERENCE powerPreference;
-  };
+  EM_WEBGL_POWER_PREFERENCE powerPreference;
   EM_BOOL failIfMajorPerformanceCaveat;
 
   int majorVersion;
