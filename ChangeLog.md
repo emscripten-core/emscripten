@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Refactor syscall interface: Syscalls are no longer variadic (except those
+  that are inherantly such as open) and no longer take the syscall number as
+  arg0.  This should be invisible to most users but will effect any external
+  projects that try to implement/emulate the emscripten syscall interface.
+  See #10474
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
