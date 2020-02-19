@@ -2630,8 +2630,8 @@ class Building(object):
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code
     args = ['--remove-memory', '--mod-asyncify-never-unwind']
-    if options.opt_level > 0:
-      args.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if Settings.OPT_LEVEL > 0:
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, options.shrink_level))
     Building.run_wasm_opt(wasm_binary_target,
                           wasm_binary_target + '.lazy.wasm',
                           args=args,
@@ -2642,8 +2642,8 @@ class Building(object):
     # TODO: support other asyncify stuff, imports that don't always unwind?
     # TODO: source maps etc.
     args = ['--mod-asyncify-always-and-only-unwind']
-    if options.opt_level > 0:
-      args.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if Settings.OPT_LEVEL > 0:
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, options.shrink_level))
     Building.run_wasm_opt(infile=wasm_binary_target,
                           outfile=wasm_binary_target,
                           args=args,
