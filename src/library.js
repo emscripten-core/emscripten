@@ -4342,16 +4342,11 @@ LibraryManager.library = {
   },
 
   emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
-  emscripten_log: function(flags, varargs) {
-    // Extract the (optionally-existing) printf format specifier field from varargs.
-    var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
+  emscripten_log: function(flags, format, varargs) {
     var str = '';
-    if (format) {
-      var result = __formatString(format, varargs);
-      for(var i = 0 ; i < result.length; ++i) {
-        str += String.fromCharCode(result[i]);
-      }
+    var result = __formatString(format, varargs);
+    for (var i = 0 ; i < result.length; ++i) {
+      str += String.fromCharCode(result[i]);
     }
     _emscripten_log_js(flags, str);
   },

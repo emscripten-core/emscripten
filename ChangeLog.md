@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Require format string for emscripten_log.
 - Program entry points without extensions are now shell scripts rather than
   python programs. See #10729.  This means that `python emcc` no longer works.
   However `emcc`, `emcc.py` and `python emcc.py` all continue to work.
