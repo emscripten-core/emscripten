@@ -2078,6 +2078,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if shared.Settings.LTO:
             cmd.append('-flto=' + shared.Settings.LTO)
           else:
+            # With fastcomp (or with LTO mode) these args get passed instead
+            # at link time when the backend runs.
             for a in shared.Building.llvm_backend_args():
               cmd += ['-mllvm', a]
         else:
