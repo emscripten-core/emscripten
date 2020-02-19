@@ -45,6 +45,12 @@ f = re.sub(r'[\n\s]+\n\s*', '\n', f)
 f = re.sub(r'([;{}=,\+\-\*/\(\)\[\]])[\n]', r'\1', f)
 f = re.sub(r'([;{}=,\*/\(\)\[\]])[\s]', r'\1', f)
 
+# Work around https://github.com/google/closure-compiler/issues/3548 / https://github.com/google/closure-compiler/issues/3230 :
+# parseInt(b.slice(d+1),void 0)
+# ->
+# parseInt(b.slice(d+1))
+f = re.sub(r'parseInt\(([^,;]+),void 0\)', r'parseInt(\1)', f)
+
 optimized_size = len(f)
 # print('Further optimized ' + str(optimized_size - orig_size) + ' bytes (' + str(orig_size) + ' -> ' + str(optimized_size) + ' bytes, {0:.2f}'.format((optimized_size-orig_size)*100.0/orig_size) + '%)')
 open(sys.argv[1], 'w').write(f)
