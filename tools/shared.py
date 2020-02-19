@@ -1748,7 +1748,7 @@ class Building(object):
     # other otherwise for linking of bitcode we must use our python
     # code (necessary for asm.js, for wasm bitcode see
     # https://bugs.llvm.org/show_bug.cgi?id=40654)
-    if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+    if Settings.WASM_BACKEND and not Settings.LTO:
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
       Building.link(linker_inputs, target)

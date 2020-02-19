@@ -170,3 +170,6 @@ var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 // the following functions. (it also does not mangle any function that starts with
 // string "dynCall_")
 var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', '__growWasmMemory', '__heap_base', '__data_end'];
+
+// Internal: value of -flto argument (either full or thin)
+var LTO = 0;
