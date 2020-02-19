@@ -275,6 +275,12 @@ LibraryManager.library = {
   _Exit__sig: 'vi',
   _Exit: 'exit',
 
+#if MINIMAL_RUNTIME
+  $exit: function(status) {
+    throw 'exit(' + status + ')';
+  },
+#endif
+
   fork__deps: ['__setErrNo'],
   fork: function() {
     // pid_t fork(void);
@@ -1350,17 +1356,6 @@ LibraryManager.library = {
   $stackRestore: function(top) {
     top = top|0;
     STACKTOP = top;
-  },
-#endif
-
-#if USE_PTHREADS
-  $establishStackSpace__asm: true,
-  $establishStackSpace__sig: 'vii',
-  $establishStackSpace: function(stackBase, stackMax) {
-    stackBase = stackBase|0;
-    stackMax = stackMax|0;
-    STACKTOP = stackBase;
-    STACK_MAX = stackMax;
   },
 #endif
 

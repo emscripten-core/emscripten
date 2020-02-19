@@ -411,7 +411,6 @@ $___get_locale
 $___intscan
 $___isxdigit_l
 $___loc_is_allocated
-$___munmap
 $___newlocale
 $___shgetc
 $___shlim

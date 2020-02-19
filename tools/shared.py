@@ -1565,8 +1565,9 @@ class Building(object):
 
     return None
 
-  # Returns a clone of the given environment with all directories that contain sh.exe removed from the PATH.
-  # Used to work around CMake limitation with MinGW Makefiles, where sh.exe is not allowed to be present.
+  # Returns a clone of the given environment with all directories that contain
+  # sh.exe removed from the PATH.  Used to work around CMake limitation with
+  # MinGW Makefiles, where sh.exe is not allowed to be present.
   @staticmethod
   def remove_sh_exe_from_path(env):
     env = env.copy()
@@ -1578,28 +1579,32 @@ class Building(object):
     return env
 
   @staticmethod
-  def handle_CMake_toolchain(args, env):
-
-    def has_substr(array, substr):
-      for arg in array:
-        if substr in arg:
-          return True
-      return False
+  def handle_cmake_toolchain(args, env):
+    def has_substr(args, substr):
+      return any(substr in s for s in args)
 
     # Append the Emscripten toolchain file if the user didn't specify one.
     if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
       args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
+    node_js = NODE_JS
 
-    # On Windows specify MinGW Makefiles or ninja if we have them and no other toolchain was specified, to keep CMake
-    # from pulling in a native Visual Studio, or Unix Makefiles.
+    if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
+      node_js = NODE_JS[0].replace('"', '\"')
+      args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
+
+    # On Windows specify MinGW Makefiles or ninja if we have them and no other
+    # toolchain was specified, to keep CMake from pulling in a native Visual
+    # Studio, or Unix Makefiles.
     if WINDOWS and '-G' not in args:
       if Building.which('mingw32-make'):
         args += ['-G', 'MinGW Makefiles']
       elif Building.which('ninja'):
         args += ['-G', 'Ninja']
 
-    # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
-    # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
+    # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
+    # is being used. This happens quite often, so do this automatically on
+    # behalf of the user. See
+    # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
     if WINDOWS and 'MinGW Makefiles' in args:
       env = Building.remove_sh_exe_from_path(env)
 
@@ -1607,35 +1612,31 @@ class Building(object):
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
-    if not args:
-      return
-    if env is None:
+    if env:
+      env = env.copy()
+    else:
       env = Building.get_building_env(cflags=cflags)
     if 'cmake' in args[0]:
-      # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
-      #       does expect to be able to do config-time builds with emcc.
-      args, env = Building.handle_CMake_toolchain(args, env)
+      # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with
+      #       CMake. This is because CMake does expect to be able to do
+      #       config-time builds with emcc.
+      args, env = Building.handle_cmake_toolchain(args, env)
     else:
-      # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
-      # do builds natively with Clang. This is a heuristic emulation that may or may not work.
+      # When we configure via a ./configure script, don't do config-time
+      # compilation with emcc, but instead do builds natively with Clang. This
+      # is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    if EM_BUILD_VERBOSE >= 3:
-      print('configure: ' + str(args), file=sys.stderr)
     if EM_BUILD_VERBOSE >= 2:
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
+    print('configure: ' + ' '.join(args), file=sys.stderr)
     run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
-    if 'EMMAKEN_JUST_CONFIGURE' in env:
-      del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     if env is None:
       env = Building.get_building_env(cflags=cflags)
-    if not args:
-      exit_with_error('Executable to run not specified.')
-    # args += ['VERBOSE=1']
 
     # On Windows prefer building with mingw32-make instead of make, if it exists.
     if WINDOWS:
@@ -1654,7 +1655,7 @@ class Building(object):
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
-    print('make: ' + str(args), file=sys.stderr)
+    print('make: ' + ' '.join(args), file=sys.stderr)
     run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
 
   @staticmethod
@@ -2430,6 +2431,8 @@ class Building(object):
                              if name.endswith('.js')]
           CLOSURE_EXTERNS += BROWSER_EXTERNS
 
+      if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
+        CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
       outfile = filename + '.cc.js'
 
       args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',

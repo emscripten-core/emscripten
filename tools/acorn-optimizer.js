@@ -661,7 +661,7 @@ function emitDCEGraph(ast) {
       import: ['env', import_],
       reaches: {}
     };
-    if (nameToGraphName.hasOwnProperty(import_)) {
+    if (Object.prototype.hasOwnProperty.call(nameToGraphName, import_)) {
       info.reaches[nameToGraphName[import_]] = 1;
     } // otherwise, it's a number, ignore
   });
@@ -681,12 +681,12 @@ function emitDCEGraph(ast) {
     var reached;
     if (node.type === 'Identifier') {
       var name = node.name;
-      if (nameToGraphName.hasOwnProperty(name)) {
+      if (Object.prototype.hasOwnProperty.call(nameToGraphName, name)) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
       var name = getAsmOrModuleUseName(node);
-      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+      if (Object.prototype.hasOwnProperty.call(modulePropertyToGraphName, name)) {
         reached = modulePropertyToGraphName[name];
       }
     } else if (isStaticDynCall(node)) {
@@ -697,7 +697,7 @@ function emitDCEGraph(ast) {
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
       var name = getAsmOrModuleUseName(node);
-      if (exportNameToGraphName.hasOwnProperty(name)) {
+      if (Object.prototype.hasOwnProperty.call(exportNameToGraphName, name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
       return;
