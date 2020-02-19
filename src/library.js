@@ -4048,10 +4048,10 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  emscripten_get_now: '=(function() {' +
+  emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  return (function _emscripten_get_now_actual() {\n" +
+                               "  _emscripten_get_now = function() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
@@ -4060,23 +4060,23 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  return (function() { return performance['now']() - Module['__performance_now_clock_drift']; });\n" +
+                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
                                "if (typeof dateNow !== 'undefined') {\n" +
-                               "  return dateNow;\n" +
+                               "  _emscripten_get_now = dateNow;\n" +
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
-                               "  return performance['now'];\n" +
+                               "if (typeof performance !== 'undefined' && performance['now']) {\n" +
+                               "  _emscripten_get_now = performance['now'];\n" +
                                "} else {\n" +
-                               "  return Date.now;\n" +
+                               "  _emscripten_get_now = Date.now;\n" +
                                "}" +
 #else
                                // Modern environment where performance.now() is supported:
-                               "return performance['now'];\n" +
+                               "_emscripten_get_now = performance['now'];\n" +
 #endif
                       '})();',
 
