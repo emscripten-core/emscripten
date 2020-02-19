@@ -702,7 +702,6 @@ $std::__2::vector<std::__2::locale::facet*\2c\20std::__2::__sso_allocator<std::_
 $std::__2::vector<std::__2::locale::facet*\2c\20std::__2::__sso_allocator<std::__2::locale::facet*\2c\2028ul>\20>::operator\5b\5d\28unsigned\20long\29
 $std::__2::vector<std::__2::locale::facet*\2c\20std::__2::__sso_allocator<std::__2::locale::facet*\2c\2028ul>\20>::resize\28unsigned\20long\29
 $std::__2::vector<std::__2::locale::facet*\2c\20std::__2::__sso_allocator<std::__2::locale::facet*\2c\2028ul>\20>::size\28\29\20const
-$std::uncaught_exception\28\29
 $store_int
 $strcmp
 $strlen
