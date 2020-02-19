@@ -4060,7 +4060,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = function() { return performance.now() - Module['__performance_now_clock_drift']; };\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -4069,14 +4069,14 @@ LibraryManager.library = {
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance !== 'undefined' && performance['now']) {\n" +
-                               "  _emscripten_get_now = performance['now'];\n" +
+                               "if (typeof performance !== 'undefined' && performance.now) {\n" +
+                               "  _emscripten_get_now = performance.now;\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}" +
 #else
                                // Modern environment where performance.now() is supported:
-                               "_emscripten_get_now = performance['now'];\n" +
+                               "_emscripten_get_now = performance.now;\n" +
 #endif
                       '})();',
 
