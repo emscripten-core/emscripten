@@ -74,6 +74,8 @@ else:
   import re
   m = re.search(r'(\w+)\s*=\s*{"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1}', everything)
   if not m:
+    m = re.search(r'(\w+)\s*=\s*{__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__:1}', everything)
+  if not m:
     m = re.search(r'(\w+)=typeof Module !== \'undefined\' \? Module : {}', everything)
   if not m:
     m = re.search(r'\((\w+)\.ENVIRONMENT\)', everything)
