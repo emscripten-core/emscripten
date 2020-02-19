@@ -4073,12 +4073,11 @@ LibraryManager.library = {
                                "  _emscripten_get_now = performance.now;\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
-                               "}" +
+                               "}",
 #else
                                // Modern environment where performance.now() is supported:
-                               "_emscripten_get_now = performance.now;\n" +
+                               "_emscripten_get_now = performance.now;\n",
 #endif
-                      '})();',
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
