@@ -11,6 +11,18 @@
 
 #include "cxxabi.h"
 
+#ifdef __EMSCRIPTEN__
+
+// Avoid pulling in ::abort_message and associated string formatting code
+#include <emscripten.h>
+#include <stdlib.h>
+#define abort_message(...) do { \
+  emscripten_log(EM_LOG_ERROR, ##__VA_ARGS__); \
+  abort(); \
+} while(0);
+
+#else
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,5 +34,6 @@ abort_message(const char *format, ...) __attribute__((format(printf, 1, 2)));
 }
 #endif
 
+#endif // __EMSCRIPTEN__
 #endif
 
