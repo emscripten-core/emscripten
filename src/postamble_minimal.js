@@ -3,6 +3,7 @@
 
 {{{ exportRuntime() }}}
 
+#if hasExportedFunction('_main') // Only if user is exporting a C main(), we will generate a run() function that can be used to launch main.
 function run() {
 #if MEMORYPROFILER
   emscriptenMemoryProfiler.onPreloadComplete();
@@ -36,6 +37,7 @@ function run() {
   checkStackCookie();
 #endif
 }
+#endif
 
 function initRuntime(asm) {
 #if ASSERTIONS
@@ -145,10 +147,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   wasmModule = output.module || Module['wasm'];
 #endif
 
-#if !(LibraryManager.has('library_exports.js') && (WASM || WASM_BACKEND))
-  // If not using the emscripten_get_exported_function() API, keep the 'asm' exports
-  // variable in local scope to this instantiate function. (otherwise access it without
-  // to export it to outer scope)
+#if !(LibraryManager.has('library_exports.js') && (WASM || WASM_BACKEND)) && !EMBIND
+  // If not using the emscripten_get_exported_function() API or embind, keep the 'asm'
+  // exports variable in local scope to this instantiate function to save code size.
+  // (otherwise access it without to export it to outer scope)
   var
 #endif
 

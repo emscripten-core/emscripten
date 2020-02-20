@@ -279,15 +279,15 @@ var SyscallsLibrary = {
 #endif
   },
 
-  __syscall1: function(which, status) { // exit
+  __syscall1: function(status) { // exit
     exit(status);
     // no return
   },
-  __syscall3: function(which, fd, buf, count) { // read
+  __syscall3: function(fd, buf, count) { // read
     var stream = SYSCALLS.getStreamFromFD(fd);
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
-  __syscall4: function(which, fd, buf, count) { // write
+  __syscall4: function(fd, buf, count) { // write
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
@@ -299,75 +299,78 @@ var SyscallsLibrary = {
     return count;
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall5: function(which, path, flags, varargs) { // open
+  __syscall5: function(path, flags, varargs) { // open
     var pathname = SYSCALLS.getStr(path);
     var mode = SYSCALLS.get();
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
-  __syscall9: function(which, oldpath, newpath) { // link
+  __syscall9: function(oldpath, newpath) { // link
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
-  __syscall10: function(which, path) { // unlink
+  __syscall10: function(path) { // unlink
     path = SYSCALLS.getStr(path);
     FS.unlink(path);
     return 0;
   },
-  __syscall12: function(which, path) { // chdir
+  __syscall12: function(path) { // chdir
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
     return 0;
   },
-  __syscall14: function(which, path, mode, dev) { // mknod
+  __syscall14: function(path, mode, dev) { // mknod
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doMknod(path, mode, dev);
   },
-  __syscall15: function(which, path, mode) { // chmod
+  __syscall15: function(path, mode) { // chmod
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
     return 0;
   },
   __syscall20__deps: ['$PROCINFO'],
   __syscall20__nothrow: true,
-  __syscall20: function(which) { // getpid
+  __syscall20__proxy: false,
+  __syscall20: function() { // getpid
     return PROCINFO.pid;
   },
   __syscall29__nothrow: true,
-  __syscall29: function(which) { // pause
+  __syscall29: function() { // pause
     return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
-  __syscall33: function(which, path, amode) { // access
+  __syscall33: function(path, amode) { // access
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doAccess(path, amode);
   },
-  __syscall34: function(which, inc) { // nice
+  __syscall34__proxy: false,
+  __syscall34: function(inc) { // nice
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
   },
+  __syscall36__proxy: false,
   __syscall36__nothrow: true,
-  __syscall36: function(which) { // sync
+  __syscall36: function() { // sync
     return 0;
   },
-  __syscall38: function(which, old_path, new_path) { // rename
+  __syscall38: function(old_path, new_path) { // rename
     old_path = SYSCALLS.getStr(old_path);
     new_path = SYSCALLS.getStr(new_path);
     FS.rename(old_path, new_path);
     return 0;
   },
-  __syscall39: function(which, path, mode) { // mkdir
+  __syscall39: function(path, mode) { // mkdir
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doMkdir(path, mode);
   },
-  __syscall40: function(which, path) { // rmdir
+  __syscall40: function(path) { // rmdir
     path = SYSCALLS.getStr(path);
     FS.rmdir(path);
     return 0;
   },
-  __syscall41: function(which, fd) { // dup
+  __syscall41: function(fd) { // dup
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.open(old.path, old.flags, 0).fd;
   },
   __syscall42__deps: ['$PIPEFS'],
-  __syscall42: function(which, fdPtr) { // pipe
+  __syscall42: function(fdPtr) { // pipe
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefine('EFAULT') }}});
     }
@@ -380,10 +383,11 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall51__nothrow: true,
-  __syscall51: function(which, filename) { // acct
+  __syscall51__proxy: false,
+  __syscall51: function(filename) { // acct
     return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
-  __syscall54: function(which, fd, op, varargs) { // ioctl
+  __syscall54: function(fd, op, varargs) { // ioctl
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
     err('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
@@ -441,40 +445,44 @@ var SyscallsLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
   __syscall57__deps: ['$PROCINFO'],
-  __syscall57: function(which, pid, pgid) { // setpgid
+  __syscall57: function(pid, pgid) { // setpgid
     if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     if (pgid && pgid !== PROCINFO.pgid) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
-  __syscall60: function(which, mask) { // umask
+  __syscall60: function(mask) { // umask
     var old = SYSCALLS.umask;
     SYSCALLS.umask = mask;
     return old;
   },
-  __syscall63: function(which, oldfd, suggestFD) { // dup2
+  __syscall63: function(oldfd, suggestFD) { // dup2
     var old = SYSCALLS.getStreamFromFD(oldfd);
     if (old.fd === suggestFD) return suggestFD;
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __syscall64__deps: ['$PROCINFO'],
   __syscall64__nothrow: true,
-  __syscall64: function(which) { // getppid
+  __syscall64__proxy: false,
+  __syscall64: function() { // getppid
     return PROCINFO.ppid;
   },
   __syscall65__deps: ['$PROCINFO'],
   __syscall65__nothrow: true,
-  __syscall65: function(which) { // getpgrp
+  __syscall65__proxy: false,
+  __syscall65: function() { // getpgrp
     return PROCINFO.pgid;
   },
   __syscall66__nothrow: true,
-  __syscall66: function(which) { // setsid
+  __syscall66__proxy: false,
+  __syscall66: function() { // setsid
     return 0; // no-op
   },
   __syscall75__nothrow: true,
-  __syscall75: function(which, varargs) { // setrlimit
+  __syscall75__proxy: false,
+  __syscall75: function(varargs) { // setrlimit
     return 0; // no-op
   },
-  __syscall77: function(which, who, usage) { // getrusage
+  __syscall77: function(who, usage) { // getrusage
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -485,35 +493,37 @@ var SyscallsLibrary = {
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i32') }}};
     return 0;
   },
-  __syscall83: function(which, target, linkpath) { // symlink
+  __syscall83: function(target, linkpath) { // symlink
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
     FS.symlink(target, linkpath);
     return 0;
   },
-  __syscall85: function(which, path, buf, bufsize) { // readlink
+  __syscall85: function(path, buf, bufsize) { // readlink
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
   __syscall91__deps: ['_emscripten_syscall_munmap'],
-  __syscall91: function(which, addr, len) { // munmap
+  __syscall91: function(addr, len) { // munmap
     return __emscripten_syscall_munmap(addr, len);
   },
-  __syscall94: function(which, fd, mode) { // fchmod
+  __syscall94: function(fd, mode) { // fchmod
     FS.fchmod(fd, mode);
     return 0;
   },
   __syscall96__nothrow: true,
-  __syscall96: function(which) { // getpriority
+  __syscall96__proxy: false,
+  __syscall96: function() { // getpriority
     return 0;
   },
   __syscall97__nothrow: true,
-  __syscall97: function(which) { // setpriority
+  __syscall97__proxy: false,
+  __syscall97: function() { // setpriority
     return -{{{ cDefine('EPERM') }}};
   },
 #if PROXY_POSIX_SOCKETS == 0
   __syscall102__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
-  __syscall102: function(which, call, socketvararg) { // socketcall
+  __syscall102: function(call, socketvararg) { // socketcall
 #if SYSCALL_DEBUG
       err('    (socketcall begin: "' + call + '")');
 #endif
@@ -732,20 +742,24 @@ var SyscallsLibrary = {
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
   __syscall104__nothrow: true,
-  __syscall104: function(which, which_, new_value, old_value) { // setitimer
+  __syscall104__proxy: false,
+  __syscall104: function(which, new_value, old_value) { // setitimer
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall114: function(which, pid, wstart, options, rusage) { // wait4
+  __syscall114__proxy: false,
+  __syscall114: function(pid, wstart, options, rusage) { // wait4
     abort('cannot wait on child processes');
   },
   __syscall121__nothrow: true,
-  __syscall121: function(which, name, size) { // setdomainname
+  __syscall121__proxy: false,
+  __syscall121: function(name, size) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
 #if MINIMAL_RUNTIME
   __syscall122__deps: ['$writeAsciiToMemory'],
 #endif
-  __syscall122: function(which, buf) { // uname
+  __syscall122__proxy: false,
+  __syscall122: function(buf) { // uname
     if (!buf) return -{{{ cDefine('EFAULT') }}}
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
     var copyString = function(element, value) {
@@ -759,21 +773,23 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
+  __syscall125__proxy: false,
   __syscall125__nothrow: true,
-  __syscall125: function(which, addr, len, size) { // mprotect
+  __syscall125: function(addr, len, size) { // mprotect
     return 0; // let's not and say we did
   },
   __syscall132__deps: ['$PROCINFO'],
-  __syscall132: function(which, pid) { // getpgid
+  __syscall132__proxy: false,
+  __syscall132: function(pid) { // getpgid
     if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     return PROCINFO.pgid;
   },
-  __syscall133: function(which, fd) { // fchdir
+  __syscall133: function(fd) { // fchdir
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.chdir(stream.path);
     return 0;
   },
-  __syscall142: function(which, nfds, readfds, writefds, exceptfds, timeout) { // newselect
+  __syscall142: function(nfds, readfds, writefds, exceptfds, timeout) { // newselect
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds not supported
@@ -854,36 +870,42 @@ var SyscallsLibrary = {
     
     return total;
   },
-  __syscall144: function(which, addr, len, flags) { // msync
+  __syscall144: function(addr, len, flags) { // msync
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
   __syscall147__deps: ['$PROCINFO'],
-  __syscall147: function(which, pid) { // getsid
+  __syscall147__proxy: false,
+  __syscall147: function(pid) { // getsid
     if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     return PROCINFO.sid;
   },
-  __syscall148: function(which, fd) { // fdatasync
+  __syscall148: function(fd) { // fdatasync
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall150__sig: 'iiii',
+  __syscall150__proxy: false,
+  __syscall150__sig: 'iii',
   __syscall150: '__syscall153',     // mlock
-  __syscall151__sig: 'iiii',
+  __syscall151__proxy: false,
+  __syscall151__sig: 'iii',
   __syscall151: '__syscall153',     // munlock
-  __syscall152__sig: 'iiii',
+  __syscall152__proxy: false,
+  __syscall152__sig: 'iii',
   __syscall152: '__syscall153',     // mlockall
   __syscall153__nothrow: true,
+  __syscall153__proxy: false,
   __syscall153: function() { // munlockall
     return 0;
   },
   __syscall163__nothrow: true,
-  __syscall163: function(which, old_addr, old_size, new_size, flags) { // mremap
+  __syscall163__proxy: false,
+  __syscall163: function(old_addr, old_size, new_size, flags) { // mremap
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
-  __syscall168: function(which, fds, nfds, timeout) { // poll
+  __syscall168: function(fds, nfds, timeout) { // poll
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -904,23 +926,24 @@ var SyscallsLibrary = {
     return nonzero;
   },
   __syscall178__nothrow: true,
-  __syscall178: function(which, tgid, pid, uinfo) { // rt_sigqueueinfo
+  __syscall178__proxy: false,
+  __syscall178: function(tgid, pid, uinfo) { // rt_sigqueueinfo
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_rt_sigqueueinfo');
 #endif
     return 0;
   },
-  __syscall180: function(which, fd, buf, count, zero, low, high) { // pread64
+  __syscall180: function(fd, buf, count, zero, low, high) { // pread64
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(low, high);
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
-  __syscall181: function(which, fd, buf, count, zero, low, high) { // pwrite64
+  __syscall181: function(fd, buf, count, zero, low, high) { // pwrite64
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(low, high);
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
-  __syscall183: function(which, buf, size) { // getcwd
+  __syscall183: function(buf, size) { // getcwd
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
     var cwdLengthInBytes = lengthBytesUTF8(cwd);
@@ -928,7 +951,7 @@ var SyscallsLibrary = {
     stringToUTF8(cwd, buf, size);
     return buf;
   },
-  __syscall191: function(which, resource, rlim) { // ugetrlimit
+  __syscall191: function(resource, rlim) { // ugetrlimit
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -939,80 +962,93 @@ var SyscallsLibrary = {
     return 0; // just report no limits
   },
   __syscall192__deps: ['_emscripten_syscall_mmap2'],
-  __syscall192: function(which, addr, len, prot, flags, fd, off) { // mmap2
+  __syscall192: function(addr, len, prot, flags, fd, off) { // mmap2
     return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
   },
-  __syscall193: function(which, path, zero, low, high) { // truncate64
+  __syscall193: function(path, zero, low, high) { // truncate64
     path = SYSCALLS.getStr(path);
     var length = SYSCALLS.get64(low, high);
     FS.truncate(path, length);
     return 0;
   },
-  __syscall194: function(which, fd, zero, low, high) { // ftruncate64
+  __syscall194: function(fd, zero, low, high) { // ftruncate64
     var length = SYSCALLS.get64(low, high);
     FS.ftruncate(fd, length);
     return 0;
   },
-  __syscall195: function(which, path, buf) { // SYS_stat64
+  __syscall195: function(path, buf) { // SYS_stat64
     var path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
-  __syscall196: function(which, path, buf) { // SYS_lstat64
+  __syscall196: function(path, buf) { // SYS_lstat64
     var path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
   },
-  __syscall197: function(which, fd, buf) { // SYS_fstat64
+  __syscall197: function(fd, buf) { // SYS_fstat64
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
   },
-  __syscall198: function(which, path, owner, group) { // lchown32
+  __syscall198: function(path, owner, group) { // lchown32
     path = SYSCALLS.getStr(path);
     FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
     return 0;
   },
-  __syscall199__sig: 'ii',
+  __syscall199__sig: 'i',
+  __syscall199__proxy: false,
   __syscall199: '__syscall202',     // getuid32
-  __syscall200__sig: 'ii',
+  __syscall200__sig: 'i',
+  __syscall200__proxy: false,
   __syscall200: '__syscall202',     // getgid32
-  __syscall201__sig: 'ii',
+  __syscall201__sig: 'i',
+  __syscall201__proxy: false,
   __syscall201: '__syscall202',     // geteuid32
   __syscall202__nothrow: true,
+  __syscall202__proxy: false,
   __syscall202: function() { // getgid32
     return 0;
   },
-  __syscall207: function(which, fd, owner, group) { // fchown32
+  __syscall207: function(fd, owner, group) { // fchown32
     FS.fchown(fd, owner, group);
     return 0;
   },
-  __syscall212: function(which, path, owner, group) { // chown32
+  __syscall212: function(path, owner, group) { // chown32
     path = SYSCALLS.getStr(path);
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall203__sig: 'iii',
+  __syscall203__sig: 'ii',
+  __syscall203__proxy: false,
   __syscall203: '__sysicall214',     // setreuid32
-  __syscall204__sig: 'iii',
+  __syscall204__sig: 'ii',
+  __syscall204__proxy: false,
   __syscall204: '__syscall214',     // setregid32
-  __syscall213__sig: 'iii',
+  __syscall213__sig: 'ii',
+  __syscall213__proxy: false,
   __syscall213: '__syscall214',     // setuid32
-  __syscall214: function(which, uid) { // setgid32
+  __syscall214__proxy: false,
+  __syscall214: function(uid) { // setgid32
     if (uid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
-  __syscall205: function(which, size, list) { // getgroups32
+  __syscall205__proxy: false,
+  __syscall205: function(size, list) { // getgroups32
     if (size < 1) return -{{{ cDefine('EINVAL') }}};
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
   },
-  __syscall208__sig: 'iiiii',
+  __syscall208__proxy: false,
+  __syscall208__sig: 'iiii',
   __syscall208: '__syscall210',     // setresuid32
-  __syscall210: function(which, ruid, euid, suid) { // setresgid32
+  __syscall210__proxy: false,
+  __syscall210: function(ruid, euid, suid) { // setresgid32
     if (euid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
-  __syscall209__sig: 'iiiii',
+  __syscall209__sig: 'iiii',
+  __syscall209__proxy: false,
   __syscall209: '__syscall211',     // getresuid
-  __syscall211: function(which, ruid, euid, suid) { // getresgid32
+  __syscall211__proxy: false,
+  __syscall211: function(ruid, euid, suid) { // getresgid32
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1022,14 +1058,16 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall218__nothrow: true,
-  __syscall218: function(which, addr, length, vec) { // mincore
+  __syscall218__proxy: false,
+  __syscall218: function(addr, length, vec) { // mincore
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall219__nothrow: true,
-  __syscall219: function(which, addr, length, advice) { // madvise
+  __syscall219__proxy: false,
+  __syscall219: function(addr, length, advice) { // madvise
     return 0; // advice is welcome, but ignored
   },
-  __syscall220: function(which, fd, dirp, count) { // SYS_getdents64
+  __syscall220: function(fd, dirp, count) { // SYS_getdents64
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
       stream.getdents = FS.readdir(stream.path);
@@ -1068,7 +1106,7 @@ var SyscallsLibrary = {
     return pos;
   },
   __syscall221__deps: ['__setErrNo'],
-  __syscall221: function(which, fd, cmd, varargs) { // fcntl64
+  __syscall221: function(fd, cmd, varargs) { // fcntl64
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
     err('no-op in fcntl64 syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
@@ -1132,11 +1170,11 @@ var SyscallsLibrary = {
 #if MINIMAL_RUNTIME
   __syscall252__deps: ['$exit'],
 #endif
-  __syscall252: function(which, status) { // exit_group
+  __syscall252: function(status) { // exit_group
     exit(status);
     return 0;
   },
-  __syscall268: function(which, path, size, buf) { // statfs64
+  __syscall268: function(path, size, buf) { // statfs64
     var path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
@@ -1155,15 +1193,16 @@ var SyscallsLibrary = {
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
     return 0;
   },
-  __syscall269: function(which, fd, size, buf) { // fstatfs64
+  __syscall269: function(fd, size, buf) { // fstatfs64
     var stream = SYSCALLS.getStreamFromFD(fd);
     return ___syscall([268, 0, size, buf], 0);
   },
   __syscall272__nothrow: true,
-  __syscall272: function(which, fd, offset, len, advice) { // fadvise64_64
+  __syscall272__proxy: false,
+  __syscall272: function(fd, offset, len, advice) { // fadvise64_64
     return 0; // your advice is important to us (but we can't use it)
   },
-  __syscall295: function(which, dirfd, path, flags, varargs) { // openat
+  __syscall295: function(dirfd, path, flags, varargs) { // openat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1172,7 +1211,7 @@ var SyscallsLibrary = {
     var mode = SYSCALLS.get();
     return FS.open(path, flags, mode).fd;
   },
-  __syscall296: function(which, dirfd, path, mode) { // mkdirat
+  __syscall296: function(dirfd, path, mode) { // mkdirat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1180,7 +1219,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doMkdir(path, mode);
   },
-  __syscall297: function(which, dirfd, path, mode, dev) { // mknodat
+  __syscall297: function(dirfd, path, mode, dev) { // mknodat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1188,7 +1227,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doMknod(path, mode, dev);
   },
-  __syscall298: function(which, dirfd, path, owner, group, flags) { // fchownat
+  __syscall298: function(dirfd, path, owner, group, flags) { // fchownat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1200,7 +1239,7 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall300: function(which, dirfd, path, buf, flags) { // fstatat64
+  __syscall300: function(dirfd, path, buf, flags) { // fstatat64
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
     flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
@@ -1210,7 +1249,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
-  __syscall301: function(which, dirfd, path, flags) { // unlinkat
+  __syscall301: function(dirfd, path, flags) { // unlinkat
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     if (flags === 0) {
@@ -1222,7 +1261,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall302: function(which, olddirfd, oldpath, newdirfd, newpath) { // renameat
+  __syscall302: function(olddirfd, oldpath, newdirfd, newpath) { // renameat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1234,10 +1273,11 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall303__nothrow: true,
-  __syscall303: function(which, olddirfd, oldpath, newdirfd, newpath, flags) { // linkat
+  __syscall303__proxy: false,
+  __syscall303: function(olddirfd, oldpath, newdirfd, newpath, flags) { // linkat
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
-  __syscall304: function(which, target, newdirfd, linkpath) { // symlinkat
+  __syscall304: function(target, newdirfd, linkpath) { // symlinkat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1245,7 +1285,7 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
-  __syscall305: function(which, dirfd, path, buf, bufsize) { // readlinkat
+  __syscall305: function(dirfd, path, buf, bufsize) { // readlinkat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1253,7 +1293,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall306: function(which, dirfd, path, mode, varargs) { // fchmodat
+  __syscall306: function(dirfd, path, mode, varargs) { // fchmodat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1263,7 +1303,7 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall307: function(which, dirfd, path, amode, flags) { // faccessat
+  __syscall307: function(dirfd, path, amode, flags) { // faccessat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1275,10 +1315,10 @@ var SyscallsLibrary = {
     return SYSCALLS.doAccess(path, amode);
   },
   __syscall308__nothrow: true,
-  __syscall308: function(which) { // pselect
+  __syscall308: function() { // pselect
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall320: function(which, dirfd, path, times, flags) { // utimensat
+  __syscall320: function(dirfd, path, times, flags) { // utimensat
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1297,7 +1337,7 @@ var SyscallsLibrary = {
     FS.utime(path, atime, mtime);
     return 0;  
   },
-  __syscall324: function(which, fd, mode, off_low, off_high, len_low, len_high) { // fallocate
+  __syscall324: function(fd, mode, off_low, off_high, len_low, len_high) { // fallocate
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(off_low, off_high);
     var len = SYSCALLS.get64(len_low, len_high);
@@ -1307,7 +1347,7 @@ var SyscallsLibrary = {
     FS.allocate(stream, offset, len);
     return 0;
   },
-  __syscall330: function(which, fd, suggestFD, flags) { // dup3
+  __syscall330: function(fd, suggestFD, flags) { // dup3
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1319,17 +1359,18 @@ var SyscallsLibrary = {
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __syscall331__nothrow: true,
-  __syscall331: function(which, fds, flags) { // pipe2
+  __syscall331__proxy: false,
+  __syscall331: function(fds, flags) { // pipe2
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall333: function(which, fd, iov, iovcnt, low, high) { // preadv
+  __syscall333: function(fd, iov, iovcnt, low, high) { // preadv
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
   },
-  __syscall334: function(which, fd, iov, iovcnt, low, high) { // pwritev
+  __syscall334: function(fd, iov, iovcnt, low, high) { // pwritev
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1338,13 +1379,13 @@ var SyscallsLibrary = {
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
   __syscall337__nothrow: true,
-  __syscall337: function(which, sockfd, msgvec, vlen, flags) { // recvmmsg
+  __syscall337: function(sockfd, msgvec, vlen, flags) { // recvmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_recvmmsg');
 #endif
     return 0;
   },
-  __syscall340: function(which, pid, resource, new_limit, old_limit) { // prlimit64
+  __syscall340: function(pid, resource, new_limit, old_limit) { // prlimit64
     if (old_limit) { // just report no limits
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur + 4, '-1', 'i32') }}};  // RLIM_INFINITY
@@ -1354,7 +1395,8 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall345__nothrow: true,
-  __syscall345: function(which, sockfd, msg, flags) { // sendmmsg
+  __syscall345__proxy: false,
+  __syscall345: function(sockfd, msg, flags) { // sendmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_sendmmsg');
 #endif
@@ -1691,6 +1733,9 @@ for (var x in SyscallsLibrary) {
   var canThrow = SyscallsLibrary[x + '__nothrow'] !== true;
   delete SyscallsLibrary[x + '__nothrow'];
   var handler = '';
+#if SYSCALLS_REQUIRE_FILESYSTEM == 0
+  canThrow = false;
+#endif
   if (canThrow) {
     pre += 'try {\n';
     handler +=
@@ -1724,8 +1769,18 @@ for (var x in SyscallsLibrary) {
   if (!SyscallsLibrary[x + '__deps']) SyscallsLibrary[x + '__deps'] = [];
   SyscallsLibrary[x + '__deps'].push('$SYSCALLS');
 #if USE_PTHREADS
-  // proxy all syscalls synchronously, for their return values
-  SyscallsLibrary[x + '__proxy'] = 'sync';
+  // Most syscalls need to happen on the main JS thread (e.g. because the
+  // filesystem is in JS and on that thread). Proxy synchronously to there.
+  // There are some exceptions, syscalls that we know are ok to just run in
+  // any thread; those are marked as not being proxied with
+  //  __proxy: false
+  // A syscall without a return value could perhaps be proxied asynchronously
+  // instead of synchronously, and marked with
+  //  __proxy: 'async'
+  // (but essentially all syscalls do have return values).
+  if (SyscallsLibrary[x + '__proxy'] === undefined) {
+    SyscallsLibrary[x + '__proxy'] = 'sync';
+  }
 #endif
 }
 

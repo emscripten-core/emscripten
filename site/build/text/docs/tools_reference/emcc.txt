@@ -547,9 +547,8 @@ Options that are modified or new in *emcc* are listed below:
 
       * <name> **.bc** : LLVM bitcode.
 
-      * <name> **.o** : LLVM bitcode (same as .bc), unless in
-        *WASM_OBJECT_FILES* mode, in which case it will contain a
-        WebAssembly object.
+      * <name> **.o** : WebAssembly object file (unless fastcomp or -flto is
+        used in which case it will be in LLVM bitcode format).
 
       * <name> **.wasm** : WebAssembly without JavaScript support
         code ("standalone wasm"; this enables "STANDALONE_WASM").

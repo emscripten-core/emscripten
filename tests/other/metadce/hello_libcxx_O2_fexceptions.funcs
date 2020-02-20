@@ -7,6 +7,7 @@ $__ctype_tolower_loc
 $__ctype_toupper_loc
 $__cxa_can_catch
 $__cxa_get_globals_fast
+$__cxa_guard_abort
 $__cxa_guard_acquire
 $__cxa_guard_release
 $__cxa_is_pointer_type
@@ -27,6 +28,10 @@ $__cxx_global_array_dtor.44
 $__cxx_global_array_dtor.55
 $__cxx_global_array_dtor.70
 $__cxx_global_array_dtor.85
+$__cxxabiv1::\28anonymous\20namespace\29::GuardObject<__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads>::cxa_guard_acquire\28\29
+$__cxxabiv1::\28anonymous\20namespace\29::GuardObject<__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads>::cxa_guard_release\28\29
+$__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads::InitByteNoThreads\28unsigned\20int*\29
+$__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads::acquire_init_byte\28\29
 $__cxxabiv1::__base_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__dynamic_cast_info*\2c\20void*\2c\20int\29\20const
 $__cxxabiv1::__base_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__base_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
@@ -106,7 +111,6 @@ $bool\20std::__2::operator==<char\2c\20std::__2::char_traits<char>\20>\28std::__
 $bool\20std::__2::operator==<char\2c\20void\20\28*\29\28void*\29>\28std::__2::unique_ptr<char\2c\20void\20\28*\29\28void*\29>\20const&\2c\20std::nullptr_t\29
 $bool\20std::__2::operator==<wchar_t\2c\20std::__2::char_traits<wchar_t>\20>\28std::__2::istreambuf_iterator<wchar_t\2c\20std::__2::char_traits<wchar_t>\20>\20const&\2c\20std::__2::istreambuf_iterator<wchar_t\2c\20std::__2::char_traits<wchar_t>\20>\20const&\29
 $catgets
-$char*\20std::__2::__copy<std::__2::__wrap_iter<char\20const*>\2c\20char*>\28std::__2::__wrap_iter<char\20const*>\2c\20std::__2::__wrap_iter<char\20const*>\2c\20char*\29
 $char*\20std::__2::copy<std::__2::__wrap_iter<char\20const*>\2c\20char*>\28std::__2::__wrap_iter<char\20const*>\2c\20std::__2::__wrap_iter<char\20const*>\2c\20char*\29
 $char\20const*\20std::__2::find<char\20const*\2c\20char>\28char\20const*\2c\20char\20const*\2c\20char\20const&\29
 $copysignl
@@ -302,6 +306,7 @@ $std::__2::__stdoutbuf<wchar_t>::__stdoutbuf\28_IO_FILE*\2c\20__mbstate_t*\29
 $std::__2::__stdoutbuf<wchar_t>::imbue\28std::__2::locale\20const&\29
 $std::__2::__stdoutbuf<wchar_t>::overflow\28unsigned\20int\29
 $std::__2::__stdoutbuf<wchar_t>::xsputn\28wchar_t\20const*\2c\20long\29
+$std::__2::__throw_failure\28char\20const*\29
 $std::__2::__throw_length_error\28char\20const*\29
 $std::__2::__throw_runtime_error\28char\20const*\29
 $std::__2::__time_get_c_storage<char>::__X\28\29\20const
@@ -549,8 +554,10 @@ $std::__2::enable_if<\28__is_forward_iterator<char*>::value\29\20&&\20\28__libcp
 $std::__2::enable_if<\28__is_forward_iterator<wchar_t*>::value\29\20&&\20\28__libcpp_string_gets_noexcept_iterator<wchar_t*>::value\29\2c\20std::__2::basic_string<wchar_t\2c\20std::__2::char_traits<wchar_t>\2c\20std::__2::allocator<wchar_t>\20>&>::type\20std::__2::basic_string<wchar_t\2c\20std::__2::char_traits<wchar_t>\2c\20std::__2::allocator<wchar_t>\20>::append<wchar_t*>\28wchar_t*\2c\20wchar_t*\29
 $std::__2::enable_if<\28is_move_constructible<char>::value\29\20&&\20\28is_move_assignable<char>::value\29\2c\20void>::type\20std::__2::swap<char>\28char&\2c\20char&\29
 $std::__2::enable_if<\28is_move_constructible<unsigned\20int>::value\29\20&&\20\28is_move_assignable<unsigned\20int>::value\29\2c\20void>::type\20std::__2::swap<unsigned\20int>\28unsigned\20int&\2c\20unsigned\20int&\29
+$std::__2::enable_if<\28is_same<std::__2::remove_const<wchar_t\20const>::type\2c\20wchar_t>::value\29\20&&\20\28is_trivially_copy_assignable<wchar_t>::value\29\2c\20wchar_t*>::type\20std::__2::__copy<wchar_t\20const\2c\20wchar_t>\28wchar_t\20const*\2c\20wchar_t\20const*\2c\20wchar_t*\29
 $std::__2::enable_if<__is_forward_iterator<char\20const*>::value\2c\20void>::type\20std::__2::basic_string<char\2c\20std::__2::char_traits<char>\2c\20std::__2::allocator<char>\20>::__init<char\20const*>\28char\20const*\2c\20char\20const*\29
 $std::__2::enable_if<__is_forward_iterator<wchar_t\20const*>::value\2c\20void>::type\20std::__2::basic_string<wchar_t\2c\20std::__2::char_traits<wchar_t>\2c\20std::__2::allocator<wchar_t>\20>::__init<wchar_t\20const*>\28wchar_t\20const*\2c\20wchar_t\20const*\29
+$std::__2::enable_if<is_trivially_copy_assignable<char>::value\2c\20char\20const*>::type\20std::__2::__unwrap_iter<char>\28std::__2::__wrap_iter<char\20const*>\29
 $std::__2::error_category::default_error_condition\28int\29\20const
 $std::__2::error_category::equivalent\28int\2c\20std::__2::error_condition\20const&\29\20const
 $std::__2::error_category::equivalent\28std::__2::error_code\20const&\2c\20int\29\20const
@@ -615,7 +622,6 @@ $std::__2::locale::__imp::__imp\28unsigned\20long\29
 $std::__2::locale::__imp::install\28std::__2::locale::facet*\2c\20long\29
 $std::__2::locale::__imp::make_classic\28\29
 $std::__2::locale::__imp::make_global\28\29
-$std::__2::locale::__imp::use_facet\28long\29\20const
 $std::__2::locale::__imp::~__imp\28\29
 $std::__2::locale::__imp::~__imp\28\29.1
 $std::__2::locale::classic\28\29
@@ -911,7 +917,6 @@ $void\20std::__2::reverse<char*>\28char*\2c\20char*\29
 $void\20std::__2::reverse<wchar_t*>\28wchar_t*\2c\20wchar_t*\29
 $vsnprintf
 $vsscanf
-$wchar_t*\20std::__2::__copy<std::__2::__wrap_iter<wchar_t\20const*>\2c\20wchar_t*>\28std::__2::__wrap_iter<wchar_t\20const*>\2c\20std::__2::__wrap_iter<wchar_t\20const*>\2c\20wchar_t*\29
 $wchar_t*\20std::__2::copy<std::__2::__wrap_iter<wchar_t\20const*>\2c\20wchar_t*>\28std::__2::__wrap_iter<wchar_t\20const*>\2c\20std::__2::__wrap_iter<wchar_t\20const*>\2c\20wchar_t*\29
 $wchar_t\20const*\20std::__2::__num_get<wchar_t>::__do_widen_p<wchar_t>\28std::__2::ios_base&\2c\20wchar_t*\29\20const
 $wchar_t\20const*\20std::__2::find<wchar_t\20const*\2c\20wchar_t>\28wchar_t\20const*\2c\20wchar_t\20const*\2c\20wchar_t\20const&\29
