@@ -12,7 +12,7 @@
 #include <string.h>
 #include <time.h>
 
-#include <wasi/wasi.h>
+#include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
 
 /*
@@ -82,11 +82,11 @@ void __unlock(void* ptr) {}
 
 void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {
   // This normally calls out into JS which can do a single fast operation,
-  // but with wasi we can't do that. As this is called when n >= 8192, we
+  // but with wasi we can't do that. As this is called when n >= 512, we
   // can just split into smaller calls.
   // TODO optimize, maybe build our memcpy with a wasi variant, maybe have
   //      a SIMD variant, etc.
-  const int CHUNK = 4096;
+  const int CHUNK = 508;
   unsigned char* d = (unsigned char*)dest;
   unsigned char* s = (unsigned char*)src;
   while (n > 0) {

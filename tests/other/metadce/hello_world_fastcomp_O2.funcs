@@ -20,7 +20,6 @@ $b1
 $b2
 $dynCall_ii
 $dynCall_iiii
-$establishStackSpace
 $legalstub$dynCall_jiji
 $stackAlloc
 $stackRestore

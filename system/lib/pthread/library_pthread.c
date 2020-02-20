@@ -186,6 +186,7 @@ static void em_queued_call_free(em_queued_call* call) {
 void emscripten_async_waitable_close(em_queued_call* call) { em_queued_call_free(call); }
 
 extern double emscripten_receive_on_main_thread_js(int functionIndex, int numCallArgs, double* args);
+extern int _emscripten_notify_thread_queue(pthread_t targetThreadId, pthread_t mainThreadId);
 
 #if defined(__has_feature)
 #if __has_feature(address_sanitizer)
@@ -217,9 +218,6 @@ static void _do_call(em_queued_call* q) {
       q->returnValue.i =
         pthread_create(q->args[0].vp, q->args[1].vp, q->args[2].vp, q->args[3].vp);
 #endif
-      break;
-    case EM_PROXIED_SYSCALL:
-      q->returnValue.i = emscripten_syscall(q->args[0].i, q->args[1].vp);
       break;
     case EM_PROXIED_CREATE_CONTEXT:
       q->returnValue.i = emscripten_webgl_create_context(q->args[0].cp, q->args[1].vp);
@@ -513,35 +511,12 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
   // so send a message to it to ensure that it wakes up to start processing the command we have
   // posted.
   if (head == tail) {
-    if (target_thread == emscripten_main_browser_thread_id()) {
-      EM_ASM(postMessage({cmd : 'processQueuedMainThreadWork'}));
-    } else {
-      int success = EM_ASM_INT(
-        {
-          if (!ENVIRONMENT_IS_PTHREAD) {
-            if (!PThread.pthreads[$0] || !PThread.pthreads[$0].worker) {
-              // #if DEBUG
-              //						Module.printErr('Cannot send message
-              //to thread with ID ' + $0 + ', unknown thread ID!');
-              // #endif
-              return 0;
-            }
-            PThread.pthreads[$0].worker.postMessage({cmd : 'processThreadQueue'});
-          } else {
-            postMessage({targetThread : $0, cmd : 'processThreadQueue'});
-          }
-          return 1;
-        },
-        target_thread);
-
-      // Failed to dispatch the thread, delete the crafted message.
-      if (!success) {
-        em_queued_call_free(call);
-        pthread_mutex_unlock(&call_queue_lock);
-        return;
-      }
-
-      // TODO: Need to postMessage() to a specific target Worker that is hosting target_thread....
+    int success = _emscripten_notify_thread_queue(target_thread, emscripten_main_browser_thread_id());
+    // Failed to dispatch the thread, delete the crafted message.
+    if (!success) {
+      em_queued_call_free(call);
+      pthread_mutex_unlock(&call_queue_lock);
+      return;
     }
   }
 
@@ -933,9 +908,7 @@ void* __emscripten_thread_main(void* param) {
 
 static main_args _main_arguments;
 
-// TODO: Create a separate library of this to be able to drop EMSCRIPTEN_KEEPALIVE from this
-// definition.
-int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
+int proxy_main(int argc, char** argv) {
   if (emscripten_has_threading_support()) {
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -946,19 +919,10 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
 #define EMSCRIPTEN_PTHREAD_STACK_SIZE (128 * 1024)
 
     pthread_attr_setstacksize(&attr, (EMSCRIPTEN_PTHREAD_STACK_SIZE));
-    // TODO: Add a -s PROXY_CANVASES_TO_THREAD=parameter or similar to allow configuring this
-#ifdef EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES
-    // If user has defined EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES, then transfer those canvases
-    // over to the pthread.
-    emscripten_pthread_attr_settransferredcanvases(
-      &attr, (EMSCRIPTEN_PTHREAD_TRANSFERRED_CANVASES));
-#else
-    // Otherwise by default, transfer whatever is set to Module.canvas, because in PROXY_TO_PTHREAD
-    // mode this is the only chance - this is the only pthread_create call that happens on the
-    // main thread, so it's the only chance to transfer the canvas from there.
-    if (EM_ASM_INT(return !!(Module['canvas'])))
-      emscripten_pthread_attr_settransferredcanvases(&attr, "#canvas");
-#endif
+    // Pass special ID -1 to the list of transferred canvases to denote that the thread creation
+    // should instead take a list of canvases that are specified from the command line with
+    // -s OFFSCREENCANVASES_TO_PTHREAD linker flag.
+    emscripten_pthread_attr_settransferredcanvases(&attr, (const char*)-1);
     _main_arguments.argc = argc;
     _main_arguments.argv = argv;
     pthread_t thread;
@@ -968,7 +932,6 @@ int EMSCRIPTEN_KEEPALIVE proxy_main(int argc, char** argv) {
       // Proceed by running main() on the main browser thread as a fallback.
       return __call_main(_main_arguments.argc, _main_arguments.argv);
     }
-    EM_ASM(noExitRuntime = true);
     return 0;
   } else {
     return __call_main(_main_arguments.argc, _main_arguments.argv);

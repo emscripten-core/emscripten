@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  win: circleci/windows@1.0.0
+
 executors:
   bionic:
     docker:
@@ -8,8 +11,25 @@ executors:
       LANG: "C.UTF-8"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
       EMCC_CORES: "4"
+      EMSDK_NOTTY: "1"
+      PYTHON_BIN: "python3"
+  mac:
+    environment:
+      EMSDK_NOTTY: "1"
+      PYTHON_BIN: "python3"
+    macos:
+      xcode: "9.0"
 
 commands:
+  npm-install:
+    description: "npm ci"
+    steps:
+      - run:
+          name: npm ci
+          command: |
+            # Will add emsdk version of node to PATH
+            source ~/emsdk-master/emsdk_env.sh
+            npm ci
   build-upstream:
     description: "Install emsdk build all libraries using embuilder"
     steps:
@@ -27,9 +47,12 @@ commands:
             # we are trying to test.
             rm -Rf emscripten
             echo "import os" >> ~/.emscripten
-            echo "V8_ENGINE = os.path.expanduser('~/.jsvu/v8')" >> ~/.emscripten
+            # test v8 with --wasm-staging which enables new features. we use v8
+            # as a "bleeding edge" shell here, basically, with node being the
+            # primary shell (which we run without any special flags)
+            echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/v8'), '--wasm-staging']" >> ~/.emscripten
             echo "JS_ENGINES = [NODE_JS]" >> ~/.emscripten
-            echo "if os.path.exists(V8_ENGINE): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
+            echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/.emscripten
             echo "WASM_ENGINES = []" >> ~/.emscripten
             test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> ~/.emscripten || true
             test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> ~/.emscripten || true
@@ -42,27 +65,29 @@ commands:
       - run:
           name: embuilder build ALL
           command: |
-            python3 ./embuilder.py build ALL
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build ALL
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
+
           name: embuilder (LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build MINIMAL --lto
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
           command: |
-            python3 ./embuilder.py build SYSTEM --pic
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build SYSTEM --pic
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            python3 ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
-            python3 tests/runner.py test_hello_world
+            $PYTHON_BIN ./embuilder.py build MINIMAL --pic --lto
+            $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -81,15 +106,16 @@ commands:
         description: "Test suites to run"
         type: string
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: run tests
           command: |
-            python3 tests/runner.py << parameters.test_targets >>
-            tools/check_clean.py
+            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
+            $PYTHON_BIN tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
     parameters:
@@ -97,10 +123,11 @@ commands:
         description: "Test suites to run"
         type: string
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: Install brew package dependencies
           environment:
@@ -114,10 +141,11 @@ commands:
   test-firefox:
     description: "Runs emscripten tests under firefox"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: download firefox
           command: |
@@ -193,8 +221,6 @@ commands:
             # OffscreenCanvas support is not yet done in Firefox.
             EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-            # Disable threads as dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled is not yet present on dev edition.
-            EMTEST_LACKS_THREAD_SUPPORT: "1"
             DISPLAY: ":0"
           command: |
             export EMTEST_BROWSER="$HOME/firefox/firefox -profile $HOME/tmp-firefox-profile/"
@@ -212,12 +238,13 @@ commands:
             openbox --exit
             wait || true # wait for startx to shutdown cleanly, or not
   test-chrome:
-    description: "Runs emscripten tests under firefox"
+    description: "Runs emscripten browser tests under chrome"
     steps:
-      - checkout
       - attach_workspace:
           # Must be absolute path or relative path from working_directory
           at: ~/
+      - checkout
+      - npm-install
       - run:
           name: download chrome
           command: |
@@ -237,9 +264,36 @@ commands:
           command: |
             export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
             python3 tests/runner.py browser
+  test-upstream-sockets-chrome:
+    description: "Runs emscripten sockets tests under chrome"
+    steps:
+      - attach_workspace:
+          # Must be absolute path or relative path from working_directory
+          at: ~/
+      - run:
+          name: download chrome
+          command: |
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            dpkg -i ~/chrome.deb
+      - checkout
+      - npm-install
+      - run:
+          name: run sockets tests
+          environment:
+            EMTEST_LACKS_SOUND_HARDWARE: "1"
+            EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+            # --no-sandbox becasue we are running as root and chrome requires
+            # this flag for now: https://crbug.com/638180
+            CHROME_FLAGS_BASE: "--no-first-run -start-maximized --no-sandbox --use-gl=swiftshader --user-data-dir=/tmp/chrome-emscripten-profile"
+            CHROME_FLAGS_HEADLESS: "--headless --remote-debugging-port=1234"
+            CHROME_FLAGS_WASM: "--enable-features=WebAssembly --enable-features=SharedArrayBuffer --disable-features=WebAssemblyTrapHandler --js-flags=\"--experimental-wasm-threads --harmony-sharedarraybuffer --no-wasm-disable-structured-cloning\""
+            CHROME_FLAGS_NOCACHE: "--disk-cache-dir=/dev/null --disk-cache-size=1 --media-cache-size=1 --disable-application-cache --incognito"
+          command: |
+            export EMTEST_BROWSER="/usr/bin/google-chrome $CHROME_FLAGS_BASE $CHROME_FLAGS_HEADLESS $CHROME_FLAGS_WASM $CHROME_FLAGS_NOCACHE"
+            python3 tests/runner.py sockets
 
 jobs:
-  build:
+  build-fastcomp:
     executor: bionic
     steps:
       - checkout
@@ -271,6 +325,7 @@ jobs:
           name: freeze cache
           command: |
             echo "FROZEN_CACHE=True" >> ~/.emscripten
+      - npm-install
       - persist_to_workspace:
           # Must be an absolute path, or relative path from working_directory
           root: ~/
@@ -385,16 +440,18 @@ jobs:
       - run:
           name: get wasmer
           command: |
-            wget https://github.com/wasmerio/wasmer/releases/download/0.9.0/wasmer-linux-amd64.tar.gz
+            wget https://github.com/wasmerio/wasmer/releases/download/0.11.0/wasmer-linux-amd64.tar.gz
             tar -xf wasmer-linux-amd64.tar.gz
             mkdir ~/vms
             cp bin/wasmer ~/vms
       - run:
           name: get wasmtime
           command: |
-            wget https://github.com/CraneStation/wasmtime/releases/download/dev/wasmtime-dev-x86_64-linux.tar.xz
-            tar -xf wasmtime-dev-x86_64-linux.tar.xz
-            cp wasmtime-dev-x86_64-linux/wasmtime ~/vms
+            # use a pinned version due to https://github.com/bytecodealliance/wasmtime/issues/714
+            export VERSION=v0.8.0
+            wget https://github.com/bytecodealliance/wasmtime/releases/download/v0.8.0/wasmtime-$VERSION-x86_64-linux.tar.xz
+            tar -xf wasmtime-$VERSION-x86_64-linux.tar.xz
+            cp wasmtime-$VERSION-x86_64-linux/wasmtime ~/vms
       - run:
           name: get v8
           command: |
@@ -440,11 +497,41 @@ jobs:
     executor: bionic
     steps:
       - test-firefox
-  build-upstream-mac:
-    macos:
-      xcode: "9.0"
+  test-upstream-sockets-chrome:
+    executor: bionic
+    steps:
+      - test-upstream-sockets-chrome
+  build-upstream-windows:
+    executor:
+      name: win/vs2019
+      shell: bash.exe
     environment:
+      # We need python installed before we can test anytyhing.
+      # There seems to be undocument copy of python installed here. Hopefully
+      # if this disappears there will be another way of getting a re-installed
+      # version.
+      PYTHON_BIN: "/c/python27amd64/python.exe"
+      PYTHONUNBUFFERED: "1"
       EMSDK_NOTTY: "1"
+    steps:
+      - checkout
+      - run:
+          name: Add python to bash path
+          command: echo "export PATH=\"$PATH:/c/python27amd64/\"" >> $BASH_ENV
+      - build-upstream
+  test-upstream-minimal-windows:
+    environment:
+      PYTHON_BIN: "/c/python27amd64/python.exe"
+      PYTHONUNBUFFERED: "1"
+      EMSDK_NOTTY: "1"
+    executor:
+      name: win/vs2019
+      shell: bash.exe
+    steps:
+      - run-tests:
+          test_targets: "wasm2.test_ccall other.test_closure_externs other.test_binaryen_debug"
+  build-upstream-mac:
+    executor: mac
     steps:
       - run:
           name: Install brew package dependencies
@@ -454,8 +541,7 @@ jobs:
       - checkout
       - build-upstream
   test-upstream-other-mac:
-    macos:
-      xcode: "9.0"
+    executor: mac
     steps:
       - run-tests-mac:
           test_targets: "other skip:other.test_native_link_error_message skip:other.test_emcc_v"
@@ -465,58 +551,58 @@ workflows:
     jobs:
       - flake8
       - build-docs
-      - build
+      - build-fastcomp
       - test-other:
           requires:
-            - build
+            - build-fastcomp
       - test-browser-firefox:
           requires:
-            - build
+            - build-fastcomp
       - test-browser-chrome:
           requires:
-            - build
+            - build-fastcomp
       - test-ab:
           requires:
-            - build
+            - build-fastcomp
       - test-c:
           requires:
-            - build
+            - build-fastcomp
       - test-d:
           requires:
-            - build
+            - build-fastcomp
       - test-e:
           requires:
-            - build
+            - build-fastcomp
       - test-f:
           requires:
-            - build
+            - build-fastcomp
       - test-ghi:
           requires:
-            - build
+            - build-fastcomp
       - test-jklmno:
           requires:
-            - build
+            - build-fastcomp
       - test-p:
           requires:
-            - build
+            - build-fastcomp
       - test-qrst:
           requires:
-            - build
+            - build-fastcomp
       - test-uvwxyz:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm0:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm2:
           requires:
-            - build
+            - build-fastcomp
       - test-wasm3:
           requires:
-            - build
+            - build-fastcomp
       - test-sanity:
           requires:
-            - build
+            - build-fastcomp
       - build-upstream-linux
       - test-upstream-wasm0:
           requires:
@@ -539,6 +625,13 @@ workflows:
       - test-upstream-browser-firefox:
           requires:
             - build-upstream-linux
+      - test-upstream-sockets-chrome:
+          requires:
+            - build-upstream-linux
+      - build-upstream-windows
+      - test-upstream-minimal-windows:
+          requires:
+            - build-upstream-windows
       - build-upstream-mac
       - test-upstream-other-mac:
           requires:

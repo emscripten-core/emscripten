@@ -815,9 +815,12 @@ WebAssembly.CompileError = function() {};
 WebAssembly.LinkError = function() {};
 /**
  * @constructor
+ * @param {string=} message
+ * @param {string=} fileName
+ * @param {number=} lineNumber
  * @extends {Error}
  */
-WebAssembly.RuntimeError = function() {};
+WebAssembly.RuntimeError = function(message, fileName, lineNumber) {};
 /**
  * Note: Closure compiler does not support function overloading, omit this overload for now.
  * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
@@ -829,7 +832,7 @@ WebAssembly.RuntimeError = function() {};
  */
 WebAssembly.instantiate = function(moduleObject, importObject) {};
 /**
- * @param {!Promise<!Response>} source
+ * @param {!Promise<!Response>|!Response} source
  * @param {Object=} importObject
  * @return {!Promise<{module:WebAssembly.Module, instance:WebAssembly.Instance}>}
  */
@@ -920,12 +923,18 @@ var worker;
  * @param {Object} message
  */
 var onmessage = function(message) {};
+var onmessageerror = function() {};
 
 /**
  * @param {string} type
  * @param {!Function} listener
  */
 var addEventListener = function (type, listener) {};
+
+/**
+ * @type {Function}
+ */
+var close;
 
 // Fetch.js/Fetch Worker
 
@@ -966,3 +975,15 @@ var outerWidth;
 var outerHeight;
 var event;
 var devicePixelRatio;
+
+// TODO: Use Closure's multifile support and/or migrate worker.js onmessage handler to inside the MODULARIZEd block
+// to be able to remove all the variables below:
+
+// Variables that are present in both output runtime .js file/JS lib files, and worker.js, so cannot be minified because
+// the names need to match:
+/** @suppress {duplicate} */
+var threadInfoStruct;
+/** @suppress {duplicate} */
+var selfThreadId;
+/** @suppress {duplicate} */
+var noExitRuntime;

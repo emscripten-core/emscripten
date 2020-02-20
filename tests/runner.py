@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2010 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -214,7 +214,12 @@ def chdir(dir):
     os.chdir(orig_cwd)
 
 
-def limit_size(string, maxbytes=800 * 20, maxlines=100):
+def ensure_dir(dirname):
+  if not os.path.isdir(dirname):
+    os.makedirs(dirname)
+
+
+def limit_size(string, maxbytes=800000 * 20, maxlines=100000):
   lines = string.splitlines()
   if len(lines) > maxlines:
     lines = lines[0:maxlines // 2] + ['[..]'] + lines[-maxlines // 2:]
@@ -278,8 +283,6 @@ if shared.Settings.WASM_BACKEND:
     'lsan',
     'wasm2ss',
   ]
-
-test_index = 0
 
 
 def parameterized(parameters):
@@ -386,7 +389,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     return self.get_setting('EMTERPRETIFY')
 
   def is_wasm(self):
-    return self.is_wasm_backend() or self.get_setting('WASM') != 0
+    return self.get_setting('WASM') != 0
 
   def is_wasm_backend(self):
     return self.get_setting('WASM_BACKEND')
@@ -425,7 +428,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.settings_mods = {}
     self.emcc_args = ['-Werror']
     self.save_dir = EMTEST_SAVE_DIR
-    self.save_JS = False
     self.env = {}
     self.temp_files_before_run = []
 
@@ -440,14 +442,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.use_all_engines = EMTEST_ALL_ENGINES
     if self.save_dir:
       self.working_dir = os.path.join(self.temp_dir, 'emscripten_test')
-      if not os.path.exists(self.working_dir):
-        os.makedirs(self.working_dir)
+      ensure_dir(self.working_dir)
     else:
       self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     os.chdir(self.working_dir)
-
-    # Use emscripten root for node module lookup
-    os.environ['NODE_PATH'] = path_from_root('node_modules')
 
     if not self.save_dir:
       self.has_prev_ll = False
@@ -525,13 +523,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_stdout_path(self):
     return os.path.join(self.get_dir(), 'stdout')
-
-  def hardcode_arguments(self, filename, args):
-    # Hardcode in the arguments, so js is portable without manual commandlinearguments
-    if not args:
-      return
-    js = open(filename).read()
-    create_test_file(filename, js.replace('run();', 'run(%s + Module["arguments"]);' % str(args)))
 
   def prep_ll_file(self, output_file, input_file, force_recompile=False, build_ll_hook=None):
     # force_recompile = force_recompile or os.path.getsize(filename + '.ll') > 50000
@@ -814,20 +805,27 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two multiline text content are identical, modulo line
   # ending differences (\r\n on Windows, \n on Unix).
-  def assertTextDataIdentical(self, text1, text2, msg=None):
+  def assertTextDataIdentical(self, text1, text2, msg=None,
+                              fromfile='expected', tofile='actual'):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
-    return self.assertIdentical(text1, text2, msg)
+    return self.assertIdentical(text1, text2, msg, fromfile, tofile)
 
-  def assertIdentical(self, values, y, msg=None):
-    if type(values) not in [list, tuple]:
+  def assertIdentical(self, values, y, msg=None,
+                      fromfile='expected', tofile='actual'):
+    if type(values) not in (list, tuple):
       values = [values]
     for x in values:
       if x == y:
         return # success
-    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')
+    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
+                                      fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
-    fail_message = "Expected to have '%s' == '%s', diff:\n\n%s" % (limit_size(values[0]), limit_size(y), limit_size(diff))
+    if EMTEST_VERBOSE:
+      print("Expected to have '%s' == '%s'" % limit_size(values[0]), limit_size(y))
+    fail_message = 'Unexpected difference:\n' + limit_size(diff)
+    if not EMTEST_VERBOSE:
+      fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -873,8 +871,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_build_dir(self):
     ret = os.path.join(self.get_dir(), 'building')
-    if not os.path.exists(ret):
-      os.makedirs(ret)
+    ensure_dir(ret)
     return ret
 
   def get_library(self, name, generated_libs, configure=['sh', './configure'],
@@ -1175,14 +1172,10 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
           print('(test did not pass in JS engine: %s)' % engine)
           raise
 
-    if self.save_JS:
-      global test_index
-      self.hardcode_arguments(js_file, args)
-      shutil.copyfile(js_file, os.path.join(TEMP_DIR, str(test_index) + '.js'))
-      test_index += 1
-
   def get_freetype_library(self):
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared'])
+    if '-Werror' in self.emcc_args:
+      self.emcc_args.remove('-Werror')
+    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self):
     # The fontconfig symbols are all missing from the poppler build
@@ -1569,12 +1562,7 @@ class BrowserCore(RunnerCore):
       }
 ''' % (reporting.read(), basename, int(manually_trigger)))
 
-  def check_btest_skip(self, args):
-    if self.is_wasm_backend() and 'WASM=0' in args:
-      self.skipTest('wasm2js does not yet support threads, dynamic linking, and some other features; skip browser testing for now')
-
   def compile_btest(self, args):
-    self.check_btest_skip(args)
     run_process([PYTHON, EMCC] + args + ['--pre-js', path_from_root('tests', 'browser_reporting.js')])
 
   def btest(self, filename, expected=None, reference=None, force_c=False,
@@ -1583,7 +1571,6 @@ class BrowserCore(RunnerCore):
             url_suffix='', timeout=None, also_asmjs=False,
             manually_trigger_reftest=False):
     assert expected or reference, 'a btest must either expect an output, or have a reference image'
-    self.check_btest_skip(args)
     # if we are provided the source and not a path, use that
     filename_is_src = '\n' in filename
     src = filename if filename_is_src else ''
@@ -1627,7 +1614,7 @@ class BrowserCore(RunnerCore):
     # Tests can opt into being run under asmjs as well
     if 'WASM=0' not in args and (also_asmjs or self.also_asmjs):
       self.btest(filename, expected, reference, force_c, reference_slack, manual_reference, post_build,
-                 args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
+                 original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
       print('proxied...')
@@ -1674,60 +1661,63 @@ def build_library(name,
     shutil.rmtree(project_dir)
   shutil.copytree(source_dir, project_dir) # Useful in debugging sometimes to comment this out, and two lines above
 
-  with chdir(project_dir):
-    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-    env = Building.get_building_env(native, True, cflags=cflags)
-    for k, v in env_init.items():
-      env[k] = v
-    if configure:
-      try:
-        with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
-          with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-            stdout = out if EM_BUILD_VERBOSE < 2 else None
-            stderr = err if EM_BUILD_VERBOSE < 1 else None
-            Building.configure(configure + configure_args, env=env, stdout=stdout, stderr=stderr)
-      except subprocess.CalledProcessError:
-        with open(os.path.join(project_dir, 'configure_out')) as f:
-          print('-- configure stdout --')
-          print(f.read())
-          print('-- end configure stdout --')
-        with open(os.path.join(project_dir, 'configure_err')) as f:
-          print('-- configure stderr --')
-          print(f.read())
-          print('-- end configure stderr --')
-        raise
-
-    def open_make_out(mode='r'):
-      return open(os.path.join(project_dir, 'make.out'), mode)
-
-    def open_make_err(mode='r'):
-      return open(os.path.join(project_dir, 'make.err'), mode)
-
-    if EM_BUILD_VERBOSE >= 3:
-      make_args += ['VERBOSE=1']
-
+  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
+  env = Building.get_building_env(native, True, cflags=cflags)
+  for k, v in env_init.items():
+    env[k] = v
+  if configure:
     try:
-      with open_make_out('w') as make_out:
-        with open_make_err('w') as make_err:
-          stdout = make_out if EM_BUILD_VERBOSE < 2 else None
-          stderr = make_err if EM_BUILD_VERBOSE < 1 else None
-          Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env)
+      with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
+        with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
+          stdout = out if EM_BUILD_VERBOSE < 2 else None
+          stderr = err if EM_BUILD_VERBOSE < 1 else None
+          Building.configure(configure + configure_args, env=env,
+                             stdout=stdout,
+                             stderr=stderr,
+                             cwd=project_dir)
     except subprocess.CalledProcessError:
-      with open_make_out() as f:
-        print('-- make stdout --')
+      with open(os.path.join(project_dir, 'configure_out')) as f:
+        print('-- configure stdout --')
         print(f.read())
-        print('-- end make stdout --')
-      with open_make_err() as f:
-        print('-- make stderr --')
+        print('-- end configure stdout --')
+      with open(os.path.join(project_dir, 'configure_err')) as f:
+        print('-- configure stderr --')
         print(f.read())
-        print('-- end stderr --')
+        print('-- end configure stderr --')
       raise
 
-    if cache is not None:
-      cache[cache_name] = []
-      for f in generated_libs:
-        basename = os.path.basename(f)
-        cache[cache_name].append((basename, open(f, 'rb').read()))
+  def open_make_out(mode='r'):
+    return open(os.path.join(project_dir, 'make.out'), mode)
+
+  def open_make_err(mode='r'):
+    return open(os.path.join(project_dir, 'make.err'), mode)
+
+  if EM_BUILD_VERBOSE >= 3:
+    make_args += ['VERBOSE=1']
+
+  try:
+    with open_make_out('w') as make_out:
+      with open_make_err('w') as make_err:
+        stdout = make_out if EM_BUILD_VERBOSE < 2 else None
+        stderr = make_err if EM_BUILD_VERBOSE < 1 else None
+        Building.make(make + make_args, stdout=stdout, stderr=stderr, env=env,
+                      cwd=project_dir)
+  except subprocess.CalledProcessError:
+    with open_make_out() as f:
+      print('-- make stdout --')
+      print(f.read())
+      print('-- end make stdout --')
+    with open_make_err() as f:
+      print('-- make stderr --')
+      print(f.read())
+      print('-- end stderr --')
+    raise
+
+  if cache is not None:
+    cache[cache_name] = []
+    for f in generated_libs:
+      basename = os.path.basename(f)
+      cache[cache_name].append((basename, open(f, 'rb').read()))
 
   return generated_libs
 

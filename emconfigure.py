@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2016 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -32,23 +32,18 @@ from subprocess import CalledProcessError
 #
 def run():
   if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
-    print('''
-  emconfigure is a helper for configure, setting various environment
-  variables so that emcc etc. are used. Typical usage:
+    print('''\
+emconfigure is a helper for configure, setting various environment
+variables so that emcc etc. are used. Typical usage:
 
-    emconfigure ./configure [FLAGS]
+  emconfigure ./configure [FLAGS]
 
-  (but you can run any command instead of configure)
-
-  ''', file=sys.stderr)
+(but you can run any command instead of configure)''', file=sys.stderr)
     return 1
-  elif 'cmake' in sys.argv[1]:
-    node_js = shared.NODE_JS
-    if type(node_js) is list:
-      node_js = node_js[0]
-    node_js = shared.Building.which(node_js)
-    node_js = node_js.replace('"', '\"')
-    sys.argv = sys.argv[:2] + ['-DCMAKE_CROSSCOMPILING_EMULATOR="' + node_js + '"'] + sys.argv[2:]
+
+  if 'cmake' in sys.argv[1]:
+    print('error: use `emcmake` rather then `emconfigure` for cmake projects', file=sys.stderr)
+    return 1
 
   try:
     shared.Building.configure(sys.argv[1:])

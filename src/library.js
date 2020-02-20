@@ -275,6 +275,12 @@ LibraryManager.library = {
   _Exit__sig: 'vi',
   _Exit: 'exit',
 
+#if MINIMAL_RUNTIME
+  $exit: function(status) {
+    throw 'exit(' + status + ')';
+  },
+#endif
+
   fork__deps: ['__setErrNo'],
   fork: function() {
     // pid_t fork(void);
@@ -300,9 +306,10 @@ LibraryManager.library = {
       return -1;
     }
   },
+
   getpagesize: function() {
     // int getpagesize(void);
-    return PAGE_SIZE;
+    return {{{ POSIX_PAGE_SIZE }}};
   },
 
   sysconf__deps: ['__setErrNo'],
@@ -312,7 +319,7 @@ LibraryManager.library = {
     // long sysconf(int name);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/sysconf.html
     switch(name) {
-      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return PAGE_SIZE;
+      case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
 #if WASM
         var maxHeapSize = 2*1024*1024*1024 - 65536;
@@ -325,7 +332,7 @@ LibraryManager.library = {
 #if !ALLOW_MEMORY_GROWTH
         maxHeapSize = HEAPU8.length;
 #endif
-        return maxHeapSize / PAGE_SIZE;
+        return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
       case {{{ cDefine('_SC_BARRIERS') }}}:
       case {{{ cDefine('_SC_ASYNCHRONOUS_IO') }}}:
@@ -466,7 +473,7 @@ LibraryManager.library = {
   },
 
   emscripten_get_heap_size: function() {
-    return HEAP8.length;
+    return HEAPU8.length;
   },
 
   emscripten_get_sbrk_ptr__asm: true,
@@ -475,7 +482,7 @@ LibraryManager.library = {
     return {{{ DYNAMICTOP_PTR }}};
   },
 
-#if ABORTING_MALLOC
+#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
   $abortOnCannotGrowMemory: function(requestedSize) {
 #if ASSERTIONS
 #if WASM
@@ -498,6 +505,9 @@ LibraryManager.library = {
   // Grows the asm.js/wasm heap to the given byte size, and updates both JS and asm.js/wasm side views to the buffer.
   // Returns 1 on success, or undefined if growing failed.
   $emscripten_realloc_buffer: function(size) {
+#if MEMORYPROFILER
+    var oldHeapSize = buffer.byteLength;
+#endif
     try {
 #if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
@@ -510,6 +520,11 @@ LibraryManager.library = {
       _emscripten_replace_memory(newBuffer);
       updateGlobalBufferAndViews(newBuffer);
 #endif
+#if MEMORYPROFILER
+      if (typeof emscriptenMemoryProfiler !== 'undefined') {
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, buffer.byteLength);
+      }
+#endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
@@ -520,7 +535,10 @@ LibraryManager.library = {
 #endif // ~TEST_MEMORY_GROWTH_FAILS
 
   emscripten_resize_heap__deps: ['emscripten_get_heap_size'
-#if ABORTING_MALLOC
+#if ASSERTIONS == 2
+  , 'emscripten_get_now'
+#endif
+#if ABORTING_MALLOC && !ALLOW_MEMORY_GROWTH
   , '$abortOnCannotGrowMemory'
 #endif
 #if ALLOW_MEMORY_GROWTH
@@ -551,63 +569,37 @@ LibraryManager.library = {
     _emscripten_trace_report_memory_layout();
 #endif
 
-    var PAGE_MULTIPLE = {{{ getPageSize() }}};
-    var LIMIT = 2147483648 - PAGE_MULTIPLE; // We can do one page short of 2GB as theoretical maximum.
+    var PAGE_MULTIPLE = {{{ getMemoryPageSize() }}};
 
-    if (requestedSize > LIMIT) {
-#if ASSERTIONS
-      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + LIMIT + ' bytes!');
-#endif
-      return false;
-    }
-
-    var MIN_TOTAL_MEMORY = 16777216;
-    var newSize = Math.max(oldSize, MIN_TOTAL_MEMORY); // So the loop below will not be infinite, and minimum asm.js memory size is 16MB.
-
-    // TODO: see realloc_buffer - for PTHREADS we may want to decrease these jumps
-    while (newSize < requestedSize) { // Keep incrementing the heap size as long as it's less than what is requested.
-#if MEMORY_GROWTH_STEP != -1
-      // Memory growth is fixed to a multiple of the WASM page size of 64KB (eg. 16MB) set by the user.
-      newSize = Math.min(alignUp(newSize + {{{ MEMORY_GROWTH_STEP }}}, PAGE_MULTIPLE), LIMIT);
-#else
-      if (newSize <= 536870912) {
-        newSize = alignUp(2 * newSize, PAGE_MULTIPLE); // Simple heuristic: double until 1GB...
-      } else {
-        // ..., but after that, add smaller increments towards 2GB, which we cannot reach
-        newSize = Math.min(alignUp((3 * newSize + 2147483648) / 4, PAGE_MULTIPLE), LIMIT);
-      }
-#endif // MEMORY_GROWTH_STEP
-
-#if ASSERTIONS
-      if (newSize === oldSize) {
-        warnOnce('Cannot ask for more memory since we reached the practical limit in browsers (which is just below 2GB), so the request would have failed. Requesting only ' + HEAP8.length);
-      }
-#endif
-    }
+    // Memory resize rules:
+    // 1. When resizing, always produce a resized heap that is at least 16MB (to avoid tiny heap sizes receiving lots of repeated resizes at startup)
+    // 2. Always increase heap size to at least the requested size, rounded up to next page multiple.
+    // 3a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap geometrically: increase the heap size according to 
+    //                                         MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%),
+    //                                         At most overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
+    // 3b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap linearly: increase the heap size by at least MEMORY_GROWTH_LINEAR_STEP bytes.
+    // 4. Max size for the heap is capped at 2048MB-PAGE_MULTIPLE, or by WASM_MEM_MAX, or by ASAN limit, depending on which is smallest
+    // 5. If we were unable to allocate as much memory, it may be due to over-eager decision to excessively reserve due to (3) above.
+    //    Hence if an allocation fails, cut down on the amount of excess growth, in an attempt to succeed to perform a smaller allocation.
 
 #if WASM_MEM_MAX != -1
     // A limit was set for how much we can grow. We should not exceed that
-    // (the wasm binary specifies it, so if we tried, we'd fail anyhow). That is,
-    // if we are at say 64MB, and the max is 100MB, then we should *not* try to
-    // grow 64->128MB which is the default behavior (doubling), as 128MB will
-    // fail because of the max limit. Instead, we should only try to grow
-    // 64->100MB in this example, which has a chance of succeeding (but may
-    // still fail for another reason, of actually running out of memory).
-    newSize = Math.min(newSize, {{{ WASM_MEM_MAX }}});
-    if (newSize == oldSize) {
+    // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
+    var maxHeapSize = {{{ WASM_MEM_MAX }}};
+#else
+    var maxHeapSize = 2147483648 - PAGE_MULTIPLE;
+#endif
+    if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ', as we reached the WASM_MEM_MAX limit (' + {{{ WASM_MEM_MAX }}} + ') set during compilation');
+      err('Cannot enlarge memory, asked to go up to ' + requestedSize + ' bytes, but the limit is ' + maxHeapSize + ' bytes!');
 #endif
       return false;
     }
-#endif // WASM_MEM_MAX
-
 #if USE_ASAN
-    // One byte of ASan's shadow memory shadows 8 bytes of real memory.
-    // If we increase the memory beyond 8 * ASAN_SHADOW_SIZE, then the shadow memory overflows.
-    // This causes real memory to be corrupted.
-    newSize = Math.min(newSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
-    if (newSize == oldSize) {
+    // One byte of ASan's shadow memory shadows 8 bytes of real memory. Shadow memory area has a fixed size,
+    // so do not allow resizing past that limit.
+    maxHeapSize = Math.min(maxHeapSize, {{{ 8 * ASAN_SHADOW_SIZE }}});
+    if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
       err('Failed to grow the heap from ' + oldSize + ', as we reached the limit of our shadow memory. Increase ASAN_SHADOW_SIZE.');
 #endif
@@ -615,25 +607,49 @@ LibraryManager.library = {
     }
 #endif
 
-    var replacement = emscripten_realloc_buffer(newSize);
-    if (!replacement) {
-#if ASSERTIONS
-      err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
-#endif
-      return false;
-    }
+    var minHeapSize = 16777216;
 
+    // Loop through potential heap size increases. If we attempt a too eager reservation that fails, cut down on the
+    // attempted size and reserve a smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
+    for(var cutDown = 1; cutDown <= 4; cutDown *= 2) {
+#if MEMORY_GROWTH_LINEAR_STEP == -1
+      var overGrownHeapSize = oldSize * (1 + {{{ MEMORY_GROWTH_GEOMETRIC_STEP }}} / cutDown); // ensure geometric growth
+#if MEMORY_GROWTH_GEOMETRIC_CAP
+      // but limit overreserving (default to capping at +96MB overgrowth at most)
+      overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + {{{ MEMORY_GROWTH_GEOMETRIC_CAP }}} );
+#endif
+
+#else
+      var overGrownHeapSize = oldSize + {{{ MEMORY_GROWTH_LINEAR_STEP }}} / cutDown; // ensure linear growth
+#endif
+
+      var newSize = Math.min(maxHeapSize, alignUp(Math.max(minHeapSize, requestedSize, overGrownHeapSize), PAGE_MULTIPLE));
+
+#if ASSERTIONS == 2
+      var t0 = _emscripten_get_now();
+#endif
+      var replacement = emscripten_realloc_buffer(newSize);
+#if ASSERTIONS == 2
+      var t1 = _emscripten_get_now();
+      console.log('Heap resize call from ' + oldSize + ' to ' + newSize + ' took ' + (t1 - t0) + ' msecs. Success: ' + !!replacement);
+#endif
+      if (replacement) {
 #if ASSERTIONS && (!WASM || WASM2JS)
-    err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
+        err('Warning: Enlarging memory arrays, this is not fast! ' + [oldSize, newSize]);
 #endif
 
 #if EMSCRIPTEN_TRACING
-    _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
-    // And now report the new layout
-    _emscripten_trace_report_memory_layout();
+        _emscripten_trace_js_log_message("Emscripten", "Enlarging memory arrays from " + oldSize + " to " + newSize);
+        // And now report the new layout
+        _emscripten_trace_report_memory_layout();
 #endif
-
-    return true;
+        return true;
+      }
+    }
+#if ASSERTIONS
+    err('Failed to grow the heap from ' + oldSize + ' bytes to ' + newSize + ' bytes, not enough memory!');
+#endif
+    return false;
 #endif // ALLOW_MEMORY_GROWTH
   },
 
@@ -693,7 +709,7 @@ LibraryManager.library = {
     _exit(-1234);
   },
 
-#if MINIMAL_RUNTIME
+#if MINIMAL_RUNTIME && !EXIT_RUNTIME
   atexit: function(){},
   __cxa_atexit: function(){},
   __cxa_thread_atexit: function(){},
@@ -736,7 +752,7 @@ LibraryManager.library = {
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
   // libc).
-  __buildEnvironment__deps: ['$ENV'],
+  __buildEnvironment__deps: ['$ENV', '_getExecutableName'],
   __buildEnvironment: function(environ) {
     // WARNING: Arbitrary limit!
     var MAX_ENV_VALUES = 64;
@@ -755,7 +771,7 @@ LibraryManager.library = {
       ENV['HOME'] = '/home/web_user';
       // Browser language detection #8751
       ENV['LANG'] = ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-      ENV['_'] = thisProgram;
+      ENV['_'] = __getExecutableName();
       // Allocate memory.
 #if !MINIMAL_RUNTIME // TODO: environment support in MINIMAL_RUNTIME
       poolPtr = getMemory(TOTAL_ENV_SIZE);
@@ -913,9 +929,27 @@ LibraryManager.library = {
     return ret;
   },
 
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
+  // has outdated information for Safari, saying it would not support it.
+  // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
+  // Manual testing suggests:
+  //   Safari/601.1 Version/9.0 on iPhone 4s with iOS 9.3.6 (released September 30, 2015) does not support copyWithin.
+  // but the following systems do:
+  //   AppleWebKit/602.2.14 Safari/602.1 Version/10.0 Mobile/14B100 iPhone OS 10_1_1 on iPhone 5s with iOS 10.1.1 (released October 31, 2016)
+  //   AppleWebKit/603.3.8 Safari/602.1 Version/10.0 on iPhone 5 with iOS 10.3.4 (released July 22, 2019)
+  //   AppleWebKit/605.1.15 iPhone OS 12_3_1 Version/12.1.1 Safari/604.1 on iPhone SE with iOS 12.3.1
+  //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
+  //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
+  // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
+  emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
+    '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
+    '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
+#else
   emscripten_memcpy_big: function(dest, src, num) {
-    HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
+    HEAPU8.copyWithin(dest, src, src + num);
   },
+#endif
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
@@ -926,8 +960,8 @@ LibraryManager.library = {
     var aligned_dest_end = 0;
     var block_aligned_dest_end = 0;
     var dest_end = 0;
-    // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
-    if ((num|0) >= 8192) {
+    // Test against a benchmarked cutoff limit for when HEAPU8.copyWithin() becomes faster to use.
+    if ((num|0) >= 512) {
       _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
       return dest|0;
     }
@@ -1288,10 +1322,14 @@ LibraryManager.library = {
   },
 
 #if MINIMAL_RUNTIME
+#if WASM_BACKEND == 0
+  $abortStackOverflow__deps: ['$stackSave'],
+#endif
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
 
+#if WASM_BACKEND == 0
   $stackAlloc__asm: true,
   $stackAlloc__sig: 'ii',
   $stackAlloc__deps: ['$abortStackOverflow'],
@@ -1319,15 +1357,7 @@ LibraryManager.library = {
     top = top|0;
     STACKTOP = top;
   },
-
-  $establishStackSpace__asm: true,
-  $establishStackSpace__sig: 'vii',
-  $establishStackSpace: function(stackBase, stackMax) {
-    stackBase = stackBase|0;
-    stackMax = stackMax|0;
-    STACKTOP = stackBase;
-    STACK_MAX = stackMax;
-  },
+#endif
 
 #if WASM_BACKEND == 0
   $setThrew__asm: true,
@@ -1827,12 +1857,12 @@ LibraryManager.library = {
     }
   },
 
-  dladdr__deps: ['$stringToNewUTF8'],
+  dladdr__deps: ['$stringToNewUTF8', '_getExecutableName'],
   dladdr__proxy: 'sync',
   dladdr__sig: 'iii',
   dladdr: function(addr, info) {
     // report all function pointers as coming from this program itself XXX not really correct in any way
-    var fname = stringToNewUTF8(thisProgram || './this.program'); // XXX leak
+    var fname = stringToNewUTF8(__getExecutableName()); // XXX leak
     {{{ makeSetValue('info', 0, 'fname', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE, '0', 'i32') }}};
     {{{ makeSetValue('info', Runtime.QUANTUM_SIZE*2, '0', 'i32') }}};
@@ -2051,6 +2081,9 @@ LibraryManager.library = {
   // Note: glibc has one fewer underscore for all of these. Also used in other related functions (timegm)
   tzset__proxy: 'sync',
   tzset__sig: 'v',
+#if MINIMAL_RUNTIME
+  tzset__deps: ['$allocateUTF8'],
+#endif
   tzset: function() {
     // TODO: Use (malleable) environment variables instead of system settings.
     if (_tzset.called) return;
@@ -2074,8 +2107,8 @@ LibraryManager.library = {
     };
     var winterName = extractZone(winter);
     var summerName = extractZone(summer);
-    var winterNamePtr = allocate(intArrayFromString(winterName), 'i8', ALLOC_NORMAL);
-    var summerNamePtr = allocate(intArrayFromString(summerName), 'i8', ALLOC_NORMAL);
+    var winterNamePtr = allocateUTF8(winterName);
+    var summerNamePtr = allocateUTF8(summerName);
     if (summer.getTimezoneOffset() < winter.getTimezoneOffset()) {
       // Northern hemisphere
       {{{ makeSetValue('__get_tzname()', '0', 'winterNamePtr', 'i32') }}};
@@ -2141,7 +2174,11 @@ LibraryManager.library = {
 
   // Note: this is not used in STANDALONE_WASM mode, because it is more
   //       compact to do it in JS.
-  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
+  strftime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
+#if MINIMAL_RUNTIME
+    , '$intArrayFromString', '$writeArrayToMemory'
+#endif
+  ],
   strftime: function(s, maxsize, format, tm) {
     // size_t strftime(char *restrict s, size_t maxsize, const char *restrict format, const struct tm *restrict timeptr);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strftime.html
@@ -2464,7 +2501,11 @@ LibraryManager.library = {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
-  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'],
+  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
+#if MINIMAL_RUNTIME
+    , '$intArrayFromString'
+#endif
+  ],
   strptime: function(buf, format, tm) {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -2739,7 +2780,7 @@ LibraryManager.library = {
     var now;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if ((clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} || clk_id === {{{ cDefine('CLOCK_MONOTONIC_RAW') }}}) && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -2757,7 +2798,7 @@ LibraryManager.library = {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -3205,6 +3246,7 @@ LibraryManager.library = {
   // arpa/inet.h
   // ==========================================================================
 
+#if PROXY_POSIX_SOCKETS == 0
   // old ipv4 only functions
   inet_addr__deps: ['_inet_pton4_raw'],
   inet_addr: function(ptr) {
@@ -3942,12 +3984,27 @@ LibraryManager.library = {
                0x0b00000a, 0x0c00000a, 0x0d00000a, 0x0e00000a] /* 0x0100000a is reserved */
   },
 
+#endif // PROXY_POSIX_SOCKETS == 0
+
   // pwd.h
 
   getpwnam: function() { throw 'getpwnam: TODO' },
+  getpwnam_r: function() { throw 'getpwnam_r: TODO' },
+  getpwuid: function() { throw 'getpwuid: TODO' },
+  getpwuid_r: function() { throw 'getpwuid_r: TODO' },
   setpwent: function() { throw 'setpwent: TODO' },
   getpwent: function() { throw 'getpwent: TODO' },
   endpwent: function() { throw 'endpwent: TODO' },
+
+  // grp.h
+
+  getgrgid: function() { throw 'getgrgid: TODO' },
+  getgrgid_r: function() { throw 'getgrgid_r: TODO' },
+  getgrnam: function() { throw 'getgrnam: TODO' },
+  getgrnam_r: function() { throw 'getgrnam_r: TODO' },
+  getgrent: function() { throw 'getgrent: TODO' },
+  endgrent: function() { throw 'endgrent: TODO' },
+  setgrent: function() { throw 'setgrent: TODO' },
 
   // ==========================================================================
   // emscripten.h
@@ -3957,6 +4014,7 @@ LibraryManager.library = {
     {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
+  emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: function(ptr) {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
@@ -3995,16 +4053,24 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance['now']() - __performance_now_clock_drift; };\n" +
+                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
                                "} else " +
 #endif
+#if ENVIRONMENT_MAY_BE_SHELL
                                "if (typeof dateNow !== 'undefined') {\n" +
                                "  _emscripten_get_now = dateNow;\n" +
-                               "} else if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
+                               "} else " +
+#endif
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
+                               "if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
                                "  _emscripten_get_now = function() { return performance['now'](); };\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
+#else
+                               // Modern environment where performance.now() is supported:
+                               "_emscripten_get_now = function() { return performance['now'](); };\n",
+#endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
 #if ENVIRONMENT_MAY_BE_NODE
@@ -4017,18 +4083,22 @@ LibraryManager.library = {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else
 #endif
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
     if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     } else {
       return 1000*1000; // milliseconds
     }
+#else
+    // Modern environment where performance.now() is supported:
+    return 1000; // microseconds (1/1000 of a millisecond)
+#endif
   },
 
-  emscripten_get_now_is_monotonic__deps: ['emscripten_get_now'],
-  emscripten_get_now_is_monotonic: function() {
-    // return whether emscripten_get_now is guaranteed monotonic; the Date.now
-    // implementation is not :(
-    return (0
+  // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
+  // implementation is not :(
+  emscripten_get_now_is_monotonic: `
+     (0
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
@@ -4036,10 +4106,16 @@ LibraryManager.library = {
       || (typeof dateNow !== 'undefined')
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
       || (typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+#else
+      // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
+      || 1
 #endif
-      );
-  },
+
+#endif
+      );`,
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
@@ -4086,10 +4162,11 @@ LibraryManager.library = {
     , '$warnOnce'
 #endif
   ],
+  emscripten_get_callstack_js__docs: '/** @param {number=} flags */',
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
-    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everyhing up to these from the output.
+    // Find the symbols in the callstack that corresponds to the functions that report callstack information, and remove everything up to these from the output.
     var iThisFunc = callstack.lastIndexOf('_emscripten_log');
     var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
     var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
@@ -4391,7 +4468,11 @@ LibraryManager.library = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'emscripten_with_builtin_malloc'
+#if MINIMAL_RUNTIME
+    , '$allocateUTF8'
+#endif
+  ],
   emscripten_pc_get_function: function (pc) {
 #if !USE_OFFSET_CONVERTER
     abort('Cannot use emscripten_pc_get_function without -s USE_OFFSET_CONVERTER');
@@ -4479,14 +4560,19 @@ LibraryManager.library = {
   },
 
   emscripten_get_module_name: function(buf, length) {
+#if MINIMAL_RUNTIME
+    return stringToUTF8('{{{ TARGET_BASENAME }}}.wasm', buf, length);
+#else
     return stringToUTF8(wasmBinaryFile, buf, length);
+#endif
   },
 
   emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
   emscripten_with_builtin_malloc: function (func) {
-    var prev_malloc = _malloc;
-    var prev_memalign = _memalign;
-    var prev_free = _free;
+    var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
+    var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;
+    var prev_free = typeof _free !== 'undefined' ? _free : undefined;
     _malloc = _emscripten_builtin_malloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
@@ -4520,6 +4606,71 @@ LibraryManager.library = {
   emscripten_get_stack_base: function() {
     return STACK_BASE;
   },
+
+  $readAsmConstArgs: function(sigPtr, buf) {
+    if (!readAsmConstArgs.array) {
+      readAsmConstArgs.array = [];
+    }
+    var args = readAsmConstArgs.array;
+    args.length = 0;
+    var ch;
+    while (ch = HEAPU8[sigPtr++]) {
+      if (ch === 100/*'d'*/ || ch === 102/*'f'*/) {
+        buf = (buf + 7) & ~7;
+        args.push(HEAPF64[(buf >> 3)]);
+        buf += 8;
+      } else
+#if ASSERTIONS
+      if (ch === 105 /*'i'*/)
+#endif
+      {
+        buf = (buf + 3) & ~3;
+        args.push(HEAP32[(buf >> 2)]);
+        buf += 4;
+      }
+#if ASSERTIONS
+      else abort("unexpected char in asm const signature " + ch);
+#endif
+    }
+    return args;
+  },
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
+  // at runtime rather than statically in JS code.
+  $exportAsmFunctions: function(asm) {
+#if WASM_BACKEND
+    var asmjsMangle = function(x) {
+      var unmangledSymbols = {{{ buildStringArray(WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED) }}};
+      return x.indexOf('dynCall_') == 0 || unmangledSymbols.indexOf(x) != -1 ? x : '_' + x;
+    };
+#endif
+
+#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_WEB
+    var global_object = (typeof process !== "undefined" ? global : this);
+#else
+    var global_object = global;
+#endif
+#else
+    var global_object = this;
+#endif
+
+    for (var __exportedFunc in asm) {
+#if WASM_BACKEND
+      var jsname = asmjsMangle(__exportedFunc);
+#else
+      var jsname = __exportedFunc;
+#endif
+#if MINIMAL_RUNTIME
+      global_object[jsname] = asm[__exportedFunc];
+#else
+      global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+#endif
+    }
+
+  },
+#endif
 
   //============================
   // i64 math
@@ -4630,16 +4781,6 @@ LibraryManager.library = {
     err('TODO: Unwind_DeleteException');
   },
 
-  // error handling
-
-  $runAndAbortIfError: function(func) {
-    try {
-      return func();
-    } catch (e) {
-      abort(e);
-    }
-  },
-
   // autodebugging
 
   emscripten_autodebug_i64: function(line, valuel, valueh) {
@@ -4669,40 +4810,41 @@ LibraryManager.library = {
     {{{ makeDynCall('vii') }}}(func, Math.min(base, end), Math.max(base, end));
   },
 
-  // misc definitions to avoid unnecessary unresolved symbols from fastcomp
+  // misc definitions to avoid unnecessary unresolved symbols being reported
+  // by fastcomp or wasm-ld
 #if SUPPORT_LONGJMP
-  emscripten_prep_setjmp: true,
-  emscripten_cleanup_setjmp: true,
-  emscripten_check_longjmp: true,
-  emscripten_get_longjmp_result: true,
-  emscripten_setjmp: true,
+  emscripten_prep_setjmp: function() {},
+  emscripten_cleanup_setjmp: function() {},
+  emscripten_check_longjmp: function() {},
+  emscripten_get_longjmp_result: function() {},
+  emscripten_setjmp: function() {},
 #endif
-  emscripten_preinvoke: true,
-  emscripten_postinvoke: true,
-  emscripten_resume: true,
-  emscripten_landingpad: true,
-  getHigh32: true,
-  setHigh32: true,
-  FtoILow: true,
-  FtoIHigh: true,
-  DtoILow: true,
-  DtoIHigh: true,
-  BDtoILow: true,
-  BDtoIHigh: true,
-  SItoF: true,
-  UItoF: true,
-  SItoD: true,
-  UItoD: true,
-  BItoD: true,
-  llvm_dbg_value: true,
-  llvm_debugtrap: true,
-  llvm_ctlz_i32: true,
-  emscripten_asm_const: true,
-  emscripten_asm_const_int: true,
-  emscripten_asm_const_double: true,
-  emscripten_asm_const_int_sync_on_main_thread: true,
-  emscripten_asm_const_double_sync_on_main_thread: true,
-  emscripten_asm_const_async_on_main_thread: true,
+  emscripten_preinvoke: function() {},
+  emscripten_postinvoke: function() {},
+  emscripten_resume: function() {},
+  emscripten_landingpad: function() {},
+  getHigh32: function() {},
+  setHigh32: function() {},
+  FtoILow: function() {},
+  FtoIHigh: function() {},
+  DtoILow: function() {},
+  DtoIHigh: function() {},
+  BDtoILow: function() {},
+  BDtoIHigh: function() {},
+  SItoF: function() {},
+  UItoF: function() {},
+  SItoD: function() {},
+  UItoD: function() {},
+  BItoD: function() {},
+  llvm_dbg_value: function() {},
+  llvm_debugtrap: function() {},
+  llvm_ctlz_i32: function() {},
+  emscripten_asm_const: function() {},
+  emscripten_asm_const_int: function() {},
+  emscripten_asm_const_double: function() {},
+  emscripten_asm_const_int_sync_on_main_thread: function() {},
+  emscripten_asm_const_double_sync_on_main_thread: function() {},
+  emscripten_asm_const_async_on_main_thread: function() {},
 
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
@@ -5026,6 +5168,19 @@ LibraryManager.library = {
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
+  },
+
+  _getExecutableName: function() {
+#if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE && process['argv'].length > 1) {
+      return process['argv'][1].replace(/\\/g, '/');
+    }
+#endif
+    return "./this.program";
+#else
+    return thisProgram || './this.program';
+#endif
   },
 };
 

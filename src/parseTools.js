@@ -1551,19 +1551,37 @@ function makeRetainedCompilerSettings() {
 var WASM_PAGE_SIZE = 65536;
 var ASMJS_PAGE_SIZE = 16777216;
 
-function getPageSize() {
+function getMemoryPageSize() {
   return WASM ? WASM_PAGE_SIZE : ASMJS_PAGE_SIZE;
 }
+
+// Page size reported by some POSIX calls, mostly filesystem. This does not
+// depend on the memory page size which differs between wasm and asm.js, and
+// makes us report a consistent value despite the compile target. However,
+// perhaps we should unify all the page sizes (especially after fastcomp is
+// gone TODO).
+var POSIX_PAGE_SIZE = 16384;
 
 // Receives a function as text, and a function that constructs a modified
 // function, to which we pass the parsed-out name, arguments, and body of the
 // function. Returns the output of that function.
 function modifyFunction(text, func) {
-  var match = text.match(/\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
-  assert(match, 'could not match function ' + text + '.');
-  var name = match[1];
-  var args = match[2];
-  var rest = text.substr(match[0].length);
+  // Match a function with a name.
+  var match = text.match(/^\s*function\s+([^(]*)?\s*\(([^)]*)\)/);
+  var name, args, rest;
+  if (match) {
+    name = match[1];
+    args = match[2];
+    rest = text.substr(match[0].length);
+  } else {
+    // Match a function without a name (we could probably use a single regex
+    // for both, but it would be more complex).
+    match = text.match(/^\s*function\(([^)]*)\)/);
+    assert(match, 'could not match function ' + text + '.');
+    name = '';
+    args = match[1];
+    rest = text.substr(match[0].length);
+  }
   var bodyStart = rest.indexOf('{');
   assert(bodyStart >= 0);
   var bodyEnd = rest.lastIndexOf('}');
@@ -1630,4 +1648,33 @@ function makeRemovedFSAssert(fsName) {
   var lower = fsName.toLowerCase();
   if (SYSTEM_JS_LIBRARIES.indexOf('library_' + lower + '.js') >= 0) return '';
   return "var " + fsName + " = '" + fsName + " is no longer included by default; build with -l" + lower + ".js';";
+}
+
+// Given an array of elements [elem1,elem2,elem3], returns a string "['elem1','elem2','elem3']"
+function buildStringArray(array) {
+  if (array.length > 0) {
+    return "['" + array.join("','") + "']";
+  } else {
+    return '[]';
+  }
+}
+
+// Generates access to a JS imports scope variable in pthreads worker.js. In MODULARIZE mode these flow into the imports object for the Module.
+// In non-MODULARIZE mode, we can directly access the variables in global scope.
+function makeAsmImportsAccessInPthread(variable) {
+  if (!MINIMAL_RUNTIME) {
+    // Regular runtime uses the name "Module" for both imports and exports.
+    return "Module['" + variable + "']";
+  }
+  if (MODULARIZE) {
+    // MINIMAL_RUNTIME uses 'imports' as the name for the imports object in MODULARIZE builds.
+    return "imports['" + variable + "']";
+  } else {
+    // In non-MODULARIZE builds, can access the imports from global scope.
+    return variable;
+  }
+}
+
+function hasExportedFunction(func) {
+  return Object.keys(EXPORTED_FUNCTIONS).indexOf(func) != -1;
 }

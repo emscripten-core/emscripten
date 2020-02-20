@@ -37,9 +37,7 @@ var LibraryPThreadStub = {
 
   pthread_cond_init: function() { return 0; },
   pthread_cond_destroy: function() { return 0; },
-  pthread_cond_wait: function() { return 0; },
   pthread_cond_timedwait: function() { return 0; },
-  pthread_cond_signal: function() { return 0; },
 
   pthread_condattr_init: function() { return 0; },
   pthread_condattr_destroy: function() { return 0; },
@@ -47,13 +45,6 @@ var LibraryPThreadStub = {
   pthread_condattr_setpshared: function() { return 0; },
   pthread_condattr_getclock: function() { return 0; },
   pthread_condattr_getpshared: function() { return 0; },
-
-  pthread_cond_broadcast__asm: true,
-  pthread_cond_broadcast__sig: 'ii',
-  pthread_cond_broadcast: function(x) {
-    x = x | 0;
-    return 0;
-  },
 
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
@@ -110,11 +101,6 @@ var LibraryPThreadStub = {
     return 0;
   },
 
-  pthread_atfork: function(prepare, parent, child) {
-    err('fork() is not supported: pthread_atfork is a no-op.');
-    return 0;
-  },
-
   pthread_rwlock_init: function() { return 0; },
   pthread_rwlock_destroy: function() { return 0; },
   pthread_rwlock_rdlock: function() { return 0; },
@@ -140,7 +126,7 @@ var LibraryPThreadStub = {
   pthread_attr_setschedparam: function() {},
   pthread_attr_setstacksize: function() {},
 
-  pthread_create: function() {
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function() {
     return {{{ cDefine('EAGAIN') }}};
   },
   pthread_cancel: function() {},
@@ -150,7 +136,7 @@ var LibraryPThreadStub = {
   },
 
   pthread_equal: function(x, y) { return x == y },
-  pthread_join: function() {},
+  {{{ USE_LSAN ? 'emscripten_builtin_' : '' }}}pthread_join: function() {},
   pthread_detach: function() {},
 
   sem_init: function() {},
@@ -163,23 +149,15 @@ var LibraryPThreadStub = {
   emscripten_main_browser_thread_id: function() { return _pthread_self(); },
 
   // When pthreads is not enabled, we can't use the Atomics futex api to do proper sleeps, so simulate a busy spin wait loop instead.
+  usleep__deps: ['emscripten_get_now'],
   usleep: function(useconds) {
     // int usleep(useconds_t useconds);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/usleep.html
     // We're single-threaded, so use a busy loop. Super-ugly.
-    var msec = useconds / 1000;
-    if ((ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && self['performance'] && self['performance']['now']) {
-      var start = self['performance']['now']();
-      while (self['performance']['now']() - start < msec) {
-        // Do nothing.
-      }
-    } else {
-      var start = Date.now();
-      while (Date.now() - start < msec) {
-        // Do nothing.
-      }
+    var start = _emscripten_get_now();
+    while (_emscripten_get_now() - start < useconds / 1000) {
+      // Do nothing.
     }
-    return 0;
   },
 
   nanosleep__deps: ['usleep', '__setErrNo'],

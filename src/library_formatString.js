@@ -8,9 +8,15 @@ mergeInto(LibraryManager.library, {
   //   format: A pointer to the format string.
   //   varargs: A pointer to the start of the arguments list.
   // Returns the resulting string string as a character array.
-  _formatString__deps: ['strlen', '_reallyNegative'],
+  _formatString__deps: ['_reallyNegative', '$convertI32PairToI53', '$convertU32PairToI53'
+#if MINIMAL_RUNTIME
+    , '$intArrayFromString'
+#endif
+  ],
   _formatString: function(format, varargs) {
+#if ASSERTIONS
     assert((varargs & 3) === 0);
+#endif
     var textIndex = format;
     var argIndex = varargs;
     // This must be called before reading a double or i64 vararg. It will bump the pointer properly.
@@ -19,11 +25,15 @@ mergeInto(LibraryManager.library, {
       if (type === 'double' || type === 'i64') {
         // move so the load is aligned
         if (ptr & 7) {
+#if ASSERTIONS
           assert((ptr & 7) === 4);
+#endif
           ptr += 4;
         }
       } else {
+#if ASSERTIONS
         assert((ptr & 3) === 0);
+#endif
       }
       return ptr;
     }
@@ -40,7 +50,9 @@ mergeInto(LibraryManager.library, {
                {{{ makeGetValue('argIndex', 4, 'i32', undefined, undefined, true, 4) }}}];
         argIndex += 8;
       } else {
+#if ASSERTIONS
         assert((argIndex & 3) === 0);
+#endif
         type = 'i32'; // varargs are always i32, i64, or double
         ret = {{{ makeGetValue('argIndex', 0, 'i32', undefined, undefined, true) }}};
         argIndex += 4;
@@ -177,7 +189,7 @@ mergeInto(LibraryManager.library, {
             var argText;
             // Flatten i64-1 [low, high] into a (slightly rounded) double
             if (argSize == 8) {
-              currArg = makeBigInt(currArg[0], currArg[1], next == {{{ charCode('u') }}});
+              currArg = next == {{{ charCode('u') }}} ? convertU32PairToI53(currArg[0], currArg[1]) : convertI32PairToI53(currArg[0], currArg[1]);
             }
             // Truncate to requested size.
             if (argSize <= 4) {
@@ -418,7 +430,11 @@ mergeInto(LibraryManager.library, {
   },
 
   // printf/puts implementations for when musl is not pulled in - very partial. useful for tests, and when bootstrapping structInfo
-  printf__deps: ['_formatString'],
+  printf__deps: ['_formatString'
+#if MINIMAL_RUNTIME
+    , '$intArrayToString'
+#endif
+    ],
   printf: function(format, varargs) {
     // int printf(const char *restrict format, ...);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/printf.html

@@ -355,6 +355,26 @@ int pthread_cond_broadcast(pthread_cond_t *cond) {
   return 0;
 }
 
+int pthread_cond_init(pthread_cond_t *__restrict x, const pthread_condattr_t *__restrict y) {
+  return 0;
+}
+
+int pthread_cond_destroy(pthread_cond_t * x) {
+  return 0;
+}
+
+int pthread_cond_timedwait(pthread_cond_t *__restrict x, pthread_mutex_t *__restrict y, const struct timespec *__restrict z) {
+  return 0;
+}
+
 int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void)) {
   return 0;
+}
+
+// pthread_equal is defined as a macro in C, as a function for C++; undef it
+// here so we define the function for C++ that links to us.
+#undef pthread_equal
+
+int pthread_equal(pthread_t t1, pthread_t t2) {
+  return t1 == t2;
 }

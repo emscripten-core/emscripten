@@ -16,8 +16,9 @@ import zlib
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: tests/runner.py benchmark')
 
-from runner import RunnerCore, chdir
-from tools.shared import run_process, path_from_root, CLANG, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, CLOSURE_COMPILER, CLANG_CC, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
+import clang_native
+import runner
+from tools.shared import run_process, path_from_root, CLANG, Building, SPIDERMONKEY_ENGINE, LLVM_ROOT, CLANG_CC, V8_ENGINE, PIPE, try_delete, PYTHON, EMCC
 from tools import shared, jsrun
 
 # standard arguments for timing:
@@ -104,7 +105,7 @@ class Benchmarker(object):
     # size
 
     size = sum(os.path.getsize(f) for f in self.get_output_files())
-    gzip_size = sum(len(zlib.compress(open(f).read())) for f in self.get_output_files())
+    gzip_size = sum(len(zlib.compress(open(f, 'rb').read())) for f in self.get_output_files())
 
     print('        size: %8s, compressed: %8s' % (size, gzip_size), end=' ')
     if self.get_size_text():
@@ -126,7 +127,7 @@ class NativeBenchmarker(Benchmarker):
     self.parent = parent
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
-      env.update(shared.get_clang_native_env())
+      env.update(clang_native.get_clang_native_env())
       native_args += lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
@@ -135,9 +136,9 @@ class NativeBenchmarker(Benchmarker):
         '-fno-math-errno',
         filename,
         '-o', filename + '.native'
-      ] + self.args + shared_args + native_args + shared.get_clang_native_args()
+      ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
       # print(cmd)
-      run_process(cmd, env=shared.get_clang_native_env())
+      run_process(cmd, env=clang_native.get_clang_native_env())
     else:
       shutil.copyfile(native_exec, filename + '.native')
       shutil.copymode(native_exec, filename + '.native')
@@ -330,6 +331,10 @@ if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
   benchmarkers += [
     EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'v8', V8_ENGINE),
   ]
+if shared.NODE_JS and shared.NODE_JS in shared.JS_ENGINES:
+  benchmarkers += [
+    EmscriptenBenchmarker('Node.js', shared.NODE_JS),
+  ]
 if os.path.exists(CHEERP_BIN):
   benchmarkers += [
     # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
@@ -337,7 +342,7 @@ if os.path.exists(CHEERP_BIN):
   ]
 
 
-class benchmark(RunnerCore):
+class benchmark(runner.RunnerCore):
   save_dir = True
 
   @classmethod
@@ -350,14 +355,12 @@ class benchmark(RunnerCore):
     except Exception:
       pass
     try:
-      with chdir(os.path.expanduser('~/Dev/mozilla-central')):
+      with runner.chdir(os.path.expanduser('~/Dev/mozilla-central')):
         fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
     except Exception:
       pass
     fingerprint.append('llvm: ' + LLVM_ROOT)
     print('Running Emscripten benchmarks... [ %s ]' % ' | '.join(fingerprint))
-
-    assert(os.path.exists(CLOSURE_COMPILER))
 
     Building.COMPILER = CLANG
 
@@ -402,7 +405,7 @@ class benchmark(RunnerCore):
       if skip_native and isinstance(b, NativeBenchmarker):
         continue
       baseline = b
-      print('Running benchmarker: ' + b.name)
+      print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
       b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
       b.bench(args, output_parser, reps, expected_output)
       b.display(baseline)
@@ -899,6 +902,7 @@ class benchmark(RunnerCore):
                       force_c=True, emcc_args=args + ['--llvm-lto', '2'], native_args=args + ['-lgc', '-std=c99', '-target', 'x86_64-pc-linux-gnu', '-lm'])
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
+    self.emcc_args.remove('-Werror')
     shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
@@ -926,6 +930,7 @@ class benchmark(RunnerCore):
     self.lua('binarytrees', 'long lived tree of depth')
 
   def test_zzz_zlib(self):
+    self.emcc_args.remove('-Werror')
     src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
@@ -942,7 +947,9 @@ class benchmark(RunnerCore):
 
     self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
 
-  def test_zzz_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
+  # Called thus so it runs late in the alphabetical cycle... it is long
+  def test_zzz_bullet(self):
+    self.emcc_args.remove('-Werror')
     src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read()
     src += open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
@@ -972,7 +979,7 @@ class benchmark(RunnerCore):
   def test_zzz_sqlite(self):
     src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'TOTAL...', shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
+    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
 
   def test_zzz_poppler(self):
     with open('pre.js', 'w') as f:

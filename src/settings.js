@@ -46,6 +46,9 @@
 // libraries and other support code, so all flags are either link or
 // compile+link.
 //
+// The [fastcomp-only] annotation means that a flag only affects code generation
+// in fastcomp.
+//
 
 // Tuning
 
@@ -111,8 +114,8 @@ var TOTAL_MEMORY = 16777216;
 //  * emmalloc - a simple and compact malloc designed for emscripten
 //  * none     - no malloc() implementation is provided, but you must implement
 //               malloc() and free() yourself.
-// dlmalloc is necessary for multithreading, split memory, and other special
-// modes, and will be used automatically in those cases.
+// dlmalloc is necessary for split memory and other special modes, and will be
+// used automatically in those cases.
 // In general, if you don't need one of those special modes, and if you don't
 // allocate very many small objects, you should use emmalloc since it's
 // smaller. Otherwise, if you do allocate many small objects, dlmalloc
@@ -131,6 +134,7 @@ var ABORTING_MALLOC = 1;
 // If 1, generated a version of memcpy() and memset() that unroll their
 // copy sizes. If 0, optimizes for size instead to generate a smaller memcpy.
 // This flag only has effect when targeting asm.js.
+// [fastcomp-only]
 var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 
 // If false, we abort with an error if we try to allocate more memory than
@@ -151,10 +155,29 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // memory from the system as necessary.
 var ALLOW_MEMORY_GROWTH = 0;
 
-// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_STEP == -1, memory roughly
-// doubles in size each time is grows. Set MEMORY_GROWTH_STEP to a multiple of
-// WASM page size (64KB), eg. 16MB to enable a slower growth rate.
-var MEMORY_GROWTH_STEP = -1;
+// If ALLOW_MEMORY_GROWTH is true, this variable specifies the geometric
+// overgrowth rate of the heap at resize. Specify MEMORY_GROWTH_GEOMETRIC_STEP=0
+// to disable overgrowing the heap at all, or e.g.
+// MEMORY_GROWTH_GEOMETRIC_STEP=1.0 to double the heap (+100%) at every grow step.
+// The larger this value is, the more memory the WebAssembly heap overreserves
+// to reduce performance hiccups coming from memory resize, and the smaller
+// this value is, the more memory is conserved, at the performance of more
+// stuttering when the heap grows. (profiled to be on the order of ~20 msecs)
+var MEMORY_GROWTH_GEOMETRIC_STEP = 0.20;
+
+// Specifies a cap for the maximum geometric overgrowth size, in bytes. Use
+// this value to constrain the geometric grow to not exceed a specific rate.
+// Pass MEMORY_GROWTH_GEOMETRIC_CAP=0 to disable the cap and allow unbounded
+// size increases.
+var MEMORY_GROWTH_GEOMETRIC_CAP = 96*1024*1024;
+
+// If ALLOW_MEMORY_GROWTH is true and MEMORY_GROWTH_LINEAR_STEP == -1, then
+// geometric memory overgrowth is utilized (above variable). Set
+// MEMORY_GROWTH_LINEAR_STEP to a multiple of WASM page size (64KB), eg. 16MB to
+// replace geometric overgrowth rate with a constant growth step size. When
+// MEMORY_GROWTH_LINEAR_STEP is used, the variables MEMORY_GROWTH_GEOMETRIC_STEP
+// and MEMORY_GROWTH_GEOMETRIC_CAP are ignored.
+var MEMORY_GROWTH_LINEAR_STEP = -1;
 
 // If true, allows more functions to be added to the table at runtime. This is
 // necessary for dynamic linking, and set automatically in that mode.
@@ -182,6 +205,7 @@ var GLOBAL_BASE = -1;
 // load-store will make JS engines alter it if it is being stored to a typed
 // array for security reasons. That will 'fix' the number from being a NaN or an
 // infinite number.
+// [fastcomp-only]
 var DOUBLE_MODE = 1;
 
 // Warn at compile time about instructions that LLVM tells us are not fully
@@ -208,6 +232,9 @@ var WARN_UNALIGNED = 0;
 //           all modern browsers, including Firefox, Chrome and Safari, but in IE is only
 //           present in IE11 and above. Therefore if you need to support legacy versions of
 //           IE, you should not enable PRECISE_F32 1 or 2.
+// [fastcomp-only]
+// With upstream backend and WASM=0, JS output always uses Math.fround for consistent
+// behavior with WebAssembly.
 var PRECISE_F32 = 0;
 
 // Whether to allow autovectorized SIMD code
@@ -220,6 +247,12 @@ var SIMD = 0;
 
 // Whether closure compiling is being run on this output
 var USE_CLOSURE_COMPILER = 0;
+
+// Specifies how warnings emitted by Closure are treated. Possible
+// options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are printed
+// out to console. If set to 'error', Closure warnings are treated like errors,
+// similar to -Werror compiler flag.
+var CLOSURE_WARNINGS = 'quiet';
 
 // If set to 1, each asm.js/wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
@@ -244,11 +277,11 @@ var IGNORE_CLOSURE_COMPILER_ERRORS = 0;
 var INLINING_LIMIT = 0;
 
 // Run aggressiveVariableElimination in js-optimizer.js
+// [fastcomp-only]
 var AGGRESSIVE_VARIABLE_ELIMINATION = 0;
 
 // Whether to simplify ifs in js-optimizer.js
-
-// Generated code debugging options
+// [fastcomp-only]
 var SIMPLIFY_IFS = 1;
 
 // Check each write to the heap, for example, this will give a clear
@@ -259,10 +292,6 @@ var SAFE_HEAP = 0;
 // Log out all SAFE_HEAP operations
 var SAFE_HEAP_LOG = 0;
 
-// Check each stack pointer decrement on WASM backend to ensure that the stack
-// does not overflow.
-var SAFE_STACK = 0;
-
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
@@ -271,6 +300,7 @@ var RESERVED_FUNCTION_POINTERS = 0;
 // Whether to allow function pointers to alias if they have a different type.
 // This can greatly decrease table sizes in asm.js, but can break code that
 // compares function pointers across different types.
+// [fastcomp-only]
 var ALIASING_FUNCTION_POINTERS = 0;
 
 // asm.js: By default we implement function pointers using asm.js function
@@ -291,6 +321,7 @@ var ALIASING_FUNCTION_POINTERS = 0;
 // efficient. When enabling emulation, we also use the Table *outside* the wasm
 // module, exactly as when emulating in asm.js, just replacing the plain JS
 // array with a Table.
+// [fastcomp-only]
 var EMULATED_FUNCTION_POINTERS = 0;
 
 // Allows function pointers to be cast, wraps each call of an incorrect type
@@ -349,6 +380,10 @@ var SOCKET_WEBRTC = 0;
 // prefix + addr + ':' + port
 // where addr and port are derived from the socket connect/bind/accept calls.
 var WEBSOCKET_URL = 'ws://';
+
+// If 1, the POSIX sockets API uses a native bridge process server to proxy sockets calls
+// from browser to native world.
+var PROXY_POSIX_SOCKETS = 0;
 
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
@@ -428,9 +463,18 @@ var GL_POOL_TEMP_BUFFERS = 1;
 // bug is only relevant to WebGL 1, the affected browsers do not support WebGL 2.
 var WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG = 0;
 
-// Enables WebGL2 native functions. This mode will also create a WebGL2
-// context by default if no version is specified.
+// Deprecated. Pass -s MAX_WEBGL_VERSION=2 to target WebGL 2.0.
 var USE_WEBGL2 = 0;
+
+// Specifies the lowest WebGL version to target. Pass -s MIN_WEBGL_VERSION=1
+// to enable targeting WebGL 1, and -s MIN_WEBGL_VERSION=2 to drop support
+// for WebGL 1.0
+var MIN_WEBGL_VERSION = 1;
+
+// Specifies the highest WebGL version to target. Pass -s MAX_WEBGL_VERSION=2
+// to enable targeting WebGL 2. If WebGL 2 is enabled, some APIs (EGL, GLUT, SDL)
+// will default to creating a WebGL 2 context if no version is specified.
+var MAX_WEBGL_VERSION = 1;
 
 // If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
 // applications that use WebGL 1/GLES 2 can initialize a WebGL 2/GLES3 context,
@@ -441,6 +485,7 @@ var USE_WEBGL2 = 0;
 var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
+// This automatically turns out FULL_ES2.
 var FULL_ES3 = 0;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
@@ -459,6 +504,9 @@ var GL_FFP_ONLY = 0;
 // and set Module['preinitializedWebGLContext'] to a precreated WebGL context.
 // WebGL initialization afterwards will use this GL context to render.
 var GL_PREINITIALIZED_CONTEXT = 0;
+
+// Enables support for WebGPU (via "webgpu/webgpu.h").
+var USE_WEBGPU = 0;
 
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
@@ -494,6 +542,7 @@ var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 //  * Work around iOS 9 right shift bug (-s WORKAROUND_IOS_9_RIGHT_SHIFT_BUG=1)
 //  * Work around old Chromium WebGL 1 bug (-s WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG=1)
 //  * Disable WebAssembly. (Must be paired with -s WASM=0)
+//  * Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 // You can also configure the above options individually.
 var LEGACY_VM_SUPPORT = 0;
 
@@ -581,7 +630,8 @@ var ASYNCIFY_IMPORTS = [
   'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
   'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
   'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'wasi_unstable.fd_sync', '__wasi_fd_sync',
+  'emscripten_fiber_swap',
+  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
 ];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
@@ -640,8 +690,8 @@ var ASYNCIFY_DEBUG = 0;
 // included (either automatically from linking, or due to being in
 // DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
 // Note that the name may be slightly misleading, as this is for any JS library
-// element, and not just methods. For example, we export the Runtime object by
-// having "Runtime" in this list.
+// element, and not just methods. For example, we can export the FS object by
+// having "FS" in this list.
 var EXPORTED_RUNTIME_METHODS = [];
 
 // Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
@@ -717,6 +767,23 @@ var FORCE_FILESYSTEM = 0;
 // mostly been tested on Linux so far.
 var NODERAWFS = 0;
 
+// This saves the compiled wasm module in a file with name
+//   $WASM_BINARY_NAME.$V8_VERSION.cached
+// and loads it on subsequent runs. This caches the compiled wasm code from
+// v8 in node, which saves compiling on subsequent runs, making them start up
+// much faster.
+// The V8 version used in node is included in the cache name so that we don't
+// try to load cached code from another version, which fails silently (it seems
+// to load ok, but we do actually recompile).
+//  * This requires a somewhat recent node, but unclear what version, see
+//    https://github.com/nodejs/node/issues/18265#issuecomment-471237531
+//  * This option requires WASM_ASYNC_COMPILATION=0 (we load and save code
+//    in the sync compilation path for simplicity).
+//  * The default location of the .cached files is alongside the wasm binary,
+//    as mentioned earlier. If that is in a read-only directory, you may need
+//    to place them elsewhere. You can use the locateFile() hook to do so.
+var NODE_CODE_CACHING = 0;
+
 // Functions that are explicitly exported. These functions are kept alive
 // through LLVM dead code elimination, and also made accessible outside of the
 // generated code even after running closure compiler (on "Module").  Note the
@@ -728,9 +795,12 @@ var NODERAWFS = 0;
 // there, you are in effect removing it).
 var EXPORTED_FUNCTIONS = ['_main'];
 
-// If true, we export all the symbols. Note that this does *not* affect LLVM, so
-// it can still eliminate functions as dead. This just exports them on the
-// Module object.
+// If true, we export all the symbols that are present in JS onto the Module
+// object. This does not affect which symbols will be present - it does not
+// prevent DCE or cause anything to be included in linking. It only does
+//   Module['X'] = X;
+// for all X that end up in the JS file. This is useful to export the JS
+// library functions on Module, for things like dynamic linking.
 var EXPORT_ALL = 0;
 
 // Export all bindings generator functions (prefixed with emscripten_bind_). This
@@ -744,7 +814,6 @@ var EXPORT_FUNCTION_TABLES = 0;
 // Remembers the values of these settings, and makes them accessible
 // through Runtime.getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.
-
 var RETAIN_COMPILER_SETTINGS = 0;
 
 // JS library elements (C functions implemented in JS) that we include by
@@ -842,13 +911,20 @@ var LINKABLE = 0;
 // Set the environment variable EMCC_STRICT=1 or pass -s STRICT=1 to test that a
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
-//   * DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR is enabled.
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
 //   * AUTO_JS_LIBRARIES is disabled.
+//   * AUTO_ARCHIVE_INDEXES is disabled.
 // [compile+link]
 var STRICT = 0;
+
+// Automatically attempt to add archive indexes at link time to archives that 
+// don't already have them.  This can heppen when GNU ar or GNU ranlib is used
+// rather than `llvm-ar` or `emar` since the former don't understand the wasm
+// object format.
+// [link]
+var AUTO_ARCHIVE_INDEXES = 1;
 
 // Add "use strict;" to generated JS
 var STRICT_JS = 0;
@@ -981,12 +1057,14 @@ var USE_ES6_IMPORT_META = 1;
 var BENCHMARK = 0;
 
 // If 1, generate code in asm.js format. If 2, emits the same code except for
-// omitting 'use asm'
+// omitting 'use asm'.
+// [fastcomp-only]
 var ASM_JS = 1;
 
 // If 1, will finalize the final emitted code, including operations that prevent
 // later js optimizer passes from running, like converting +5 into 5.0 (the js
 // optimizer sees 5.0 as just 5).
+// [fastcomp-only]
 var FINALIZE_ASM_JS = 1;
 
 // If 1, then all exports from the asm/wasm module will be accessed indirectly,
@@ -999,6 +1077,7 @@ var FINALIZE_ASM_JS = 1;
 var SWAPPABLE_ASM_MODULE = 0;
 
 // see emcc --separate-asm
+// [fastcomp-only]
 var SEPARATE_ASM = 0;
 
 // JS library functions on this list are not converted to JS, and calls to them
@@ -1036,7 +1115,8 @@ var EXPORT_NAME = 'Module';
 // to warnings instead of throwing an exception.
 var DYNAMIC_EXECUTION = 1;
 
-// Runs tools/emterpretify on the compiler output
+// Runs tools/emterpretify on the compiler output.
+// [fastcomp-only]
 var EMTERPRETIFY = 0;
 
 // If defined, a file to write bytecode to, otherwise the default is to embed it
@@ -1046,18 +1126,22 @@ var EMTERPRETIFY = 0;
 // Module.emterpreterFile contains an ArrayBuffer with the bytecode, when the
 // code loads.  Note: You might need to quote twice in the shell, something like
 // -s 'EMTERPRETIFY_FILE="waka"'
+// [fastcomp-only]
 var EMTERPRETIFY_FILE = '';
 
 // Functions to not emterpret, that is, to run normally at full speed
+// [fastcomp-only]
 var EMTERPRETIFY_BLACKLIST = [];
 
 // If this contains any functions, then only the functions in this list are
 // emterpreted (as if all the rest are blacklisted; this overrides the
 // BLACKLIST)
+// [fastcomp-only]
 var EMTERPRETIFY_WHITELIST = [];
 
 // Allows sync code in the emterpreter, by saving the call stack, doing an async
 // delay, and resuming it
+// [fastcomp-only]
 var EMTERPRETIFY_ASYNC = 0;
 
 // Performs a static analysis to suggest which functions should be run in the
@@ -1065,10 +1149,12 @@ var EMTERPRETIFY_ASYNC = 0;
 // called in the EMTERPRETIFY_ASYNC option.  After showing the suggested list,
 // compilation will halt. You can apply the provided list as an emcc argument
 // when compiling later.
+// [fastcomp-only]
 var EMTERPRETIFY_ADVISE = 0;
 
 // If you have additional custom synchronous functions, add them to this list
 // and the advise mode will include them in its analysis.
+// [fastcomp-only]
 var EMTERPRETIFY_SYNCLIST = [];
 
 // whether js opts will be run, after the main compiler
@@ -1094,6 +1180,11 @@ var USE_GLFW = 2;
 // Note that in upstream, WASM=0 behaves very similarly to WASM=1, in particular
 // startup can be either async or sync, so flags like WASM_ASYNC_COMPILATION
 // still make sense there, see that option for more details.
+//
+// Specify -s WASM=2 to target both WebAssembly and JavaScript at the same time.
+// In that build mode, two files a.wasm and a.wasm.js are produced, and at runtime
+// the WebAssembly file is loaded if browser/shell supports it. Otherwise the
+// .wasm.js fallback will be used.
 var WASM = 1;
 
 // STANDALONE_WASM indicates that we want to emit a wasm file that can run without
@@ -1126,13 +1217,6 @@ var STANDALONE_WASM = 0;
 // environment.
 var WASM_BACKEND = 0;
 
-// Whether to compile object files as wasm as opposed to the default
-// of using LLVM IR.
-// Setting to zero will enable LTO and at link time will also enable bitcode
-// versions of the standard libraries.
-// [compile+link]
-var WASM_OBJECT_FILES = 1;
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1156,7 +1240,7 @@ var BINARYEN_IGNORE_IMPLICIT_TRAPS = 0;
 //   allow: allow creating operations that can trap. this is the most
 //          compact, as we just emit a single wasm operation, with no
 //          guards to trapping values, and also often the fastest.
-// This setting is only meaningfull with the fastcomp backend.
+// [fastcomp-only]
 var BINARYEN_TRAP_MODE = "allow";
 
 // A comma-separated list of passes to run in the binaryen optimizer, for
@@ -1294,15 +1378,40 @@ var IN_TEST_HARNESS = 0;
 // [compile+link] - affects user code at compile and system libraries at link
 var USE_PTHREADS = 0;
 
-// PTHREAD_POOL_SIZE specifies the number of web workers that are created
-// before the main runtime is initialized. If 0, workers are created on
-// demand. If PTHREAD_POOL_DELAY_LOAD = 0, then the workers will be fully
-// loaded (available for use) prior to the main runtime being initialized. If
-// PTHREAD_POOL_DELAY_LOAD = 1, then the workers will only be created and
-// have their runtimes loaded on demand after the main runtime is initialized.
-// Note that this means that the workers cannot be joined from the main thread
-// unless PROXY_TO_PTHREAD is used.
-var PTHREAD_POOL_SIZE = 0;
+// In web browsers, Workers cannot be created while the main browser thread
+// is executing JS/Wasm code, but the main thread must regularly yield back
+// to the browser event loop for Worker initialization to occur.
+// This means that pthread_create() is essentially an asynchronous operation
+// when called from the main browser thread, and the main thread must
+// repeatedly yield back to the JS event loop in order for the thread to
+// actually start.
+// If your application needs to be able to synchronously create new threads,
+// you can pre-create a pthread pool by specifying -s PTHREAD_POOL_SIZE=x,
+// in which case the specified number of Workers will be preloaded into a pool
+// before the application starts, and that many threads can then be available
+// for synchronous creation.
+// Note that this setting is a string, and will be emitted in the JS code
+// (directly, with no extra quotes) so that if you set it to '5' then 5 workers
+// will be used in the pool, and so forth. The benefit of this being a string
+// is that you can set it to something like
+// 'navigator.hardwareConcurrency' (which will use the number of cores the
+// browser reports, and is how you can get exactly enough workers for a
+// threadpool equal to the number of cores).
+// [link] - affects generated JS runtime code at link time
+var PTHREAD_POOL_SIZE = '';
+
+// If your application does not need the ability to synchronously create
+// threads, but it would still like to opportunistically speed up initial thread
+// startup time by prewarming a pool of Workers, you can specify the size of
+// the pool with -s PTHREAD_POOL_SIZE=x, but then also specify
+// -s PTHREAD_POOL_DELAY_LOAD=1, which will cause the runtime to not wait up at
+// startup for the Worker pool to finish loading. Instead, the runtime will
+// immediately start up and the Worker pool will asynchronously spin up in
+// parallel on the background. This can shorten the time that pthread_create()
+// calls take to actually start a thread, but without actually slowing down
+// main application startup speed. If PTHREAD_POOL_DELAY_LOAD=0 (default),
+// then the runtime will wait for the pool to start up before running main().
+// [link] - affects generated JS runtime code at link time
 var PTHREAD_POOL_DELAY_LOAD = 0;
 
 // If not explicitly specified, this is the stack size to use for newly created
@@ -1316,11 +1425,6 @@ var PTHREAD_POOL_DELAY_LOAD = 0;
 // those that have their addresses taken, or ones that are too large to fit as
 // local vars in asm.js/wasm code.
 var DEFAULT_PTHREAD_STACK_SIZE = 2*1024*1024;
-
-// Specifies the value returned by the function emscripten_num_logical_cores()
-// if navigator.hardwareConcurrency is not supported. Pass in a negative number
-// to show a popup dialog at startup so the user can configure this dynamically.
-var PTHREAD_HINT_NUM_CORES = 4;
 
 // True when building with --threadprofiler
 var PTHREADS_PROFILING = 0;
@@ -1339,9 +1443,6 @@ var PTHREADS_DEBUG = 0;
 // If true, building against Emscripten's asm.js/wasm heap memory profiler.
 var MEMORYPROFILER = 0;
 
-var MAX_GLOBAL_ALIGN = -1; // received from the backend
-var IMPLEMENTED_FUNCTIONS = []; // received from the backend
-
 // Duplicate function elimination. This coalesces function bodies that are
 // identical, which can happen e.g. if two methods have different C/C++ or LLVM
 // types, but end up identical at the asm.js level (all pointers are the same as
@@ -1349,6 +1450,8 @@ var IMPLEMENTED_FUNCTIONS = []; // received from the backend
 //
 // This option is quite slow to run, as it processes and hashes all methods in
 // the codebase in multiple passes.
+//
+// [fastcomp-only]
 var ELIMINATE_DUPLICATE_FUNCTIONS = 0; // disabled by default
 var ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS = 0;
 var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
@@ -1390,9 +1493,11 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 var EVAL_CTORS = 0;
 
 // see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
+// [fastcomp-only]
 var CYBERDWARF = 0;
 
 // Path to the CyberDWARF debug file passed to the compiler
+// [fastcomp-only]
 var BUNDLED_CD_DEBUG_FILE = "";
 
 // Is enabled, use the JavaScript TextDecoder API for string marshalling.
@@ -1409,6 +1514,11 @@ var EMBIND_STD_STRING_IS_UTF8 = 1;
 // creating WebGL contexts in them, as well as explicit swap control for GL
 // contexts. This needs browser support for the OffscreenCanvas specification.
 var OFFSCREENCANVAS_SUPPORT = 0;
+
+// If you are using PROXY_TO_PTHREAD with OFFSCREENCANVAS_SUPPORT, then specify
+// here a comma separated list of CSS ID selectors to canvases to proxy over
+// to the pthread at program startup, e.g. '#canvas1, #canvas2'.
+var OFFSCREENCANVASES_TO_PTHREAD = "#canvas";
 
 // If set to 1, enables support for WebGL contexts to render to an offscreen
 // render target, to avoid the implicit swap behavior of WebGL where exiting any
@@ -1444,10 +1554,6 @@ var FETCH = 0;
 // Currently will always be set to 0 on WASM backend.
 var USE_FETCH_WORKER = 1;
 
-// Internal: name of the file containing the Fetch *.fetch.js, if relevant
-// Do not set yourself.
-var FETCH_WORKER_FILE = '';
-
 // If set to 1, uses the multithreaded filesystem that is implemented within the
 // asm.js module, using emscripten_fetch. Implies -s FETCH=1.
 var ASMFS = 0;
@@ -1475,79 +1581,35 @@ var EMIT_EMSCRIPTEN_METADATA = 0;
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 
-//==============================
-// Internal use only, from here
-//==============================
+// Specifies the oldest major version of Firefox to target. I.e. all Firefox
+// versions >= MIN_FIREFOX_VERSION
+// are desired to work. Pass -s MIN_FIREFOX_VERSION=majorVersion to drop support
+// for Firefox versions older than < majorVersion.
+// Firefox ESR 60.5 (Firefox 65) was released on 2019-01-29.
+var MIN_FIREFOX_VERSION = 65;
 
-// Specifies a list of Emscripten-provided JS libraries to link against.
-// (internal, use -lfoo or -lfoo.js to link to Emscripten system JS libraries)
-var SYSTEM_JS_LIBRARIES = [];
+// Specifies the oldest version of desktop Safari to target. Version is encoded
+// in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
+// Safari 12.0.0 was released on September 17, 2018, bundled with macOS 10.14.0
+// Mojave
+var MIN_SAFARI_VERSION = 120000;
 
-// This will contain the emscripten version. You should not modify this. This
-// and the following few settings are useful in combination with
-// RETAIN_COMPILER_SETTINGS
-var EMSCRIPTEN_VERSION = '';
+// Specifies the oldest version of Internet Explorer to target. E.g. pass -s
+// MIN_IE_VERSION = 11 to drop support for IE 10 and older.
+// Internet Explorer is at end of life and does not support WebAssembly.
+// MAX_INT (0x7FFFFFFF) specifies that target is not supported.
+var MIN_IE_VERSION = 0x7FFFFFFF;
 
-// This will contain the optimization level (-Ox). You should not modify this.
-var OPT_LEVEL = 0;
+// Specifies the oldest version of Edge (EdgeHTML, the non-Chromium based
+// flavor) to target. E.g. pass -s MIN_EDGE_VERSION=40 to drop support for
+// EdgeHTML 39 and older.
+// Edge 44.17763 was released on November 13, 2018
+var MIN_EDGE_VERSION = 44;
 
-// Will be set to 0 if -fno-rtti is used on the command line.
-var USE_RTTI = 1;
-
-// This will contain the debug level (-gx). You should not modify this.
-var DEBUG_LEVEL = 0;
-
-// Whether we are profiling functions. You should not modify this.
-var PROFILING_FUNCS = 0;
-
-// Whether we are emitting a symbol map. You should not modify this.
-var EMIT_SYMBOL_MAP = 0;
-
-// tracks the list of EM_ASM signatures that are proxied between threads.
-var PROXIED_FUNCTION_SIGNATURES = [];
-
-// List of function explictly exported by user on the command line.
-var USER_EXPORTED_FUNCTIONS = [];
-
-// name of the file containing wasm text, if relevant
-var WASM_TEXT_FILE = '';
-
-// name of the file containing wasm binary, if relevant
-var WASM_BINARY_FILE = '';
-
-// name of the file containing asm.js code, if relevant
-var ASMJS_CODE_FILE = '';
-
-// name of the file containing the pthread *.worker.js, if relevant
-var PTHREAD_WORKER_FILE = '';
-
-// Base URL the source mapfile, if relevant
-var SOURCE_MAP_BASE = '';
-
-var MEM_INIT_IN_WASM = 0;
-
-// If set to 1, src/base64Utils.js will be included in the bundle.
-// This is set internally when needed (SINGLE_FILE)
-var SUPPORT_BASE64_EMBEDDING = 0;
-
-// the possible environments the code may run in.
-var ENVIRONMENT_MAY_BE_WEB = 1;
-var ENVIRONMENT_MAY_BE_WORKER = 1;
-var ENVIRONMENT_MAY_BE_NODE = 1;
-var ENVIRONMENT_MAY_BE_SHELL = 1;
-
-// passes information to emscripten.py about whether to minify
-// JS -> asm.js import names. Controlled by optimization level, enabled
-// at -O1 and higher, but disabled at -g2 and higher.
-var MINIFY_ASMJS_IMPORT_NAMES = 0;
-
-// the total static allocation, that is, how much to bump the start of memory
-// for static globals. received from the backend, and possibly increased due
-// to JS static allocations
-var STATIC_BUMP = -1;
-
-// the total initial wasm table size.
-var WASM_TABLE_SIZE = 0;
+// Specifies the oldest version of Chrome. E.g. pass -s MIN_CHROME_VERSION=58 to
+// drop support for Chrome 57 and older.
+// Chrome 75.0.3770 was released on 2019-06-04
+var MIN_CHROME_VERSION = 75;
 
 // Tracks whether we are building with errno support enabled. Set to 0
 // to disable compiling errno support in altogether. This saves a little
@@ -1556,16 +1618,130 @@ var WASM_TABLE_SIZE = 0;
 // for effective code size optimizations to take place.
 var SUPPORT_ERRNO = 1;
 
-// Internal: Tracks whether Emscripten should link in exception throwing (C++ 'throw')
-// support library. This does not need to be set directly, but pass -fno-exceptions
-// to the build disable exceptions support. (This is basically -fno-exceptions, but
-// checked at final link time instead of individual .cpp file compile time)
-// If the program *does* contain throwing code (some source files were not compiled
-// with `-fno-exceptions`), and this flag is set at link time, then you will get
-// errors on undefined symbols, as the exception throwing code is not linked in. If
-// so you should either unset the option (if you do want exceptions) or fix the
-// compilation of the source files so that indeed no exceptions are used).
+// If true, uses minimal sized runtime without POSIX features, Module,
+// preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.
+// Enable this setting to target the smallest code size possible.  Set
+// MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These
+// opts are quite hacky, and work around limitations in Closure and other parts
+// of the build system, so they may not work in all generated programs (But can
+// be useful for really small programs)
+var MINIMAL_RUNTIME = 0;
+
+// If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly compilation,
+// where WebAssembly module is compiled already while it is being downloaded.
+// In order for this to work, the web server MUST properly serve the .wasm file
+// with a HTTP response header "Content-Type: application/wasm". If this HTTP
+// header is not present, e.g. Firefox 73 will fail with an error message
+//    TypeError: Response has unsupported MIME type
+// and Chrome 78 will fail with an error message
+//    Uncaught (in promise) TypeError: Failed to execute 'compile' on
+//    'WebAssembly': Incorrect response MIME type. Expected 'application/wasm'.
+// If set to 0 (default), streaming WebAssembly compilation is disabled, which
+// means that the WebAssembly Module will first be downloaded fully, and only
+// then compilation starts.
+// For large .wasm modules and production environments, this should be set to 1
+// for faster startup speeds. However this setting is disabled by default
+// since it requires server side configuration and for really small pages there
+// is no observable difference (also has a ~100 byte impact to code size)
+var MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION = 0;
+
+// If set to 1, MINIMAL_RUNTIME will utilize streaming WebAssembly instantiation,
+// where WebAssembly module is compiled+instantiated already while it is being
+// downloaded. Same restrictions/requirements apply as with
+// MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION.
+// MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and
+// MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION cannot be simultaneously active.
+// Which one of these two is faster depends on the size of the wasm module,
+// the size of the JS runtime file, and the size of the preloaded data file
+// to download, and the browser in question.
+var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = 0;
+
+// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(),
+// enable this. If you are not using dynamic allocations, can set this to 0 to
+// save code size. This setting is ignored when building with -s
+// MINIMAL_RUNTIME=0.
+var USES_DYNAMIC_ALLOC = 1;
+
+// Advanced manual dead code elimination: Specifies the set of runtime JS
+// functions that should be imported to the asm.js/wasm module.  Remove elements
+// from this list to make build smaller if some of these are not needed.  In
+// Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is
+// able to remove these, but if you are targeting asm.js or doing a -O2 build or
+// lower, then this can be beneficial.
+var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
+
+// If true, compiler supports setjmp() and longjmp(). If false, these APIs are
+// not available.  If you are using C++ exceptions, but do not need
+// setjmp()+longjmp() API, then you can set this to 0 to save a little bit of
+// code size and performance when catching exceptions.
+var SUPPORT_LONGJMP = 1;
+
+// If set to 1, disables old deprecated HTML5 API event target lookup behavior.
+// When enabled, there is no "Module.canvas" object, no magic "null" default
+// handling, and DOM element 'target' parameters are taken to refer to CSS
+// selectors, instead of referring to DOM IDs.
+var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 1;
+
+// Certain browser DOM API operations, such as requesting fullscreen mode
+// transition or pointer lock require that the request originates from within
+// an user initiated event, such as mouse click or keyboard press. Refactoring
+// an application to follow this kind of program structure can be difficult, so
+// HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=1 flag allows transparent
+// emulation of this by deferring synchronous fullscreen mode and pointer lock
+// requests until a suitable event callback is generated. Set this to 0
+// to disable support for deferring to save code space if your application does
+// not need support for deferred calls.
+var HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS = 1;
+
+// Specifies whether the generated .html file is run through html-minifier. The
+// set of optimization passes run by html-minifier depends on debug and
+// optimization levels. In -g2 and higher, no minification is performed. In -g1,
+// minification is done, but whitespace is retained. Minification requires at
+// least -O1 or -Os to be used. Pass -s MINIFY_HTML=0 to explicitly choose to
+// disable HTML minification altogether.
+var MINIFY_HTML = 1;
+
+// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets
+// you run wasm2js *later* on the wasm, and you can pick between running the
+// normal wasm or that wasm2js code. For details of how to do that, see the
+// test_maybe_wasm2js test.  This option can be useful for debugging and
+// bisecting.
+var MAYBE_WASM2JS = 0;
+
+// The size of our shadow memory.
+// By default, we have 32 MiB. This supports 256 MiB of real memory.
+var ASAN_SHADOW_SIZE = 33554432;
+
+// Internal: Tracks whether Emscripten should link in exception throwing (C++
+// 'throw') support library. This does not need to be set directly, but pass
+// -fno-exceptions to the build disable exceptions support. (This is basically
+// -fno-exceptions, but checked at final link time instead of individual .cpp
+// file compile time) If the program *does* contain throwing code (some source
+// files were not compiled with `-fno-exceptions`), and this flag is set at link
+// time, then you will get errors on undefined symbols, as the exception
+// throwing code is not linked in. If so you should either unset the option (if
+// you do want exceptions) or fix the compilation of the source files so that
+// indeed no exceptions are used).
+// TODO(sbc): Move to settings_internal (current blocked due to use in test
+// code).
 var DISABLE_EXCEPTION_THROWING = 0;
+
+// Whether we should use the offset converter.  This is needed for older
+// versions of v8 (<7.7) that does not give the hex module offset into wasm
+// binary in stack traces, as well as for avoiding using source map entries
+// across function boundaries.
+var USE_OFFSET_CONVERTER = 0;
+
+// If set to 1, the JS compiler is run before wasm-ld so that the linker can
+// report undefined symbols within the binary.  Without this option that linker
+// doesn't know which symmbols might be defined JS and so reporting of undefined
+// symbols is deleyed until the JS compiler is run.
+// [link]
+var LLD_REPORT_UNDEFINED = 0;
+
+//===========================================
+// Internal, used for testing only, from here
+//===========================================
 
 // Internal (testing only): Disables the blitOffscreenFramebuffer VAO path.
 var OFFSCREEN_FRAMEBUFFER_FORBID_VAO_PATH = 0;
@@ -1577,62 +1753,9 @@ var TEST_MEMORY_GROWTH_FAILS = 0;
 // that are generated. This allows minifying extra bit of asm.js code from unused
 // runtime code, if you know some of these are not needed.
 // (think of this as advanced manual DCE)
+// TODO(sbc): Move to settings_internal (current blocked due to use in test
+// code).
 var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tempBigInt', 'tempBigIntS', 'tempValue', 'tempDouble', 'tempFloat', 'tempDoublePtr', 'STACKTOP', 'STACK_MAX']
-
-// If true, uses minimal sized runtime without POSIX features, Module, preRun/preInit/etc.,
-// Emscripten built-in XHR loading or library_browser.js. Enable this setting to target
-// the smallest code size possible.
-// Set MINIMAL_RUNTIME=2 to further enable even more code size optimizations. These opts are
-// quite hacky, and work around limitations in Closure and other parts of the build system, so
-// they may not work in all generated programs (But can be useful for really small programs)
-var MINIMAL_RUNTIME = 0;
-
-// If building with MINIMAL_RUNTIME=1 and application uses sbrk()/malloc(), enable this. If you
-// are not using dynamic allocations, can set this to 0 to save code size. This setting is
-// ignored when building with -s MINIMAL_RUNTIME=0.
-var USES_DYNAMIC_ALLOC = 1;
-
-// Advanced manual dead code elimination:
-// Specifies the set of runtime JS functions that should be imported to the asm.js/wasm module.
-// Remove elements from this list to make build smaller if some of these are not needed.
-// In Wasm -O3/-Os builds, adjusting this is not necessary, as the Meta-DCE pass is able to
-// remove these, but if you are targeting asm.js or doing a -O2 build or lower, then this can
-// be beneficial.
-var RUNTIME_FUNCS_TO_IMPORT = ['abort', 'setTempRet0', 'getTempRet0']
-
-// If true, compiler supports setjmp() and longjmp(). If false, these APIs are not available.
-// If you are using C++ exceptions, but do not need setjmp()+longjmp() API, then you can set
-// this to 0 to save a little bit of code size and performance when catching exceptions.
-var SUPPORT_LONGJMP = 1;
-
-// If set to 1, disables old deprecated HTML5 API event target lookup behavior. When enabled,
-// there is no "Module.canvas" object, no magic "null" default handling, and DOM element
-// 'target' parameters are taken to refer to CSS selectors, instead of referring to DOM IDs.
-var DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR = 0;
-
-// Specifies whether the generated .html file is run through html-minifier. The set of
-// optimization passes run by html-minifier depends on debug and optimization levels. In
-// -g2 and higher, no minification is performed. In -g1, minification is done, but whitespace
-// is retained. Minification requires at least -O1 or -Os to be used. Pass -s MINIFY_HTML=0
-// to explicitly choose to disable HTML minification altogether.
-var MINIFY_HTML = 1;
-
-// Whether we *may* be using wasm2js. This compiles to wasm normally, but lets you
-// run wasm2js *later* on the wasm, and you can pick between running the normal
-// wasm or that wasm2js code. For details of how to do that, see the test_maybe_wasm2js
-// test.
-// This option can be useful for debugging and bisecting.
-var MAYBE_WASM2JS = 0;
-
-// The size of our shadow memory.
-// By default, we have 32 MiB. This supports 256 MiB of real memory.
-var ASAN_SHADOW_SIZE = 33554432;
-
-// Whether we should use the offset converter.
-// This is needed for older versions of v8 (<7.7) that does not give the hex module offset
-// into wasm binary in stack traces, as well as for avoiding using source map
-// entries across function boundaries.
-var USE_OFFSET_CONVERTER = 0;
 
 // Legacy settings that have been removed or renamed.
 // For renamed settings the format is:
@@ -1660,4 +1783,7 @@ var LEGACY_SETTINGS = [
   ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
+  ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
+  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
+  ['WASM_OBJECT_FILES', [1], 'Use -flto or -fto=thin instead'],
 ];

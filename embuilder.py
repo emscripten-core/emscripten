@@ -1,32 +1,57 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Copyright 2014 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Tool to manage building of various useful things, such as libc, libc++,
-native optimizer, as well as fetch and build ports like zlib and sdl2
+"""Tool to manage building of system libraries and other components.
+such as ports and the native optimizer.
+
+In general emcc will build them automatically on demand, so you do not
+strictly need to use this tool, but it gives you more control over the
+process (in particular, if emcc does this automatically, and you are
+running multiple build commands in parallel, confusion can occur).
 """
 
 from __future__ import print_function
+import argparse
 import logging
 import os
 import subprocess
 import sys
 
 from tools import shared
-from tools.system_libs import Library
+from tools import system_libs
 
-C_BARE = '''
-        int main() {}
-      '''
+C_BARE = 'int main() {}'
 
-SYSTEM_LIBRARIES = Library.get_all_variations()
+SYSTEM_LIBRARIES = system_libs.Library.get_all_variations()
 SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 
 # This is needed to build the generated_struct_info.json file.
 # It is not a system library, but it needs to be built before running with FROZEN_CACHE.
 SYSTEM_TASKS += ['struct_info']
+
+# Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+MINIMAL_TASKS = [
+    'libcompiler_rt',
+    'libc',
+    'libc++abi',
+    'libc++abi-noexcept',
+    'libc++',
+    'libc++-noexcept',
+    'libal',
+    'libdlmalloc',
+    'libdlmalloc-debug',
+    'libemmalloc',
+    'libemmalloc-64bit',
+    'libpthread_stub',
+    'libc_rt_wasm',
+    'struct_info',
+    'libc-wasm',
+    'libstandalonewasm',
+    'crt1',
+]
 
 USER_TASKS = [
     'binaryen',
@@ -41,6 +66,7 @@ USER_TASKS = [
     'libpng',
     'ogg',
     'regal',
+    'regal-mt',
     'sdl2',
     'sdl2-mt',
     'sdl2-gfx',
@@ -59,34 +85,15 @@ logger = logging.getLogger('embuilder')
 force = False
 
 
-def print_help():
+def get_help():
   all_tasks = SYSTEM_TASKS + USER_TASKS
   all_tasks.sort()
-  print('''
-Emscripten System Builder Tool
-==============================
-
-You can use this tool to manually build parts of the emscripten system
-environment. In general emcc will build them automatically on demand, so
-you do not strictly need to use this tool, but it gives you more control
-over the process (in particular, if emcc does this automatically, and you
-are running multiple build commands in parallel, confusion can occur).
-
-Usage:
-
-  embuilder.py OPERATION TASK1 [TASK2..] [--pic] [--lto]
-
-Available operations and tasks:
+  return '''
+Available targets:
 
   build %s
 
 Issuing 'embuilder.py build ALL' causes each task to be built.
-
-Flags:
-
-  --force  Force rebuild of target (by removing it first)
-  --lto    Build bitcode files, for LTO with the LLVM wasm backend
-  --pic    Build as position independent code (used by MAIN_MODULE/SIDE_MODULE)
 
 It is also possible to build native_optimizer manually by using CMake. To
 do that, run
@@ -96,12 +103,12 @@ do that, run
    3. make (or mingw32-make/vcbuild/msbuild on Windows)
 
 and set up the location to the native optimizer in ~/.emscripten
-''' % '\n        '.join(all_tasks))
+''' % '\n        '.join(all_tasks)
 
 
 def build(src, result_libs, args=[]):
-  if not shared.Settings.WASM_OBJECT_FILES:
-    args += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.LTO:
+    args += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     args += ['-s', 'RELOCATABLE']
   # build in order to generate the libraries
@@ -124,57 +131,60 @@ def build(src, result_libs, args=[]):
       shared.exit_with_error('not seeing that requested library %s has been built because file %s does not exist' % (lib, shared.Cache.get_path(lib)))
 
 
-def build_port(port_name, lib_name, params):
-  build(C_BARE, [lib_name] if lib_name else [], params)
+def build_port(port_name, lib_name, params, extra_source=''):
+  build(extra_source + '\n' + C_BARE, [lib_name] if lib_name else [], params)
 
 
 def main():
   global force
+  parser = argparse.ArgumentParser(description=__doc__,
+                                   formatter_class=argparse.RawDescriptionHelpFormatter,
+                                   epilog=get_help())
+  parser.add_argument('--lto', action='store_true', help='build bitcode object for LTO')
+  parser.add_argument('--pic', action='store_true',
+                      help='build relocatable objects for suitable for dynamic linking')
+  parser.add_argument('--force', action='store_true',
+                      help='force rebuild of target (by removing it first)')
+  parser.add_argument('operation', help='currently only "build" is supported')
+  parser.add_argument('targets', nargs='+', help='see below')
+  args = parser.parse_args()
 
-  if len(sys.argv) < 2 or sys.argv[1] in ['-v', '-help', '--help', '-?', '?']:
-    print_help()
-    return 0
-
-  operation = sys.argv[1]
-  if operation != 'build':
-    shared.exit_with_error('unfamiliar operation: ' + operation)
+  if args.operation != 'build':
+    shared.exit_with_error('unfamiliar operation: ' + args.operation)
 
   # process flags
-
-  args = sys.argv[2:]
-
-  def is_flag(arg):
-    return arg.startswith('--')
 
   # Check sanity so that if settings file has changed, the cache is cleared here.
   # Otherwise, the cache will clear in an emcc process, which is invoked while building
   # a system library into the cache, causing trouble.
   shared.check_sanity()
 
-  for arg in args:
-    if is_flag(arg):
-      arg = arg[2:]
-      if arg == 'lto':
-        shared.Settings.WASM_OBJECT_FILES = 0
-      elif arg == 'pic':
-        shared.Settings.RELOCATABLE = 1
-      elif arg == 'force':
-        force = True
-      # Reconfigure the cache dir to reflect the change
-      shared.reconfigure_cache()
+  if args.lto:
+    shared.Settings.LTO = "full"
+    # Reconfigure the cache dir to reflect the change
+    shared.reconfigure_cache()
 
-  args = [a for a in args if not is_flag(a)]
+  if args.pic:
+    shared.Settings.RELOCATABLE = 1
+    # Reconfigure the cache dir to reflect the change
+    shared.reconfigure_cache()
+
+  if args.force:
+    force = True
 
   # process tasks
-  libname = shared.static_library_name
+  libname = system_libs.Ports.get_lib_name
 
   auto_tasks = False
-  tasks = args
+  tasks = args.targets
   if 'SYSTEM' in tasks:
     tasks = SYSTEM_TASKS
     auto_tasks = True
   elif 'USER' in tasks:
     tasks = USER_TASKS
+    auto_tasks = True
+  elif 'MINIMAL' in tasks:
+    tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
     tasks = SYSTEM_TASKS + USER_TASKS
@@ -210,7 +220,7 @@ def main():
     elif what == 'native_optimizer':
       build(C_BARE, ['optimizer.2.exe'], ['-O2', '-s', 'WASM=0'])
     elif what == 'icu':
-      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'])
+      build_port('icu', libname('libicuuc'), ['-s', 'USE_ICU=1'], '#include "unicode/ustring.h"')
     elif what == 'zlib':
       build_port('zlib', 'libz.a', ['-s', 'USE_ZLIB=1'])
     elif what == 'bzip2':
@@ -234,17 +244,19 @@ def main():
     elif what == 'sdl2-image':
       build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2'])
     elif what == 'sdl2-image-png':
-      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
+      build_port('sdl2-image', libname('libSDL2_image_png'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["png"]'])
     elif what == 'sdl2-image-jpg':
-      build_port('sdl2-image', libname('libSDL2_image'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
+      build_port('sdl2-image', libname('libSDL2_image_jpg'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_IMAGE=2', '-s', 'SDL2_IMAGE_FORMATS=["jpg"]'])
     elif what == 'sdl2-net':
       build_port('sdl2-net', libname('libSDL2_net'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_NET=2'])
     elif what == 'sdl2-mixer':
-      build_port('sdl2-mixer', 'libSDL2_mixer.a', ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
+      build_port('sdl2-mixer', libname('libSDL2_mixer'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_MIXER=2', '-s', 'USE_VORBIS=1'])
     elif what == 'freetype':
       build_port('freetype', 'libfreetype.a', ['-s', 'USE_FREETYPE=1'])
     elif what == 'harfbuzz':
       build_port('harfbuzz', 'libharfbuzz.a', ['-s', 'USE_HARFBUZZ=1'])
+    elif what == 'harfbuzz-mt':
+      build_port('harfbuzz-mt', 'libharfbuzz-mt.a', ['-s', 'USE_HARFBUZZ=1', '-s', 'USE_PTHREADS=1'])
     elif what == 'sdl2-ttf':
       build_port('sdl2-ttf', libname('libSDL2_ttf'), ['-s', 'USE_SDL=2', '-s', 'USE_SDL_TTF=2', '-s', 'USE_FREETYPE=1'])
     elif what == 'binaryen':
@@ -253,8 +265,24 @@ def main():
       build_port('cocos2d', libname('libcocos2d'), ['-s', 'USE_COCOS2D=3', '-s', 'USE_ZLIB=1', '-s', 'USE_LIBPNG=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
     elif what == 'regal':
       build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1'])
+    elif what == 'regal-mt':
+      build_port('regal', libname('libregal'), ['-s', 'USE_REGAL=1', '-s', 'USE_PTHREADS=1', '-pthread'])
     elif what == 'boost_headers':
       build_port('boost_headers', libname('libboost_headers'), ['-s', 'USE_BOOST_HEADERS=1'])
+    elif what == 'libsockets':
+      build('''
+        #include <sys/socket.h>
+        int main() {
+          return socket(0,0,0);
+        }
+      ''', [libname('libsockets')])
+    elif what == 'libsockets_proxy':
+      build('''
+        #include <sys/socket.h>
+        int main() {
+          return socket(0,0,0);
+        }
+      ''', [libname('libsockets_proxy')], ['-s', 'PROXY_POSIX_SOCKETS=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
     else:
       logger.error('unfamiliar build target: ' + what)
       return 1

@@ -1,0 +1,4 @@
+$_start
+$main
+$malloc
+$sbrk

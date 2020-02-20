@@ -17,23 +17,127 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Refactor syscall interface: Syscalls are no longer variadic (except those
+  that are inherantly such as open) and no longer take the syscall number as
+  arg0.  This should be invisible to most users but will effect any external
+  projects that try to implement/emulate the emscripten syscall interface.
+  See #10474
+- Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
+  specification has been obsoleted in favor of the upcoming WebXR specification.
+  (#10460)
+- Remove WASM_OBJECT_FILES settting.  There are many standard ways to enable
+  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+- Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
+  option that has become unsupported by WebGL. Access
+  EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 
-v1.39.3: 14/11/2019
+v1.39.8: 02/14/2020
+-------------------
+- Add LLD_REPORT_UNDEFINED option that should allow for more detailed
+  diagnostics when symbols are undefined at link time.  This currently has
+  some limitations and is not enabled by default. For example, EM_JS symbols
+  are reported as undefined at link time, as are `__invoke_*` functions.
+- wasm2js optimizations. See binaryen#2623.
+- WebGPU Compute fixes. Simple examples now work. See #10367.
+- Many DWARF debug info fixes. Emitting of DWARF is correct as far as we know,
+  including when optimizing (a few passes are disabled for now, but almost all
+  work). We still only generate it behind the `-gforce_dwarf` flag for now,
+  though (but that should be removed soon).
+
+v1.39.7: 02/03/2020
+-------------------
+- The checked-in copy of closure compiler was removed in favor of getting it
+  from npm.  This means that developers now need to run `npm install` after
+  checking out emscripten if they want to use closure (--closure).  emsdk users
+  are not effected because emsdk runs this as a post install step (#9989).
+- Added support for specifying JSDoc minification annotations for Closure in
+  JS library, pre and post files. See
+  https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler
+  (#10272)
+- Add new Fibers API for context switching, that supercedes the old coroutine
+  API that only ran on fastcomp. See #9859
+- Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
+  falls back to using a JavaScript version if WebAssembly is not supported in
+  target browser/shell. (#10118)
+- Added new linker option -s CLOSURE_WARNINGS=quiet|warn|error that allows aborting
+  the build if Closure compiler produced any warnings.
+
+v1.39.6: 01/15/2020
+-------------------
+- Development has switched from "incoming" branches to "master".
+- Added new system header <emscripten/heap.h>, which enables querying information
+  about the current WebAssembly heap state.
+- Reduced default geometric memory overgrowth rate from very generous 2x factor
+  to a more memory conserving +20% factor, and capped maximum reservation to 96MB
+  at most.
+- Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
+  to allow customizing the heap growth rates.
+- Renamed MEMORY_GROWTH_STEP option to MEMORY_GROWTH_LINEAR_STEP option.
+- Added new linker option -s HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0
+  (default enabled) to allow disabling support for deferred fullscreen mode and
+  pointer lock requests for applications that do not need deferring support.
+
+v1.39.5: 12/20/2019
+-------------------
+- Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
+- All ports now install their headers into a shared directory under
+  `EM_CACHE`.  This should not really be a user visible change although one
+  side effect is that once a give ports is built its headers are then
+  universally accessible, just like the library is universally available as
+  `-l<name>`.
+- Removed `timestamp` field from mouse, wheel, devicemotion and
+  deviceorientation events. The presence of a `timestamp` on these events was
+  slightly arbitrary, and populating this field caused a small profileable
+  overhead that all users might not care about. It is easy to get a timestamp of
+  an event by calling `emscripten_get_now()` or `emscripten_performance_now()`
+  inside the event handler function of any event.
+- Add fine-grained options for specific legacy browser support,
+  `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
+  `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`
+  option sets all of them to 0, that is, maximal backwards compatibility.
+  Note that going forwards we will use these settings in more places, so if
+  you do need very old legacy browser support, you may need to set either
+  `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
+- Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
+  With this change the old deprecated HTML5 API event target lookup behavior is
+  disabled. There is no "Module.canvas" object, no magic "null" default handling,
+  and DOM element 'target' parameters are taken to refer to CSS selectors, instead 
+  of referring to DOM IDs. For more information see:
+  <https://groups.google.com/forum/#!msg/emscripten-discuss/xScZ_LRIByk/_gEy67utDgAJ>
+- WASI API updated from `wasi_unstable` to `wasi_snapshot_preview1`. This
+  is mostly an implementation detail, but if you use `STANDALONE_WASM` it means
+  that the output of emscripten now requires a runtime with
+  `wasi_snapshot_preview1` support.
+- `SAFE_STACK` has been removed, as it overlaps with `STACK_OVERFLOW_CHECK`.
+   Replace `SAFE_STACK=1` with `STACK_OVERFLOW_CHECK=2` (note the value is 2).
+   This also has the effect of enabling stack checking on upstream builds when
+   `ASSERTIONS` are enabled (as assertions enable `STACK_OVERFLOW_CHECK=2`).
+
+v1.39.4: 12/03/2019
+-------------------
+- Remove deprecated `requestFullScreen` method from `library_browser.js`, please
+  use `requestFullscreen` (without the capital S).
+- Remove deprecated `requestFullScreen` and `cancelFullScreen` from `library_glut.js`
+- Remove deprecated `requestFullScreen` and `cancelFullScreen`from `library_glfw.js`
+- Fix SDL2_mixer support for ogg vorbis. See #9849
+- Various source maps fixes, see #9926 #9882 #9837 #9814
+
+v1.39.3: 11/14/2019
 ------------------
 
-v1.39.2: 6/11/2019
+v1.39.2: 11/06/2019
 ------------------
  - Archives with missing indexes will now have ranlib run on them automatically
-   at link time.  This avoid linker errors when using GNU ar to build archive
+   at link time.  This avoids linker errors when using GNU ar to build archive
    files.
  - `ERROR_ON_MISSING_LIBRARIES` now also applies to internal symbols that start
    with `emscripten_`.  Prior to this change such missing symbols would result
-   in a runtime error, not they are reported at compile time.
+   in a runtime error, now they are reported at compile time.
  - Pthread blocking on the main thread will now warn in the console. If
    `ALLOW_BLOCKING_ON_MAIN_THREAD` is unset then the warning is an error.
  - Add `pthread_tryjoin_np`, which is a POSIX API similar to `pthread_join`
    but without blocking.
- - New function emscripten_has_asyncify()
+ - New function `emscripten_has_asyncify()`.
  - Add support for pthreads in Node.js, using Node Workers. See #9745
 
 v1.39.1: 10/30/2019
@@ -87,11 +191,11 @@ v1.38.46: 09/25/2019
 --------------------
  - Rename libpthreads to libpthread to match its normal name on other platforms.
    This change should be completely internal to emscripten.
- - Remove redundnant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
+ - Remove redundant `COMPILER_ENGINE` and `JS_ENGINE` options.  We only support
    node as the compiler engine so just use a single `NODE_JS` option for that.
  - Module.abort is no longer exported by default. It can be exported in the normal
    way using `EXTRA_EXPORTED_RUNTIME_METHODS`, and as with other such changes in
-   the past, forgetting to export it with show a clear error in `ASSERTIONS` mode.
+   the past, forgetting to export it will show a clear error in `ASSERTIONS` mode.
  - Remove `EMITTING_JS` flag, and replace it with `STANDALONE_WASM`. That flag indicates
    that we want the wasm to be as standalone as possible. We may still emit JS in
    that case, but the JS would just be a convenient way to run the wasm on the Web
@@ -222,7 +326,7 @@ v1.38.33: 05/23/2019
 
 v1.38.32: SKIPPED
 -----------------
- - The transition from the old to the new CI occured around here. To avoid
+ - The transition from the old to the new CI occurred around here. To avoid
    ambiguity while both CIs were still generating builds, we just tagged a new
    one (1.38.33) on the new CI and skipped 1.38.32.
  - The transition also moves all builds and downloads away from the old
@@ -581,11 +685,6 @@ v1.37.17: 7/25/2017
  - Updated to libc++'s "v2" ABI, which provides better alignment for string data
    and other improvements. This is an ABI-incompatible change, so bitcode files
    from previous versions will not be compatible.
- - To see a list of commits in the active development branch 'incoming', which
-   have not yet been packaged in a release, see
-    - Emscripten: https://github.com/emscripten-core/emscripten/compare/1.37.13...incoming
-    - Emscripten-LLVM: https://github.com/emscripten-core/emscripten-fastcomp/compare/1.37.13...incoming
-    - Emscripten-Clang: https://github.com/emscripten-core/emscripten-fastcomp-clang/compare/1.37.13...incoming
 
 v1.37.13: 5/26/2017
 -------------------

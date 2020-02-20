@@ -67,7 +67,8 @@ var LibraryManager = {
       'library_syscall.js',
       'library_html5.js',
       'library_stack_trace.js',
-      'library_wasi.js'
+      'library_wasi.js',
+      'library_int53.js'
     ];
 
     if (!DISABLE_EXCEPTION_THROWING) {
@@ -76,8 +77,18 @@ var LibraryManager = {
       libraries.push('library_exceptions_stub.js');
     }
 
-    if (!MINIMAL_RUNTIME) {
+    if (MINIMAL_RUNTIME) {
+      // Classic runtime brings in string-related functions in the runtime preamble, by including
+      // runtime_strings_extra.js that contain the same contents as library_strings.js does. In
+      // MINIMAL_RUNTIME those string functions are available as JS library functions instead from
+      // library_strings.js, to avoid unconditionally bringing in extra code to the build.
+      libraries.push('library_strings.js');
+    } else {
       libraries.push('library_browser.js');
+    }
+
+    if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
+      libraries.push('library_webgl.js');
     }
 
     if (FILESYSTEM) {
@@ -104,7 +115,6 @@ var LibraryManager = {
       libraries = libraries.concat([
         'library_webgl.js',
         'library_openal.js',
-        'library_vr.js',
         'library_sdl.js',
         'library_glut.js',
         'library_xlib.js',
@@ -134,7 +144,7 @@ var LibraryManager = {
       libraries.push('library_lz4.js');
     }
 
-    if (USE_WEBGL2) {
+    if (MAX_WEBGL_VERSION >= 2) {
       libraries.push('library_webgl2.js');
     }
 
@@ -142,9 +152,16 @@ var LibraryManager = {
       libraries.push('library_glemu.js');
     }
 
+    if (USE_WEBGPU) {
+      libraries.push('library_webgpu.js');
+    }
+
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
 
-    // TODO: deduplicate libraries (not needed for correctness, but avoids unnecessary work)
+    // Deduplicate libraries to avoid processing any library file multiple times
+    libraries = libraries.filter(function(item, pos) {
+      return libraries.indexOf(item) == pos;
+    });
 
     // Save the list for has() queries later.
     this.libraries = libraries;
@@ -209,6 +226,12 @@ var LibraryManager = {
             var args = genArgSequence(argCount).join(',');
             lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
           } else {
+            // The alias we generate uses `arguments` to forward the call. If there is no explicit documentation for the alias, mark
+            // it variadic for Closure type checking to know.
+            var docs = lib[x + '__docs'];
+            if (!docs || (docs.indexOf('@type') == -1 && docs.indexOf('@param') == -1)) {
+              lib[x + '__docs'] = (docs || '') + '/** @type {function(...*):?} */';
+            }
             lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           }
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
@@ -366,20 +389,11 @@ function exportRuntime() {
     'getValue',
     'allocate',
     'getMemory',
-    'AsciiToString',
-    'stringToAscii',
     'UTF8ArrayToString',
     'UTF8ToString',
     'stringToUTF8Array',
     'stringToUTF8',
     'lengthBytesUTF8',
-    'UTF16ToString',
-    'stringToUTF16',
-    'lengthBytesUTF16',
-    'UTF32ToString',
-    'stringToUTF32',
-    'lengthBytesUTF32',
-    'allocateUTF8',
     'stackTrace',
     'addOnPreRun',
     'addOnInit',
@@ -391,8 +405,6 @@ function exportRuntime() {
     'writeAsciiToMemory',
     'addRunDependency',
     'removeRunDependency',
-    'ENV',
-    'FS',
     'FS_createFolder',
     'FS_createPath',
     'FS_createDataFile',
@@ -401,7 +413,6 @@ function exportRuntime() {
     'FS_createLink',
     'FS_createDevice',
     'FS_unlink',
-    'GL',
     'dynamicAlloc',
     'loadDynamicLibrary',
     'loadWebAssemblyModule',
@@ -416,10 +427,6 @@ function exportRuntime() {
     'makeBigInt',
     'dynCall',
     'getCompilerSetting',
-    'stackSave',
-    'stackRestore',
-    'stackAlloc',
-    'establishStackSpace',
     'print',
     'printErr',
     'getTempRet0',
@@ -428,23 +435,56 @@ function exportRuntime() {
     'abort',
   ];
 
+  // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
+  // '$ which indicates they are JS methods.
+  for (var ident in LibraryManager.library) {
+    if (ident[0] === '$') {
+      runtimeElements.push(ident.substr(1));
+    }
+  }
+
   if (!MINIMAL_RUNTIME) {
-    runtimeElements.push('Pointer_stringify');
-    runtimeElements.push('warnOnce');
+    // MINIMAL_RUNTIME has moved these functions to library_strings.js
+    runtimeElements = runtimeElements.concat([
+      'warnOnce',
+      'stackSave',
+      'stackRestore',
+      'stackAlloc',
+      'AsciiToString',
+      'stringToAscii',
+      'UTF16ToString',
+      'stringToUTF16',
+      'lengthBytesUTF16',
+      'UTF32ToString',
+      'stringToUTF32',
+      'lengthBytesUTF32',
+      'allocateUTF8',
+      'allocateUTF8OnStack'
+    ]);
+
   }
 
   if (STACK_OVERFLOW_CHECK) {
     runtimeElements.push('writeStackCookie');
     runtimeElements.push('checkStackCookie');
-    runtimeElements.push('abortStackOverflow');
+    if (!MINIMAL_RUNTIME) {
+      runtimeElements.push('abortStackOverflow');
+    }
   }
 
   if (USE_PTHREADS) {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    ['PThread', 'ExitStatus', 'tempDoublePtr', 'wasmMemory', '_pthread_self',
-     'ExitStatus', 'tempDoublePtr'].forEach(function(x) {
+    var threadExports = ['PThread', '_pthread_self'];
+    if (WASM) {
+      threadExports.push('wasmMemory');
+    }
+    if (!MINIMAL_RUNTIME) {
+      threadExports.push('ExitStatus');
+    }
+
+    threadExports.forEach(function(x) {
       EXPORTED_RUNTIME_METHODS_SET[x] = 1;
       runtimeElements.push(x);
     });

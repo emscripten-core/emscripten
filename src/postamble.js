@@ -215,7 +215,7 @@ function callMain(args) {
     var start = Date.now();
 #endif
 
-#if SAFE_STACK
+#if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2
     Module['___set_stack_limit'](STACK_MAX);
 #endif
 
@@ -238,6 +238,9 @@ function callMain(args) {
     Module.realPrint('main() took ' + (Date.now() - start) + ' milliseconds');
 #endif
 
+    // In PROXY_TO_PTHREAD builds, we should never exit the runtime below, as execution is asynchronously handed
+    // off to a pthread.
+#if !PROXY_TO_PTHREAD
 #if EMTERPRETIFY_ASYNC || (WASM_BACKEND && ASYNCIFY)
     // if we are saving the stack, then do not call exit, we are not
     // really exiting now, just unwinding the JS stack
@@ -254,7 +257,7 @@ function callMain(args) {
       // exit() throws this once it's done to make sure execution
       // has been stopped completely
       return;
-    } else if (e == 'SimulateInfiniteLoop') {
+    } else if (e == 'unwind') {
       // running an evented main loop, don't immediately exit
       noExitRuntime = true;
 #if EMTERPRETIFY_ASYNC
@@ -270,6 +273,7 @@ function callMain(args) {
       err('exception thrown: ' + toLog);
       quit_(1, e);
     }
+#endif // !PROXY_TO_PTHREAD
   } finally {
     calledMain = true;
   }

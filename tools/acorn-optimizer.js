@@ -23,6 +23,13 @@ function assert(condition, text) {
   if (!condition) throw text + ' : ' + new Error().stack;
 }
 
+function warnOnce(msg) {
+  if (!warnOnce.msgs) warnOnce.msgs = {};
+  if (msg in warnOnce.msgs) return;
+  warnOnce.msgs[msg] = true;
+  printErr('warning: ' + msg);
+}
+
 function set(args) {
   var ret = {};
   for (var i = 0; i < args.length; i++) {
@@ -445,6 +452,12 @@ function applyImportAndExportNameChanges(ast) {
           setLiteralValue(value.property, mapping[name]);
         }
       }
+    } else if (node.type === 'CallExpression' && isAsmUse(node.callee)) { // asm["___wasm_call_ctors"](); -> asm["M"]();
+      var callee = node.callee;
+      var name = callee.property.value;
+      if (mapping[name]) {
+        setLiteralValue(callee.property, mapping[name]);
+      }
     } else if (isModuleAsmUse(node)) {
       var prop = node.property;
       var name = prop.value;
@@ -648,7 +661,7 @@ function emitDCEGraph(ast) {
       import: ['env', import_],
       reaches: {}
     };
-    if (nameToGraphName.hasOwnProperty(import_)) {
+    if (Object.prototype.hasOwnProperty.call(nameToGraphName, import_)) {
       info.reaches[nameToGraphName[import_]] = 1;
     } // otherwise, it's a number, ignore
   });
@@ -668,12 +681,12 @@ function emitDCEGraph(ast) {
     var reached;
     if (node.type === 'Identifier') {
       var name = node.name;
-      if (nameToGraphName.hasOwnProperty(name)) {
+      if (Object.prototype.hasOwnProperty.call(nameToGraphName, name)) {
         reached = nameToGraphName[name];
       }
     } else if (isModuleUse(node)) {
       var name = getAsmOrModuleUseName(node);
-      if (modulePropertyToGraphName.hasOwnProperty(name)) {
+      if (Object.prototype.hasOwnProperty.call(modulePropertyToGraphName, name)) {
         reached = modulePropertyToGraphName[name];
       }
     } else if (isStaticDynCall(node)) {
@@ -684,7 +697,7 @@ function emitDCEGraph(ast) {
     } else if (isAsmUse(node)) {
       // any remaining asm uses are always rooted in any case
       var name = getAsmOrModuleUseName(node);
-      if (exportNameToGraphName.hasOwnProperty(name)) {
+      if (Object.prototype.hasOwnProperty.call(exportNameToGraphName, name)) {
         infos[exportNameToGraphName[name]].root = true;
       }
       return;
@@ -694,7 +707,15 @@ function emitDCEGraph(ast) {
         if (defunInfo) {
           defunInfo.reaches[reached] = 1; // defun reaches it
         } else {
-          infos[reached].root = true; // in global scope, root it
+          if (infos[reached]) {
+            infos[reached].root = true; // in global scope, root it
+          } else {
+            // An info might not exist for the identifer if it is missing, for
+            // example, we might call Module.dynCall_vi in library code, but it
+            // won't exist in a standalone (non-JS) build anyhow. We can ignore
+            // it in that case as the JS won't be used, but warn to be safe.
+            warnOnce('metadce: missing declaration for ' + reached);
+          }
         }
       }
       if (typeof reached === 'string') {
@@ -764,9 +785,168 @@ function applyDCEGraphRemovals(ast) {
   });
 }
 
+// Need a parser to pass to acorn.Node constructor.
+// Create it once and reuse it.
+var stubParser = new acorn.Parser();
+
+function createNode(props) {
+  var node = new acorn.Node(stubParser);
+  Object.assign(node, props);
+  return node;
+}
+
+function makeCallExpression(node, name, args) {
+  Object.assign(node, {
+    type: 'CallExpression',
+    callee: createNode({
+      type: 'Identifier',
+      name: name,
+    }),
+    arguments: args
+  });
+}
+
+// Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
+// pthreads + memory growth to work (we check if the memory was grown on another thread
+// in each access), see #8365.
+function growableHeap(ast) {
+  recursiveWalk(ast, {
+    AssignmentExpression: function(node) {
+      if (node.left.type === 'Identifier' &&
+          node.left.name.startsWith('HEAP')
+      ) {
+        // Don't transform initial setup of the arrays.
+        switch (node.left.name) {
+          case 'HEAP8':  case 'HEAPU8':
+          case 'HEAP16': case 'HEAPU16':
+          case 'HEAP32': case 'HEAPU32':
+          case 'HEAPF32': case 'HEAPF64': {
+            return;
+          }
+          default: {
+          }
+        }
+      }
+      growableHeap(node.left);
+      growableHeap(node.right);
+    },
+    VariableDeclaration: function(node) {
+      // Don't transform the var declarations for HEAP8 etc
+      node.declarations.forEach(function(decl) {
+        // but do transform anything that sets a var to
+        // something from HEAP8 etc
+        if (decl.init) {
+          growableHeap(decl.init);
+        }
+      });
+    },
+    Identifier: function(node) {
+      if (node.name.startsWith('HEAP')) {
+        // Turn HEAP8 into GROWABLE_HEAP_I8() etc
+        switch (node.name) {
+          case 'HEAP8': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I8', []);
+            break;
+          }
+          case 'HEAPU8': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U8', []);
+            break;
+          }
+          case 'HEAP16': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I16', []);
+            break;
+          }
+          case 'HEAPU16': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U16', []);
+            break;
+          }
+          case 'HEAP32': {
+            makeCallExpression(node, 'GROWABLE_HEAP_I32', []);
+            break;
+          }
+          case 'HEAPU32': {
+            makeCallExpression(node, 'GROWABLE_HEAP_U32', []);
+            break;
+          }
+          case 'HEAPF32': {
+            makeCallExpression(node, 'GROWABLE_HEAP_F32', []);
+            break;
+          }
+          case 'HEAPF64': {
+            makeCallExpression(node, 'GROWABLE_HEAP_F64', []);
+            break;
+          }
+          default: {}
+        }
+      }
+    }
+  });
+}
+
+function reattachComments(ast, comments) {
+  var symbols = [];
+
+  // Collect all code symbols
+  ast.walk(new terser.TreeWalker(function(node) {
+    if (node.start && node.start.pos) {
+      symbols.push(node);
+    }
+  }));
+
+  // Sort them by ascending line number
+  symbols.sort((a,b) => {
+    return a.start.pos - b.start.pos;
+  })
+
+  // Walk through all comments in ascending line number, and match each
+  // comment to the appropriate code block.
+  for(var i = 0, j = 0; i < comments.length; ++i) {
+    while(j < symbols.length && symbols[j].start.pos < comments[i].end)
+      ++j;
+    if (j >= symbols.length)
+      break;
+    if (symbols[j].start.pos - comments[i].end > 20) {
+      // This comment is too far away to refer to the given symbol. Drop
+      // the comment altogether.
+      continue;
+    }
+    if (!Array.isArray(symbols[j].start.comments_before)) {
+      symbols[j].start.comments_before = [];
+    }
+    symbols[j].start.comments_before.push(new terser.AST_Token({
+        end: undefined,
+        quote: undefined,
+        raw: undefined,
+        file: '0',
+        comments_after: undefined,
+        comments_before: undefined,
+        nlb: false,
+        endpos: undefined,
+        endcol: undefined,
+        endline: undefined,
+        pos: undefined,
+        col: undefined,
+        line: undefined,
+        value: comments[i].value,
+        type: comments[i].type == 'Line' ? 'comment' : 'comment2',
+        flags: 0
+      }));
+  }
+}
+
 // Main
 
 var arguments = process['argv'].slice(2);;
+// If enabled, output retains parentheses and comments so that the
+// output can further be passed out to Closure.
+var closureFriendly = arguments.indexOf('--closureFriendly');
+if (closureFriendly > -1) {
+  arguments.splice(closureFriendly, 1);
+  closureFriendly = true;
+} else {
+  closureFriendly = false;
+}
+
 var infile = arguments[0];
 var passes = arguments.slice(1);
 
@@ -776,7 +956,10 @@ var extraInfo = null;
 if (extraInfoStart > 0) {
   extraInfo = JSON.parse(input.substr(extraInfoStart + 14));
 }
-var ast = acorn.parse(input, { ecmaVersion: 6 });
+// Collect all JS code comments to this array so that we can retain them in the outputted code
+// if --closureFriendly was requested.
+var sourceComments = [];
+var ast = acorn.parse(input, { ecmaVersion: 6, preserveParens: closureFriendly, onComment: closureFriendly ? sourceComments : undefined });
 
 var minifyWhitespace = false;
 var noPrint = false;
@@ -790,6 +973,7 @@ var registry = {
   minifyWhitespace: function() { minifyWhitespace = true },
   noPrint: function() { noPrint = true },
   dump: function() { dump(ast) },
+  growableHeap: growableHeap,
 };
 
 passes.forEach(function(pass) {
@@ -798,10 +982,16 @@ passes.forEach(function(pass) {
 
 if (!noPrint) {
   var terserAst = terser.AST_Node.from_mozilla_ast(ast);
+
+  if (closureFriendly) {
+    reattachComments(terserAst, sourceComments);
+  }
+
   var output = terserAst.print_to_string({
     beautify: !minifyWhitespace,
     indent_level: minifyWhitespace ? 0 : 1,
     keep_quoted_props: true, // for closure
+    comments: true // for closure as well
   });
   print(output);
 }

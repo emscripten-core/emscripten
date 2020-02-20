@@ -137,7 +137,7 @@ mergeInto(LibraryManager.library, {
       }
       if (!node.contents || node.contents.subarray) { // Resize a typed array if that is being used as the backing store.
         var oldContents = node.contents;
-        node.contents = new Uint8Array(new ArrayBuffer(newSize)); // Allocate new storage.
+        node.contents = new Uint8Array(newSize); // Allocate new storage.
         if (oldContents) {
           node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes))); // Copy old data over to the new storage.
         }
@@ -308,7 +308,7 @@ mergeInto(LibraryManager.library, {
             node.usedBytes = length;
             return length;
           } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
-            node.contents = new Uint8Array(buffer.subarray(offset, offset + length));
+            node.contents = buffer.slice(offset, offset + length);
             node.usedBytes = length;
             return length;
           } else if (position + length <= node.usedBytes) { // Writing to an already allocated and used subrange of the file?

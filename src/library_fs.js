@@ -27,6 +27,10 @@ mergeInto(LibraryManager.library, {
     addAtMain('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
     return 'FS.staticInit();' +
+#if USE_CLOSURE_COMPILER
+           // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.init()
+           '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
+#endif
            // Get module methods from settings
            '{{{ EXPORTED_RUNTIME_METHODS.filter(function(func) { return func.substr(0, 3) === 'FS_' }).map(function(func){return 'Module["' + func + '"] = FS.' + func.substr(3) + ";"}).reduce(function(str, func){return str + func;}, '') }}}';
   },
@@ -179,9 +183,9 @@ mergeInto(LibraryManager.library, {
       }
     },
     lookupNode: function(parent, name) {
-      var err = FS.mayLookup(parent);
-      if (err) {
-        throw new FS.ErrnoError(err, parent);
+      var errCode = FS.mayLookup(parent);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode, parent);
       }
       var hash = FS.hashName(parent.id, name);
 #if CASE_INSENSITIVE_FS
@@ -330,8 +334,8 @@ mergeInto(LibraryManager.library, {
       return 0;
     },
     mayLookup: function(dir) {
-      var err = FS.nodePermissions(dir, 'x');
-      if (err) return err;
+      var errCode = FS.nodePermissions(dir, 'x');
+      if (errCode) return errCode;
       if (!dir.node_ops.lookup) return {{{ cDefine('EACCES') }}};
       return 0;
     },
@@ -350,9 +354,9 @@ mergeInto(LibraryManager.library, {
       } catch (e) {
         return e.errno;
       }
-      var err = FS.nodePermissions(dir, 'wx');
-      if (err) {
-        return err;
+      var errCode = FS.nodePermissions(dir, 'wx');
+      if (errCode) {
+        return errCode;
       }
       if (isdir) {
         if (!FS.isDir(node.mode)) {
@@ -504,25 +508,25 @@ mergeInto(LibraryManager.library, {
       FS.syncFSRequests++;
 
       if (FS.syncFSRequests > 1) {
-        console.log('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
+        err('warning: ' + FS.syncFSRequests + ' FS.syncfs operations in flight at once, probably just doing extra work');
       }
 
       var mounts = FS.getMounts(FS.root.mount);
       var completed = 0;
 
-      function doCallback(err) {
+      function doCallback(errCode) {
 #if ASSERTIONS
         assert(FS.syncFSRequests > 0);
 #endif
         FS.syncFSRequests--;
-        return callback(err);
+        return callback(errCode);
       }
 
-      function done(err) {
-        if (err) {
+      function done(errCode) {
+        if (errCode) {
           if (!done.errored) {
             done.errored = true;
-            return doCallback(err);
+            return doCallback(errCode);
           }
           return;
         }
@@ -641,9 +645,9 @@ mergeInto(LibraryManager.library, {
       if (!name || name === '.' || name === '..') {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var err = FS.mayCreate(parent, name);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayCreate(parent, name);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.mknod) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
@@ -695,9 +699,9 @@ mergeInto(LibraryManager.library, {
         throw new FS.ErrnoError({{{ cDefine('ENOENT') }}});
       }
       var newname = PATH.basename(newpath);
-      var err = FS.mayCreate(parent, newname);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayCreate(parent, newname);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.symlink) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
@@ -749,17 +753,17 @@ mergeInto(LibraryManager.library, {
       }
       // we'll need to delete the old entry
       var isdir = FS.isDir(old_node.mode);
-      var err = FS.mayDelete(old_dir, old_name, isdir);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayDelete(old_dir, old_name, isdir);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       // need delete permissions if we'll be overwriting.
       // need create permissions if new doesn't already exist.
-      err = new_node ?
+      errCode = new_node ?
         FS.mayDelete(new_dir, new_name, isdir) :
         FS.mayCreate(new_dir, new_name);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!old_dir.node_ops.rename) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
@@ -769,9 +773,9 @@ mergeInto(LibraryManager.library, {
       }
       // if we are going to change the parent, check write permissions
       if (new_dir !== old_dir) {
-        err = FS.nodePermissions(old_dir, 'w');
-        if (err) {
-          throw new FS.ErrnoError(err);
+        errCode = FS.nodePermissions(old_dir, 'w');
+        if (errCode) {
+          throw new FS.ErrnoError(errCode);
         }
       }
       try {
@@ -779,7 +783,7 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willMovePath'](old_path, new_path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
@@ -796,7 +800,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (FS.trackingDelegate['onMovePath']) FS.trackingDelegate['onMovePath'](old_path, new_path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onMovePath']('"+old_path+"', '"+new_path+"') threw an exception: " + e.message);
       }
     },
     rmdir: function(path) {
@@ -804,9 +808,9 @@ mergeInto(LibraryManager.library, {
       var parent = lookup.node;
       var name = PATH.basename(path);
       var node = FS.lookupNode(parent, name);
-      var err = FS.mayDelete(parent, name, true);
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.mayDelete(parent, name, true);
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.rmdir) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
@@ -819,14 +823,14 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willDeletePath'](path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
       try {
         if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readdir: function(path) {
@@ -842,12 +846,12 @@ mergeInto(LibraryManager.library, {
       var parent = lookup.node;
       var name = PATH.basename(path);
       var node = FS.lookupNode(parent, name);
-      var err = FS.mayDelete(parent, name, false);
-      if (err) {
+      var errCode = FS.mayDelete(parent, name, false);
+      if (errCode) {
         // According to POSIX, we should map EISDIR to EPERM, but
         // we instead do what Linux does (and we must, as we use
         // the musl linux libc).
-        throw new FS.ErrnoError(err);
+        throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.unlink) {
         throw new FS.ErrnoError({{{ cDefine('EPERM') }}});
@@ -860,14 +864,14 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['willDeletePath'](path);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['willDeletePath']('"+path+"') threw an exception: " + e.message);
       }
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
       try {
         if (FS.trackingDelegate['onDeletePath']) FS.trackingDelegate['onDeletePath'](path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onDeletePath']('"+path+"') threw an exception: " + e.message);
       }
     },
     readlink: function(path) {
@@ -967,9 +971,9 @@ mergeInto(LibraryManager.library, {
       if (!FS.isFile(node.mode)) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      var err = FS.nodePermissions(node, 'w');
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.nodePermissions(node, 'w');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       node.node_ops.setattr(node, {
         size: len,
@@ -1047,9 +1051,9 @@ mergeInto(LibraryManager.library, {
       // create and write to a file with read-only permissions; it is read-only
       // for later use)
       if (!created) {
-        var err = FS.mayOpen(node, flags);
-        if (err) {
-          throw new FS.ErrnoError(err);
+        var errCode = FS.mayOpen(node, flags);
+        if (errCode) {
+          throw new FS.ErrnoError(errCode);
         }
       }
       // do truncation if necessary
@@ -1079,7 +1083,7 @@ mergeInto(LibraryManager.library, {
         if (!FS.readFiles) FS.readFiles = {};
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-          console.log("FS.trackingDelegate error on read file: " + path);
+          err("FS.trackingDelegate error on read file: " + path);
         }
       }
       try {
@@ -1094,7 +1098,7 @@ mergeInto(LibraryManager.library, {
           FS.trackingDelegate['onOpenFile'](path, trackingFlags);
         }
       } catch(e) {
-        console.log("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
+        err("FS.trackingDelegate['onOpenFile']('"+path+"', flags) threw an exception: " + e.message);
       }
       return stream;
     },
@@ -1188,7 +1192,7 @@ mergeInto(LibraryManager.library, {
       try {
         if (stream.path && FS.trackingDelegate['onWriteToFile']) FS.trackingDelegate['onWriteToFile'](stream.path);
       } catch(e) {
-        console.log("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
+        err("FS.trackingDelegate['onWriteToFile']('"+stream.path+"') threw an exception: " + e.message);
       }
       return bytesWritten;
     },
@@ -1296,9 +1300,9 @@ mergeInto(LibraryManager.library, {
       if (!FS.isDir(lookup.node.mode)) {
         throw new FS.ErrnoError({{{ cDefine('ENOTDIR') }}});
       }
-      var err = FS.nodePermissions(lookup.node, 'x');
-      if (err) {
-        throw new FS.ErrnoError(err);
+      var errCode = FS.nodePermissions(lookup.node, 'x');
+      if (errCode) {
+        throw new FS.ErrnoError(errCode);
       }
       FS.currentPath = lookup.path;
     },
@@ -1776,7 +1780,7 @@ mergeInto(LibraryManager.library, {
           chunkSize = datalength = 1; // this will force getter(0)/doXHR do download the whole file
           datalength = this.getter(0).length;
           chunkSize = datalength;
-          console.log("LazyFiles on gzip forces download of the whole file when length is accessed");
+          out("LazyFiles on gzip forces download of the whole file when length is accessed");
         }
 
         this._length = datalength;
@@ -1938,7 +1942,7 @@ mergeInto(LibraryManager.library, {
         return onerror(e);
       }
       openRequest.onupgradeneeded = function openRequest_onupgradeneeded() {
-        console.log('creating db');
+        out('creating db');
         var db = openRequest.result;
         db.createObjectStore(FS.DB_STORE_NAME);
       };

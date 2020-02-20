@@ -1,21 +1,18 @@
-These files are from compiler-rt,
+These files are from llvm-project/compiler-rt, release 9.0.0.
 
-Last Changed Rev: 266813
-Last Changed Date: Tue Apr 19 13:29:59 2016
+tag: llvmorg-9.0.0
+git: 0399d5a9682b3cef71c653373e38890c63c4c365
 
-===========================================================================
+Not all files are included. The list of included files from lib/builtins/ is in
+filelist.txt.
 
- No changes from upstream (but not all files are included).
+Update Instructions
+-------------------
 
-===========================================================================
+Run `system/lib/update_compiler_rt.py path/to/llvm-root`
 
-Compile with something like
+Local Change
+------------
 
-./emcc system/lib/compiler-rt/lib/builtins/*.c -Isystem/lib/compiler-rt/lib/builtins -o rt.bc
-./emcc -O2 -s ASM_JS=1 -g rt.bc -s LINKABLE=1
-manually replace Math_imul with Math.imul
-
-Later additions:
-
- * clzti2.c and floattitf.c are from LLVM a7d186c796455fd5fc400c4b06e4b70554b77353
-   Sep 23 2019
+lib/builtins/int_lib.h: __asmjs__ added to list of supported platforms.
+lib/builtins/powitf2.c: enable for wasm as well as PPC

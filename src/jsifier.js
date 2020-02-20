@@ -138,7 +138,7 @@ function JSify(data, functionsOnly) {
       if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
-      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset')) {
+      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs')) {
         return '';
       }
 
@@ -162,16 +162,24 @@ function JSify(data, functionsOnly) {
         return;
       } else if ((!LibraryManager.library.hasOwnProperty(ident) && !LibraryManager.library.hasOwnProperty(ident + '__inline')) || SIDE_MODULE) {
         if (!(finalName in IMPLEMENTED_FUNCTIONS) && !LINKABLE) {
+          var msg = 'undefined symbol: ' + ident;
           if (ERROR_ON_UNDEFINED_SYMBOLS) {
-            error('undefined symbol: ' + ident);
+            error(msg);
+            if (WASM_BACKEND) {
+              warnOnce('Link with `-s LLD_REPORT_UNDEFINED` to get more information on undefined symbols');
+            }
             warnOnce('To disable errors for undefined symbols use `-s ERROR_ON_UNDEFINED_SYMBOLS=0`')
           } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
-            warn('undefined symbol: ' + ident);
+            warn(msg);
           }
         }
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
           LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
+          // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
+          // regarding this function, marking ot a variadic function that can take in anything and return anything.
+          // (not useful to warn/error multiple times)
+          LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
           var isGlobalAccessor = ident.startsWith('g$');
           var realIdent = ident;
@@ -229,6 +237,10 @@ function JSify(data, functionsOnly) {
           if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
             Functions.libraryFunctions[finalName] = 1;
           }
+        } else if (snippet.indexOf('function(') != -1) {
+          // Assume this is an inline defined function (like emscripten_memcpy_big), and it possibly
+          // needs to be imported to asm.js/wasm scope.
+          Functions.libraryFunctions[finalName] = 1;
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
@@ -326,7 +338,13 @@ function JSify(data, functionsOnly) {
           }
         });
       }
-      return depsText + contentText;
+
+      var commentText = '';
+      if (LibraryManager.library[ident + '__docs']) {
+        commentText = LibraryManager.library[ident + '__docs'] + '\n';
+      }
+
+      return depsText + commentText + contentText;
     }
 
     itemsDict.functionStub.push(item);
@@ -423,12 +441,14 @@ function JSify(data, functionsOnly) {
 
       if (!SIDE_MODULE && !WASM_BACKEND) {
         if (USE_PTHREADS) {
-          print('var tempDoublePtr;');
-          print('if (!ENVIRONMENT_IS_PTHREAD) tempDoublePtr = ' + makeStaticAlloc(12) + ';');
+          print('// Pthreads fill their tempDoublePtr memory area into the pthread stack when the thread is run.')
+          // Main thread still statically allocate tempDoublePtr - although it could theorerically also use its stack
+          // (that might allow removing the whole tempDoublePtr variable altogether from the codebase? but would need
+          // more refactoring)
+          print('var tempDoublePtr = ENVIRONMENT_IS_PTHREAD ? 0 : ' + makeStaticAlloc(8) + ';');
         } else {
-          print('var tempDoublePtr = ' + makeStaticAlloc(8) + '');
+          print('var tempDoublePtr = ' + makeStaticAlloc(8) + ';');
         }
-        if (ASSERTIONS) print('assert(tempDoublePtr % 8 == 0);');
         print('\nfunction copyTempFloat(ptr) { // functions, because inlining this code increases code size too much');
         print('  HEAP8[tempDoublePtr] = HEAP8[ptr];');
         print('  HEAP8[tempDoublePtr+1] = HEAP8[ptr+1];');
@@ -492,7 +512,7 @@ function JSify(data, functionsOnly) {
       print(preprocess(read('arrayUtils.js')));
     }
 
-    if (SUPPORT_BASE64_EMBEDDING) {
+    if (SUPPORT_BASE64_EMBEDDING && !MINIMAL_RUNTIME) {
       print(preprocess(read('base64Utils.js')));
     }
 

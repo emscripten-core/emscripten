@@ -11,7 +11,7 @@ var WasiLibrary = {
     return _exit(code);
   },
 
-  emscripten_get_environ__deps: ['$ENV'],
+  emscripten_get_environ__deps: ['$ENV', '_getExecutableName'],
   emscripten_get_environ: function() {
     if (!_emscripten_get_environ.strings) {
       // Default values.
@@ -23,7 +23,7 @@ var WasiLibrary = {
         'HOME': '/home/web_user',
         // Browser language detection #8751
         'LANG': ((typeof navigator === 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8',
-        '_': thisProgram
+        '_': __getExecutableName()
       };
       // Apply the user-provided values, if any.
       for (var x in ENV) {
@@ -50,7 +50,11 @@ var WasiLibrary = {
     return 0;
   },
 
-  environ_get__deps: ['emscripten_get_environ'],
+  environ_get__deps: ['emscripten_get_environ'
+#if MINIMAL_RUNTIME
+    , '$writeAsciiToMemory'
+#endif
+  ],
   environ_get: function(__environ, environ_buf) {
     var strings = _emscripten_get_environ();
     var bufSize = 0;
@@ -125,7 +129,7 @@ var WasiLibrary = {
   },
 };
 
-// Fallback for cases where the wasi_unstable.name prefixing fails,
+// Fallback for cases where the wasi_interface_version.name prefixing fails,
 // and we have the full name from C. This happens in fastcomp which
 // lacks the attribute to set the import module and base names.
 if (!WASM_BACKEND) {

@@ -254,6 +254,8 @@
 -------- T __vfprintf_internal
 -------- W __vm_wait
 -------- T __vsyslog
+-------- T __wasi_fd_is_valid
+-------- T __wasi_syscall_ret
 -------- T __wcscoll_l
 -------- T __wcsxfrm_l
 -------- T __wctrans_l

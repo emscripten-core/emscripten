@@ -14,7 +14,7 @@ import tempfile
 import zipfile
 
 from runner import RunnerCore, path_from_root, env_modify, chdir
-from runner import create_test_file, no_wasm_backend
+from runner import create_test_file, no_wasm_backend, ensure_dir
 from tools.shared import NODE_JS, PYTHON, EMCC, SPIDERMONKEY_ENGINE, V8_ENGINE
 from tools.shared import CONFIG_FILE, PIPE, STDOUT, EM_CONFIG, LLVM_ROOT, CANONICAL_TEMP_DIR
 from tools.shared import run_process, try_delete, run_js, safe_ensure_dirs
@@ -56,13 +56,24 @@ def mtime(filename):
   return os.path.getmtime(filename)
 
 
+def make_fake_wasm_opt(filename, version):
+  print('make_fake_wasm_opt: %s' % filename)
+  ensure_dir(os.path.dirname(filename))
+  with open(filename, 'w') as f:
+    f.write('#!/bin/sh\n')
+    f.write('echo "wasm-opt version %s"\n' % version)
+    f.write('echo "..."\n')
+  shutil.copyfile(filename, filename + '++')
+  os.chmod(filename, stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+  os.chmod(filename + '++', stat.S_IREAD | stat.S_IWRITE | stat.S_IEXEC)
+
+
 def make_fake_clang(filename, version):
   """Create a fake clang that only handles --version
   --version writes to stdout (unlike -v which writes to stderr)
   """
   print('make_fake_clang: %s' % filename)
-  if not os.path.exists(os.path.dirname(filename)):
-    os.makedirs(os.path.dirname(filename))
+  ensure_dir(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "clang version %s"\n' % version)
@@ -77,8 +88,7 @@ def make_fake_llc(filename, targets):
   list to stdout.
   """
   print('make_fake_llc: %s' % filename)
-  if not os.path.exists(os.path.dirname(filename)):
-    os.makedirs(os.path.dirname(filename))
+  ensure_dir(os.path.dirname(filename))
   with open(filename, 'w') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "llc fake output\nRegistered Targets:\n%s"' % targets)
@@ -235,34 +245,6 @@ class sanity(RunnerCore):
         elif 'runner.py' not in ' '.join(command):
           self.assertContained('ERROR', output) # sanity check should fail
 
-  def test_closure_compiler(self):
-    CLOSURE_FATAL = 'fatal: closure compiler'
-    CLOSURE_WARNING = 'does not exist'
-
-    # Sanity check should find closure
-    restore_and_set_up()
-    output = self.check_working(EMCC)
-    self.assertNotContained(CLOSURE_FATAL, output)
-    self.assertNotContained(CLOSURE_WARNING, output)
-
-    # Append a bad path for closure, will warn
-    f = open(CONFIG_FILE, 'a')
-    f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
-    f.close()
-    output = self.check_working(EMCC, CLOSURE_WARNING)
-
-    # And if you actually try to use the bad path, will be fatal
-    f = open(CONFIG_FILE, 'a')
-    f.write('CLOSURE_COMPILER = "/tmp/nowhere/nothingtoseehere/kjadsfkjwelkjsdfkqgas/nonexistent.txt"\n')
-    f.close()
-    output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], CLOSURE_FATAL)
-
-    # With a working path, all is well
-    restore_and_set_up()
-    try_delete('a.out.js')
-    output = self.check_working([EMCC, '-s', '--closure', '1'] + MINIMAL_HELLO_WORLD + ['-O2'], '')
-    self.assertExists('a.out.js', output)
-
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
 
@@ -354,8 +336,7 @@ class sanity(RunnerCore):
     with open(CONFIG_FILE, 'a') as f:
       f.write('NODE_JS = "' + self.in_dir('fake', 'nodejs') + '"')
 
-    if not os.path.exists('fake'):
-      os.makedirs('fake')
+    ensure_dir('fake')
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       for version, succeed in [('v0.8.0', False),
@@ -660,8 +641,7 @@ fi
       # if the tag doesn't match, we retrieve and rebuild
       subdir = os.listdir(os.path.join(PORTS_DIR, 'sdl2'))[0]
       os.rename(os.path.join(PORTS_DIR, 'sdl2', subdir), os.path.join(PORTS_DIR, 'sdl2', 'old-subdir'))
-      if not os.path.exists('old-sub'):
-        os.mkdir('old-sub')
+      ensure_dir('old-sub')
       open(os.path.join('old-sub', 'a.txt'), 'w').write('waka')
       open(os.path.join('old-sub', 'b.txt'), 'w').write('waka')
       with zipfile.ZipFile(os.path.join(PORTS_DIR, 'sdl2.zip'), 'w') as z:
@@ -680,8 +660,7 @@ fi
 
     # Note that the path contains 'd8'.
     test_path = self.in_dir('fake', 'abcd8765')
-    if not os.path.exists(test_path):
-      os.makedirs(test_path)
+    ensure_dir(test_path)
 
     with env_modify({'EM_IGNORE_SANITY': '1'}):
       jsengines = [('d8',     V8_ENGINE),
@@ -877,3 +856,14 @@ fi
     self.do([PYTHON, EMCC, '--clear-cache'])
     run_process([PYTHON, EMBUILDER, 'build', 'libemmalloc', '--lto'])
     self.assertExists(os.path.join(root_cache, 'wasm-bc'))
+
+  def test_binaryen_version(self):
+    restore_and_set_up()
+    with open(CONFIG_FILE, 'a') as f:
+      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
+
+    make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')
+
+    make_fake_wasm_opt(self.in_dir('fake', 'bin', 'wasm-opt'), '70')
+    self.check_working([EMCC, path_from_root('tests', 'hello_world.c')], 'unexpected binaryen version: 70 (expected 90)')

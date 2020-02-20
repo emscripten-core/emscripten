@@ -1337,6 +1337,7 @@ var LibrarySDL = {
 
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
+  SDL_Init__docs: '/** @param{number=} initFlags */', 
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
     SDL.initFlags = initFlags;
@@ -1745,6 +1746,7 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState__proxy: 'sync',
   SDL_GetKeyboardState__sig: 'ii',
+  SDL_GetKeyboardState__docs: '/** @param {number=} numKeys */',
   SDL_GetKeyboardState: function(numKeys) {
     if (numKeys) {
       {{{ makeSetValue('numKeys', 0, 0x10000, 'i32') }}};
@@ -1871,6 +1873,7 @@ var LibrarySDL = {
 
   SDL_ConvertSurface__proxy: 'sync',
   SDL_ConvertSurface__sig: 'iiii',
+  SDL_ConvertSurface__docs: '/** @param {number=} format @param {number=} flags */',
   SDL_ConvertSurface: function(surf, format, flags) {
     if  (format) {
       SDL.checkPixelFormat(format);
@@ -2486,12 +2489,25 @@ var LibrarySDL = {
         }
       }
 
-#if EMTERPRETIFY_ASYNC
-      var yieldCallback = function() {
+#if EMTERPRETIFY_ASYNC || (ASYNCIFY && WASM_BACKEND)
+      var sleepCallback = function() {
         if (SDL.audio && SDL.audio.queueNewAudioData) SDL.audio.queueNewAudioData();
       };
-      SDL.audio.yieldCallback = yieldCallback;
-      EmterpreterAsync.yieldCallbacks.push(yieldCallback);
+#if EMTERPRETIFY_ASYNC
+      EmterpreterAsync.yieldCallbacks.push(sleepCallback);
+      SDL.audio.callbackRemover = function() {
+        EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
+          return callback !== sleepCallback;
+        });
+      }
+#else
+      Asyncify.sleepCallbacks.push(sleepCallback);
+      SDL.audio.callbackRemover = function() {
+        Asyncify.sleepCallbacks = Asyncify.sleepCallbacks.filter(function(callback) {
+          return callback !== sleepCallback;
+        });
+      }
+#endif
 #endif
 
       // Create a callback function that will be routinely called to ask more audio data from the user application.
@@ -2635,11 +2651,10 @@ var LibrarySDL = {
   SDL_CloseAudio__sig: 'v',
   SDL_CloseAudio: function() {
     if (SDL.audio) {
-#if EMTERPRETIFY_ASYNC
-      EmterpreterAsync.yieldCallbacks = EmterpreterAsync.yieldCallbacks.filter(function(callback) {
-        return callback !== SDL.audio.yieldCallback;
-      });
-#endif
+      if (SDL.audio.callbackRemover) {
+        SDL.audio.callbackRemover();
+        SDL.audio.callbackRemover = null;
+      }
       _SDL_PauseAudio(1);
       _free(SDL.audio.buffer);
       SDL.audio = null;
@@ -2740,6 +2755,7 @@ var LibrarySDL = {
   Mix_LoadWAV_RW__deps: ['$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
+  Mix_LoadWAV_RW__docs: '/** @param {number|boolean=} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
@@ -3653,6 +3669,7 @@ var LibrarySDL = {
 
   SDL_RWFromFile__proxy: 'sync',
   SDL_RWFromFile__sig: 'iii',
+  SDL_RWFromFile__docs: '/** @param {number=} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
     var name = UTF8ToString(_name)

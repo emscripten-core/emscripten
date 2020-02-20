@@ -2,7 +2,7 @@
 
 /**
  * @param {string} filename
- * @param {string} type
+ * @param {string=} type
  * @return {string}
  * @suppress {duplicate}
  */
@@ -29,10 +29,10 @@ var readbuffer = function(filename) {};
  */
 var scriptArgs = [];
 /**
- * @const
+ * @param {number=} status
  * @suppress {duplicate}
  */
-var quit = function() {};
+var quit = function(status) {};
 /**
  * @return {number}
  * @suppress {duplicate}

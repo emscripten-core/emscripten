@@ -35,10 +35,8 @@
  */
 
 var LibraryGLFW = {
-  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser'],
-  $GLFW: {
-
-    Window: function(id, width, height, title, monitor, share) {
+  $GLFW_Window__docs: '/** @constructor */',
+  $GLFW_Window: function(id, width, height, title, monitor, share) {
       this.id = id;
       this.x = 0;
       this.y = 0;
@@ -80,6 +78,12 @@ var LibraryGLFW = {
       this.userptr = null;
     },
 
+  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+#if FILESYSTEM
+    , '$FS'
+#endif
+  ],
+  $GLFW: {
     WindowFromId: function(id) {
       if (id <= 0 || !GLFW.windows) return null;
       return GLFW.windows[id - 1];
@@ -187,7 +191,7 @@ var LibraryGLFW = {
         case 0xDC:return 92; // DOM_VK_BACKSLASH -> GLFW_KEY_BACKSLASH
         case 0xDD:return 93; // DOM_VK_CLOSE_BRACKET -> GLFW_KEY_RIGHT_BRACKET
         case 0xC0:return 94; // DOM_VK_BACK_QUOTE -> GLFW_KEY_GRAVE_ACCENT
-        
+
 #if USE_GLFW == 2
         //#define GLFW_KEY_SPECIAL      256
         case 0x1B:return (256+1); // DOM_VK_ESCAPE -> GLFW_KEY_ESC
@@ -605,34 +609,6 @@ var LibraryGLFW = {
 #endif
     },
 
-    requestFullscreen: function() {
-      var RFS = Module["canvas"]['requestFullscreen'] ||
-                Module["canvas"]['mozRequestFullScreen'] ||
-                Module["canvas"]['webkitRequestFullScreen'] ||
-                (function() {});
-      RFS.apply(Module["canvas"], []);
-    },
-
-    requestFullScreen: function() {
-      err('GLFW.requestFullScreen() is deprecated. Please call GLFW.requestFullscreen instead.');
-      GLFW.requestFullScreen = function() {
-        return GLFW.requestFullscreen();
-      }
-      return GLFW.requestFullscreen();
-    },
-
-    exitFullscreen: function() {
-      Browser.exitFullscreen();
-    },
-
-    cancelFullScreen: function() {
-      err('GLFW.cancelFullScreen() is deprecated. Please call GLFW.exitFullscreen instead.');
-      GLFW.cancelFullScreen = function() {
-        return GLFW.exitFullscreen();
-      }
-      return GLFW.exitFullscreen();
-    },
-
     getTime: function() {
       return _emscripten_get_now() / 1000;
     },
@@ -765,7 +741,7 @@ var LibraryGLFW = {
 
       event.preventDefault();
 
-#if '$FS' in addedLibraryItems
+#if FILESYSTEM
       var filenames = allocate(new Array(event.dataTransfer.files.length*4), 'i8*', ALLOC_NORMAL);
       var filenamesArray = [];
       var count = event.dataTransfer.files.length;
@@ -806,8 +782,7 @@ var LibraryGLFW = {
       for (var i = 0; i < count; ++i) {
         save(event.dataTransfer.files[i]);
       }
-
-#endif // '$FS' in addedLibraryItems
+#endif // FILESYSTEM
 
       return false;
     },
@@ -824,7 +799,7 @@ var LibraryGLFW = {
       if (!win) return null;
       var prevcbfun = win.windowSizeFunc;
       win.windowSizeFunc = cbfun;
-     
+
 #if USE_GLFW == 2
       // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
       // callback function is set, it will be called with the current window size before this
@@ -971,9 +946,9 @@ var LibraryGLFW = {
 
       if (GLFW.active.id == win.id) {
         if (width == screen.width && height == screen.height) {
-          GLFW.requestFullscreen();
+          Browser.requestFullscreen();
         } else {
-          GLFW.exitFullscreen();
+          Browser.exitFullscreen();
           Browser.setCanvasSize(width, height);
           win.width = width;
           win.height = height;
@@ -1003,7 +978,7 @@ var LibraryGLFW = {
       if (width <= 0 || height <= 0) return 0;
 
       if (monitor) {
-        GLFW.requestFullscreen();
+        Browser.requestFullscreen();
       } else {
         Browser.setCanvasSize(width, height);
       }
@@ -1015,7 +990,7 @@ var LibraryGLFW = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
           depth: (GLFW.hints[0x00021005] > 0),     // GLFW_DEPTH_BITS
           stencil: (GLFW.hints[0x00021006] > 0),   // GLFW_STENCIL_BITS
-          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS 
+          alpha: (GLFW.hints[0x00021004] > 0)      // GLFW_ALPHA_BITS
         }
 #if OFFSCREEN_FRAMEBUFFER
         // TODO: Make GLFW explicitly aware of whether it is being proxied or not, and set these to true only when proxying is being performed.
@@ -1028,7 +1003,7 @@ var LibraryGLFW = {
       if (!Module.ctx) return 0;
 
       // Get non alive id
-      var win = new GLFW.Window(id, width, height, title, monitor, share);
+      var win = new GLFW_Window(id, width, height, title, monitor, share);
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1119,6 +1094,10 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].addEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
@@ -1142,6 +1121,10 @@ var LibraryGLFW = {
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
     window.removeEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].removeEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].removeEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].removeEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);

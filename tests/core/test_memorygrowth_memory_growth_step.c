@@ -22,7 +22,7 @@ int main() {
   // TOTAL_MEMORY=64Mb
   // TOTAL_STACK=1Mb
   // WASM_MEM_MAX=130Mb
-  // MEMORY_GROWTH_STEP=1Mb
+  // MEMORY_GROWTH_LINEAR_STEP=1Mb
 
   // Because the stack is 1Mb, the first increase will take place
   // in i = 63, which attempts to grow the heap to 64Mb + 1Mb of stack > 64Mb TOTAL_MEMORY

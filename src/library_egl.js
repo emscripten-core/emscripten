@@ -232,7 +232,7 @@ var LibraryEGL = {
       {{{ makeSetValue('value', '0', 'EGL.contextAttributes.antialias ? 1 : 0' /* Multisampling enabled */, 'i32') }}};
       return 1;
     case 0x3033: // EGL_SURFACE_TYPE
-      {{{ makeSetValue('value', '0', '0x0004' /* EGL_WINDOW_BIT */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '0x4' /* EGL_WINDOW_BIT */, 'i32') }}};
       return 1;
     case 0x3034: // EGL_TRANSPARENT_TYPE
       // If this returns EGL_TRANSPARENT_RGB (0x3052), transparency is used through color-keying. No such thing applies to Emscripten canvas.
@@ -264,7 +264,7 @@ var LibraryEGL = {
       return 1;
     case 0x3040: // EGL_RENDERABLE_TYPE
       // A bit combination of EGL_OPENGL_ES_BIT,EGL_OPENVG_BIT,EGL_OPENGL_ES2_BIT and EGL_OPENGL_BIT.
-      {{{ makeSetValue('value', '0', '0x0004' /* EGL_OPENGL_ES2_BIT */, 'i32') }}};
+      {{{ makeSetValue('value', '0', '0x4' /* EGL_OPENGL_ES2_BIT */, 'i32') }}};
       return 1;
     case 0x3042: // EGL_CONFORMANT
       // "EGL_CONFORMANT is a mask indicating if a client API context created with respect to the corresponding EGLConfig will pass the required conformance tests for that API."
@@ -345,14 +345,14 @@ var LibraryEGL = {
       }
       contextAttribs += 8;
     }
-#if USE_WEBGL2
+#if MAX_WEBGL_VERSION >= 2
     if (glesContextVersion < 2 || glesContextVersion > 3) {
 #else
     if (glesContextVersion != 2) {
 #endif
 #if GL_ASSERTIONS
       if (glesContextVersion == 3) {
-        err('When initializing GLES3/WebGL2 via EGL, one must build with -s USE_WEBGL2=1 !');
+        err('When initializing GLES3/WebGL2 via EGL, one must build with -s MAX_WEBGL_VERSION=2 !');
       } else {
         err('When initializing GLES2/WebGL1 via EGL, one must pass EGL_CONTEXT_CLIENT_VERSION = 2 to GL context attributes! GLES version ' + glesContextVersion + ' is not supported!');
       }
@@ -432,10 +432,10 @@ var LibraryEGL = {
       // Existing Android implementation seems to do so at least.
       return 1;
     case 0x3057: // EGL_WIDTH
-      {{{ makeSetValue('value', '0', 'Module.canvas.width', 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Module["canvas"].width', 'i32') }}};
       return 1;
     case 0x3056: // EGL_HEIGHT
-      {{{ makeSetValue('value', '0', 'Module.canvas.height', 'i32') }}};
+      {{{ makeSetValue('value', '0', 'Module["canvas"].height', 'i32') }}};
       return 1;
     case 0x3090: // EGL_HORIZONTAL_RESOLUTION
       {{{ makeSetValue('value', '0', '-1' /* EGL_UNKNOWN */, 'i32') }}};
