@@ -10005,6 +10005,7 @@ int main () {
       else:
         run_process(cmd)
 
+  @no_fastcomp('new clang feature')
   def test_fignore_exceptions(self):
     # the new clang flag -fignore-exceptions basically is the same as -s DISABLE_EXCEPTION_CATCHING=1,
     # that is, it allows throwing, but emits no support code for catching.
