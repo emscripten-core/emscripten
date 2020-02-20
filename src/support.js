@@ -11,12 +11,14 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 // stack management, and other functionality that is provided by the compiled code,
 // should not be used before it is ready
 
+#if DECLARE_ASM_MODULE_EXPORTS // These functions should not be defined with 'var' if DECLARE_ASM_MODULE_EXPORTS==0 (or the assignments won't be seen)
 /** @suppress{duplicate} */
 var stackSave;
 /** @suppress{duplicate} */
 var stackRestore;
 /** @suppress{duplicate} */
 var stackAlloc;
+#endif
 
 stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
