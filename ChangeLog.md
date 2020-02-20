@@ -17,6 +17,7 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Updated of libc++abi and libc++ to llvm 9.0.0 (#10510)
 - Refactor syscall interface: Syscalls are no longer variadic (except those
   that are inherantly such as open) and no longer take the syscall number as
   arg0.  This should be invisible to most users but will effect any external
