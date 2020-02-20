@@ -11,17 +11,11 @@ ___wasi_fd_write
 __addDays
 __arraySum
 __emscripten_syscall_munmap
-__emscripten_traverse_stack
-__formatString
 __isLeapYear
 __memory_base
-__reallyNegative
 __table_base
 _abort
-_emscripten_get_callstack_js
 _emscripten_get_heap_size
-_emscripten_log
-_emscripten_log_js
 _emscripten_memcpy_big
 _emscripten_resize_heap
 _fd_close
@@ -35,8 +29,6 @@ _strftime
 _strftime_l
 abort
 abortOnCannotGrowMemory
-convertI32PairToI53
-convertU32PairToI53
 demangle
 demangleAll
 getTempRet0

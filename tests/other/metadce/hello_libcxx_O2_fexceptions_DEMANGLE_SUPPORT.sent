@@ -15,7 +15,6 @@ __syscall91
 __unlock
 abort
 emscripten_get_sbrk_ptr
-emscripten_log
 emscripten_memcpy_big
 emscripten_resize_heap
 environ_get

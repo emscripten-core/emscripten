@@ -418,6 +418,7 @@ $___intscan
 $___isxdigit_l
 $___loc_is_allocated
 $___newlocale
+$___overflow
 $___shgetc
 $___shlim
 $___stdio_close
@@ -432,6 +433,7 @@ $___uflow
 $___uselocale
 $___vfprintf_internal
 $___wasi_syscall_ret
+$_abort_message
 $_arg_n
 $_copysignl
 $_decfloat
@@ -445,6 +447,7 @@ $_fmt_fp
 $_fmt_o
 $_fmt_u
 $_fmt_x
+$_fputc
 $_free
 $_freelocale
 $_frexp
@@ -486,6 +489,7 @@ $_strtox
 $_try_realloc_chunk
 $_ungetc
 $_vasprintf
+$_vfprintf
 $_vfscanf
 $_vsnprintf
 $_vsscanf
