@@ -443,6 +443,8 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  __syscall57__nothrow: true,
+  __syscall57__proxy: false,
   __syscall57: function(pid, pgid) { // setpgid
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
     if (pgid && pgid !== {{{ PROCINFO.pgid }}}) return -{{{ cDefine('EPERM') }}};
@@ -769,11 +771,12 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
-  __syscall125__proxy: false,
   __syscall125__nothrow: true,
+  __syscall125__proxy: false,
   __syscall125: function(addr, len, size) { // mprotect
     return 0; // let's not and say we did
   },
+  __syscall132__nothrow: false,
   __syscall132__proxy: false,
   __syscall132: function(pid) { // getpgid
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
@@ -871,6 +874,7 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
+  __syscall147__nothrow: false,
   __syscall147__proxy: false,
   __syscall147: function(pid) { // getsid
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
