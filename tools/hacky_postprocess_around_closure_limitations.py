@@ -46,6 +46,7 @@ f = re.sub(r'([;{}=,\+\-\*/\(\)\[\]])[\n]', r'\1', f)
 f = re.sub(r'([;{}=,\*/\(\)\[\]])[\s]', r'\1', f)
 
 # Work around https://github.com/google/closure-compiler/issues/3548 / https://github.com/google/closure-compiler/issues/3230 :
+# TODO: can drop this when the above issue is fixed.
 # parseInt(b.slice(d+1),void 0)
 # ->
 # parseInt(b.slice(d+1))

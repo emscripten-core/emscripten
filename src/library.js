@@ -4664,6 +4664,7 @@ LibraryManager.library = {
   // Note that "smart" radix handling is employed for input string:
   // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
   $jstoi_q: function(str) {
+    // TODO: If issues below are resolved, add a suitable suppression or remove this comment.
     return parseInt(str, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
   },
 
