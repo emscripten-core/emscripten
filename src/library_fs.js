@@ -74,7 +74,7 @@ Object.defineProperties(FSNode.prototype, {
  }
 });
 FS.FSNode = FSNode;
-FS.staticInit();'` +
+FS.staticInit();` +
 #if USE_CLOSURE_COMPILER
            // Declare variable for Closure, FS.createPreloadedFile() below calls Browser.init()
            '/**@suppress {duplicate, undefinedVars}*/var Browser;' +
