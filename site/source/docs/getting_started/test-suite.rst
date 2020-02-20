@@ -102,7 +102,7 @@ When you want to run the entire test suite locally, these are currently the impo
 .. code-block:: bash
 
   # Run all core asm.js and wasm tests
-  python tests/runner.py asm* wasm*
+  python tests/runner.py wasm*
 
   # Run "other" test suite
   python tests/runner.py other
