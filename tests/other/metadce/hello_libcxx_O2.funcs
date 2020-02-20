@@ -18,6 +18,10 @@ $__cxx_global_array_dtor.43
 $__cxx_global_array_dtor.54
 $__cxx_global_array_dtor.69
 $__cxx_global_array_dtor.84
+$__cxxabiv1::\28anonymous\20namespace\29::GuardObject<__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads>::cxa_guard_acquire\28\29
+$__cxxabiv1::\28anonymous\20namespace\29::GuardObject<__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads>::cxa_guard_release\28\29
+$__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads::InitByteNoThreads\28unsigned\20int*\29
+$__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads::acquire_init_byte\28\29
 $__cxxabiv1::__base_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__dynamic_cast_info*\2c\20void*\2c\20int\29\20const
 $__cxxabiv1::__base_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__base_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const

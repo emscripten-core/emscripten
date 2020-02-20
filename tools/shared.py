@@ -562,7 +562,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 20)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 21)
 
 
 def generate_sanity():
@@ -1748,7 +1748,7 @@ class Building(object):
     # other otherwise for linking of bitcode we must use our python
     # code (necessary for asm.js, for wasm bitcode see
     # https://bugs.llvm.org/show_bug.cgi?id=40654)
-    if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+    if Settings.WASM_BACKEND and not Settings.LTO:
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
       Building.link(linker_inputs, target)
@@ -2985,8 +2985,6 @@ class JS(object):
   memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
-
-  module_export_name_substitution_pattern = '"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"'
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent

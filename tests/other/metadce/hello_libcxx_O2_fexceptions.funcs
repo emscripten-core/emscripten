@@ -7,6 +7,7 @@ $__ctype_tolower_loc
 $__ctype_toupper_loc
 $__cxa_can_catch
 $__cxa_get_globals_fast
+$__cxa_guard_abort
 $__cxa_guard_acquire
 $__cxa_guard_release
 $__cxa_is_pointer_type
@@ -27,6 +28,10 @@ $__cxx_global_array_dtor.44
 $__cxx_global_array_dtor.55
 $__cxx_global_array_dtor.70
 $__cxx_global_array_dtor.85
+$__cxxabiv1::\28anonymous\20namespace\29::GuardObject<__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads>::cxa_guard_acquire\28\29
+$__cxxabiv1::\28anonymous\20namespace\29::GuardObject<__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads>::cxa_guard_release\28\29
+$__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads::InitByteNoThreads\28unsigned\20int*\29
+$__cxxabiv1::\28anonymous\20namespace\29::InitByteNoThreads::acquire_init_byte\28\29
 $__cxxabiv1::__base_class_type_info::has_unambiguous_public_base\28__cxxabiv1::__dynamic_cast_info*\2c\20void*\2c\20int\29\20const
 $__cxxabiv1::__base_class_type_info::search_above_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
 $__cxxabiv1::__base_class_type_info::search_below_dst\28__cxxabiv1::__dynamic_cast_info*\2c\20void\20const*\2c\20int\2c\20bool\29\20const
