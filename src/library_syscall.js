@@ -329,6 +329,7 @@ var SyscallsLibrary = {
   },
   __syscall20__deps: ['$PROCINFO'],
   __syscall20__nothrow: true,
+  __syscall20__proxy: false,
   __syscall20: function() { // getpid
     return PROCINFO.pid;
   },
@@ -340,9 +341,11 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doAccess(path, amode);
   },
+  __syscall34__proxy: false,
   __syscall34: function(inc) { // nice
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
   },
+  __syscall36__proxy: false,
   __syscall36__nothrow: true,
   __syscall36: function() { // sync
     return 0;
@@ -380,6 +383,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall51__nothrow: true,
+  __syscall51__proxy: false,
   __syscall51: function(filename) { // acct
     return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
@@ -458,19 +462,23 @@ var SyscallsLibrary = {
   },
   __syscall64__deps: ['$PROCINFO'],
   __syscall64__nothrow: true,
+  __syscall64__proxy: false,
   __syscall64: function() { // getppid
     return PROCINFO.ppid;
   },
   __syscall65__deps: ['$PROCINFO'],
   __syscall65__nothrow: true,
+  __syscall65__proxy: false,
   __syscall65: function() { // getpgrp
     return PROCINFO.pgid;
   },
   __syscall66__nothrow: true,
+  __syscall66__proxy: false,
   __syscall66: function() { // setsid
     return 0; // no-op
   },
   __syscall75__nothrow: true,
+  __syscall75__proxy: false,
   __syscall75: function(varargs) { // setrlimit
     return 0; // no-op
   },
@@ -504,10 +512,12 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall96__nothrow: true,
+  __syscall96__proxy: false,
   __syscall96: function() { // getpriority
     return 0;
   },
   __syscall97__nothrow: true,
+  __syscall97__proxy: false,
   __syscall97: function() { // setpriority
     return -{{{ cDefine('EPERM') }}};
   },
@@ -732,19 +742,23 @@ var SyscallsLibrary = {
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
   __syscall104__nothrow: true,
+  __syscall104__proxy: false,
   __syscall104: function(which, new_value, old_value) { // setitimer
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
+  __syscall114__proxy: false,
   __syscall114: function(pid, wstart, options, rusage) { // wait4
     abort('cannot wait on child processes');
   },
   __syscall121__nothrow: true,
+  __syscall121__proxy: false,
   __syscall121: function(name, size) { // setdomainname
     return -{{{ cDefine('EPERM') }}};
   },
 #if MINIMAL_RUNTIME
   __syscall122__deps: ['$writeAsciiToMemory'],
 #endif
+  __syscall122__proxy: false,
   __syscall122: function(buf) { // uname
     if (!buf) return -{{{ cDefine('EFAULT') }}}
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
@@ -759,11 +773,13 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
+  __syscall125__proxy: false,
   __syscall125__nothrow: true,
   __syscall125: function(addr, len, size) { // mprotect
     return 0; // let's not and say we did
   },
   __syscall132__deps: ['$PROCINFO'],
+  __syscall132__proxy: false,
   __syscall132: function(pid) { // getpgid
     if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     return PROCINFO.pgid;
@@ -861,6 +877,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall147__deps: ['$PROCINFO'],
+  __syscall147__proxy: false,
   __syscall147: function(pid) { // getsid
     if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
     return PROCINFO.sid;
@@ -869,17 +886,22 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
+  __syscall150__proxy: false,
   __syscall150__sig: 'iii',
   __syscall150: '__syscall153',     // mlock
+  __syscall151__proxy: false,
   __syscall151__sig: 'iii',
   __syscall151: '__syscall153',     // munlock
+  __syscall152__proxy: false,
   __syscall152__sig: 'iii',
   __syscall152: '__syscall153',     // mlockall
   __syscall153__nothrow: true,
+  __syscall153__proxy: false,
   __syscall153: function() { // munlockall
     return 0;
   },
   __syscall163__nothrow: true,
+  __syscall163__proxy: false,
   __syscall163: function(old_addr, old_size, new_size, flags) { // mremap
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
@@ -904,6 +926,7 @@ var SyscallsLibrary = {
     return nonzero;
   },
   __syscall178__nothrow: true,
+  __syscall178__proxy: false,
   __syscall178: function(tgid, pid, uinfo) { // rt_sigqueueinfo
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_rt_sigqueueinfo');
@@ -971,12 +994,16 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall199__sig: 'i',
+  __syscall199__proxy: false,
   __syscall199: '__syscall202',     // getuid32
   __syscall200__sig: 'i',
+  __syscall200__proxy: false,
   __syscall200: '__syscall202',     // getgid32
   __syscall201__sig: 'i',
+  __syscall201__proxy: false,
   __syscall201: '__syscall202',     // geteuid32
   __syscall202__nothrow: true,
+  __syscall202__proxy: false,
   __syscall202: function() { // getgid32
     return 0;
   },
@@ -990,28 +1017,37 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall203__sig: 'ii',
+  __syscall203__proxy: false,
   __syscall203: '__sysicall214',     // setreuid32
   __syscall204__sig: 'ii',
+  __syscall204__proxy: false,
   __syscall204: '__syscall214',     // setregid32
   __syscall213__sig: 'ii',
+  __syscall213__proxy: false,
   __syscall213: '__syscall214',     // setuid32
+  __syscall214__proxy: false,
   __syscall214: function(uid) { // setgid32
     if (uid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
+  __syscall205__proxy: false,
   __syscall205: function(size, list) { // getgroups32
     if (size < 1) return -{{{ cDefine('EINVAL') }}};
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
   },
+  __syscall208__proxy: false,
   __syscall208__sig: 'iiii',
   __syscall208: '__syscall210',     // setresuid32
+  __syscall210__proxy: false,
   __syscall210: function(ruid, euid, suid) { // setresgid32
     if (euid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __syscall209__sig: 'iiii',
+  __syscall209__proxy: false,
   __syscall209: '__syscall211',     // getresuid
+  __syscall211__proxy: false,
   __syscall211: function(ruid, euid, suid) { // getresgid32
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
@@ -1022,10 +1058,12 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall218__nothrow: true,
+  __syscall218__proxy: false,
   __syscall218: function(addr, length, vec) { // mincore
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
   __syscall219__nothrow: true,
+  __syscall219__proxy: false,
   __syscall219: function(addr, length, advice) { // madvise
     return 0; // advice is welcome, but ignored
   },
@@ -1160,6 +1198,7 @@ var SyscallsLibrary = {
     return ___syscall([268, 0, size, buf], 0);
   },
   __syscall272__nothrow: true,
+  __syscall272__proxy: false,
   __syscall272: function(fd, offset, len, advice) { // fadvise64_64
     return 0; // your advice is important to us (but we can't use it)
   },
@@ -1234,6 +1273,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall303__nothrow: true,
+  __syscall303__proxy: false,
   __syscall303: function(olddirfd, oldpath, newdirfd, newpath, flags) { // linkat
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
@@ -1319,6 +1359,7 @@ var SyscallsLibrary = {
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
   __syscall331__nothrow: true,
+  __syscall331__proxy: false,
   __syscall331: function(fds, flags) { // pipe2
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1354,6 +1395,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall345__nothrow: true,
+  __syscall345__proxy: false,
   __syscall345: function(sockfd, msg, flags) { // sendmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_sendmmsg');
@@ -1727,8 +1769,18 @@ for (var x in SyscallsLibrary) {
   if (!SyscallsLibrary[x + '__deps']) SyscallsLibrary[x + '__deps'] = [];
   SyscallsLibrary[x + '__deps'].push('$SYSCALLS');
 #if USE_PTHREADS
-  // proxy all syscalls synchronously, for their return values
-  SyscallsLibrary[x + '__proxy'] = 'sync';
+  // Most syscalls need to happen on the main JS thread (e.g. because the
+  // filesystem is in JS and on that thread). Proxy synchronously to there.
+  // There are some exceptions, syscalls that we know are ok to just run in
+  // any thread; those are marked as not being proxied with
+  //  __proxy: false
+  // A syscall without a return value could perhaps be proxied asynchronously
+  // instead of synchronously, and marked with
+  //  __proxy: 'async'
+  // (but essentially all syscalls do have return values).
+  if (SyscallsLibrary[x + '__proxy'] === undefined) {
+    SyscallsLibrary[x + '__proxy'] = 'sync';
+  }
 #endif
 }
 
