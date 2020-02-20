@@ -393,7 +393,7 @@ var LibraryEmbind = {
     return ret;
   },
 
-  $getTypeName__deps: ['free', '$readLatin1String'],
+  $getTypeName__deps: ['$readLatin1String'],
   $getTypeName: function(type) {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
@@ -1108,34 +1108,12 @@ var LibraryEmbind = {
 #endif
     }
 
-    var fp;
-    if (Module['FUNCTION_TABLE_' + signature] !== undefined) {
-        fp = Module['FUNCTION_TABLE_' + signature][rawFunction];
-    } else if (typeof FUNCTION_TABLE !== "undefined") {
-        fp = FUNCTION_TABLE[rawFunction];
-    } else {
-        // asm.js does not give direct access to the function tables,
-        // and thus we must go through the dynCall interface which allows
-        // calling into a signature's function table by pointer value.
-        //
-        // https://github.com/dherman/asm.js/issues/83
-        //
-        // This has three main penalties:
-        // - dynCall is another function call in the path from JavaScript to C++.
-        // - JITs may not predict through the function table indirection at runtime.
-        var dc = Module['dynCall_' + signature];
-        if (dc === undefined) {
-            // We will always enter this branch if the signature
-            // contains 'f' and PRECISE_F32 is not enabled.
-            //
-            // Try again, replacing 'f' with 'd'.
-            dc = Module['dynCall_' + signature.replace(/f/g, 'd')];
-            if (dc === undefined) {
-                throwBindingError("No dynCall invoker for signature: " + signature);
-            }
-        }
-        fp = makeDynCaller(dc);
-    }
+#if MINIMAL_RUNTIME
+    var dc = asm['dynCall_' + signature];
+#else
+    var dc = Module['dynCall_' + signature];
+#endif
+    var fp = makeDynCaller(dc);
 
     if (typeof fp !== "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);

@@ -59,35 +59,32 @@ def dir_is_newer(dir_a, dir_b):
 def get_cflags(force_object_files=False):
   flags = []
   if shared.Settings.WASM_BACKEND:
-    if force_object_files:
-      flags += ['-s', 'WASM_OBJECT_FILES=1']
-    elif not shared.Settings.WASM_OBJECT_FILES:
-      flags += ['-s', 'WASM_OBJECT_FILES=0']
+    if shared.Settings.LTO and not force_object_files:
+      flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
 
 
-def run_build_command(cmd):
-  # this must only be called on a standard build command
-  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
-  # add standard cflags, but also allow the cmd to override them
-  cmd = cmd[:2] + get_cflags() + cmd[2:]
+def run_one_command(cmd):
+  # Helper function used by run_build_commands.
+  if shared.EM_BUILD_VERBOSE:
+    print(' '.join(cmd))
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
 
 
-def run_commands(commands):
+def run_build_commands(commands):
   cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
     for command in commands:
-      run_build_command(command)
+      run_one_command(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(run_build_command, commands, chunksize=1).get(999999)
+    pool.map_async(run_one_command, commands, chunksize=1).get(999999)
 
 
 def static_library_ext():
@@ -263,7 +260,7 @@ class Library(object):
   src_glob = None
   src_glob_exclude = None
 
-  # Whether to always generate WASM object files, even though WASM_OBJECT_FILES=0.
+  # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
 
   def __init__(self):
@@ -366,7 +363,7 @@ class Library(object):
       o = self.in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
       objects.append(o)
-    run_commands(commands)
+    run_build_commands(commands)
     return objects
 
   def build(self):
@@ -569,7 +566,6 @@ class NoExceptLibrary(Library):
 class MuslInternalLibrary(Library):
   includes = [
     ['system', 'lib', 'libc', 'musl', 'src', 'internal'],
-    ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
   cflags = [
@@ -826,7 +822,14 @@ class libc_extras(MuslInternalLibrary):
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
-  cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = [
+      '-std=c++11',
+      '-Oz',
+      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+      # Remove this once we update to include this llvm
+      # revision: https://reviews.llvm.org/D64961
+      '-D_LIBCXXABI_GUARD_ABI_ARM',
+    ]
 
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
@@ -1585,13 +1588,20 @@ class Ports(object):
       commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    run_commands(commands)
+    Ports.run_commands(commands)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands): # make easily available for port objects
-    run_commands(commands)
+  def run_commands(commands):
+    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
+    # that the ports are built in the correct configuration.
+    def add_args(cmd):
+      # this must only be called on a standard build command
+      assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+      # add standard cflags, but also allow the cmd to override them
+      return cmd[:2] + get_cflags() + cmd[2:]
+    run_build_commands([add_args(c) for c in commands])
 
   @staticmethod
   def create_lib(libname, inputs): # make easily available for port objects

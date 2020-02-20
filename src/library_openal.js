@@ -1450,7 +1450,7 @@ var LibraryOpenAL = {
         if (srcLen > 0.0) {
           var frequency;
           for (var bufId in src.bufQueue) {
-            if (bufId !== 0) {
+            if (bufId) {
               frequency = src.bufQueue[bufId].frequency;
               break;
             }
@@ -1472,7 +1472,7 @@ var LibraryOpenAL = {
         if (srcLen > 0.0) {
           var bytesPerSec;
           for (var bufId in src.bufQueue) {
-            if (bufId !== 0) {
+            if (bufId) {
               var buf = src.bufQueue[bufId];
               bytesPerSec = buf.frequency * buf.bytesPerSample * buf.channels;
               break;

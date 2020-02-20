@@ -1094,6 +1094,10 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].addEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
@@ -1117,6 +1121,10 @@ var LibraryGLFW = {
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
     window.removeEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].removeEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].removeEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].removeEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);

@@ -1,9 +1,8 @@
 //===------------------------- mutex.cpp ----------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -13,6 +12,12 @@
 #include "include/atomic_support.h"
 #include "__undef_macros"
 
+#ifndef _LIBCPP_HAS_NO_THREADS
+#if defined(__unix__) &&  defined(__ELF__) && defined(_LIBCPP_HAS_COMMENT_LIB_PRAGMA)
+#pragma comment(lib, "pthread")
+#endif
+#endif
+
 _LIBCPP_BEGIN_NAMESPACE_STD
 #ifndef _LIBCPP_HAS_NO_THREADS
 
@@ -20,10 +25,7 @@ const defer_lock_t  defer_lock = {};
 const try_to_lock_t try_to_lock = {};
 const adopt_lock_t  adopt_lock = {};
 
-mutex::~mutex()
-{
-    __libcpp_mutex_destroy(&__m_);
-}
+// ~mutex is defined elsewhere
 
 void
 mutex::lock()
@@ -130,7 +132,7 @@ timed_mutex::unlock() _NOEXCEPT
 
 recursive_timed_mutex::recursive_timed_mutex()
     : __count_(0),
-      __id_(0)
+      __id_{}
 {
 }
 
@@ -142,9 +144,9 @@ recursive_timed_mutex::~recursive_timed_mutex()
 void
 recursive_timed_mutex::lock()
 {
-    __libcpp_thread_id id = __libcpp_thread_get_current_id();
+    __thread_id id = this_thread::get_id();
     unique_lock<mutex> lk(__m_);
-    if (__libcpp_thread_id_equal(id, __id_))
+    if (id ==__id_)
     {
         if (__count_ == numeric_limits<size_t>::max())
             __throw_system_error(EAGAIN, "recursive_timed_mutex lock limit reached");
@@ -160,9 +162,9 @@ recursive_timed_mutex::lock()
 bool
 recursive_timed_mutex::try_lock() _NOEXCEPT
 {
-    __libcpp_thread_id id = __libcpp_thread_get_current_id();
+    __thread_id id = this_thread::get_id();
     unique_lock<mutex> lk(__m_, try_to_lock);
-    if (lk.owns_lock() && (__count_ == 0 || __libcpp_thread_id_equal(id, __id_)))
+    if (lk.owns_lock() && (__count_ == 0 || id == __id_))
     {
         if (__count_ == numeric_limits<size_t>::max())
             return false;
@@ -179,7 +181,7 @@ recursive_timed_mutex::unlock() _NOEXCEPT
     unique_lock<mutex> lk(__m_);
     if (--__count_ == 0)
     {
-        __id_ = 0;
+        __id_.__reset();
         lk.unlock();
         __cv_.notify_one();
     }
@@ -198,8 +200,8 @@ _LIBCPP_SAFE_STATIC static __libcpp_mutex_t mut = _LIBCPP_MUTEX_INITIALIZER;
 _LIBCPP_SAFE_STATIC static __libcpp_condvar_t cv = _LIBCPP_CONDVAR_INITIALIZER;
 #endif
 
-void
-__call_once(volatile unsigned long& flag, void* arg, void(*func)(void*))
+void __call_once(volatile once_flag::_State_type& flag, void* arg,
+                 void (*func)(void*))
 {
 #if defined(_LIBCPP_HAS_NO_THREADS)
     if (flag == 0)
@@ -210,12 +212,12 @@ __call_once(volatile unsigned long& flag, void* arg, void(*func)(void*))
 #endif  // _LIBCPP_NO_EXCEPTIONS
             flag = 1;
             func(arg);
-            flag = ~0ul;
+            flag = ~once_flag::_State_type(0);
 #ifndef _LIBCPP_NO_EXCEPTIONS
         }
         catch (...)
         {
-            flag = 0ul;
+            flag = 0;
             throw;
         }
 #endif  // _LIBCPP_NO_EXCEPTIONS
@@ -230,11 +232,12 @@ __call_once(volatile unsigned long& flag, void* arg, void(*func)(void*))
         try
         {
 #endif  // _LIBCPP_NO_EXCEPTIONS
-            __libcpp_relaxed_store(&flag, 1ul);
+            __libcpp_relaxed_store(&flag, once_flag::_State_type(1));
             __libcpp_mutex_unlock(&mut);
             func(arg);
             __libcpp_mutex_lock(&mut);
-            __libcpp_atomic_store(&flag, ~0ul, _AO_Release);
+            __libcpp_atomic_store(&flag, ~once_flag::_State_type(0),
+                                  _AO_Release);
             __libcpp_mutex_unlock(&mut);
             __libcpp_condvar_broadcast(&cv);
 #ifndef _LIBCPP_NO_EXCEPTIONS
@@ -242,7 +245,7 @@ __call_once(volatile unsigned long& flag, void* arg, void(*func)(void*))
         catch (...)
         {
             __libcpp_mutex_lock(&mut);
-            __libcpp_relaxed_store(&flag, 0ul);
+            __libcpp_relaxed_store(&flag, once_flag::_State_type(0));
             __libcpp_mutex_unlock(&mut);
             __libcpp_condvar_broadcast(&cv);
             throw;
@@ -252,7 +255,6 @@ __call_once(volatile unsigned long& flag, void* arg, void(*func)(void*))
     else
         __libcpp_mutex_unlock(&mut);
 #endif // !_LIBCPP_HAS_NO_THREADS
-
 }
 
 _LIBCPP_END_NAMESPACE_STD

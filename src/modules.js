@@ -87,6 +87,10 @@ var LibraryManager = {
       libraries.push('library_browser.js');
     }
 
+    if (USE_PTHREADS) { // TODO: Currently WebGL proxying makes pthreads library depend on WebGL.
+      libraries.push('library_webgl.js');
+    }
+
     if (FILESYSTEM) {
       // Core filesystem libraries (always linked against, unless -s FILESYSTEM=0 is specified)
       libraries = libraries.concat([
@@ -154,7 +158,10 @@ var LibraryManager = {
 
     if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
 
-    // TODO: deduplicate libraries (not needed for correctness, but avoids unnecessary work)
+    // Deduplicate libraries to avoid processing any library file multiple times
+    libraries = libraries.filter(function(item, pos) {
+      return libraries.indexOf(item) == pos;
+    });
 
     // Save the list for has() queries later.
     this.libraries = libraries;
@@ -455,9 +462,6 @@ function exportRuntime() {
       'allocateUTF8OnStack'
     ]);
 
-    if (USE_PTHREADS) {
-      runtimeElements.push('establishStackSpace');
-    }
   }
 
   if (STACK_OVERFLOW_CHECK) {
@@ -472,9 +476,12 @@ function exportRuntime() {
     // In pthreads mode, the following functions always need to be exported to
     // Module for closure compiler, and also for MODULARIZE (so worker.js can
     // access them).
-    var threadExports = ['PThread', 'ExitStatus', '_pthread_self'];
+    var threadExports = ['PThread', '_pthread_self'];
     if (WASM) {
       threadExports.push('wasmMemory');
+    }
+    if (!MINIMAL_RUNTIME) {
+      threadExports.push('ExitStatus');
     }
 
     threadExports.forEach(function(x) {

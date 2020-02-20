@@ -4,8 +4,13 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Tool to manage building of various useful things, such as libc, libc++,
-native optimizer, as well as fetch and build ports like zlib and sdl2
+"""Tool to manage building of system libraries and other components.
+such as ports and the native optimizer.
+
+In general emcc will build them automatically on demand, so you do not
+strictly need to use this tool, but it gives you more control over the
+process (in particular, if emcc does this automatically, and you are
+running multiple build commands in parallel, confusion can occur).
 """
 
 from __future__ import print_function
@@ -26,6 +31,27 @@ SYSTEM_TASKS = list(SYSTEM_LIBRARIES.keys())
 # This is needed to build the generated_struct_info.json file.
 # It is not a system library, but it needs to be built before running with FROZEN_CACHE.
 SYSTEM_TASKS += ['struct_info']
+
+# Minimal subset of SYSTEM_TASKS used by CI systems to build enough to useful
+MINIMAL_TASKS = [
+    'libcompiler_rt',
+    'libc',
+    'libc++abi',
+    'libc++abi-noexcept',
+    'libc++',
+    'libc++-noexcept',
+    'libal',
+    'libdlmalloc',
+    'libdlmalloc-debug',
+    'libemmalloc',
+    'libemmalloc-64bit',
+    'libpthread_stub',
+    'libc_rt_wasm',
+    'struct_info',
+    'libc-wasm',
+    'libstandalonewasm',
+    'crt1',
+]
 
 USER_TASKS = [
     'binaryen',
@@ -59,18 +85,11 @@ logger = logging.getLogger('embuilder')
 force = False
 
 
-def get_usage():
+def get_help():
   all_tasks = SYSTEM_TASKS + USER_TASKS
   all_tasks.sort()
-  return '''embuilder.py [flags]... OPERATION TARGET [TARGET]...
-
-You can use this tool to manually build parts of the emscripten system
-environment. In general emcc will build them automatically on demand, so
-you do not strictly need to use this tool, but it gives you more control
-over the process (in particular, if emcc does this automatically, and you
-are running multiple build commands in parallel, confusion can occur).
-
-Available operations and tasks:
+  return '''
+Available targets:
 
   build %s
 
@@ -88,8 +107,8 @@ and set up the location to the native optimizer in ~/.emscripten
 
 
 def build(src, result_libs, args=[]):
-  if not shared.Settings.WASM_OBJECT_FILES:
-    args += ['-s', 'WASM_OBJECT_FILES=0']
+  if shared.Settings.LTO:
+    args += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     args += ['-s', 'RELOCATABLE']
   # build in order to generate the libraries
@@ -118,14 +137,16 @@ def build_port(port_name, lib_name, params, extra_source=''):
 
 def main():
   global force
-  parser = argparse.ArgumentParser(description=__doc__, usage=get_usage())
+  parser = argparse.ArgumentParser(description=__doc__,
+                                   formatter_class=argparse.RawDescriptionHelpFormatter,
+                                   epilog=get_help())
   parser.add_argument('--lto', action='store_true', help='build bitcode object for LTO')
   parser.add_argument('--pic', action='store_true',
                       help='build relocatable objects for suitable for dynamic linking')
   parser.add_argument('--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
   parser.add_argument('operation', help='currently only "build" is supported')
-  parser.add_argument('targets', nargs='+', help='see above')
+  parser.add_argument('targets', nargs='+', help='see below')
   args = parser.parse_args()
 
   if args.operation != 'build':
@@ -139,7 +160,7 @@ def main():
   shared.check_sanity()
 
   if args.lto:
-    shared.Settings.WASM_OBJECT_FILES = 0
+    shared.Settings.LTO = "full"
     # Reconfigure the cache dir to reflect the change
     shared.reconfigure_cache()
 
@@ -161,6 +182,9 @@ def main():
     auto_tasks = True
   elif 'USER' in tasks:
     tasks = USER_TASKS
+    auto_tasks = True
+  elif 'MINIMAL' in tasks:
+    tasks = MINIMAL_TASKS
     auto_tasks = True
   elif 'ALL' in tasks:
     tasks = SYSTEM_TASKS + USER_TASKS

@@ -1217,13 +1217,6 @@ var STANDALONE_WASM = 0;
 // environment.
 var WASM_BACKEND = 0;
 
-// Whether to compile object files as wasm as opposed to the default
-// of using LLVM IR.
-// Setting to zero will enable LTO and at link time will also enable bitcode
-// versions of the standard libraries.
-// [compile+link]
-var WASM_OBJECT_FILES = 1;
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1791,5 +1784,6 @@ var LEGACY_SETTINGS = [
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
-  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP']
+  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
+  ['WASM_OBJECT_FILES', [1], 'Use -flto or -fto=thin instead'],
 ];
