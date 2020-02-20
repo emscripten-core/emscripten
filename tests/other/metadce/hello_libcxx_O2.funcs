@@ -51,7 +51,6 @@ $__get_locale
 $__getf2
 $__growWasmMemory
 $__intscan
-$__isxdigit_l
 $__letf2
 $__loc_is_allocated
 $__lockfile
@@ -140,6 +139,7 @@ $int\20std::__2::__get_up_to_n_digits<wchar_t\2c\20std::__2::istreambuf_iterator
 $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $isdigit
 $isspace
+$isxdigit_l
 $legalstub$dynCall_iiiiiijj
 $legalstub$dynCall_iiiiij
 $legalstub$dynCall_iiiiijj
