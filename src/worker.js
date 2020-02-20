@@ -7,11 +7,6 @@
 // This is the entry point file that is loaded first by each Web Worker
 // that executes pthreads on the Emscripten application.
 
-// Note on logging: In this file we should use console.* directly to log, as
-// using out()/err() assumes we have access to the internals the emscripten
-// JS, but in MODULARIZE* mode that isn't true. If we move this file into the
-// main JS then we can change that.
-
 // Thread-local:
 var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (shared). If zero, this worker is not currently hosting an executing pthread.
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
@@ -32,10 +27,6 @@ function assert(condition, text) {
 }
 #endif
 
-function threadPrintOut() {
-  var text = Array.prototype.slice.call(arguments).join(' ');
-  console.log(text);
-}
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   console.error(text);
@@ -44,7 +35,14 @@ function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
 }
-var out = threadPrintOut;
+#if ASSERTIONS
+// We don't need out() for now, but may need to add it if we want to use it
+// here. Or, if this code all moves into the main JS, that problem will go
+// away. (For now, adding it here increases code size for no benefit.)
+var out = function() {
+  throw 'out() is not defined in worker.js.';
+}
+#endif
 var err = threadPrintErr;
 this.alert = threadAlert;
 
