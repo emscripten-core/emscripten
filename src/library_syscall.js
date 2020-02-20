@@ -305,6 +305,8 @@ var SyscallsLibrary = {
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
+  __syscall9__nothrow: true,
+  __syscall9__proxy: false,
   __syscall9: function(oldpath, newpath) { // link
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
@@ -333,6 +335,7 @@ var SyscallsLibrary = {
     return {{{ PROCINFO.pid }}};
   },
   __syscall29__nothrow: true,
+  __syscall29__proxy: false,
   __syscall29: function() { // pause
     return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
@@ -340,6 +343,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doAccess(path, amode);
   },
+  __syscall34__nothrow: true,
   __syscall34__proxy: false,
   __syscall34: function(inc) { // nice
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
@@ -443,6 +447,8 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+  __syscall57__nothrow: true,
+  __syscall57__proxy: false,
   __syscall57: function(pid, pgid) { // setpgid
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
     if (pgid && pgid !== {{{ PROCINFO.pgid }}}) return -{{{ cDefine('EPERM') }}};
@@ -769,11 +775,12 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
-  __syscall125__proxy: false,
   __syscall125__nothrow: true,
+  __syscall125__proxy: false,
   __syscall125: function(addr, len, size) { // mprotect
     return 0; // let's not and say we did
   },
+  __syscall132__nothrow: true,
   __syscall132__proxy: false,
   __syscall132: function(pid) { // getpgid
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
@@ -871,6 +878,7 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
+  __syscall147__nothrow: true,
   __syscall147__proxy: false,
   __syscall147: function(pid) { // getsid
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
@@ -880,12 +888,15 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
+  __syscall150__nothrow: true,
   __syscall150__proxy: false,
   __syscall150__sig: 'iii',
   __syscall150: '__syscall153',     // mlock
+  __syscall151__nothrow: true,
   __syscall151__proxy: false,
   __syscall151__sig: 'iii',
   __syscall151: '__syscall153',     // munlock
+  __syscall152__nothrow: true,
   __syscall152__proxy: false,
   __syscall152__sig: 'iii',
   __syscall152: '__syscall153',     // mlockall
@@ -988,12 +999,15 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall199__sig: 'i',
+  __syscall199__nothrow: true,
   __syscall199__proxy: false,
   __syscall199: '__syscall202',     // getuid32
   __syscall200__sig: 'i',
+  __syscall200__nothrow: true,
   __syscall200__proxy: false,
   __syscall200: '__syscall202',     // getgid32
   __syscall201__sig: 'i',
+  __syscall201__nothrow: true,
   __syscall201__proxy: false,
   __syscall201: '__syscall202',     // geteuid32
   __syscall202__nothrow: true,
@@ -1011,36 +1025,46 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall203__sig: 'ii',
+  __syscall203__nothrow: true,
   __syscall203__proxy: false,
   __syscall203: '__sysicall214',     // setreuid32
   __syscall204__sig: 'ii',
+  __syscall204__nothrow: true,
   __syscall204__proxy: false,
   __syscall204: '__syscall214',     // setregid32
   __syscall213__sig: 'ii',
+  __syscall213__nothrow: true,
   __syscall213__proxy: false,
   __syscall213: '__syscall214',     // setuid32
+  __syscall214__sig: 'ii',
+  __syscall214__nothrow: true,
   __syscall214__proxy: false,
   __syscall214: function(uid) { // setgid32
     if (uid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
+  __syscall205__nothrow: true,
   __syscall205__proxy: false,
   __syscall205: function(size, list) { // getgroups32
     if (size < 1) return -{{{ cDefine('EINVAL') }}};
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
   },
+  __syscall208__nothrow: true,
   __syscall208__proxy: false,
   __syscall208__sig: 'iiii',
   __syscall208: '__syscall210',     // setresuid32
+  __syscall210__nothrow: true,
   __syscall210__proxy: false,
   __syscall210: function(ruid, euid, suid) { // setresgid32
     if (euid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __syscall209__sig: 'iiii',
+  __syscall209__nothrow: true,
   __syscall209__proxy: false,
   __syscall209: '__syscall211',     // getresuid
+  __syscall211__nothrow: true,
   __syscall211__proxy: false,
   __syscall211: function(ruid, euid, suid) { // getresgid32
 #if SYSCALL_DEBUG
@@ -1309,6 +1333,7 @@ var SyscallsLibrary = {
     return SYSCALLS.doAccess(path, amode);
   },
   __syscall308__nothrow: true,
+  __syscall308__proxy: false,
   __syscall308: function() { // pselect
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
@@ -1373,6 +1398,7 @@ var SyscallsLibrary = {
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
   __syscall337__nothrow: true,
+  __syscall337__proxy: false,
   __syscall337: function(sockfd, msgvec, vlen, flags) { // recvmmsg
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_recvmmsg');
