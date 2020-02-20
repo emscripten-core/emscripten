@@ -247,6 +247,8 @@ function JSify(data, functionsOnly) {
         Functions.libraryFunctions[finalName] = 1;
       }
 
+      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be imported
+      // to asm.js/wasm module.
       if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }
