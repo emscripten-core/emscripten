@@ -1161,6 +1161,7 @@ var LibraryGL = {
 #if GL_ASSERTIONS
           err('GL_INVALID_ENUM in glGetString: Received empty parameter for query name ' + name_ + '!'); // This occurs e.g. if one attempts GL_UNMASKED_VENDOR_WEBGL when it is not supported.
 #endif
+          return 0;
         }
         ret = stringToNewUTF8(s);
         break;
