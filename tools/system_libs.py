@@ -822,7 +822,14 @@ class libc_extras(MuslInternalLibrary):
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
-  cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = [
+      '-std=c++11',
+      '-Oz',
+      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+      # Remove this once we update to include this llvm
+      # revision: https://reviews.llvm.org/D64961
+      '-D_LIBCXXABI_GUARD_ABI_ARM',
+    ]
 
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
