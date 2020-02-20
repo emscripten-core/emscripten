@@ -395,6 +395,7 @@ $__getf2
 $__growWasmMemory
 $__intscan
 $__isdigit_l
+$__isxdigit_l
 $__letf2
 $__loc_is_allocated
 $__lockfile
@@ -503,7 +504,6 @@ $is_equal\28std::type_info\20const*\2c\20std::type_info\20const*\2c\20bool\29
 $isdigit
 $isspace
 $isxdigit
-$isxdigit_l
 $legalfunc$__invoke_i64_i8*_i8*_i32*_i32
 $legalstub$dynCall_iiiiiijj
 $legalstub$dynCall_iiiiij
