@@ -5648,11 +5648,11 @@ PORT: 3979
         self.assertBinaryEqual('src.cpp.o.js', 'src.js.previous')
       shutil.copy2('src.cpp.o.js', 'src.js.previous')
 
-      # Same but for the same file.
+      # Same but for the wasm file.
       if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
-        if os.path.exists('src.wsam.previous'):
-          self.assertBinaryEqual('src.cpp.o.wasm', 'src.wsam.previous')
-        shutil.copy2('src.cpp.o.wasm', 'src.wsam.previous')
+        if os.path.exists('src.wasm.previous'):
+          self.assertBinaryEqual('src.cpp.o.wasm', 'src.wasm.previous')
+        shutil.copy2('src.cpp.o.wasm', 'src.wasm.previous')
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
