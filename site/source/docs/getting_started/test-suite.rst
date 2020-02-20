@@ -38,12 +38,12 @@ The tests are divided into *modes*. You can run either an entire mode or an indi
   python tests/runner.py asm*.test_loop
 
   # run a bunch of tests in one mode (here, all i64 tests in wasm -O3)
-  python tests/runner.py binaryen3.test_*i64*
+  python tests/runner.py wasm3.test_*i64*
 
   # run all tests in a specific mode (here, asm.js -O1)
   python tests/runner.py asm1
 
-The *core* test modes (``asm*`` and ``binaryen*``, defined in ``tests/test_core.py``) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
+The *core* test modes (defined at the bottom of `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_) let you run a specific test in either asm.js or wasm, and with different optimization flags. There are also non-core test modes, that run tests in more special manner (in particular, in those tests it is not possible to say "run the test with a different optimization flag" - that is what the core tests are for). The non-core test modes include
 
  * `other`: Non-core tests running in the shell.
  * `browser`: Tests that run in a browser.
@@ -96,12 +96,13 @@ Replace ``100`` with another number as you prefer. This will run that number of 
 Important Tests
 ===============
 
-When you want to run the entire test suite locally, these are the important commands:
+Please see the bottom the file `tests/test_core.py <https://github.com/emscripten-core/emscripten/blob/master/tests/test_core.py>`_ for the current test modes, as they may change slowly over time.
+When you want to run the entire test suite locally, these are currently the important commands:
 
 .. code-block:: bash
 
-  # Run all core asm.js and wasm tests
-  python tests/runner.py asm* binaryen*
+  # Run all core wasm tests
+  python tests/runner.py wasm*
 
   # Run "other" test suite
   python tests/runner.py other

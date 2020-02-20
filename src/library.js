@@ -27,25 +27,6 @@ LibraryManager.library = {
   __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
 
-  $PROCINFO: {
-    // permissions
-    /*
-    uid: 0,
-    gid: 0,
-    euid: 0,
-    egid: 0,
-    suid: 0,
-    sgid: 0,
-    fsuid: 0,
-    fsgid: 0,
-    */
-    // process identification
-    ppid: 1,
-    pid: 42,
-    sid: 42,
-    pgid: 42
-  },
-
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   // ==========================================================================
@@ -942,6 +923,7 @@ LibraryManager.library = {
   //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
+  emscripten_memcpy_big__import: true,
   emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
     '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
     '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
@@ -2816,10 +2798,9 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-  clock_getcpuclockid__deps: ['$PROCINFO'],
   clock_getcpuclockid: function(pid, clk_id) {
     if (pid < 0) return {{{ cDefine('ESRCH') }}};
-    if (pid !== 0 && pid !== PROCINFO.pid) return {{{ cDefine('ENOSYS') }}};
+    if (pid !== 0 && pid !== {{{ PROCINFO.pid }}}) return {{{ cDefine('ENOSYS') }}};
     if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
     return 0;
   },
@@ -4048,11 +4029,11 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  emscripten_get_now: function() { abort() }, // replaced by the postset at startup time
-  emscripten_get_now__postset:
+  emscripten_get_now__import: true,
+  emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
+                               "  _emscripten_get_now = function() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
@@ -4061,7 +4042,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = function() { return performance.now() - Module['__performance_now_clock_drift']; };\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -4070,14 +4051,15 @@ LibraryManager.library = {
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
-                               "  _emscripten_get_now = function() { return performance['now'](); };\n" +
+                               "if (typeof performance !== 'undefined' && performance.now) {\n" +
+                               "  _emscripten_get_now = function() { return performance.now(); }\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
-                               "_emscripten_get_now = function() { return performance['now'](); };\n",
+                               // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+                               "_emscripten_get_now = function() { return performance.now(); }\n",
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
