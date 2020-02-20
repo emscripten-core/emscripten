@@ -1,9 +1,8 @@
 //===------------------------- locale.cpp ---------------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -469,10 +468,8 @@ locale::__imp::install(facet* f, long id)
 const locale::facet*
 locale::__imp::use_facet(long id) const
 {
-#ifndef _LIBCPP_NO_EXCEPTIONS
     if (!has_facet(id))
-        throw bad_cast();
-#endif  // _LIBCPP_NO_EXCEPTIONS
+        __throw_bad_cast();
     return facets_[static_cast<size_t>(id)];
 }
 
@@ -538,12 +535,8 @@ locale::operator=(const locale& other)  _NOEXCEPT
 }
 
 locale::locale(const char* name)
-#ifndef _LIBCPP_NO_EXCEPTIONS
     : __locale_(name ? new __imp(name)
-                     : throw runtime_error("locale constructed with null"))
-#else  // _LIBCPP_NO_EXCEPTIONS
-    : __locale_(new __imp(name))
-#endif
+                     : (__throw_runtime_error("locale constructed with null"), (__imp*)0))
 {
     __locale_->__add_shared();
 }
@@ -555,12 +548,8 @@ locale::locale(const string& name)
 }
 
 locale::locale(const locale& other, const char* name, category c)
-#ifndef _LIBCPP_NO_EXCEPTIONS
     : __locale_(name ? new __imp(*other.__locale_, name, c)
-                     : throw runtime_error("locale constructed with null"))
-#else  // _LIBCPP_NO_EXCEPTIONS
-    : __locale_(new __imp(*other.__locale_, name, c))
-#endif
+                     : (__throw_runtime_error("locale constructed with null"), (__imp*)0))
 {
     __locale_->__add_shared();
 }
@@ -4390,7 +4379,9 @@ void
 __check_grouping(const string& __grouping, unsigned* __g, unsigned* __g_end,
                  ios_base::iostate& __err)
 {
-    if (__grouping.size() != 0)
+//  if the grouping pattern is empty _or_ there are no grouping bits, then do nothing
+//  we always have at least a single entry in [__g, __g_end); the end of the input sequence
+	if (__grouping.size() != 0 && __g_end - __g > 1)
     {
         reverse(__g, __g_end);
         const char* __ig = __grouping.data();
