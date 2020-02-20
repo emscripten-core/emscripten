@@ -5618,6 +5618,12 @@ PORT: 3979
 
   # libc++ tests
 
+  def assertBinaryEqual(self, file1, file2):
+    self.assertEqual(os.path.getsize(file1),
+                     os.path.getsize(file2))
+    self.assertEqual(open(file1, 'rb').read(),
+                     open(file2, 'rb').read())
+
   def test_iostream_and_determinism(self):
     src = '''
       #include <iostream>
@@ -5628,26 +5634,20 @@ PORT: 3979
         return 0;
       }
     '''
+
     num = 5
-
-    def test():
-      print('(iteration)')
-      time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
+    for i in range(num):
+      print('(iteration %d)' % i)
+      # add some timing nondeterminism here, not that we need it, but whatever
+      time.sleep(random.random() / (10 * num))
       self.do_run(src, 'hello world\n77.\n')
-      ret = open('src.cpp.o.js', 'rb').read()
+      if os.path.exists('src.js.previous'):
+        self.assertBinaryEqual('src.cpp.o.js', 'src.js.previous')
+      shutil.copy2('src.cpp.o.js', 'src.js.previous')
       if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
-        ret += open('src.cpp.o.wasm', 'rb').read()
-      return ret
-
-    builds = [test() for i in range(num)]
-    print(list(map(len, builds)))
-    uniques = set(builds)
-    if len(uniques) != 1:
-      i = 0
-      for unique in uniques:
-        open('unique_' + str(i) + '.js', 'wb').write(unique)
-        i += 1
-      assert 0, 'builds must be deterministic, see unique_X.js'
+        if os.path.exists('src.wsam.previous'):
+          self.assertBinaryEqual('src.cpp.o.wasm', 'src.wsam.previous')
+        shutil.copy2('src.cpp.o.wasm', 'src.wsam.previous')
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
