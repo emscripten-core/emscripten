@@ -221,7 +221,6 @@ def base64_encode(b):
 
 class EmccOptions(object):
   def __init__(self):
-    self.shrink_level = 0
     self.requested_debug = ''
     self.profiling = False
     self.profiling_funcs = False
@@ -272,7 +271,7 @@ def use_source_map(options):
 
 
 def will_metadce(options):
-  return shared.Settings.OPT_LEVEL >= 3 or options.shrink_level >= 1
+  return shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL >= 1
 
 
 class JSOptimizer(object):
@@ -285,8 +284,6 @@ class JSOptimizer(object):
     self.cleanup_shell = False
 
     self.target = target
-    self.opt_level = shared.Settings.OPT_LEVEL
-    self.debug_level = shared.Settings.DEBUG_LEVEL
     self.emit_symbol_map = options.emit_symbol_map
     self.profiling_funcs = options.profiling_funcs
     self.use_closure_compiler = options.use_closure_compiler
@@ -371,15 +368,15 @@ class JSOptimizer(object):
 
     this is also when we do certain optimizations that must be done right before or after minification
     """
-    if self.opt_level >= 2:
-      if self.debug_level < 2 and not self.use_closure_compiler == 2:
+    if shared.Settings.OPT_LEVEL >= 2:
+      if shared.Settings.DEBUG_LEVEL < 2 and not self.use_closure_compiler == 2:
         self.queue += ['minifyNames']
-      if self.debug_level == 0:
+      if shared.Settings.DEBUG_LEVEL == 0:
         self.minify_whitespace = True
 
     if self.use_closure_compiler == 1:
       self.queue += ['closure']
-    elif self.debug_level <= 2 and shared.Settings.FINALIZE_ASM_JS and not self.use_closure_compiler:
+    elif shared.Settings.DEBUG_LEVEL <= 2 and shared.Settings.FINALIZE_ASM_JS and not self.use_closure_compiler:
       self.cleanup_shell = True
 
 
@@ -1129,7 +1126,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.WarningManager.warn('SEPARATE_ASM')
 
     # Apply optimization level settings
-    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=options.shrink_level, noisy=True)
+    shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
 
     # For users that opt out of WARN_ON_UNDEFINED_SYMBOLS we assume they also
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
@@ -1814,8 +1811,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--inline-main']
           if not shared.Settings.EXIT_RUNTIME:
             passes += ['--no-exit-runtime']
-          if shared.Settings.OPT_LEVEL > 0 or options.shrink_level > 0:
-            passes += [shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, options.shrink_level)]
+          if shared.Settings.OPT_LEVEL > 0 or shared.Settings.SHRINK_LEVEL > 0:
+            passes += [shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL)]
           elif shared.Settings.STANDALONE_WASM:
             # even if not optimizing, make an effort to remove all unused imports and
             # exports, to make the wasm as standalone as possible
@@ -2521,7 +2518,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           f.write(shared.read_and_preprocess(shared.path_from_root('src', 'worker.js'), expand_macros=True))
 
         # Minify the worker.js file in optimized builds
-        if (shared.Settings.OPT_LEVEL >= 1 or options.shrink_level >= 1) and not shared.Settings.DEBUG_LEVEL:
+        if (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1) and not shared.Settings.DEBUG_LEVEL:
           minified_worker = shared.Building.js_optimizer_no_asmjs(worker_output, ['minifyWhitespace'], acorn=True, return_output=True)
           open(worker_output, 'w').write(minified_worker)
 
@@ -2591,7 +2588,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           optimizer.queue += ['safeHeap']
 
         if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL < 3:
-          if shared.Settings.OPT_LEVEL >= 3 or options.shrink_level > 0:
+          if shared.Settings.OPT_LEVEL >= 3 or shared.Settings.SHRINK_LEVEL > 0:
             optimizer.queue += ['registerizeHarder']
           else:
             optimizer.queue += ['registerize']
@@ -2728,12 +2725,12 @@ def parse_args(newargs):
       if options.requested_level == 's':
         options.llvm_opts = ['-Os']
         options.requested_level = 2
-        options.shrink_level = 1
+        shared.Settings.SHRINK_LEVEL = 1
         settings_changes.append('INLINING_LIMIT=50')
       elif options.requested_level == 'z':
         options.llvm_opts = ['-Oz']
         options.requested_level = 2
-        options.shrink_level = 2
+        shared.Settings.SHRINK_LEVEL = 2
         settings_changes.append('INLINING_LIMIT=25')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
     elif newargs[i].startswith('--js-opts'):
@@ -3124,7 +3121,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--ignore-implicit-traps']
     # pass optimization level to asm2wasm (if not optimizing, or which passes we should run was overridden, do not optimize)
     if shared.Settings.OPT_LEVEL > 0:
-      cmd.append(shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, options.shrink_level))
+      cmd.append(shared.Building.opt_level_to_str(shared.Settings.OPT_LEVEL, shared.Settings.SHRINK_LEVEL))
     # import mem init file if it exists, and if we will not be using asm.js as a binaryen method (as it needs the mem init file, of course)
     mem_file_exists = options.memory_init_file and os.path.exists(memfile)
     import_mem_init = mem_file_exists and shared.Settings.MEM_INIT_IN_WASM
@@ -3242,7 +3239,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.ASYNCIFY_LAZY_LOAD_CODE:
     if not shared.Settings.ASYNCIFY:
       exit_with_error('ASYNCIFY_LAZY_LOAD_CODE requires ASYNCIFY')
-    shared.Building.asyncify_lazy_load_code(wasm_binary_target, options, debug=intermediate_debug_info)
+    shared.Building.asyncify_lazy_load_code(wasm_binary_target, debug=intermediate_debug_info)
 
   def preprocess_wasm2js_script():
     wasm2js = read_and_preprocess(shared.path_from_root('src', 'wasm2js.js'))
@@ -3697,7 +3694,7 @@ def generate_html(target, options, js_target, target_basename,
     generate_traditional_runtime_html(target, options, js_target, target_basename, asm_target,
                                       wasm_binary_target, memfile, optimizer)
 
-  if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or options.shrink_level >= 1):
+  if shared.Settings.MINIFY_HTML and (shared.Settings.OPT_LEVEL >= 1 or shared.Settings.SHRINK_LEVEL >= 1):
     minify_html(target, options)
 
 

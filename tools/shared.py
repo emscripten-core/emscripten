@@ -2625,13 +2625,13 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def asyncify_lazy_load_code(wasm_binary_target, options, debug):
+  def asyncify_lazy_load_code(wasm_binary_target, debug):
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code
     args = ['--remove-memory', '--mod-asyncify-never-unwind']
     if Settings.OPT_LEVEL > 0:
-      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, options.shrink_level))
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
     Building.run_wasm_opt(wasm_binary_target,
                           wasm_binary_target + '.lazy.wasm',
                           args=args,
@@ -2643,7 +2643,7 @@ class Building(object):
     # TODO: source maps etc.
     args = ['--mod-asyncify-always-and-only-unwind']
     if Settings.OPT_LEVEL > 0:
-      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, options.shrink_level))
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
     Building.run_wasm_opt(infile=wasm_binary_target,
                           outfile=wasm_binary_target,
                           args=args,
