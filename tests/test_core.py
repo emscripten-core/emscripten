@@ -5638,12 +5638,17 @@ PORT: 3979
     num = 5
     for i in range(num):
       print('(iteration %d)' % i)
+
       # add some timing nondeterminism here, not that we need it, but whatever
       time.sleep(random.random() / (10 * num))
       self.do_run(src, 'hello world\n77.\n')
+
+      # Verify that this build is identical to the previous one
       if os.path.exists('src.js.previous'):
         self.assertBinaryEqual('src.cpp.o.js', 'src.js.previous')
       shutil.copy2('src.cpp.o.js', 'src.js.previous')
+
+      # Same but for the same file.
       if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
         if os.path.exists('src.wsam.previous'):
           self.assertBinaryEqual('src.cpp.o.wasm', 'src.wsam.previous')
