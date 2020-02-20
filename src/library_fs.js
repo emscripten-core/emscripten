@@ -1709,7 +1709,8 @@ FS.staticInit();` +
     // either --preload-file in emcc or FS.createPreloadedFile
     createLazyFile: function(parent, name, url, canRead, canWrite) {
       // Lazy chunked Uint8Array (implements get and length from Uint8Array). Actual getting is abstracted away for eventual reuse.
-      /** @constructor */ function LazyUint8Array() {
+      /** @constructor */
+      function LazyUint8Array() {
         this.lengthKnown = false;
         this.chunks = []; // Loaded chunks. Index is the chunk number
       }
