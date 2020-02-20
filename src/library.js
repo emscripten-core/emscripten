@@ -942,6 +942,7 @@ LibraryManager.library = {
   //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
   //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
   // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
+  emscripten_memcpy_big__import: true,
   emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
     '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
     '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
@@ -4048,6 +4049,7 @@ LibraryManager.library = {
     return Math.random();
   },
 
+  emscripten_get_now__import: true,
   emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +

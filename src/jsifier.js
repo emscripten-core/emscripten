@@ -138,7 +138,8 @@ function JSify(data, functionsOnly) {
       if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
-      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs')) {
+      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+       || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import')) {
         return '';
       }
 
@@ -237,16 +238,16 @@ function JSify(data, functionsOnly) {
           if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
             Functions.libraryFunctions[finalName] = 1;
           }
-        } else if (snippet.indexOf('function(') != -1) {
-          // Assume this is an inline defined function (like emscripten_memcpy_big), and it possibly
-          // needs to be imported to asm.js/wasm scope.
-          Functions.libraryFunctions[finalName] = 1;
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
+        Functions.libraryFunctions[finalName] = 1;
+      }
+
+      if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }
 
