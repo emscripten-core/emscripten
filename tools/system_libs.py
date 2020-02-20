@@ -842,7 +842,8 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
 
   def get_files(self):
     filenames = [
-      #'abort_message.cpp',
+      # For now we implement abort_message as JS call.
+      # 'abort_message.cpp',
       'cxa_aux_runtime.cpp',
       'cxa_default_handlers.cpp',
       'cxa_demangle.cpp',
