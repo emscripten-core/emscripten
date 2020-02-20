@@ -4072,13 +4072,14 @@ LibraryManager.library = {
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
                                "if (typeof performance !== 'undefined' && performance.now) {\n" +
-                               "  _emscripten_get_now = performance.now;\n" +
+                               "  _emscripten_get_now = function() { return performance.now(); }\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
-                               "_emscripten_get_now = performance.now;\n",
+                               // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+                               "_emscripten_get_now = function() { return performance.now(); }\n",
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
