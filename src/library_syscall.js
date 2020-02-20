@@ -327,11 +327,10 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall20__deps: ['$PROCINFO'],
   __syscall20__nothrow: true,
   __syscall20__proxy: false,
   __syscall20: function() { // getpid
-    return PROCINFO.pid;
+    return {{{ PROCINFO.pid }}};
   },
   __syscall29__nothrow: true,
   __syscall29: function() { // pause
@@ -444,10 +443,9 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall57__deps: ['$PROCINFO'],
   __syscall57: function(pid, pgid) { // setpgid
-    if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
-    if (pgid && pgid !== PROCINFO.pgid) return -{{{ cDefine('EPERM') }}};
+    if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
+    if (pgid && pgid !== {{{ PROCINFO.pgid }}}) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
   __syscall60: function(mask) { // umask
@@ -460,17 +458,15 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return suggestFD;
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
-  __syscall64__deps: ['$PROCINFO'],
   __syscall64__nothrow: true,
   __syscall64__proxy: false,
   __syscall64: function() { // getppid
-    return PROCINFO.ppid;
+    return {{{ PROCINFO.ppid }}};
   },
-  __syscall65__deps: ['$PROCINFO'],
   __syscall65__nothrow: true,
   __syscall65__proxy: false,
   __syscall65: function() { // getpgrp
-    return PROCINFO.pgid;
+    return {{{ PROCINFO.pgid }}};
   },
   __syscall66__nothrow: true,
   __syscall66__proxy: false,
@@ -778,11 +774,10 @@ var SyscallsLibrary = {
   __syscall125: function(addr, len, size) { // mprotect
     return 0; // let's not and say we did
   },
-  __syscall132__deps: ['$PROCINFO'],
   __syscall132__proxy: false,
   __syscall132: function(pid) { // getpgid
-    if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
-    return PROCINFO.pgid;
+    if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
+    return {{{ PROCINFO.pgid }}};
   },
   __syscall133: function(fd) { // fchdir
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -876,11 +871,10 @@ var SyscallsLibrary = {
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
-  __syscall147__deps: ['$PROCINFO'],
   __syscall147__proxy: false,
   __syscall147: function(pid) { // getsid
-    if (pid && pid !== PROCINFO.pid) return -{{{ cDefine('ESRCH') }}};
-    return PROCINFO.sid;
+    if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
+    return {{{ PROCINFO.sid }}};
   },
   __syscall148: function(fd) { // fdatasync
     var stream = SYSCALLS.getStreamFromFD(fd);
