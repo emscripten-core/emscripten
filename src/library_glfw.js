@@ -35,14 +35,8 @@
  */
 
 var LibraryGLFW = {
-  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser'
-#if FILESYSTEM
-    , '$FS'
-#endif
-  ],
-  $GLFW: {
-
-    Window: function(id, width, height, title, monitor, share) {
+  $GLFW_Window__docs: '/** @constructor */',
+  $GLFW_Window: function(id, width, height, title, monitor, share) {
       this.id = id;
       this.x = 0;
       this.y = 0;
@@ -84,6 +78,12 @@ var LibraryGLFW = {
       this.userptr = null;
     },
 
+  $GLFW__deps: ['emscripten_get_now', '$GL', '$Browser', '$GLFW_Window',
+#if FILESYSTEM
+    , '$FS'
+#endif
+  ],
+  $GLFW: {
     WindowFromId: function(id) {
       if (id <= 0 || !GLFW.windows) return null;
       return GLFW.windows[id - 1];
@@ -1003,7 +1003,7 @@ var LibraryGLFW = {
       if (!Module.ctx) return 0;
 
       // Get non alive id
-      var win = new GLFW.Window(id, width, height, title, monitor, share);
+      var win = new GLFW_Window(id, width, height, title, monitor, share);
 
       // Set window to array
       if (id - 1 == GLFW.windows.length) {
@@ -1094,6 +1094,10 @@ var LibraryGLFW = {
     window.addEventListener("keypress", GLFW.onKeyPress, true);
     window.addEventListener("keyup", GLFW.onKeyup, true);
     window.addEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].addEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].addEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].addEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].addEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].addEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].addEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].addEventListener("mouseup", GLFW.onMouseButtonUp, true);
@@ -1117,6 +1121,10 @@ var LibraryGLFW = {
     window.removeEventListener("keypress", GLFW.onKeyPress, true);
     window.removeEventListener("keyup", GLFW.onKeyup, true);
     window.removeEventListener("blur", GLFW.onBlur, true);
+    Module["canvas"].removeEventListener("touchmove", GLFW.onMousemove, true);
+    Module["canvas"].removeEventListener("touchstart", GLFW.onMouseButtonDown, true);
+    Module["canvas"].removeEventListener("touchcancel", GLFW.onMouseButtonUp, true);
+    Module["canvas"].removeEventListener("touchend", GLFW.onMouseButtonUp, true);
     Module["canvas"].removeEventListener("mousemove", GLFW.onMousemove, true);
     Module["canvas"].removeEventListener("mousedown", GLFW.onMouseButtonDown, true);
     Module["canvas"].removeEventListener("mouseup", GLFW.onMouseButtonUp, true);

@@ -46,6 +46,9 @@ mulsc3.c
 multc3.c
 multf3.c
 multi3.c
+powidf2.c
+powisf2.c
+powitf2.c
 subtf3.c
 trunctfdf2.c
 trunctfsf2.c

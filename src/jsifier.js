@@ -138,7 +138,7 @@ function JSify(data, functionsOnly) {
       if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
-      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset')) {
+      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs')) {
         return '';
       }
 
@@ -176,6 +176,10 @@ function JSify(data, functionsOnly) {
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
           LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
+          // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
+          // regarding this function, marking ot a variadic function that can take in anything and return anything.
+          // (not useful to warn/error multiple times)
+          LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
           var isGlobalAccessor = ident.startsWith('g$');
           var realIdent = ident;
@@ -233,6 +237,10 @@ function JSify(data, functionsOnly) {
           if (!redirectedIdent && (typeof target == 'function' || /Math_\w+/.exec(snippet))) {
             Functions.libraryFunctions[finalName] = 1;
           }
+        } else if (snippet.indexOf('function(') != -1) {
+          // Assume this is an inline defined function (like emscripten_memcpy_big), and it possibly
+          // needs to be imported to asm.js/wasm scope.
+          Functions.libraryFunctions[finalName] = 1;
         }
       } else if (typeof snippet === 'object') {
         snippet = stringifyWithFunctions(snippet);
@@ -330,7 +338,13 @@ function JSify(data, functionsOnly) {
           }
         });
       }
-      return depsText + contentText;
+
+      var commentText = '';
+      if (LibraryManager.library[ident + '__docs']) {
+        commentText = LibraryManager.library[ident + '__docs'] + '\n';
+      }
+
+      return depsText + commentText + contentText;
     }
 
     itemsDict.functionStub.push(item);

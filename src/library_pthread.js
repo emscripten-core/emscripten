@@ -29,7 +29,9 @@ var LibraryPThread = {
       _emscripten_register_main_browser_thread_id(PThread.mainThreadBlock);
     },
     initMainThreadBlock: function() {
-      if (ENVIRONMENT_IS_PTHREAD) return;
+#if ASSERTIONS
+      assert(!ENVIRONMENT_IS_PTHREAD);
+#endif
 
 #if PTHREAD_POOL_SIZE
       var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
@@ -374,8 +376,8 @@ var LibraryPThread = {
 #endif
 
 #if ASSERTIONS && WASM
-      assert(wasmMemory, 'WebAssembly memory should have been loaded by now!');
-      assert(wasmModule, 'WebAssembly Module should have been loaded by now!');
+      assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
+      assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
 #endif
 
       // Ask the new worker to load up the Emscripten-compiled page. This is a heavy operation.
@@ -400,17 +402,23 @@ var LibraryPThread = {
         'buffer': HEAPU8.buffer,
         'asmJsUrlOrBlob': Module["asmJsUrlOrBlob"],
 #endif
+#if !MINIMAL_RUNTIME
         'DYNAMIC_BASE': DYNAMIC_BASE,
+#endif
         'DYNAMICTOP_PTR': DYNAMICTOP_PTR
       });
     },
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker: function() {
+#if MINIMAL_RUNTIME
+      var pthreadMainJs = Module['worker'];
+#else
       // Allow HTML module to configure the location where the 'worker.js' file will be loaded from,
       // via Module.locateFile() function. If not specified, then the default URL 'worker.js' relative
       // to the main html file is loaded.
       var pthreadMainJs = locateFile('{{{ PTHREAD_WORKER_FILE }}}');
+#endif
 #if PTHREADS_DEBUG
       out('Allocating a new web worker from ' + pthreadMainJs);
 #endif
@@ -550,7 +558,7 @@ var LibraryPThread = {
     return navigator['hardwareConcurrency'];
   },
 
-  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign'],
+  {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create__deps: ['_spawn_thread', 'pthread_getschedparam', 'pthread_self', 'memalign', '$resetPrototype'],
   {{{ USE_LSAN || USE_ASAN ? 'emscripten_builtin_' : '' }}}pthread_create: function(pthread_ptr, attr, start_routine, arg) {
     if (typeof SharedArrayBuffer === 'undefined') {
       err('Current environment does not support SharedArrayBuffer, pthreads are not available!');
@@ -769,17 +777,30 @@ var LibraryPThread = {
     if (canceled == 2) throw 'Canceled!';
   },
 
-  emscripten_check_blocking_allowed: function() {
-#if ASSERTIONS
-    assert(ENVIRONMENT_IS_WEB);
-    warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
+#if MINIMAL_RUNTIME
+  emscripten_check_blocking_allowed__deps: ['$warnOnce'],
 #endif
+  emscripten_check_blocking_allowed: function() {
+#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) return;
+#endif
+
+    if (ENVIRONMENT_IS_PTHREAD) return; // Blocking in a pthread is fine.
+
+    warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #if !ALLOW_BLOCKING_ON_MAIN_THREAD
     abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
 #endif
+
+#endif
   },
 
-  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait', 'emscripten_check_blocking_allowed'],
+  _emscripten_do_pthread_join__deps: ['_cleanup_thread', '_pthread_testcancel_js', 'emscripten_main_thread_process_queued_calls', 'emscripten_futex_wait',
+#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+  'emscripten_check_blocking_allowed'
+#endif
+  ],
   _emscripten_do_pthread_join: function(thread, status, block) {
     if (!thread) {
       err('pthread_join attempted on a null thread pointer!');
@@ -805,9 +826,11 @@ var LibraryPThread = {
       return ERRNO_CODES.EINVAL; // The thread is already detached, can no longer join it!
     }
 
-    if (block && ENVIRONMENT_IS_WEB) {
+#if ASSERTIONS || IN_TEST_HARNESS || !MINIMAL_RUNTIME || !ALLOW_BLOCKING_ON_MAIN_THREAD
+    if (block) {
       _emscripten_check_blocking_allowed();
     }
+#endif
 
     for (;;) {
       var threadStatus = Atomics.load(HEAPU32, (thread + {{{ C_STRUCTS.pthread.threadStatus }}} ) >> 2);
@@ -1057,9 +1080,11 @@ var LibraryPThread = {
   pthread_cleanup_push: function(routine, arg) {
     if (PThread.exitHandlers === null) {
       PThread.exitHandlers = [];
+#if EXIT_RUNTIME
       if (!ENVIRONMENT_IS_PTHREAD) {
         __ATEXIT__.push(function() { PThread.runExitHandlers(); });
       }
+#endif
     }
     PThread.exitHandlers.push(function() { {{{ makeDynCall('vi') }}}(routine, arg) });
   },
@@ -1297,7 +1322,7 @@ var LibraryPThread = {
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
   },
 
-  $establishStackSpaceInJsModule: function(stackTop, stackMax) {
+  $establishStackSpace: function(stackTop, stackMax) {
     STACK_BASE = STACKTOP = stackTop;
     STACK_MAX = stackMax;
 
@@ -1318,13 +1343,32 @@ var LibraryPThread = {
 #if STACK_OVERFLOW_CHECK
     writeStackCookie();
 #endif
-    // Call inside asm.js/wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
-    establishStackSpace(stackTop, stackMax);
+
+#if WASM_BACKEND
+    // Call inside wasm module to set up the stack frame for this pthread in asm.js/wasm module scope
+    stackRestore(stackTop);
+#else
+    // In old asm.js backend, use a dedicated function to establish the stack frame.
+    asmJsEstablishStackFrame(stackTop, stackMax);
+#endif
   },
 
   // allow pthreads to check if noExitRuntime from worker.js
   $getNoExitRuntime: function() {
     return noExitRuntime;
+  },
+
+  // When using postMessage to send an object, it is processed by the structured clone algorithm.
+  // The prototype, and hence methods, on that object is then lost. This function adds back the lost prototype.
+  // This does not work with nested objects that has prototypes, but it suffices for WasmSourceMap and WasmOffsetConverter.
+  $resetPrototype: function(constructor, attrs) {
+    var object = Object.create(constructor.prototype);
+    for (var key in attrs) {
+      if (attrs.hasOwnProperty(key)) {
+        object[key] = attrs[key];
+      }
+    }
+    return object;
   },
 
   // This function is called internally to notify target thread ID that it has messages it needs to

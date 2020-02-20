@@ -774,7 +774,8 @@ for name, enum in enums.items():
       raise Exception("Illegal enum value %s" % value)
 
 mid_c += ['\n}\n\n']
-mid_js += ['''
+if len(deferred_js):
+  mid_js += ['''
 (function() {
   function setupEnums() {
     %s

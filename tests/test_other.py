@@ -619,9 +619,9 @@ f.close()
     }
 
     if WINDOWS:
-      emconfigure = path_from_root('emconfigure.bat')
+      emcmake = path_from_root('emcmake.bat')
     else:
-      emconfigure = path_from_root('emconfigure')
+      emcmake = path_from_root('emcmake')
 
     for generator in generators:
       conf = configurations[generator]
@@ -658,7 +658,7 @@ f.close()
         cmakelistsdir = path_from_root('tests', 'cmake', test_dir)
         with temp_directory(self.get_dir()) as tempdirname:
           # Run Cmake
-          cmd = [emconfigure, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+          cmd = [emcmake, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
 
           env = os.environ.copy()
           # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
@@ -704,12 +704,12 @@ f.close()
       native_features = run_process(cmd, stdout=PIPE).stdout
 
     if WINDOWS:
-      emconfigure = path_from_root('emcmake.bat')
+      emcmake = path_from_root('emcmake.bat')
     else:
-      emconfigure = path_from_root('emcmake')
+      emcmake = path_from_root('emcmake')
 
     with temp_directory(self.get_dir()):
-      cmd = [emconfigure, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
+      cmd = [emcmake, 'cmake', path_from_root('tests', 'cmake', 'stdproperty')]
       print(str(cmd))
       emscripten_features = run_process(cmd, stdout=PIPE).stdout
 
@@ -6086,7 +6086,7 @@ Descriptor desc;
     check('emmake', ['make'], fail=False)
     check('emconfigure', ['configure'], fail=False)
     check('emconfigure', ['./configure'], fail=False)
-    check('emconfigure', ['cmake'], fail=False)
+    check('emcmake', ['cmake'], fail=False)
 
     create_test_file('test.py', '''
 import os
@@ -7052,7 +7052,7 @@ Resolved: "/" => "/"
     for lto in lto_levels:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '--llvm-lto', str(lto)]
       if self.is_wasm_backend():
-        cmd += ['-s', 'WASM_OBJECT_FILES=0']
+        cmd += ['-flto']
       print(cmd)
       run_process(cmd)
       self.assertContained('hello, world!', run_js('a.out.js'))
@@ -7760,7 +7760,7 @@ int main() {
     # Without the 'INLINING_LIMIT=1', -O2 inlines foo()
     cmd = [PYTHON, EMCC, 'test.c', '-O2', '-o', 'test.bc', '-s', 'INLINING_LIMIT=1']
     if self.is_wasm_backend():
-      cmd += ['-s', 'WASM_OBJECT_FILES=0']
+      cmd += ['-flto']
     run_process(cmd)
     # If foo() had been wrongly inlined above, internalizing foo and running
     # global DCE makes foo DCE'd
@@ -8090,18 +8090,21 @@ int main() {
         f.write(contents)
       return
 
+    if not os.path.exists(filename):
+      self.fail('Test expectation file not found: ' + filename + '.\n' +
+                'Run with EMTEST_REBASELINE to generate.')
     expected_content = open(filename).read()
-    message = ("Content mismach in: %s\n" % filename +
-               "Run with EMTEST_REBASELINE=1 to automatically update expectations")
-    self.assertTextDataIdentical(expected_content, contents, message)
+    message = "Run with EMTEST_REBASELINE=1 to automatically update expectations"
+    self.assertTextDataIdentical(expected_content, contents, message,
+                                 filename, filename + '.new')
 
-  def run_metadce_test(self, filename, args, expected_sent, expected_exists,
-                       expected_not_exists, expected_size, expected_imports,
-                       expected_exports, expected_funcs):
+  def run_metadce_test(self, filename, args, expected_exists, expected_not_exists, expected_size,
+                       check_sent=True, check_imports=True, check_exports=True, check_funcs=True):
     size_slack = 0.05
 
     # in -Os, -Oz, we remove imports wasm doesn't need
-    print('Running metadce test: %s:' % filename, args, expected_sent, expected_exists, expected_not_exists, expected_size, expected_imports, expected_exports, expected_funcs)
+    print('Running metadce test: %s:' % filename, args, expected_exists,
+          expected_not_exists, expected_size, check_sent, check_imports, check_exports, check_funcs)
     filename = path_from_root('tests', 'other', 'metadce', filename)
 
     def clean_arg(arg):
@@ -8138,12 +8141,6 @@ int main() {
     sent = [x for x in sent if x]
     sent.sort()
 
-    if expected_sent is not None:
-      sent_file = expected_basename + '.sent'
-      sent_data = '\n'.join(sent) + '\n'
-      self.assertFileContents(sent_file, sent_data)
-      self.assertEqual(len(sent), expected_sent)
-
     for exists in expected_exists:
       self.assertIn(exists, sent)
     for not_exists in expected_not_exists:
@@ -8172,68 +8169,68 @@ int main() {
 
     funcs = [strip_numeric_suffixes(f) for f in funcs]
 
-    if expected_imports is not None:
+    if check_sent:
+      sent_file = expected_basename + '.sent'
+      sent_data = '\n'.join(sent) + '\n'
+      self.assertFileContents(sent_file, sent_data)
+
+    if check_imports:
       filename = expected_basename + '.imports'
       data = '\n'.join(imports) + '\n'
       self.assertFileContents(filename, data)
-      self.assertEqual(len(imports), expected_imports)
 
-    if expected_exports is not None:
+    if check_exports:
       filename = expected_basename + '.exports'
       data = '\n'.join(exports) + '\n'
       self.assertFileContents(filename, data)
-      self.assertEqual(len(exports), expected_exports)
 
-    if expected_funcs is not None:
+    if check_funcs:
       filename = expected_basename + '.funcs'
       data = '\n'.join(funcs) + '\n'
       self.assertFileContents(filename, data)
-      self.assertEqual(len(funcs), expected_funcs)
 
   @parameterized({
-    'O0': ([],       7, [], ['waka'],  9766,  6, 13, 19), # noqa
-    'O1': (['-O1'],  4, [], ['waka'],  7886,  2, 11, 12), # noqa
-    'O2': (['-O2'],  4, [], ['waka'],  7871,  2, 11, 11), # noqa
+    'O0': ([],      [], ['waka'],  9766), # noqa
+    'O1': (['-O1'], [], ['waka'],  7886), # noqa
+    'O2': (['-O2'], [], ['waka'],  7871), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],  2, [], [],          85,  0,  2,  2), # noqa
-    'Os': (['-Os'],  2, [], [],          85,  0,  2,  2), # noqa
-    'Oz': (['-Oz'],  2, [], [],          85,  0,  2,  2), # noqa
+    'O3': (['-O3'], [], [],          85), # noqa
+    'Os': (['-Os'], [], [],          85), # noqa
+    'Oz': (['-Oz'], [], [],          85), # noqa
   })
   @no_fastcomp()
   def test_metadce_minimal(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'O0': ([],      25, ['abort'], ['waka'], 22712, 16, 14, 28), # noqa
-    'O1': (['-O1'], 16, ['abort'], ['waka'], 10450,  4, 10, 11), # noqa
-    'O2': (['-O2'], 16, ['abort'], ['waka'], 10440,  4, 10, 11), # noqa
+    'O0': ([],      ['abort'], ['waka'], 22712), # noqa
+    'O1': (['-O1'], ['abort'], ['waka'], 10450), # noqa
+    'O2': (['-O2'], ['abort'], ['waka'], 10440), # noqa
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],  4, [],        [],          55,  0,  1, 1), # noqa
-    'Os': (['-Os'],  4, [],        [],          55,  0,  1, 1), # noqa
-    'Oz': (['-Oz'],  4, [],        [],          55,  0,  1, 1), # noqa
+    'O3': (['-O3'], [],        [],          55), # noqa
+    'Os': (['-Os'], [],        [],          55), # noqa
+    'Oz': (['-Oz'], [],        [],          55), # noqa
   })
   @no_wasm_backend()
   def test_metadce_minimal_fastcomp(self, *args):
     self.run_metadce_test('minimal.c', *args)
 
   @parameterized({
-    'noexcept': (['-O2'],                    19, [], ['waka'], 218988, 17, 33, None), # noqa
+    'noexcept': (['-O2'],                    [], ['waka'], 218988), # noqa
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],    52, [], ['waka'], 279827, 47, 46, None), # noqa
+    'except':   (['-O2', '-fexceptions'],    [], ['waka'], 279827), # noqa
     # exceptions does not pull in demangling by default, which increases code size
     'mangle':   (['-O2', '-fexceptions',
-                  '-s', 'DEMANGLE_SUPPORT'], 52, [], ['waka'], 408028, 47, 47, None), # noqa
+                  '-s', 'DEMANGLE_SUPPORT'], [], ['waka'], 408028), # noqa
   })
   @no_fastcomp()
   def test_metadce_cxx(self, *args):
-    # test on libc++: see effects of emulated function pointers
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'normal': (['-O2'], 40, ['abort'], ['waka'], 186423, 23, 36, 540), # noqa
+    'normal': (['-O2'], ['abort'], ['waka'], 186423),
     'emulated_function_pointers':
-              (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'],
-                        40, ['abort'], ['waka'], 188310, 23, 37, 520), # noqa
+              (['-O2', '-s', 'EMULATED_FUNCTION_POINTERS=1'], ['abort'], ['waka'], 188310),
   })
   @no_wasm_backend()
   def test_metadce_cxx_fastcomp(self, *args):
@@ -8241,21 +8238,20 @@ int main() {
     self.run_metadce_test('hello_libcxx.cpp', *args)
 
   @parameterized({
-    'O0': ([],      10, [], ['waka'], 22849,  9,  18, 58), # noqa
-    'O1': (['-O1'],  7, [], ['waka'], 10533,  6,  14, 30), # noqa
-    'O2': (['-O2'],  7, [], ['waka'], 10256,  6,  14, 25), # noqa
-    'O3': (['-O3'],  4, [], [],        1999,  4,   2, 12), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  4, [], [],        2010,  4,   2, 13), # noqa
-    'Oz': (['-Oz'],  4, [], [],        2004,  4,   2, 13), # noqa
+    'O0': ([],      [], ['waka'], 22849), # noqa
+    'O1': (['-O1'], [], ['waka'], 10533), # noqa
+    'O2': (['-O2'], [], ['waka'], 10256), # noqa
+    'O3': (['-O3'], [], [],        1999), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'], [], [],        2010), # noqa
+    'Oz': (['-Oz'], [], [],        2004), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
-          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                     2, [], [],          61,  0,   1,  1), # noqa
+          (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],    [], [],     61), # noqa
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
     # TODO(sbc): Investivate why the number of exports is order of magnitude
     # larger for wasm backend.
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   12, [], [],  10652,   12,   10, None), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10652, True, True, True, False), # noqa
   })
   @no_fastcomp()
   @unittest.skip("Allow LLVM roll to proceed")
@@ -8263,19 +8259,18 @@ int main() {
     self.run_metadce_test('hello_world.cpp', *args)
 
   @parameterized({
-    'O0': ([],      27, ['abort'], ['waka'], 42701,  18,   16, 55), # noqa
-    'O1': (['-O1'], 19, ['abort'], ['waka'], 13199,   9,   13, 31), # noqa
-    'O2': (['-O2'], 19, ['abort'], ['waka'], 12425,   9,   13, 26), # noqa
-    'O3': (['-O3'],  7, [],        [],        2045,   6,    2, 14), # noqa; in -O3, -Os and -Oz we metadce
-    'Os': (['-Os'],  7, [],        [],        2064,   6,    2, 15), # noqa
-    'Oz': (['-Oz'],  7, [],        [],        2045,   6,    2, 14), # noqa
+    'O0': ([],      ['abort'], ['waka'], 42701), # noqa
+    'O1': (['-O1'], ['abort'], ['waka'], 13199), # noqa
+    'O2': (['-O2'], ['abort'], ['waka'], 12425), # noqa
+    'O3': (['-O3'], [],        [],        2045), # noqa; in -O3, -Os and -Oz we metadce
+    'Os': (['-Os'], [],        [],        2064), # noqa
+    'Oz': (['-Oz'], [],        [],        2045), # noqa
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing':
-           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],
-                      4, [],        [],           8,   0,    0,  0), # noqa; totally empty!
+           (['-Os', '-s', 'EXPORTED_FUNCTIONS=[]'],   [], [],     8), # noqa; totally empty!
     # we don't metadce with linkable code! other modules may want stuff
     # don't compare the # of functions in a main module, which changes a lot
-    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'],   13, [], [],  10017,   13,   9,   20), # noqa
+    'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [], 10017), # noqa
   })
   @no_wasm_backend()
   def test_metadce_hello_fastcomp(self, *args):
@@ -8283,26 +8278,26 @@ int main() {
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3'],
-                           3, [], [], 6100,  2,  3,  5),         # noqa
+                           [], [], 6100),         # noqa
     # argc/argv support code etc. is in the wasm
     'O3_standalone':      ('mem.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           3, [], [], 6309,  3,  3,  5),         # noqa
+                           [], [], 6309),         # noqa
     # without argc/argv, no support code for them is emitted
     'O3_standalone_narg': ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           1, [], [], 6309,  1,  3,  4),         # noqa
+                           [], [], 6309),         # noqa
     # without main, no support code for argc/argv is emitted either
     'O3_standalone_lib':  ('mem_no_main.c', ['-O3', '-s', 'STANDALONE_WASM'],
-                           0, [], [], 6309,  0,  3,  4),         # noqa
+                           [], [], 6309),         # noqa
     # Growth support code is in JS, no significant change in the wasm
     'O3_grow':            ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH'],
-                           3, [], [], 6098,  2,  3,  5),         # noqa
+                           [], [], 6098),         # noqa
     # Growth support code is in the wasm
     'O3_grow_standalone': ('mem.c', ['-O3', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'STANDALONE_WASM'],
-                           4, [], [], 6449,  4,  3,  6),         # noqa
+                           [], [], 6449),         # noqa
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
                           ('mem_no_argv.c', ['-O3', '-s', 'STANDALONE_WASM', '-flto'],
-                           1, [], [], 6309,  1,  3,  4),         # noqa
+                           [], [], 6309),         # noqa
   })
   @no_fastcomp()
   def test_metadce_mem(self, filename, *args):
@@ -8485,7 +8480,7 @@ int main() {
         assert not x.endswith('.js'), 'we should not emit js when making a wasm side module: ' + x
       self.assertIn(b'dylink', open(target, 'rb').read())
 
-  @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
+  @no_fastcomp('test wasm object files')
   def test_wasm_backend_lto(self):
     # test building of non-wasm-object-files libraries, building with them, and running them
 
@@ -8500,37 +8495,36 @@ int main() {
       self.assertFalse(shared.Building.is_bitcode('hello_obj.o'))
 
       print('bitcode in object')
-      run_process([PYTHON, EMXX, src] + args + ['-c', '-o', 'hello_bitcode.o', '-s', 'WASM_OBJECT_FILES=0'])
+      run_process([PYTHON, EMXX, src] + args + ['-c', '-o', 'hello_bitcode.o', '-flto'])
       self.assertFalse(shared.Building.is_wasm('hello_bitcode.o'))
       self.assertTrue(shared.Building.is_bitcode('hello_bitcode.o'))
 
       print('use bitcode object (LTO)')
-      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-flto'])
       self.assertContained('hello, world!', run_js('a.out.js'))
       print('use bitcode object (non-LTO)')
-      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
+      run_process([PYTHON, EMXX, 'hello_bitcode.o'] + args)
       self.assertContained('hello, world!', run_js('a.out.js'))
 
       print('use native object (LTO)')
-      run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-s', 'WASM_OBJECT_FILES=0'])
+      run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-flto'])
       self.assertContained('hello, world!', run_js('a.out.js'))
       print('use native object (non-LTO)')
-      run_process([PYTHON, EMXX, 'hello_obj.o'] + args + ['-s', 'WASM_OBJECT_FILES=1'])
+      run_process([PYTHON, EMXX, 'hello_obj.o'] + args)
       self.assertContained('hello, world!', run_js('a.out.js'))
 
   @parameterized({
     'except': [],
     'noexcept': ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
   })
-  @no_fastcomp('uses upstream specific option: WASM_OBJECT_FILES')
+  @no_fastcomp('test wasm object files')
   def test_wasm_backend_lto_libcxx(self, *args):
-    run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp')] + ['-s', 'WASM_OBJECT_FILES=0'] + list(args))
+    run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-flto'] + list(args))
 
   @no_fastcomp('wasm backend lto specific')
   def test_lto_flags(self):
     for flags, expect_bitcode in [
       ([], False),
-      (['-s', 'WASM_OBJECT_FILES=0'], True),
       (['-flto'], True),
     ]:
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + flags + ['-c', '-o', 'a.o'])

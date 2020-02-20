@@ -1049,7 +1049,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             has_source_inputs = True
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
-      elif arg.startswith('-r'):
+      elif arg == '-r':
         link_to_object = True
         newargs[i] = ''
       elif arg.startswith('-L'):
@@ -1178,11 +1178,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ASSERTIONS:
       shared.Settings.STACK_OVERFLOW_CHECK = 2
 
-    if shared.Settings.WASM_OBJECT_FILES and not shared.Settings.WASM_BACKEND:
-      if 'WASM_OBJECT_FILES=1' in settings_changes:
-        exit_with_error('WASM_OBJECT_FILES can only be used with wasm backend')
-      shared.Settings.WASM_OBJECT_FILES = 0
-
     if shared.Settings.STRICT:
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
@@ -1248,8 +1243,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ALLOW_TABLE_GROWTH = 1
 
     # Reconfigure the cache now that settings have been applied. Some settings
-    # such as WASM_OBJECT_FILES and SIDE_MODULE/MAIN_MODULE effect which cache
-    # directory we use.
+    # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
     if not compile_only:
@@ -1269,7 +1263,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.warning('Assuming object file output in the absence of `-c`, based on output filename. Please add with `-c` or `-r` to avoid this warning')
       link_to_object = True
 
-    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and not shared.Settings.WASM_OBJECT_FILES)
+    using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
 
     def is_supported_link_flag(f):
       if f in SUPPORTED_LINKER_FLAGS:
@@ -1294,6 +1288,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
       else:
         shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
 
@@ -1528,15 +1523,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       ]
 
     if shared.Settings.USE_PTHREADS:
-      shared.Settings.EXPORTED_RUNTIME_METHODS += ['establishStackSpace']
-
       # memalign is used to ensure allocated thread stacks are aligned.
-      shared.Settings.EXPORTED_FUNCTIONS += ['_memalign']
+      shared.Settings.EXPORTED_FUNCTIONS += ['_memalign', '_malloc']
 
       # dynCall_ii is used to call pthread entry points in worker.js (as
       # metadce does not consider worker.js, which is external, we must
       # consider it a user export, i.e., one which can never be removed).
       shared.Building.user_requested_exports += ['dynCall_ii']
+
+      if shared.Settings.MINIMAL_RUNTIME:
+        shared.Building.user_requested_exports += ['exit']
 
       if shared.Settings.PROXY_TO_PTHREAD:
         shared.Settings.EXPORTED_FUNCTIONS += ['_proxy_main']
@@ -1546,15 +1542,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$' + name]
         shared.Settings.EXPORTED_FUNCTIONS += [name]
 
-      include_and_export('establishStackSpaceInJsModule')
-      include_and_export('getNoExitRuntime')
+      include_and_export('establishStackSpace')
+      if not shared.Settings.MINIMAL_RUNTIME:
+        # noExitRuntime does not apply to MINIMAL_RUNTIME.
+        include_and_export('getNoExitRuntime')
 
       if shared.Settings.MODULARIZE:
         # MODULARIZE+USE_PTHREADS mode requires extra exports out to Module so that worker.js
         # can access them:
 
         # general threading variables:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread', 'ExitStatus']
+        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread']
+
+        # To keep code size to minimum, MINIMAL_RUNTIME does not utilize the global ExitStatus
+        # object, only regular runtime has it.
+        if not shared.Settings.MINIMAL_RUNTIME:
+          shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
         # stack check:
         if shared.Settings.STACK_OVERFLOW_CHECK:
@@ -1825,7 +1828,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
-          if shared.Settings.AUTODEBUG and shared.Settings.WASM_OBJECT_FILES:
+          if shared.Settings.AUTODEBUG and not shared.Settings.LTO:
             # adding '--flatten' here may make these even more effective
             passes += ['--instrument-locals']
             passes += ['--log-execution']
@@ -1920,9 +1923,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.MINIMAL_RUNTIME:
       if shared.Settings.EMTERPRETIFY:
         exit_with_error('-s EMTERPRETIFY=1 is not supported with -s MINIMAL_RUNTIME=1')
-
-      if shared.Settings.USE_PTHREADS:
-        exit_with_error('-s USE_PTHREADS=1 is not yet supported with -s MINIMAL_RUNTIME=1')
 
       if shared.Settings.PRECISE_F32 == 2:
         exit_with_error('-s PRECISE_F32=2 is not supported with -s MINIMAL_RUNTIME=1')
@@ -2074,9 +2074,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if shared.Settings.WASM_BACKEND and shared.Settings.RELOCATABLE:
           cmd.append('-fPIC')
           cmd.append('-fvisibility=default')
-        if shared.Settings.WASM_OBJECT_FILES:
-          for a in shared.Building.llvm_backend_args():
-            cmd += ['-mllvm', a]
+        if shared.Settings.WASM_BACKEND:
+          if shared.Settings.LTO:
+            cmd.append('-flto=' + shared.Settings.LTO)
+          else:
+            # With fastcomp (or with LTO mode) these args get passed instead
+            # at link time when the backend runs.
+            for a in shared.Building.llvm_backend_args():
+              cmd += ['-mllvm', a]
         else:
           cmd.append('-emit-llvm')
         shared.print_compiler_stage(cmd)
@@ -2747,6 +2752,11 @@ def parse_args(newargs):
       options.llvm_opts = parse_value(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
+    elif newargs[i].startswith('-flto'):
+      if '=' in newargs[i]:
+        shared.Settings.LTO = newargs[i].split('=')[1]
+      else:
+        shared.Settings.LTO = "full"
     elif newargs[i].startswith('--llvm-lto'):
       check_bad_eq(newargs[i])
       options.llvm_lto = int(newargs[i + 1])
@@ -3285,6 +3295,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
     if shared.Settings.WASM != 2:
       final = wasm2js
+      # if we only target JS, we don't need the wasm any more
+      shared.try_delete(wasm_binary_target)
 
     save_intermediate('wasm2js')
 
@@ -3319,19 +3331,15 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  # if targeting only JS, delete the redundant temporary
-  # .wasm output file
-  if shared.Settings.WASM == 1 and shared.Settings.WASM2JS:
-    shared.try_delete(wasm_binary_target)
-
 
 def modularize():
   global final
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
-  # TODO: exports object generation for MINIMAL_RUNTIME
-  exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME else shared.Settings.EXPORT_NAME
+  # TODO: exports object generation for MINIMAL_RUNTIME. As a temp measure, multithreaded MINIMAL_RUNTIME builds export like regular
+  # runtime does, so that worker.js can see the JS module contents.
+  exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS else shared.Settings.EXPORT_NAME
 
   src = '''
 function(%(EXPORT_NAME)s) {
@@ -3424,11 +3432,10 @@ def module_export_name_substitution():
   else:
     replacement = "typeof %(EXPORT_NAME)s !== 'undefined' ? %(EXPORT_NAME)s : {}" % {"EXPORT_NAME": shared.Settings.EXPORT_NAME}
   with open(final, 'w') as f:
-    src = src.replace(shared.JS.module_export_name_substitution_pattern, replacement)
+    src = re.sub(r'{[\'"]?__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__[\'"]?:1}', replacement, src)
     # For Node.js and other shell environments, create an unminified Module object so that
     # loading external .asm.js file that assigns to Module['asm'] works even when Closure is used.
-    if shared.Settings.MINIMAL_RUNTIME and (shared.Settings.target_environment_may_be('node') or
-                                            shared.Settings.target_environment_may_be('shell')):
+    if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.MODULARIZE_INSTANCE and (shared.Settings.target_environment_may_be('node') or shared.Settings.target_environment_may_be('shell')):
       src = 'if(typeof Module==="undefined"){var Module={};}' + src
     f.write(src)
   save_intermediate('module_export_name_substitution')
