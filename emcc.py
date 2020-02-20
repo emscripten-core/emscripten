@@ -2971,6 +2971,8 @@ def parse_args(newargs):
     elif newargs[i] == '-fexceptions':
       settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
       settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
+    elif newargs[i] == '-fignore-exceptions':
+      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
