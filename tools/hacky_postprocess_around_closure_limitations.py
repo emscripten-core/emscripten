@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from tools import shared, js_optimizer, jsrun
+from tools import shared
 
 f = open(sys.argv[1], 'r').read()
 orig_size = len(f)
