@@ -101,6 +101,9 @@
 -------- T __multf3
 -------- T __multi3
 -------- T __netf2
+-------- T __powidf2
+-------- T __powisf2
+-------- T __powitf2
 -------- T __subtf3
 -------- D __threwValue
 -------- T __trunctfdf2
@@ -112,5 +115,4 @@
 -------- T __umoddi3
 -------- T __umodti3
 -------- T __unordtf2
--------- T __uremdi3
 -------- T setThrew
