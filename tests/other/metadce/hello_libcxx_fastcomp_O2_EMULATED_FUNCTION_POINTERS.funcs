@@ -1,12 +1,6 @@
 $__ZL8is_equalPKSt9type_infoS1_b
-$__ZN10__cxxabiv112_GLOBAL__N_111GuardObjectINS0_17InitByteNoThreadsEE17cxa_guard_acquireEv
-$__ZN10__cxxabiv112_GLOBAL__N_111GuardObjectINS0_17InitByteNoThreadsEE17cxa_guard_releaseEv
-$__ZN10__cxxabiv112_GLOBAL__N_111GuardObjectINS0_17InitByteNoThreadsEEC2EPj
-$__ZN10__cxxabiv112_GLOBAL__N_117InitByteNoThreads17acquire_init_byteEv
-$__ZN10__cxxabiv112_GLOBAL__N_117InitByteNoThreadsCI2NS0_11GuardObjectIS1_EEEPj
 $__ZN10__cxxabiv116__shim_type_infoD2Ev
 $__ZN10__cxxabiv117__class_type_infoD0Ev
-$__ZN12_GLOBAL__N_19AtomicIntIhEC2EPh
 $__ZNK10__cxxabiv117__class_type_info16search_above_dstEPNS_19__dynamic_cast_infoEPKvS4_ib
 $__ZNK10__cxxabiv117__class_type_info16search_below_dstEPNS_19__dynamic_cast_infoEPKvib
 $__ZNK10__cxxabiv117__class_type_info24process_found_base_classEPNS_19__dynamic_cast_infoEPvi
@@ -66,8 +60,6 @@ $__ZNKSt3__25ctypeIwE8do_widenEPKcS3_Pw
 $__ZNKSt3__25ctypeIwE8do_widenEc
 $__ZNKSt3__25ctypeIwE9do_narrowEPKwS3_cPc
 $__ZNKSt3__25ctypeIwE9do_narrowEwc
-$__ZNKSt3__26locale5__imp9has_facetEl
-$__ZNKSt3__26locale5__imp9use_facetEl
 $__ZNKSt3__26locale9use_facetERNS0_2idE
 $__ZNKSt3__27codecvtIDic11__mbstate_tE10do_unshiftERS1_PcS4_RS4_
 $__ZNKSt3__27codecvtIDic11__mbstate_tE13do_max_lengthEv
@@ -417,10 +409,9 @@ $___floatscan
 $___fwritex
 $___get_locale
 $___intscan
-$___isxdigit_l
 $___loc_is_allocated
+$___munmap
 $___newlocale
-$___overflow
 $___shgetc
 $___shlim
 $___stdio_close
@@ -435,7 +426,6 @@ $___uflow
 $___uselocale
 $___vfprintf_internal
 $___wasi_syscall_ret
-$_abort_message
 $_arg_n
 $_copysignl
 $_decfloat
@@ -449,7 +439,6 @@ $_fmt_fp
 $_fmt_o
 $_fmt_u
 $_fmt_x
-$_fputc
 $_free
 $_freelocale
 $_frexp
@@ -459,6 +448,7 @@ $_getint
 $_hexfloat
 $_isdigit
 $_isspace
+$_isxdigit_l
 $_main
 $_malloc
 $_mbrtowc
@@ -491,7 +481,6 @@ $_strtox
 $_try_realloc_chunk
 $_ungetc
 $_vasprintf
-$_vfprintf
 $_vfscanf
 $_vsnprintf
 $_vsscanf
