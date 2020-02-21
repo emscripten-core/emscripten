@@ -16,7 +16,7 @@ The best ways contact the community are:
 
 - The GitHub `Issue Tracker <https://github.com/emscripten-core/emscripten/issues?state=open>`_
 - Mailing list: `emscripten-discuss <http://groups.google.com/group/emscripten-discuss>`_
-- Real-time chat: `#emscripten on Discord <https://discord.gg/zvAMHvs>`_ (there was also an IRC channel on Mozilla IRC, but they are shutting those servers down).
+- Real-time chat: `#emscripten on Discord <https://discord.gg/MXmES3n>`_ (there was also an IRC channel on Mozilla IRC, but they are shutting those servers down).
 
 Feel free to ask questions, share your ideas, or just join the conversation!
 
