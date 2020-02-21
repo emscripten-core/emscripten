@@ -223,6 +223,7 @@ var SyscallsLibrary = {
 #endif
   ],
   _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
@@ -249,6 +250,9 @@ var SyscallsLibrary = {
     }
     SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, offset: off };
     return ptr;
+#else // no filesystem support; report lack of support
+    return -{{{ cDefine('ENOSYS') }}};
+#endif
   },
 
   _emscripten_syscall_munmap__deps: ['$SYSCALLS',
@@ -275,7 +279,7 @@ var SyscallsLibrary = {
     }
     return 0;
 #else // no filesystem support; report lack of support
-    return -{{{ cDefine('ENOSYS') }}}; // unsupported features
+    return -{{{ cDefine('ENOSYS') }}};
 #endif
   },
 
