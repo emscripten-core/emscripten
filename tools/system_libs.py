@@ -739,6 +739,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
+        filenames=['sched_yield.c'])
+
     libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
     return libc_files
