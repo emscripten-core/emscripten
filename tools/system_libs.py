@@ -1309,7 +1309,14 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
-                   '__year_to_secs.c'])
+                   '__year_to_secs.c',
+                   'gettimeofday.c',
+                   'localtime.c',
+                   'localtime_r.c',
+                   'gmtime.c',
+                   'gmtime_r.c',
+                   'nanosleep.c',
+                   'mktime.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     exit_files = files_in_path(
