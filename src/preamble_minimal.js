@@ -11,6 +11,7 @@ function assert(condition, text) {
 }
 #endif
 
+/** @param {string|number=} what */
 function abort(what) {
 #if ASSERTIONS
   throw new Error(what);
@@ -244,7 +245,9 @@ var runtimeInitialized = false;
 var runtimeExited = false;
 #endif
 
+/** @param {number|boolean=} ignore */
 {{{ unSign }}}
+/** @param {number|boolean=} ignore */
 {{{ reSign }}}
 
 #include "runtime_math.js"

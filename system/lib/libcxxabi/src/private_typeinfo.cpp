@@ -1,9 +1,8 @@
 //===----------------------- private_typeinfo.cpp -------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -59,14 +58,12 @@ static inline
 bool
 is_equal(const std::type_info* x, const std::type_info* y, bool use_strcmp)
 {
-#ifndef _WIN32
+    // Use std::type_info's default comparison unless we've explicitly asked
+    // for strcmp.
     if (!use_strcmp)
-        return x == y;
-    return strcmp(x->name(), y->name()) == 0;
-#else
-    (void) use_strcmp;
-    return (x == y) || (strcmp(x->name(), y->name()) == 0);
-#endif
+        return *x == *y;
+    // Still allow pointer equality to short circut.
+    return x == y || strcmp(x->name(), y->name()) == 0;
 }
 
 namespace __cxxabiv1
