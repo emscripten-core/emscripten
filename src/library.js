@@ -1307,6 +1307,7 @@ LibraryManager.library = {
 #if WASM_BACKEND == 0
   $abortStackOverflow__deps: ['$stackSave'],
 #endif
+  $abortStackOverflow__import: true,
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
