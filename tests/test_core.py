@@ -5423,6 +5423,7 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'unistd', 'isatty.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_standalone_wasm
   def test_unistd_sysconf(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'sysconf.out')).read()
