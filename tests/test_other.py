@@ -9715,7 +9715,7 @@ int main () {
           # difference code size, which leads to different relooper choices,
           # as a result leading to slightly different total code sizes.
           # TODO: identify what is causing this. meanwhile allow some amount of slop
-          mem_slop = 20
+          mem_slop = 0 if self.is_wasm_backend() else 50
           if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
             size = expected_size
 
@@ -9739,8 +9739,7 @@ int main () {
             print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
           if total_output_size < total_expected_size:
             print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
-          if total_output_size != total_expected_size:
-            success = False
+          self.assertEqual(total_output_size, total_expected_size)
 
     self.assertTrue(success)
 
