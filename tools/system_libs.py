@@ -1318,7 +1318,7 @@ class libstandalonewasm(MuslInternalLibrary):
     conf_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
         filenames=['sysconf.c'])
-    return base_files + time_files + conf_files
+    return base_files + time_files + exit_files + conf_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND
