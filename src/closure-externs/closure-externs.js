@@ -933,6 +933,12 @@ var onmessageerror = function() {};
 var addEventListener = function (type, listener, optionsOrUseCapture) {};
 
 /**
+ * @param {string} type
+ * @param {!Function} listener
+ */
+var removeEventListener = function (type, listener) {};
+
+/**
  * @type {Function}
  */
 var close;
