@@ -1519,7 +1519,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'getMemory',
         'addRunDependency',
         'removeRunDependency',
-        'calledRun',
       ]
 
     if shared.Settings.USE_PTHREADS:

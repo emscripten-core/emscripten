@@ -892,17 +892,24 @@ var SyscallsLibrary = {
   __syscall150__nothrow: true,
   __syscall150__proxy: false,
   __syscall150__sig: 'iii',
-  __syscall150: '__syscall153',     // mlock
+  __syscall150: function(addr, len) { // mlock
+    return 0;
+  },
   __syscall151__nothrow: true,
   __syscall151__proxy: false,
   __syscall151__sig: 'iii',
-  __syscall151: '__syscall153',     // munlock
+  __syscall151: function(addr, len) { // munlock
+    return 0;
+  },
   __syscall152__nothrow: true,
   __syscall152__proxy: false,
-  __syscall152__sig: 'iii',
-  __syscall152: '__syscall153',     // mlockall
+  __syscall152__sig: 'ii',
+  __syscall150: function(flags) { // mlockall
+    return 0;
+  },
   __syscall153__nothrow: true,
   __syscall153__proxy: false,
+  __syscall153__sig: 'i',
   __syscall153: function() { // munlockall
     return 0;
   },
@@ -983,11 +990,11 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall195: function(path, buf) { // SYS_stat64
-    var path = SYSCALLS.getStr(path);
+    path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
   __syscall196: function(path, buf) { // SYS_lstat64
-    var path = SYSCALLS.getStr(path);
+    path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
   },
   __syscall197: function(fd, buf) { // SYS_fstat64
@@ -1194,7 +1201,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall268: function(path, size, buf) { // statfs64
-    var path = SYSCALLS.getStr(path);
+    path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
 #endif
@@ -1735,7 +1742,11 @@ for (var x in SyscallsLibrary) {
   }
 #if SYSCALL_DEBUG
   if (which && t.indexOf(', varargs') != -1) {
-    post += 'SYSCALLS.varargs = undefined;\n';
+    if (canThrow) {
+      post += 'finally { SYSCALLS.varargs = undefined; }\n';
+    } else {
+      post += 'SYSCALLS.varargs = undefined;\n';
+    }
   }
   if (which) {
     pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";

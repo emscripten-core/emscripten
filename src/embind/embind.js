@@ -126,6 +126,7 @@ var LibraryEmbind = {
    the appropriate overload to call from an function overload table. This selector function is only used if multiple overloads are
    actually registered, since it carries a slight performance penalty. */
   $exposePublicSymbol__deps: ['$ensureOverloadTable', '$throwBindingError'],
+  $exposePublicSymbol__docs: '/** @param {number=} numArguments */',
   $exposePublicSymbol: function(name, value, numArguments) {
     if (Module.hasOwnProperty(name)) {
         if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
@@ -150,6 +151,7 @@ var LibraryEmbind = {
   },
 
   $replacePublicSymbol__deps: ['$throwInternalError'],
+  $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: function(name, value, numArguments) {
     if (!Module.hasOwnProperty(name)) {
         throwInternalError('Replacing nonexistant public symbol');
@@ -298,6 +300,7 @@ var LibraryEmbind = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
+  $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options) {
     options = options || {};
 
@@ -852,7 +855,7 @@ var LibraryEmbind = {
         var heap = HEAPU32;
         var size = heap[handle]; // in elements
         var data = heap[handle + 1]; // byte offset into emscripten heap
-        return new TA(heap['buffer'], data, size);
+        return new TA(buffer, data, size);
     }
 
     name = readLatin1String(name);
@@ -1498,6 +1501,14 @@ var LibraryEmbind = {
     RegisteredPointer.prototype['fromWireType'] = RegisteredPointer_fromWireType;
   },
 
+  $RegisteredPointer__docs: `/** @constructor
+    @param {*=} pointeeType,
+    @param {*=} sharingPolicy,
+    @param {*=} rawGetPointee,
+    @param {*=} rawConstructor,
+    @param {*=} rawShare,
+    @param {*=} rawDestructor,
+     */`,
   $RegisteredPointer__deps: [
     '$constNoSmartPtrRawPointerToWireType', '$genericPointerToWireType',
     '$nonConstNoSmartPtrRawPointerToWireType', '$init_RegisteredPointer'],
@@ -1852,6 +1863,7 @@ var LibraryEmbind = {
     }
   },
 
+  $RegisteredClass__docs: '/** @constructor */',
   $RegisteredClass: function(
     name,
     constructor,
