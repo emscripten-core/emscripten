@@ -540,6 +540,7 @@ var SyscallsLibrary = {
 #endif
       return socket;
     };
+    /** @param {boolean=} allowNull */
     var getSocketAddress = function(allowNull) {
       var addrp = SYSCALLS.get(), addrlen = SYSCALLS.get();
       if (allowNull && addrp === 0) return null;

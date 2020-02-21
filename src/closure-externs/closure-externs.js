@@ -928,8 +928,9 @@ var onmessageerror = function() {};
 /**
  * @param {string} type
  * @param {!Function} listener
+ * @param {Object|boolean=} optionsOrUseCapture
  */
-var addEventListener = function (type, listener) {};
+var addEventListener = function (type, listener, optionsOrUseCapture) {};
 
 /**
  * @type {Function}

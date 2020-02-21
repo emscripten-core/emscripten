@@ -968,7 +968,9 @@ var LibraryGLFW = {
 
     createWindow: function(width, height, title, monitor, share) {
       var i, id;
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++);
+      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
+        // no-op
+      }
       if (i > 0) throw "glfwCreateWindow only supports one window at time currently";
 
       // id for window
@@ -984,7 +986,9 @@ var LibraryGLFW = {
       }
 
       // Create context when there are no existing alive windows
-      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++);
+      for (i = 0; i < GLFW.windows.length && GLFW.windows[i] == null; i++) {
+        // no-op
+      }
       if (i == GLFW.windows.length) {
         var contextAttributes = {
           antialias: (GLFW.hints[0x0002100D] > 1), // GLFW_SAMPLES
@@ -1332,11 +1336,15 @@ var LibraryGLFW = {
   },
 
   glfwIconifyWindow: function(winid) {
-    GLFW.iconifyWindow(winid);
+#if ASSERTIONS
+    warnOnce('glfwIconifyWindow is not implemented');
+#endif
   },
 
   glfwRestoreWindow: function(winid) {
-    GLFW.restoreWindow(winid);
+#if ASSERTIONS
+    warnOnce('glfwRestoreWindow is not implemented');
+#endif
   },
 
   glfwShowWindow: function(winid) {},
@@ -1625,11 +1633,15 @@ var LibraryGLFW = {
   },
 
   glfwIconifyWindow: function() {
-    GLFW.iconifyWindow(GLFW.active.id);
+#if ASSERTIONS
+    warnOnce('glfwIconifyWindow is not implemented');
+#endif
   },
 
   glfwRestoreWindow: function() {
-    GLFW.restoreWindow(GLFW.active.id);
+#if ASSERTIONS
+    warnOnce('glfwRestoreWindow is not implemented');
+#endif
   },
 
   glfwSwapBuffers: function() {
