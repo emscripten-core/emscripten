@@ -59,11 +59,11 @@ upgrade from fastcomp to upstream:
     codegen. The simple and safe thing is to pass all ``-s`` flags at both
     compile and link time.
 
-  * You can disable wasm object files with ``-s WASM_OBJECT_FILES=0``, which
-    will make the wasm backend behave more like fastcomp. Neither
-    fastcomp nor the wasm backend without wasm object files will run the
-    LLVM optimization passes by default, even if using LLVM IR in object files;
-    for that you must pass ``--llvm-lto 1``.
+  * You can enable LTO object files with the usual llvm compiler flags (-flto,
+    -flto=full, -flto=thin, -emit-llvm).  These flags will make the wasm backend
+    behave more like fastcomp. Neither fastcomp nor the wasm backend without
+    wasm object files will run the LLVM optimization passes by default, even if
+    using LLVM IR in object files; for that you must pass ``--llvm-lto 1``.
 
   * Another thing you might notice is that fastcomp's link stage is able to
     perform some types of link time optimization by default that the LLVM

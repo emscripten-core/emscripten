@@ -1,6 +1,6 @@
 These files are from libcxxabi, release 8.0.0.
 
-tag: llvmorg-8.0.0
+tag: llvmorg-9.0.0
 git: d2298e74235598f15594fe2c99bbac870a507c59
 
 Update Instructions
@@ -18,4 +18,4 @@ Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
 2. Duplicate __isOurExceptionClass in cxa_handlers.cpp since we don't compile
    cxa_exception.cpp.
 
-3. Use arm-style ABI for __cxa_guard_acquire/__cxa_guard_release arguments
+3. Define and use NOTHROW macro in cxxabi.h

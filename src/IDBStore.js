@@ -43,7 +43,7 @@
       IDBStore.dbs[name] = db;
       callback(null, db);
     };
-    req.onerror = function(e) {
+    req.onerror = /** @this{IDBOpenDBRequest} */ function(e) {
       callback(this.error);
       e.preventDefault();
     };

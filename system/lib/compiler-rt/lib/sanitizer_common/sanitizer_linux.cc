@@ -104,6 +104,7 @@ extern struct ps_strings *__ps_strings;
 #endif
 
 #if SANITIZER_EMSCRIPTEN
+#include <syscall.h>
 #include <emscripten/threading.h>
 #include <math.h>
 #include <wasi/api.h>
@@ -172,8 +173,6 @@ namespace __sanitizer {
 #include "sanitizer_syscall_linux_aarch64.inc"
 #elif SANITIZER_LINUX && defined(__arm__)
 #include "sanitizer_syscall_linux_arm.inc"
-#elif SANITIZER_EMSCRIPTEN
-#include "sanitizer_syscall_emscripten.inc"
 #else
 #include "sanitizer_syscall_generic.inc"
 #endif
@@ -208,7 +207,7 @@ int internal_mprotect(void *addr, uptr length, int prot) {
 #endif
 
 uptr internal_close(fd_t fd) {
-#ifdef __EMSCRIPTEN__
+#if SANITIZER_EMSCRIPTEN
   return __wasi_fd_close(fd);
 #else
   return internal_syscall(SYSCALL(close), fd);
@@ -248,8 +247,13 @@ uptr internal_write(fd_t fd, const void *buf, uptr count) {
 
 uptr internal_ftruncate(fd_t fd, uptr size) {
   sptr res;
+#if SANITIZER_EMSCRIPTEN
+  HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
+               0, size, 0));
+#else
   HANDLE_EINTR(res, (sptr)internal_syscall(SYSCALL(ftruncate), fd,
                (OFF_T)size));
+#endif
   return res;
 }
 
@@ -454,6 +458,8 @@ void internal__exit(int exitcode) {
   Die();  // Unreachable.
 }
 
+
+#if !SANITIZER_EMSCRIPTEN
 unsigned int internal_sleep(unsigned int seconds) {
   struct timespec ts;
   ts.tv_sec = seconds;
@@ -468,6 +474,7 @@ uptr internal_execve(const char *filename, char *const argv[],
   return internal_syscall(SYSCALL(execve), (uptr)filename, (uptr)argv,
                           (uptr)envp);
 }
+#endif  // !SANITIZER_EMSCRIPTEN
 #endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
 
 // ----------------- sanitizer_common.h
@@ -502,8 +509,9 @@ tid_t GetTid() {
 #endif
 }
 
+#if !SANITIZER_EMSCRIPTEN
 int TgKill(pid_t pid, tid_t tid, int sig) {
-#if SANITIZER_LINUX || SANITIZER_EMSCRIPTEN
+#if SANITIZER_LINUX
   return internal_syscall(SYSCALL(tgkill), pid, tid, sig);
 #elif SANITIZER_FREEBSD
   return internal_syscall(SYSCALL(thr_kill2), pid, tid, sig);
@@ -516,8 +524,9 @@ int TgKill(pid_t pid, tid_t tid, int sig) {
 #endif
 }
 #endif
+#endif
 
-#if !SANITIZER_SOLARIS && !SANITIZER_NETBSD
+#if !SANITIZER_SOLARIS && !SANITIZER_NETBSD && !SANITIZER_EMSCRIPTEN
 u64 NanoTime() {
 #if SANITIZER_FREEBSD || SANITIZER_OPENBSD
   timeval tv;
@@ -529,21 +538,19 @@ u64 NanoTime() {
   return (u64)tv.tv_sec * 1000*1000*1000 + tv.tv_usec * 1000;
 }
 
+uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
+  return internal_syscall(SYSCALL(clock_gettime), clk_id, tp);
+}
+#endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
+
 #if SANITIZER_EMSCRIPTEN
+extern "C" const char *emscripten_get_env(const char *name);
+
 int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
 
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
   return __clock_gettime(clk_id, tp);
 }
-#else
-uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
-  return internal_syscall(SYSCALL(clock_gettime), clk_id, tp);
-}
-#endif // SANITIZER_EMSCRIPTEN
-#endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
-
-#if SANITIZER_EMSCRIPTEN
-extern "C" const char *emscripten_get_env(const char *name);
 #endif
 
 // Like getenv, but reads env directly from /proc (on Linux) or parses the
@@ -759,11 +766,13 @@ struct linux_dirent {
 #endif
 
 #if !SANITIZER_SOLARIS && !SANITIZER_NETBSD
+#if !SANITIZER_EMSCRIPTEN
 // Syscall wrappers.
 uptr internal_ptrace(int request, int pid, void *addr, void *data) {
   return internal_syscall(SYSCALL(ptrace), request, pid, (uptr)addr,
                           (uptr)data);
 }
+#endif
 
 uptr internal_waitpid(int pid, int *status, int options) {
   return internal_syscall(SYSCALL(wait4), pid, (uptr)status, options,
@@ -789,7 +798,12 @@ uptr internal_getdents(fd_t fd, struct linux_dirent *dirp, unsigned int count) {
 }
 
 uptr internal_lseek(fd_t fd, OFF_T offset, int whence) {
+#if SANITIZER_EMSCRIPTEN
+  __wasi_filesize_t result;
+  return __wasi_syscall_ret(__wasi_fd_seek(fd, offset, whence, &result)) ? -1 : result;
+#else
   return internal_syscall(SYSCALL(lseek), fd, offset, whence);
+#endif
 }
 
 #if SANITIZER_LINUX
@@ -798,9 +812,11 @@ uptr internal_prctl(int option, uptr arg2, uptr arg3, uptr arg4, uptr arg5) {
 }
 #endif
 
+#if !SANITIZER_EMSCRIPTEN
 uptr internal_sigaltstack(const void *ss, void *oss) {
   return internal_syscall(SYSCALL(sigaltstack), (uptr)ss, (uptr)oss);
 }
+#endif
 
 int internal_fork() {
 #if SANITIZER_EMSCRIPTEN
@@ -904,6 +920,8 @@ uptr internal_sigprocmask(int how, __sanitizer_sigset_t *set,
                           __sanitizer_sigset_t *oldset) {
 #if SANITIZER_FREEBSD || SANITIZER_OPENBSD
   return internal_syscall(SYSCALL(sigprocmask), how, set, oldset);
+#elif SANITIZER_EMSCRIPTEN
+  return NULL;
 #else
   __sanitizer_kernel_sigset_t *k_set = (__sanitizer_kernel_sigset_t *)set;
   __sanitizer_kernel_sigset_t *k_oldset = (__sanitizer_kernel_sigset_t *)oldset;

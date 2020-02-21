@@ -5618,6 +5618,12 @@ PORT: 3979
 
   # libc++ tests
 
+  def assertBinaryEqual(self, file1, file2):
+    self.assertEqual(os.path.getsize(file1),
+                     os.path.getsize(file2))
+    self.assertEqual(open(file1, 'rb').read(),
+                     open(file2, 'rb').read())
+
   def test_iostream_and_determinism(self):
     src = '''
       #include <iostream>
@@ -5628,26 +5634,25 @@ PORT: 3979
         return 0;
       }
     '''
+
     num = 5
+    for i in range(num):
+      print('(iteration %d)' % i)
 
-    def test():
-      print('(iteration)')
-      time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
+      # add some timing nondeterminism here, not that we need it, but whatever
+      time.sleep(random.random() / (10 * num))
       self.do_run(src, 'hello world\n77.\n')
-      ret = open('src.cpp.o.js', 'rb').read()
-      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
-        ret += open('src.cpp.o.wasm', 'rb').read()
-      return ret
 
-    builds = [test() for i in range(num)]
-    print(list(map(len, builds)))
-    uniques = set(builds)
-    if len(uniques) != 1:
-      i = 0
-      for unique in uniques:
-        open('unique_' + str(i) + '.js', 'wb').write(unique)
-        i += 1
-      assert 0, 'builds must be deterministic, see unique_X.js'
+      # Verify that this build is identical to the previous one
+      if os.path.exists('src.js.previous'):
+        self.assertBinaryEqual('src.cpp.o.js', 'src.js.previous')
+      shutil.copy2('src.cpp.o.js', 'src.js.previous')
+
+      # Same but for the wasm file.
+      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
+        if os.path.exists('src.wasm.previous'):
+          self.assertBinaryEqual('src.cpp.o.wasm', 'src.wasm.previous')
+        shutil.copy2('src.cpp.o.wasm', 'src.wasm.previous')
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
@@ -6502,7 +6507,7 @@ return malloc(size);
     run_all('lto')
 
   def test_autodebug_bitcode(self):
-    if self.is_wasm_backend() and self.get_setting('WASM_OBJECT_FILES') == 1:
+    if self.is_wasm_backend() and '-flto' not in self.get_emcc_args():
       return self.skipTest('must use bitcode object files for bitcode autodebug')
 
     self.emcc_args += ['--llvm-opts', '0']
@@ -8637,7 +8642,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     def modify_env(filename):
       with open(filename) as f:
         contents = f.read()
-      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"}' + contents
+      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};' + contents
       with open(filename, 'w') as f:
         f.write(contents)
 
@@ -8875,12 +8880,12 @@ wasm3 = make_run('wasm3', emcc_args=['-O3'])
 wasms = make_run('wasms', emcc_args=['-Os'])
 wasmz = make_run('wasmz', emcc_args=['-Oz'])
 
-wasmlto0 = make_run('wasmlto0', emcc_args=['-O0', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto1 = make_run('wasmlto1', emcc_args=['-O1', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto2 = make_run('wasmlto2', emcc_args=['-O2', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
-wasmlto3 = make_run('wasmlto3', emcc_args=['-O3', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
-wasmltos = make_run('wasmltos', emcc_args=['-Os', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
-wasmltoz = make_run('wasmltoz', emcc_args=['-Oz', '--llvm-lto', '1'], settings={'WASM_OBJECT_FILES': 0})
+wasmlto0 = make_run('wasmlto0', emcc_args=['-flto', '-O0', '--llvm-lto', '1'])
+wasmlto1 = make_run('wasmlto1', emcc_args=['-flto', '-O1', '--llvm-lto', '1'])
+wasmlto2 = make_run('wasmlto2', emcc_args=['-flto', '-O2', '--llvm-lto', '1'])
+wasmlto3 = make_run('wasmlto3', emcc_args=['-flto', '-O3', '--llvm-lto', '1'])
+wasmltos = make_run('wasmltos', emcc_args=['-flto', '-Os', '--llvm-lto', '1'])
+wasmltoz = make_run('wasmltoz', emcc_args=['-flto', '-Oz', '--llvm-lto', '1'])
 
 if shared.Settings.WASM_BACKEND:
   wasm2js0 = make_run('wasm2js0', emcc_args=['-O0'], settings={'WASM': 0})

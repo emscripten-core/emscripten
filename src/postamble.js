@@ -404,6 +404,7 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
+/** @param {boolean|number=} implicit */
 function exit(status, implicit) {
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0

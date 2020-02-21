@@ -943,8 +943,8 @@ def get_exported_implemented_functions(all_exported_functions, all_implemented, 
     funcs.append('_emscripten_replace_memory')
   if not shared.Settings.SIDE_MODULE and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore']
-    if shared.Settings.USE_PTHREADS:
-      funcs += ['establishStackSpace']
+  if shared.Settings.USE_PTHREADS:
+    funcs += ['asmJsEstablishStackFrame']
 
   if shared.Settings.EMTERPRETIFY:
     funcs += ['emterpret']
@@ -1675,8 +1675,6 @@ def create_asm_runtime_funcs():
   funcs = []
   if not (shared.Settings.WASM and shared.Settings.SIDE_MODULE) and not shared.Settings.MINIMAL_RUNTIME:
     funcs += ['stackAlloc', 'stackSave', 'stackRestore']
-    if shared.Settings.USE_PTHREADS:
-      funcs += ['establishStackSpace']
   return funcs
 
 
@@ -1758,6 +1756,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       wrappers = []
       for name in module_exports:
         wrappers.append('''\
+/** @type {function(...*):?}\n*/
 var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
@@ -1887,9 +1886,13 @@ function stackRestore(top) {
 }
 ''' % stack_check]
 
+  if shared.Settings.MINIMAL_RUNTIME:
+    # MINIMAL_RUNTIME moves stack functions to library.
+    funcs = []
+
   if shared.Settings.USE_PTHREADS:
     funcs.append('''
-function establishStackSpace(stackBase, stackMax) {
+function asmJsEstablishStackFrame(stackBase, stackMax) {
   stackBase = stackBase|0;
   stackMax = stackMax|0;
   STACKTOP = stackBase;
@@ -1898,10 +1901,6 @@ function establishStackSpace(stackBase, stackMax) {
   STACKTOP = (STACKTOP + 8)|0;
 }
 ''')
-
-  if shared.Settings.MINIMAL_RUNTIME:
-    # MINIMAL_RUNTIME moves stack functions to library.
-    funcs = []
 
   if shared.Settings.EMTERPRETIFY:
     funcs.append('''
@@ -2645,7 +2644,13 @@ asm["%(e)s"] = function() {%(assertions)s
         # In wasm2js exports can be directly processed at top level, i.e.
         # var asm = Module["asm"](asmGlobalArg, asmLibraryArg, buffer);
         # var _main = asm["_main"];
-        receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
+        if shared.Settings.USE_PTHREADS and shared.Settings.MODULARIZE:
+          # TODO: As a temp solution, multithreaded MODULARIZEd MINIMAL_RUNTIME builds export all symbols like regular runtime does.
+          # Fix this by migrating worker.js code to reside inside the Module so it is in the same scope as the rest of the JS code, or
+          # by defining an export syntax to MINIMAL_RUNTIME that multithreaded MODULARIZEd builds can export on.
+          receiving += [asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports_that_are_not_initializers]
+        else:
+          receiving += ['var ' + asmjs_mangle(s) + ' = asm["' + asmjs_mangle(s) + '"];' for s in exports_that_are_not_initializers]
       else:
         receiving += ['var ' + asmjs_mangle(s) + ' = Module["' + asmjs_mangle(s) + '"] = asm["' + s + '"];' for s in exports]
   else:
@@ -2654,6 +2659,7 @@ asm["%(e)s"] = function() {%(assertions)s
       if runtime_assertions:
         # With assertions on, don't hot-swap implementation.
         receiving.append('''\
+/** @type {function(...*):?} */
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
   return Module["asm"]["%(e)s"].apply(null, arguments)
 };
@@ -2662,6 +2668,7 @@ var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
         # With assertions off, hot-swap implementation to avoid garbage via
         # arguments keyword.
         receiving.append('''\
+/** @type {function(...*):?} */
 var %(mangled)s = Module["%(mangled)s"] = function() {
   return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };

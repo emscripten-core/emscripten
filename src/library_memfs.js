@@ -104,7 +104,7 @@ mergeInto(LibraryManager.library, {
 
     // Given a file node, returns its file data converted to a typed array.
     getFileDataAsTypedArray: function(node) {
-      if (!node.contents) return new Uint8Array;
+      if (!node.contents) return new Uint8Array(0);
       if (node.contents.subarray) return node.contents.subarray(0, node.usedBytes); // Make sure to not return excess unused bytes.
       return new Uint8Array(node.contents);
     },

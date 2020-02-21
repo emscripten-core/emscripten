@@ -105,7 +105,7 @@ var LibraryJSEvents = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
-        call.targetFunction.apply(this, call.argsList);
+        call.targetFunction.apply(null, call.argsList);
       }
     },
 
@@ -959,7 +959,7 @@ var LibraryJSEvents = {
   },
 
   _fillOrientationChangeEventData__deps: ['_screenOrientation'],
-  _fillOrientationChangeEventData: function(eventStruct, e) {
+  _fillOrientationChangeEventData: function(eventStruct) {
     var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
     var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
 
@@ -989,7 +989,7 @@ var LibraryJSEvents = {
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
 #endif
 
-      __fillOrientationChangeEventData(orientationChangeEvent, e);
+      __fillOrientationChangeEventData(orientationChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
@@ -1075,9 +1075,10 @@ var LibraryJSEvents = {
   },
 
   _fillFullscreenChangeEventData__deps: ['$JSEvents'],
-  _fillFullscreenChangeEventData: function(eventStruct, e) {
+  _fillFullscreenChangeEventData: function(eventStruct) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
+    /** @suppress{checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
@@ -1112,7 +1113,7 @@ var LibraryJSEvents = {
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
 #endif
 
-      __fillFullscreenChangeEventData(fullscreenChangeEvent, e);
+      __fillFullscreenChangeEventData(fullscreenChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
@@ -1667,9 +1668,10 @@ var LibraryJSEvents = {
   },
 
   _fillPointerlockChangeEventData__deps: ['$JSEvents'],
-  _fillPointerlockChangeEventData: function(eventStruct, e) {
+  _fillPointerlockChangeEventData: function(eventStruct) {
     var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
     var isPointerlocked = !!pointerLockElement;
+    /** @suppress {checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
@@ -1692,7 +1694,7 @@ var LibraryJSEvents = {
 #else
       var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
 #endif
-      __fillPointerlockChangeEventData(pointerlockChangeEvent, e);
+      __fillPointerlockChangeEventData(pointerlockChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
@@ -1714,6 +1716,7 @@ var LibraryJSEvents = {
   emscripten_set_pointerlockchange_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockchange_callback_on_thread__sig: 'iiiiii',
   emscripten_set_pointerlockchange_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockChangeEventCallback', '_findEventTarget', '_specialEventTargets'],
+  emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
     if (!document || !document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
@@ -1734,7 +1737,11 @@ var LibraryJSEvents = {
   },
 
   _registerPointerlockErrorEventCallback__deps: ['$JSEvents', '_findEventTarget', '_specialEventTargets'],
-  _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) {
+  _registerPointerlockErrorEventCallback: function(target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) {
+#if USE_PTHREADS
+    targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
+#endif
+
     var pointerlockErrorEventHandlerFunc = function(ev) {
       var e = ev || event;
 
@@ -1758,6 +1765,7 @@ var LibraryJSEvents = {
   emscripten_set_pointerlockerror_callback_on_thread__proxy: 'sync',
   emscripten_set_pointerlockerror_callback_on_thread__sig: 'iiiiii',
   emscripten_set_pointerlockerror_callback_on_thread__deps: ['$JSEvents', '_registerPointerlockErrorEventCallback', '_findEventTarget', '_specialEventTargets'],
+  emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: function(target, userData, useCapture, callbackfunc, targetThread) {
     // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
     if (!document || !document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
@@ -1781,6 +1789,7 @@ var LibraryJSEvents = {
   emscripten_get_pointerlock_status__proxy: 'sync',
   emscripten_get_pointerlock_status__sig: 'ii',
   emscripten_get_pointerlock_status__deps: ['_fillPointerlockChangeEventData'],
+  emscripten_get_pointerlock_status__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_get_pointerlock_status: function(pointerlockStatus) {
     if (pointerlockStatus) __fillPointerlockChangeEventData(pointerlockStatus);
     if (!document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
@@ -1917,10 +1926,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _fillVisibilityChangeEventData: function(eventStruct, e) {
+  _fillVisibilityChangeEventData: function(eventStruct) {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
+    // Assigning a boolean to HEAP32 with expected type coercion.
+    /** @suppress {checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
@@ -1941,7 +1952,7 @@ var LibraryJSEvents = {
       var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
 #endif
 
-      __fillVisibilityChangeEventData(visibilityChangeEvent, e);
+      __fillVisibilityChangeEventData(visibilityChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
@@ -2127,7 +2138,9 @@ var LibraryJSEvents = {
       if (typeof(e.buttons[i]) === 'object') {
         {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
       } else {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
+        // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
+        /** @suppress {checkTypes} */
+        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i32') }}};
       }
     }
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
@@ -3064,10 +3077,10 @@ var LibraryJSEvents = {
         'postMessage(__setImmediate_message_id, "*");\n' +
         'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
       '}\n' +
-      'clearImmediate = function(id) {\n' +
+      'clearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
         'var index = id - __setImmediate_id_counter;\n' +
         'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function(){};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-      '}\n' +
+      '})\n' +
     '}',
 
   _polyfill_set_immediate: function() { /* nop, used for its postset to ensure setImmediate() polyfill is not duplicated between emscripten_set_immediate() and emscripten_set_immediate_loop() if application links to both of them.*/ },

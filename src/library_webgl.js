@@ -1955,6 +1955,7 @@ var LibraryGL = {
     return GLctx.isRenderbuffer(rb);
   },
 
+  $emscriptenWebGLGetUniform__docs: '/** @suppress{checkTypes} */', // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let Closure mind about that.
   $emscriptenWebGLGetUniform: function(program, location, params, type) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
@@ -2022,6 +2023,7 @@ var LibraryGL = {
     }
   },
 
+  $emscriptenWebGLGetVertexAttrib__docs: '/** @suppress{checkTypes} */', // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let Closure mind about that.
   $emscriptenWebGLGetVertexAttrib: function(index, pname, params, type) {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense

@@ -805,7 +805,7 @@ var LibrarySDL = {
           code = SDL.keyCodes[event.keyCode] || event.keyCode;
           // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
           // a right key, add 4 to get the right key SDL key code.
-          if (event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
+          if (event.location === 2 /*KeyboardEvent.DOM_KEY_LOCATION_RIGHT*/ && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
             code += 4;
           }
         }
@@ -824,6 +824,8 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var code = SDL.lookupKeyCodeForEvent(event);
+          // Assigning a boolean to HEAP8, that's alright but Closure would like to warn about it:
+          /** @suppress{checkTypes} */
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
           SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 : 0) | // KMOD_LCTRL
@@ -1337,6 +1339,7 @@ var LibrarySDL = {
 
   SDL_Init__proxy: 'sync',
   SDL_Init__sig: 'ii',
+  SDL_Init__docs: '/** @param{number=} initFlags */', 
   SDL_Init: function(initFlags) {
     SDL.startTime = Date.now();
     SDL.initFlags = initFlags;
@@ -1745,6 +1748,7 @@ var LibrarySDL = {
 
   SDL_GetKeyboardState__proxy: 'sync',
   SDL_GetKeyboardState__sig: 'ii',
+  SDL_GetKeyboardState__docs: '/** @param {number=} numKeys */',
   SDL_GetKeyboardState: function(numKeys) {
     if (numKeys) {
       {{{ makeSetValue('numKeys', 0, 0x10000, 'i32') }}};
@@ -1871,6 +1875,7 @@ var LibrarySDL = {
 
   SDL_ConvertSurface__proxy: 'sync',
   SDL_ConvertSurface__sig: 'iiii',
+  SDL_ConvertSurface__docs: '/** @param {number=} format @param {number=} flags */',
   SDL_ConvertSurface: function(surf, format, flags) {
     if  (format) {
       SDL.checkPixelFormat(format);
@@ -2266,10 +2271,11 @@ var LibrarySDL = {
         return 0;
       }
 
+      var raw;
       var filename = rwops.filename;
       if (filename === undefined) {
 #if STB_IMAGE
-        var raw = callStbImage('stbi_load_from_memory', [rwops.bytes, rwops.count]);
+        raw = callStbImage('stbi_load_from_memory', [rwops.bytes, rwops.count]);
         if (!raw) return 0;
 #else
         warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
@@ -2279,7 +2285,7 @@ var LibrarySDL = {
 
       if (!raw) {
         filename = PATH_FS.resolve(filename);
-        var raw = Module["preloadedImages"][filename];
+        raw = Module["preloadedImages"][filename];
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
@@ -2289,7 +2295,7 @@ var LibrarySDL = {
           addCleanup(function() {
             Module['_free'](name);
           });
-          var raw = callStbImage('stbi_load', [name]);
+          raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
 #else
           warnOnce('Cannot find preloaded image ' + filename);
@@ -2752,6 +2758,7 @@ var LibrarySDL = {
   Mix_LoadWAV_RW__deps: ['$PATH_FS'],
   Mix_LoadWAV_RW__proxy: 'sync',
   Mix_LoadWAV_RW__sig: 'iii',
+  Mix_LoadWAV_RW__docs: '/** @param {number|boolean=} freesrc */',
   Mix_LoadWAV_RW: function(rwopsID, freesrc) {
     var rwops = SDL.rwops[rwopsID];
 
@@ -2881,7 +2888,7 @@ var LibrarySDL = {
       webAudio = {};
       webAudio.decodedBuffer = buffer;
     } else {
-      var audio = new Audio();
+      audio = new Audio();
       audio.mozAudioChannelType = 'content'; // bugzilla 910340
       // Record the number of channels and frequency for later usage
       audio.numChannels = SDL.mixerNumChannels;
@@ -3665,9 +3672,10 @@ var LibrarySDL = {
 
   SDL_RWFromFile__proxy: 'sync',
   SDL_RWFromFile__sig: 'iii',
+  SDL_RWFromFile__docs: '/** @param {number=} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
-    var name = UTF8ToString(_name)
+    var name = UTF8ToString(_name);
     SDL.rwops.push({ filename: name, mimetype: Browser.getMimetype(name) });
     return id;
   },

@@ -27,25 +27,6 @@ LibraryManager.library = {
   __dso_handle: '{{{ makeStaticAlloc(1) }}}',
 #endif
 
-  $PROCINFO: {
-    // permissions
-    /*
-    uid: 0,
-    gid: 0,
-    euid: 0,
-    egid: 0,
-    suid: 0,
-    sgid: 0,
-    fsuid: 0,
-    fsgid: 0,
-    */
-    // process identification
-    ppid: 1,
-    pid: 42,
-    sid: 42,
-    pgid: 42
-  },
-
   // ==========================================================================
   // getTempRet0/setTempRet0: scratch space handling i64 return
   // ==========================================================================
@@ -274,6 +255,12 @@ LibraryManager.library = {
 
   _Exit__sig: 'vi',
   _Exit: 'exit',
+
+#if MINIMAL_RUNTIME
+  $exit: function(status) {
+    throw 'exit(' + status + ')';
+  },
+#endif
 
   fork__deps: ['__setErrNo'],
   fork: function() {
@@ -923,9 +910,28 @@ LibraryManager.library = {
     return ret;
   },
 
+#if MIN_CHROME_VERSION < 45 || MIN_EDGE_VERSION < 14 || MIN_FIREFOX_VERSION < 34 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 100101 || STANDALONE_WASM
+  // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/copyWithin lists browsers that support TypedArray.prototype.copyWithin, but it
+  // has outdated information for Safari, saying it would not support it.
+  // https://github.com/WebKit/webkit/commit/24a800eea4d82d6d595cdfec69d0f68e733b5c52#diff-c484911d8df319ba75fce0d8e7296333R1 suggests support was added on Aug 28, 2015.
+  // Manual testing suggests:
+  //   Safari/601.1 Version/9.0 on iPhone 4s with iOS 9.3.6 (released September 30, 2015) does not support copyWithin.
+  // but the following systems do:
+  //   AppleWebKit/602.2.14 Safari/602.1 Version/10.0 Mobile/14B100 iPhone OS 10_1_1 on iPhone 5s with iOS 10.1.1 (released October 31, 2016)
+  //   AppleWebKit/603.3.8 Safari/602.1 Version/10.0 on iPhone 5 with iOS 10.3.4 (released July 22, 2019)
+  //   AppleWebKit/605.1.15 iPhone OS 12_3_1 Version/12.1.1 Safari/604.1 on iPhone SE with iOS 12.3.1
+  //   AppleWebKit/605.1.15 Safari/604.1 Version/13.0.4 iPhone OS 13_3 on iPhone 6s with iOS 13.3
+  //   AppleWebKit/605.1.15 Version/13.0.3 Intel Mac OS X 10_15_1 on Safari 13.0.3 (15608.3.10.1.4) on macOS Catalina 10.15.1
+  // Hence the support status of .copyWithin() for Safari version range [10.0.0, 10.1.0] is unknown.
+  emscripten_memcpy_big__import: true,
+  emscripten_memcpy_big: '= Uint8Array.prototype.copyWithin\n' +
+    '  ? function(dest, src, num) { HEAPU8.copyWithin(dest, src, src + num); }\n' +
+    '  : function(dest, src, num) { HEAPU8.set(HEAPU8.subarray(src, src+num), dest); }\n',
+#else
   emscripten_memcpy_big: function(dest, src, num) {
-    HEAPU8.set(HEAPU8.subarray(src, src+num), dest);
+    HEAPU8.copyWithin(dest, src, src + num);
   },
+#endif
 
   memcpy__asm: true,
   memcpy__sig: 'iiii',
@@ -936,8 +942,8 @@ LibraryManager.library = {
     var aligned_dest_end = 0;
     var block_aligned_dest_end = 0;
     var dest_end = 0;
-    // Test against a benchmarked cutoff limit for when HEAPU8.set() becomes faster to use.
-    if ((num|0) >= 8192) {
+    // Test against a benchmarked cutoff limit for when HEAPU8.copyWithin() becomes faster to use.
+    if ((num|0) >= 512) {
       _emscripten_memcpy_big(dest|0, src|0, num|0)|0;
       return dest|0;
     }
@@ -1332,17 +1338,6 @@ LibraryManager.library = {
   $stackRestore: function(top) {
     top = top|0;
     STACKTOP = top;
-  },
-#endif
-
-#if USE_PTHREADS
-  $establishStackSpace__asm: true,
-  $establishStackSpace__sig: 'vii',
-  $establishStackSpace: function(stackBase, stackMax) {
-    stackBase = stackBase|0;
-    stackMax = stackMax|0;
-    STACKTOP = stackBase;
-    STACK_MAX = stackMax;
   },
 #endif
 
@@ -2127,7 +2122,9 @@ LibraryManager.library = {
 
   _arraySum: function(array, index) {
     var sum = 0;
-    for (var i = 0; i <= index; sum += array[i++]);
+    for (var i = 0; i <= index; sum += array[i++]) {
+      // no-op
+    }
     return sum;
   },
 
@@ -2803,10 +2800,9 @@ LibraryManager.library = {
     {{{ makeSetValue('res', C_STRUCTS.timespec.tv_nsec, 'nsec', 'i32') }}} // resolution is nanoseconds
     return 0;
   },
-  clock_getcpuclockid__deps: ['$PROCINFO'],
   clock_getcpuclockid: function(pid, clk_id) {
     if (pid < 0) return {{{ cDefine('ESRCH') }}};
-    if (pid !== 0 && pid !== PROCINFO.pid) return {{{ cDefine('ENOSYS') }}};
+    if (pid !== 0 && pid !== {{{ PROCINFO.pid }}}) return {{{ cDefine('ENOSYS') }}};
     if (clk_id) {{{ makeSetValue('clk_id', 0, 2/*CLOCK_PROCESS_CPUTIME_ID*/, 'i32') }}};
     return 0;
   },
@@ -4009,6 +4005,7 @@ LibraryManager.library = {
     {{{ makeEval('eval(UTF8ToString(ptr));') }}}
   },
 
+  emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: function(ptr) {
     {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
   },
@@ -4034,11 +4031,11 @@ LibraryManager.library = {
     return Math.random();
   },
 
-  emscripten_get_now: function() { abort() }, // replaced by the postset at startup time
-  emscripten_get_now__postset:
+  emscripten_get_now__import: true,
+  emscripten_get_now: ';' +
 #if ENVIRONMENT_MAY_BE_NODE
                                "if (ENVIRONMENT_IS_NODE) {\n" +
-                               "  _emscripten_get_now = function _emscripten_get_now_actual() {\n" +
+                               "  _emscripten_get_now = function() {\n" +
                                "    var t = process['hrtime']();\n" +
                                "    return t[0] * 1e3 + t[1] / 1e6;\n" +
                                "  };\n" +
@@ -4047,7 +4044,7 @@ LibraryManager.library = {
 #if USE_PTHREADS
 // Pthreads need their clocks synchronized to the execution of the main thread, so give them a special form of the function.
                                "if (ENVIRONMENT_IS_PTHREAD) {\n" +
-                               "  _emscripten_get_now = function() { return performance['now']() - Module['__performance_now_clock_drift']; };\n" +
+                               "  _emscripten_get_now = function() { return performance.now() - Module['__performance_now_clock_drift']; };\n" +
                                "} else " +
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -4056,14 +4053,15 @@ LibraryManager.library = {
                                "} else " +
 #endif
 #if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-                               "if (typeof performance === 'object' && performance && typeof performance['now'] === 'function') {\n" +
-                               "  _emscripten_get_now = function() { return performance['now'](); };\n" +
+                               "if (typeof performance !== 'undefined' && performance.now) {\n" +
+                               "  _emscripten_get_now = function() { return performance.now(); }\n" +
                                "} else {\n" +
                                "  _emscripten_get_now = Date.now;\n" +
                                "}",
 #else
                                // Modern environment where performance.now() is supported:
-                               "_emscripten_get_now = function() { return performance['now'](); };\n",
+                               // N.B. a shorter form "_emscripten_get_now = return performance.now;" is unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
+                               "_emscripten_get_now = function() { return performance.now(); }\n",
 #endif
 
   emscripten_get_now_res: function() { // return resolution of get_now, in nanoseconds
@@ -4091,25 +4089,20 @@ LibraryManager.library = {
 
   // Represents whether emscripten_get_now is guaranteed monotonic; the Date.now
   // implementation is not :(
+#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
   emscripten_get_now_is_monotonic: `
-     (0
+     ((typeof performance === 'object' && performance && typeof performance['now'] === 'function')
 #if ENVIRONMENT_MAY_BE_NODE
       || ENVIRONMENT_IS_NODE
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
       || (typeof dateNow !== 'undefined')
 #endif
-#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-
-#if MIN_IE_VERSION <= 9 || MIN_FIREFOX_VERSION <= 14 || MIN_CHROME_VERSION <= 23 || MIN_SAFARI_VERSION <= 80400 // https://caniuse.com/#feat=high-resolution-time
-      || (typeof performance === 'object' && performance && typeof performance['now'] === 'function')
+    );`,
 #else
-      // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
-      || 1
+  // Modern environment where performance.now() is supported: (rely on minifier to return true unconditionally from this function)
+  emscripten_get_now_is_monotonic: 'true;',
 #endif
-
-#endif
-      );`,
 
 #if MINIMAL_RUNTIME
   $warnOnce: function(text) {
@@ -4156,6 +4149,7 @@ LibraryManager.library = {
     , '$warnOnce'
 #endif
   ],
+  emscripten_get_callstack_js__docs: '/** @param {number=} flags */',
   emscripten_get_callstack_js: function(flags) {
     var callstack = jsStackTrace();
 
@@ -4561,6 +4555,7 @@ LibraryManager.library = {
   },
 
   emscripten_with_builtin_malloc__deps: ['emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign'],
+  emscripten_with_builtin_malloc__docs: '/** @suppress{checkTypes} */',
   emscripten_with_builtin_malloc: function (func) {
     var prev_malloc = typeof _malloc !== 'undefined' ? _malloc : undefined;
     var prev_memalign = typeof _memalign !== 'undefined' ? _memalign : undefined;

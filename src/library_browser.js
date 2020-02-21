@@ -8,7 +8,7 @@
 // Utilities for browser environments
 var LibraryBrowser = {
   $Browser__deps: ['emscripten_set_main_loop', 'emscripten_set_main_loop_timing'],
-  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas, vrDevice) { Browser.requestFullscreen(lockPointer, resizeCanvas, vrDevice) };\n' + // exports
+  $Browser__postset: 'Module["requestFullscreen"] = function Module_requestFullscreen(lockPointer, resizeCanvas) { Browser.requestFullscreen(lockPointer, resizeCanvas) };\n' + // exports
 #if ASSERTIONS
                      'Module["requestFullScreen"] = function Module_requestFullScreen() { Browser.requestFullScreen() };\n' +
 #endif
@@ -362,13 +362,11 @@ var LibraryBrowser = {
     fullscreenHandlersInstalled: false,
     lockPointer: undefined,
     resizeCanvas: undefined,
-    requestFullscreen: function(lockPointer, resizeCanvas, vrDevice) {
+    requestFullscreen: function(lockPointer, resizeCanvas) {
       Browser.lockPointer = lockPointer;
       Browser.resizeCanvas = resizeCanvas;
-      Browser.vrDevice = vrDevice;
       if (typeof Browser.lockPointer === 'undefined') Browser.lockPointer = true;
       if (typeof Browser.resizeCanvas === 'undefined') Browser.resizeCanvas = false;
-      if (typeof Browser.vrDevice === 'undefined') Browser.vrDevice = null;
 
       var canvas = Module['canvas'];
       function fullscreenChange() {
@@ -420,11 +418,7 @@ var LibraryBrowser = {
                                          (canvasContainer['webkitRequestFullscreen'] ? function() { canvasContainer['webkitRequestFullscreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null) ||
                                          (canvasContainer['webkitRequestFullScreen'] ? function() { canvasContainer['webkitRequestFullScreen'](Element['ALLOW_KEYBOARD_INPUT']) } : null);
 
-      if (vrDevice) {
-        canvasContainer.requestFullscreen({ vrDisplay: vrDevice });
-      } else {
-        canvasContainer.requestFullscreen();
-      }
+      canvasContainer.requestFullscreen();
     },
 
 #if ASSERTIONS
@@ -908,7 +902,7 @@ var LibraryBrowser = {
         // if the destination directory does not yet exist, create it
         FS.mkdirTree(destinationDirectory);
 
-        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(http.response), true, true, false);
+        FS.createDataFile( _file.substr(0, index), _file.substr(index + 1), new Uint8Array(/** @type{ArrayBuffer}*/(http.response)), true, true, false);
         if (onload) {
           var stack = stackSave();
           {{{ makeDynCall('viii') }}}(onload, handle, arg, allocate(intArrayFromString(_file), 'i8', ALLOC_STACK));
@@ -969,7 +963,7 @@ var LibraryBrowser = {
     // LOAD
     http.onload = function http_onload(e) {
       if (http.status >= 200 && http.status < 300 || (http.status === 0 && _url.substr(0,4).toLowerCase() != "http")) {
-        var byteArray = new Uint8Array(http.response);
+        var byteArray = new Uint8Array(/** @type{ArrayBuffer} */(http.response));
         var buffer = _malloc(byteArray.length);
         HEAPU8.set(byteArray, buffer);
         if (onload) {{{ makeDynCall('viiii') }}}(onload, handle, arg, buffer, byteArray.length);
@@ -1153,14 +1147,14 @@ var LibraryBrowser = {
           }
         }
         addEventListener("message", Browser_setImmediate_messageHandler, true);
-        setImmediate = function Browser_emulated_setImmediate(func) {
+        setImmediate = /** @type{function(function(): ?, ...?): number} */(function Browser_emulated_setImmediate(func) {
           setImmediates.push(func);
           if (ENVIRONMENT_IS_WORKER) {
             if (Module['setImmediates'] === undefined) Module['setImmediates'] = [];
             Module['setImmediates'].push(func);
             postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
           } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
-        }
+        })
       }
       Browser.mainLoop.scheduler = function Browser_mainLoop_scheduler_setImmediate() {
         setImmediate(Browser.mainLoop.runner);
@@ -1176,6 +1170,7 @@ var LibraryBrowser = {
 #else
   emscripten_set_main_loop__deps: ['emscripten_set_main_loop_timing', 'emscripten_get_now'],
 #endif
+  emscripten_set_main_loop__docs: '/** @param {number|boolean=} noSetTiming */',
   emscripten_set_main_loop: function(func, fps, simulateInfiniteLoop, arg, noSetTiming) {
     noExitRuntime = true;
 
