@@ -94,6 +94,10 @@ var WasiLibrary = {
     return 0;
   },
 
+  // TODO: the i64 in the API here must be legalized for this JS code to run,
+  // but the wasm file can't be legalized. To get this code to be usable as
+  // a JS shim we need to either wait for BigInt support or to legalize on
+  // the client.
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
     var now;
@@ -113,7 +117,7 @@ var WasiLibrary = {
   },
 
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
-  clock_res_get: function(clk_id, presolution) {
+  clock_res_get: function(clk_id, pres) {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
@@ -123,8 +127,8 @@ var WasiLibrary = {
       ___setErrNo({{{ cDefine('EINVAL') }}});
       return -1;
     }
-    {{{ makeSetValue('ptime', 0, 'nsec >>> 0', 'i32') }}};
-    {{{ makeSetValue('ptime', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
+    {{{ makeSetValue('pres', 0, 'nsec >>> 0', 'i32') }}};
+    {{{ makeSetValue('pres', 4, '(nsec / Math.pow(2, 32)) >>> 0', 'i32') }}};
     return 0;
   },
 };

@@ -5545,6 +5545,8 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  # i64s in the API, which we'd need to legalize for JS, so in standalone mode
+  # all we can test is wasm VMs
   @also_with_only_standalone_wasm
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')

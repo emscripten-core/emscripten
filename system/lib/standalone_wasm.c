@@ -32,17 +32,17 @@ void abort() {
   exit(1);
 }
 
-_Static_assert(CLOCK_REALTIME == __WASI_CLOCK_REALTIME, "must match");
-_Static_assert(CLOCK_MONOTONIC == __WASI_CLOCK_MONOTONIC, "must match");
-_Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCK_PROCESS_CPUTIME_ID, "must match");
-_Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCK_THREAD_CPUTIME_ID, "must match");
+_Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");
+_Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "must match");
+_Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCKID_PROCESS_CPUTIME_ID, "must match");
+_Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCKID_THREAD_CPUTIME_ID, "must match");
 
 #define NSEC_PER_SEC (1000 * 1000 * 1000)
 
 int clock_gettime(clockid_t clk_id, struct timespec *tp) {
   __wasi_timestamp_t now;
   __wasi_errno_t error = __wasi_clock_time_get(clk_id, 0, &now);
-  if (error != __WASI_ESUCCESS) {
+  if (error != __WASI_ERRNO_SUCCESS) {
     return __wasi_syscall_ret(error);
   }
   tp->tv_sec = now / NSEC_PER_SEC;
@@ -53,7 +53,7 @@ int clock_gettime(clockid_t clk_id, struct timespec *tp) {
 int clock_getres(clockid_t clk_id, struct timespec *tp) {
   __wasi_timestamp_t res;
   __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
-  if (error != __WASI_ESUCCESS) {
+  if (error != __WASI_ERRNO_SUCCESS) {
     return __wasi_syscall_ret(error);
   }
   tp->tv_sec = res / NSEC_PER_SEC;
