@@ -3194,10 +3194,14 @@ var LibraryJSEvents = {
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio__sig: 'd',
   emscripten_get_device_pixel_ratio: function() {
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+    return (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
+#else // otherwise, on the web and in workers, things are simpler
 #if MIN_IE_VERSION < 11 || MIN_FIREFOX_VERSION < 18 || MIN_CHROME_VERSION < 4 || MIN_SAFARI_VERSION < 3010 // https://caniuse.com/#feat=devicepixelratio
     return window.devicePixelRatio || 1.0;
 #else
     return devicePixelRatio;
+#endif
 #endif
   }
 };
