@@ -97,9 +97,9 @@ var WasiLibrary = {
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
     var now;
-    if (clk_id === {{{ cDefine('__WASI_CLOCK_REALTIME') }}}) {
+    if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('__WASI_CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
