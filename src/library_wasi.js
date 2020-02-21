@@ -99,7 +99,7 @@ var WasiLibrary = {
     var now;
     if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();
-    } else if (clk_id === {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('__WASI_CLOCKID_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       now = _emscripten_get_now();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
@@ -117,7 +117,7 @@ var WasiLibrary = {
     var nsec;
     if (clk_id === {{{ cDefine('CLOCK_REALTIME') }}}) {
       nsec = 1000 * 1000; // educated guess that it's milliseconds
-    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic()) {
+    } else if (clk_id === {{{ cDefine('CLOCK_MONOTONIC') }}} && _emscripten_get_now_is_monotonic) {
       nsec = _emscripten_get_now_res();
     } else {
       ___setErrNo({{{ cDefine('EINVAL') }}});
