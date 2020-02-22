@@ -9701,7 +9701,7 @@ int main () {
           obtained_results[f] = size
           obtained_results[f_gz] = size_gz
 
-          if size != expected_size and f.endswith('.js'):
+          if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
             print('Contents of ' + f + ': ')
             print(open(f, 'r').read())
 
