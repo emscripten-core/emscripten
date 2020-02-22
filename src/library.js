@@ -288,11 +288,6 @@ LibraryManager.library = {
     }
   },
 
-  getpagesize: function() {
-    // int getpagesize(void);
-    return {{{ POSIX_PAGE_SIZE }}};
-  },
-
   sysconf__deps: ['__setErrNo'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
@@ -1338,19 +1333,6 @@ LibraryManager.library = {
   $stackRestore: function(top) {
     top = top|0;
     STACKTOP = top;
-  },
-#endif
-
-#if WASM_BACKEND == 0
-  $setThrew__asm: true,
-  $setThrew__sig: 'vii',
-  $setThrew: function(threw, value) {
-    threw = threw|0;
-    value = value|0;
-    if ((__THREW__|0) == 0) {
-      __THREW__ = threw;
-      threwValue = value;
-    }
   },
 #endif
 #endif
@@ -3218,12 +3200,14 @@ LibraryManager.library = {
 #endif
   },
 
+#if !WASM_BACKEND
   // ==========================================================================
   // sched.h (stubs only - no thread support yet!)
   // ==========================================================================
   sched_yield: function() {
     return 0;
   },
+#endif
 
   // ==========================================================================
   // arpa/inet.h
