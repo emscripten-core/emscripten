@@ -81,7 +81,6 @@ function JSify(data, functionsOnly) {
       libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
         if (!isJsLibraryConfigIdentifier(key)) {
-          console.error(key);
           libFuncsToInclude.push(key);
         }
       }
