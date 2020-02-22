@@ -1335,19 +1335,6 @@ LibraryManager.library = {
     STACKTOP = top;
   },
 #endif
-
-#if WASM_BACKEND == 0
-  $setThrew__asm: true,
-  $setThrew__sig: 'vii',
-  $setThrew: function(threw, value) {
-    threw = threw|0;
-    value = value|0;
-    if ((__THREW__|0) == 0) {
-      __THREW__ = threw;
-      threwValue = value;
-    }
-  },
-#endif
 #endif
 
   llvm_flt_rounds: function() {
