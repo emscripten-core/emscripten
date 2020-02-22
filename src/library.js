@@ -928,6 +928,7 @@ LibraryManager.library = {
   },
 #endif
 
+#if !WASM_BACKEND
   memcpy__asm: true,
   memcpy__sig: 'iiii',
   memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
@@ -1027,6 +1028,7 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
+#endif
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
