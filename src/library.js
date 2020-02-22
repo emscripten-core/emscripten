@@ -288,11 +288,6 @@ LibraryManager.library = {
     }
   },
 
-  getpagesize: function() {
-    // int getpagesize(void);
-    return {{{ POSIX_PAGE_SIZE }}};
-  },
-
   sysconf__deps: ['__setErrNo'],
   sysconf__proxy: 'sync',
   sysconf__sig: 'ii',
