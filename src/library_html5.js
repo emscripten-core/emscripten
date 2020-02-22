@@ -1532,16 +1532,16 @@ var LibraryJSEvents = {
   emscripten_request_fullscreen__proxy: 'sync',
   emscripten_request_fullscreen__sig: 'iii',
   emscripten_request_fullscreen: function(target, deferUntilInEventHandler) {
-    var strategy = {};
-    // These options perform no added logic, but just bare request fullscreen.
-    strategy.scaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}};
-    strategy.canvasResolutionScaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
-    strategy.filteringMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}};
+    var strategy = {
+      // These options perform no added logic, but just bare request fullscreen.
+      scaleMode: {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}},
+      canvasResolutionScaleMode: {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}},
+      filteringMode: {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}},
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+      deferUntilInEventHandler: deferUntilInEventHandler,
 #endif
-    strategy.canvasResizedCallbackTargetThread = {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}};
-
+      canvasResizedCallbackTargetThread: {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}}
+    };
     return __emscripten_do_request_fullscreen(target, strategy);
   },
 
@@ -1549,18 +1549,19 @@ var LibraryJSEvents = {
   emscripten_request_fullscreen_strategy__proxy: 'sync',
   emscripten_request_fullscreen_strategy__sig: 'iiii',
   emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
-    var strategy = {};
-    strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
-    strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
-    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
+    var strategy = {
+      scaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}},
+      canvasResolutionScaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}},
+      filteringMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}},
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+      deferUntilInEventHandler: deferUntilInEventHandler,
 #endif
-    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
-    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
 #if USE_PTHREADS
-    strategy.canvasResizedCallbackTargetThread = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackTargetThread, 'i32') }}};
+      canvasResizedCallbackTargetThread: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackTargetThread, 'i32') }}},
 #endif
+      canvasResizedCallback: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}},
+      canvasResizedCallbackUserData: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}}
+    };
     __currentFullscreenStrategy = strategy;
 
     return __emscripten_do_request_fullscreen(target, strategy);
@@ -1576,17 +1577,18 @@ var LibraryJSEvents = {
     target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
-    var strategy = {};
-    strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
-    strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
-    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
-    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
-    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
+    var strategy = {
+        scaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}},
+        canvasResolutionScaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}},
+        filteringMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}},
+        canvasResizedCallback: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}},
+        canvasResizedCallbackUserData: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}},
 #if USE_PTHREADS
-    strategy.canvasResizedCallbackTargetThread = JSEvents.getTargetThreadForEventCallback();
+        canvasResizedCallbackTargetThread: JSEvents.getTargetThreadForEventCallback(),
 #endif
-    strategy.target = target;
-    strategy.softFullscreen = true;
+        target: target,
+        softFullscreen: true
+    };
 
     var restoreOldStyle = _JSEvents_resizeCanvasForFullscreen(target, strategy);
 

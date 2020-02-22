@@ -4836,6 +4836,7 @@ LibraryManager.library = {
   emscripten_asm_const_double_sync_on_main_thread: function() {},
   emscripten_asm_const_async_on_main_thread: function() {},
 
+#if !WASM_BACKEND
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
   __muldsi3__sig: 'iii',
@@ -5159,6 +5160,7 @@ LibraryManager.library = {
   __handle_stack_overflow: function() {
     abort('stack overflow')
   },
+#endif
 
   _getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
