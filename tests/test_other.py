@@ -9715,7 +9715,7 @@ int main () {
           # difference code size, which leads to different relooper choices,
           # as a result leading to slightly different total code sizes.
           # TODO: identify what is causing this. meanwhile allow some amount of slop
-          mem_slop = 0 if self.is_wasm_backend() else 50
+          mem_slop = 10 if self.is_wasm_backend() else 50
           if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
             size = expected_size
 
