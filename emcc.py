@@ -1423,6 +1423,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.DISABLE_EXCEPTION_THROWING and not shared.Settings.DISABLE_EXCEPTION_CATCHING:
       exit_with_error("DISABLE_EXCEPTION_THROWING was set (probably from -fno-exceptions) but is not compatible with enabling exception catching (DISABLE_EXCEPTION_CATCHING=0). If you don't want exceptions, set DISABLE_EXCEPTION_CATCHING to 1; if you do want exceptions, don't link with -fno-exceptions")
 
+    # if exception catching is disabled, we can prevent that code from being
+    # generated in the frontend
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND:
+      newargs.append('-fignore-exceptions')
+
     if shared.Settings.DEAD_FUNCTIONS:
       if not options.js_opts:
         logger.debug('enabling js opts for DEAD_FUNCTIONS')
@@ -2970,6 +2975,8 @@ def parse_args(newargs):
     elif newargs[i] == '-fexceptions':
       settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
       settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
+    elif newargs[i] == '-fignore-exceptions':
+      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]

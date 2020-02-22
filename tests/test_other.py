@@ -10006,6 +10006,19 @@ int main () {
       else:
         run_process(cmd)
 
+  @no_fastcomp('new clang feature')
+  def test_fignore_exceptions(self):
+    # the new clang flag -fignore-exceptions basically is the same as -s DISABLE_EXCEPTION_CATCHING=1,
+    # that is, it allows throwing, but emits no support code for catching.
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=0'])
+    enable_size = os.path.getsize('a.out.wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'exceptions_modes_symbols_defined.cpp'), '-s', 'DISABLE_EXCEPTION_CATCHING=1'])
+    disable_size = os.path.getsize('a.out.wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'exceptions_modes_symbols_defined.cpp'), '-s', '-fignore-exceptions'])
+    ignore_size = os.path.getsize('a.out.wasm')
+    self.assertGreater(enable_size, disable_size)
+    self.assertEqual(disable_size, ignore_size)
+
   @no_fastcomp('assumes wasm object files')
   def test_f_exception(self):
     create_test_file('src.cpp', r'''
