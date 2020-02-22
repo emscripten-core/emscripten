@@ -5415,9 +5415,7 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'unistd', 'truncate', js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
-    src = open(path_from_root('tests', 'unistd', 'swab.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'swab.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'swab')
 
   def test_unistd_isatty(self):
     src = open(path_from_root('tests', 'unistd', 'isatty.c')).read()
@@ -5425,9 +5423,7 @@ main( int argv, char ** argc ) {
 
   @also_with_standalone_wasm
   def test_unistd_sysconf(self):
-    src = open(path_from_root('tests', 'unistd', 'sysconf.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'sysconf.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'sysconf')
 
   @no_asan('ASan alters memory layout')
   def test_unistd_sysconf_phys_pages(self):
@@ -5439,9 +5435,7 @@ main( int argv, char ** argc ) {
     self.do_run(src, str(expected) + ', errno: 0')
 
   def test_unistd_login(self):
-    src = open(path_from_root('tests', 'unistd', 'login.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'login.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'login')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
