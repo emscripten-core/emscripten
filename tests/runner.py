@@ -1533,12 +1533,12 @@ class BrowserCore(RunnerCore):
         if (typeof WebGLClient !== 'undefined') {
           // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
           var realRAF = window.requestAnimationFrame;
-          window.requestAnimationFrame = function(func) {
+          window.requestAnimationFrame = /** @suppress{checkTypes} */ (function(func) {
             realRAF(function() {
               func();
               realRAF(doReftest);
             });
-          };
+          });
 
           // trigger reftest from canvas render too, for workers not doing GL
           var realWOM = worker.onmessage;
