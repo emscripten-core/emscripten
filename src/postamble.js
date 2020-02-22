@@ -306,9 +306,7 @@ function run(args) {
     // or while the async setStatus time below was happening
     if (calledRun) return;
     calledRun = true;
-#if 'calledRun' in EXPORTED_RUNTIME_METHODS_SET
     Module['calledRun'] = true;
-#endif
 
     if (ABORT) return;
 
@@ -374,10 +372,11 @@ function checkUnflushedContent() {
   try { // it doesn't matter if it fails
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
     var flush = {{{ '$flush_NO_FILESYSTEM' in addedLibraryItems ? 'flush_NO_FILESYSTEM' : 'null' }}};
+    if (flush) flush();
 #else
     var flush = Module['_fflush'];
-#endif
     if (flush) flush(0);
+#endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
     ['stdout', 'stderr'].forEach(function(name) {

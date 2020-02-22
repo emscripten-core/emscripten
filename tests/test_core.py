@@ -4891,6 +4891,7 @@ Pass: 0.000012 0.000012''')
     print('base', self.emcc_args)
 
     create_test_file('pre.js', '''
+/** @suppress{checkTypes}*/
 Module = {
   'noFSInit': true,
   'preRun': function() {

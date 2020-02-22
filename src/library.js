@@ -492,7 +492,7 @@ LibraryManager.library = {
 #else // asm.js:
       var newBuffer = new ArrayBuffer(size);
       if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
-      new Int8Array(newBuffer).set(HEAP8);
+      new Int8Array(newBuffer).set(/**@type{!Int8Array}*/(HEAP8));
       _emscripten_replace_memory(newBuffer);
       updateGlobalBufferAndViews(newBuffer);
 #endif
