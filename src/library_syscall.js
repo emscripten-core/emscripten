@@ -904,7 +904,7 @@ var SyscallsLibrary = {
   __syscall152__nothrow: true,
   __syscall152__proxy: false,
   __syscall152__sig: 'ii',
-  __syscall150: function(flags) { // mlockall
+  __syscall152: function(flags) { // mlockall
     return 0;
   },
   __syscall153__nothrow: true,
