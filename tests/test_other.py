@@ -9733,7 +9733,7 @@ int main () {
         print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
 
         if os.environ.get('EMTEST_REBASELINE'):
-          open(results_file, 'w').write(json.dumps(obtained_results, indent=2))
+          open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
         else:
           if total_output_size > total_expected_size:
             print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
