@@ -743,6 +743,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
+        filenames=['sched_yield.c'])
+
     libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
     return libc_files
@@ -1313,7 +1317,14 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
-                   '__year_to_secs.c'])
+                   '__year_to_secs.c',
+                   'gettimeofday.c',
+                   'localtime.c',
+                   'localtime_r.c',
+                   'gmtime.c',
+                   'gmtime_r.c',
+                   'nanosleep.c',
+                   'mktime.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     exit_files = files_in_path(
