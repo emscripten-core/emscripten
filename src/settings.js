@@ -267,7 +267,7 @@ var USE_CLOSURE_COMPILER = 0;
 // options: 'quiet', 'warn', 'error'. If set to 'warn', Closure warnings are printed
 // out to console. If set to 'error', Closure warnings are treated like errors,
 // similar to -Werror compiler flag.
-var CLOSURE_WARNINGS = 'quiet';
+var CLOSURE_WARNINGS = 'error';
 
 // If set to 1, each asm.js/wasm module export is individually declared with a
 // JavaScript "var" definition. This is the simple and recommended approach.
