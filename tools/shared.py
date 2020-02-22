@@ -2475,7 +2475,7 @@ class Building(object):
         # Exit and print final hint to get clearer output
         exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set')
 
-      if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet':
+      if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet' and Settings.LEGACY_GL_EMULATION == 0:
         # print list of warnings (possibly long wall of text if input was minified)
         if Settings.CLOSURE_WARNINGS == 'error':
           logger.error(proc.stderr)
