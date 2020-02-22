@@ -244,7 +244,9 @@ function JSify(data, functionsOnly) {
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
-        if (ident[0] != '$') { // Functions that start with '$' should not be imported to asm.js/wasm module
+        // Functions that start with '$' should not be imported to asm.js/wasm module, since they are
+        // intended to be exclusive to JS code only.
+        if (ident[0] != '$') {
           Functions.libraryFunctions[finalName] = 1;
         }
       }
