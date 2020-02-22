@@ -1427,7 +1427,7 @@ var LibraryJSEvents = {
   _currentFullscreenStrategy: {},
   _restoreOldWindowedStyle: null,
 
-  _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size'],
+  _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size', '$jstoi_q'],
   _softFullscreenResizeWebGLRenderTarget: function() {
     var dpr = devicePixelRatio;
     var inHiDPIFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}};
@@ -1467,8 +1467,8 @@ var LibraryJSEvents = {
     }
 
     if (inCenteredWithoutScalingFullscreenMode) {
-      var t = (innerHeight - parseInt(canvas.style.height)) / 2;
-      var b = (innerWidth - parseInt(canvas.style.width)) / 2;
+      var t = (innerHeight - jstoi_q(canvas.style.height)) / 2;
+      var b = (innerWidth - jstoi_q(canvas.style.width)) / 2;
       __setLetterbox(canvas, t, b);
     } else {
       canvas.style.width = w + 'px';
