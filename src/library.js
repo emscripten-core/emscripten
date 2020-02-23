@@ -5156,11 +5156,11 @@ LibraryManager.library = {
     return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
   },
   // =======================================================================
+#endif
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
   },
-#endif
 
   _getExecutableName: function() {
 #if MINIMAL_RUNTIME // MINIMAL_RUNTIME does not have a global runtime variable thisProgram
