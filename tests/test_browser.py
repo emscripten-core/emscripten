@@ -4981,3 +4981,6 @@ window.close = function() {
                args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1',
                      '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
                      '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
+
+  def test_system(self):
+    self.btest(path_from_root('tests', 'system.c'), '0')
