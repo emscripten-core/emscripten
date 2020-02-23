@@ -492,7 +492,7 @@ LibraryManager.library = {
 #else // asm.js:
       var newBuffer = new ArrayBuffer(size);
       if (newBuffer.byteLength != size) return /*undefined, allocation did not succeed*/;
-      new Int8Array(newBuffer).set(HEAP8);
+      new Int8Array(newBuffer).set(/**@type{!Int8Array}*/(HEAP8));
       _emscripten_replace_memory(newBuffer);
       updateGlobalBufferAndViews(newBuffer);
 #endif
@@ -928,6 +928,7 @@ LibraryManager.library = {
   },
 #endif
 
+#if !WASM_BACKEND
   memcpy__asm: true,
   memcpy__sig: 'iiii',
   memcpy__deps: ['emscripten_memcpy_big', 'Int8Array', 'Int32Array'],
@@ -1027,6 +1028,7 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
+#endif
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -1302,6 +1304,7 @@ LibraryManager.library = {
 #if WASM_BACKEND == 0
   $abortStackOverflow__deps: ['$stackSave'],
 #endif
+  $abortStackOverflow__import: true,
   $abortStackOverflow: function(allocSize) {
     abort('Stack overflow! Attempted to allocate ' + allocSize + ' bytes on the stack, but stack has only ' + (STACK_MAX - stackSave() + allocSize) + ' bytes available!');
   },
@@ -2467,7 +2470,7 @@ LibraryManager.library = {
     return _strftime(s, maxsize, format, tm); // no locale support yet
   },
 
-  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP'
+  strptime__deps: ['_isLeapYear', '_arraySum', '_addDays', '_MONTH_DAYS_REGULAR', '_MONTH_DAYS_LEAP', '$jstoi_q'
 #if MINIMAL_RUNTIME
     , '$intArrayFromString'
 #endif
@@ -2575,21 +2578,21 @@ LibraryManager.library = {
 
       // seconds
       if ((value=getMatch('S'))) {
-        date.sec = parseInt(value);
+        date.sec = jstoi_q(value);
       }
 
       // minutes
       if ((value=getMatch('M'))) {
-        date.min = parseInt(value);
+        date.min = jstoi_q(value);
       }
 
       // hours
       if ((value=getMatch('H'))) {
         // 24h clock
-        date.hour = parseInt(value);
+        date.hour = jstoi_q(value);
       } else if ((value = getMatch('I'))) {
         // AM/PM clock
-        var hour = parseInt(value);
+        var hour = jstoi_q(value);
         if ((value=getMatch('p'))) {
           hour += value.toUpperCase()[0] === 'P' ? 12 : 0;
         }
@@ -2599,13 +2602,13 @@ LibraryManager.library = {
       // year
       if ((value=getMatch('Y'))) {
         // parse from four-digit year
-        date.year = parseInt(value);
+        date.year = jstoi_q(value);
       } else if ((value=getMatch('y'))) {
         // parse from two-digit year...
-        var year = parseInt(value);
+        var year = jstoi_q(value);
         if ((value=getMatch('C'))) {
           // ...and century
-          year += parseInt(value)*100;
+          year += jstoi_q(value)*100;
         } else {
           // ...and rule-of-thumb
           year += year<69 ? 2000 : 1900;
@@ -2616,7 +2619,7 @@ LibraryManager.library = {
       // month
       if ((value=getMatch('m'))) {
         // parse from month number
-        date.month = parseInt(value)-1;
+        date.month = jstoi_q(value)-1;
       } else if ((value=getMatch('b'))) {
         // parse from month name
         date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
@@ -2626,10 +2629,10 @@ LibraryManager.library = {
       // day
       if ((value=getMatch('d'))) {
         // get day of month directly
-        date.day = parseInt(value);
+        date.day = jstoi_q(value);
       } else if ((value=getMatch('j'))) {
         // get day of month from day of year ...
-        var day = parseInt(value);
+        var day = jstoi_q(value);
         var leapYear = __isLeapYear(date.year);
         for (var month=0; month<12; ++month) {
           var daysUntilMonth = __arraySum(leapYear ? __MONTH_DAYS_LEAP : __MONTH_DAYS_REGULAR, month-1);
@@ -2645,7 +2648,7 @@ LibraryManager.library = {
           // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Sunday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
-          var weekNumber = parseInt(value);
+          var weekNumber = jstoi_q(value);
 
           // January 1st
           var janFirst = new Date(date.year, 0, 1);
@@ -2664,7 +2667,7 @@ LibraryManager.library = {
           // Week number of the year (Monday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Monday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
-          var weekNumber = parseInt(value);
+          var weekNumber = jstoi_q(value);
 
           // January 1st
           var janFirst = new Date(date.year, 0, 1);
@@ -3257,7 +3260,7 @@ LibraryManager.library = {
   _inet_ntop4_raw: function(addr) {
     return (addr & 0xff) + '.' + ((addr >> 8) & 0xff) + '.' + ((addr >> 16) & 0xff) + '.' + ((addr >> 24) & 0xff)
   },
-  _inet_pton6_raw__deps: ['htons', 'ntohs'],
+  _inet_pton6_raw__deps: ['htons', 'ntohs', '$jstoi_q'],
   _inet_pton6_raw: function(str) {
     var words;
     var w, offset, z, i;
@@ -3281,8 +3284,8 @@ LibraryManager.library = {
       // parse IPv4 embedded stress
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
-      words[words.length-4] = parseInt(words[words.length-4]) + parseInt(words[words.length-3])*256;
-      words[words.length-3] = parseInt(words[words.length-2]) + parseInt(words[words.length-1])*256;
+      words[words.length-4] = jstoi_q(words[words.length-4]) + jstoi_q(words[words.length-3])*256;
+      words[words.length-3] = jstoi_q(words[words.length-2]) + jstoi_q(words[words.length-1])*256;
       words = words.slice(0, words.length-2);
     } else {
       words = str.split(":");
@@ -4642,6 +4645,22 @@ LibraryManager.library = {
 
   },
 #endif
+
+  // Parses as much of the given JS string to an integer, with quiet error
+  // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
+  // Note that "smart" radix handling is employed for input string:
+  // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  $jstoi_q: function(str) {
+    // TODO: If issues below are resolved, add a suitable suppression or remove this comment.
+    return parseInt(str, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+  },
+
+  // Converts a JS string to an integer base-10, with signaling error
+  // handling (throws a JS exception on error). E.g. jstoi_s("123abc")
+  // throws an exception.
+  $jstoi_s: function(str) {
+    return Number(str);
+  },
 
   //============================
   // i64 math

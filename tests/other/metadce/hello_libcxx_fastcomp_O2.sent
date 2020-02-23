@@ -28,13 +28,8 @@ _llvm_stacksave
 _strftime
 _strftime_l
 abort
-abortOnCannotGrowMemory
-demangle
-demangleAll
 getTempRet0
-jsStackTrace
 memory
 setTempRet0
-stackTrace
 table
 tempDoublePtr

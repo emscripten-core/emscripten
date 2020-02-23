@@ -83,7 +83,7 @@ var Buffer = function(var_args) {};
  * @param {ArrayBuffer|SharedArrayBuffer} arrayBuffer
  * @param {number=} byteOffset
  * @param {number=} length
- * @return {buffer.Buffer}
+ * @return {nodeBuffer.Buffer}
  * @nosideeffects
  */
 Buffer.from = function(arrayBuffer, byteOffset, length) {};
