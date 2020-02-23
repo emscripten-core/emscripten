@@ -587,6 +587,7 @@
 -------- T getopt
 -------- T getopt_long
 -------- T getopt_long_only
+-------- T getpagesize
 -------- T getpgid
 -------- T getpgrp
 -------- T getpid
@@ -939,6 +940,7 @@
 -------- T scandir
 -------- W scandir64
 -------- T scanf
+-------- T sched_yield
 -------- T seed48
 -------- T seekdir
 -------- T select
