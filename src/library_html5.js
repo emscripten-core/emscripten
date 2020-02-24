@@ -55,7 +55,7 @@ var LibraryJSEvents = {
 
     // Queues the given function call to occur the next time we enter an event handler.
     // Existing implementations of pointerlock apis have required that 
-    // the target element is active in fullscreen mode first. Thefefore give
+    // the target element is active in fullscreen mode first. Therefore give
     // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
     // and sort by that to always request fullscreen before pointer lock.
     deferCall: function(targetFunction, precedence, argsList) {
