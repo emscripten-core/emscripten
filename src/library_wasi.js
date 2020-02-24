@@ -7,11 +7,13 @@
 
 var WasiLibrary = {
   proc_exit__deps: ['exit'],
+  proc_exit__sig: 'vi',
   proc_exit: function(code) {
-    return _exit(code);
+    _exit(code);
   },
 
   emscripten_get_environ__deps: ['$ENV', '_getExecutableName'],
+  emscripten_get_environ__sig: 'i',
   emscripten_get_environ: function() {
     if (!_emscripten_get_environ.strings) {
       // Default values.
@@ -39,6 +41,7 @@ var WasiLibrary = {
   },
 
   environ_sizes_get__deps: ['emscripten_get_environ'],
+  environ_sizes_get__sig: 'iii',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
     var strings = _emscripten_get_environ();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
@@ -55,6 +58,7 @@ var WasiLibrary = {
     , '$writeAsciiToMemory'
 #endif
   ],
+  environ_get__sig: 'iii',
   environ_get: function(__environ, environ_buf) {
     var strings = _emscripten_get_environ();
     var bufSize = 0;
@@ -67,6 +71,7 @@ var WasiLibrary = {
     return 0;
   },
 
+  args_sizes_get__sig: 'iii',
   args_sizes_get: function(pargc, pargv_buf_size) {
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', 'i32') }}};
@@ -81,6 +86,7 @@ var WasiLibrary = {
     return 0;
   },
 
+  args_get__sig: 'iii',
   args_get: function(argv, argv_buf) {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
