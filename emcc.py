@@ -1593,6 +1593,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM:
       if shared.Settings.TOTAL_MEMORY % 65536 != 0:
         exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
+      if shared.Settings.TOTAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+        exit_with_error('TOTAL_MEMORY must be less than 2GB due to current spec limitations')
     else:
       if shared.Settings.TOTAL_MEMORY < 16 * 1024 * 1024:
         exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
