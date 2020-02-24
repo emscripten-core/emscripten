@@ -1472,6 +1472,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
+  fd_close__sig: 'ii',
   fd_close: function(fd) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -1491,12 +1492,14 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+  fd_read__sig: 'iiiii',
   fd_read: function(fd, iov, iovcnt, pnum) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
+  fd_seek__sig: 'iiiiii',
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
@@ -1514,6 +1517,7 @@ var SyscallsLibrary = {
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
     return 0;
   },
+  fd_fdstat_get__sig: 'iii',
   fd_fdstat_get: function(fd, pbuf) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -1536,6 +1540,7 @@ var SyscallsLibrary = {
 #if EMTERPRETIFY_ASYNC
   fd_sync__deps: ['$EmterpreterAsync'],
 #endif
+  fd_sync__sig: 'ii',
   fd_sync: function(fd) {
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if EMTERPRETIFY_ASYNC
