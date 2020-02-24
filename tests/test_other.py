@@ -10355,6 +10355,9 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'errno_type.c'])
 
+  def test_standalone_syscalls(self):
+    self.do_other_test(os.path.join('other', 'standalone_syscalls'))
+
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):
     def test(args):

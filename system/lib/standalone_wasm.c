@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include <wasi/api.h>
 
@@ -41,12 +42,39 @@ void abort() {
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-int __map_file(int x, int y) {
-  return ENOSYS;
+long __map_file(int x, int y) {
+  return -ENOSYS;
 }
 
-int __syscall91(int x, int y) { // munmap
-  return ENOSYS;
+long __syscall91(int x, int y) { // munmap
+  return -ENOSYS;
+}
+
+// mmap2()
+long __syscall192(long addr, long len, long prot, long flags, long fd, long off) {
+  return -ENOSYS;
+}
+
+// open(), etc. - we just support the standard streams, with no
+// corner case error checking; everything else is not permitted.
+// TODO: full file support for WASI
+// open()
+long __syscall5(const char* path, long flags, ...) {
+  if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
+  if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
+  if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;
+  errno = EPERM;
+  return -1;
+}
+
+// ioctl()
+int __syscall54(int fd, int op, ...) {
+  return -ENOSYS;
+}
+
+// fcntl64()
+long __syscall221(long fd, long cmd, ...) {
+  return -ENOSYS;
 }
 
 // Musl lock internals. As we assume wasi is single-threaded for now, these
