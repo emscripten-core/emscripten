@@ -219,7 +219,7 @@ var LibraryManager = {
           // Primarily read the signature on the alias, and secondarily on the target.
           var sig = lib[x + '__sig'] || lib[target + '__sig'];
           if (typeof sig !== 'string') {
-            error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + target + "__sig: 'vifj...' annotation or a " + x + "__sig: 'vifj' annotation to describe the type of function forwarding that is needed!");
+            error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + target + "__sig: 'vifj...' annotation or a " + x + "__sig: 'vifj...' annotation to describe the type of function forwarding that is needed!");
           }
 
           var argCount = sig.length - 1;
