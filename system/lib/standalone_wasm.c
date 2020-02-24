@@ -63,8 +63,7 @@ long __syscall5(const char* path, long flags, ...) {
   if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
   if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
   if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;
-  errno = EPERM;
-  return -1;
+  return -EPERM;
 }
 
 // ioctl()
