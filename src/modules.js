@@ -438,10 +438,15 @@ function exportRuntime() {
     'abort',
   ];
 
+  function isJsLibraryConfigIdentifier(ident) {
+    return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+     || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
+  }
+
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   for (var ident in LibraryManager.library) {
-    if (ident[0] === '$') {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident)) {
       runtimeElements.push(ident.substr(1));
     }
   }
