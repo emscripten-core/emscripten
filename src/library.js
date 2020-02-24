@@ -1114,16 +1114,19 @@ LibraryManager.library = {
   // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
   // functions, so use an intermediate function as a pass-through.
   _memcpy_js__deps: ['memcpy'],
+  _memcpy_js__sig: 'iiii',
   _memcpy_js: function(dst, src, num) {
     return _memcpy(dst, src, num);
   },
 
   _memmove_js__deps: ['memmove'],
+  _memmove_js__sig: 'iiii',
   _memmove_js: function(dst, src, num) {
     return _memmove(dst, src, num);
   },
 
   _memset_js__deps: ['memset'],
+  _memset_js__sig: 'iiii',
   _memset_js: function(ptr, value, num) {
     return _memset(ptr, value, num);
   },
