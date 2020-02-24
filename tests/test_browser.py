@@ -4939,6 +4939,7 @@ window.close = function() {
     try:
       self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4'])
     finally:
+      print('WASM')
       print(run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print'], stdout=PIPE).stdout)
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
