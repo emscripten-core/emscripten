@@ -1452,6 +1452,7 @@ var SyscallsLibrary = {
   fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif
+  fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
