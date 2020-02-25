@@ -2001,6 +2001,7 @@ var LibraryGL = {
   },
 
   glGetUniformLocation__sig: 'iii',
+  glGetUniformLocation__deps: ['$jstoi_q'],
   glGetUniformLocation: function(program, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
@@ -2011,7 +2012,7 @@ var LibraryGL = {
     // If user passed an array accessor "[index]", parse the array index off the accessor.
     if (name[name.length - 1] == ']') {
       var leftBrace = name.lastIndexOf('[');
-      arrayIndex = name[leftBrace+1] != ']' ? parseInt(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
+      arrayIndex = name[leftBrace+1] != ']' ? jstoi_q(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
       name = name.slice(0, leftBrace);
     }
 

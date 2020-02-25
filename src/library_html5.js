@@ -55,7 +55,7 @@ var LibraryJSEvents = {
 
     // Queues the given function call to occur the next time we enter an event handler.
     // Existing implementations of pointerlock apis have required that 
-    // the target element is active in fullscreen mode first. Thefefore give
+    // the target element is active in fullscreen mode first. Therefore give
     // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
     // and sort by that to always request fullscreen before pointer lock.
     deferCall: function(targetFunction, precedence, argsList) {
@@ -1016,7 +1016,7 @@ var LibraryJSEvents = {
   emscripten_set_orientationchange_callback_on_thread__sig: 'iiiii',
   emscripten_set_orientationchange_callback_on_thread__deps: ['_registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    if (!screen || !screen.addEventListener) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!screen || !screen['addEventListener']) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_ORIENTATIONCHANGE') }}}, "orientationchange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1427,7 +1427,7 @@ var LibraryJSEvents = {
   _currentFullscreenStrategy: {},
   _restoreOldWindowedStyle: null,
 
-  _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size'],
+  _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size', '$jstoi_q'],
   _softFullscreenResizeWebGLRenderTarget: function() {
     var dpr = devicePixelRatio;
     var inHiDPIFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}};
@@ -1467,8 +1467,8 @@ var LibraryJSEvents = {
     }
 
     if (inCenteredWithoutScalingFullscreenMode) {
-      var t = (innerHeight - parseInt(canvas.style.height)) / 2;
-      var b = (innerWidth - parseInt(canvas.style.width)) / 2;
+      var t = (innerHeight - jstoi_q(canvas.style.height)) / 2;
+      var b = (innerWidth - jstoi_q(canvas.style.width)) / 2;
       __setLetterbox(canvas, t, b);
     } else {
       canvas.style.width = w + 'px';

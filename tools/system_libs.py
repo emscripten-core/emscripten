@@ -728,6 +728,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
+        filenames=['getpagesize.c'])
+
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
       libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
@@ -738,6 +742,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       libc_files += files_in_path(
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
+        filenames=['sched_yield.c'])
 
     libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
@@ -1309,7 +1317,14 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
-                   '__year_to_secs.c'])
+                   '__year_to_secs.c',
+                   'gettimeofday.c',
+                   'localtime.c',
+                   'localtime_r.c',
+                   'gmtime.c',
+                   'gmtime_r.c',
+                   'nanosleep.c',
+                   'mktime.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     exit_files = files_in_path(
