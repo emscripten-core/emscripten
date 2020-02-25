@@ -33,7 +33,7 @@ DEBUG = os.environ.get('IDL_VERBOSE') == '1'
 if DEBUG: print("Debug print ON, CHECKS=%s" % CHECKS)
 
 # We need to avoid some closure errors on the constructors we define here.
-CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} */'
+CONSTRUCTOR_CLOSURE_SUPPRESSIONS = '/** @suppress {undefinedVars, duplicate} @this{Object} */'
 
 class Dummy(object):
   def __init__(self, init):
@@ -104,13 +104,15 @@ function WrapperObject() {
 mid_js += build_constructor('WrapperObject')
 
 mid_js += ['''
-/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant)
+    @param {*=} __class__ */
 function getCache(__class__) {
   return (__class__ || WrapperObject).__cache__;
 }
 Module['getCache'] = getCache;
 
-/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
+/** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant)
+    @param {*=} __class__ */
 function wrapPointer(ptr, __class__) {
   var cache = getCache(__class__);
   var ret = cache[ptr];

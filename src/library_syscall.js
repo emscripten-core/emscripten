@@ -1039,7 +1039,7 @@ var SyscallsLibrary = {
   __syscall203__sig: 'ii',
   __syscall203__nothrow: true,
   __syscall203__proxy: false,
-  __syscall203: '__sysicall214',     // setreuid32
+  __syscall203: '__syscall214',     // setreuid32
   __syscall204__sig: 'ii',
   __syscall204__nothrow: true,
   __syscall204__proxy: false,

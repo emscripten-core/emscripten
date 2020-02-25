@@ -4872,6 +4872,7 @@ LibraryManager.library = {
   emscripten_asm_const_double_sync_on_main_thread: function() {},
   emscripten_asm_const_async_on_main_thread: function() {},
 
+#if !WASM_BACKEND
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
   __muldsi3__sig: 'iii',
@@ -5191,6 +5192,7 @@ LibraryManager.library = {
     return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
   },
   // =======================================================================
+#endif
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
