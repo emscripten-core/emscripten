@@ -106,7 +106,7 @@ var WasiLibrary = {
 // lacks the attribute to set the import module and base names.
 if (!WASM_BACKEND) {
   for (var x in WasiLibrary) {
-    if (x.indexOf('__deps') >= 0) continue;
+    if (isJsLibraryConfigIdentifier(x)) continue;
     WasiLibrary['__wasi_' + x] = x;
   }
 }
