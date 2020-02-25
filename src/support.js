@@ -186,12 +186,12 @@ function loadDynamicLibrary(lib, flags) {
   LDSO.loadedLibNames[lib] = handle;
   LDSO.loadedLibs[handle] = dso;
 
-  // libData <- libraryData
-  function loadLibData(libraryData) {
+  // libData <- libFile
+  function loadLibData(libFile) {
 #if WASM
     // for wasm, we can use fetch for async, but for fs mode we can only imitate it
     if (flags.fs) {
-      var libData = flags.fs.readFile(libraryData, {encoding: 'binary'});
+      var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
       if (!(libData instanceof Uint8Array)) {
         libData = new Uint8Array(lib_data);
       }
@@ -199,17 +199,17 @@ function loadDynamicLibrary(lib, flags) {
     }
 
     if (flags.loadAsync) {
-      return fetchBinary(libraryData);
+      return fetchBinary(libFile);
     }
     // load the binary synchronously
-    return readBinary(libraryData);
+    return readBinary(libFile);
 #else
     // for js we only imitate async for both native & fs modes.
     var libData;
     if (flags.fs) {
-      libData = flags.fs.readFile(libraryData, {encoding: 'utf8'});
+      libData = flags.fs.readFile(libFile, {encoding: 'utf8'});
     } else {
-      libData = read_(libraryData);
+      libData = read_(libFile);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
