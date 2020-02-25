@@ -3673,11 +3673,6 @@ function copyLibEntry(lib, a, b) {
   lib[a + '__deps'] = (lib[b + '__deps'] || []).slice(0);
 }
 
-function isJsLibraryConfigIdentifier(ident) {
-  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
-   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
-}
-
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
   keys(lib).forEach(function(x) {
