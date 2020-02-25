@@ -704,6 +704,7 @@ LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
@@ -2755,6 +2756,14 @@ class Building(object):
     with open(js_file, 'w') as f:
       f.write(all_js)
     return js_file
+
+  @staticmethod
+  def extract_dwarf(wasm_file):
+    # extract the DWARF info from the main file into a file on the side
+    # TODO: use strip directly; for now use objcopy
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+    shutil.move(wasm_file, wasm_file_with_dwarf)
+    run_process(shared.LLVM_OBJCOPY, wasm_file, '--remove-sections=.debug*', wasm_file_with_dwarf, wasm_file)
 
   @staticmethod
   def apply_wasm_memory_growth(js_file):
