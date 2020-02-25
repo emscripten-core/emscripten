@@ -2093,7 +2093,7 @@ int main(int argc, char **argv) {
 
     # check that memory growth does not exceed the wasm mem max limit
     self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=64Mb', '-s', 'MAXIMUM_MEMORY=100Mb']
-    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_MAXIMUM_MEMORY')
+    self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
