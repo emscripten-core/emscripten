@@ -1243,6 +1243,15 @@ def harness_server_func(in_queue, out_queue, port):
       else:
         return SimpleHTTPRequestHandler.send_head(self)
 
+    # Add COOP, COEP and CORP headers
+    def end_headers(self):
+      self.send_header('Access-Control-Allow-Origin', '*')
+      self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+      self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+      self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+
+      return SimpleHTTPRequestHandler.end_headers(self)
+
     def do_GET(self):
       if self.path == '/run_harness':
         if DEBUG:
