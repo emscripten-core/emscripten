@@ -367,7 +367,7 @@ mergeInto(LibraryManager.library, {
           ptr = contents.byteOffset;
         } else {
           // Try to avoid unnecessary slices.
-          if (position > 0 || position + length < stream.node.usedBytes) {
+          if (position > 0 || position + length < contents.length) {
             if (contents.subarray) {
               contents = contents.subarray(position, position + length);
             } else {
