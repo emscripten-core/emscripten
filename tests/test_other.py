@@ -281,7 +281,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # emcc src.cpp -c    and   emcc src.cpp -o src.[o|bc] ==> should give a .bc file
     #      regression check: -o js should create "js", with bitcode content
     for args in [['-c'], ['-o', 'src.o'], ['-o', 'src.bc'], ['-o', 'src.so'], ['-o', 'js'], ['-O1', '-c', '-o', '/dev/null'], ['-O1', '-o', '/dev/null']]:
-      print('-c stuff', args)
+      print('args:', args)
       if '/dev/null' in args and WINDOWS:
         print('skip because windows')
         continue
@@ -292,12 +292,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         print('(no output)')
         continue
       syms = Building.llvm_nm(target)
-      assert 'main' in syms.defs
+      self.assertContained('main', syms.defs)
       if self.is_wasm_backend():
         # wasm backend will also have '__original_main' or such
-        assert len(syms.defs) == 2
+        self.assertEqual(len(syms.defs), 2)
       else:
-        assert len(syms.defs) == 1
+        self.assertEqual(len(syms.defs), 1)
       if target == 'js': # make sure emcc can recognize the target as a bitcode file
         shutil.move(target, target + '.bc')
         target += '.bc'
@@ -1043,7 +1043,7 @@ int main() {
 
   @parameterized({
     'expand_symlinks': [[]],
-    'no-canonical-prefixes': [['-no-canonical-prefixes']],
+    'no_canonical_prefixes': [['-no-canonical-prefixes']],
   })
   @no_windows('Windows does not support symlinks')
   def test_symlink_points_to_bad_suffix(self, flags):
@@ -1056,7 +1056,7 @@ int main() {
 
   @parameterized({
     'expand_symlinks': ([], True),
-    'no-canonical-prefixes': (['-no-canonical-prefixes'], False),
+    'no_canonical_prefixes': (['-no-canonical-prefixes'], False),
   })
   @no_windows('Windows does not support symlinks')
   def test_symlink_has_bad_suffix(self, flags, expect_success):
@@ -1294,17 +1294,16 @@ int f() {
 
     self.assertContained('result: 1', run_js('a.out.js'))
 
-  @no_wasm_backend('archive contents handling differ with lld')
   def test_dot_a_all_contents_invalid(self):
-    # check that we warn if an object file in a .a is not valid bitcode.
+    # check that we error if an object file in a .a is not valid bitcode.
     # do not silently ignore native object files, which may have been
     # built by mistake
-    create_test_file('side.cpp', r'int side() { return 5; }')
-    create_test_file('main.cpp', r'extern int side(); int main() { return side(); }')
-    run_process([CLANG, 'side.cpp', '-c', '-o', 'native.o'])
-    run_process([PYTHON, EMAR, 'crs', 'foo.a', 'native.o'])
-    proc = run_process([PYTHON, EMCC, 'main.cpp', 'foo.a', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'], stderr=PIPE)
-    self.assertContained('is not a valid object file for emscripten, cannot link', proc.stderr)
+    create_test_file('native.cpp', 'int native() { return 5; }')
+    create_test_file('main.cpp', 'extern int native(); int main() { return native(); }')
+    run_process([CLANG, 'native.cpp', '-c', '-o', 'native.o'])
+    run_process([PYTHON, EMAR, 'crs', 'libfoo.a', 'native.o'])
+    stderr = self.expect_fail([PYTHON, EMCC, 'main.cpp', 'libfoo.a'])
+    self.assertContained('unknown file type', stderr)
 
   def test_export_all(self):
     lib = r'''

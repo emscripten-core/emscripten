@@ -1899,13 +1899,10 @@ class Building(object):
       new_symbols = Building.llvm_nm(f)
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
-      if not new_symbols.is_valid_for_nm():
-        warning('object %s is not valid according to llvm-nm, cannot link', f)
-        return False
-      # Check the object is valid for us, and not a native object file.
-      if not Building.is_bitcode(f):
-        warning('object %s is not a valid object file for emscripten, cannot link', f)
-        return False
+      if not new_symbols.is_valid_for_nm() or not Building.is_bitcode(f):
+        # Match error message reported by wasm-ld when invliad objects (or
+        # non-bitcode objects) are passed.
+        exit_with_error('unknown file type: %s', f)
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
@@ -1973,17 +1970,7 @@ class Building(object):
           # Command line flags should already be vetted by the time this method
           # is called, so this is an internal error
           assert False, 'unsupported link flag: ' + f
-      elif not Building.is_ar(absolute_path_f):
-        if Building.is_bitcode(absolute_path_f):
-          if has_ar:
-            consider_object(absolute_path_f, force_add=True)
-          else:
-            # If there are no archives then we can simply link all valid object
-            # files and skip the symbol table stuff.
-            actual_files.append(f)
-        else:
-          logging.debug('ignoring non-bitcode file for link: %s' % absolute_path_f)
-      else:
+      elif Building.is_ar(absolute_path_f):
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         consider_archive(absolute_path_f, in_whole_archive or force_add_all)
@@ -1991,6 +1978,13 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
+      else:
+        if has_ar:
+          consider_object(f, force_add=True)
+        else:
+          # If there are no archives then we can simply link all valid object
+          # files and skip the symbol table stuff.
+          actual_files.append(f)
 
     # We have to consider the possibility that --start-group was used without a matching
     # --end-group; GNU ld permits this behavior and implicitly treats the end of the
@@ -2051,16 +2045,8 @@ class Building(object):
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
     cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
-    try:
-      run_process(cmd, stdout=PIPE)
-      assert os.path.exists(target), 'llvm optimizer emitted no output.'
-    except subprocess.CalledProcessError as e:
-      for i in inputs:
-        if not os.path.exists(i):
-          warning('Note: Input file "' + i + '" did not exist.')
-        elif not Building.is_bitcode(i):
-          warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
-      exit_with_error('Failed to run llvm optimizations: ' + e.output)
+    check_call(cmd)
+    assert os.path.exists(target), 'llvm optimizer emitted no output.'
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
@@ -2091,17 +2077,21 @@ class Building(object):
       if ':' in line:
         continue
       parts = [seg for seg in line.split(' ') if len(seg)]
-      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
+      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols
+      # as  -------- T name
       if len(parts) == 3 and parts[0] == "--------" or re.match(r'^[\da-f]{8}$', parts[0]):
         parts.pop(0)
-      if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
+      if len(parts) == 2:
+        # ignore lines with absolute offsets, these are not bitcode anyhow
+        # e.g. |00000630 t d_source_name|
         status, symbol = parts
         if status == 'U':
           undefs.append(symbol)
         elif status == 'C':
           commons.append(symbol)
         elif (not include_internal and status == status.upper()) or \
-             (include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
+             (include_internal and status in ['W', 't', 'T', 'd', 'D']):
+          # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
           #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
