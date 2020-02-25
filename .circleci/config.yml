@@ -549,10 +549,90 @@ jobs:
 workflows:
   build-test:
     jobs:
+      - flake8
+      - build-docs
+      - build-fastcomp
+      - test-other:
+          requires:
+            - build-fastcomp
+      - test-browser-firefox:
+          requires:
+            - build-fastcomp
+      - test-browser-chrome:
+          requires:
+            - build-fastcomp
+      - test-ab:
+          requires:
+            - build-fastcomp
+      - test-c:
+          requires:
+            - build-fastcomp
+      - test-d:
+          requires:
+            - build-fastcomp
+      - test-e:
+          requires:
+            - build-fastcomp
+      - test-f:
+          requires:
+            - build-fastcomp
+      - test-ghi:
+          requires:
+            - build-fastcomp
+      - test-jklmno:
+          requires:
+            - build-fastcomp
+      - test-p:
+          requires:
+            - build-fastcomp
+      - test-qrst:
+          requires:
+            - build-fastcomp
+      - test-uvwxyz:
+          requires:
+            - build-fastcomp
+      - test-wasm0:
+          requires:
+            - build-fastcomp
+      - test-wasm2:
+          requires:
+            - build-fastcomp
+      - test-wasm3:
+          requires:
+            - build-fastcomp
+      - test-sanity:
+          requires:
+            - build-fastcomp
       - build-upstream-linux
+      - test-upstream-wasm0:
+          requires:
+            - build-upstream-linux
+      - test-upstream-wasm2:
+          requires:
+            - build-upstream-linux
+      - test-upstream-wasm3:
+          requires:
+            - build-upstream-linux
+      - test-upstream-wasm2js1:
+          requires:
+            - build-upstream-linux
+      - test-upstream-other:
+          requires:
+            - build-upstream-linux
       - test-upstream-browser-chrome:
           requires:
             - build-upstream-linux
       - test-upstream-browser-firefox:
           requires:
             - build-upstream-linux
+      - test-upstream-sockets-chrome:
+          requires:
+            - build-upstream-linux
+      - build-upstream-windows
+      - test-upstream-minimal-windows:
+          requires:
+            - build-upstream-windows
+      - build-upstream-mac
+      - test-upstream-other-mac:
+          requires:
+            - build-upstream-mac
