@@ -9622,8 +9622,6 @@ int main () {
                            '-s', 'MODULARIZE=1']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
-    success = True
-
     def print_percent(actual, expected):
       if actual == expected:
         return ''
@@ -9740,8 +9738,6 @@ int main () {
           if total_output_size < total_expected_size:
             print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
           self.assertEqual(total_output_size, total_expected_size)
-
-    self.assertTrue(success)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):

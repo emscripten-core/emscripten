@@ -147,7 +147,19 @@ def get_wasm_libc_rt_files():
     path_components=['system', 'lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                'emscripten_memmove.c'])
-  return math_files + other_files
+  # Calls to iprintf can be generated during codegen. Ideally we wouldn't
+  # compile these with -O2 like we do the rest of compiler-rt since its
+  # probably not performance sensitive.  However we don't currently have
+  # a way to set per-file compiler flags.  And hopefully we should be able
+  # move all this stuff back into libc once we it LTO compatible.
+  iprintf_files = files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
+    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+               'printf.c', 'puts.c'])
+  iprintf_files += files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+    filenames=['strlen.c'])
+  return math_files + other_files + iprintf_files
 
 
 class Library(object):
