@@ -217,6 +217,17 @@ var LibraryManager = {
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           // When functions are aliased, the alias target must provide a signature for the function so that an efficient form of forwarding can be implemented.
           // Primarily read the signature on the alias, and secondarily on the target.
+          function testStringType(sig) {
+            if (typeof lib[sig] !== 'undefined' && typeof typeof lib[sig] !== 'string') {
+              error(sig + ' should be a string! (was ' + typeof lib[sig]);
+            }
+          }
+          testStringType(x + '__sig');
+          testStringType(target + '__sig');
+          if (typeof lib[x + '__sig'] === 'string' && typeof lib[target + '__sig'] === 'string' && lib[x + '__sig'] != lib[target + '__sig']) {
+            error(x + '__sig (' + lib[x + '__sig'] + ')  differs from ' + target + '__sig (' + lib[target + '__sig'] + ')');
+          }
+
           var sig = lib[x + '__sig'] || lib[target + '__sig'];
           if (typeof sig !== 'string') {
             error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + target + "__sig: 'vifj...' annotation or a " + x + "__sig: 'vifj...' annotation to describe the type of function forwarding that is needed!");
