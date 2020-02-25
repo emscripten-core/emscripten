@@ -1269,6 +1269,7 @@ var LibraryPThread = {
 #if MINIMAL_RUNTIME && !WASM_BACKEND
   emscripten_proxy_to_main_thread_js__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
 #endif
+  emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
     // function arguments.
