@@ -186,12 +186,12 @@ function loadDynamicLibrary(lib, flags) {
   LDSO.loadedLibNames[lib] = handle;
   LDSO.loadedLibs[handle] = dso;
 
-  // libData <- lib
-  function loadLibData() {
+  // libData <- libFile
+  function loadLibData(libFile) {
 #if WASM
     // for wasm, we can use fetch for async, but for fs mode we can only imitate it
     if (flags.fs) {
-      var libData = flags.fs.readFile(lib, {encoding: 'binary'});
+      var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
       if (!(libData instanceof Uint8Array)) {
         libData = new Uint8Array(lib_data);
       }
@@ -199,17 +199,17 @@ function loadDynamicLibrary(lib, flags) {
     }
 
     if (flags.loadAsync) {
-      return fetchBinary(lib);
+      return fetchBinary(libFile);
     }
     // load the binary synchronously
-    return readBinary(lib);
+    return readBinary(libFile);
 #else
     // for js we only imitate async for both native & fs modes.
     var libData;
     if (flags.fs) {
-      libData = flags.fs.readFile(lib, {encoding: 'utf8'});
+      libData = flags.fs.readFile(libFile, {encoding: 'utf8'});
     } else {
-      libData = read_(lib);
+      libData = read_(libFile);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
@@ -220,7 +220,7 @@ function loadDynamicLibrary(lib, flags) {
 #if WASM
     return loadWebAssemblyModule(libData, flags)
 #else
-    var libModule = eval(libData)(
+    var libModule = /**@type{function(...)}*/(eval(libData))(
       alignFunctionTables(),
       Module
     );
@@ -617,6 +617,7 @@ Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 
 #if EMULATED_FUNCTION_POINTERS
 #if WASM == 0
+/** @param {Object=} module */
 function getFunctionTables(module) {
   if (!module) module = Module;
   var tables = {};
@@ -629,6 +630,7 @@ function getFunctionTables(module) {
   return tables;
 }
 
+/** @param {Object=} module */
 function alignFunctionTables(module) {
   var tables = getFunctionTables(module);
   var maxx = 0;

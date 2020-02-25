@@ -58,6 +58,11 @@ function demangleCSymbolName(f) {
   return f[0] == '_' ? f.substr(1) : '$' + f;
 }
 
+function isJsLibraryConfigIdentifier(ident) {
+  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
+}
+
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;
@@ -75,7 +80,7 @@ function JSify(data, functionsOnly) {
       assert(!SIDE_MODULE, 'Cannot have both INCLUDE_FULL_LIBRARY and SIDE_MODULE set.')
       libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
-        if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
+        if (!isJsLibraryConfigIdentifier(key)) {
           libFuncsToInclude.push(key);
         }
       }
@@ -138,8 +143,7 @@ function JSify(data, functionsOnly) {
       if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
-      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
-       || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import')) {
+      if (isJsLibraryConfigIdentifier(ident)) {
         return '';
       }
 
@@ -244,7 +248,9 @@ function JSify(data, functionsOnly) {
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
-        if (ident[0] != '$') { // Functions that start with '$' should not be imported to asm.js/wasm module
+        // Functions that start with '$' should not be imported to asm.js/wasm module, since they are
+        // intended to be exclusive to JS code only.
+        if (ident[0] != '$') {
           Functions.libraryFunctions[finalName] = 1;
         }
       }

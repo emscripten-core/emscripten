@@ -1834,7 +1834,10 @@ var LibrarySDL = {
 
   SDL_SetError: function() {},
 
+  SDL_malloc__sig: 'ii',
   SDL_malloc: 'malloc',
+
+  SDL_free__sig: 'vi',
   SDL_free: 'free',
 
   SDL_CreateRGBSurface__proxy: 'sync',
@@ -3012,7 +3015,9 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.music, volume);
   },
 
+  Mix_LoadMUS_RW__docs: '/** @param {number|boolean=} a1 */',
   Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
+
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS__sig: 'ii',
