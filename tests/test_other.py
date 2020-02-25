@@ -9037,7 +9037,7 @@ int main() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf', '-s', 'SIDE_DEBUG'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gside'])
     self.assertExists('a.out.wasm')
     self.assertExists('a.out.wasm.debug.wasm')
     self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))
