@@ -4298,6 +4298,10 @@ LibraryManager.library = {
         console.error(str);
       } else if (flags & 2 /*EM_LOG_WARN*/) {
         console.warn(str);
+      } else if (flags & 512 /*EM_LOG_INFO*/) {
+        console.info(str);
+      } else if (flags & 256 /*EM_LOG_DEBUG*/) {
+        console.debug(str);
       } else {
         console.log(str);
       }
