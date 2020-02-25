@@ -10393,6 +10393,11 @@ int main() {
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
 
+  @no_fastcomp('lld only')
+  def test_4GB(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=2GB'])
+    self.assertContained('TOTAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
+
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=quiet'], stderr=PIPE)
