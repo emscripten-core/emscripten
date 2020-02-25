@@ -9033,6 +9033,7 @@ int main() {
     ensure_dir('inner')
     test('inner/a.cpp', 'inner')
 
+  @no_fastcomp('dwarf')
   def test_side_debug(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
     self.assertExists('a.out.wasm')
