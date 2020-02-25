@@ -4937,10 +4937,11 @@ window.close = function() {
   @no_fastcomp('offset converter is not supported on fastcomp')
   def test_offset_converter(self, *args):
     try:
-      self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4'])
-    finally:
-      print('WASM 3')
+      self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
+    except Exception as e:
+      # dump the wasm file; this is meant to help debug #10539 on the bots
       print(run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print'], stdout=PIPE).stdout)
+      raise e
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
