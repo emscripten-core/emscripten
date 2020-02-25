@@ -2763,8 +2763,8 @@ class Building(object):
     # debug into as a file on the side
     # TODO: use strip directly; for now use objcopy
     wasm_file_with_dwarf = wasm_file + '.debug.wasm'
-    shutil.copyfile(wasm_file, wasm_file_with_dwarf)
-    run_process([LLVM_OBJCOPY, wasm_file, '--remove-section=.debug*', wasm_file])
+    shutil.move(wasm_file, wasm_file_with_dwarf)
+    run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
 
   @staticmethod
   def apply_wasm_memory_growth(js_file):
