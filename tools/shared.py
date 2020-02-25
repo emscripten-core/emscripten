@@ -1850,15 +1850,15 @@ class Building(object):
     if not Settings.SIDE_MODULE:
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
-        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
+        '--initial-memory=%d' % Settings.INITIAL_MEMORY,
       ]
       use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
-      if Settings.WASM_MEM_MAX != -1:
-        cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+      if Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       elif not Settings.ALLOW_MEMORY_GROWTH:
-        cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+        cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
@@ -2283,7 +2283,7 @@ class Building(object):
     if Settings.WASM_BACKEND:
       logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
       return
-    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.INITIAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
@@ -3239,7 +3239,7 @@ class WebAssembly(object):
   def add_emscripten_metadata(js_file, wasm_file):
     WASM_PAGE_SIZE = 65536
 
-    mem_size = Settings.TOTAL_MEMORY // WASM_PAGE_SIZE
+    mem_size = Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
     table_size = Settings.WASM_TABLE_SIZE
     global_base = Settings.GLOBAL_BASE
 

@@ -15,15 +15,15 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
   {
     wasmMemory = new WebAssembly.Memory({
-      'initial': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
+      'initial': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
 #if ALLOW_MEMORY_GROWTH
-#if WASM_MEM_MAX != -1
+#if MAXIMUM_MEMORY != -1
       ,
-      'maximum': {{{ WASM_MEM_MAX }}} / WASM_PAGE_SIZE
+      'maximum': {{{ MAXIMUM_MEMORY }}} / WASM_PAGE_SIZE
 #endif
 #else
       ,
-      'maximum': INITIAL_TOTAL_MEMORY / WASM_PAGE_SIZE
+      'maximum': INITIAL_INITIAL_MEMORY / WASM_PAGE_SIZE
 #endif // ALLOW_MEMORY_GROWTH
 #if USE_PTHREADS
       ,
@@ -48,11 +48,11 @@ if (ENVIRONMENT_IS_PTHREAD) {
   }
 #ifdef USE_PTHREADS
   else if (typeof SharedArrayBuffer !== 'undefined') {
-    buffer = new SharedArrayBuffer(INITIAL_TOTAL_MEMORY);
+    buffer = new SharedArrayBuffer(INITIAL_INITIAL_MEMORY);
   }
 #endif
   else {
-    buffer = new ArrayBuffer(INITIAL_TOTAL_MEMORY);
+    buffer = new ArrayBuffer(INITIAL_INITIAL_MEMORY);
   }
 #endif // WASM
 #if USE_PTHREADS
@@ -66,11 +66,11 @@ if (wasmMemory) {
 #endif
 
 // If the user provides an incorrect length, just use that length instead rather than providing the user to
-// specifically provide the memory length with Module['TOTAL_MEMORY'].
-INITIAL_TOTAL_MEMORY = buffer.byteLength;
+// specifically provide the memory length with Module['INITIAL_MEMORY'].
+INITIAL_INITIAL_MEMORY = buffer.byteLength;
 #ifdef ASSERTIONS && WASM
-assert(INITIAL_TOTAL_MEMORY % WASM_PAGE_SIZE === 0);
-#ifdef ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
+assert(INITIAL_INITIAL_MEMORY % WASM_PAGE_SIZE === 0);
+#ifdef ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
 assert({{{ WASM_PAGE_SIZE }}} % WASM_PAGE_SIZE === 0);
 #endif
 #endif

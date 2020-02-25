@@ -12,33 +12,33 @@
 #include <assert.h>
 #include "emscripten.h"
 
-int get_TOTAL_MEMORY() {
+int get_INITIAL_MEMORY() {
 
   return EM_ASM_INT({ return HEAP8.length });
 }
 
 int main() {
 
-  // TOTAL_MEMORY=64Mb
+  // INITIAL_MEMORY=64Mb
   // TOTAL_STACK=1Mb
-  // WASM_MEM_MAX=130Mb
+  // MAXIMUM_MEMORY=130Mb
   // MEMORY_GROWTH_LINEAR_STEP=1Mb
 
   // Because the stack is 1Mb, the first increase will take place
-  // in i = 63, which attempts to grow the heap to 64Mb + 1Mb of stack > 64Mb TOTAL_MEMORY
+  // in i = 63, which attempts to grow the heap to 64Mb + 1Mb of stack > 64Mb INITIAL_MEMORY
   // We should get exactly to 130MB at i == 128
 
   const int MB = 1024 * 1024;
-  const int totalMemory = get_TOTAL_MEMORY();
+  const int totalMemory = get_INITIAL_MEMORY();
   int printedOnce = 0;
 
   for (int i = 0; 1; i++) {
 
-    printf("%d %d %d\n", i, get_TOTAL_MEMORY(), get_TOTAL_MEMORY() / MB);
+    printf("%d %d %d\n", i, get_INITIAL_MEMORY(), get_INITIAL_MEMORY() / MB);
     volatile int sink = (int)malloc(MB);
 
     if (!sink) {
-      printf("failed at %d %d %d\n", i, get_TOTAL_MEMORY(), get_TOTAL_MEMORY() / MB);
+      printf("failed at %d %d %d\n", i, get_INITIAL_MEMORY(), get_INITIAL_MEMORY() / MB);
       // i ==  63 > growth to 65MB failed
       // i == 128 > growth to 130MB failed
       // i == 129 > growth to 131MB failed
@@ -46,8 +46,8 @@ int main() {
       break;
     }
 
-    if(get_TOTAL_MEMORY() > totalMemory && !printedOnce) {
-      printf("memory growth started at %d %d %d\n", i, get_TOTAL_MEMORY(), get_TOTAL_MEMORY() / MB);
+    if(get_INITIAL_MEMORY() > totalMemory && !printedOnce) {
+      printf("memory growth started at %d %d %d\n", i, get_INITIAL_MEMORY(), get_INITIAL_MEMORY() / MB);
       printedOnce = 1;
     }
 

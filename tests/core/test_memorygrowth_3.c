@@ -12,7 +12,7 @@
 #include <assert.h>
 #include "emscripten.h"
 
-int get_TOTAL_MEMORY() {
+int get_INITIAL_MEMORY() {
   return EM_ASM_INT({ return HEAP8.length });
 }
 
@@ -20,7 +20,7 @@ typedef void* voidStar;
 
 int main(int argc, char **argv)
 {
-  int totalMemory = get_TOTAL_MEMORY();
+  int totalMemory = get_INITIAL_MEMORY();
   int chunk = 1024*1024;
   volatile voidStar alloc;
   for (int i = 0; i < (totalMemory/chunk)+2; i++) {
@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     printf("%d : %d\n", i, !!alloc);
     if (alloc == NULL) {
       assert(sbrk(0) == sbrk_before);
-      assert(totalMemory == get_TOTAL_MEMORY());
+      assert(totalMemory == get_INITIAL_MEMORY());
       break;
     }
   }
