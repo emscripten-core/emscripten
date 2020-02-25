@@ -2758,8 +2758,9 @@ class Building(object):
     return js_file
 
   @staticmethod
-  def extract_dwarf(wasm_file):
-    # extract the DWARF info from the main file into a file on the side
+  def emit_debug_on_side(wasm_file):
+    # extract the DWARF info from the main file, and leave the wasm with
+    # debug into as a file on the side
     # TODO: use strip directly; for now use objcopy
     wasm_file_with_dwarf = wasm_file + '.debug.wasm'
     shutil.copyfile(wasm_file, wasm_file_with_dwarf)

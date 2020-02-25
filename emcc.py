@@ -3339,9 +3339,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  # split the DWARF in the final file into a side file
   if shared.Settings.FULL_DWARF and shared.Settings.SIDE_DEBUG:
-    shared.Building.extract_dwarf(wasm_binary_target)
+    shared.Building.emit_debug_on_side(wasm_binary_target)
 
 
 def modularize():

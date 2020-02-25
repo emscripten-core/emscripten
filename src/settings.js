@@ -1496,7 +1496,7 @@ var EVAL_CTORS = 0;
 // "split"/"separate" because there is already a DWARF concept by that name).
 // When DWARF is on the side, the main file has no DWARF info, while the side
 // file, ending in .debug.wasm, has the same wasm binary + all the debug
-// sections
+// sections.
 // This has no effect if DWARF is not being emitted.
 var SIDE_DEBUG = 0;
 
