@@ -352,9 +352,8 @@ LibraryManager.library = {
       case {{{ cDefine('_SC_2_LOCALEDEF') }}}:
       case {{{ cDefine('_SC_2_SW_DEV') }}}:
       case {{{ cDefine('_SC_2_VERSION') }}}:
-        return 200809;
       case {{{ cDefine('_SC_THREAD_PRIORITY_SCHEDULING') }}}:
-        return 0;
+        return 200809;
       case {{{ cDefine('_SC_MQ_OPEN_MAX') }}}:
       case {{{ cDefine('_SC_XOPEN_STREAMS') }}}:
       case {{{ cDefine('_SC_XBS5_LP64_OFF64') }}}:
