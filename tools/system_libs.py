@@ -780,7 +780,8 @@ class libc_wasm(MuslInternalLibrary):
                'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
                'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
                'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
-               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c']
+               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c',
+               'sqrtl.c', 'ceill.c', 'floorl.c', 'fabsl.c']
 
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins

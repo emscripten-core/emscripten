@@ -47,10 +47,21 @@ void test_exp_log(double x) {
     printf("%f : %f : %f : %d\n", a, b, c, isnan(d));
 }
 
+void test_long_double(long double x) {
+  printf("sqrt(x) = %Lf\n", sqrtl(x));
+  printf("ceil(x) = %Lf\n", ceill(x));
+  printf("floor(x) = %Lf\n", floorl(x));
+  printf("atan(x) = %Lf\n", atanl(x));
+  printf("atan2(x,1) = %Lf\n", atan2l(x,1));
+  printf("asin(x) = %Lf\n", asinl(x));
+  printf("acos(x) = %Lf\n", acosl(x));
+}
+
 int main() {
     puts("***start***");
     test_builtins();
     test_exp_log(1234.5678);
+    test_long_double(16);
     puts("***end***");
     return 0;
 }
