@@ -1285,6 +1285,9 @@ LibraryManager.library = {
   __gcc_personality_v0: function() {
   },
 
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+  llvm_stacksave__deps: ['$stackSave'],
+#endif
   llvm_stacksave: function() {
     var self = _llvm_stacksave;
     if (!self.LLVM_SAVEDSTACKS) {
@@ -1293,6 +1296,10 @@ LibraryManager.library = {
     self.LLVM_SAVEDSTACKS.push(stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
+
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+  llvm_stackrestore__deps: ['$stackRestore'],
+#endif
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
@@ -2031,7 +2038,11 @@ LibraryManager.library = {
     return _ctime_r(timer, ___tm_current);
   },
 
-  ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__deps: ['localtime_r', 'asctime_r'
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+    , '$stackSave', '$stackAlloc', '$stackRestore'
+#endif
+  ],
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
@@ -4794,6 +4805,9 @@ LibraryManager.library = {
 
   // special runtime support
 
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+  emscripten_scan_stack__deps: ['$stackSave'],
+#endif
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
