@@ -12,9 +12,14 @@ var threadInfoStruct = 0; // Info area for this thread in Emscripten HEAP (share
 var selfThreadId = 0; // The ID of this thread. 0 if not hosting a pthread.
 var parentThreadId = 0; // The ID of the parent pthread that launched this thread.
 
-// Cannot use console.log or console.error in a web worker, since that would risk a browser deadlock! https://bugzilla.mozilla.org/show_bug.cgi?id=1049091
-// Therefore implement custom logging facility for threads running in a worker, which queue the messages to main thread to print.
 var Module = {};
+
+// If we use a custom export name, refer to Module from it as well, so that
+// we connect properly to the modularized instance which is the only thing
+// in the global scope.
+#if MODULARIZE_INSTANCE && EXPORT_NAME != 'Module'
+var {{{ EXPORT_NAME }}} = Module;
+#endif
 
 #if ASSERTIONS
 function assert(condition, text) {
@@ -25,12 +30,19 @@ function assert(condition, text) {
 function threadPrintErr() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   console.error(text);
-  console.error(new Error().stack);
 }
 function threadAlert() {
   var text = Array.prototype.slice.call(arguments).join(' ');
   postMessage({cmd: 'alert', text: text, threadId: selfThreadId});
 }
+#if ASSERTIONS
+// We don't need out() for now, but may need to add it if we want to use it
+// here. Or, if this code all moves into the main JS, that problem will go
+// away. (For now, adding it here increases code size for no benefit.)
+var out = function() {
+  throw 'out() is not defined in worker.js.';
+}
+#endif
 var err = threadPrintErr;
 this.alert = threadAlert;
 
@@ -258,7 +270,7 @@ this.onmessage = function(e) {
 #if ASSERTIONS
         } else {
           // else e == 'unwind', and we should fall through here and keep the pthread alive for asynchronous events.
-          out('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
+          err('Pthread 0x' + threadInfoStruct.toString(16) + ' completed its pthread main entry point with an unwind, keeping the pthread worker alive for asynchronous operation.');
 #endif
         }
       }
@@ -274,11 +286,11 @@ this.onmessage = function(e) {
       }
     } else {
       err('worker.js received unknown command ' + e.data.cmd);
-      console.error(e.data);
+      err(e.data);
     }
   } catch(ex) {
-    console.error('worker.js onmessage() captured an uncaught exception: ' + ex);
-    if (ex.stack) console.error(ex.stack);
+    err('worker.js onmessage() captured an uncaught exception: ' + ex);
+    if (ex.stack) err(ex.stack);
     throw ex;
   }
 };

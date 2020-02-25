@@ -4966,3 +4966,18 @@ window.close = function() {
       open('test.html', 'w').write(html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?0')
+
+  # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
+  @no_fastcomp('more work would be needed for this to work in deprecated fastcomp')
+  @requires_threads
+  def test_pthread_modularize_export_name(self):
+    create_test_file('shell.html', '''
+        <body>
+          {{{ SCRIPT }}}
+        </body>
+      ''')
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
+               expected='0',
+               args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s',
+                     'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
+                     '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])

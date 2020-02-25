@@ -100,7 +100,7 @@ var LibraryTracing = {
     },
 
     configureForGoogleWTF: function() {
-      if (window && window.wtf) {
+      if (window && window['wtf']) {
         EmscriptenTrace.googleWTFEnabled = true;
       } else {
         console.log('GOOGLE WTF NOT AVAILABLE TO ENABLE');
@@ -119,7 +119,7 @@ var LibraryTracing = {
     googleWTFEnterScope: function(name) {
       var scopeEvent = EmscriptenTrace.googleWTFData['cachedScopes'][name];
       if (!scopeEvent) {
-        scopeEvent = window.wtf.trace.events.createScope(name);
+        scopeEvent = window['wtf'].trace.events.createScope(name);
         EmscriptenTrace.googleWTFData['cachedScopes'][name] = scopeEvent;
       }
       var scope = scopeEvent();
@@ -128,7 +128,7 @@ var LibraryTracing = {
 
     googleWTFExitScope: function() {
       var scope = EmscriptenTrace.googleWTFData['scopeStack'].pop();
-      window.wtf.trace.leaveScope(scope);
+      window['wtf'].trace.leaveScope(scope);
     }
   },
 
@@ -195,7 +195,7 @@ var LibraryTracing = {
                             "MARK", message]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
-      window.wtf.trace.mark(message);
+      window['wtf'].trace.mark(message);
     }
   },
 
@@ -206,7 +206,7 @@ var LibraryTracing = {
                             "MARK", UTF8ToString(message)]);
     }
     if (EmscriptenTrace.googleWTFEnabled) {
-      window.wtf.trace.mark(UTF8ToString(message));
+      window['wtf'].trace.mark(UTF8ToString(message));
     }
   },
 

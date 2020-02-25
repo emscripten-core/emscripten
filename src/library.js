@@ -225,7 +225,8 @@ LibraryManager.library = {
   },
 
   execl__deps: ['__setErrNo'],
-  execl: function(/* ... */) {
+  execl__sig: 'iiii',
+  execl: function(path, arg0, varArgs) {
     // int execl(const char *path, const char *arg0, ... /*, (char *)0 */);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
     // We don't support executing external code.
@@ -240,6 +241,7 @@ LibraryManager.library = {
   __execvpe: 'execl',
   fexecve: 'execl',
 
+  exit__sig: 'vi',
   exit: function(status) {
 #if MINIMAL_RUNTIME
     throw 'exit(' + status + ')';
@@ -263,6 +265,7 @@ LibraryManager.library = {
 #endif
 
   fork__deps: ['__setErrNo'],
+  fork__sig: 'i',
   fork: function() {
     // pid_t fork(void);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/fork.html
@@ -692,7 +695,7 @@ LibraryManager.library = {
   __cxa_thread_atexit_impl: function(){},
 #else
   atexit__proxy: 'sync',
-  atexit__sig: 'ii',
+  atexit__sig: 'iii',
   atexit: function(func, arg) {
 #if ASSERTIONS
 #if EXIT_RUNTIME == 0
@@ -892,7 +895,8 @@ LibraryManager.library = {
   },
 
   // For compatibility, call to rand() when code requests arc4random(), although this is *not* at all
-  // as strong as rc4 is. See https://developer.apple.com/library/mac/documentation/Darwin/Reference/ManPages/man3/arc4random.3.html
+  // as strong as rc4 is. See https://man.openbsd.org/arc4random
+  arc4random__sig: 'i',
   arc4random: 'rand',
 
   // ==========================================================================
@@ -1088,6 +1092,10 @@ LibraryManager.library = {
     return (end-num)|0;
   },
 
+  memcpy__sig: 'iiii',
+  memmove__sig: 'iiii',
+  memset__sig: 'iiii',
+
 #if DECLARE_ASM_MODULE_EXPORTS
   llvm_memcpy_i32: 'memcpy',
   llvm_memcpy_i64: 'memcpy',
@@ -1106,16 +1114,19 @@ LibraryManager.library = {
   // When DECLARE_ASM_MODULE_EXPORTS==0, cannot alias asm.js functions from non-asm.js
   // functions, so use an intermediate function as a pass-through.
   _memcpy_js__deps: ['memcpy'],
+  _memcpy_js__sig: 'iiii',
   _memcpy_js: function(dst, src, num) {
     return _memcpy(dst, src, num);
   },
 
   _memmove_js__deps: ['memmove'],
+  _memmove_js__sig: 'iiii',
   _memmove_js: function(dst, src, num) {
     return _memmove(dst, src, num);
   },
 
   _memset_js__deps: ['memset'],
+  _memset_js__sig: 'iiii',
   _memset_js: function(ptr, value, num) {
     return _memset(ptr, value, num);
   },
@@ -1277,6 +1288,7 @@ LibraryManager.library = {
   },
 #endif
 
+  terminate__sig: 'vi',
   terminate: '__cxa_call_unexpected',
 
   __gxx_personality_v0: function() {
@@ -1285,6 +1297,9 @@ LibraryManager.library = {
   __gcc_personality_v0: function() {
   },
 
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+  llvm_stacksave__deps: ['$stackSave'],
+#endif
   llvm_stacksave: function() {
     var self = _llvm_stacksave;
     if (!self.LLVM_SAVEDSTACKS) {
@@ -1293,6 +1308,10 @@ LibraryManager.library = {
     self.LLVM_SAVEDSTACKS.push(stackSave());
     return self.LLVM_SAVEDSTACKS.length-1;
   },
+
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+  llvm_stackrestore__deps: ['$stackRestore'],
+#endif
   llvm_stackrestore: function(p) {
     var self = _llvm_stacksave;
     var ret = self.LLVM_SAVEDSTACKS[p];
@@ -1635,13 +1654,21 @@ LibraryManager.library = {
   // ==========================================================================
 
 #if MAIN_MODULE == 0
-  dlopen: function(/* ... */) {
+  dlopen: function(filename, flag) {
     abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
   },
-  dlclose: 'dlopen',
-  dlsym:   'dlopen',
-  dlerror: 'dlopen',
-  dladdr:  'dlopen',
+  dlclose: function(handle) {
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+  },
+  dlsym: function(handle, symbol) {
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+  },
+  dlerror: function() {
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+  },
+  dladdr: function(address, info) {
+    abort("To use dlopen, you need to use Emscripten's linking support, see https://github.com/emscripten-core/emscripten/wiki/Linking");
+  },
 #else // MAIN_MODULE != 0
 
   $DLFCN: {
@@ -1877,6 +1904,7 @@ LibraryManager.library = {
   // Statically allocated time strings.
   __tm_formatted: '{{{ makeStaticAlloc(C_STRUCTS.tm.__size__) }}}',
   mktime__deps: ['tzset'],
+  mktime__sig: 'ii',
   mktime: function(tmPtr) {
     _tzset();
     var date = new Date({{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_year, 'i32') }}} + 1900,
@@ -2031,7 +2059,11 @@ LibraryManager.library = {
     return _ctime_r(timer, ___tm_current);
   },
 
-  ctime_r__deps: ['localtime_r', 'asctime_r'],
+  ctime_r__deps: ['localtime_r', 'asctime_r'
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+    , '$stackSave', '$stackAlloc', '$stackRestore'
+#endif
+  ],
   ctime_r: function(time, buf) {
     var stack = stackSave();
     var rv = _asctime_r(_localtime_r(time, stackAlloc({{{ C_STRUCTS.tm.__size__ }}})), buf);
@@ -2831,14 +2863,17 @@ LibraryManager.library = {
   // sys/types.h
   // ==========================================================================
   // http://www.kernel.org/doc/man-pages/online/pages/man3/minor.3.html
+  makedev__sig: 'iii',
   makedev: function(maj, min) {
     return ((maj) << 8 | (min));
   },
   gnu_dev_makedev: 'makedev',
+  major__sig: 'ii',
   major: function(dev) {
     return ((dev) >> 8);
   },
   gnu_dev_major: 'major',
+  minor__sig: 'ii',
   minor: function(dev) {
     return ((dev) & 0xff);
   },
@@ -2936,6 +2971,7 @@ LibraryManager.library = {
   // ==========================================================================
 
   wait__deps: ['__setErrNo'],
+  wait__sig: 'ii',
   wait: function(stat_loc) {
     // pid_t wait(int *stat_loc);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/wait.html
@@ -4738,9 +4774,6 @@ LibraryManager.library = {
   __lockfile: function() { return 1 },
   __unlockfile: function(){},
 
-  // USE_FULL_LIBRARY hacks
-  realloc: function() { throw 'bad realloc called' },
-
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],
@@ -4794,6 +4827,9 @@ LibraryManager.library = {
 
   // special runtime support
 
+#if MINIMAL_RUNTIME && !WASM_BACKEND
+  emscripten_scan_stack__deps: ['$stackSave'],
+#endif
   emscripten_scan_stack: function(func) {
     var base = STACK_BASE; // TODO verify this is right on pthreads
     var end = stackSave();
@@ -4836,6 +4872,7 @@ LibraryManager.library = {
   emscripten_asm_const_double_sync_on_main_thread: function() {},
   emscripten_asm_const_async_on_main_thread: function() {},
 
+#if !WASM_BACKEND
   // ======== compiled code from system/lib/compiler-rt , see readme therein
   __muldsi3__asm: true,
   __muldsi3__sig: 'iii',
@@ -5155,6 +5192,7 @@ LibraryManager.library = {
     return ({{{ makeSetTempRet0('$_0$1') }}}, $_0$0) | 0;
   },
   // =======================================================================
+#endif
 
   __handle_stack_overflow: function() {
     abort('stack overflow')
