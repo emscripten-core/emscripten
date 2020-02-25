@@ -73,7 +73,6 @@ SOURCE_ENDINGS = C_ENDINGS + CXX_ENDINGS + OBJC_ENDINGS + OBJCXX_ENDINGS + SPECI
 C_ENDINGS = C_ENDINGS + SPECIAL_ENDINGLESS_FILENAMES # consider the special endingless filenames like /dev/null to be C
 
 JS_CONTAINING_ENDINGS = ('.js', '.mjs', '.html')
-OBJECT_FILE_ENDINGS = ('.bc', '.o', '.obj', '.lo')
 DYNAMICLIB_ENDINGS = ('.dylib', '.so') # Windows .dll suffix is not included in this list, since those are never linked to directly on the command line.
 STATICLIB_ENDINGS = ('.a',)
 ASSEMBLY_ENDINGS = ('.ll', '.s')
@@ -824,10 +823,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   shared.check_sanity(force=DEBUG)
 
-  # This check comes after check_sanity because test_sanity expects this.
-  if not args:
-    exit_with_error('no input files')
-
   if '-dumpmachine' in args:
     print(shared.get_llvm_target())
     return 0
@@ -1157,18 +1152,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                  '-Xlinker', '-Xclang'):
         skip = True
 
-      if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
-        arg = os.path.realpath(arg)
-
       if not arg.startswith('-'):
         # os.devnul should always be reported as existing but there is bug in windows
         # python before 3.8:
         # https://bugs.python.org/issue1311
         if not os.path.exists(arg) and arg != os.devnull:
           exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
-
+        if options.expand_symlinks and os.path.islink(arg):
+          arg = os.path.realpath(arg)
         file_suffix = get_file_suffix(arg)
-        if file_suffix in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
+        if file_suffix in SOURCE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or building.is_ar(arg):
+          # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
           if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
@@ -1178,8 +1172,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           elif file_suffix in ASSEMBLY_ENDINGS or building.is_bitcode(arg) or building.is_ar(arg):
             input_files.append((i, arg))
           elif building.is_wasm(arg):
-            if not shared.Settings.WASM_BACKEND:
-              exit_with_error('fastcomp is not compatible with wasm object files:' + arg)
             input_files.append((i, arg))
           elif file_suffix in (STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS):
             # if it's not, and it's a library, just add it to libs to find later
@@ -1191,22 +1183,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                 libname = libname[len(prefix):]
                 break
             libs.append((i, libname))
-            newargs[i] = ''
-          else:
-            diagnostics.warning('invalid-input', arg + ' is not a valid input file')
         elif file_suffix in STATICLIB_ENDINGS:
           if not building.is_ar(arg):
             if building.is_bitcode(arg):
-              message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files, use one of the suffixes ' + str(OBJECT_FILE_ENDINGS)
+              message = arg + ': File has a suffix of a static library ' + str(STATICLIB_ENDINGS) + ', but instead is an LLVM bitcode file! When linking LLVM bitcode files use .bc or .o.'
             else:
               message = arg + ': Unknown format, not a static library!'
             exit_with_error(message)
         else:
-          if language_mode:
-            newargs[i] = ''
-            input_files.append((i, arg))
-          else:
-            exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
+          newargs[i] = ''
+          input_files.append((i, arg))
       elif arg == '-r':
         link_to_object = True
         newargs[i] = ''
@@ -1361,7 +1347,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     input_files = filter_out_dynamic_libs(input_files)
 
     if not input_files and not link_flags:
-      exit_with_error('no input files\nnote that input files without a known suffix are ignored, make sure your input files end with one of: ' + str(SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + STATICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS))
+      exit_with_error('no input files')
 
     # Note the exports the user requested
     building.user_requested_exports = shared.Settings.EXPORTED_FUNCTIONS[:]
@@ -2271,9 +2257,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(input_file)
         if file_suffix in SOURCE_ENDINGS or (has_dash_c and file_suffix == '.bc'):
           compile_source_file(i, input_file)
-        elif file_suffix in OBJECT_FILE_ENDINGS:
-          logger.debug('using object file: ' + input_file)
-          temp_files.append((i, input_file))
         elif file_suffix in DYNAMICLIB_ENDINGS:
           logger.debug('using shared library: ' + input_file)
           temp_files.append((i, input_file))
@@ -2282,8 +2265,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           ensure_archive_index(input_file)
           temp_files.append((i, input_file))
         elif file_suffix in ASSEMBLY_ENDINGS:
-          temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
           if file_suffix == '.ll':
+            temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
             logger.debug('assembling assembly file: ' + input_file)
             building.llvm_as(input_file, temp_file)
             temp_files.append((i, temp_file))
@@ -2296,7 +2279,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         elif input_file == '-':
           exit_with_error('-E or -x required when input is from standard input')
         else:
-          exit_with_error(input_file + ': unknown input file suffix')
+          if not shared.Settings.WASM_BACKEND and building.is_wasm(input_file):
+            exit_with_error('fastcomp is not compatible with wasm object files:' + input_file)
+          # Default to assuming the inputs are object files and pass them to the linker
+          logger.debug('using object file: ' + input_file)
+          temp_files.append((i, input_file))
 
     # exit block 'compile inputs'
     log_time('compile inputs')
@@ -2431,9 +2418,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, combine the bitcode files if there are several. We must also link if we have a singleton .a
       perform_link = len(linker_inputs) > 1 or shared.Settings.WASM_BACKEND
       if not perform_link:
-        is_bc = suffix(temp_files[0][1]) in OBJECT_FILE_ENDINGS
         is_dylib = suffix(temp_files[0][1]) in DYNAMICLIB_ENDINGS
         is_ar = building.is_ar(temp_files[0][1])
+        is_bc = not is_ar and not is_dylib
         perform_link = not (is_bc or is_dylib) and is_ar
       if perform_link:
         logger.debug('linking: ' + str(linker_inputs))

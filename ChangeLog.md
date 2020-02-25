@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- If input files don't have a known extension assume they are object files
+  (linker inputs) rather then source files.  This matches gcc/clang behaviour.
+  See #10560.
 
 1.40.0: 07/30/2020
 ------------------
