@@ -3673,10 +3673,16 @@ function copyLibEntry(lib, a, b) {
   lib[a + '__deps'] = (lib[b + '__deps'] || []).slice(0);
 }
 
+function isJsLibraryConfigIdentifier(ident) {
+  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
+}
+
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
   keys(lib).forEach(function(x) {
-    if (x.substr(-7) == '__proxy' || x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return;
+    if (isJsLibraryConfigIdentifier(x)) return;
+    if (x.substr(0, 2) != 'gl') return;
     while (typeof lib[x] === 'string') {
       // resolve aliases right here, simpler for fastcomp
       copyLibEntry(lib, x, lib[x]);
