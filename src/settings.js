@@ -1498,7 +1498,7 @@ var EVAL_CTORS = 0;
 // file, ending in .debug.wasm, has the same wasm binary + all the debug
 // sections
 // This has no effect if DWARF is not being emitted.
-var SIDE_DWARF = 0;
+var SIDE_DEBUG = 0;
 
 // see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
 // [fastcomp-only]
