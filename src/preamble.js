@@ -97,7 +97,7 @@ function getCFunc(ident) {
 }
 
 // C calling interface.
-/** @param {string=} returnType
+/** @param {string|null=} returnType
     @param {Array=} argTypes
     @param {Arguments|Array=} args
     @param {Object=} opts */
