@@ -5913,10 +5913,10 @@ int main(void) {
     # when building a .a, we force-include all the objects inside it. but, some
     # may not be valid bitcode, e.g. if it contains metadata or something else
     # weird. we should just ignore those
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', 'a.bc'])
-    create_test_file('bad.bc', 'this is not a good file, it should be ignored!')
-    run_process([LLVM_AR, 'r', 'a.a', 'a.bc', 'bad.bc'])
-    run_process([PYTHON, EMCC, 'a.a'])
+    run_process([PYTHON, EMCC, '-c', path_from_root('tests', 'hello_world.c'), '-o', 'hello_world.o'])
+    create_test_file('bad.obj', 'this is not a good file, it should be ignored!')
+    run_process([LLVM_AR, 'cr', 'libfoo.a', 'hello_world.o', 'bad.obj'])
+    run_process([PYTHON, EMCC, 'libfoo.a'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_require(self):

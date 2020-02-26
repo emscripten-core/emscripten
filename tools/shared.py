@@ -1899,10 +1899,13 @@ class Building(object):
       new_symbols = Building.llvm_nm(f)
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
-      if not new_symbols.is_valid_for_nm() or not Building.is_bitcode(f):
-        # Match error message reported by wasm-ld when invliad objects (or
-        # non-bitcode objects) are passed.
-        exit_with_error('unknown file type: %s', f)
+      if not new_symbols.is_valid_for_nm():
+        warning('object %s is not valid according to llvm-nm, cannot link', f)
+        return False
+      # Check the object is valid for us, and not a native object file.
+      if not Building.is_bitcode(f):
+        warning('object %s is not a valid object file for emscripten, cannot link', f)
+        return False
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
@@ -1978,13 +1981,15 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
-      else:
+      elif Building.is_bitcode(absolute_path_f):
         if has_ar:
           consider_object(f, force_add=True)
         else:
           # If there are no archives then we can simply link all valid object
           # files and skip the symbol table stuff.
           actual_files.append(f)
+      else:
+        exit_with_error('unknown file type: %s', f)
 
     # We have to consider the possibility that --start-group was used without a matching
     # --end-group; GNU ld permits this behavior and implicitly treats the end of the
