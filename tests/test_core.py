@@ -1528,7 +1528,7 @@ int main(int argc, char **argv)
 
   # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_bad_typeid(self):
-    #self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.do_run(r'''
 // exception example
