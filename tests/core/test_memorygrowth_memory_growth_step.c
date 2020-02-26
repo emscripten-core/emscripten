@@ -12,7 +12,7 @@
 #include <assert.h>
 #include "emscripten.h"
 
-int get_INITIAL_MEMORY() {
+int get_memory_size() {
 
   return EM_ASM_INT({ return HEAP8.length });
 }
@@ -29,16 +29,16 @@ int main() {
   // We should get exactly to 130MB at i == 128
 
   const int MB = 1024 * 1024;
-  const int totalMemory = get_INITIAL_MEMORY();
+  const int totalMemory = get_memory_size();
   int printedOnce = 0;
 
   for (int i = 0; 1; i++) {
 
-    printf("%d %d %d\n", i, get_INITIAL_MEMORY(), get_INITIAL_MEMORY() / MB);
+    printf("%d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
     volatile int sink = (int)malloc(MB);
 
     if (!sink) {
-      printf("failed at %d %d %d\n", i, get_INITIAL_MEMORY(), get_INITIAL_MEMORY() / MB);
+      printf("failed at %d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
       // i ==  63 > growth to 65MB failed
       // i == 128 > growth to 130MB failed
       // i == 129 > growth to 131MB failed
@@ -46,8 +46,8 @@ int main() {
       break;
     }
 
-    if(get_INITIAL_MEMORY() > totalMemory && !printedOnce) {
-      printf("memory growth started at %d %d %d\n", i, get_INITIAL_MEMORY(), get_INITIAL_MEMORY() / MB);
+    if(get_memory_size() > totalMemory && !printedOnce) {
+      printf("memory growth started at %d %d %d\n", i, get_memory_size(), get_memory_size() / MB);
       printedOnce = 1;
     }
 

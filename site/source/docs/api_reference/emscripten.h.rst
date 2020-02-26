@@ -92,13 +92,13 @@ Defines
       return n + 42;
     });
 
-    EM_JS(int, get_INITIAL_MEMORY, (), {
-      return INITIAL_MEMORY;
+    EM_JS(int, get_memory_size, (), {
+      return HEAP8.length;
     });
 
     int main() {
       int x = add_forty_two(100);
-      int y = get_INITIAL_MEMORY();
+      int y = get_memory_size();
       // ...
     }
 
@@ -174,7 +174,7 @@ Defines
       return $0 + 42;
     }, 100);
 
-    int y = EM_ASM_INT(return INITIAL_MEMORY);
+    int y = EM_ASM_INT(return HEAP8.length);
 
   Strings can be returned back to C from JavaScript, but one needs to be careful about memory management.
 
