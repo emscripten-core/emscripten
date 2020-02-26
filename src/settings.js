@@ -104,11 +104,6 @@ var MEM_INIT_METHOD = 0;
 // it will fail silently.
 var TOTAL_STACK = 5*1024*1024;
 
-// The total amount of memory to use. Using more memory than this will
-// cause us to expand the heap, which can be costly with typed arrays:
-// we need to copy the old heap into a new one in that case.
-var TOTAL_MEMORY = 16777216;
-
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
@@ -126,7 +121,7 @@ var MALLOC = "dlmalloc";
 // but makes sense for the web since we have a fixed amount of memory that
 // must all be allocated up front, and so (a) failing mallocs are much more
 // likely than on other platforms, and (b) people need a way to find out
-// how big that initial allocation (TOTAL_MEMORY) must be.
+// how big that initial allocation (INITIAL_MEMORY) must be.
 // If you set this to 0, then you get the standard malloc behavior of
 // returning NULL (0) when it fails.
 var ABORTING_MALLOC = 1;
@@ -137,8 +132,28 @@ var ABORTING_MALLOC = 1;
 // [fastcomp-only]
 var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 
+// The initial amount of memory to use. Using more memory than this will
+// cause us to expand the heap, which can be costly with typed arrays:
+// we need to copy the old heap into a new one in that case.
+// If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
+// later; if not, then it is the final and total amount of memory.
+//
+// (This option was formerly called TOTAL_MEMORY.)
+var INITIAL_MEMORY = 16777216;
+
+// Set the maximum size of memory in the wasm module (in bytes). Without this,
+// INITIAL_MEMORY is used (as it is used for the initial value), or if memory
+// growth is enabled, the default value here (-1) is to have no limit, but you
+// can set this to set a maximum size that growth will stop at.
+//
+// This setting only matters for wasm, as in asm.js there is no place to set
+// a maximum, and only when ALLOW_MEMORY_GROWTH is set.
+//
+// (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
+var MAXIMUM_MEMORY = -1;
+
 // If false, we abort with an error if we try to allocate more memory than
-// we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
+// we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
 // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
 // both during the actual growth and in general (the latter is because in
 // that case we must be careful about optimizations, in particular the
@@ -722,7 +737,7 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 // FIXME: should this just be  0  if we want everything?
 var INCOMING_MODULE_JS_API = [
   'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
-  'SDL_numSimultaneouslyQueuedBuffers', 'TOTAL_MEMORY', 'wasmMemory', 'arguments',
+  'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
   'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
@@ -1261,14 +1276,6 @@ var BINARYEN_PASSES = "";
 // appended at the end of the list of passes.
 var BINARYEN_EXTRA_PASSES = "";
 
-// Set the maximum size of memory in the wasm module (in bytes). Without this,
-// TOTAL_MEMORY is used (as it is used for the initial value), or if memory
-// growth is enabled, the default value here (-1) is to have no limit, but you
-// can set this to set a maximum size that growth will stop at.
-//
-// (This option was formerly called BINARYEN_MEM_MAX)
-var WASM_MEM_MAX = -1;
-
 // Whether to compile the wasm asynchronously, which is more efficient and does
 // not block the main thread. This is currently required for all but the
 // smallest modules to run in chrome.
@@ -1776,6 +1783,7 @@ var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tem
 // This allows existing build systems to keep specifying one of the supported
 // settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
+  ['BINARYEN', 'WASM'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
@@ -1794,4 +1802,7 @@ var LEGACY_SETTINGS = [
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
   ['WASM_OBJECT_FILES', [1], 'Use -flto or -fto=thin instead'],
+  ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
+  ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
+  ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
 ];

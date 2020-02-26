@@ -32,8 +32,8 @@
 
 // make it look like these are externally modifiable so the optimizer doesn't
 // trivially remove the function pointer
-double (*funcd)(double, double);
-float (*funcf)(float, float);
+double (*funcd)(double, double) __attribute__((used));
+float (*funcf)(float, float) __attribute__((used));
 
 int main(int argc, char **argv) {
   float x = 1.234, y = 3.5, q = 0.00000001;
