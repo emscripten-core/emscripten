@@ -5,8 +5,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-extern "C" ssize_t write(int fd, const void *buf, size_t count);
-
 int main() {
   // open of standard streams works.
   int fd_in = open("/dev/stdin", 0);
@@ -24,4 +22,3 @@ int main() {
   write(1, "hello, world!", 5);
   write(1, "\n", 1);
 }
-
