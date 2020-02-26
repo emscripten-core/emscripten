@@ -26,7 +26,9 @@
 var /** @type {{
   noImageDecoding: boolean,
   noAudioDecoding: boolean,
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  dataFileDownloads: Object,
+  preloadResults: Object
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};

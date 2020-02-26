@@ -56,9 +56,9 @@ void loop()
     EmscriptenWebGLContextAttributes attrs;
     emscripten_webgl_init_context_attributes(&attrs);
     EM_ASM(
-      var canvas2 = Module.canvas.cloneNode();
-      Module.canvas.parentElement.appendChild(canvas2);
-      Module.canvas = canvas2;
+      var canvas2 = Module['canvas'].cloneNode(true);
+      Module['canvas'].parentElement.appendChild(canvas2);
+      Module['canvas'] = canvas2;
     );
     assert(emscripten_webgl_get_current_context() == 0);
     context = emscripten_webgl_create_context("#canvas", &attrs);
@@ -102,7 +102,7 @@ int main()
 
     EM_ASM(
       var canvas2 = document.createElement('canvas');
-      Module.canvas.parentElement.appendChild(canvas2);
+      Module['canvas'].parentElement.appendChild(canvas2);
       canvas2.id = 'customCanvas';
     );
     

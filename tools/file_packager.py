@@ -430,6 +430,7 @@ def main():
     # Data requests - for getting a block of data out of the big archive - have
     # a similar API to XHRs
     code += '''
+      /** @constructor */
       function DataRequest(start, end, audio) {
         this.start = start;
         this.end = end;

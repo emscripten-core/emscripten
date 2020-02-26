@@ -2654,7 +2654,7 @@ var LibraryJSEvents = {
   },
 
   emscripten_webgl_destroy_context_calling_thread: function(contextHandle) {
-    if (GL.currentContext == contextHandle) GL.currentContext = 0;
+    if (GL.currentContext == contextHandle) GL.currentContext = null;
     GL.deleteContext(contextHandle);
   },
 
