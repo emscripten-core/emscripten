@@ -38,9 +38,11 @@ var exports = {};
  * If the output buffer is too small, an error will be thrown.
  * If the returned value is negative, an error occured at the returned offset.
  *
- * @param input {Buffer} input data
- * @param output {Buffer} output data
- * @return {Number} number of decoded bytes
+ * @param {ArrayBufferView} input input data
+ * @param {ArrayBufferView} output output data
+ * @param {number=} sIdx
+ * @param {number=} eIdx
+ * @return {number} number of decoded bytes
  * @private
  */
 exports.uncompress = function (input, output, sIdx, eIdx) {
@@ -124,6 +126,8 @@ exports.compressBound = function (isize) {
 		: (isize + (isize/255) + 16) | 0
 }
 
+/** @param {number=} sIdx
+	@param {number=} eIdx */
 exports.compress = function (src, dst, sIdx, eIdx) {
 	hashTable.set(empty);
 	return compressBlock(src, dst, 0, sIdx || 0, eIdx || dst.length)
