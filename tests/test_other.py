@@ -6573,7 +6573,7 @@ main()
     run_process([PYTHON, EMCC, '-o', 'libhello2.wasm', 'hello2.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
     run_process([PYTHON, EMCC, '-o', 'libhello3.wasm', 'hello3.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
     run_process([PYTHON, EMCC, '-o', 'libhello4.wasm', 'hello4.c', '-s', 'SIDE_MODULE=1', '-s', 'EXPORT_ALL=1'])
-    run_process([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1', '-s', 'TOTAL_MEMORY=' + str(32 * 1024 * 1024),
+    run_process([PYTHON, EMCC, '-o', 'main.js', 'main.c', '-s', 'MAIN_MODULE=1', '-s', 'INITIAL_MEMORY=' + str(32 * 1024 * 1024),
                  '--embed-file', 'libhello1.wasm@/lib/libhello1.wasm',
                  '--embed-file', 'libhello2.wasm@/usr/lib/libhello2.wasm',
                  '--embed-file', 'libhello3.wasm@/libhello3.wasm',
@@ -7892,15 +7892,15 @@ int main() {
     self.assertLess(sizes["['-O2']"], sizes["['-O2', '--profiling-funcs']"], 'when -profiling-funcs, the size increases due to function names')
 
   def test_binaryen_warn_mem(self):
-    # if user changes TOTAL_MEMORY at runtime, the wasm module may not accept the memory import if it is too big/small
-    create_test_file('pre.js', 'var Module = { TOTAL_MEMORY: 50 * 1024 * 1024 };\n')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'WASM_ASYNC_COMPILATION=0'])
+    # if user changes INITIAL_MEMORY at runtime, the wasm module may not accept the memory import if it is too big/small
+    create_test_file('pre.js', 'var Module = { INITIAL_MEMORY: 50 * 1024 * 1024 };\n')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'INITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'WASM_ASYNC_COMPILATION=0'])
     out = run_js('a.out.js', full_output=True, stderr=PIPE, assert_returncode=None)
     self.assertContained('LinkError', out)
-    self.assertContained('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).', out)
+    self.assertContained('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).', out)
     self.assertNotContained('hello, world!', out)
     # and with memory growth, all should be good
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'TOTAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_ASYNC_COMPILATION=0'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'INITIAL_MEMORY=' + str(16 * 1024 * 1024), '--pre-js', 'pre.js', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_ASYNC_COMPILATION=0'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   @no_wasm_backend('asm.js specific')
@@ -7936,10 +7936,10 @@ int main() {
 
   def test_binaryen_mem(self):
     for args, expect_initial, expect_max in [
-        (['-s', 'TOTAL_MEMORY=20971520'], 320, 320),
-        (['-s', 'TOTAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1'], 320, None),
-        (['-s', 'TOTAL_MEMORY=20971520',                                '-s', 'WASM_MEM_MAX=41943040'], 320, 640),
-        (['-s', 'TOTAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM_MEM_MAX=41943040'], 320, 640),
+        (['-s', 'INITIAL_MEMORY=20971520'], 320, 320),
+        (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1'], 320, None),
+        (['-s', 'INITIAL_MEMORY=20971520',                                '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
+        (['-s', 'INITIAL_MEMORY=20971520', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=41943040'], 320, 640),
       ]:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM=1', '-O2'] + args
       print(' '.join(cmd))
@@ -7957,32 +7957,32 @@ int main() {
 
   def test_invalid_mem(self):
     # A large amount is fine, multiple of 16MB or not
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'])
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=32MB'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=33MB'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=32MB'])
 
     # But not in asm.js
     if not self.is_wasm_backend():
-      ret = self.expect_fail([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33MB'])
-      self.assertContained('TOTAL_MEMORY must be a multiple of 16MB', ret)
+      ret = self.expect_fail([PYTHON, EMCC, '-s', 'WASM=0', path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=33MB'])
+      self.assertContained('INITIAL_MEMORY must be a multiple of 16MB', ret)
 
     # A tiny amount is fine in wasm
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'TOTAL_STACK=1024'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=65536', '-s', 'TOTAL_STACK=1024'])
     # And the program works!
     self.assertContained('hello, world!', run_js('a.out.js'))
 
     # But not in asm.js
     if not self.is_wasm_backend():
-      ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=65536', '-s', 'WASM=0'])
-      self.assertContained('TOTAL_MEMORY must be at least 16MB', ret)
+      ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=65536', '-s', 'WASM=0'])
+      self.assertContained('INITIAL_MEMORY must be at least 16MB', ret)
 
     # Must be a multiple of 64KB
-    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=33554433']) # 32MB + 1 byte
-    self.assertContained('TOTAL_MEMORY must be a multiple of 64KB', ret)
+    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=33554433']) # 32MB + 1 byte
+    self.assertContained('INITIAL_MEMORY must be a multiple of 64KB', ret)
 
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=33MB'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MAXIMUM_MEMORY=33MB'])
 
-    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'WASM_MEM_MAX=34603009']) # 33MB + 1 byte
-    self.assertContained('WASM_MEM_MAX must be a multiple of 64KB', ret)
+    ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MAXIMUM_MEMORY=34603009']) # 33MB + 1 byte
+    self.assertContained('MAXIMUM_MEMORY must be a multiple of 64KB', ret)
 
   def test_invalid_output_dir(self):
     ret = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-o', os.path.join('NONEXISTING_DIRECTORY', 'out.js')])
@@ -8419,12 +8419,12 @@ int main() {
       self.assertEqual(result,  str(expected) + ', errno: 0')
 
     run([], 1024)
-    run(['-s', 'TOTAL_MEMORY=32MB'], 2048)
-    run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
-    run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024 - 16777216) // 16384)
-    run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'BINARYEN=1'], 2048)
-    run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
-    run(['-s', 'TOTAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'WASM_MEM_MAX=128MB'], 2048 * 4)
+    run(['-s', 'INITIAL_MEMORY=32MB'], 2048)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024 - 16777216) // 16384)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'BINARYEN=1'], 2048)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'MAXIMUM_MEMORY=128MB'], 2048 * 4)
 
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
@@ -8588,7 +8588,7 @@ int main() {
     err = self.expect_fail([PYTHON, EMCC, 'hello_123.o', '-o', 'hello_123.js'])
     self.assertContained('hello_123.o is not a valid input', err)
 
-  # Tests that we should give a clear error on TOTAL_MEMORY not being enough for static initialization + stack
+  # Tests that we should give a clear error on INITIAL_MEMORY not being enough for static initialization + stack
   def test_clear_error_on_massive_static_data(self):
     with open('src.cpp', 'w') as f:
       f.write('''
@@ -8597,11 +8597,11 @@ int main() {
           return (int)&muchData;
         }
       ''')
-    err = self.expect_fail([PYTHON, EMCC, 'src.cpp', '-s', 'TOTAL_STACK=1KB', '-s', 'TOTAL_MEMORY=64KB'])
+    err = self.expect_fail([PYTHON, EMCC, 'src.cpp', '-s', 'TOTAL_STACK=1KB', '-s', 'INITIAL_MEMORY=64KB'])
     if self.is_wasm_backend():
       self.assertContained('wasm-ld: error: initial memory too small', err)
     else:
-      self.assertContained('Memory is not large enough for static data (134000) plus the stack (1024), please increase TOTAL_MEMORY (65536)', err)
+      self.assertContained('Memory is not large enough for static data (134000) plus the stack (1024), please increase INITIAL_MEMORY (65536)', err)
 
   def test_o_level_clamp(self):
     for level in [3, 4, 20]:
@@ -8751,16 +8751,20 @@ end
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), 'libfoo.a'])
 
   def test_flag_aliases(self):
-    def assert_aliases_match(flag1, flag2, flagarg, extra_args):
+    def assert_aliases_match(flag1, flag2, flagarg, extra_args=[]):
       results = {}
       for f in (flag1, flag2):
-        outfile = 'aliases.js'
-        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', f + '=' + flagarg, '-o', outfile] + extra_args)
-        with open(outfile) as out:
-          results[f] = out.read()
-      self.assertEqual(results[flag1], results[flag2], 'results should be identical')
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', f + '=' + flagarg] + extra_args)
+        with open('a.out.js') as out:
+          results[f + '.js'] = out.read()
+        with open('a.out.wasm', 'rb') as out:
+          results[f + '.wasm'] = out.read()
+      self.assertEqual(results[flag1 + '.js'], results[flag2 + '.js'], 'js results should be identical')
+      self.assertEqual(results[flag1 + '.wasm'], results[flag2 + '.wasm'], 'wasm results should be identical')
 
-    assert_aliases_match('WASM_MEM_MAX', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'WASM=1'])
+    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '16777216')
+    assert_aliases_match('MAXIMUM_MEMORY', 'WASM_MEM_MAX', '16777216', ['-s', 'ALLOW_MEMORY_GROWTH'])
+    assert_aliases_match('MAXIMUM_MEMORY', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'ALLOW_MEMORY_GROWTH'])
 
   def test_IGNORE_CLOSURE_COMPILER_ERRORS(self):
     create_test_file('pre.js', r'''
@@ -10413,8 +10417,8 @@ int main() {
 
   @no_fastcomp('lld only')
   def test_4GB(self):
-    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=2GB'])
-    self.assertContained('TOTAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
+    self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):

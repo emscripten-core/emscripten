@@ -4,9 +4,9 @@ mergeInto(LibraryManager.library, {
   	var dynamicTop = HEAPU32[_emscripten_get_sbrk_ptr()>>2];
 #if ALLOW_MEMORY_GROWTH
 #if WASM
-#if WASM_MEM_MAX != -1
-	// Using WASM_MEM_MAX to constrain max heap size.
-	return {{{ WASM_MEM_MAX }}} - dynamicTop;
+#if MAXIMUM_MEMORY != -1
+	// Using MAXIMUM_MEMORY to constrain max heap size.
+	return {{{ MAXIMUM_MEMORY }}} - dynamicTop;
 #else
 	// Not using a Wasm memory bound.
 	return 2*1024*1024*1024 - 65536 - dynamicTop;
