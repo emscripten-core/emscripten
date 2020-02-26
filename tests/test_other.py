@@ -32,7 +32,7 @@ if __name__ == '__main__':
 from tools.shared import Building, PIPE, run_js, run_process, STDOUT, try_delete, listify
 from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, PYTHON, FILE_PACKAGER, WINDOWS, LLVM_ROOT, EMCONFIG, EM_BUILD_VERBOSE
 from tools.shared import CLANG, CLANG_CC, CLANG_CPP, LLVM_AR, LLVM_DWARFDUMP
-from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, V8_ENGINE
+from tools.shared import NODE_JS, SPIDERMONKEY_ENGINE, JS_ENGINES, WASM_ENGINES, V8_ENGINE
 from tools.shared import WebAssembly
 from runner import RunnerCore, path_from_root, no_wasm_backend, no_fastcomp, is_slow_test, ensure_dir
 from runner import needs_dlfcn, env_modify, no_windows, chdir, with_env_modify, create_test_file, parameterized
@@ -8467,7 +8467,7 @@ int main() {
           self.assertContained('hello, world!', run_js('out.js'))
         # verify a standalone wasm
         if standalone:
-          for engine in shared.WASM_ENGINES:
+          for engine in WASM_ENGINES:
             print(engine)
             self.assertContained('hello, world!', run_js('out.wasm', engine=engine))
 
@@ -10365,6 +10365,13 @@ int main() {
 #endif
 ''')
     run_process([PYTHON, EMCC, 'errno_type.c'])
+
+  def test_standalone_syscalls(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'standalone_syscalls', 'test.cpp'), '-o', 'test.wasm'])
+    with open(path_from_root('tests', 'other', 'standalone_syscalls', 'test.out')) as f:
+      expected = f.read()
+      for engine in WASM_ENGINES:
+        self.assertEqual(run_js('test.wasm', engine), expected)
 
   @no_fastcomp('wasm2js only')
   def test_promise_polyfill(self):
