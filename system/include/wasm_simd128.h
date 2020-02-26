@@ -1176,6 +1176,18 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_f64x2_convert_u64x2(v128_t a) {
   ((v128_t)(__builtin_shufflevector((__u8x16)(a), (__u8x16)(b), c0, c1, c2, c3, c4, c5, c6, c7,    \
     c8, c9, c10, c11, c12, c13, c14, c15)))
 
+// v128_t wasm_v16x8_shuffle(v128_t a, v128_t b, c0, ..., c7)
+#define wasm_v16x8_shuffle(a, b, c0, c1, c2, c3, c4, c5, c6, c7)        \
+  ((v128_t)(__builtin_shufflevector((__u16x8)(a), (__u16x8)(b), c0, c1, c2, c3, c4, c5, c6, c7)))
+
+// v128_t wasm_v32x4_shuffle(v128_t a, v128_t b, c0, ..., c3)
+#define wasm_v32x4_shuffle(a, b, c0, c1, c2, c3)                        \
+  ((v128_t)(__builtin_shufflevector((__u32x4)(a), (__u32x4)(b), c0, c1, c2, c3)))
+
+// v128_t wasm_v64x2_shuffle(v128_t a, v128_t b, c0, c1)
+#define wasm_v64x2_shuffle(a, b, c0, c1)                                \
+  ((v128_t)(__builtin_shufflevector((__u64x2)(a), (__u64x2)(b), c0, c1)))
+
 #ifdef __wasm_unimplemented_simd128__
 
 // v128_t wasm_v8x16_swizzle(v128_t a, v128_t b)
