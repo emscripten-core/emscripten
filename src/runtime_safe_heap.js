@@ -2,7 +2,10 @@
 // In MINIMAL_RUNTIME, setValue() and getValue() are only available when building with safe heap enabled, for heap safety checking.
 // In traditional runtime, setValue() and getValue() are always available (although their use is highly discouraged due to perf penalties)
 
-/** @type {function(number, number, string, boolean=)} */
+/** @param {number} ptr
+    @param {number} value
+    @param {string} type
+    @param {number|boolean=} noSafe */
 function setValue(ptr, value, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -35,7 +38,9 @@ function setValue(ptr, value, type, noSafe) {
 #endif
 }
 
-/** @type {function(number, string, boolean=)} */
+/** @param {number} ptr
+    @param {string} type
+    @param {number|boolean=} noSafe */
 function getValue(ptr, type, noSafe) {
   type = type || 'i8';
   if (type.charAt(type.length-1) === '*') type = 'i32'; // pointers are 32-bit
@@ -72,6 +77,7 @@ function getValue(ptr, type, noSafe) {
 
 
 #if SAFE_HEAP
+/** @param {number|boolean=} isFloat */
 function getSafeHeapType(bytes, isFloat) {
   switch (bytes) {
     case 1: return 'i8';
@@ -86,6 +92,7 @@ function getSafeHeapType(bytes, isFloat) {
 var SAFE_HEAP_COUNTER = 0;
 #endif
 
+/** @param {number|boolean=} isFloat */
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
 #if SAFE_HEAP_LOG
   out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
@@ -101,6 +108,7 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
   SAFE_HEAP_STORE(dest, value, bytes, true);
 }
 
+/** @param {number|boolean=} isFloat */
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
@@ -109,7 +117,7 @@ function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
   assert(HEAP32[DYNAMICTOP_PTR>>2] <= HEAP8.length);
   var type = getSafeHeapType(bytes, isFloat);
   var ret = getValue(dest, type, 1);
-  if (unsigned) ret = unSign(ret, parseInt(type.substr(1)), 1);
+  if (unsigned) ret = unSign(ret, parseInt(type.substr(1), 10), 1);
 #if SAFE_HEAP_LOG
   out('SAFE_HEAP load: ' + [dest, ret, bytes, isFloat, unsigned, SAFE_HEAP_COUNTER++]);
 #endif

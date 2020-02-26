@@ -23,7 +23,7 @@ import zlib
 from runner import BrowserCore, path_from_root, has_browser, EMTEST_BROWSER, no_fastcomp, no_wasm_backend, create_test_file, parameterized, ensure_dir
 from tools import system_libs
 from tools.shared import PYTHON, EMCC, WINDOWS, FILE_PACKAGER, PIPE, SPIDERMONKEY_ENGINE, JS_ENGINES
-from tools.shared import try_delete, run_process, run_js
+from tools.shared import try_delete, run_process, run_js, Building
 
 try:
   from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -4936,7 +4936,12 @@ window.close = function() {
   @requires_threads
   @no_fastcomp('offset converter is not supported on fastcomp')
   def test_offset_converter(self, *args):
-    self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
+    try:
+      self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
+    except Exception as e:
+      # dump the wasm file; this is meant to help debug #10539 on the bots
+      print(run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print'], stdout=PIPE).stdout)
+      raise e
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self, *args):
@@ -4961,3 +4966,18 @@ window.close = function() {
       open('test.html', 'w').write(html)
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?0')
+
+  # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
+  @no_fastcomp('more work would be needed for this to work in deprecated fastcomp')
+  @requires_threads
+  def test_pthread_modularize_export_name(self):
+    create_test_file('shell.html', '''
+        <body>
+          {{{ SCRIPT }}}
+        </body>
+      ''')
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
+               expected='0',
+               args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s',
+                     'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
+                     '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])

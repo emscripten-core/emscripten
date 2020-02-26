@@ -9,6 +9,7 @@
 from __future__ import print_function
 from functools import wraps
 import glob
+import gzip
 import itertools
 import json
 import os
@@ -8794,7 +8795,7 @@ end
     # are including a lot of JS without corresponding compiled code for it. This still
     # lets us catch all other errors.
     with env_modify({'EMCC_CLOSURE_ARGS': '--jscomp_off undefinedVars'}):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '--closure', '1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O1', '--closure', '1', '-g1', '-s', 'INCLUDE_FULL_LIBRARY=1', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'])
 
   # Tests --closure-args command line flag
   def test_closure_externs(self):
@@ -9031,6 +9032,21 @@ int main() {
 
     ensure_dir('inner')
     test('inner/a.cpp', 'inner')
+
+  @no_fastcomp('dwarf')
+  def test_side_debug(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
+    self.assertExists('a.out.wasm')
+    self.assertNotExists('a.out.wasm.debug.wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gside'])
+    self.assertExists('a.out.wasm')
+    self.assertExists('a.out.wasm.debug.wasm')
+    self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))
+    # the special section should also exist, that refers to the side debug file
+    with open('a.out.wasm', 'rb') as f:
+      wasm = f.read()
+      self.assertIn(b'external_debug_info', wasm)
+      self.assertIn(b'a.out.wasm.debug.wasm', wasm)
 
   def test_wasm_producers_section(self):
     # no producers section by default
@@ -9595,16 +9611,24 @@ int main () {
                                '-s', 'FAST_UNROLLED_MEMCPY_AND_MEMSET=0',
                                '-s', 'MIN_CHROME_VERSION=58',
                                '-s', 'NO_FILESYSTEM=1',
-                               '--output_eol', 'linux']
+                               '--output_eol', 'linux',
+                               '-Oz',
+                               '--closure', '1',
+                               '-DNDEBUG',
+                               '-ffast-math']
 
     asmjs = ['-s', 'WASM=0', '--separate-asm', '-s', 'ELIMINATE_DUPLICATE_FUNCTIONS=1', '--memory-init-file', '1']
     wasm2js = ['-s', 'WASM=0', '--memory-init-file', '1']
-    opts = ['-O3', '--closure', '1', '-DNDEBUG', '-ffast-math']
 
     hello_world_sources = [path_from_root('tests', 'small_hello_world.c'),
                            '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
                            '-s', 'USES_DYNAMIC_ALLOC=0',
                            '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]']
+    random_printf_sources = [path_from_root('tests', 'hello_random_printf.c'),
+                             '-s', 'RUNTIME_FUNCS_TO_IMPORT=[]',
+                             '-s', 'USES_DYNAMIC_ALLOC=0',
+                             '-s', 'ASM_PRIMITIVE_VARS=[STACKTOP]',
+                             '-s', 'SINGLE_FILE=1']
     hello_webgl_sources = [path_from_root('tests', 'minimal_webgl', 'main.cpp'),
                            path_from_root('tests', 'minimal_webgl', 'webgl.c'),
                            '--js-library', path_from_root('tests', 'minimal_webgl', 'library_js.js'),
@@ -9613,67 +9637,122 @@ int main () {
                            '-s', 'MODULARIZE=1']
     hello_webgl2_sources = hello_webgl_sources + ['-s', 'MAX_WEBGL_VERSION=2']
 
-    if self.is_wasm_backend():
-      test_cases = [
-        (wasm2js + opts, hello_world_sources, {'a.html': 697, 'a.js': 2179, 'a.mem': 6}),
-        (opts, hello_world_sources, {'a.html': 665, 'a.js': 450, 'a.wasm': 172}),
-        (wasm2js + opts, hello_webgl_sources, {'a.html': 588, 'a.js': 25884, 'a.mem': 3168}),
-        (opts, hello_webgl_sources, {'a.html': 563, 'a.js': 4629, 'a.wasm': 11731}),
-        (opts, hello_webgl2_sources, {'a.html': 563, 'a.js': 5137, 'a.wasm': 11731}) # Compare how WebGL2 sizes stack up with WebGL 1
-      ]
-    else:
-      test_cases = [
-        (asmjs + opts, hello_world_sources, {'a.html': 682, 'a.js': 289, 'a.asm.js': 113, 'a.mem': 6}),
-        (opts, hello_world_sources, {'a.html': 665, 'a.js': 630, 'a.wasm': 86}),
-        (asmjs + opts, hello_webgl_sources, {'a.html': 580, 'a.js': 4896, 'a.asm.js': 11091, 'a.mem': 321}),
-        (opts, hello_webgl_sources, {'a.html': 563, 'a.js': 4850, 'a.wasm': 8932}),
-        (opts, hello_webgl2_sources, {'a.html': 563, 'a.js': 5357, 'a.wasm': 8932}) # Compare how WebGL2 sizes stack up with WebGL 1
-      ]
-
-    success = True
-
     def print_percent(actual, expected):
       if actual == expected:
         return ''
       return ' ({:+.2f}%)'.format((actual - expected) * 100.0 / expected)
 
-    for case in test_cases:
-      print('\n-----------------------------\n' + str(case))
-      flags, sources, files = case
-      args = [PYTHON, EMCC, '-o', 'a.html'] + sources + smallest_code_size_args + flags
-      print('\n' + ' '.join(args))
-      run_process(args)
-      print('\n')
+    for js in [False, True]:
+      for sources, name in [
+          [hello_world_sources, 'hello_world'],
+          [random_printf_sources, 'random_printf'],
+          [hello_webgl_sources, 'hello_webgl'],
+          [hello_webgl2_sources, 'hello_webgl2']
+        ]:
 
-      total_output_size = 0
-      total_expected_size = 0
-      for f in files:
-        expected_size = files[f]
-        size = os.path.getsize(f)
-        print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
+        outputs = ['a.html', 'a.js']
 
-        # Hack: Generated .mem initializer files have different sizes on different
-        # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
-        # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
-        # the LLVM IR text names, which lead to asm.js names, which leads to
-        # difference code size, which leads to different relooper choices,
-        # as a result leading to slightly different total code sizes.
-        # TODO: identify what is causing this. meanwhile allow some amount of slop
-        mem_slop = 20
-        if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
-          size = expected_size
+        test_name = name
 
-        total_output_size += size
-        total_expected_size += expected_size
+        args = smallest_code_size_args[:]
 
-      print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
-      if total_output_size > total_expected_size:
-        print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
-      if total_output_size < total_expected_size:
-        print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Please update test other.test_minimal_runtime_code_size with the new updated size!')
-      if total_output_size != total_expected_size:
-        success = False
-    self.assertTrue(success)
+        if not self.is_wasm_backend():
+          test_name += '_fastcomp'
+
+        if js:
+          outputs += ['a.mem']
+          if self.is_wasm_backend():
+            args += wasm2js
+            test_name += '_wasm2js'
+          else:
+            args += asmjs
+            outputs += ['a.asm.js']
+            test_name += '_asmjs'
+        else:
+          outputs += ['a.wasm']
+          test_name += '_wasm'
+
+        if 'SINGLE_FILE=1' in sources:
+          outputs = ['a.html']
+
+        results_file = path_from_root('tests', 'code_size', test_name + '.json')
+
+        print('\n-----------------------------\n' + test_name)
+
+        expected_results = {}
+        try:
+          expected_results = json.loads(open(results_file, 'r').read())
+        except Exception:
+          if not os.environ.get('EMTEST_REBASELINE'):
+            raise
+
+        args = [PYTHON, EMCC, '-o', 'a.html'] + args + sources
+        print('\n' + ' '.join(args))
+        run_process(args)
+        print('\n')
+
+        def get_file_gzipped_size(f):
+          f_gz = f + '.gz'
+          with gzip.open(f_gz, 'wb') as gzf:
+            gzf.write(open(f, 'rb').read())
+          size = os.path.getsize(f_gz)
+          try_delete(f_gz)
+          return size
+
+        obtained_results = {}
+        total_output_size = 0
+        total_expected_size = 0
+        total_output_size_gz = 0
+        total_expected_size_gz = 0
+        for f in outputs:
+          f_gz = f + '.gz'
+          expected_size = expected_results[f] if f in expected_results else float('inf')
+          expected_size_gz = expected_results[f_gz] if f_gz in expected_results else float('inf')
+          size = os.path.getsize(f)
+          size_gz = get_file_gzipped_size(f)
+
+          obtained_results[f] = size
+          obtained_results[f_gz] = size_gz
+
+          if size != expected_size and (f.endswith('.js') or f.endswith('.html')):
+            print('Contents of ' + f + ': ')
+            print(open(f, 'r').read())
+
+          print('size of ' + f + ' == ' + str(size) + ', expected ' + str(expected_size) + ', delta=' + str(size - expected_size) + print_percent(size, expected_size))
+          print('size of ' + f_gz + ' == ' + str(size_gz) + ', expected ' + str(expected_size_gz) + ', delta=' + str(size_gz - expected_size_gz) + print_percent(size_gz, expected_size_gz))
+
+          # Hack: Generated .mem initializer files have different sizes on different
+          # platforms (Windows gives x, CircleCI Linux gives x-17 bytes, my home
+          # Linux gives x+2 bytes..). Likewise asm.js files seem to be affected by
+          # the LLVM IR text names, which lead to asm.js names, which leads to
+          # difference code size, which leads to different relooper choices,
+          # as a result leading to slightly different total code sizes.
+          # TODO: identify what is causing this. meanwhile allow some amount of slop
+          mem_slop = 10 if self.is_wasm_backend() else 50
+          if size <= expected_size + mem_slop and size >= expected_size - mem_slop:
+            size = expected_size
+
+          # N.B. even though the test code above prints out gzip compressed sizes, regression testing is done against uncompressed sizes
+          # this is because optimizing for compressed sizes can be unpredictable and sometimes counterproductive
+          total_output_size += size
+          total_expected_size += expected_size
+
+          total_output_size_gz += size_gz
+          total_expected_size_gz += expected_size_gz
+
+        obtained_results['total'] = total_output_size
+        obtained_results['total_gz'] = total_output_size_gz
+        print('Total output size=' + str(total_output_size) + ' bytes, expected total size=' + str(total_expected_size) + ', delta=' + str(total_output_size - total_expected_size) + print_percent(total_output_size, total_expected_size))
+        print('Total output size gzipped=' + str(total_output_size_gz) + ' bytes, expected total size gzipped=' + str(total_expected_size_gz) + ', delta=' + str(total_output_size_gz - total_expected_size_gz) + print_percent(total_output_size_gz, total_expected_size_gz))
+
+        if os.environ.get('EMTEST_REBASELINE'):
+          open(results_file, 'w').write(json.dumps(obtained_results, indent=2) + '\n')
+        else:
+          if total_output_size > total_expected_size:
+            print('Oops, overall generated code size regressed by ' + str(total_output_size - total_expected_size) + ' bytes!')
+          if total_output_size < total_expected_size:
+            print('Hey amazing, overall generated code size was improved by ' + str(total_expected_size - total_output_size) + ' bytes! Rerun test with other.test_minimal_runtime_code_size with EMTEST_REBASELINE=1 to update the expected sizes!')
+          self.assertEqual(total_output_size, total_expected_size)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
@@ -10324,6 +10403,11 @@ int main() {
     stderr = self.expect_fail([PYTHON, EMCC, '-s', 'LLD_REPORT_UNDEFINED', 'main.c'])
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
+
+  @no_fastcomp('lld only')
+  def test_4GB(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'TOTAL_MEMORY=2GB'])
+    self.assertContained('TOTAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
 
   # Verifies that warning messages that Closure outputs are recorded to console
   def test_closure_warnings(self):

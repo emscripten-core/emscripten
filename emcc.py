@@ -126,12 +126,6 @@ LEAVE_INPUTS_RAW = int(os.environ.get('EMCC_LEAVE_INPUTS_RAW', '0'))
 if LEAVE_INPUTS_RAW:
   del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
-# If set to 1, we will run the autodebugger (the automatic debugging tool, see
-# tools/autodebugger).  Note that this will disable inclusion of libraries. This
-# is useful because including dlmalloc makes it hard to compare native and js
-# builds
-AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
-
 # Target options
 final = None
 
@@ -1183,7 +1177,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.AUTO_JS_LIBRARIES = 0
       shared.Settings.AUTO_ARCHIVE_INDEXES = 0
 
-    if AUTODEBUG:
+    # If set to 1, we will run the autodebugger (the automatic debugging tool, see
+    # tools/autodebugger).  Note that this will disable inclusion of libraries. This
+    # is useful because including dlmalloc makes it hard to compare native and js
+    # builds
+    if os.environ.get('EMCC_AUTODEBUG'):
       shared.Settings.AUTODEBUG = 1
 
     # Use settings
@@ -1524,7 +1522,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         'getMemory',
         'addRunDependency',
         'removeRunDependency',
-        'calledRun',
       ]
 
     if shared.Settings.USE_PTHREADS:
@@ -1594,6 +1591,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.WASM:
       if shared.Settings.TOTAL_MEMORY % 65536 != 0:
         exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
+      if shared.Settings.TOTAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+        exit_with_error('TOTAL_MEMORY must be less than 2GB due to current spec limitations')
     else:
       if shared.Settings.TOTAL_MEMORY < 16 * 1024 * 1024:
         exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
@@ -1833,7 +1832,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
-          if shared.Settings.AUTODEBUG and not shared.Settings.LTO:
+          if shared.Settings.AUTODEBUG:
             # adding '--flatten' here may make these even more effective
             passes += ['--instrument-locals']
             passes += ['--log-execution']
@@ -2339,7 +2338,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                link_opts.append("-wholeprogramdevirt")
             link_opts.append("-lowertypetests")
 
-          if AUTODEBUG:
+          if shared.Settings.AUTODEBUG:
             # let llvm opt directly emit ll, to skip writing and reading all the bitcode
             link_opts += ['-S']
             final = shared.Building.llvm_opt(final, link_opts, get_final() + '.link.ll')
@@ -2357,7 +2356,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.save_bc:
           save_intermediate('ll', 'll')
 
-        if AUTODEBUG:
+        if shared.Settings.AUTODEBUG:
           logger.debug('autodebug')
           next = get_final() + '.ad.ll'
           run_process([shared.PYTHON, shared.AUTODEBUGGER, final, next])
@@ -2820,6 +2819,11 @@ def parse_args(newargs):
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
           shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
+        elif requested_level.startswith('side'):
+          # Emit full DWARF but also emit it in a file on the side
+          newargs[i] = '-g'
+          shared.Settings.FULL_DWARF = 1
+          shared.Settings.SIDE_DEBUG = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -3337,6 +3341,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       shared.try_delete(target)
     with open(final, 'w') as f:
       f.write(js)
+
+  if shared.Settings.FULL_DWARF and shared.Settings.SIDE_DEBUG:
+    shared.Building.emit_debug_on_side(wasm_binary_target)
 
 
 def modularize():

@@ -896,17 +896,24 @@ var SyscallsLibrary = {
   __syscall150__nothrow: true,
   __syscall150__proxy: false,
   __syscall150__sig: 'iii',
-  __syscall150: '__syscall153',     // mlock
+  __syscall150: function(addr, len) { // mlock
+    return 0;
+  },
   __syscall151__nothrow: true,
   __syscall151__proxy: false,
   __syscall151__sig: 'iii',
-  __syscall151: '__syscall153',     // munlock
+  __syscall151: function(addr, len) { // munlock
+    return 0;
+  },
   __syscall152__nothrow: true,
   __syscall152__proxy: false,
-  __syscall152__sig: 'iii',
-  __syscall152: '__syscall153',     // mlockall
+  __syscall152__sig: 'ii',
+  __syscall152: function(flags) { // mlockall
+    return 0;
+  },
   __syscall153__nothrow: true,
   __syscall153__proxy: false,
+  __syscall153__sig: 'i',
   __syscall153: function() { // munlockall
     return 0;
   },
@@ -987,11 +994,11 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall195: function(path, buf) { // SYS_stat64
-    var path = SYSCALLS.getStr(path);
+    path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
   __syscall196: function(path, buf) { // SYS_lstat64
-    var path = SYSCALLS.getStr(path);
+    path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
   },
   __syscall197: function(fd, buf) { // SYS_fstat64
@@ -1032,7 +1039,7 @@ var SyscallsLibrary = {
   __syscall203__sig: 'ii',
   __syscall203__nothrow: true,
   __syscall203__proxy: false,
-  __syscall203: '__sysicall214',     // setreuid32
+  __syscall203: '__syscall214',     // setreuid32
   __syscall204__sig: 'ii',
   __syscall204__nothrow: true,
   __syscall204__proxy: false,
@@ -1198,7 +1205,7 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall268: function(path, size, buf) { // statfs64
-    var path = SYSCALLS.getStr(path);
+    path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
 #endif
@@ -1445,6 +1452,7 @@ var SyscallsLibrary = {
   fd_write__postset: '__ATEXIT__.push(flush_NO_FILESYSTEM);',
 #endif
 #endif
+  fd_write__sig: 'iiiii',
   fd_write: function(fd, iov, iovcnt, pnum) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -1464,6 +1472,7 @@ var SyscallsLibrary = {
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
+  fd_close__sig: 'ii',
   fd_close: function(fd) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -1483,12 +1492,14 @@ var SyscallsLibrary = {
 #endif
     return 0;
   },
+  fd_read__sig: 'iiiii',
   fd_read: function(fd, iov, iovcnt, pnum) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var num = SYSCALLS.doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', 'i32') }}}
     return 0;
   },
+  fd_seek__sig: 'iiiiii',
   fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
@@ -1506,6 +1517,7 @@ var SyscallsLibrary = {
     if (stream.getdents && offset === 0 && whence === {{{ cDefine('SEEK_SET') }}}) stream.getdents = null; // reset readdir state
     return 0;
   },
+  fd_fdstat_get__sig: 'iii',
   fd_fdstat_get: function(fd, pbuf) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -1528,6 +1540,7 @@ var SyscallsLibrary = {
 #if EMTERPRETIFY_ASYNC
   fd_sync__deps: ['$EmterpreterAsync'],
 #endif
+  fd_sync__sig: 'ii',
   fd_sync: function(fd) {
     var stream = SYSCALLS.getStreamFromFD(fd);
 #if EMTERPRETIFY_ASYNC
@@ -1739,7 +1752,11 @@ for (var x in SyscallsLibrary) {
   }
 #if SYSCALL_DEBUG
   if (which && t.indexOf(', varargs') != -1) {
-    post += 'SYSCALLS.varargs = undefined;\n';
+    if (canThrow) {
+      post += 'finally { SYSCALLS.varargs = undefined; }\n';
+    } else {
+      post += 'SYSCALLS.varargs = undefined;\n';
+    }
   }
   if (which) {
     pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";

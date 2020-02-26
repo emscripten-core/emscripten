@@ -241,10 +241,10 @@ var emscriptenMemoryProfiler = {
     }
 
     if (location.search.toLowerCase().indexOf('trackbytes=') != -1) {
-      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length));
+      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
     }
     if (location.search.toLowerCase().indexOf('trackcount=') != -1) {
-      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length));
+      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
     }
 
     emscriptenMemoryProfiler.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
@@ -270,8 +270,8 @@ var emscriptenMemoryProfiler = {
       self.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
       self.memoryprofiler_ptrs = document.getElementById('memoryprofiler_ptrs');
 
-      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=parseInt(this.value);});
-      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e){self.trackedCallstackMinAllocCount=parseInt(this.value);});
+      document.getElementById('memoryprofiler_min_tracked_alloc_size').addEventListener("change", function(e){self.trackedCallstackMinSizeBytes=parseInt(this.value, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);});
+      document.getElementById('memoryprofiler_min_tracked_alloc_count').addEventListener("change", function(e){self.trackedCallstackMinAllocCount=parseInt(this.value, undefined);});
       document.getElementById('memoryprofiler_clear_alloc_stats').addEventListener("click", function(e){self.allocationsAtLoc = {}; self.allocationSitePtrs = {};});
       self.canvas = document.getElementById('memoryprofiler_canvas');
       self.canvas.width = document.documentElement.clientWidth - 32;

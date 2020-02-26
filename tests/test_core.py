@@ -4912,6 +4912,7 @@ Pass: 0.000012 0.000012''')
     print('base', self.emcc_args)
 
     create_test_file('pre.js', '''
+/** @suppress{checkTypes}*/
 Module = {
   'noFSInit': true,
   'preRun': function() {
@@ -5436,18 +5437,15 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'unistd', 'truncate', js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
-    src = open(path_from_root('tests', 'unistd', 'swab.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'swab.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'swab')
 
   def test_unistd_isatty(self):
     src = open(path_from_root('tests', 'unistd', 'isatty.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_standalone_wasm
   def test_unistd_sysconf(self):
-    src = open(path_from_root('tests', 'unistd', 'sysconf.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'sysconf.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'sysconf')
 
   @no_asan('ASan alters memory layout')
   def test_unistd_sysconf_phys_pages(self):
@@ -5459,9 +5457,7 @@ main( int argv, char ** argc ) {
     self.do_run(src, str(expected) + ', errno: 0')
 
   def test_unistd_login(self):
-    src = open(path_from_root('tests', 'unistd', 'login.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'login.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'login')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
@@ -6385,7 +6381,8 @@ return malloc(size);
   def test_lifetime(self):
     self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
-      assert 'a18' not in open('lifetime.ll.o.js').read(), 'lifetime stuff and their vars must be culled'
+      # lifetime stuff and their vars must be culled
+      self.assertNotContained('a18', open('lifetime.ll.o.js').read())
 
   # Test cases in separate files. Note that these files may contain invalid .ll!
   # They are only valid enough for us to read for test purposes, not for llvm-as

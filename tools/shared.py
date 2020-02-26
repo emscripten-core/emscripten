@@ -177,19 +177,20 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
 
-  if hasattr(subprocess, "run"):
-    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-    logger.debug(debug_text)
-    return ret
+  if hasattr(subprocess, 'run'):
+    # Python 3.5 and above only
+    kw.setdefault('encoding', 'utf-8')
+    result = subprocess.run(cmd, check=check, input=input, *args, **kw)
+  else:
+    # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
+    if input is not None:
+      kw['stdin'] = subprocess.PIPE
+    proc = Popen(cmd, *args, **kw)
+    stdout, stderr = proc.communicate(input)
+    result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
+    if check:
+      result.check_returncode()
 
-  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  if input is not None:
-    kw['stdin'] = subprocess.PIPE
-  proc = Popen(cmd, *args, **kw)
-  stdout, stderr = proc.communicate(input)
-  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
-  if check:
-    result.check_returncode()
   logger.debug(debug_text)
   return result
 
@@ -703,6 +704,7 @@ LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
@@ -2756,6 +2758,27 @@ class Building(object):
     with open(js_file, 'w') as f:
       f.write(all_js)
     return js_file
+
+  @staticmethod
+  def emit_debug_on_side(wasm_file):
+    # extract the DWARF info from the main file, and leave the wasm with
+    # debug into as a file on the side
+    # TODO: emit only debug sections in the side file, and not the entire
+    #       wasm as well
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+    shutil.move(wasm_file, wasm_file_with_dwarf)
+    run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
+
+    # embed a section in the main wasm to point to the file with external DWARF,
+    # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
+    section_name = b'\x13external_debug_info' # section name, including prefixed size
+    contents = asbytes(wasm_file_with_dwarf)
+    section_size = len(section_name) + len(contents)
+    with open(wasm_file, 'ab') as f:
+      f.write(b'\0') # user section is code 0
+      f.write(WebAssembly.lebify(section_size))
+      f.write(section_name)
+      f.write(contents)
 
   @staticmethod
   def apply_wasm_memory_growth(js_file):

@@ -147,7 +147,19 @@ def get_wasm_libc_rt_files():
     path_components=['system', 'lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                'emscripten_memmove.c'])
-  return math_files + other_files
+  # Calls to iprintf can be generated during codegen. Ideally we wouldn't
+  # compile these with -O2 like we do the rest of compiler-rt since its
+  # probably not performance sensitive.  However we don't currently have
+  # a way to set per-file compiler flags.  And hopefully we should be able
+  # move all this stuff back into libc once we it LTO compatible.
+  iprintf_files = files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
+    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+               'printf.c', 'puts.c'])
+  iprintf_files += files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+    filenames=['strlen.c'])
+  return math_files + other_files + iprintf_files
 
 
 class Library(object):
@@ -792,7 +804,8 @@ class libc_wasm(MuslInternalLibrary):
                'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
                'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
                'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
-               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c']
+               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c',
+               'sqrtl.c', 'ceill.c', 'floorl.c', 'fabsl.c']
 
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins
@@ -1334,7 +1347,10 @@ class libstandalonewasm(MuslInternalLibrary):
     exit_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
         filenames=['assert.c'])
-    return base_files + time_files + exit_files
+    conf_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
+        filenames=['sysconf.c'])
+    return base_files + time_files + exit_files + conf_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND

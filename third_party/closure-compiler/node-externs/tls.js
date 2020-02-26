@@ -34,7 +34,7 @@
 var tls = {};
 
 /**
- * @typedef {{pfx: (string|buffer.Buffer), key: (string|buffer.Buffer), passphrase: string, cert: (string|buffer.Buffer), ca: Array.<string|buffer.Buffer>, crl: (string|Array.<string>), ciphers: string, honorCipherOrder: boolean, requestCert: boolean, rejectUnauthorized: boolean, NPNProtocols: (Array|buffer.Buffer), SNICallback: function(string), sessionIdContext: string}}
+ * @typedef {{pfx: (string|nodeBuffer.Buffer), key: (string|nodeBuffer.Buffer), passphrase: string, cert: (string|nodeBuffer.Buffer), ca: Array.<string|nodeBuffer.Buffer>, crl: (string|Array.<string>), ciphers: string, honorCipherOrder: boolean, requestCert: boolean, rejectUnauthorized: boolean, NPNProtocols: (Array|nodeBuffer.Buffer), SNICallback: function(string), sessionIdContext: string}}
  */
 tls.CreateOptions;
 
@@ -47,7 +47,7 @@ tls.CreateOptions;
 tls.createServer = function(options, secureConnectionListener) {};
 
 /**
- * @typedef {{host: string, port: number, socket: *, pfx: (string|buffer.Buffer), key: (string|buffer.Buffer), passphrase: string, cert: (string|buffer.Buffer), ca: Array.<string>, rejectUnauthorized: boolean, NPNProtocols: Array.<string|buffer.Buffer>, servername: string}}
+ * @typedef {{host: string, port: number, socket: *, pfx: (string|nodeBuffer.Buffer), key: (string|nodeBuffer.Buffer), passphrase: string, cert: (string|nodeBuffer.Buffer), ca: Array.<string>, rejectUnauthorized: boolean, NPNProtocols: Array.<string|nodeBuffer.Buffer>, servername: string}}
  */
 tls.ConnectOptions;
 
@@ -83,7 +83,7 @@ tls.Server = function() {};
 
 /**
  * @param {string} hostname
- * @param {string|buffer.Buffer} credentials
+ * @param {string|nodeBuffer.Buffer} credentials
  */
 tls.Server.prototype.addContext = function(hostname, credentials) {};
 
