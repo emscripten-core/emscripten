@@ -400,6 +400,9 @@ def apply_settings(changes):
     if key.startswith('NO_') and value in ('0', '1'):
       key = key[3:]
       value = str(1 - int(value))
+    # map legacy settings which have aliases to the new names
+    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
+      key = shared.Settings.alt_names[key]
     return key, value
 
   for change in changes:
