@@ -50,13 +50,6 @@ f = re.sub(r'[\n\s]+\n\s*', '\n', f)
 f = re.sub(r'([;{}=,\+\-\*/\(\)\[\]])[\n]', r'\1', f)
 f = re.sub(r'([;{}=,\*/\(\)\[\]])[\s]', r'\1', f)
 
-# Work around https://github.com/google/closure-compiler/issues/3548 / https://github.com/google/closure-compiler/issues/3230 :
-# TODO: can drop this when the above issue is fixed.
-# parseInt(b.slice(d+1),void 0)
-# ->
-# parseInt(b.slice(d+1))
-f = re.sub(r'parseInt\(([^,;]+),void 0\)', r'parseInt(\1)', f)
-
 # Finally, rerun minifier because the above changes may have left redundant whitespaces
 open(sys.argv[1], 'w').write(f)
 minified = shared.Building.js_optimizer_no_asmjs(sys.argv[1], ['minifyWhitespace'], acorn=True, return_output=True)
