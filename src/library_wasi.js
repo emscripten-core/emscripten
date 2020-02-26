@@ -104,6 +104,7 @@ var WasiLibrary = {
   // but the wasm file can't be legalized. To get this code to be usable as
   // a JS shim we need to either wait for BigInt support or to legalize on
   // the client.
+  clock_time_get__sig: 'iiiii',
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
     var now;
@@ -122,6 +123,7 @@ var WasiLibrary = {
     return 0;
   },
 
+  clock_res_get__sig: 'iii',
   clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_res_get: function(clk_id, pres) {
     var nsec;
