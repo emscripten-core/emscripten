@@ -509,9 +509,9 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall91__deps: ['$syscallUnmap'],
+  __syscall91__deps: ['$syscallMunmap'],
   __syscall91: function(addr, len) { // munmap
-    return syscallUnmap(addr, len);
+    return syscallMunmap(addr, len);
   },
   __syscall94: function(fd, mode) { // fchmod
     FS.fchmod(fd, mode);
