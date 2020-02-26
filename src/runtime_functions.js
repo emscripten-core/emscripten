@@ -162,8 +162,8 @@ function addFunction(func, sig) {
   alignFunctionTables(); // TODO: we should rely on this being an invariant
   var tables = getFunctionTables();
   var ret = -1;
-  for (var sig in tables) {
-    var table = tables[sig];
+  for (var signature in tables) {
+    var table = tables[signature];
     if (ret < 0) ret = table.length;
     else assert(ret === table.length);
     table.push(func);

@@ -805,7 +805,7 @@ var LibrarySDL = {
           code = SDL.keyCodes[event.keyCode] || event.keyCode;
           // If this is one of the modifier keys (224 | 1<<10 - 227 | 1<<10), and the event specifies that it is
           // a right key, add 4 to get the right key SDL key code.
-          if (event.location === KeyboardEvent.DOM_KEY_LOCATION_RIGHT && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
+          if (event.location === 2 /*KeyboardEvent.DOM_KEY_LOCATION_RIGHT*/ && code >= (224 | 1<<10) && code <= (227 | 1<<10)) {
             code += 4;
           }
         }
@@ -824,6 +824,8 @@ var LibrarySDL = {
         case 'keydown': case 'keyup': {
           var down = event.type === 'keydown';
           var code = SDL.lookupKeyCodeForEvent(event);
+          // Assigning a boolean to HEAP8, that's alright but Closure would like to warn about it:
+          /** @suppress{checkTypes} */
           {{{ makeSetValue('SDL.keyboardState', 'code', 'down', 'i8') }}};
           // TODO: lmeta, rmeta, numlock, capslock, KMOD_MODE, KMOD_RESERVED
           SDL.modState = ({{{ makeGetValue('SDL.keyboardState', '1248', 'i8') }}} ? 0x0040 : 0) | // KMOD_LCTRL
@@ -1832,7 +1834,10 @@ var LibrarySDL = {
 
   SDL_SetError: function() {},
 
+  SDL_malloc__sig: 'ii',
   SDL_malloc: 'malloc',
+
+  SDL_free__sig: 'vi',
   SDL_free: 'free',
 
   SDL_CreateRGBSurface__proxy: 'sync',
@@ -2269,10 +2274,11 @@ var LibrarySDL = {
         return 0;
       }
 
+      var raw;
       var filename = rwops.filename;
       if (filename === undefined) {
 #if STB_IMAGE
-        var raw = callStbImage('stbi_load_from_memory', [rwops.bytes, rwops.count]);
+        raw = callStbImage('stbi_load_from_memory', [rwops.bytes, rwops.count]);
         if (!raw) return 0;
 #else
         warnOnce('Only file names that have been preloaded are supported for IMG_Load_RW. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
@@ -2282,7 +2288,7 @@ var LibrarySDL = {
 
       if (!raw) {
         filename = PATH_FS.resolve(filename);
-        var raw = Module["preloadedImages"][filename];
+        raw = Module["preloadedImages"][filename];
         if (!raw) {
           if (raw === null) err('Trying to reuse preloaded image, but freePreloadedMediaOnUse is set!');
 #if STB_IMAGE
@@ -2292,7 +2298,7 @@ var LibrarySDL = {
           addCleanup(function() {
             Module['_free'](name);
           });
-          var raw = callStbImage('stbi_load', [name]);
+          raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
 #else
           warnOnce('Cannot find preloaded image ' + filename);
@@ -2885,7 +2891,7 @@ var LibrarySDL = {
       webAudio = {};
       webAudio.decodedBuffer = buffer;
     } else {
-      var audio = new Audio();
+      audio = new Audio();
       audio.mozAudioChannelType = 'content'; // bugzilla 910340
       // Record the number of channels and frequency for later usage
       audio.numChannels = SDL.mixerNumChannels;
@@ -3009,7 +3015,9 @@ var LibrarySDL = {
     return SDL.setGetVolume(SDL.music, volume);
   },
 
+  Mix_LoadMUS_RW__docs: '/** @param {number|boolean=} a1 */',
   Mix_LoadMUS_RW: 'Mix_LoadWAV_RW',
+
   Mix_LoadMUS__deps: ['Mix_LoadMUS_RW', 'SDL_RWFromFile', 'SDL_FreeRW'],
   Mix_LoadMUS__proxy: 'sync',
   Mix_LoadMUS__sig: 'ii',
@@ -3672,7 +3680,7 @@ var LibrarySDL = {
   SDL_RWFromFile__docs: '/** @param {number=} mode */',
   SDL_RWFromFile: function(_name, mode) {
     var id = SDL.rwops.length; // TODO: recycle ids when they are null
-    var name = UTF8ToString(_name)
+    var name = UTF8ToString(_name);
     SDL.rwops.push({ filename: name, mimetype: Browser.getMimetype(name) });
     return id;
   },

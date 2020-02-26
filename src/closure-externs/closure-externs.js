@@ -775,7 +775,7 @@ SIMD.Bool64x2.fromFloat64x2 = function() {};
 
 /**
  * @const
- * @suppress {duplicate}
+ * @suppress {duplicate, checkTypes}
  */
 var WebAssembly = {};
 /**
@@ -928,8 +928,15 @@ var onmessageerror = function() {};
 /**
  * @param {string} type
  * @param {!Function} listener
+ * @param {Object|boolean=} optionsOrUseCapture
  */
-var addEventListener = function (type, listener) {};
+var addEventListener = function (type, listener, optionsOrUseCapture) {};
+
+/**
+ * @param {string} type
+ * @param {!Function} listener
+ */
+var removeEventListener = function (type, listener) {};
 
 /**
  * @type {Function}

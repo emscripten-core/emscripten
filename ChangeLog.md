@@ -19,14 +19,14 @@ Current Trunk
 -------------
 - Updated of libc++abi and libc++ to llvm 9.0.0 (#10510)
 - Refactor syscall interface: Syscalls are no longer variadic (except those
-  that are inherantly such as open) and no longer take the syscall number as
+  that are inherently such as open) and no longer take the syscall number as
   arg0.  This should be invisible to most users but will effect any external
   projects that try to implement/emulate the emscripten syscall interface.
   See #10474
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
-- Remove WASM_OBJECT_FILES settting.  There are many standard ways to enable
+- Remove WASM_OBJECT_FILES setting.  There are many standard ways to enable
   bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
@@ -39,6 +39,8 @@ Current Trunk
   be able to build with -g and use a debugger. Before this change only the
   -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
   and background see #10325.
+- When implementing forwarding function aliases in JS libraries, either the
+  alias or the target function must contain a signature annotation. (#10550)
 
 v1.39.8: 02/14/2020
 -------------------
@@ -63,7 +65,7 @@ v1.39.7: 02/03/2020
   JS library, pre and post files. See
   https://github.com/google/closure-compiler/wiki/Annotating-JavaScript-for-the-Closure-Compiler
   (#10272)
-- Add new Fibers API for context switching, that supercedes the old coroutine
+- Add new Fibers API for context switching, that supersedes the old coroutine
   API that only ran on fastcomp. See #9859
 - Added new linker option -s WASM=2 which produces a dual Wasm+JS build, which
   falls back to using a JavaScript version if WebAssembly is not supported in

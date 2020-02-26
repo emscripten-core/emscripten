@@ -26,6 +26,14 @@ void exit(int status) {
   __builtin_unreachable();
 }
 
+void _Exit(int status) {
+  exit(status);
+}
+
+void _exit(int status) {
+  exit(status);
+}
+
 void abort() {
   exit(1);
 }

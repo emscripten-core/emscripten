@@ -1756,6 +1756,7 @@ def create_receiving(function_table_data, function_tables_defs, exported_impleme
       wrappers = []
       for name in module_exports:
         wrappers.append('''\
+/** @type {function(...*):?}\n*/
 var %(name)s = Module["%(name)s"] = function() {%(runtime_assertions)s
   return Module["asm"]["%(name)s"].apply(null, arguments)
 };
@@ -2658,6 +2659,7 @@ asm["%(e)s"] = function() {%(assertions)s
       if runtime_assertions:
         # With assertions on, don't hot-swap implementation.
         receiving.append('''\
+/** @type {function(...*):?} */
 var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
   return Module["asm"]["%(e)s"].apply(null, arguments)
 };
@@ -2666,6 +2668,7 @@ var %(mangled)s = Module["%(mangled)s"] = function() {%(assertions)s
         # With assertions off, hot-swap implementation to avoid garbage via
         # arguments keyword.
         receiving.append('''\
+/** @type {function(...*):?} */
 var %(mangled)s = Module["%(mangled)s"] = function() {
   return (%(mangled)s = Module["%(mangled)s"] = Module["asm"]["%(e)s"]).apply(null, arguments);
 };

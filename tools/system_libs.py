@@ -147,7 +147,19 @@ def get_wasm_libc_rt_files():
     path_components=['system', 'lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                'emscripten_memmove.c'])
-  return math_files + other_files
+  # Calls to iprintf can be generated during codegen. Ideally we wouldn't
+  # compile these with -O2 like we do the rest of compiler-rt since its
+  # probably not performance sensitive.  However we don't currently have
+  # a way to set per-file compiler flags.  And hopefully we should be able
+  # move all this stuff back into libc once we it LTO compatible.
+  iprintf_files = files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
+    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+               'printf.c', 'puts.c'])
+  iprintf_files += files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+    filenames=['strlen.c'])
+  return math_files + other_files + iprintf_files
 
 
 class Library(object):
@@ -728,6 +740,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
+        filenames=['getpagesize.c'])
+
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
       libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
@@ -738,6 +754,10 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
       libc_files += files_in_path(
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
+
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
+        filenames=['sched_yield.c'])
 
     libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
 
@@ -780,7 +800,8 @@ class libc_wasm(MuslInternalLibrary):
                'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
                'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
                'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
-               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c']
+               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c',
+               'sqrtl.c', 'ceill.c', 'floorl.c', 'fabsl.c']
 
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins
@@ -876,18 +897,21 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
     'algorithm.cpp',
     'any.cpp',
     'bind.cpp',
+    'charconv.cpp',
     'chrono.cpp',
     'condition_variable.cpp',
+    'condition_variable_destructor.cpp',
     'debug.cpp',
     'exception.cpp',
-    'future.cpp',
     'functional.cpp',
+    'future.cpp',
     'hash.cpp',
     'ios.cpp',
     'iostream.cpp',
     'locale.cpp',
     'memory.cpp',
     'mutex.cpp',
+    'mutex_destructor.cpp',
     'new.cpp',
     'optional.cpp',
     'random.cpp',
@@ -1306,13 +1330,23 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
-                   '__year_to_secs.c'])
+                   '__year_to_secs.c',
+                   'gettimeofday.c',
+                   'localtime.c',
+                   'localtime_r.c',
+                   'gmtime.c',
+                   'gmtime_r.c',
+                   'nanosleep.c',
+                   'mktime.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     exit_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
         filenames=['assert.c'])
-    return base_files + time_files + exit_files
+    conf_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
+        filenames=['sysconf.c'])
+    return base_files + time_files + exit_files + conf_files
 
   def can_build(self):
     return shared.Settings.WASM_BACKEND

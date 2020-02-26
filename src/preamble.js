@@ -97,6 +97,9 @@ function getCFunc(ident) {
 }
 
 // C calling interface.
+/** @param {Array=} argTypes
+    @param {Arguments|Array=} args
+    @param {Object=} opts */
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
@@ -189,6 +192,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
   return ret;
 }
 
+/** @param {Array=} argTypes
+    @param {Object=} opts */
 function cwrap(ident, returnType, argTypes, opts) {
 #if !ASSERTIONS
   argTypes = argTypes || [];
@@ -572,7 +577,9 @@ function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
 
+/** @param {number|boolean=} ignore */
 {{{ unSign }}}
+/** @param {number|boolean=} ignore */
 {{{ reSign }}}
 
 #include "runtime_math.js"
@@ -598,8 +605,9 @@ function getUniqueRunDependency(id) {
     if (!runDependencyTracking[id]) return id;
     id = orig + Math.random();
   }
-#endif
+#else
   return id;
+#endif
 }
 
 function addRunDependency(id) {
@@ -687,6 +695,7 @@ Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 var abortDecorators = [];
 #endif
 
+/** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
   if (Module['onAbort']) {

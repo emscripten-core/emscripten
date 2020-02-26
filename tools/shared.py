@@ -177,19 +177,20 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
 
-  if hasattr(subprocess, "run"):
-    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-    logger.debug(debug_text)
-    return ret
+  if hasattr(subprocess, 'run'):
+    # Python 3.5 and above only
+    kw.setdefault('encoding', 'utf-8')
+    result = subprocess.run(cmd, check=check, input=input, *args, **kw)
+  else:
+    # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
+    if input is not None:
+      kw['stdin'] = subprocess.PIPE
+    proc = Popen(cmd, *args, **kw)
+    stdout, stderr = proc.communicate(input)
+    result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
+    if check:
+      result.check_returncode()
 
-  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-  if input is not None:
-    kw['stdin'] = subprocess.PIPE
-  proc = Popen(cmd, *args, **kw)
-  stdout, stderr = proc.communicate(input)
-  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
-  if check:
-    result.check_returncode()
   logger.debug(debug_text)
   return result
 
@@ -562,7 +563,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 21)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 24)
 
 
 def generate_sanity():
@@ -703,6 +704,7 @@ LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
@@ -2394,7 +2396,7 @@ class Building(object):
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
-      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs.js')]
+      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
 
       # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
       # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
@@ -2414,17 +2416,17 @@ class Building(object):
         NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
         NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                         if name.endswith('.js')]
-        CLOSURE_EXTERNS += [path_from_root('src', 'node-externs.js')] + NODE_EXTERNS
+        CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
 
       # V8/SpiderMonkey shell specific externs
       if Settings.target_environment_may_be('shell'):
-        V8_EXTERNS = [path_from_root('src', 'v8-externs.js')]
-        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'spidermonkey-externs.js')]
+        V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
+        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
         CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
       # Web environment specific externs
       if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
-        BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+        BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
         if os.path.isdir(BROWSER_EXTERNS_BASE):
           BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
           BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
@@ -2754,6 +2756,27 @@ class Building(object):
     with open(js_file, 'w') as f:
       f.write(all_js)
     return js_file
+
+  @staticmethod
+  def emit_debug_on_side(wasm_file):
+    # extract the DWARF info from the main file, and leave the wasm with
+    # debug into as a file on the side
+    # TODO: emit only debug sections in the side file, and not the entire
+    #       wasm as well
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+    shutil.move(wasm_file, wasm_file_with_dwarf)
+    run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
+
+    # embed a section in the main wasm to point to the file with external DWARF,
+    # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
+    section_name = b'\x13external_debug_info' # section name, including prefixed size
+    contents = asbytes(wasm_file_with_dwarf)
+    section_size = len(section_name) + len(contents)
+    with open(wasm_file, 'ab') as f:
+      f.write(b'\0') # user section is code 0
+      f.write(WebAssembly.lebify(section_size))
+      f.write(section_name)
+      f.write(contents)
 
   @staticmethod
   def apply_wasm_memory_growth(js_file):

@@ -126,6 +126,7 @@ var LibraryEmbind = {
    the appropriate overload to call from an function overload table. This selector function is only used if multiple overloads are
    actually registered, since it carries a slight performance penalty. */
   $exposePublicSymbol__deps: ['$ensureOverloadTable', '$throwBindingError'],
+  $exposePublicSymbol__docs: '/** @param {number=} numArguments */',
   $exposePublicSymbol: function(name, value, numArguments) {
     if (Module.hasOwnProperty(name)) {
         if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
@@ -150,6 +151,7 @@ var LibraryEmbind = {
   },
 
   $replacePublicSymbol__deps: ['$throwInternalError'],
+  $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: function(name, value, numArguments) {
     if (!Module.hasOwnProperty(name)) {
         throwInternalError('Replacing nonexistant public symbol');
@@ -298,6 +300,7 @@ var LibraryEmbind = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
+  $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options) {
     options = options || {};
 
@@ -631,36 +634,34 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
 
             var str;
-            if(stdStringIsUTF8) {
+            if (stdStringIsUTF8) {
                 //ensure null termination at one-past-end byte if not present yet
                 var endChar = HEAPU8[value + 4 + length];
                 var endCharSwap = 0;
-                if(endChar != 0)
-                {
-                  endCharSwap = endChar;
-                  HEAPU8[value + 4 + length] = 0;
+                if (endChar != 0) {
+                    endCharSwap = endChar;
+                    HEAPU8[value + 4 + length] = 0;
                 }
 
                 var decodeStartPtr = value + 4;
-                //looping here to support possible embedded '0' bytes
+                // Looping here to support possible embedded '0' bytes
                 for (var i = 0; i <= length; ++i) {
-                  var currentBytePtr = value + 4 + i;
-                  if(HEAPU8[currentBytePtr] == 0)
-                  {
-                    var stringSegment = UTF8ToString(decodeStartPtr);
-                    if(str === undefined)
-                      str = stringSegment;
-                    else
-                    {
-                      str += String.fromCharCode(0);
-                      str += stringSegment;
+                    var currentBytePtr = value + 4 + i;
+                    if (HEAPU8[currentBytePtr] == 0) {
+                        var stringSegment = UTF8ToString(decodeStartPtr);
+                        if (str === undefined) {
+                            str = stringSegment;
+                        } else {
+                            str += String.fromCharCode(0);
+                            str += stringSegment;
+                        }
+                        decodeStartPtr = currentBytePtr + 1;
                     }
-                    decodeStartPtr = currentBytePtr + 1;
-                  }
                 }
 
-                if(endCharSwap != 0)
-                  HEAPU8[value + 4 + length] = endCharSwap;
+                if (endCharSwap != 0) {
+                    HEAPU8[value + 4 + length] = endCharSwap;
+                }
             } else {
                 var a = new Array(length);
                 for (var i = 0; i < length; ++i) {
@@ -698,7 +699,7 @@ var LibraryEmbind = {
             if (stdStringIsUTF8 && valueIsOfTypeString) {
                 stringToUTF8(value, ptr + 4, length + 1);
             } else {
-                if(valueIsOfTypeString) {
+                if (valueIsOfTypeString) {
                     for (var i = 0; i < length; ++i) {
                         var charCode = value.charCodeAt(i);
                         if (charCode > 255) {
@@ -740,7 +741,7 @@ var LibraryEmbind = {
     } else if (charSize === 4) {
         decodeString = UTF32ToString;
         encodeString = stringToUTF32;
-        lengthBytesUTF = lengthBytesUTF32
+        lengthBytesUTF = lengthBytesUTF32;
         getHeap = function() { return HEAPU32; };
         shift = 2;
     }
@@ -751,26 +752,23 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
             var HEAP = getHeap();
             var str;
-            //ensure null termination at one-past-end byte if not present yet
+            // Ensure null termination at one-past-end byte if not present yet
             var endChar = HEAP[(value + 4 + length * charSize) >> shift];
             var endCharSwap = 0;
-            if(endChar != 0)
-            {
+            if (endChar != 0) {
                 endCharSwap = endChar;
                 HEAP[(value + 4 + length * charSize) >> shift] = 0;
             }
 
             var decodeStartPtr = value + 4;
-            //looping here to support possible embedded '0' bytes
+            // Looping here to support possible embedded '0' bytes
             for (var i = 0; i <= length; ++i) {
                 var currentBytePtr = value + 4 + i * charSize;
-                if(HEAP[currentBytePtr >> shift] == 0)
-                {
+                if (HEAP[currentBytePtr >> shift] == 0) {
                     var stringSegment = decodeString(decodeStartPtr);
-                    if(str === undefined)
+                    if (str === undefined) {
                         str = stringSegment;
-                    else
-                    {
+                    } else {
                         str += String.fromCharCode(0);
                         str += stringSegment;
                     }
@@ -778,8 +776,9 @@ var LibraryEmbind = {
                 }
             }
 
-            if(endCharSwap != 0)
+            if (endCharSwap != 0) {
                 HEAP[(value + 4 + length * charSize) >> shift] = endCharSwap;
+            }
 
             _free(value);
 
@@ -852,7 +851,7 @@ var LibraryEmbind = {
         var heap = HEAPU32;
         var size = heap[handle]; // in elements
         var data = heap[handle + 1]; // byte offset into emscripten heap
-        return new TA(heap['buffer'], data, size);
+        return new TA(buffer, data, size);
     }
 
     name = readLatin1String(name);
@@ -1498,6 +1497,14 @@ var LibraryEmbind = {
     RegisteredPointer.prototype['fromWireType'] = RegisteredPointer_fromWireType;
   },
 
+  $RegisteredPointer__docs: `/** @constructor
+    @param {*=} pointeeType,
+    @param {*=} sharingPolicy,
+    @param {*=} rawGetPointee,
+    @param {*=} rawConstructor,
+    @param {*=} rawShare,
+    @param {*=} rawDestructor,
+     */`,
   $RegisteredPointer__deps: [
     '$constNoSmartPtrRawPointerToWireType', '$genericPointerToWireType',
     '$nonConstNoSmartPtrRawPointerToWireType', '$init_RegisteredPointer'],
@@ -1852,6 +1859,7 @@ var LibraryEmbind = {
     }
   },
 
+  $RegisteredClass__docs: '/** @constructor */',
   $RegisteredClass: function(
     name,
     constructor,

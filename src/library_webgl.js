@@ -2001,6 +2001,7 @@ var LibraryGL = {
   },
 
   glGetUniformLocation__sig: 'iii',
+  glGetUniformLocation__deps: ['$jstoi_q'],
   glGetUniformLocation: function(program, name) {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GL.programs, program, 'glGetUniformLocation', 'program');
@@ -2011,7 +2012,7 @@ var LibraryGL = {
     // If user passed an array accessor "[index]", parse the array index off the accessor.
     if (name[name.length - 1] == ']') {
       var leftBrace = name.lastIndexOf('[');
-      arrayIndex = name[leftBrace+1] != ']' ? parseInt(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
+      arrayIndex = name[leftBrace+1] != ']' ? jstoi_q(name.slice(leftBrace + 1)) : 0; // "index]", parseInt will ignore the ']' at the end; but treat "foo[]" as "foo[0]"
       name = name.slice(0, leftBrace);
     }
 
@@ -3675,7 +3676,8 @@ function copyLibEntry(lib, a, b) {
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to allow name collisions with user-implemented things having the same name (see gl.c)
   keys(lib).forEach(function(x) {
-    if (x.substr(-7) == '__proxy' || x.substr(-6) == '__deps' || x.substr(-9) == '__postset' || x.substr(-5) == '__sig' || x.substr(-5) == '__asm' || x.substr(0, 2) != 'gl') return;
+    if (isJsLibraryConfigIdentifier(x)) return;
+    if (x.substr(0, 2) != 'gl') return;
     while (typeof lib[x] === 'string') {
       // resolve aliases right here, simpler for fastcomp
       copyLibEntry(lib, x, lib[x]);

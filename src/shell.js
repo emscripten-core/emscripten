@@ -99,9 +99,12 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 
 if (ENVIRONMENT_IS_WORKER) {
   _scriptDir = self.location.href;
-} else if (ENVIRONMENT_IS_NODE) {
+}
+#if ENVIRONMENT_MAY_BE_NODE
+else if (ENVIRONMENT_IS_NODE) {
   _scriptDir = __filename;
 }
+#endif // ENVIRONMENT_MAY_BE_NODE
 #endif
 #endif
 
@@ -295,7 +298,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if USE_PTHREADS
+#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"

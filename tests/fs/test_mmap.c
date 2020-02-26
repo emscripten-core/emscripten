@@ -176,5 +176,49 @@ int main() {
     printf("/yolo/sharedoffset.txt content=%s %d\n", buffer + offset, offset);
     fclose(fd);
   }
+
+  /**
+   * MMAP to an 'over-allocated' file
+   * 
+   * When appending to a file, the buffer size is increased in chunks, and so the actual length
+   * of the file could be less than the buffer size.
+   * 
+   * When using mmap for an over-allocated file, we have to make sure that content from the buffer
+   * is not written beyond the allocated memory area for the mmap operation.
+   */
+  {
+    int fd = open("/yolo/overallocatedfile.txt", O_RDWR | O_CREAT, (mode_t)0600);
+    assert(fd != -1);
+
+    const size_t textsize = 33;
+
+    // multiple calls to write so that the file will be over-allocated
+    for (int n = 0; n < textsize; n++) {
+      assert(write(fd, "a", 1) != -1);
+    }
+
+    EM_ASM_({
+        const stream = FS.streams.find(stream => stream.path.indexOf('/yolo/overallocatedfile.txt')>=0);
+        assert(stream.node.usedBytes === $0,
+          'Used bytes on the over-allocated file (' + stream.node.usedBytes+ ') ' +
+          'should be 33'
+        );
+        assert(stream.node.contents.length > stream.node.usedBytes,
+          'Used bytes on the over-allocated file (' + stream.node.usedBytes+ ') ' +
+          'should be less than the length of the content buffer (' + stream.node.contents.length + ')'
+        );
+        stream.node.contents[stream.node.usedBytes] = 98; // 'b', we don't want to see this in the mmap area
+    }, textsize);
+
+    char *map = (char*)mmap(NULL, textsize, PROT_READ, 0, fd, 0);
+
+    assert(map[textsize-1] == 'a');
+
+    // Assert that content from the over-allocated file buffer is not written beyond the allocated memory for the map
+    assert(map[textsize] != 'b');
+
+    close(fd);
+  }
+
   return 0;
 }

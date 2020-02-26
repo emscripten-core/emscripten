@@ -8,13 +8,8 @@ _emscripten_memcpy_big
 _emscripten_resize_heap
 _fd_write
 abort
-abortOnCannotGrowMemory
 abortStackOverflow
-demangle
-demangleAll
-flush_NO_FILESYSTEM
 getTempRet0
-jsStackTrace
 memory
 nullFunc_ii
 nullFunc_iidiiii
@@ -22,6 +17,5 @@ nullFunc_iiii
 nullFunc_jiji
 nullFunc_vii
 setTempRet0
-stackTrace
 table
 tempDoublePtr

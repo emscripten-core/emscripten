@@ -55,7 +55,7 @@ var LibraryJSEvents = {
 
     // Queues the given function call to occur the next time we enter an event handler.
     // Existing implementations of pointerlock apis have required that 
-    // the target element is active in fullscreen mode first. Thefefore give
+    // the target element is active in fullscreen mode first. Therefore give
     // fullscreen mode request a precedence of 1 and pointer lock a precedence of 2
     // and sort by that to always request fullscreen before pointer lock.
     deferCall: function(targetFunction, precedence, argsList) {
@@ -105,7 +105,7 @@ var LibraryJSEvents = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
-        call.targetFunction.apply(this, call.argsList);
+        call.targetFunction.apply(null, call.argsList);
       }
     },
 
@@ -959,7 +959,7 @@ var LibraryJSEvents = {
   },
 
   _fillOrientationChangeEventData__deps: ['_screenOrientation'],
-  _fillOrientationChangeEventData: function(eventStruct, e) {
+  _fillOrientationChangeEventData: function(eventStruct) {
     var orientations  = ["portrait-primary", "portrait-secondary", "landscape-primary", "landscape-secondary"];
     var orientations2 = ["portrait",         "portrait",           "landscape",         "landscape"];
 
@@ -989,7 +989,7 @@ var LibraryJSEvents = {
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
 #endif
 
-      __fillOrientationChangeEventData(orientationChangeEvent, e);
+      __fillOrientationChangeEventData(orientationChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, orientationChangeEvent, userData);
@@ -1016,7 +1016,7 @@ var LibraryJSEvents = {
   emscripten_set_orientationchange_callback_on_thread__sig: 'iiiii',
   emscripten_set_orientationchange_callback_on_thread__deps: ['_registerOrientationChangeEventCallback'],
   emscripten_set_orientationchange_callback_on_thread: function(userData, useCapture, callbackfunc, targetThread) {
-    if (!screen || !screen.addEventListener) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
+    if (!screen || !screen['addEventListener']) return {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     __registerOrientationChangeEventCallback(screen, userData, useCapture, callbackfunc, {{{ cDefine('EMSCRIPTEN_EVENT_ORIENTATIONCHANGE') }}}, "orientationchange", targetThread);
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
@@ -1075,9 +1075,10 @@ var LibraryJSEvents = {
   },
 
   _fillFullscreenChangeEventData__deps: ['$JSEvents'],
-  _fillFullscreenChangeEventData: function(eventStruct, e) {
+  _fillFullscreenChangeEventData: function(eventStruct) {
     var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
     var isFullscreen = !!fullscreenElement;
+    /** @suppress{checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i32') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
@@ -1112,7 +1113,7 @@ var LibraryJSEvents = {
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
 #endif
 
-      __fillFullscreenChangeEventData(fullscreenChangeEvent, e);
+      __fillFullscreenChangeEventData(fullscreenChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, fullscreenChangeEvent, userData);
@@ -1426,7 +1427,7 @@ var LibraryJSEvents = {
   _currentFullscreenStrategy: {},
   _restoreOldWindowedStyle: null,
 
-  _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size'],
+  _softFullscreenResizeWebGLRenderTarget__deps: ['$JSEvents', '_setLetterbox', '_currentFullscreenStrategy', '_get_canvas_element_size', '_set_canvas_element_size', '$jstoi_q'],
   _softFullscreenResizeWebGLRenderTarget: function() {
     var dpr = devicePixelRatio;
     var inHiDPIFullscreenMode = __currentFullscreenStrategy.canvasResolutionScaleMode == {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF') }}};
@@ -1466,8 +1467,8 @@ var LibraryJSEvents = {
     }
 
     if (inCenteredWithoutScalingFullscreenMode) {
-      var t = (innerHeight - parseInt(canvas.style.height)) / 2;
-      var b = (innerWidth - parseInt(canvas.style.width)) / 2;
+      var t = (innerHeight - jstoi_q(canvas.style.height)) / 2;
+      var b = (innerWidth - jstoi_q(canvas.style.width)) / 2;
       __setLetterbox(canvas, t, b);
     } else {
       canvas.style.width = w + 'px';
@@ -1531,16 +1532,16 @@ var LibraryJSEvents = {
   emscripten_request_fullscreen__proxy: 'sync',
   emscripten_request_fullscreen__sig: 'iii',
   emscripten_request_fullscreen: function(target, deferUntilInEventHandler) {
-    var strategy = {};
-    // These options perform no added logic, but just bare request fullscreen.
-    strategy.scaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}};
-    strategy.canvasResolutionScaleMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}};
-    strategy.filteringMode = {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}};
+    var strategy = {
+      // These options perform no added logic, but just bare request fullscreen.
+      scaleMode: {{{ cDefine('EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT') }}},
+      canvasResolutionScaleMode: {{{ cDefine('EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE') }}},
+      filteringMode: {{{ cDefine('EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT') }}},
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+      deferUntilInEventHandler: deferUntilInEventHandler,
 #endif
-    strategy.canvasResizedCallbackTargetThread = {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}};
-
+      canvasResizedCallbackTargetThread: {{{ cDefine('EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD') }}}
+    };
     return __emscripten_do_request_fullscreen(target, strategy);
   },
 
@@ -1548,18 +1549,19 @@ var LibraryJSEvents = {
   emscripten_request_fullscreen_strategy__proxy: 'sync',
   emscripten_request_fullscreen_strategy__sig: 'iiii',
   emscripten_request_fullscreen_strategy: function(target, deferUntilInEventHandler, fullscreenStrategy) {
-    var strategy = {};
-    strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
-    strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
-    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
+    var strategy = {
+      scaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}},
+      canvasResolutionScaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}},
+      filteringMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}},
 #if HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
-    strategy.deferUntilInEventHandler = deferUntilInEventHandler;
+      deferUntilInEventHandler: deferUntilInEventHandler,
 #endif
-    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
-    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
 #if USE_PTHREADS
-    strategy.canvasResizedCallbackTargetThread = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackTargetThread, 'i32') }}};
+      canvasResizedCallbackTargetThread: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackTargetThread, 'i32') }}},
 #endif
+      canvasResizedCallback: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}},
+      canvasResizedCallbackUserData: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}}
+    };
     __currentFullscreenStrategy = strategy;
 
     return __emscripten_do_request_fullscreen(target, strategy);
@@ -1575,17 +1577,18 @@ var LibraryJSEvents = {
     target = __findEventTarget(target);
     if (!target) return {{{ cDefine('EMSCRIPTEN_RESULT_UNKNOWN_TARGET') }}};
 
-    var strategy = {};
-    strategy.scaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}};
-    strategy.canvasResolutionScaleMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}};
-    strategy.filteringMode = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}};
-    strategy.canvasResizedCallback = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}};
-    strategy.canvasResizedCallbackUserData = {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}};
+    var strategy = {
+        scaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.scaleMode, 'i32') }}},
+        canvasResolutionScaleMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResolutionScaleMode, 'i32') }}},
+        filteringMode: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.filteringMode, 'i32') }}},
+        canvasResizedCallback: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}},
+        canvasResizedCallbackUserData: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}},
 #if USE_PTHREADS
-    strategy.canvasResizedCallbackTargetThread = JSEvents.getTargetThreadForEventCallback();
+        canvasResizedCallbackTargetThread: JSEvents.getTargetThreadForEventCallback(),
 #endif
-    strategy.target = target;
-    strategy.softFullscreen = true;
+        target: target,
+        softFullscreen: true
+    };
 
     var restoreOldStyle = _JSEvents_resizeCanvasForFullscreen(target, strategy);
 
@@ -1667,9 +1670,10 @@ var LibraryJSEvents = {
   },
 
   _fillPointerlockChangeEventData__deps: ['$JSEvents'],
-  _fillPointerlockChangeEventData: function(eventStruct, e) {
+  _fillPointerlockChangeEventData: function(eventStruct) {
     var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
     var isPointerlocked = !!pointerLockElement;
+    /** @suppress {checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i32') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = (pointerLockElement && pointerLockElement.id) ? pointerLockElement.id : '';
@@ -1692,7 +1696,7 @@ var LibraryJSEvents = {
 #else
       var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
 #endif
-      __fillPointerlockChangeEventData(pointerlockChangeEvent, e);
+      __fillPointerlockChangeEventData(pointerlockChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, pointerlockChangeEvent, userData);
@@ -1924,10 +1928,12 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  _fillVisibilityChangeEventData: function(eventStruct, e) {
+  _fillVisibilityChangeEventData: function(eventStruct) {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
+    // Assigning a boolean to HEAP32 with expected type coercion.
+    /** @suppress {checkTypes} */
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
@@ -1948,7 +1954,7 @@ var LibraryJSEvents = {
       var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
 #endif
 
-      __fillVisibilityChangeEventData(visibilityChangeEvent, e);
+      __fillVisibilityChangeEventData(visibilityChangeEvent);
 
 #if USE_PTHREADS
       if (targetThread) JSEvents.queueEventHandlerOnThread_iiii(targetThread, callbackfunc, eventTypeId, visibilityChangeEvent, userData);
@@ -2134,7 +2140,9 @@ var LibraryJSEvents = {
       if (typeof(e.buttons[i]) === 'object') {
         {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i32') }}};
       } else {
-        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1.0', 'i32') }}};
+        // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
+        /** @suppress {checkTypes} */
+        {{{ makeSetValue('eventStruct+i*4', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i32') }}};
       }
     }
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenGamepadEvent.connected, 'e.connected', 'i32') }}};
@@ -3071,10 +3079,10 @@ var LibraryJSEvents = {
         'postMessage(__setImmediate_message_id, "*");\n' +
         'return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;\n' +
       '}\n' +
-      'clearImmediate = function(id) {\n' +
+      'clearImmediate = /**@type{function(number=)}*/(function(id) {\n' +
         'var index = id - __setImmediate_id_counter;\n' +
         'if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = function(){};\n' + // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-      '}\n' +
+      '})\n' +
     '}',
 
   _polyfill_set_immediate: function() { /* nop, used for its postset to ensure setImmediate() polyfill is not duplicated between emscripten_set_immediate() and emscripten_set_immediate_loop() if application links to both of them.*/ },
@@ -3188,11 +3196,14 @@ var LibraryJSEvents = {
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio__sig: 'd',
   emscripten_get_device_pixel_ratio: function() {
-#if ENVIRONMENT == 'web' && MIN_IE_VERSION > 11 && MIN_FIREFOX_VERSION >= 18
-    // Save a little bit of code space: all Wasm-capable browsers support devicePixelRatio.
-    return devicePixelRatio;
+#if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
+    return (typeof devicePixelRatio === 'number' && devicePixelRatio) || 1.0;
+#else // otherwise, on the web and in workers, things are simpler
+#if MIN_IE_VERSION < 11 || MIN_FIREFOX_VERSION < 18 || MIN_CHROME_VERSION < 4 || MIN_SAFARI_VERSION < 3010 // https://caniuse.com/#feat=devicepixelratio
+    return window.devicePixelRatio || 1.0;
 #else
-    return devicePixelRatio || 1.0;
+    return devicePixelRatio;
+#endif
 #endif
   }
 };

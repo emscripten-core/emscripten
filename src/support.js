@@ -10,6 +10,16 @@ var STACK_ALIGN = {{{ STACK_ALIGN }}};
 #if ASSERTIONS
 // stack management, and other functionality that is provided by the compiled code,
 // should not be used before it is ready
+
+#if DECLARE_ASM_MODULE_EXPORTS // These functions should not be defined with 'var' if DECLARE_ASM_MODULE_EXPORTS==0 (or the assignments won't be seen)
+/** @suppress{duplicate} */
+var stackSave;
+/** @suppress{duplicate} */
+var stackRestore;
+/** @suppress{duplicate} */
+var stackAlloc;
+#endif
+
 stackSave = stackRestore = stackAlloc = function() {
   abort('cannot use the stack before compiled code is ready to run, and has provided stack access');
 };
@@ -176,12 +186,12 @@ function loadDynamicLibrary(lib, flags) {
   LDSO.loadedLibNames[lib] = handle;
   LDSO.loadedLibs[handle] = dso;
 
-  // libData <- lib
-  function loadLibData() {
+  // libData <- libFile
+  function loadLibData(libFile) {
 #if WASM
     // for wasm, we can use fetch for async, but for fs mode we can only imitate it
     if (flags.fs) {
-      var libData = flags.fs.readFile(lib, {encoding: 'binary'});
+      var libData = flags.fs.readFile(libFile, {encoding: 'binary'});
       if (!(libData instanceof Uint8Array)) {
         libData = new Uint8Array(lib_data);
       }
@@ -189,17 +199,17 @@ function loadDynamicLibrary(lib, flags) {
     }
 
     if (flags.loadAsync) {
-      return fetchBinary(lib);
+      return fetchBinary(libFile);
     }
     // load the binary synchronously
-    return readBinary(lib);
+    return readBinary(libFile);
 #else
     // for js we only imitate async for both native & fs modes.
     var libData;
     if (flags.fs) {
-      libData = flags.fs.readFile(lib, {encoding: 'utf8'});
+      libData = flags.fs.readFile(libFile, {encoding: 'utf8'});
     } else {
-      libData = read_(lib);
+      libData = read_(libFile);
     }
     return flags.loadAsync ? Promise.resolve(libData) : libData;
 #endif
@@ -210,7 +220,7 @@ function loadDynamicLibrary(lib, flags) {
 #if WASM
     return loadWebAssemblyModule(libData, flags)
 #else
-    var libModule = eval(libData)(
+    var libModule = /**@type{function(...)}*/(eval(libData))(
       alignFunctionTables(),
       Module
     );
@@ -607,6 +617,7 @@ Module['loadWebAssemblyModule'] = loadWebAssemblyModule;
 
 #if EMULATED_FUNCTION_POINTERS
 #if WASM == 0
+/** @param {Object=} module */
 function getFunctionTables(module) {
   if (!module) module = Module;
   var tables = {};
@@ -619,6 +630,7 @@ function getFunctionTables(module) {
   return tables;
 }
 
+/** @param {Object=} module */
 function alignFunctionTables(module) {
   var tables = getFunctionTables(module);
   var maxx = 0;
@@ -699,6 +711,7 @@ function makeBigInt(low, high, unsigned) {
   return unsigned ? ((+((low>>>0)))+((+((high>>>0)))*4294967296.0)) : ((+((low>>>0)))+((+((high|0)))*4294967296.0));
 }
 
+/** @param {Array=} args */
 function dynCall(sig, ptr, args) {
   if (args && args.length) {
 #if ASSERTIONS

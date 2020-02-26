@@ -215,25 +215,29 @@ var LibraryManager = {
         if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
-          // If the alias provides a signature, then construct a specific 'function foo(a0, a1, a2) { [return] _target(a0, a1, a2); }' form of forwarding.
-          // Otherwise construct a generic 'function foo() { return _target.apply(null, arguments); }' forwarding.
-          // The benefit of the first form is that Closure is able to fully inline and reason about the function.
-          // Note that the signature is checked on the alias function, not on the target function. That allows aliases to choose individually which form
-          // to use. 
-          if (lib[x + '__sig']) {
-            var argCount = lib[x + '__sig'].length - 1;
-            var ret = lib[x + '__sig'] == 'v' ? '' : 'return ';
-            var args = genArgSequence(argCount).join(',');
-            lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
-          } else {
-            // The alias we generate uses `arguments` to forward the call. If there is no explicit documentation for the alias, mark
-            // it variadic for Closure type checking to know.
-            var docs = lib[x + '__docs'];
-            if (!docs || (docs.indexOf('@type') == -1 && docs.indexOf('@param') == -1)) {
-              lib[x + '__docs'] = (docs || '') + '/** @type {function(...*):?} */';
+          // When functions are aliased, the alias target must provide a signature for the function so that an efficient form of forwarding can be implemented.
+          // Primarily read the signature on the alias, and secondarily on the target.
+          function testStringType(sig) {
+            if (typeof lib[sig] !== 'undefined' && typeof typeof lib[sig] !== 'string') {
+              error(sig + ' should be a string! (was ' + typeof lib[sig]);
             }
-            lib[x] = new Function('return _' + target + '.apply(null, arguments)');
           }
+          testStringType(x + '__sig');
+          testStringType(target + '__sig');
+          if (typeof lib[x + '__sig'] === 'string' && typeof lib[target + '__sig'] === 'string' && lib[x + '__sig'] != lib[target + '__sig']) {
+            error(x + '__sig (' + lib[x + '__sig'] + ')  differs from ' + target + '__sig (' + lib[target + '__sig'] + ')');
+          }
+
+          var sig = lib[x + '__sig'] || lib[target + '__sig'];
+          if (typeof sig !== 'string') {
+            error('Function ' + x + ' aliases to target function ' + target + ', but neither the alias or the target provide a signature. Please add a ' + target + "__sig: 'vifj...' annotation or a " + x + "__sig: 'vifj...' annotation to describe the type of function forwarding that is needed!");
+          }
+
+          var argCount = sig.length - 1;
+          var ret = sig == 'v' ? '' : 'return ';
+          var args = genArgSequence(argCount).join(',');
+          lib[x] = new Function(args, ret + '_' + target + '(' + args + ');');
+
           if (!lib[x + '__deps']) lib[x + '__deps'] = [];
           lib[x + '__deps'].push(target);
         }
@@ -330,8 +334,7 @@ function isExportedByForceFilesystem(name) {
          name === 'FS_unlink' ||
          name === 'getMemory' ||
          name === 'addRunDependency' ||
-         name === 'removeRunDependency' ||
-         name === 'calledRun';
+         name === 'removeRunDependency';
 }
 
 // export parts of the JS runtime that the user asked for
@@ -435,10 +438,15 @@ function exportRuntime() {
     'abort',
   ];
 
+  function isJsLibraryConfigIdentifier(ident) {
+    return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+     || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
+  }
+
   // Add JS library elements such as FS, GL, ENV, etc. These are prefixed with
   // '$ which indicates they are JS methods.
   for (var ident in LibraryManager.library) {
-    if (ident[0] === '$') {
+    if (ident[0] === '$' && !isJsLibraryConfigIdentifier(ident)) {
       runtimeElements.push(ident.substr(1));
     }
   }
@@ -508,7 +516,6 @@ function exportRuntime() {
     'ALLOC_STACK',
     'ALLOC_DYNAMIC',
     'ALLOC_NONE',
-    'calledRun',
   ];
   if (ASSERTIONS) {
     // check all exported things exist, warn about typos

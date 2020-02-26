@@ -8,11 +8,12 @@
 
 // Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
 // mode, we can't use a "var" since it would prevent normal wasm from working.
+/** @suppress{const} */
 #if WASM2JS || WASM == 2
 var
 #endif
 WebAssembly = {
-  Memory: function(opts) {
+  Memory: /** @constructor */ function(opts) {
     return {
       buffer: new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}}),
       grow: function(amount) {
@@ -63,11 +64,11 @@ WebAssembly = {
     };
   },
 
-  instantiate: function(binary, info) {
+  instantiate: /** @suppress{checkTypes} */ function(binary, info) {
     return {
       then: function(ok) {
         ok({
-          'instance': new WebAssembly.Instance(new WebAssembly.Module(binary, info))
+          'instance': new WebAssembly.Instance(new WebAssembly.Module(binary))
         });
 #if ASSERTIONS
         // Emulate a simple WebAssembly.instantiate(..).then(()=>{}).catch(()=>{}) syntax.

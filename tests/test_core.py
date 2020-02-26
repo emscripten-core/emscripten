@@ -4892,6 +4892,7 @@ Pass: 0.000012 0.000012''')
     print('base', self.emcc_args)
 
     create_test_file('pre.js', '''
+/** @suppress{checkTypes}*/
 Module = {
   'noFSInit': true,
   'preRun': function() {
@@ -5416,18 +5417,15 @@ main( int argv, char ** argc ) {
     self.do_run_in_out_file_test('tests', 'unistd', 'truncate', js_engines=[NODE_JS])
 
   def test_unistd_swab(self):
-    src = open(path_from_root('tests', 'unistd', 'swab.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'swab.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'swab')
 
   def test_unistd_isatty(self):
     src = open(path_from_root('tests', 'unistd', 'isatty.c')).read()
     self.do_run(src, 'success', force_c=True)
 
+  @also_with_standalone_wasm
   def test_unistd_sysconf(self):
-    src = open(path_from_root('tests', 'unistd', 'sysconf.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'sysconf.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'sysconf')
 
   @no_asan('ASan alters memory layout')
   def test_unistd_sysconf_phys_pages(self):
@@ -5439,9 +5437,7 @@ main( int argv, char ** argc ) {
     self.do_run(src, str(expected) + ', errno: 0')
 
   def test_unistd_login(self):
-    src = open(path_from_root('tests', 'unistd', 'login.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'login.out')).read()
-    self.do_run(src, expected)
+    self.do_run_in_out_file_test('tests', 'unistd', 'login')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_unlink(self):
@@ -5619,6 +5615,12 @@ PORT: 3979
 
   # libc++ tests
 
+  def assertBinaryEqual(self, file1, file2):
+    self.assertEqual(os.path.getsize(file1),
+                     os.path.getsize(file2))
+    self.assertEqual(open(file1, 'rb').read(),
+                     open(file2, 'rb').read())
+
   def test_iostream_and_determinism(self):
     src = '''
       #include <iostream>
@@ -5629,26 +5631,25 @@ PORT: 3979
         return 0;
       }
     '''
+
     num = 5
+    for i in range(num):
+      print('(iteration %d)' % i)
 
-    def test():
-      print('(iteration)')
-      time.sleep(random.random() / (10 * num)) # add some timing nondeterminism here, not that we need it, but whatever
+      # add some timing nondeterminism here, not that we need it, but whatever
+      time.sleep(random.random() / (10 * num))
       self.do_run(src, 'hello world\n77.\n')
-      ret = open('src.cpp.o.js', 'rb').read()
-      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
-        ret += open('src.cpp.o.wasm', 'rb').read()
-      return ret
 
-    builds = [test() for i in range(num)]
-    print(list(map(len, builds)))
-    uniques = set(builds)
-    if len(uniques) != 1:
-      i = 0
-      for unique in uniques:
-        open('unique_' + str(i) + '.js', 'wb').write(unique)
-        i += 1
-      assert 0, 'builds must be deterministic, see unique_X.js'
+      # Verify that this build is identical to the previous one
+      if os.path.exists('src.js.previous'):
+        self.assertBinaryEqual('src.cpp.o.js', 'src.js.previous')
+      shutil.copy2('src.cpp.o.js', 'src.js.previous')
+
+      # Same but for the wasm file.
+      if self.get_setting('WASM') and not self.get_setting('WASM2JS'):
+        if os.path.exists('src.wasm.previous'):
+          self.assertBinaryEqual('src.cpp.o.wasm', 'src.wasm.previous')
+        shutil.copy2('src.cpp.o.wasm', 'src.wasm.previous')
 
   def test_stdvec(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
@@ -6353,7 +6354,8 @@ return malloc(size);
   def test_lifetime(self):
     self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
-      assert 'a18' not in open('lifetime.ll.o.js').read(), 'lifetime stuff and their vars must be culled'
+      # lifetime stuff and their vars must be culled
+      self.assertNotContained('a18', open('lifetime.ll.o.js').read())
 
   # Test cases in separate files. Note that these files may contain invalid .ll!
   # They are only valid enough for us to read for test purposes, not for llvm-as
@@ -8633,7 +8635,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     def modify_env(filename):
       with open(filename) as f:
         contents = f.read()
-      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"}' + contents
+      contents = 'Module = {UBSAN_OPTIONS: "print_stacktrace=1"};' + contents
       with open(filename, 'w') as f:
         f.write(contents)
 
