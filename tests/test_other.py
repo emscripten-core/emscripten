@@ -9033,6 +9033,21 @@ int main() {
     ensure_dir('inner')
     test('inner/a.cpp', 'inner')
 
+  @no_fastcomp('dwarf')
+  def test_side_debug(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
+    self.assertExists('a.out.wasm')
+    self.assertNotExists('a.out.wasm.debug.wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gside'])
+    self.assertExists('a.out.wasm')
+    self.assertExists('a.out.wasm.debug.wasm')
+    self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))
+    # the special section should also exist, that refers to the side debug file
+    with open('a.out.wasm', 'rb') as f:
+      wasm = f.read()
+      self.assertIn(b'external_debug_info', wasm)
+      self.assertIn(b'a.out.wasm.debug.wasm', wasm)
+
   def test_wasm_producers_section(self):
     # no producers section by default
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])

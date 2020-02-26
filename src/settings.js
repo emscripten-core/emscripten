@@ -1492,6 +1492,14 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 // the ctors.
 var EVAL_CTORS = 0;
 
+// Whether to emit DWARF in a wasm file on the side (this is not called
+// "split"/"separate" because there is already a DWARF concept by that name).
+// When DWARF is on the side, the main file has no DWARF info, while the side
+// file, ending in .debug.wasm, has the same wasm binary + all the debug
+// sections.
+// This has no effect if DWARF is not being emitted.
+var SIDE_DEBUG = 0;
+
 // see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
 // [fastcomp-only]
 var CYBERDWARF = 0;
