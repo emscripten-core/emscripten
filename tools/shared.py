@@ -1904,8 +1904,7 @@ class Building(object):
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        warning('object %s is not a valid object file for emscripten, cannot link', f)
-        return False
+        exit_with_error('unknown file type: %s', f)
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
