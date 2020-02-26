@@ -101,9 +101,9 @@ var WasiLibrary = {
   },
 
   // TODO: the i64 in the API here must be legalized for this JS code to run,
-  // but the wasm file can't be legalized. To get this code to be usable as
-  // a JS shim we need to either wait for BigInt support or to legalize on
-  // the client.
+  // but the wasm file can't be legalized in standalone mode, which is where
+  // this is needed. To get this code to be usable as a JS shim we need to
+  // either wait for BigInt support or to legalize on the client.
   clock_time_get__sig: 'iiiii',
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
