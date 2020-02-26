@@ -9039,7 +9039,7 @@ int main() {
 
   @no_fastcomp('dwarf')
   def test_side_debug(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gside'])
