@@ -1298,11 +1298,11 @@ int f() {
     # check that we error if an object file in a .a is not valid bitcode.
     # do not silently ignore native object files, which may have been
     # built by mistake
-    create_test_file('native.cpp', 'int native() { return 5; }')
-    create_test_file('main.cpp', 'extern int native(); int main() { return native(); }')
-    run_process([CLANG, 'native.cpp', '-c', '-o', 'native.o'])
+    create_test_file('native.c', 'int native() { return 5; }')
+    create_test_file('main.c', 'extern int native(); int main() { return native(); }')
+    run_process([CLANG_CC, 'native.c', '-target', 'x86_64-linux', '-c', '-o', 'native.o'])
     run_process([PYTHON, EMAR, 'crs', 'libfoo.a', 'native.o'])
-    stderr = self.expect_fail([PYTHON, EMCC, 'main.cpp', 'libfoo.a'])
+    stderr = self.expect_fail([PYTHON, EMCC, 'main.c', 'libfoo.a'])
     self.assertContained('unknown file type', stderr)
 
   def test_export_all(self):
