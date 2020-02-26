@@ -126,12 +126,6 @@ LEAVE_INPUTS_RAW = int(os.environ.get('EMCC_LEAVE_INPUTS_RAW', '0'))
 if LEAVE_INPUTS_RAW:
   del os.environ['EMCC_LEAVE_INPUTS_RAW']
 
-# If set to 1, we will run the autodebugger (the automatic debugging tool, see
-# tools/autodebugger).  Note that this will disable inclusion of libraries. This
-# is useful because including dlmalloc makes it hard to compare native and js
-# builds
-AUTODEBUG = os.environ.get('EMCC_AUTODEBUG')
-
 # Target options
 final = None
 
@@ -1183,7 +1177,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.AUTO_JS_LIBRARIES = 0
       shared.Settings.AUTO_ARCHIVE_INDEXES = 0
 
-    if AUTODEBUG:
+    # If set to 1, we will run the autodebugger (the automatic debugging tool, see
+    # tools/autodebugger).  Note that this will disable inclusion of libraries. This
+    # is useful because including dlmalloc makes it hard to compare native and js
+    # builds
+    if os.environ.get('EMCC_AUTODEBUG'):
       shared.Settings.AUTODEBUG = 1
 
     # Use settings
@@ -1834,7 +1832,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += ['--strip-debug']
           if not shared.Settings.EMIT_PRODUCERS_SECTION:
             passes += ['--strip-producers']
-          if shared.Settings.AUTODEBUG and not shared.Settings.LTO:
+          if shared.Settings.AUTODEBUG:
             # adding '--flatten' here may make these even more effective
             passes += ['--instrument-locals']
             passes += ['--log-execution']
@@ -2340,7 +2338,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
                link_opts.append("-wholeprogramdevirt")
             link_opts.append("-lowertypetests")
 
-          if AUTODEBUG:
+          if shared.Settings.AUTODEBUG:
             # let llvm opt directly emit ll, to skip writing and reading all the bitcode
             link_opts += ['-S']
             final = shared.Building.llvm_opt(final, link_opts, get_final() + '.link.ll')
@@ -2358,7 +2356,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         if options.save_bc:
           save_intermediate('ll', 'll')
 
-        if AUTODEBUG:
+        if shared.Settings.AUTODEBUG:
           logger.debug('autodebug')
           next = get_final() + '.ad.ll'
           run_process([shared.PYTHON, shared.AUTODEBUGGER, final, next])

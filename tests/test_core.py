@@ -6357,7 +6357,8 @@ return malloc(size);
   def test_lifetime(self):
     self.do_ll_run(path_from_root('tests', 'lifetime.ll'), 'hello, world!\n')
     if '-O1' in self.emcc_args or '-O2' in self.emcc_args:
-      assert 'a18' not in open('lifetime.ll.o.js').read(), 'lifetime stuff and their vars must be culled'
+      # lifetime stuff and their vars must be culled
+      self.assertNotContained('a18', open('lifetime.ll.o.js').read())
 
   # Test cases in separate files. Note that these files may contain invalid .ll!
   # They are only valid enough for us to read for test purposes, not for llvm-as

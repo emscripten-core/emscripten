@@ -33,16 +33,20 @@ void __attribute__((noinline)) free(void *ptr)
 
 }
 
-void *out;
+// Mark as used to defeat LTO which can otherwise completely elimate the
+// calls to malloc below.
+void *out __attribute__((used));
 
 int main()
 {
 	for(int i = 0; i < 20; ++i)
 	{
 		void *ptr = malloc(1024 * 1024);
-		out = ptr; // make it look used
+		out = ptr;
 		free(ptr);
 	}
+	printf("totalAllocated: %d\n", totalAllocated);
 	assert(totalAllocated == 20);
 	printf("OK.\n");
+	return 0;
 }
