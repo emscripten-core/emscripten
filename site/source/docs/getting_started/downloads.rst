@@ -108,6 +108,8 @@ Windows
 
 #. Install Python 2.7.12 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
 
+  .. note:: You can validate Python installation by ``Python -V``, if this commend not write anything you have set path to Python Windows Mini App (This it's Windows default behaviour. It does 2 thing: open Microsoft Store and search "python", and not write any eats all python errors, so commands like ``./emsdk install latest`` doesn't write any error but also doesn't do anything)
+
   .. note:: Instead of running emscripten on Windows directly, you can use the Windows Subsystem for Linux to run it in a Linux environment.
 
 macOS
