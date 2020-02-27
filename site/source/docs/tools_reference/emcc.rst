@@ -114,6 +114,11 @@ Options that are modified or new in *emcc* are listed below:
   - When compiling to object files, this is the same as in *Clang* and *gcc*, it adds debug information to the object files.
   - When linking, this is equivalent to :ref:`-g3 <emcc-g3>`.
 
+``-gseparate``
+  Preserve debug information, but in a separate file on the side. This is the
+  same as ``-g``, but the main file will contain no debug info, while a file
+  with suffix ``.debug.wasm`` will contain the debug info.
+
 .. _emcc-gN:
 
 ``-g<level>``
