@@ -1419,7 +1419,7 @@ long __syscall36() // sync
   return 0;
 }
 
-// TODO: syscall38,  int rename(const char *oldpath, const char *newpath);
+// TODO: syscall38: int rename(const char *oldpath, const char *newpath);
 
 long emscripten_asmfs_mkdir(const char* pathname, mode_t mode) {
 #ifdef ASMFS_DEBUG
@@ -1676,7 +1676,7 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd, __wasi_filedelta_t offset,
   return 0;
 }
 
-// TODO: syscall144 msync
+// TODO: syscall144: msync
 
 static long readv(int fd, const iovec *iov, int iovcnt) // syscall145
 {
