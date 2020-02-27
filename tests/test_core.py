@@ -4296,6 +4296,9 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
+    # https://github.com/emscripten-core/emscripten/issues/10571
+    return self.skipTest('Currently not working due to duplicate symbol errors in wasm-ld')
+
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
       passed = True
