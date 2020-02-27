@@ -469,6 +469,7 @@ def output_json(obj, compressed=True, stream=None):
   else:
     json.dump(obj, stream, indent=4, sort_keys=True)
 
+  stream.write('\n')
   stream.close()
 
 

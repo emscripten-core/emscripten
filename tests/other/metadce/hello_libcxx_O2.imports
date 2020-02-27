@@ -1,7 +1,5 @@
-__lock
 __map_file
 __syscall91
-__unlock
 abort
 emscripten_memcpy_big
 emscripten_resize_heap
