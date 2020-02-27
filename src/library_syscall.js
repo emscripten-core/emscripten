@@ -19,7 +19,7 @@ var SyscallsLibrary = {
 
     // global state
     mappings: {},
-    umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
+    umask: 0x12,  // S_IWGRP | S_IWOTH
 
     // shared utilities
     calculateAt: function(dirfd, path) {
