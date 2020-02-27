@@ -2792,14 +2792,6 @@ LibraryManager.library = {
   },
   __clock_gettime__sig: 'iii',
   __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_settime__deps: ['__setErrNo'],
-  clock_settime: function(clk_id, tp) {
-    // int clock_settime(clockid_t clk_id, const struct timespec *tp);
-    // Nothing.
-    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? {{{ cDefine('EPERM') }}}
-                                                             : {{{ cDefine('EINVAL') }}});
-    return -1;
-  },
   clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
@@ -4297,6 +4289,10 @@ LibraryManager.library = {
         console.error(str);
       } else if (flags & 2 /*EM_LOG_WARN*/) {
         console.warn(str);
+      } else if (flags & 512 /*EM_LOG_INFO*/) {
+        console.info(str);
+      } else if (flags & 256 /*EM_LOG_DEBUG*/) {
+        console.debug(str);
       } else {
         console.log(str);
       }
@@ -4594,17 +4590,17 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_mmap2'],
+  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
     return _emscripten_with_builtin_malloc(function () {
-      return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
+      return syscallMmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_munmap'],
+  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$syscallMunmap'],
   emscripten_builtin_munmap: function (addr, len) {
     return _emscripten_with_builtin_malloc(function () {
-      return __emscripten_syscall_munmap(addr, len);
+      return syscallMunmap(addr, len);
     });
   },
 

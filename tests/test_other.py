@@ -3740,6 +3740,7 @@ int main()
 
     IMPLICIT_WARNING = "warning: implicit declaration of function 'strnlen' is invalid in C99"
     IMPLICIT_ERROR = "error: implicit declaration of function 'strnlen' is invalid in C99"
+    INCOMPATIBLE_WARNINGS = ('warning: incompatible pointer types', 'warning: incompatible function pointer types')
 
     for opts, expected, compile_expected in [
       ([], None, [IMPLICIT_ERROR]),
@@ -3749,7 +3750,7 @@ int main()
       print(opts, expected)
       try_delete('a.out.js')
       stderr = run_process([PYTHON, EMCC, 'src.c'] + opts, stderr=PIPE, check=False).stderr
-      for ce in compile_expected + ['warning: incompatible pointer types']:
+      for ce in compile_expected + [INCOMPATIBLE_WARNINGS]:
         self.assertContained(ce, stderr)
       if expected is None:
         self.assertNotExists('a.out.js')
@@ -8762,6 +8763,7 @@ end
       self.assertEqual(results[flag1 + '.wasm'], results[flag2 + '.wasm'], 'wasm results should be identical')
 
     assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '16777216')
+    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '64MB')
     assert_aliases_match('MAXIMUM_MEMORY', 'WASM_MEM_MAX', '16777216', ['-s', 'ALLOW_MEMORY_GROWTH'])
     assert_aliases_match('MAXIMUM_MEMORY', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'ALLOW_MEMORY_GROWTH'])
 
@@ -10428,3 +10430,12 @@ int main() {
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
     self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'])
+
+  @no_fastcomp('test wasm object files')
+  def test_bitcode_input(self):
+    # Verify that bitcode files are accepted as input
+    create_test_file('main.c', 'void foo(); int main() { return 0; }')
+    run_process([PYTHON, EMCC, '-emit-llvm', '-c', '-o', 'main.bc', 'main.c'])
+    self.assertTrue(shared.Building.is_bitcode('main.bc'))
+    run_process([PYTHON, EMCC, '-c', '-o', 'main.o', 'main.bc'])
+    self.assertTrue(shared.Building.is_wasm('main.o'))

@@ -217,12 +217,12 @@ var SyscallsLibrary = {
     }
   },
 
-  _emscripten_syscall_mmap2__deps: ['memalign', 'memset', '$SYSCALLS',
+  $syscallMmap2__deps: ['memalign', 'memset', '$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  _emscripten_syscall_mmap2: function(addr, len, prot, flags, fd, off) {
+  $syscallMmap2: function(addr, len, prot, flags, fd, off) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     off <<= 12; // undo pgoffset
     var ptr;
@@ -255,12 +255,12 @@ var SyscallsLibrary = {
 #endif
   },
 
-  _emscripten_syscall_munmap__deps: ['$SYSCALLS',
+  $syscallMunmap__deps: ['$SYSCALLS',
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif
   ],
-  _emscripten_syscall_munmap: function(addr, len) {
+  $syscallMunmap: function(addr, len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
       return -{{{ cDefine('EINVAL') }}};
@@ -509,9 +509,9 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall91__deps: ['_emscripten_syscall_munmap'],
+  __syscall91__deps: ['$syscallMunmap'],
   __syscall91: function(addr, len) { // munmap
-    return __emscripten_syscall_munmap(addr, len);
+    return syscallMunmap(addr, len);
   },
   __syscall94: function(fd, mode) { // fchmod
     FS.fchmod(fd, mode);
@@ -978,9 +978,9 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
-  __syscall192__deps: ['_emscripten_syscall_mmap2'],
+  __syscall192__deps: ['$syscallMmap2'],
   __syscall192: function(addr, len, prot, flags, fd, off) { // mmap2
-    return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
+    return syscallMmap2(addr, len, prot, flags, fd, off);
   },
   __syscall193: function(path, zero, low, high) { // truncate64
     path = SYSCALLS.getStr(path);

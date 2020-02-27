@@ -978,9 +978,17 @@ Defines
 
   If specified, prints a warning message.
 
+.. c:macro:: EM_LOG_INFO
+
+  If specified, prints an info message to console (combined with :c:data:`EM_LOG_CONSOLE`).
+
+.. c:macro:: EM_LOG_DEBUG
+
+  If specified, prints a debug message to console (combined with :c:data:`EM_LOG_CONSOLE`).
+
 .. c:macro:: EM_LOG_ERROR
 
-  If specified, prints an error message. If neither :c:data:`EM_LOG_WARN` or :c:data:`EM_LOG_ERROR` is specified, an info message is printed. :c:data:`EM_LOG_WARN` and :c:data:`EM_LOG_ERROR` are mutually exclusive.
+  If specified, prints an error message. If neither :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_ERROR`, :c:data:`EM_LOG_INFO` nor :c:data:`EM_LOG_DEBUG` is specified, an info message is printed. :c:data:`EM_LOG_WARN`, :c:data:`EM_LOG_INFO`, :c:data:`EM_LOG_DEBUG` and :c:data:`EM_LOG_ERROR` are mutually exclusive.
 
 .. c:macro:: EM_LOG_C_STACK
 

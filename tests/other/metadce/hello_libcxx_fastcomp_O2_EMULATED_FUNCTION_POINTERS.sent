@@ -10,7 +10,6 @@ ___wasi_fd_seek
 ___wasi_fd_write
 __addDays
 __arraySum
-__emscripten_syscall_munmap
 __isLeapYear
 __memory_base
 __table_base
