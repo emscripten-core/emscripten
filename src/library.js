@@ -2792,14 +2792,6 @@ LibraryManager.library = {
   },
   __clock_gettime__sig: 'iii',
   __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_settime__deps: ['__setErrNo'],
-  clock_settime: function(clk_id, tp) {
-    // int clock_settime(clockid_t clk_id, const struct timespec *tp);
-    // Nothing.
-    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? {{{ cDefine('EPERM') }}}
-                                                             : {{{ cDefine('EINVAL') }}});
-    return -1;
-  },
   clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);

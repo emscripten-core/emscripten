@@ -10,9 +10,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 
 #include <wasi/api.h>
+#include <wasi/wasi-helpers.h>
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -37,6 +39,35 @@ void _exit(int status) {
 
 void abort() {
   exit(1);
+}
+
+_Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");
+_Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "must match");
+_Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCKID_PROCESS_CPUTIME_ID, "must match");
+_Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCKID_THREAD_CPUTIME_ID, "must match");
+
+#define NSEC_PER_SEC (1000 * 1000 * 1000)
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp) {
+  __wasi_timestamp_t now;
+  __wasi_errno_t error = __wasi_clock_time_get(clk_id, 0, &now);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return __wasi_syscall_ret(error);
+  }
+  tp->tv_sec = now / NSEC_PER_SEC;
+  tp->tv_nsec = now % NSEC_PER_SEC;
+  return 0;
+}
+
+int clock_getres(clockid_t clk_id, struct timespec *tp) {
+  __wasi_timestamp_t res;
+  __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return __wasi_syscall_ret(error);
+  }
+  tp->tv_sec = res / NSEC_PER_SEC;
+  tp->tv_nsec = res % NSEC_PER_SEC;
+  return 0;
 }
 
 // mmap support is nonexistent. TODO: emulate simple mmaps using

@@ -563,7 +563,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 24)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 25)
 
 
 def generate_sanity():
@@ -2578,6 +2578,8 @@ class Building(object):
       'fd_fdstat_get',
       'fd_sync',
       'proc_exit',
+      'clock_res_get',
+      'clock_time_get',
     ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:

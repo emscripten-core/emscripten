@@ -10432,3 +10432,12 @@ int main() {
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
     self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'])
+
+  @no_fastcomp('test wasm object files')
+  def test_bitcode_input(self):
+    # Verify that bitcode files are accepted as input
+    create_test_file('main.c', 'void foo(); int main() { return 0; }')
+    run_process([PYTHON, EMCC, '-emit-llvm', '-c', '-o', 'main.bc', 'main.c'])
+    self.assertTrue(shared.Building.is_bitcode('main.bc'))
+    run_process([PYTHON, EMCC, '-c', '-o', 'main.o', 'main.bc'])
+    self.assertTrue(shared.Building.is_wasm('main.o'))
