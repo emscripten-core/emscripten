@@ -5005,7 +5005,7 @@ window.close = function() {
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
     self.btest(path_from_root('tests', 'test_override_system_js_lib_symbol.c'),
                expected='5121',
-               args=['-s', 'STRICT=1', '-lwebgl.js', '--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
+               args=['-s', 'AUTO_JS_LIBRARIES=0', '-lwebgl.js', '--js-library', path_from_root('tests', 'test_override_system_js_lib_symbol.js')])
 
   @no_fastcomp('only upstream supports 4GB')
   @no_firefox('no 4GB support yet')
