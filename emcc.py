@@ -1987,7 +1987,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
     if shared.Settings.WASM_BACKEND and \
-       (shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or \
+       (shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
         (shared.Settings.ALLOW_MEMORY_GROWTH and
          (shared.Settings.MAXIMUM_MEMORY < 0 or
           shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
