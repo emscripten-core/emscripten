@@ -17,6 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Support 2GB+ heap sizes. To do this we modify the JS code to have unsigned
+  pointers (we need all 32 bits in them now), which can slightly increase code
+  size (>>> instead of >>). This only happens when the heap size may be over
+  2GB, but note that that happens when using `ALLOW_MEMORY_GROWTH` without
+  setting `MAXIMUM_MEMORY` (as without a maximum we assume it can grow all the
+  way up). To avoid that tiny regression, set that flag to `2GB` or lower.
+  See #10601
 - Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
   which are more accurate and match wasm conventions. The old names are still
   supported as aliases.
