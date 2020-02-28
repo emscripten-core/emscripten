@@ -7130,6 +7130,22 @@ Resolved: "/" => "/"
     test(['-s', 'ALLOW_MEMORY_GROWTH'], 'emmalloc only works on <2GB of memory. Use the default allocator, or set MAXIMUM_MEMORY')
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=3GB'], 'emmalloc only works on <2GB of memory. Use the default allocator, or decrease MAXIMUM_MEMORY')
 
+  @no_fastcomp("fastcomp doesn't support 2GB+")
+  def test_2GB_plus(self):
+    # when the heap size can be over 2GB, we rewrite pointers to be unsigned
+    def test(page_diff):
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=%d' % (2**31 + page_diff * 64 * 1024)])
+      return os.path.getsize('a.out.js')
+
+    less = test(-1)
+    equal = test(0)
+    more = test(1)
+
+    # exactly 2GB still doesn't require unsigned pointers, as we can't address
+    # the 2GB location in memory
+    self.assertEqual(less, equal)
+    self.assertLess(equal, more)
+
   def test_sixtyfour_bit_return_value(self):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
