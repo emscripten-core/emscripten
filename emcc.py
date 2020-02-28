@@ -1986,13 +1986,20 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # check if we can address the 2GB mark and higher: either if we start at
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
-    if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024 or \
-       (shared.Settings.ALLOW_MEMORY_GROWTH and
-        (shared.Settings.MAXIMUM_MEMORY < 0 or
-         shared.Settings.MAXIMUM_MEMORY >= 2 * 1024 * 1024 * 1024)):
+    if shared.Settings.WASM_BACKEND and \
+       (shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024 or \
+        (shared.Settings.ALLOW_MEMORY_GROWTH and
+         (shared.Settings.MAXIMUM_MEMORY < 0 or
+          shared.Settings.MAXIMUM_MEMORY >= 2 * 1024 * 1024 * 1024))):
       shared.Settings.CAN_ADDRESS_2GB = 1
       if shared.Settings.MALLOC == 'emmalloc':
-        exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or decrease INITIAL_MEMORY and/or MAXIMUM_MEMORY')
+        if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+          suggestion = 'decrease INITIAL_MEMORY'
+        elif shared.Settings.MAXIMUM_MEMORY < 0:
+          suggestion = 'set MAXIMUM_MEMORY'
+        else:
+          suggestion = 'decrease MAXIMUM_MEMORY'
+        exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.OPT_LEVEL = options.opt_level

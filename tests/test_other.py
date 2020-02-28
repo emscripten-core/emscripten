@@ -7120,6 +7120,16 @@ Resolved: "/" => "/"
     run([])
     run(['-O2'])
 
+  @no_fastcomp("fastcomp doesn't support 2GB+")
+  def test_emmalloc_2GB(self):
+    def test(args, text):
+      stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
+      self.assertContained(text, stderr)
+
+    test(['-s', 'INITIAL_MEMORY=2GB'], 'INITIAL_MEMORY must be less than 2GB due to current spec limitations')
+    test(['-s', 'ALLOW_MEMORY_GROWTH'], 'emmalloc only works on <2GB of memory. Use the default allocator, or set MAXIMUM_MEMORY')
+    test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=2GB'], 'emmalloc only works on <2GB of memory. Use the default allocator, or decrease MAXIMUM_MEMORY')
+
   def test_sixtyfour_bit_return_value(self):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
