@@ -9151,6 +9151,11 @@ test_module().then((test_module_instance) => {
     ret = run_process(NODE_JS + ['--experimental-wasm-threads'] + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
+  def test_node_js_system(self):
+    run_process([PYTHON, EMCC, '-DENV_NODE', path_from_root('tests', 'system.c'), '-o', 'a.js', '-O3'])
+    ret = run_process(NODE_JS + ['a.js'], stdout=PIPE).stdout
+    self.assertContained('OK', ret)
+
   def test_is_bitcode(self):
     fname = 'tmp.o'
 

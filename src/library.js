@@ -644,9 +644,46 @@ LibraryManager.library = {
 
   system__deps: ['__setErrNo'],
   system: function(command) {
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      if (!command) return 1; // shell is available
+
+      var cmdstr = UTF8ToString(command);
+      if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
+
+      var cp = require('child_process');
+      var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
+
+      var _W_EXITCODE = function(ret, sig) {
+        return ((ret) << 8 | (sig));
+      }
+
+      // this really only can happen if process is killed by signal
+      if (ret.status === null) {
+        // sadly node doesn't expose such function
+        var signalToNumber = function(sig) {
+          // implement only the most common ones, and fallback to SIGINT
+          switch (sig) {
+            case 'SIGHUP': return 1;
+            case 'SIGINT': return 2;
+            case 'SIGQUIT': return 3;
+            case 'SIGFPE': return 8;
+            case 'SIGKILL': return 9;
+            case 'SIGALRM': return 14;
+            case 'SIGTERM': return 15;
+          }
+          return 2; // SIGINT
+        }
+        return _W_EXITCODE(0, signalToNumber(ret.signal));
+      }
+
+      return _W_EXITCODE(ret.status, 0);
+    }
+#endif // ENVIRONMENT_MAY_BE_NODE
     // int system(const char *command);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
+    if (!command) return 0; // no shell available
     ___setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
