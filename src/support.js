@@ -721,7 +721,11 @@ function dynCall(sig, ptr, args) {
 #if ASSERTIONS
     assert(('dynCall_' + sig) in Module, 'bad function pointer type - no table for sig \'' + sig + '\'');
 #endif
+#if MIN_CHROME_VERSION < 46 || MIN_FIREFOX_VERSION < 27 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax#Spread_in_function_calls
     return Module['dynCall_' + sig].apply(null, [ptr].concat(args));
+#else
+    return Module['dynCall_' + sig](ptr, ...args);
+#endif
   } else {
 #if ASSERTIONS
     assert(sig.length == 1);

@@ -105,7 +105,11 @@ var LibraryJSEvents = {
         var call = JSEvents.deferredCalls[i];
         JSEvents.deferredCalls.splice(i, 1);
         --i;
+#if MIN_CHROME_VERSION < 46 || MIN_FIREFOX_VERSION < 27 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax#Spread_in_function_calls
         call.targetFunction.apply(null, call.argsList);
+#else
+        call.targetFunction(...call.argsList);
+#endif
       }
     },
 

@@ -1316,13 +1316,21 @@ var LibraryPThread = {
       var sigPtr = _emscripten_receive_on_main_thread_js_callArgs[1];
       var varargPtr = _emscripten_receive_on_main_thread_js_callArgs[2];
       var constArgs = readAsmConstArgs(sigPtr, varargPtr);
+#if MIN_CHROME_VERSION < 46 || MIN_FIREFOX_VERSION < 27 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax#Spread_in_function_calls
       return func.apply(null, constArgs);
+#else
+      return func(...constArgs);
+#endif
     }
 #endif
 #if ASSERTIONS
     assert(func.length == numCallArgs, 'Call args mismatch in emscripten_receive_on_main_thread_js');
 #endif
+#if MIN_CHROME_VERSION < 46 || MIN_FIREFOX_VERSION < 27 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION < 80000 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Operators/Spread_syntax#Spread_in_function_calls
     return func.apply(null, _emscripten_receive_on_main_thread_js_callArgs);
+#else
+    return func(..._emscripten_receive_on_main_thread_js_callArgs);
+#endif
   },
 
   $establishStackSpace: function(stackTop, stackMax) {
