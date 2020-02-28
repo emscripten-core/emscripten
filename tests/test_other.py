@@ -9039,11 +9039,11 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   @no_fastcomp('dwarf')
-  def test_separate_debug(self):
+  def test_separate_dwarf(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf'])
     self.assertExists('a.out.wasm')
     self.assertExists('a.out.wasm.debug.wasm')
     self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))

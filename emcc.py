@@ -2814,11 +2814,11 @@ def parse_args(newargs):
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
           shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
-        elif requested_level.startswith('separate'):
+        elif requested_level.startswith('separate-dwarf'):
           # Emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
-          shared.Settings.SEPARATE_DEBUG = 1
+          shared.Settings.SEPARATE_DWARF = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -3337,7 +3337,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  if shared.Settings.FULL_DWARF and shared.Settings.SEPARATE_DEBUG:
+  if shared.Settings.FULL_DWARF and shared.Settings.SEPARATE_DWARF:
     shared.Building.emit_debug_on_side(wasm_binary_target)
 
 

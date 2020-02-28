@@ -180,4 +180,4 @@ var LTO = 0;
 // file, ending in .debug.wasm, has the same wasm binary + all the debug
 // sections.
 // This has no effect if DWARF is not being emitted.
-var SEPARATE_DEBUG = 0;
+var SEPARATE_DWARF = 0;
