@@ -107,12 +107,6 @@ long __syscall221(long fd, long cmd, ...) {
   return -ENOSYS;
 }
 
-// Musl lock internals. As we assume wasi is single-threaded for now, these
-// are no-ops.
-
-void __lock(void* ptr) {}
-void __unlock(void* ptr) {}
-
 // Emscripten additions
 
 void *emscripten_memcpy_big(void *restrict dest, const void *restrict src, size_t n) {

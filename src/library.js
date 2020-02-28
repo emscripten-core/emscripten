@@ -4763,12 +4763,6 @@ LibraryManager.library = {
     return (high >>> (bits - 32))|0;
   },
 
-  // misc shims for musl
-  __lock: function() {},
-  __unlock: function() {},
-  __lockfile: function() { return 1 },
-  __unlockfile: function(){},
-
   // libunwind
 
   _Unwind_Backtrace__deps: ['emscripten_get_callstack_js'],

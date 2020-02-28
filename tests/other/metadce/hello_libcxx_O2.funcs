@@ -58,7 +58,7 @@ $__intscan
 $__isxdigit_l
 $__letf2
 $__loc_is_allocated
-$__lockfile
+$__lock
 $__lshrti3
 $__multf3
 $__multi3
@@ -79,7 +79,6 @@ $__towrite
 $__trunctfdf2
 $__trunctfsf2
 $__uflow
-$__unlockfile
 $__uselocale
 $__vfprintf_internal
 $__wasi_syscall_ret
@@ -422,6 +421,7 @@ $std::__2::codecvt<char32_t\2c\20char\2c\20__mbstate_t>::do_in\28__mbstate_t&\2c
 $std::__2::codecvt<char32_t\2c\20char\2c\20__mbstate_t>::do_length\28__mbstate_t&\2c\20char\20const*\2c\20char\20const*\2c\20unsigned\20long\29\20const
 $std::__2::codecvt<char32_t\2c\20char\2c\20__mbstate_t>::do_out\28__mbstate_t&\2c\20char32_t\20const*\2c\20char32_t\20const*\2c\20char32_t\20const*&\2c\20char*\2c\20char*\2c\20char*&\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::always_noconv\28\29\20const
+$std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_encoding\28\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_length\28__mbstate_t&\2c\20char\20const*\2c\20char\20const*\2c\20unsigned\20long\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_out\28__mbstate_t&\2c\20char\20const*\2c\20char\20const*\2c\20char\20const*&\2c\20char*\2c\20char*\2c\20char*&\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_unshift\28__mbstate_t&\2c\20char*\2c\20char*\2c\20char*&\29\20const

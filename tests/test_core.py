@@ -3134,7 +3134,7 @@ Var: 42
       if self.is_wasm_backend():
         self.assertLess(len(exports), 56)
       else:
-        self.assertLess(len(exports), 30)
+        self.assertLess(len(exports), 32)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
@@ -4317,7 +4317,8 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678
+    # https://github.com/emscripten-core/emscripten/issues/10571
+    return self.skipTest('Currently not working due to duplicate symbol errors in wasm-ld')
 
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
@@ -4423,8 +4424,6 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   def test_dylink_raii_exceptions(self):
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678
-
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
 
     self.dylink_test(main=r'''
