@@ -1988,8 +1988,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # 2GB, or if we allow growth to either any amount or to 2GB or more.
     if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024 or \
        (shared.Settings.ALLOW_MEMORY_GROWTH and
-        shared.Settings.MAXIMUM_MEMORY < 0 or
-        shared.Settings.MAXIMUM_MEMORY >= 2 * 1024 * 1024 * 1024):
+        (shared.Settings.MAXIMUM_MEMORY < 0 or
+         shared.Settings.MAXIMUM_MEMORY >= 2 * 1024 * 1024 * 1024)):
       shared.Settings.CAN_ADDRESS_2GB = 1
       if shared.Settings.MALLOC == 'emmalloc':
         exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or decrease INITIAL_MEMORY and/or MAXIMUM_MEMORY')
