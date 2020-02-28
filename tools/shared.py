@@ -2786,6 +2786,11 @@ class Building(object):
     return ret
 
   @staticmethod
+  def use_unsigned_pointers_in_js(js_file):
+    logger.debug('using unsigned pointers in JS')
+    return Building.acorn_optimizer(js_file, ['unsignPointers'])
+
+  @staticmethod
   def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
     logger.debug('handle_final_wasm_symbols')
     args = []

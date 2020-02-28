@@ -88,7 +88,6 @@ function fullWalk(node, c) {
 // Recursive post-order walk, calling properties on an object by node type,
 // if the type exists, and if so leaving recursion to that function.
 function recursiveWalk(node, cs) {
-//print('recw1 ' + JSON.stringify(node));
   (function c(node) {
     if (!(node.type in cs)) {
       visitChildren(node, function(child) {
@@ -806,6 +805,20 @@ function makeCallExpression(node, name, args) {
   });
 }
 
+function isEmscriptenHEAP(name) {
+  switch (name) {
+    case 'HEAP8':  case 'HEAPU8':
+    case 'HEAP16': case 'HEAPU16':
+    case 'HEAP32': case 'HEAPU32':
+    case 'HEAPF32': case 'HEAPF64': {
+      return true;
+    }
+    default: {
+      return false;
+    }
+  }
+}
+
 // Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
@@ -813,19 +826,9 @@ function growableHeap(ast) {
   recursiveWalk(ast, {
     AssignmentExpression: function(node) {
       if (node.left.type === 'Identifier' &&
-          node.left.name.startsWith('HEAP')
-      ) {
+          isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
-        switch (node.left.name) {
-          case 'HEAP8':  case 'HEAPU8':
-          case 'HEAP16': case 'HEAPU16':
-          case 'HEAP32': case 'HEAPU32':
-          case 'HEAPF32': case 'HEAPF64': {
-            return;
-          }
-          default: {
-          }
-        }
+        return;
       }
       growableHeap(node.left);
       growableHeap(node.right);
@@ -877,6 +880,81 @@ function growableHeap(ast) {
             break;
           }
           default: {}
+        }
+      }
+    }
+  });
+}
+
+// Make all JS pointers unsigned. We do this by modifying things like
+// HEAP32[X >> 2] to HEAP32[X >>> 2]. We also need to handle the case of
+// HEAP32[X] and make that HEAP32[X >>> 0], things like subarray(), etc.
+function unsignPointers(ast) {
+  // Aside from the standard emscripten HEAP*s, also identify just "HEAP"/"heap"
+  // as representing a heap. This can be used in JS library code in order
+  // to get this pass to fix it up.
+  function isHeap(name) {
+    return isEmscriptenHEAP(name) || name === 'heap' || name === 'HEAP';
+  }
+
+  function unsign(node) {
+    // The pointer is often a >> shift, which we can just turn into >>>
+    if (node.type === 'BinaryExpression') {
+      if (node.operator === '>>') {
+        node.operator = '>>>';
+        return node;
+      }
+    }
+    // If nothing else worked out, add a new shift.
+    return {
+      type: 'BinaryExpression',
+      left: node,
+      operator: ">>>",
+      right: {
+        type: "Literal",
+        value: 0,
+        raw: "0",
+        start: 0,
+        end: 0,
+      },
+      start: 0,
+      end: 0,
+    };
+  }
+
+  fullWalk(ast, function(node) {
+    if (node.type === 'MemberExpression') {
+      // Check if this is HEAP*[?]
+      if (node.object.type === 'Identifier' &&
+          isHeap(node.object.name) &&
+          node.computed) {
+        node.property = unsign(node.property);
+      }
+    } else if (node.type === 'CallExpression') {
+      if (node.callee.type === 'MemberExpression' &&
+          node.callee.object.type === 'Identifier' &&
+          isHeap(node.callee.object.name) &&
+          node.callee.property.type === 'Identifier' &&
+          !node.computed) {
+        // This is a call on HEAP*.?. Specific things we need to fix up are
+        // subarray, set, and copyWithin. TODO more?
+        if (node.callee.property.name === 'set') {
+          if (node.arguments.length >= 2) {
+            node.arguments[1] = unsign(node.arguments[1]);
+          }
+        } else if (node.callee.property.name === 'subarray') {
+          if (node.arguments.length >= 1) {
+            node.arguments[0] = unsign(node.arguments[0]);
+            if (node.arguments.length >= 2) {
+              node.arguments[1] = unsign(node.arguments[1]);
+            }
+          }
+        } else if (node.callee.property.name === 'copyWithin') {
+          node.arguments[0] = unsign(node.arguments[0]);
+          node.arguments[1] = unsign(node.arguments[1]);
+          if (node.arguments.length >= 3) {
+            node.arguments[2] = unsign(node.arguments[2]);
+          }
         }
       }
     }
@@ -974,6 +1052,7 @@ var registry = {
   noPrint: function() { noPrint = true },
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
+  unsignPointers: unsignPointers,
 };
 
 passes.forEach(function(pass) {

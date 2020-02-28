@@ -173,3 +173,7 @@ var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 's
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
+
+// Whether we may be accessing the address 2GB or higher. If so then we need
+// to be using unsigned pointers in JS.
+var CAN_ADDRESS_2GB = 0;
