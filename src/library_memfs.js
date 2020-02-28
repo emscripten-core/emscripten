@@ -113,13 +113,16 @@ mergeInto(LibraryManager.library, {
     // May allocate more, to provide automatic geometric increase and amortized linear performance appending writes.
     // Never shrinks the storage.
     expandFileStorage: function(node, newCapacity) {
+#if CAN_ADDRESS_2GB
+      newCapacity >>>= 0;
+#endif
       var prevCapacity = node.contents ? node.contents.length : 0;
       if (prevCapacity >= newCapacity) return; // No need to expand, the storage was already large enough.
       // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
       // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
       // avoid overshooting the allocation cap by a very large margin.
       var CAPACITY_DOUBLING_MAX = 1024 * 1024;
-      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) | 0);
+      newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2.0 : 1.125)) >>> 0);
       if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256); // At minimum allocate 256b for each file when expanding.
       var oldContents = node.contents;
       node.contents = new Uint8Array(newCapacity); // Allocate new storage.
@@ -129,6 +132,9 @@ mergeInto(LibraryManager.library, {
 
     // Performs an exact resize of the backing file storage to the given size, if the size is not exactly this, the storage is fully reallocated.
     resizeFileStorage: function(node, newSize) {
+#if CAN_ADDRESS_2GB
+      newSize >>>= 0;
+#endif
       if (node.usedBytes == newSize) return;
       if (newSize == 0) {
         node.contents = null; // Fully decommit when requesting a resize to zero.
@@ -325,7 +331,7 @@ mergeInto(LibraryManager.library, {
            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
           }
         }
-        node.usedBytes = Math.max(node.usedBytes, position+length);
+        node.usedBytes = Math.max(node.usedBytes, position + length);
         return length;
       },
 
@@ -382,6 +388,9 @@ mergeInto(LibraryManager.library, {
           if (!ptr) {
             throw new FS.ErrnoError({{{ cDefine('ENOMEM') }}});
           }
+#if CAN_ADDRESS_2GB
+          ptr >>>= 0;
+#endif
           (fromHeap ? HEAP8 : buffer).set(contents, ptr);
         }
         return { ptr: ptr, allocated: allocated };

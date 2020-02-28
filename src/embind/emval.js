@@ -174,7 +174,7 @@ var LibraryEmVal = {
 
     for(var i = 0; i < argCount; ++i) {
         functionBody +=
-            "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >> 2) + "+i+"], \"parameter "+i+"\");\n" +
+            "var argType"+i+" = requireRegisteredType(Module['HEAP32'][(argTypes >>> 2) + "+i+"], \"parameter "+i+"\");\n" +
             "var arg"+i+" = argType"+i+".readValueFromPointer(args);\n" +
             "args += argType"+i+"['argPackAdvance'];\n";
     }
