@@ -1131,6 +1131,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
       shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
+    if not shared.Settings.WASM_BACKEND:
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('memset')
+
     # Set ASM_JS default here so that we can override it from the command line.
     shared.Settings.ASM_JS = 1 if options.opt_level > 0 else 2
 

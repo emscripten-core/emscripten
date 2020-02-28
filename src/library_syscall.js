@@ -217,7 +217,10 @@ var SyscallsLibrary = {
     }
   },
 
-  $syscallMmap2__deps: ['memalign', 'memset', '$SYSCALLS',
+  $syscallMmap2__deps: ['$SYSCALLS',
+#if !WASM_BACKEND
+    'memalign', 'memset',
+#endif
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     '$FS',
 #endif

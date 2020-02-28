@@ -841,7 +841,6 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // "$Browser" to this list.
 var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
   'memcpy',
-  'memset',
   'malloc',
   'free',
   'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
