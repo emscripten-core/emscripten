@@ -554,6 +554,12 @@ class NoExceptLibrary(Library):
       raise Exception('Invalid exception mode')
     super(NoExceptLibrary, self).__init__(**kwargs)
 
+  def can_build(self):
+    if not super(NoExceptLibrary, self).can_build():
+      return False
+    # Wasm exception handling is only supported in the wasm backend
+    return shared.Settings.WASM_BACKEND or self.eh_mode != 'wasm'
+
   def get_cflags(self):
     cflags = super(NoExceptLibrary, self).get_cflags()
     if self.eh_mode == 'noexcept':
@@ -971,15 +977,30 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   ]
 
 
-class libunwind(CXXLibrary, NoExceptLibrary):
+class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libunwind'
-  cflags = ['-Oz', '-D__USING_WASM_EXCEPTIONS__',
-            '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
   src_files = ['libunwind.cpp', 'Unwind-wasm.cpp']
 
   def __init__(self, **kwargs):
     super(libunwind, self).__init__(**kwargs)
+
+  def can_build(self):
+    return super(libunwind, self).can_build() and shared.Settings.WASM_BACKEND and self.eh_mode == 'wasm'
+
+  def get_cflags(self):
+    cflags = super(libunwind, self).get_cflags()
+    cflags.append('-DNDEBUG')
+    if not self.is_mt:
+      cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
+    if self.eh_mode == 'noexcept':
+      cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
+    elif self.eh_mode == 'emscripten':
+      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+    elif self.eh_mode == 'wasm':
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+    return cflags
 
 
 class libmalloc(MTLibrary, NoBCLibrary):

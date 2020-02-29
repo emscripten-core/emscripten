@@ -37,8 +37,10 @@ MINIMAL_TASKS = [
     'libcompiler_rt',
     'libc',
     'libc++abi',
+    'libc++abi-except',
     'libc++abi-noexcept',
     'libc++',
+    'libc++-except',
     'libc++-noexcept',
     'libal',
     'libdlmalloc',
@@ -51,6 +53,9 @@ MINIMAL_TASKS = [
     'libc-wasm',
     'libstandalonewasm',
     'crt1',
+    'libunwind',
+    'libunwind-except',
+    'libunwind'
 ]
 
 USER_TASKS = [
