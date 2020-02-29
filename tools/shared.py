@@ -1719,7 +1719,7 @@ class Building(object):
     return target
 
   @staticmethod
-  def link_lld(args, target, opts=[], lto_level=0, all_external_symbols=None):
+  def link_lld(args, target, opts=[], all_external_symbols=None):
     if not os.path.exists(WASM_LD):
       exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
     # runs lld to link things.
@@ -1741,7 +1741,6 @@ class Building(object):
         WASM_LD,
         '-o',
         target,
-        '--lto-O%d' % lto_level,
     ] + args
 
     if all_external_symbols:

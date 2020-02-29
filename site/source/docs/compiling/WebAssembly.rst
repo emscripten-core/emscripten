@@ -61,9 +61,10 @@ upgrade from fastcomp to upstream:
 
   * You can enable LTO object files with the usual llvm compiler flags (-flto,
     -flto=full, -flto=thin, -emit-llvm).  These flags will make the wasm backend
-    behave more like fastcomp. Neither fastcomp nor the wasm backend without
-    wasm object files will run the LLVM optimization passes by default, even if
-    using LLVM IR in object files; for that you must pass ``--llvm-lto 1``.
+    behave more like fastcomp. With fastcomp LTO optimization passes will not
+    be run by default; for that you must pass ``--llvm-lto 1``.  With the llvm
+    backend LTO passes will be run on any object files that are in bitcode
+    format.
 
   * Another thing you might notice is that fastcomp's link stage is able to
     perform some types of link time optimization by default that the LLVM
