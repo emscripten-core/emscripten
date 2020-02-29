@@ -58,8 +58,12 @@
 -------- T pthread_barrier_init
 -------- T pthread_barrier_wait
 -------- T pthread_cond_broadcast
+-------- T pthread_cond_destroy
+-------- T pthread_cond_init
 -------- T pthread_cond_signal
+-------- T pthread_cond_timedwait
 -------- T pthread_cond_wait
+-------- T pthread_equal
 -------- T pthread_getspecific
 -------- T pthread_key_create
 -------- T pthread_key_delete
