@@ -568,7 +568,8 @@ f.close()
 
   def test_emcc_print_search_dirs(self):
     result = run_process([PYTHON, EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
-    self.assertContained(['programs: =', 'libraries: ='], result.stdout, check_all=True)
+    self.assertContained('programs: =', result.stdout)
+    self.assertContained('libraries: =', result.stdout)
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
