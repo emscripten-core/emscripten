@@ -4,12 +4,14 @@ $___emscripten_stdout_seek
 $___errno_location
 $___fflush_unlocked
 $___fwritex
+$___lock
 $___lockfile
 $___ofl_lock
 $___ofl_unlock
 $___pthread_self
 $___stdio_write
 $___towrite
+$___unlock
 $___unlockfile
 $___vfprintf_internal
 $___wasi_syscall_ret

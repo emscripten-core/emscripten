@@ -1,16 +1,13 @@
 ___gxx_personality_v0
-___lock
 ___map_file
 ___setErrNo
 ___syscall91
-___unlock
 ___wasi_fd_close
 ___wasi_fd_read
 ___wasi_fd_seek
 ___wasi_fd_write
 __addDays
 __arraySum
-__emscripten_syscall_munmap
 __isLeapYear
 __memory_base
 __table_base

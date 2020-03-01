@@ -1141,8 +1141,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
-    if len(js_engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
@@ -1157,6 +1155,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       js_engines += wasm_engines
+    if len(js_engines) == 0:
+      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')

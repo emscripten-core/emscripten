@@ -3740,6 +3740,7 @@ int main()
 
     IMPLICIT_WARNING = "warning: implicit declaration of function 'strnlen' is invalid in C99"
     IMPLICIT_ERROR = "error: implicit declaration of function 'strnlen' is invalid in C99"
+    INCOMPATIBLE_WARNINGS = ('warning: incompatible pointer types', 'warning: incompatible function pointer types')
 
     for opts, expected, compile_expected in [
       ([], None, [IMPLICIT_ERROR]),
@@ -3749,7 +3750,7 @@ int main()
       print(opts, expected)
       try_delete('a.out.js')
       stderr = run_process([PYTHON, EMCC, 'src.c'] + opts, stderr=PIPE, check=False).stderr
-      for ce in compile_expected + ['warning: incompatible pointer types']:
+      for ce in compile_expected + [INCOMPATIBLE_WARNINGS]:
         self.assertContained(ce, stderr)
       if expected is None:
         self.assertNotExists('a.out.js')
@@ -8762,6 +8763,7 @@ end
       self.assertEqual(results[flag1 + '.wasm'], results[flag2 + '.wasm'], 'wasm results should be identical')
 
     assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '16777216')
+    assert_aliases_match('INITIAL_MEMORY', 'TOTAL_MEMORY', '64MB')
     assert_aliases_match('MAXIMUM_MEMORY', 'WASM_MEM_MAX', '16777216', ['-s', 'ALLOW_MEMORY_GROWTH'])
     assert_aliases_match('MAXIMUM_MEMORY', 'BINARYEN_MEM_MAX', '16777216', ['-s', 'ALLOW_MEMORY_GROWTH'])
 
@@ -9037,11 +9039,11 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   @no_fastcomp('dwarf')
-  def test_side_debug(self):
+  def test_separate_dwarf(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gside'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf'])
     self.assertExists('a.out.wasm')
     self.assertExists('a.out.wasm.debug.wasm')
     self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))
@@ -9148,6 +9150,11 @@ test_module().then((test_module_instance) => {
     # run the module
     ret = run_process(NODE_JS + ['--experimental-wasm-threads'] + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
+
+  def test_node_js_system(self):
+    run_process([PYTHON, EMCC, '-DENV_NODE', path_from_root('tests', 'system.c'), '-o', 'a.js', '-O3'])
+    ret = run_process(NODE_JS + ['a.js'], stdout=PIPE).stdout
+    self.assertContained('OK', ret)
 
   def test_is_bitcode(self):
     fname = 'tmp.o'
@@ -10428,3 +10435,12 @@ int main() {
     self.assertContained('WARNING - [JSC_REFERENCE_BEFORE_DECLARE] Variable referenced before declaration', proc.stderr)
 
     self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'test_closure_warning.c'), '-O3', '--closure', '1', '-s', 'CLOSURE_WARNINGS=error'])
+
+  @no_fastcomp('test wasm object files')
+  def test_bitcode_input(self):
+    # Verify that bitcode files are accepted as input
+    create_test_file('main.c', 'void foo(); int main() { return 0; }')
+    run_process([PYTHON, EMCC, '-emit-llvm', '-c', '-o', 'main.bc', 'main.c'])
+    self.assertTrue(shared.Building.is_bitcode('main.bc'))
+    run_process([PYTHON, EMCC, '-c', '-o', 'main.o', 'main.bc'])
+    self.assertTrue(shared.Building.is_wasm('main.o'))

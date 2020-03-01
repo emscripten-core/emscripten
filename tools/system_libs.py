@@ -155,7 +155,7 @@ def get_wasm_libc_rt_files():
   iprintf_files = files_in_path(
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
     filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
-               'printf.c', 'puts.c'])
+               'printf.c', 'puts.c', '__lockfile.c'])
   iprintf_files += files_in_path(
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
     filenames=['strlen.c'])
@@ -757,13 +757,16 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    # Allowed files from blacklisted modules
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
+        filenames=['clock_settime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c'])
 
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
-      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
       # Include all the getenv stuff with the wasm backend. With fastcomp we
       # still use JS because libc is a .bc file and we don't want to have a
       # global constructor there for __environ, which would mean it is always
@@ -776,7 +779,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
         filenames=['sched_yield.c'])
 
-    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc'],
+        filenames=['extras.c', 'wasi-helpers.c'])
 
     return libc_files
 
@@ -845,13 +850,13 @@ class crt1(MuslInternalLibrary):
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructor it contains can be DCE'd.  With the wasm backend libc it is a .a
-  file so object file granularity applies.
+  constructor it contains can be DCE'd.  Such tricks are not needed wih the
+  the wasm backend because it uses .o file linking granularity.
   """
 
   name = 'libc-extras'
   src_dir = ['system', 'lib', 'libc']
-  src_files = ['extras.c']
+  src_files = ['extras_fastcomp.c']
 
   def can_build(self):
     return not shared.Settings.WASM_BACKEND

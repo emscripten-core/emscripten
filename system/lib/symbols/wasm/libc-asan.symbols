@@ -69,7 +69,6 @@
 -------- T __ftello_unlocked
 -------- T __futimesat
 -------- T __fwritable
--------- T __fwritex
 -------- T __fwriting
 -------- T __fxstat
 -------- W __fxstat64
@@ -134,7 +133,7 @@
 -------- D __libc
 -------- T __libc_get_version
 -------- T __loc_is_allocated
--------- T __lockfile
+-------- T __lock
 -------- T __lookup_ipliteral
 -------- T __lookup_name
 -------- T __lookup_serv
@@ -156,7 +155,6 @@
 -------- T __ofl_unlock
 -------- D __optpos
 -------- D __optreset
--------- T __overflow
 -------- T __p1evll
 -------- D __pio2_hi
 -------- D __pio2_lo
@@ -191,7 +189,6 @@
 -------- T __sindf
 -------- T __sinl
 -------- T __small_fprintf
--------- T __small_printf
 -------- T __small_sprintf
 -------- T __small_vfprintf
 -------- T __small_vsnprintf
@@ -235,15 +232,13 @@
 -------- T __toupper_l
 -------- T __towctrans_l
 -------- T __towlower_l
--------- T __towrite
--------- T __towrite_needs_stdio_exit
 -------- T __towupper_l
 -------- T __tre_mem_alloc_impl
 -------- T __tre_mem_destroy
 -------- T __tre_mem_new_impl
 -------- T __uflow
 -------- T __unlist_locked_file
--------- T __unlockfile
+-------- T __unlock
 -------- T __uselocale
 -------- T __vfprintf_internal
 -------- W __vm_wait
@@ -352,6 +347,7 @@
 -------- T cimagl
 -------- T clearerr
 -------- W clearerr_unlocked
+-------- T clock_settime
 -------- T clog
 -------- T clogf
 -------- T clogl
@@ -509,8 +505,6 @@
 -------- W fpurge
 -------- T fputc
 -------- W fputc_unlocked
--------- T fputs
--------- W fputs_unlocked
 -------- T fputwc
 -------- W fputwc_unlocked
 -------- T fputws
@@ -550,8 +544,6 @@
 -------- W futimesat
 -------- T fwide
 -------- T fwprintf
--------- T fwrite
--------- W fwrite_unlocked
 -------- T fwscanf
 -------- T gcvt
 -------- T get_current_dir_name
@@ -650,7 +642,6 @@
 -------- T inet_pton
 -------- T initstate
 -------- T ioctl
--------- T iprintf
 -------- T isalnum
 -------- W isalnum_l
 -------- T isalpha
@@ -869,7 +860,6 @@
 -------- W pread64
 -------- T preadv
 -------- W preadv64
--------- T printf
 -------- W program_invocation_name
 -------- W program_invocation_short_name
 -------- T pselect
@@ -881,7 +871,6 @@
 -------- T putchar
 -------- T putchar_unlocked
 -------- T putenv
--------- T puts
 -------- T putw
 -------- T putwc
 -------- W putwc_unlocked

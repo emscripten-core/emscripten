@@ -644,9 +644,46 @@ LibraryManager.library = {
 
   system__deps: ['__setErrNo'],
   system: function(command) {
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      if (!command) return 1; // shell is available
+
+      var cmdstr = UTF8ToString(command);
+      if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
+
+      var cp = require('child_process');
+      var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
+
+      var _W_EXITCODE = function(ret, sig) {
+        return ((ret) << 8 | (sig));
+      }
+
+      // this really only can happen if process is killed by signal
+      if (ret.status === null) {
+        // sadly node doesn't expose such function
+        var signalToNumber = function(sig) {
+          // implement only the most common ones, and fallback to SIGINT
+          switch (sig) {
+            case 'SIGHUP': return 1;
+            case 'SIGINT': return 2;
+            case 'SIGQUIT': return 3;
+            case 'SIGFPE': return 8;
+            case 'SIGKILL': return 9;
+            case 'SIGALRM': return 14;
+            case 'SIGTERM': return 15;
+          }
+          return 2; // SIGINT
+        }
+        return _W_EXITCODE(0, signalToNumber(ret.signal));
+      }
+
+      return _W_EXITCODE(ret.status, 0);
+    }
+#endif // ENVIRONMENT_MAY_BE_NODE
     // int system(const char *command);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
+    if (!command) return 0; // no shell available
     ___setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
@@ -2792,14 +2829,6 @@ LibraryManager.library = {
   },
   __clock_gettime__sig: 'iii',
   __clock_gettime: 'clock_gettime', // musl internal alias
-  clock_settime__deps: ['__setErrNo'],
-  clock_settime: function(clk_id, tp) {
-    // int clock_settime(clockid_t clk_id, const struct timespec *tp);
-    // Nothing.
-    ___setErrNo(clk_id === {{{ cDefine('CLOCK_REALTIME') }}} ? {{{ cDefine('EPERM') }}}
-                                                             : {{{ cDefine('EINVAL') }}});
-    return -1;
-  },
   clock_getres__deps: ['emscripten_get_now_res', 'emscripten_get_now_is_monotonic', '__setErrNo'],
   clock_getres: function(clk_id, res) {
     // int clock_getres(clockid_t clk_id, struct timespec *res);
@@ -4297,6 +4326,10 @@ LibraryManager.library = {
         console.error(str);
       } else if (flags & 2 /*EM_LOG_WARN*/) {
         console.warn(str);
+      } else if (flags & 512 /*EM_LOG_INFO*/) {
+        console.info(str);
+      } else if (flags & 256 /*EM_LOG_DEBUG*/) {
+        console.debug(str);
       } else {
         console.log(str);
       }
@@ -4594,17 +4627,17 @@ LibraryManager.library = {
     }
   },
 
-  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_mmap2'],
+  emscripten_builtin_mmap2__deps: ['emscripten_with_builtin_malloc', '$syscallMmap2'],
   emscripten_builtin_mmap2: function (addr, len, prot, flags, fd, off) {
     return _emscripten_with_builtin_malloc(function () {
-      return __emscripten_syscall_mmap2(addr, len, prot, flags, fd, off);
+      return syscallMmap2(addr, len, prot, flags, fd, off);
     });
   },
 
-  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '_emscripten_syscall_munmap'],
+  emscripten_builtin_munmap__deps: ['emscripten_with_builtin_malloc', '$syscallMunmap'],
   emscripten_builtin_munmap: function (addr, len) {
     return _emscripten_with_builtin_malloc(function () {
-      return __emscripten_syscall_munmap(addr, len);
+      return syscallMunmap(addr, len);
     });
   },
 
@@ -4766,12 +4799,6 @@ LibraryManager.library = {
     {{{ makeSetTempRet0('0') }}};
     return (high >>> (bits - 32))|0;
   },
-
-  // misc shims for musl
-  __lock: function() {},
-  __unlock: function() {},
-  __lockfile: function() { return 1 },
-  __unlockfile: function(){},
 
   // libunwind
 

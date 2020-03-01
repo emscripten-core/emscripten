@@ -1,8 +1,6 @@
 __cxa_atexit
-__lock
 __map_file
 __syscall91
-__unlock
 abort
 emscripten_get_sbrk_ptr
 emscripten_memcpy_big

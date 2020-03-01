@@ -4940,7 +4940,7 @@ window.close = function() {
       self.btest(path_from_root('tests', 'browser', 'test_offset_converter.c'), '1', args=['-s', 'USE_OFFSET_CONVERTER', '-g4', '-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
     except Exception as e:
       # dump the wasm file; this is meant to help debug #10539 on the bots
-      print(run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print'], stdout=PIPE).stdout)
+      print(run_process([os.path.join(Building.get_binaryen_bin(), 'wasm-opt'), 'test.wasm', '-g', '--print', '-all'], stdout=PIPE).stdout)
       raise e
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
@@ -4978,6 +4978,9 @@ window.close = function() {
       ''')
     self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
                expected='0',
-               args=['-s', 'TOTAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1', '-s',
-                     'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
+               args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1',
+                     '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
                      '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
+
+  def test_system(self):
+    self.btest(path_from_root('tests', 'system.c'), '0')

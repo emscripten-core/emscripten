@@ -181,6 +181,27 @@ def also_with_impure_standalone_wasm(func):
   return decorated
 
 
+# Similar to also_with_standalone_wasm, but suitable for tests that can *only*
+# run in a wasm VM, or in non-standalone mode, but not in standalone mode with
+# our JS.
+def also_with_only_standalone_wasm(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+      print('standalone (only; no js runtimes)')
+      self.set_setting('STANDALONE_WASM', 1)
+      js_engines = shared.JS_ENGINES
+      try:
+        shared.JS_ENGINES = []
+        func(self)
+      finally:
+        shared.JS_ENGINES = js_engines
+
+  return decorated
+
+
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
@@ -3146,7 +3167,7 @@ Var: 42
       if self.is_wasm_backend():
         self.assertLess(len(exports), 56)
       else:
-        self.assertLess(len(exports), 30)
+        self.assertLess(len(exports), 32)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
@@ -4330,7 +4351,8 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678
+    # https://github.com/emscripten-core/emscripten/issues/10571
+    return self.skipTest('Currently not working due to duplicate symbol errors in wasm-ld')
 
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
@@ -4437,8 +4459,6 @@ res64 - external 64\n''', header='''
   # TODO Enable @with_both_exception_handling (wasm-ld error)
   @needs_dlfcn
   def test_dylink_raii_exceptions(self):
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678
-
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
 
     self.dylink_test(main=r'''
@@ -5555,6 +5575,9 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  # i64s in the API, which we'd need to legalize for JS, so in standalone mode
+  # all we can test is wasm VMs
+  @also_with_only_standalone_wasm
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))

@@ -400,6 +400,9 @@ def apply_settings(changes):
     if key.startswith('NO_') and value in ('0', '1'):
       key = key[3:]
       value = str(1 - int(value))
+    # map legacy settings which have aliases to the new names
+    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
+      key = shared.Settings.alt_names[key]
     return key, value
 
   for change in changes:
@@ -996,7 +999,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
-          if file_suffix.endswith(SOURCE_ENDINGS):
+          if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
             has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
@@ -2090,7 +2093,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
         file_ending = get_file_suffix(input_file)
-        if file_ending.endswith(SOURCE_ENDINGS):
+        if file_ending.endswith(SOURCE_ENDINGS) or (has_dash_c and file_ending == '.bc'):
           compile_source_file(i, input_file)
         else:
           if file_ending.endswith(OBJECT_FILE_ENDINGS):
@@ -2814,11 +2817,11 @@ def parse_args(newargs):
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
           shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
-        elif requested_level.startswith('side'):
+        elif requested_level.startswith('separate-dwarf'):
           # Emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
-          shared.Settings.SIDE_DEBUG = 1
+          shared.Settings.SEPARATE_DWARF = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -3354,7 +3357,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  if shared.Settings.FULL_DWARF and shared.Settings.SIDE_DEBUG:
+  if shared.Settings.FULL_DWARF and shared.Settings.SEPARATE_DWARF:
     shared.Building.emit_debug_on_side(wasm_binary_target)
 
 
