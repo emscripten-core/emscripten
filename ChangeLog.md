@@ -155,7 +155,8 @@ v1.39.1: 10/30/2019
 v1.39.0: 10/18/2019
 -------------------
  - The emsdk defaults to the upstream backend (instead of fastcomp) from this
-   release onward (but both backends are still fully supported).
+   release onward (but both backends are still fully supported). See
+   https://emscripten.org/docs/compiling/WebAssembly.html#backends
  - Add support for overriding `.emscripten` config variables using environment
    variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
    environment.
