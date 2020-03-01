@@ -1794,7 +1794,7 @@ var LEGACY_SETTINGS = [
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
-  ['WASM_OBJECT_FILES', [1], 'Use -flto or -fto=thin instead'],
+  ['WASM_OBJECT_FILES', [0, 1], 'Use -flto or -fto=thin instead'],
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
   ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
