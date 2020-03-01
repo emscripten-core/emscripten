@@ -1318,6 +1318,50 @@ namespace emscripten {
             }
         };
 
+#ifdef __cpp_noexcept_function_type
+        template<typename ClassType, typename ReturnType, typename... Args>
+        struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) noexcept> {
+
+            template <typename CT, typename... Policies>
+            static void invoke(const char* methodName,
+                               ReturnType (ClassType::*memberFunction)(Args...)) {
+                auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
+
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoker),
+                    reinterpret_cast<GenericFunction>(invoker),
+                    getContext(memberFunction),
+                    isPureVirtual<Policies...>::value);
+            }
+        };
+
+        template<typename ClassType, typename ReturnType, typename... Args>
+        struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const noexcept> {
+
+            template <typename CT, typename... Policies>
+            static void invoke(const char* methodName,
+                               ReturnType (ClassType::*memberFunction)(Args...) const)  {
+                auto invoker = &MethodInvoker<decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
+
+                typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
+                _embind_register_class_function(
+                    TypeID<ClassType>::get(),
+                    methodName,
+                    args.getCount(),
+                    args.getTypes(),
+                    getSignature(invoker),
+                    reinterpret_cast<GenericFunction>(invoker),
+                    getContext(memberFunction),
+                    isPureVirtual<Policies...>::value);
+            }
+        };
+#endif
+
         template<typename ReturnType, typename ThisType, typename... Args>
         struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
 
@@ -1728,12 +1772,11 @@ namespace emscripten {
 
         void (VecType::*push_back)(const T&) = &VecType::push_back;
         void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
-        size_t (VecType::*size)() const = &VecType::size;
         return class_<std::vector<T>>(name)
             .template constructor<>()
             .function("push_back", push_back)
             .function("resize", resize)
-            .function("size", size)
+            .function("size", &VecType::size)
             .function("get", &internal::VectorAccess<VecType>::get)
             .function("set", &internal::VectorAccess<VecType>::set)
             ;
