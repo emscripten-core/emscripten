@@ -9787,6 +9787,22 @@ int main () {
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  def test_legacy_settings(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
+
+    # By default warnings are not shown
+    stderr = run_process(cmd, stderr=PIPE).stderr
+    self.assertNotContained('WARNING', stderr)
+
+    # Adding -Wall or -Wlegacy-settings enables the warning
+    stderr = run_process(cmd + ['-Wall'], stderr=PIPE).stderr
+    self.assertContained('WARNING: use of legacy setting: SPLIT_MEMORY', stderr)
+    self.assertContained('[-Wlegacy-settings]', stderr)
+
+    stderr = run_process(cmd + ['-Wlegacy-settings'], stderr=PIPE).stderr
+    self.assertContained('WARNING: use of legacy setting: SPLIT_MEMORY', stderr)
+    self.assertContained('[-Wlegacy-settings]', stderr)
+
   def test_strict_mode_legacy_settings(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
     run_process(cmd)
@@ -9817,7 +9833,7 @@ int main () {
     self.set_setting('STRICT', 1)
     self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
 
-  def test_strict_mode_renamed_setting(self):
+  def test_renamed_setting(self):
     # Verify that renamed settings are available by either name (when not in
     # strict mode.
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)

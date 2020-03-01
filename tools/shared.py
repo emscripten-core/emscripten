@@ -827,6 +827,8 @@ WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
 WarningManager.add_warning('separate-asm')
 WarningManager.add_warning('almost-asm')
 WarningManager.add_warning('invalid-input')
+# Don't show lecacy settings warnings by default
+WarningManager.add_warning('legacy-settings', enabled=False)
 
 
 class Configuration(object):
@@ -1166,13 +1168,14 @@ class SettingsManager(object):
           self.attrs.pop(a, None)
 
       if attr in self.legacy_settings:
+        # TODO(sbc): Rather then special case this we should have STRICT turn on the
+        # legacy-settings warning below
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
         fixed_values, error_message = self.legacy_settings[attr]
         if fixed_values and value not in fixed_values:
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-        else:
-          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+        WarningManager.warn('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
 
       if attr in self.alt_names:
         alt_name = self.alt_names[attr]
