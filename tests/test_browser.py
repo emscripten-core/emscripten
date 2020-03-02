@@ -4922,7 +4922,7 @@ window.close = function() {
     self.compile_btest([src, '-s', 'WASM=2', '-s', 'MINIMAL_RUNTIME=1', '-o', 'test.html'])
 
     # Corrupt the .wasm file, that should trigger the Wasm2js fallback to run
-    shutil.copyfile('test.wasm.js', 'test.wasm')
+    shutil.copyfile('test.js', 'test.wasm')
     self.run_browser('test.html', 'hello!', '/report_result?0')
 
   # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
