@@ -944,7 +944,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     settings_key_changes = set()
     for s in settings_changes:
-      key, _ = s.split('=', 1)
+      key, arg = s.split('=', 1)
       settings_key_changes.add(key)
 
     # Find input files
