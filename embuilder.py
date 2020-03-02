@@ -53,9 +53,7 @@ MINIMAL_TASKS = [
     'libc-wasm',
     'libstandalonewasm',
     'crt1',
-    'libunwind',
-    'libunwind-except',
-    'libunwind'
+    'libunwind-except'
 ]
 
 USER_TASKS = [
