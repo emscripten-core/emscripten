@@ -221,9 +221,19 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
 #endif
 
 })
-#if ASSERTIONS
+#if ASSERTIONS || WASM == 2
 .catch(function(error) {
+#if ASSERTIONS
   console.error(error);
+#endif
+
+#if WASM == 2
+  // WebAssembly compilation failed, try running the JS fallback instead.
+  var search = location.search;
+  if (search.indexOf('wasm=0') < 0) {
+    location.href += (search ? search + '&' : '?') + 'wasm=0';
+  }
+#endif
 })
 #endif
 ;
