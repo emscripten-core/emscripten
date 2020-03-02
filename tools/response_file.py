@@ -9,9 +9,7 @@ import shlex
 import tempfile
 
 
-DEBUG = os.environ.get('EMCC_DEBUG')
-if DEBUG == "0":
-  DEBUG = None
+DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
 def create_response_file(args, directory):
@@ -24,6 +22,7 @@ def create_response_file(args, directory):
 
   # Backslashes and other special chars need to be escaped in the response file.
   escape_chars = ('\\', '\"', '\'')
+
   def escape(arg):
     for char in escape_chars:
       arg = arg.replace(char, '\\' + char)
