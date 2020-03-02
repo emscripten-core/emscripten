@@ -2142,8 +2142,6 @@ class Building(object):
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    cmd = [PYTHON, EMAR, action, output_filename] + filenames[:5]
-
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
     cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
     try:

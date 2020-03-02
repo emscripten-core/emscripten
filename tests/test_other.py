@@ -8717,6 +8717,11 @@ end
     create_test_file('file1', ' ')
     run_process([PYTHON, EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
+  def test_emar_response_file(self):
+    create_test_file("file'1", ' ')
+    create_test_file("file'2", ' ')
+    Building.emar('cr', 'libfoo.a', ("file'1", "file'2"))
+
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
     # archives (which inherently don't have indexes).

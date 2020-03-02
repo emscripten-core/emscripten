@@ -922,6 +922,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     Return the stderr of the subprocess.
     """
     proc = run_process(cmd, check=False, stderr=PIPE, **args)
+    if proc.returncode == 0:
+      print(proc.stderr)
     self.assertNotEqual(proc.returncode, 0)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,

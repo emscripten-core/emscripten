@@ -22,8 +22,14 @@ def create_response_file(args, directory):
   """
   response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp', dir=directory, text=True)
 
-  # Backslashed need to be escaped in the response files.
-  args = [p.replace('\\', '\\\\').replace('"', '\\"') for p in args]
+  # Backslashes and other special chars need to be escaped in the response file.
+  escape_chars = ('\\', '\"', '\'')
+  def escape(arg):
+    for char in escape_chars:
+      arg = arg.replace(char, '\\' + char)
+    return arg
+
+  args = [escape(a) for a in args]
   contents = ""
 
   # Arguments containing spaces need to be quoted.
