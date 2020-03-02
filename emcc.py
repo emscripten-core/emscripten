@@ -940,7 +940,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = newargs[i + 1] = ''
           if arg == 'WASM_BACKEND=1':
             exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
-    newargs = [arg for arg in newargs if arg]
+    newargs = [a for a in newargs if a]
 
     settings_key_changes = set()
     for s in settings_changes:
