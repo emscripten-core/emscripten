@@ -753,20 +753,17 @@ def get_canonical_temp_dir(temp_dir):
 
 class WarningManager(object):
   warnings = {
-    'ABSOLUTE_PATHS': {
+    'absolute-paths': {
       'enabled': False,  # warning about absolute-paths is disabled by default
       'printed': False,
-      'message': '-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).',
     },
-    'SEPARATE_ASM': {
+    'separate-asm': {
       'enabled': True,
       'printed': False,
-      'message': "--separate-asm works best when compiling to HTML. Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.",
     },
-    'ALMOST_ASM': {
+    'almost-asm': {
       'enabled': True,
       'printed': False,
-      'message': 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.',
     },
   }
 
@@ -776,32 +773,25 @@ class WarningManager(object):
       if not cmd_args[i].startswith('-W'):
         continue
 
-      # special case pre-existing warn-absolute-paths
-      if cmd_args[i] == '-Wwarn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = True
-      elif cmd_args[i] == '-Wno-warn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = False
-      else:
-        # convert to string representation of Warning
-        warning_enum = cmd_args[i].replace('-Wno-', '').replace('-W', '')
-        warning_enum = warning_enum.upper().replace('-', '_')
+      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+      enabled = not cmd_args[i].startswith('-Wno-')
 
-        if warning_enum in WarningManager.warnings:
-          WarningManager.warnings[warning_enum]['enabled'] = not cmd_args[i].startswith('-Wno-')
-          cmd_args[i] = ''
+      # special case pre-existing warn-absolute-paths
+      if warning_name == 'warn-absolute-paths':
+        WarningManager.warnings['absolute-paths']['enabled'] = enabled
+        cmd_args[i] = ''
+      elif warning_name in WarningManager.warnings:
+        WarningManager.warnings[warning_name]['enabled'] = enabled
+        cmd_args[i] = ''
 
     return cmd_args
 
   @staticmethod
-  def warn(warning_type, message=None):
+  def warn(warning_type, message, *args):
     warning_info = WarningManager.warnings[warning_type]
     if warning_info['enabled'] and not warning_info['printed']:
       warning_info['printed'] = True
-      if message is None:
-        message = warning_info['message']
-      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+      warning((message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
 
 
 class Configuration(object):

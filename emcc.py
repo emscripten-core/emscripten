@@ -1117,7 +1117,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
     if options.separate_asm and final_suffix != '.html':
-      shared.WarningManager.warn('SEPARATE_ASM')
+      shared.WarningManager.warn('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
@@ -1204,7 +1204,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # when we emit asm.js, closure 2 would break that, so warn (note that
       # with wasm2js in the wasm backend, we don't emit asm.js anyhow)
       if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1 and not shared.Settings.WASM_BACKEND:
-        shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
+        shared.WarningManager.warn('almost-asm', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
         shared.Settings.ASM_JS = 2
 
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
@@ -1929,8 +1929,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
       # this is an issue in asm.js, but not wasm
       if not shared.Settings.WASM:
-        shared.WarningManager.warn('ALMOST_ASM')
-        shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+        # memory growth does not validate as asm.js
+        # http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+        shared.WarningManager.warn('almost-asm', 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.')
+        shared.Settings.ASM_JS = 2
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
@@ -2954,7 +2956,7 @@ def parse_args(newargs):
         # that are e.g. x86 specific and nonportable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         shared.WarningManager.warn(
-            'ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] +
+            'absolute-paths', '-I or -L of an absolute path "' + newargs[i] +
             '" encountered. If this is to a local system header/library, it may '
             'cause problems (local system files make sense for compiling natively '
             'on your system, but not necessarily to JavaScript).')
