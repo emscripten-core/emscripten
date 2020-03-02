@@ -2718,7 +2718,8 @@ def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
   should_exit = False
-  eh_enabled = wasm_eh_enabled = False
+  eh_enabled = True
+  wasm_eh_enabled = False
 
   def check_bad_eq(arg):
     if '=' in arg:
@@ -2976,14 +2977,8 @@ def parse_args(newargs):
       settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
       settings_changes.append('EXCEPTION_HANDLING=0')
     elif newargs[i] == '-fexceptions':
-      # At this point we don't know if we want to enable emscripten exception
-      # handling or wasm exception handling. Defer the decision until we parse
-      # all the arguments.
       eh_enabled = True
     elif newargs[i] == '-fwasm-exceptions':
-      settings_changes.append('EXCEPTION_HANDLING=1')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
       wasm_eh_enabled = True
     elif newargs[i] == '-fignore-exceptions':
       settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
@@ -3029,14 +3024,17 @@ def parse_args(newargs):
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
 
-    # if -fexceptions is given and -fwasm-exceptions is not, this means we want
-    # to enable emscripten exception handling.
-    # TODO Switch to wasm exception handling by default when -fexceptions is
-    # given when wasm exception handling becomes stable.
-    if eh_enabled:
-      if not wasm_eh_enabled:
-        settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
-        settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
+    # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
+    # exception handling by default when -fexceptions is given when wasm
+    # exception handling becomes stable.
+    if wasm_eh_enabled:
+      settings_changes.append('EXCEPTION_HANDLING=1')
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
+      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
+    elif eh_enabled:
+      settings_changes.append('EXCEPTION_HANDLING=0')
+      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
+      settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
 
   if should_exit:
     sys.exit(0)

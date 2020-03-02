@@ -989,6 +989,9 @@ class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
   def can_build(self):
     return super(libunwind, self).can_build() and shared.Settings.WASM_BACKEND and self.eh_mode == 'wasm'
 
+  def can_use(self):
+    return super(libunwind, self).can_use() and shared.Settings.WASM_BACKEND and self.eh_mode == 'wasm'
+
   def get_cflags(self):
     cflags = super(libunwind, self).get_cflags()
     cflags.append('-DNDEBUG')

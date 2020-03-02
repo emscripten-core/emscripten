@@ -256,6 +256,7 @@ exception.
 */
 void
 #ifdef __USING_WASM_EXCEPTIONS__
+// In wasm, destructors return their argument
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void *(*dest)(void *)) {
 #else
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void (*dest)(void *)) {

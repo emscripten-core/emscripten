@@ -20,7 +20,8 @@ struct _Unwind_LandingPadContext {
   uintptr_t selector; // selector value
 };
 
-// Communication channel between WebAssembly code and personality function
+// Communication channel between compiler-generated user code and personality
+// function
 struct _Unwind_LandingPadContext __wasm_lpad_context;
 
 /// Calls to this function is in landing pads in compiler-generated user code.
@@ -82,7 +83,6 @@ _LIBUNWIND_EXPORT uintptr_t _Unwind_GetIP(struct _Unwind_Context *context) {
       ((struct _Unwind_LandingPadContext *)context)->lpad_index + 2;
   _LIBUNWIND_TRACE_API("_Unwind_GetIP(context=%p) => %lu", (void *)context,
                        result);
-  fflush(stdout);
   return result;
 }
 
