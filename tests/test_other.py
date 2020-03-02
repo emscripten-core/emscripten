@@ -10394,6 +10394,12 @@ Module.arguments has been replaced with plain arguments_
     run_process([PYTHON, EMCC, 'empty.c', '-la', '-L.'])
     self.assertContained('success', run_js('a.out.js'))
 
+  def test_strict_warnings(self):
+    # Test that -s STRICT enables all warnings by default
+    cmd = [PYTHON, EMCC, '-I/foo/bar', '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')]
+    stderr = run_process(cmd + ['-s', 'STRICT'], stderr=PIPE).stderr
+    self.assertContained('WARNING: foo.bc is not a valid input file [-Winvalid-input]', stderr)
+
   def test_warning_flags(self):
     create_test_file('not_object.bc', 'some text')
     run_process([PYTHON, EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])

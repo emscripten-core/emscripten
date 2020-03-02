@@ -759,8 +759,16 @@ class WarningManager(object):
       'enabled': enabled,
       'part_of_all': part_of_all,
       'printed': False,
+      'user_disabled': False,
       'error': False,
     }
+
+  @staticmethod
+  def enable_strict():
+    """Enables any warnings that are part of -Wall, that have not already been explicitly disabled."""
+    for warning in WarningManager.warnings.values():
+      if warning['part_of_all'] and not warning['user_disabled']:
+          warning['enabled'] = True
 
   @staticmethod
   def capture_warnings(cmd_args):
@@ -768,6 +776,7 @@ class WarningManager(object):
       if cmd_args[i] == '-w':
         for warning in WarningManager.warnings.values():
           warning['enabled'] = False
+          warning['user_disabled'] = True
         continue
 
       if not cmd_args[i].startswith('-W'):
@@ -797,11 +806,13 @@ class WarningManager(object):
       # special case pre-existing warn-absolute-paths
       if warning_name == 'warn-absolute-paths':
         WarningManager.warnings['absolute-paths']['enabled'] = enabled
+        WarningManager.warnings['absolute-paths']['user_disabled'] = not enabled
         cmd_args[i] = ''
         continue
 
       if warning_name in WarningManager.warnings:
         WarningManager.warnings[warning_name]['enabled'] = enabled
+        WarningManager.warnings[warning_name]['user_disabled'] = not enabled
         cmd_args[i] = ''
         continue
 

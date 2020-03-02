@@ -1180,6 +1180,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT_JS = 1
       shared.Settings.AUTO_JS_LIBRARIES = 0
       shared.Settings.AUTO_ARCHIVE_INDEXES = 0
+      shared.WarningManager.enable_strict()
 
     # If set to 1, we will run the autodebugger (the automatic debugging tool, see
     # tools/autodebugger).  Note that this will disable inclusion of libraries. This
