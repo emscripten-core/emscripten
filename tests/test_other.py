@@ -3945,7 +3945,7 @@ int main()
     ''', [[3, 2], 1, 1])
 
   def test_symbol_map(self):
-    for opts in [['-O2'],['-O3']]:
+    for opts in [['-O2'], ['-O3']]:
       for wasm in [0, 1, 2]:
         print(opts, wasm)
         self.clear()
