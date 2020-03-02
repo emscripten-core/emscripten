@@ -7183,6 +7183,19 @@ Resolved: "/" => "/"
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"])
     self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
 
+  def test_dash_s_plus_equals(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "EXPORTED_FUNCTIONS+=[]"])
+    self.assertContained('hello, world!', run_js('a.out.js'))
+    # check that we can append properly. the commands below will error if an
+    # exported function is not present, so success shows we parsed it ok.
+    create_test_file('test.c', r'''
+      int main() {}
+      void foo() {}
+    ''')
+    run_process([PYTHON, EMCC, 'test.c', "-s", "EXPORTED_FUNCTIONS+=[_foo]"])
+    run_process([PYTHON, EMCC, 'test.c', "-s", "EXPORTED_FUNCTIONS+=['_foo']"])
+    self.expect_fail([PYTHON, EMCC, 'test.c', "-s", "EXPORTED_FUNCTIONS+=['_bar']"])
+
   def test_python_2_3(self):
     # check emcc/em++ can be called by any python
     def trim_py_suffix(filename):

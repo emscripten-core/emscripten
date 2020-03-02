@@ -417,6 +417,11 @@ def apply_settings(changes):
                'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
+    if value[0] == '+':
+      value = value[1:]
+      append = True
+    else:
+      append = False
     if value[0] == '@':
       if key not in DEFERRED_RESPONSE_FILES:
         value = open(value[1:]).read()
@@ -426,6 +431,8 @@ def apply_settings(changes):
       value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+    if append:
+      value = shared.Settings[key] + value
     setattr(shared.Settings, key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
@@ -683,12 +690,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       use_cxx = False
 
   def is_minus_s_for_emcc(args, i):
-    # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
+    # -s OPT=VALUE, -s OPT+=VALUE, or -s OPT are interpreted as emscripten flags
     # -s by itself is a linker option (alias for --strip-all)
     assert args[i] == '-s'
     if len(args) > i + 1:
       arg = args[i + 1]
-      if arg.split('=')[0].isupper():
+      if arg.split('=')[0].isupper() or arg.split('+=')[0].isupper():
         return True
 
     logger.debug('treating -s as linker option and not as -s OPT=VALUE for js compilation')
@@ -910,29 +917,34 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     for i in range(len(newargs)):
       if newargs[i] == '-s':
         if is_minus_s_for_emcc(newargs, i):
-          key = newargs[i + 1]
-          # If not = is specified default to 1
-          if '=' not in key:
-            key += '=1'
-
+          arg = newargs[i + 1]
+          # If no = is specified, default to 1, allowing -s FLAG instead of
+          # -s FLAG=1
+          if '=' not in arg:
+            arg += '=1'
+          # if += is specified, this appends to the existing value, which must
+          # be an array. rewrite that as =+ which will put the initial "+" in
+          # the value, and allow us to parse the key properly here, and later
+          # when we handle the value, do the appending.
+          arg = arg.replace('+=', '=+')
           # Special handling of browser version targets. A version -1 means that the specific version
           # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
           # #if MIN_FIREFOX_VERSION < 68
           try:
-            if re.match(r'MIN_.*_VERSION(=.*)?', key) and int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
+            if re.match(r'MIN_.*_VERSION(=.*)?', arg) and int(arg.split('=')[1]) < 0:
+              arg = arg.split('=')[0] + '=0x7FFFFFFF'
           except Exception:
             pass
 
-          settings_changes.append(key)
+          settings_changes.append(arg)
           newargs[i] = newargs[i + 1] = ''
-          if key == 'WASM_BACKEND=1':
+          if arg == 'WASM_BACKEND=1':
             exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
     newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
     for s in settings_changes:
-      key, value = s.split('=', 1)
+      key, _ = s.split('=', 1)
       settings_key_changes.add(key)
 
     # Find input files
