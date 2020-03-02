@@ -4916,6 +4916,30 @@ window.close = function() {
       os.remove('test.wasm') # Also delete the Wasm file to test that it is not attempted to be loaded.
       self.run_browser('test.html', 'hello!', '/report_result?0')
 
+  def test_minimal_runtime_wasm2js_fallback(self):
+    src = 'src.cpp'
+    create_test_file(src, self.with_report_result(open(path_from_root('tests', 'small_hello_world.c')).read()))
+    self.compile_btest([src, '-s', 'WASM=2', '-s', 'MINIMAL_RUNTIME=1', '-o', 'test.html'])
+
+    # Corrupt the .wasm file, that should trigger the Wasm2js fallback to run
+    shutil.copyfile('test.wasm.js', 'test.wasm')
+    self.run_browser('test.html', 'hello!', '/report_result?0')
+
+  # Test that basic thread creation works in combination with MODULARIZE_INSTANCE=1 and EXPORT_NAME=MyModule
+  @no_fastcomp('more work would be needed for this to work in deprecated fastcomp')
+  @requires_threads
+  def test_pthread_modularize_export_name(self):
+    create_test_file('shell.html', '''
+        <body>
+          {{{ SCRIPT }}}
+        </body>
+      ''')
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_create.cpp'),
+               expected='0',
+               args=['-s', 'INITIAL_MEMORY=64MB', '-s', 'USE_PTHREADS=1',
+                     '-s', 'PTHREAD_POOL_SIZE=8', '-s', 'MODULARIZE_INSTANCE=1',
+                     '-s', 'EXPORT_NAME=MyModule', '--shell-file', 'shell.html'])
+
   def test_system(self):
     self.btest(path_from_root('tests', 'system.c'), '0')
 
