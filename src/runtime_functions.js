@@ -104,7 +104,11 @@ function addFunctionWasm(func, sig) {
     if (!(err instanceof RangeError)) {
       throw err;
     }
+#if WASM_BACKEND
+    throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
+#else
     throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
+#endif
   }
 
   // Insert new element
