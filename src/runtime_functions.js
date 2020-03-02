@@ -92,26 +92,33 @@ function convertJsFunctionToWasm(func, sig) {
 #endif // WASM2JS
 }
 
+var freeTableIndexes = [];
+
 // Add a wasm function to the table.
 function addFunctionWasm(func, sig) {
   var table = wasmTable;
-  var ret = table.length;
-
-  // Grow the table
-  try {
-    table.grow(1);
-  } catch (err) {
-    if (!(err instanceof RangeError)) {
-      throw err;
-    }
+  var ret;
+  // Reuse a free index if there is one, otherwise grow.
+  if (freeTableIndexes.length) {
+    ret = freeTableIndexes.pop();
+  } else {
+    ret = table.length;
+    // Grow the table
+    try {
+      table.grow(1);
+    } catch (err) {
+      if (!(err instanceof RangeError)) {
+        throw err;
+      }
 #if WASM_BACKEND
-    throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
+      throw 'Unable to grow wasm table. Set ALLOW_TABLE_GROWTH.';
 #else
-    throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
+      throw 'Unable to grow wasm table. Use a higher value for RESERVED_FUNCTION_POINTERS or set ALLOW_TABLE_GROWTH.';
 #endif
+    }
   }
 
-  // Insert new element
+  // Set the new value.
   try {
     // Attempting to call this with JS function will cause of table.set() to fail
     table.set(ret, func);
@@ -128,7 +135,7 @@ function addFunctionWasm(func, sig) {
 }
 
 function removeFunctionWasm(index) {
-  // TODO(sbc): Look into implementing this to allow re-using of table slots
+  freeTableIndexes.push(index);
 }
 #endif
 

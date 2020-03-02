@@ -15,6 +15,17 @@ int main(int argc, char **argv) {
   EM_ASM({
     removeFunction($0)
   }, f);
+#if __wasm__
+  // In the wasm backend, we can reuse indexes
+  EM_ASM({
+    var beforeLength = wasmTable.length;
+    for (var i = 0; i < 10; i++) {
+      var index = addFunction(function(){}, 'v');
+      removeFunction(index);
+    }
+    assert(wasmTable.length === beforeLength);
+  });
+#endif
   printf("ok\n");
   return 0;
 }
