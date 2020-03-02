@@ -36,7 +36,7 @@ v1.39.9: 03/05/2020
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
 - Deprecate `WASM_OBJECT_FILES` setting.  There are many standard ways to enable
-  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+  bitcode objects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
