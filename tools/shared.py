@@ -752,26 +752,45 @@ def get_canonical_temp_dir(temp_dir):
 
 
 class WarningManager(object):
-  warnings = {
-    'absolute-paths': {
-      'enabled': False,  # warning about absolute-paths is disabled by default
+  warnings = {}
+
+  @staticmethod
+  def add_warning(name, enabled=True, part_of_all=True):
+    WarningManager.warnings[name] = {
+      'enabled': enabled,
+      'part_of_all': part_of_all,
       'printed': False,
-    },
-    'separate-asm': {
-      'enabled': True,
-      'printed': False,
-    },
-    'almost-asm': {
-      'enabled': True,
-      'printed': False,
-    },
-  }
+      'error': False,
+    }
 
   @staticmethod
   def capture_warnings(cmd_args):
     for i in range(len(cmd_args)):
+      if cmd_args[i] == '-w':
+        for warning in WarningManager.warnings.values():
+          warning['enabled'] = False
+        continue
+
       if not cmd_args[i].startswith('-W'):
         continue
+
+      if cmd_args[i] == '-Wall':
+        for warning in WarningManager.warnings.values():
+          if warning['part_of_all']:
+            warning['enabled'] = True
+        continue
+
+      if cmd_args[i] == '-Werror':
+        for warning in WarningManager.warnings.values():
+          warning['error'] = True
+        continue
+
+      if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
+        warning_name = cmd_args[i].split('=', 1)[1]
+        if warning_name in WarningManager.warnings:
+          WarningManager.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
+          cmd_args[i] = ''
+          continue
 
       warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
       enabled = not cmd_args[i].startswith('-Wno-')
@@ -780,18 +799,34 @@ class WarningManager(object):
       if warning_name == 'warn-absolute-paths':
         WarningManager.warnings['absolute-paths']['enabled'] = enabled
         cmd_args[i] = ''
-      elif warning_name in WarningManager.warnings:
+        continue
+
+      if warning_name in WarningManager.warnings:
         WarningManager.warnings[warning_name]['enabled'] = enabled
         cmd_args[i] = ''
+        continue
 
     return cmd_args
 
   @staticmethod
   def warn(warning_type, message, *args):
     warning_info = WarningManager.warnings[warning_type]
+    msg = (message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']'
     if warning_info['enabled'] and not warning_info['printed']:
       warning_info['printed'] = True
-      warning((message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+      if warning_info['error']:
+        exit_with_error(msg + ' [-Werror]')
+      else:
+        logger.warning(msg)
+    else:
+      logger.debug('disabled warning: ' + msg)
+
+
+# warning about absolute-paths is disabled by default, and not enabled by -Wall
+WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
+WarningManager.add_warning('separate-asm')
+WarningManager.add_warning('almost-asm')
+WarningManager.add_warning('invalid-input')
 
 
 class Configuration(object):
