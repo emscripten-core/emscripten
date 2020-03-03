@@ -2807,7 +2807,6 @@ def parse_args(newargs):
         elif requested_level.startswith('separate-dwarf'):
           # Emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
-          shared.Settings.FULL_DWARF = 1
           shared.Settings.SEPARATE_DWARF = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
@@ -3327,7 +3326,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  if shared.Settings.FULL_DWARF and shared.Settings.SEPARATE_DWARF:
+  if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF:
     shared.Building.emit_debug_on_side(wasm_binary_target)
 
 
