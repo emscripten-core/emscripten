@@ -3947,7 +3947,7 @@ int main()
 
   def test_symbol_map(self):
     for opts in [['-O2'], ['-O3']]:
-      for wasm in [0, 1]:
+      for wasm in [0, 1, 2]:
         print(opts, wasm)
         self.clear()
         create_test_file('src.c', r'''
@@ -3971,8 +3971,7 @@ EM_ASM({ _middle() });
 }
 ''')
         cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
-        if not wasm:
-          cmd += ['-s', 'WASM=0']
+        cmd += ['-s', 'WASM=%d' % wasm]
         run_process(cmd)
         # check that the map is correct
         with open('a.out.js.symbols') as f:

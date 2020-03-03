@@ -3310,9 +3310,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
-  # note that wasm2js handles the symbol map itself (as it manipulates and then
-  # replaces the wasm with js)
-  if options.emit_symbol_map and not shared.Settings.WASM2JS:
+  # note that if we aren't emitting a binary (like in wasm2js) then we don't
+  # have anything to do here.
+  if options.emit_symbol_map and os.path.exists(wasm_binary_target):
     shared.Building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
