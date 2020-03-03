@@ -758,6 +758,9 @@ mergeInto(LibraryManager.library, {
           assert(!handleSleepReturnValue || typeof handleSleepReturnValue === 'number'); // old emterpretify API supported other stuff
 #endif
           if (ABORT) return;
+#if ASSERTIONS
+          assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
+#endif
           Asyncify.handleSleepReturnValue = handleSleepReturnValue || 0;
           reachedCallback = true;
           if (!reachedAfterCallback) {
