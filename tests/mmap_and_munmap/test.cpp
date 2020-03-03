@@ -200,6 +200,7 @@ int test_unmap_zero_len() {
 typedef int (*test_fn)();
 
 int set_up() {
+#ifndef ONLY_ANOYMOUS
     FILE *f = fopen(FNAME_RO, "w");
     ASSERT(f != NULL, "Failed to open file " FNAME_RO " for writing");
     fprintf(f, "%s", file_data);
@@ -214,11 +215,13 @@ int set_up() {
     ASSERT(f_ro != NULL, "Failed to open file " FNAME_RO " for reading");
     f_rw = fopen(FNAME_RW, "r+");
     ASSERT(f_rw != NULL, "Failed to open file " FNAME_RW " for reading and writing");
+#endif
 
     return 0;
 }
 
 void tear_down() {
+#ifndef ONLY_ANOYMOUS
     if (f_ro != NULL) {
         fclose(f_ro);
         f_ro = NULL;
@@ -228,20 +231,23 @@ void tear_down() {
         fclose(f_rw);
         f_rw = NULL;
     }
+#endif
 }
 
 int main() {
     int failures = 0;
     test_fn tests[] = {
+#ifndef ONLY_ANOYMOUS
         test_mmap_read,
         test_mmap_write,
         test_mmap_write_private,
         test_mmap_write_to_ro_file,
-        test_mmap_anon,
         test_mmap_fixed,
         test_mmap_wrong_fd,
         test_unmap_wrong_addr,
         test_unmap_zero_len,
+#endif
+        test_mmap_anon,
         NULL
     };
 
@@ -258,7 +264,8 @@ int main() {
         ++tests_run;
     }
 
-    printf("tests_run: %d failures: %d\n", tests_run, failures);
+    printf("tests_run: %d\n", tests_run);
+    printf("failures: %d\n", failures);
 
 #ifdef REPORT_RESULT
     REPORT_RESULT(failures);

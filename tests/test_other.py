@@ -10068,11 +10068,14 @@ int main () {
   def test_llvm_includes(self):
     self.build('#include <stdatomic.h>', self.get_dir(), 'atomics.c')
 
-  def test_mmap_and_munmap(self):
-    emcc_args = []
-    for f in ['data_ro.dat', 'data_rw.dat']:
-        create_test_file(f, 'Test file')
-        emcc_args.extend(['--embed-file', f])
+  @parameterized({
+    'normal': ([], ['data_ro.dat', 'data_rw.dat']),
+    'no_fs': (['-s', 'NO_FILESYSTEM', '-DONLY_ANOYMOUS', '--profiling'], [])
+  })
+  def test_mmap_and_munmap(self, emcc_args, files):
+    for f in files:
+      create_test_file(f, 'Test file')
+      emcc_args = emcc_args + ['--embed-file', f]
     self.do_other_test('mmap_and_munmap', emcc_args)
 
   def test_mmap_memorygrowth(self):
