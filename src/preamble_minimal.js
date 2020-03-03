@@ -75,15 +75,15 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
 
 #if WASM
 
-#if ALLOW_MEMORY_GROWTH && WASM_MEM_MAX != -1
-var wasmMaximumMemory = {{{ WASM_MEM_MAX }}};
+#if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
+var wasmMaximumMemory = {{{ MAXIMUM_MEMORY }}};
 #else
-var wasmMaximumMemory = {{{ TOTAL_MEMORY }}};
+var wasmMaximumMemory = {{{ INITIAL_MEMORY }}};
 #endif
 
 var wasmMemory = new WebAssembly.Memory({
-  'initial': {{{ TOTAL_MEMORY }}} >> 16
-#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || WASM_MEM_MAX != -1
+  'initial': {{{ INITIAL_MEMORY }}} >> 16
+#if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != -1
   , 'maximum': wasmMaximumMemory >> 16
 #endif
 #if USE_PTHREADS
@@ -115,9 +115,9 @@ var wasmTable = new WebAssembly.Table({
 #else
 
 #if USE_PTHREADS
-var buffer = new SharedArrayBuffer({{{ TOTAL_MEMORY }}});
+var buffer = new SharedArrayBuffer({{{ INITIAL_MEMORY }}});
 #else
-var buffer = new ArrayBuffer({{{ TOTAL_MEMORY }}});
+var buffer = new ArrayBuffer({{{ INITIAL_MEMORY }}});
 #endif
 
 #if USE_PTHREADS
@@ -133,12 +133,12 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
 assert(STACK_BASE % 16 === 0, 'stack must start aligned to 16 bytes, STACK_BASE==' + STACK_BASE);
 assert(({{{ getQuoted('DYNAMIC_BASE') }}}) % 16 === 0, 'heap must start aligned to 16 bytes, DYNAMIC_BASE==' + {{{ getQuoted('DYNAMIC_BASE') }}});
-assert({{{ TOTAL_MEMORY }}} >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ TOTAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
-assert({{{ TOTAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
-#if WASM_MEM_MAX != -1
-assert({{{ WASM_MEM_MAX }}} % WASM_PAGE_SIZE == 0);
+assert({{{ INITIAL_MEMORY }}} >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + {{{ INITIAL_MEMORY }}} + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert({{{ INITIAL_MEMORY }}} % WASM_PAGE_SIZE === 0);
+#if MAXIMUM_MEMORY != -1
+assert({{{ MAXIMUM_MEMORY }}} % WASM_PAGE_SIZE == 0);
 #endif
-assert(buffer.byteLength === {{{ TOTAL_MEMORY }}});
+assert(buffer.byteLength === {{{ INITIAL_MEMORY }}});
 #if USE_PTHREADS
 }
 #endif

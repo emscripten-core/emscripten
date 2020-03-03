@@ -70,7 +70,6 @@ $__isdigit_l
 $__isxdigit_l
 $__letf2
 $__loc_is_allocated
-$__lockfile
 $__lshrti3
 $__mo_lookup
 $__multf3
@@ -488,6 +487,7 @@ $std::__2::codecvt<char32_t\2c\20char\2c\20__mbstate_t>::do_out\28__mbstate_t&\2
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>&\20std::__2::\28anonymous\20namespace\29::make<std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>\2c\20unsigned\20int>\28unsigned\20int\29
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::always_noconv\28\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::codecvt\28unsigned\20long\29
+$std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_encoding\28\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_length\28__mbstate_t&\2c\20char\20const*\2c\20char\20const*\2c\20unsigned\20long\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_out\28__mbstate_t&\2c\20char\20const*\2c\20char\20const*\2c\20char\20const*&\2c\20char*\2c\20char*\2c\20char*&\29\20const
 $std::__2::codecvt<char\2c\20char\2c\20__mbstate_t>::do_unshift\28__mbstate_t&\2c\20char*\2c\20char*\2c\20char*&\29\20const

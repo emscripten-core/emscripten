@@ -155,7 +155,7 @@ def get_wasm_libc_rt_files():
   iprintf_files = files_in_path(
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
     filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
-               'printf.c', 'puts.c'])
+               'printf.c', 'puts.c', '__lockfile.c'])
   iprintf_files += files_in_path(
     path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
     filenames=['strlen.c'])
@@ -740,13 +740,16 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    # Allowed files from blacklisted modules
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
+        filenames=['clock_settime.c'])
     libc_files += files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
         filenames=['getpagesize.c'])
 
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
-      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
       # Include all the getenv stuff with the wasm backend. With fastcomp we
       # still use JS because libc is a .bc file and we don't want to have a
       # global constructor there for __environ, which would mean it is always
@@ -759,7 +762,9 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
         filenames=['sched_yield.c'])
 
-    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc'],
+        filenames=['extras.c', 'wasi-helpers.c'])
 
     return libc_files
 
@@ -805,7 +810,7 @@ class libc_wasm(MuslInternalLibrary):
 
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins
-    return shared.Settings.WASM
+    return super(libc_wasm, self).can_use() and shared.Settings.WASM
 
 
 class crt1(MuslInternalLibrary):
@@ -820,24 +825,24 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return shared.Settings.STANDALONE_WASM
+    return super(crt1, self).can_use() and shared.Settings.STANDALONE_WASM
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(crt1, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructor it contains can be DCE'd.  With the wasm backend libc it is a .a
-  file so object file granularity applies.
+  constructor it contains can be DCE'd.  Such tricks are not needed wih the
+  the wasm backend because it uses .o file linking granularity.
   """
 
   name = 'libc-extras'
   src_dir = ['system', 'lib', 'libc']
-  src_files = ['extras.c']
+  src_files = ['extras_fastcomp.c']
 
   def can_build(self):
-    return not shared.Settings.WASM_BACKEND
+    return super(libc_extras, self).can_build() and not shared.Settings.WASM_BACKEND
 
 
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
@@ -990,7 +995,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
     return name
 
   def can_use(self):
-    return shared.Settings.MALLOC != 'none'
+    return super(libmalloc, self).can_use() and shared.Settings.MALLOC != 'none'
 
   @classmethod
   def vary_on(cls):
@@ -1206,7 +1211,7 @@ class CompilerRTWasmLibrary(Library):
   force_object_files = True
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(CompilerRTWasmLibrary, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
@@ -1349,7 +1354,7 @@ class libstandalonewasm(MuslInternalLibrary):
     return base_files + time_files + exit_files + conf_files
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(libstandalonewasm, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be

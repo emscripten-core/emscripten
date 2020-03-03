@@ -10,8 +10,11 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <time.h>
+#include <unistd.h>
 
 #include <wasi/api.h>
+#include <wasi/wasi-helpers.h>
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -38,22 +41,71 @@ void abort() {
   exit(1);
 }
 
+_Static_assert(CLOCK_REALTIME == __WASI_CLOCKID_REALTIME, "must match");
+_Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "must match");
+_Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCKID_PROCESS_CPUTIME_ID, "must match");
+_Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCKID_THREAD_CPUTIME_ID, "must match");
+
+#define NSEC_PER_SEC (1000 * 1000 * 1000)
+
+int clock_gettime(clockid_t clk_id, struct timespec *tp) {
+  __wasi_timestamp_t now;
+  __wasi_errno_t error = __wasi_clock_time_get(clk_id, 0, &now);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return __wasi_syscall_ret(error);
+  }
+  tp->tv_sec = now / NSEC_PER_SEC;
+  tp->tv_nsec = now % NSEC_PER_SEC;
+  return 0;
+}
+
+int clock_getres(clockid_t clk_id, struct timespec *tp) {
+  __wasi_timestamp_t res;
+  __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
+  if (error != __WASI_ERRNO_SUCCESS) {
+    return __wasi_syscall_ret(error);
+  }
+  tp->tv_sec = res / NSEC_PER_SEC;
+  tp->tv_nsec = res % NSEC_PER_SEC;
+  return 0;
+}
+
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
-int __map_file(int x, int y) {
-  return ENOSYS;
+long __map_file(int x, int y) {
+  return -ENOSYS;
 }
 
-int __syscall91(int x, int y) { // munmap
-  return ENOSYS;
+long __syscall91(int x, int y) { // munmap
+  return -ENOSYS;
 }
 
-// Musl lock internals. As we assume wasi is single-threaded for now, these
-// are no-ops.
+// mmap2()
+long __syscall192(long addr, long len, long prot, long flags, long fd, long off) {
+  return -ENOSYS;
+}
 
-void __lock(void* ptr) {}
-void __unlock(void* ptr) {}
+// open(), etc. - we just support the standard streams, with no
+// corner case error checking; everything else is not permitted.
+// TODO: full file support for WASI
+// open()
+long __syscall5(const char* path, long flags, ...) {
+  if (!strcmp(path, "/dev/stdin")) return STDIN_FILENO;
+  if (!strcmp(path, "/dev/stdout")) return STDOUT_FILENO;
+  if (!strcmp(path, "/dev/stderr")) return STDERR_FILENO;
+  return -EPERM;
+}
+
+// ioctl()
+int __syscall54(int fd, int op, ...) {
+  return -ENOSYS;
+}
+
+// fcntl64()
+long __syscall221(long fd, long cmd, ...) {
+  return -ENOSYS;
+}
 
 // Emscripten additions
 

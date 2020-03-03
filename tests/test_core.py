@@ -166,6 +166,27 @@ def also_with_impure_standalone_wasm(func):
   return decorated
 
 
+# Similar to also_with_standalone_wasm, but suitable for tests that can *only*
+# run in a wasm VM, or in non-standalone mode, but not in standalone mode with
+# our JS.
+def also_with_only_standalone_wasm(func):
+  def decorated(self):
+    func(self)
+    # Standalone mode is only supported in the wasm backend, and not in all
+    # modes there.
+    if self.is_wasm_backend() and self.get_setting('WASM') and not self.get_setting('SAFE_STACK'):
+      print('standalone (only; no js runtimes)')
+      self.set_setting('STANDALONE_WASM', 1)
+      js_engines = shared.JS_ENGINES
+      try:
+        shared.JS_ENGINES = []
+        func(self)
+      finally:
+        shared.JS_ENGINES = js_engines
+
+  return decorated
+
+
 def node_pthreads(f):
   def decorated(self):
     self.set_setting('USE_PTHREADS', 1)
@@ -952,7 +973,7 @@ base align: 0, 0, 0, 0'''])
   def test_emmalloc_memory_statistics(self, *args):
 
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-g'] + list(args)
+    self.emcc_args += ['-s', 'INITIAL_MEMORY=128MB', '-g'] + list(args)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_memory_statistics')
 
@@ -962,7 +983,7 @@ base align: 0, 0, 0, 0'''])
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-s', 'TOTAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
+    self.emcc_args += ['-s', 'INITIAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_trim')
 
@@ -2024,7 +2045,7 @@ int main(int argc, char **argv) {
     if self.maybe_closure():
       # verify NO_DYNAMIC_EXECUTION is compatible with closure
       self.set_setting('DYNAMIC_EXECUTION', 0)
-    # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
+    # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
 
@@ -2060,7 +2081,7 @@ int main(int argc, char **argv) {
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
 
-    # With typed arrays in particular, it is dangerous to use more memory than TOTAL_MEMORY,
+    # With typed arrays in particular, it is dangerous to use more memory than INITIAL_MEMORY,
     # since we then need to enlarge the heap(s).
     src = open(path_from_root('tests', 'core', 'test_memorygrowth_2.c')).read()
 
@@ -2086,14 +2107,14 @@ int main(int argc, char **argv) {
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_3')
 
   @also_with_impure_standalone_wasm
-  def test_memorygrowth_wasm_mem_max(self):
+  def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
     if not self.is_wasm():
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=100Mb']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'INITIAL_MEMORY=64Mb', '-s', 'MAXIMUM_MEMORY=100Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_wasm_mem_max')
 
   def test_memorygrowth_linear_step(self):
@@ -2103,7 +2124,7 @@ int main(int argc, char **argv) {
       self.skipTest('wasm memory specific test')
 
     # check that memory growth does not exceed the wasm mem max limit and is exactly or one step below the wasm mem max
-    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_STACK=1Mb', '-s', 'TOTAL_MEMORY=64Mb', '-s', 'WASM_MEM_MAX=130Mb', '-s', 'MEMORY_GROWTH_LINEAR_STEP=1Mb']
+    self.emcc_args += ['-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'TOTAL_STACK=1Mb', '-s', 'INITIAL_MEMORY=64Mb', '-s', 'MAXIMUM_MEMORY=130Mb', '-s', 'MEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_run_in_out_file_test('tests', 'core', 'test_memorygrowth_memory_growth_step')
 
   def test_memorygrowth_geometric_step(self):
@@ -3018,7 +3039,7 @@ Var: 42
   @needs_dlfcn
   def test_dlfcn_alignment_and_zeroing(self):
     self.prep_dlfcn_lib()
-    self.set_setting('TOTAL_MEMORY', 16 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 16 * 1024 * 1024)
     lib_src = r'''
       extern "C" {
         int prezero = 0;
@@ -3035,7 +3056,7 @@ Var: 42
       self.emcc_args += ['--embed-file', curr]
 
     self.prep_dlfcn_main()
-    self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
     src = r'''
       #include <stdio.h>
       #include <stdlib.h>
@@ -3114,7 +3135,7 @@ Var: 42
       if self.is_wasm_backend():
         self.assertLess(len(exports), 56)
       else:
-        self.assertLess(len(exports), 30)
+        self.assertLess(len(exports), 32)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_dlfcn_self', post_build=post)
 
@@ -3376,7 +3397,7 @@ ok
   @needs_dlfcn
   def test_dlfcn_mallocs(self):
     # will be exhausted without functional malloc/free
-    self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
 
     self.prep_dlfcn_lib()
     lib_src = r'''
@@ -3557,8 +3578,8 @@ ok
     self.set_setting('EXPORT_ALL')
     self.emcc_args += ['--embed-file', '.@/']
 
-    # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
-    self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)
+    # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
+    self.set_setting('INITIAL_MEMORY', 32 * 1024 * 1024)
 
     src = r'''
       #include <dlfcn.h>
@@ -4297,7 +4318,8 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   def test_dylink_syslibs(self): # one module uses libcxx, need to force its inclusion when it isn't the main
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678
+    # https://github.com/emscripten-core/emscripten/issues/10571
+    return self.skipTest('Currently not working due to duplicate symbol errors in wasm-ld')
 
     def test(syslibs, expect_pass=True, need_reverse=True):
       print('syslibs', syslibs, self.get_setting('ASSERTIONS'))
@@ -4403,8 +4425,6 @@ res64 - external 64\n''', header='''
 
   @needs_dlfcn
   def test_dylink_raii_exceptions(self):
-    self.banned_js_engines = [NODE_JS, V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=9678
-
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
 
     self.dylink_test(main=r'''
@@ -4438,7 +4458,7 @@ res64 - external 64\n''', header='''
   @needs_dlfcn
   @no_wasm_backend('wasm backend resolves symbols greedily on startup')
   def test_dylink_hyper_dupe(self):
-    self.set_setting('TOTAL_MEMORY', 64 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 64 * 1024 * 1024)
     if not self.has_changed_setting('ASSERTIONS'):
       self.set_setting('ASSERTIONS', 2)
 
@@ -5521,6 +5541,9 @@ main( int argv, char ** argc ) {
         self.emcc_args += ['-lnodefs.js']
       self.do_run(src, expected, js_engines=[NODE_JS])
 
+  # i64s in the API, which we'd need to legalize for JS, so in standalone mode
+  # all we can test is wasm VMs
+  @also_with_only_standalone_wasm
   def test_posixtime(self):
     test_path = path_from_root('tests', 'core', 'test_posixtime')
     src, output = (test_path + s for s in ('.c', '.out'))
@@ -5832,7 +5855,7 @@ int main(void) {
   def test_dlmalloc_inline(self):
     self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
-    self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
 
     src = open(path_from_root('system', 'lib', 'dlmalloc.c')).read() + '\n\n\n' + open(path_from_root('tests', 'dlmalloc_test.c')).read()
     self.do_run(src, '*1,0*', ['200', '1'], force_c=True)
@@ -5841,7 +5864,7 @@ int main(void) {
   def test_dlmalloc(self):
     self.banned_js_engines = [NODE_JS] # slower, and fail on 64-bit
     # needed with typed arrays
-    self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
 
     # Linked version
     src = open(path_from_root('tests', 'dlmalloc_test.c')).read()
@@ -5853,7 +5876,7 @@ int main(void) {
       # emcc should build in dlmalloc automatically, and do all the sign correction etc. for it
 
       try_delete('src.cpp.o.js')
-      run_process([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'TOTAL_MEMORY=128MB', '-o', 'src.cpp.o.js'], stdout=PIPE, stderr=self.stderr_redirect)
+      run_process([PYTHON, EMCC, path_from_root('tests', 'dlmalloc_test.c'), '-s', 'INITIAL_MEMORY=128MB', '-o', 'src.cpp.o.js'], stdout=PIPE, stderr=self.stderr_redirect)
 
       self.do_run(None, '*1,0*', ['200', '1'], no_build=True)
       self.do_run(None, '*400,0*', ['400', '400'], no_build=True)
@@ -5916,7 +5939,7 @@ return malloc(size);
     self.do_run_in_out_file_test('tests', 'core', 'test_fakestat')
 
   def test_mmap(self):
-    self.set_setting('TOTAL_MEMORY', 128 * 1024 * 1024)
+    self.set_setting('INITIAL_MEMORY', 128 * 1024 * 1024)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_mmap')

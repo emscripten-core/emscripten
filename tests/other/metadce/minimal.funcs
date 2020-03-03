@@ -1,10 +1,12 @@
 $__errno_location
 $__fflush_unlocked
 $__growWasmMemory
+$__lock
 $__lockfile
 $__ofl_lock
 $__ofl_unlock
 $__set_stack_limit
+$__unlock
 $__unlockfile
 $__wasm_call_ctors
 $add

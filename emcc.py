@@ -388,14 +388,6 @@ def apply_settings(changes):
   """
 
   def standardize_setting_change(key, value):
-    # Handle aliases in settings flags. These are settings whose name
-    # has changed.
-    settings_aliases = {
-      'BINARYEN': 'WASM',
-      'BINARYEN_MEM_MAX': 'WASM_MEM_MAX',
-      # TODO: change most (all?) other BINARYEN* names to WASM*
-    }
-    key = settings_aliases.get(key, key)
     # boolean NO_X settings are aliases for X
     # (note that *non*-boolean setting values have special meanings,
     # and we can't just flip them, so leave them as-is to be
@@ -403,6 +395,9 @@ def apply_settings(changes):
     if key.startswith('NO_') and value in ('0', '1'):
       key = key[3:]
       value = str(1 - int(value))
+    # map legacy settings which have aliases to the new names
+    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
+      key = shared.Settings.alt_names[key]
     return key, value
 
   for change in changes:
@@ -413,8 +408,8 @@ def apply_settings(changes):
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if key in ('TOTAL_STACK', 'TOTAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
-               'GL_MAX_TEMP_BUFFER_SIZE', 'WASM_MEM_MAX', 'DEFAULT_PTHREAD_STACK_SIZE'):
+    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
+               'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
@@ -999,7 +994,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         file_suffix = get_file_suffix(arg)
         if file_suffix in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS or shared.Building.is_ar(arg): # we already removed -o <target>, so all these should be inputs
           newargs[i] = ''
-          if file_suffix.endswith(SOURCE_ENDINGS):
+          if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
             has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
@@ -1023,7 +1018,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             libs.append((i, libname))
             newargs[i] = ''
           else:
-            logger.warning(arg + ' is not a valid input file')
+            shared.WarningManager.warn('invalid-input', arg + ' is not a valid input file')
         elif file_suffix.endswith(STATICLIB_ENDINGS):
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
@@ -1117,7 +1112,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
     if options.separate_asm and final_suffix != '.html':
-      shared.WarningManager.warn('SEPARATE_ASM')
+      shared.WarningManager.warn('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=shared.Settings.OPT_LEVEL, shrink_level=shared.Settings.SHRINK_LEVEL, noisy=True)
@@ -1204,7 +1199,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # when we emit asm.js, closure 2 would break that, so warn (note that
       # with wasm2js in the wasm backend, we don't emit asm.js anyhow)
       if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1 and not shared.Settings.WASM_BACKEND:
-        shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
+        shared.WarningManager.warn('almost-asm', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
         shared.Settings.ASM_JS = 2
 
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
@@ -1584,23 +1579,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         misc_temp_files.note(asm_target)
 
     if shared.Settings.WASM:
-      if shared.Settings.TOTAL_MEMORY % 65536 != 0:
-        exit_with_error('For wasm, TOTAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.TOTAL_MEMORY))
-      if shared.Settings.TOTAL_MEMORY >= 2 * 1024 * 1024 * 1024:
-        exit_with_error('TOTAL_MEMORY must be less than 2GB due to current spec limitations')
+      if shared.Settings.INITIAL_MEMORY % 65536 != 0:
+        exit_with_error('For wasm, INITIAL_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.INITIAL_MEMORY))
+      if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+        exit_with_error('INITIAL_MEMORY must be less than 2GB due to current spec limitations')
     else:
-      if shared.Settings.TOTAL_MEMORY < 16 * 1024 * 1024:
-        exit_with_error('TOTAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
-      if shared.Settings.TOTAL_MEMORY % (16 * 1024 * 1024) != 0:
-        exit_with_error('For asm.js, TOTAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.TOTAL_MEMORY))
-    if shared.Settings.TOTAL_MEMORY < shared.Settings.TOTAL_STACK:
-      exit_with_error('TOTAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.TOTAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
-    if shared.Settings.WASM_MEM_MAX != -1 and shared.Settings.WASM_MEM_MAX % 65536 != 0:
-      exit_with_error('WASM_MEM_MAX must be a multiple of 64KB, was ' + str(shared.Settings.WASM_MEM_MAX))
+      if shared.Settings.INITIAL_MEMORY < 16 * 1024 * 1024:
+        exit_with_error('INITIAL_MEMORY must be at least 16MB, was ' + str(shared.Settings.INITIAL_MEMORY))
+      if shared.Settings.INITIAL_MEMORY % (16 * 1024 * 1024) != 0:
+        exit_with_error('For asm.js, INITIAL_MEMORY must be a multiple of 16MB, was ' + str(shared.Settings.INITIAL_MEMORY))
+    if shared.Settings.INITIAL_MEMORY < shared.Settings.TOTAL_STACK:
+      exit_with_error('INITIAL_MEMORY must be larger than TOTAL_STACK, was ' + str(shared.Settings.INITIAL_MEMORY) + ' (TOTAL_STACK=' + str(shared.Settings.TOTAL_STACK) + ')')
+    if shared.Settings.MAXIMUM_MEMORY != -1 and shared.Settings.MAXIMUM_MEMORY % 65536 != 0:
+      exit_with_error('MAXIMUM_MEMORY must be a multiple of 64KB, was ' + str(shared.Settings.MAXIMUM_MEMORY))
     if shared.Settings.MEMORY_GROWTH_LINEAR_STEP != -1 and shared.Settings.MEMORY_GROWTH_LINEAR_STEP % 65536 != 0:
       exit_with_error('MEMORY_GROWTH_LINEAR_STEP must be a multiple of 64KB, was ' + str(shared.Settings.MEMORY_GROWTH_LINEAR_STEP))
-    if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.WASM_MEM_MAX == -1:
-      exit_with_error('If pthreads and memory growth are enabled, WASM_MEM_MAX must be set')
+    if shared.Settings.USE_PTHREADS and shared.Settings.WASM and shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.MAXIMUM_MEMORY == -1:
+      exit_with_error('If pthreads and memory growth are enabled, MAXIMUM_MEMORY must be set')
 
     if shared.Settings.EXPORT_ES6 and not shared.Settings.MODULARIZE:
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
@@ -1771,8 +1766,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         shared.Settings.USE_ASAN = 1
 
         shared.Settings.GLOBAL_BASE = shared.Settings.ASAN_SHADOW_SIZE
-        shared.Settings.TOTAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
-        assert shared.Settings.TOTAL_MEMORY < 2**32
+        shared.Settings.INITIAL_MEMORY += shared.Settings.ASAN_SHADOW_SIZE
+        assert shared.Settings.INITIAL_MEMORY < 2**32
 
         if shared.Settings.SAFE_HEAP:
           # SAFE_HEAP instruments ASan's shadow memory accesses.
@@ -1929,8 +1924,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
       # this is an issue in asm.js, but not wasm
       if not shared.Settings.WASM:
-        shared.WarningManager.warn('ALMOST_ASM')
-        shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+        # memory growth does not validate as asm.js
+        # http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+        shared.WarningManager.warn('almost-asm', 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.')
+        shared.Settings.ASM_JS = 2
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
@@ -2089,7 +2086,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # First, generate LLVM bitcode. For each input file, we get base.o with bitcode
       for i, input_file in input_files:
         file_ending = get_file_suffix(input_file)
-        if file_ending.endswith(SOURCE_ENDINGS):
+        if file_ending.endswith(SOURCE_ENDINGS) or (has_dash_c and file_ending == '.bc'):
           compile_source_file(i, input_file)
         else:
           if file_ending.endswith(OBJECT_FILE_ENDINGS):
@@ -2807,10 +2804,11 @@ def parse_args(newargs):
       else:
         if requested_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
-        elif requested_level.startswith('side'):
+        elif requested_level.startswith('separate-dwarf'):
           # Emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
-          shared.Settings.SIDE_DEBUG = 1
+          shared.Settings.FULL_DWARF = 1
+          shared.Settings.SEPARATE_DWARF = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -2946,7 +2944,7 @@ def parse_args(newargs):
         # that are e.g. x86 specific and nonportable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         shared.WarningManager.warn(
-            'ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] +
+            'absolute-paths', '-I or -L of an absolute path "' + newargs[i] +
             '" encountered. If this is to a local system header/library, it may '
             'cause problems (local system files make sense for compiling natively '
             'on your system, but not necessarily to JavaScript).')
@@ -3123,7 +3121,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     if DEBUG:
       # save the asm.js input
       shared.Building.save_intermediate(asm_target, 'asmjs.js')
-    cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.TOTAL_MEMORY)]
+    cmd = [os.path.join(binaryen_bin, 'asm2wasm'), asm_target, '--total-memory=' + str(shared.Settings.INITIAL_MEMORY)]
     if shared.Settings.BINARYEN_TRAP_MODE not in ('js', 'clamp', 'allow'):
       exit_with_error('invalid BINARYEN_TRAP_MODE value: ' + shared.Settings.BINARYEN_TRAP_MODE + ' (should be js/clamp/allow)')
     cmd += ['--trap-mode=' + shared.Settings.BINARYEN_TRAP_MODE]
@@ -3145,8 +3143,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
       cmd += ['--mem-max=-1']
-    elif shared.Settings.WASM_MEM_MAX >= 0:
-      cmd += ['--mem-max=' + str(shared.Settings.WASM_MEM_MAX)]
+    elif shared.Settings.MAXIMUM_MEMORY >= 0:
+      cmd += ['--mem-max=' + str(shared.Settings.MAXIMUM_MEMORY)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
       cmd += ['--no-legalize-javascript-ffi']
     if shared.Building.is_wasm_only():
@@ -3300,9 +3298,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
-  # note that wasm2js handles the symbol map itself (as it manipulates and then
-  # replaces the wasm with js)
-  if options.emit_symbol_map and not shared.Settings.WASM2JS:
+  # note that if we aren't emitting a binary (like in wasm2js) then we don't
+  # have anything to do here.
+  if options.emit_symbol_map and os.path.exists(wasm_binary_target):
     shared.Building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
@@ -3329,7 +3327,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SIDE_DEBUG:
+  if shared.Settings.FULL_DWARF and shared.Settings.SEPARATE_DWARF:
     shared.Building.emit_debug_on_side(wasm_binary_target)
 
 

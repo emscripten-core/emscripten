@@ -72,6 +72,8 @@ def get_mapped_items():
     mapped_wiki_inline_code['EM_LOG_JS_STACK'] = ':c:macro:`EM_LOG_JS_STACK`'
     mapped_wiki_inline_code['EM_LOG_NO_PATHS'] = ':c:macro:`EM_LOG_NO_PATHS`'
     mapped_wiki_inline_code['EM_LOG_WARN'] = ':c:macro:`EM_LOG_WARN`'
+    mapped_wiki_inline_code['EM_LOG_INFO'] = ':c:macro:`EM_LOG_INFO`'
+    mapped_wiki_inline_code['EM_LOG_DEBUG'] = ':c:macro:`EM_LOG_DEBUG`'
     mapped_wiki_inline_code['EM_UTF8'] = ':c:macro:`EM_UTF8`'
     mapped_wiki_inline_code['EmscriptenBatteryEvent'] = ':c:type:`EmscriptenBatteryEvent`'
     mapped_wiki_inline_code['EmscriptenDeviceMotionEvent'] = ':c:type:`EmscriptenDeviceMotionEvent`'

@@ -21,8 +21,7 @@ information. The easiest way to find these posts is to use `this search
 ChangeLog
 =========
 
-The ChangeLog for Emscripten |release| (|today|) is listed below (incoming version
-`here <https://github.com/emscripten-core/emscripten/blob/incoming/ChangeLog.md>`_).
+The ChangeLog for Emscripten |release| (|today|) is listed below.
 
 .. include::   ../../../../ChangeLog.md
    :literal:

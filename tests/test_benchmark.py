@@ -191,7 +191,7 @@ class EmscriptenBenchmarker(Benchmarker):
     cmd = [
       PYTHON, EMCC, filename,
       OPTIMIZATIONS,
-      '-s', 'TOTAL_MEMORY=256MB',
+      '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
       '-s', 'MINIMAL_RUNTIME=0',

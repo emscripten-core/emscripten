@@ -563,7 +563,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 24)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 25)
 
 
 def generate_sanity():
@@ -752,56 +752,81 @@ def get_canonical_temp_dir(temp_dir):
 
 
 class WarningManager(object):
-  warnings = {
-    'ABSOLUTE_PATHS': {
-      'enabled': False,  # warning about absolute-paths is disabled by default
+  warnings = {}
+
+  @staticmethod
+  def add_warning(name, enabled=True, part_of_all=True):
+    WarningManager.warnings[name] = {
+      'enabled': enabled,
+      'part_of_all': part_of_all,
       'printed': False,
-      'message': '-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).',
-    },
-    'SEPARATE_ASM': {
-      'enabled': True,
-      'printed': False,
-      'message': "--separate-asm works best when compiling to HTML. Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.",
-    },
-    'ALMOST_ASM': {
-      'enabled': True,
-      'printed': False,
-      'message': 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.',
-    },
-  }
+      'error': False,
+    }
 
   @staticmethod
   def capture_warnings(cmd_args):
     for i in range(len(cmd_args)):
+      if cmd_args[i] == '-w':
+        for warning in WarningManager.warnings.values():
+          warning['enabled'] = False
+        continue
+
       if not cmd_args[i].startswith('-W'):
         continue
 
-      # special case pre-existing warn-absolute-paths
-      if cmd_args[i] == '-Wwarn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = True
-      elif cmd_args[i] == '-Wno-warn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = False
-      else:
-        # convert to string representation of Warning
-        warning_enum = cmd_args[i].replace('-Wno-', '').replace('-W', '')
-        warning_enum = warning_enum.upper().replace('-', '_')
+      if cmd_args[i] == '-Wall':
+        for warning in WarningManager.warnings.values():
+          if warning['part_of_all']:
+            warning['enabled'] = True
+        continue
 
-        if warning_enum in WarningManager.warnings:
-          WarningManager.warnings[warning_enum]['enabled'] = not cmd_args[i].startswith('-Wno-')
+      if cmd_args[i] == '-Werror':
+        for warning in WarningManager.warnings.values():
+          warning['error'] = True
+        continue
+
+      if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
+        warning_name = cmd_args[i].split('=', 1)[1]
+        if warning_name in WarningManager.warnings:
+          WarningManager.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
           cmd_args[i] = ''
+          continue
+
+      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+      enabled = not cmd_args[i].startswith('-Wno-')
+
+      # special case pre-existing warn-absolute-paths
+      if warning_name == 'warn-absolute-paths':
+        WarningManager.warnings['absolute-paths']['enabled'] = enabled
+        cmd_args[i] = ''
+        continue
+
+      if warning_name in WarningManager.warnings:
+        WarningManager.warnings[warning_name]['enabled'] = enabled
+        cmd_args[i] = ''
+        continue
 
     return cmd_args
 
   @staticmethod
-  def warn(warning_type, message=None):
+  def warn(warning_type, message, *args):
     warning_info = WarningManager.warnings[warning_type]
+    msg = (message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']'
     if warning_info['enabled'] and not warning_info['printed']:
       warning_info['printed'] = True
-      if message is None:
-        message = warning_info['message']
-      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+      if warning_info['error']:
+        exit_with_error(msg + ' [-Werror]')
+      else:
+        logger.warning(msg)
+    else:
+      logger.debug('disabled warning: ' + msg)
+
+
+# warning about absolute-paths is disabled by default, and not enabled by -Wall
+WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
+WarningManager.add_warning('separate-asm')
+WarningManager.add_warning('almost-asm')
+WarningManager.add_warning('invalid-input')
 
 
 class Configuration(object):
@@ -1851,15 +1876,15 @@ class Building(object):
     if not Settings.SIDE_MODULE:
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
-        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
+        '--initial-memory=%d' % Settings.INITIAL_MEMORY,
       ]
       use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
-      if Settings.WASM_MEM_MAX != -1:
-        cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+      if Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       elif not Settings.ALLOW_MEMORY_GROWTH:
-        cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+        cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
@@ -1904,8 +1929,7 @@ class Building(object):
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        warning('object %s is not a valid object file for emscripten, cannot link', f)
-        return False
+        exit_with_error('unknown file type: %s', f)
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
@@ -1973,17 +1997,7 @@ class Building(object):
           # Command line flags should already be vetted by the time this method
           # is called, so this is an internal error
           assert False, 'unsupported link flag: ' + f
-      elif not Building.is_ar(absolute_path_f):
-        if Building.is_bitcode(absolute_path_f):
-          if has_ar:
-            consider_object(absolute_path_f, force_add=True)
-          else:
-            # If there are no archives then we can simply link all valid object
-            # files and skip the symbol table stuff.
-            actual_files.append(f)
-        else:
-          logging.debug('ignoring non-bitcode file for link: %s' % absolute_path_f)
-      else:
+      elif Building.is_ar(absolute_path_f):
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         consider_archive(absolute_path_f, in_whole_archive or force_add_all)
@@ -1991,6 +2005,15 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
+      elif Building.is_bitcode(absolute_path_f):
+        if has_ar:
+          consider_object(f, force_add=True)
+        else:
+          # If there are no archives then we can simply link all valid object
+          # files and skip the symbol table stuff.
+          actual_files.append(f)
+      else:
+        exit_with_error('unknown file type: %s', f)
 
     # We have to consider the possibility that --start-group was used without a matching
     # --end-group; GNU ld permits this behavior and implicitly treats the end of the
@@ -2051,16 +2074,8 @@ class Building(object):
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
     cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
-    try:
-      run_process(cmd, stdout=PIPE)
-      assert os.path.exists(target), 'llvm optimizer emitted no output.'
-    except subprocess.CalledProcessError as e:
-      for i in inputs:
-        if not os.path.exists(i):
-          warning('Note: Input file "' + i + '" did not exist.')
-        elif not Building.is_bitcode(i):
-          warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
-      exit_with_error('Failed to run llvm optimizations: ' + e.output)
+    check_call(cmd)
+    assert os.path.exists(target), 'llvm optimizer emitted no output.'
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
@@ -2091,17 +2106,21 @@ class Building(object):
       if ':' in line:
         continue
       parts = [seg for seg in line.split(' ') if len(seg)]
-      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
+      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols
+      # as  -------- T name
       if len(parts) == 3 and parts[0] == "--------" or re.match(r'^[\da-f]{8}$', parts[0]):
         parts.pop(0)
-      if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
+      if len(parts) == 2:
+        # ignore lines with absolute offsets, these are not bitcode anyhow
+        # e.g. |00000630 t d_source_name|
         status, symbol = parts
         if status == 'U':
           undefs.append(symbol)
         elif status == 'C':
           commons.append(symbol)
         elif (not include_internal and status == status.upper()) or \
-             (include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
+             (include_internal and status in ['W', 't', 'T', 'd', 'D']):
+          # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
           #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
@@ -2148,8 +2167,6 @@ class Building(object):
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    cmd = [PYTHON, EMAR, action, output_filename] + filenames[:5]
-
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
     cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
     try:
@@ -2284,7 +2301,7 @@ class Building(object):
     if Settings.WASM_BACKEND:
       logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
       return
-    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.INITIAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
@@ -2584,6 +2601,8 @@ class Building(object):
       'fd_fdstat_get',
       'fd_sync',
       'proc_exit',
+      'clock_res_get',
+      'clock_time_get',
     ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
@@ -3264,7 +3283,7 @@ class WebAssembly(object):
   def add_emscripten_metadata(js_file, wasm_file):
     WASM_PAGE_SIZE = 65536
 
-    mem_size = Settings.TOTAL_MEMORY // WASM_PAGE_SIZE
+    mem_size = Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
     table_size = Settings.WASM_TABLE_SIZE
     global_base = Settings.GLOBAL_BASE
 
