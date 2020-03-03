@@ -10307,16 +10307,30 @@ Module.arguments has been replaced with plain arguments_
     run_process([PYTHON, EMCC, 'empty.c', '-la', '-L.'])
     self.assertContained('success', run_js('a.out.js'))
 
-  def test_werror_python(self):
+  def test_warning_flags(self):
     create_test_file('not_object.bc', 'some text')
     run_process([PYTHON, EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
-    cmd = [PYTHON, EMCC, 'hello.o', 'not_object.bc', '-o', 'a.o']
+    cmd = [PYTHON, EMCC, 'hello.o', 'not_object.bc', '-o', 'a.wasm']
+
+    # warning that is enabled by default
     stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
-    # Same thing with -Werror should fail
+    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+
+    # -w to suppress warnings
+    stderr = run_process(cmd + ['-w'], stderr=PIPE).stderr
+    self.assertNotContained('WARNING', stderr)
+
+    # -Wno-invalid-input to suppress just this one warning
+    stderr = run_process(cmd + ['-Wno-invalid-input'], stderr=PIPE).stderr
+    self.assertNotContained('WARNING', stderr)
+
+    # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
-    self.assertContained('ERROR: treating warnings as errors (-Werror)', stderr)
+    self.assertContained('ERROR: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
+
+    # with -Werror + -Wno-error=<type> should only warn
+    stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
+    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')

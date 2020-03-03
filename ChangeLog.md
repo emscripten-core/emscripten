@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
+  internal emscripten errors. The behviour of these flags matches the gcc/clang
+  counterparts.
 - Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
   which are more accurate and match wasm conventions. The old names are still
   supported as aliases.
