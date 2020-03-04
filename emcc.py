@@ -1865,6 +1865,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               'emscripten_fiber_swap',
               'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
             ]
+
             # return the full import name, including module. The name may
             # already have a module prefix; if not, we assume it is "env".
             def get_full_import_name(name):
