@@ -8528,6 +8528,9 @@ int main() {
     for flags, expect_bitcode in [
       ([], False),
       (['-flto'], True),
+      (['-flto=thin'], True),
+      (['-s', 'WASM_OBJECT_FILES=0'], True),
+      (['-s', 'WASM_OBJECT_FILES=1'], False),
     ]:
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + flags + ['-c', '-o', 'a.o'])
       seen_bitcode = Building.is_bitcode('a.o')

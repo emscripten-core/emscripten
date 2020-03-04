@@ -435,6 +435,10 @@ def apply_settings(changes):
       # used for warnings in emscripten.py
       shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
+    # TODO(sbc): Remove this legacy way.
+    if key == 'WASM_OBJECT_FILES':
+      shared.Settings.LTO = 0 if value else 'full'
+
 
 def find_output_arg(args):
   """Find and remove any -o arguments.  The final one takes precedence.
