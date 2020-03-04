@@ -39,6 +39,8 @@ Current Trunk
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
+- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+  compiled code on the stack when starting to rewind, which is dangerous.
 
 v1.39.8: 02/14/2020
 -------------------
