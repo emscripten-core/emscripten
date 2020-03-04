@@ -173,11 +173,6 @@ module that the Asyncify instrumentation must be aware of. Giving it that list
 tells it that all other JS calls will **not** do an async operation, which lets
 it not add overhead where it isn't needed.
 
-The ``ASYNCIFY_IMPORTS`` list must contain **all** relevant imports, not just
-ones you add yourself, so it must contain things like ``emscripten_sleep()``
-if you call them (by default the list will contain them, so you must only add
-them if you change the list).
-
 Returning values
 ################
 
