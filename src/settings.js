@@ -310,6 +310,7 @@ var SAFE_HEAP_LOG = 0;
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
+// [fastcomp-only]
 var RESERVED_FUNCTION_POINTERS = 0;
 
 // Whether to allow function pointers to alias if they have a different type.
@@ -1498,14 +1499,6 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 // to optimize ctors with lowest priority. We do know that, and can optimize all
 // the ctors.
 var EVAL_CTORS = 0;
-
-// Whether to emit DWARF in a wasm file on the side (this is not called
-// "split"/"separate" because there is already a DWARF concept by that name).
-// When DWARF is on the side, the main file has no DWARF info, while the side
-// file, ending in .debug.wasm, has the same wasm binary + all the debug
-// sections.
-// This has no effect if DWARF is not being emitted.
-var SIDE_DEBUG = 0;
 
 // see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
 // [fastcomp-only]

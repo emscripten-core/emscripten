@@ -17,6 +17,13 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
+  internal emscripten errors. The behviour of these flags matches the gcc/clang
+  counterparts.
+- Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
+  which are more accurate and match wasm conventions. The old names are still
+  supported as aliases.
+- Updated of libc++abi and libc++ to llvm 9.0.0 (#10510)
 - Support 2GB+ heap sizes. To do this we modify the JS code to have unsigned
   pointers (we need all 32 bits in them now), which can slightly increase code
   size (>>> instead of >>). This only happens when the heap size may be over
@@ -24,10 +31,6 @@ Current Trunk
   setting `MAXIMUM_MEMORY` (as without a maximum we assume it can grow all the
   way up). To avoid that tiny regression, set that flag to `2GB` or lower.
   See #10601
-- Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
-  which are more accurate and match wasm conventions. The old names are still
-  supported as aliases.
-- Updated of libc++abi and libc++ to llvm 9.0.0 (#10510)
 - Refactor syscall interface: Syscalls are no longer variadic (except those
   that are inherently such as open) and no longer take the syscall number as
   arg0.  This should be invisible to most users but will effect any external
@@ -43,6 +46,8 @@ Current Trunk
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
+- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+  compiled code on the stack when starting to rewind, which is dangerous.
 
 v1.39.8: 02/14/2020
 -------------------
@@ -59,7 +64,7 @@ v1.39.8: 02/14/2020
 
 v1.39.7: 02/03/2020
 -------------------
-- The checked-in copy of closure compiler was removed in favor of getting it
+- The checked-in copy of the Closure compiler was removed in favor of getting it
   from npm.  This means that developers now need to run `npm install` after
   checking out emscripten if they want to use closure (--closure).  emsdk users
   are not effected because emsdk runs this as a post install step (#9989).
@@ -73,14 +78,14 @@ v1.39.7: 02/03/2020
   falls back to using a JavaScript version if WebAssembly is not supported in
   target browser/shell. (#10118)
 - Added new linker option -s CLOSURE_WARNINGS=quiet|warn|error that allows aborting
-  the build if Closure compiler produced any warnings.
+  the build if the Closure compiler produced any warnings.
 
 v1.39.6: 01/15/2020
 -------------------
-- Development has switched from "incoming" branches to "master".
+- Development has switched from the "incoming" branch to "master".
 - Added new system header <emscripten/heap.h>, which enables querying information
   about the current WebAssembly heap state.
-- Reduced default geometric memory overgrowth rate from very generous 2x factor
+- Reduced default geometric memory overgrowth rate from a very generous 2x factor
   to a more memory conserving +20% factor, and capped maximum reservation to 96MB
   at most.
 - Added options MEMORY_GROWTH_GEOMETRIC_STEP and MEMORY_GROWTH_GEOMETRIC_CAP
@@ -95,7 +100,7 @@ v1.39.5: 12/20/2019
 - Added support for streaming Wasm compilation in MINIMAL_RUNTIME (off by default)
 - All ports now install their headers into a shared directory under
   `EM_CACHE`.  This should not really be a user visible change although one
-  side effect is that once a give ports is built its headers are then
+  side effect is that once a given port is built, its headers are then
   universally accessible, just like the library is universally available as
   `-l<name>`.
 - Removed `timestamp` field from mouse, wheel, devicemotion and
@@ -108,7 +113,7 @@ v1.39.5: 12/20/2019
   `MIN_FIREFOX_VERSION`, `MIN_SAFARI_VERSION`, `MIN_IE_VERSION`,
   `MIN_EDGE_VERSION`, `MIN_CHROME_VERSION`. The existing `LEGACY_VM_SUPPORT`
   option sets all of them to 0, that is, maximal backwards compatibility.
-  Note that going forwards we will use these settings in more places, so if
+  Note that going forward, we will use these settings in more places, so if
   you do need very old legacy browser support, you may need to set either
   `LEGACY_VM_SUPPORT` or the fine-grained options. For more details see #9937
 - Default `DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR` to 1. See #9895.
@@ -162,7 +167,8 @@ v1.39.1: 10/30/2019
 v1.39.0: 10/18/2019
 -------------------
  - The emsdk defaults to the upstream backend (instead of fastcomp) from this
-   release onward (but both backends are still fully supported).
+   release onward (but both backends are still fully supported). See
+   https://emscripten.org/docs/compiling/WebAssembly.html#backends
  - Add support for overriding `.emscripten` config variables using environment
    variables.  Any config variable `FOO` can be overridden by `EM_FOO` in the
    environment.
@@ -170,7 +176,7 @@ v1.39.0: 10/18/2019
  - Internal settings have moved from `settings.js` to `settings_internal.js`.
    These are settings that are for internal use only and are not set-able from
    the command line.  If we misclassified any of these please open a bug.
- - `STANDALONE_WASM` mode now supports settings up argv via wasi APIs.
+ - `STANDALONE_WASM` mode now supports setting up argv via wasi APIs.
  - `STANDALONE_WASM` mode now supports running static constructors in `_start`.
 
 v1.38.48: 10/11/2019
@@ -269,12 +275,12 @@ v1.38.40: 07/24/2019
  - LLVM backend pthread builds no longer use external memory initialization
    files, replacing them with passive data segments.
  - LLVM backend now supports thread local storage via the C extension `__thread`
-   and C11/C++11 keyword `thread_local`. (#8976)
+   and the C11/C++11 keyword `thread_local`. (#8976)
  - Internal API change: Move read, readAsync, readBinary, setWindowTitle from
    the Module object to normal JS variables. If you use those internal APIs,
    you must change `Module.readAsync()/Module['readAsync']()` to `readAsync()`.
    Note that read is also renamed to `read_` (since "`read`" is an API call in
-   the SpiderMonkey shell). In builds with ASSERTIONS an error message is
+   the SpiderMonkey shell). In builds with ASSERTIONS, an error message is
    shown about the API change. This change allows better JS minification
    (the names read, readAsync etc. can be minified, and if the variables are
    not used they can be removed entirely). Defining these APIs on Module
@@ -287,7 +293,7 @@ v1.38.39: 07/16/2019
    - Currently, only supports one thread without dynamic linking.
  - Rename Bysyncify (the name used during development) to Asyncify. This keeps
    the name consistent with the old ASYNCIFY flag, no need for a new one, as
-   they do basically the same thing.
+   they basically do the same thing.
 
 v1.38.38: 07/08/2019
 --------------------
@@ -353,12 +359,12 @@ v1.38.31: 04/24/2019
  - Change `ino_t/off_t` to 64-bits. (#8467)
  - Add port for bzip2 library (`libbz2.a`). (#8349)
  - Add port for libjpeg library. (#8361)
- - Enable `ERROR_ON_MISSING_LIBRARIES` by by default (#8461)
+ - Enable `ERROR_ON_MISSING_LIBRARIES` by default (#8461)
 
 v1.38.30: 03/21/2019
 --------------------
  - Remove Module.buffer which was exported by default unnecessarily. This was an
-   undocumented internal detail, but in theory code may have relied on it.
+   undocumented internal detail, but in theory, code may have relied on it.
    (#8277)
 
 v1.38.29: 03/11/2019
@@ -378,7 +384,7 @@ v1.38.27: 02/10/2019
  - Remove deprecated Pointer_stringify (use UTF8ToString instead). See #8011
  - Added a new option `-s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=1` that
    changes the lookup semantics of DOM elements in html5.h event handler
-   callback and WebGL context creation. New behavior is to use CSS selector
+   callbacks and WebGL context creation. The new behavior is to use CSS selector
    strings to look up DOM elements over the old behavior, which was somewhat
    ad hoc constructed rules around default Emscripten uses. The old behavior
    will be deprecated and removed in the future. Build with -s ASSERTIONS=1
@@ -504,7 +510,7 @@ v1.38.9: 07/22/2018
    files relatively to the main JavaScript file rather than the current working
    directory (see #5368).
    - Add second argument `prefix` to `Module.locateFile` function that contains
-     path to JavaScript file where files are loaded from by default.
+     the path to the JavaScript file where files are loaded from by default.
    - Remove `Module.*PrefixURL` APIs (use `Module.locateFile` instead).
 
 v1.38.8: 07/06/2018

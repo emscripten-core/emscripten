@@ -568,7 +568,8 @@ f.close()
 
   def test_emcc_print_search_dirs(self):
     result = run_process([PYTHON, EMCC, '-print-search-dirs'], stdout=PIPE, stderr=PIPE)
-    self.assertContained(['programs: =', 'libraries: ='], result.stdout, check_all=True)
+    self.assertContained('programs: =', result.stdout)
+    self.assertContained('libraries: =', result.stdout)
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
@@ -3813,19 +3814,19 @@ int main()
   def test_valid_abspath(self):
     # Test whether abspath warning appears
     abs_include_path = os.path.abspath(self.get_dir())
-    err = run_process([PYTHON, EMCC, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).stderr
+    err = run_process([PYTHON, EMCC, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
     warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).' % abs_include_path
-    assert(warning in err)
+    self.assertContained(warning, err)
 
     # Passing an absolute path to a directory inside the emscripten tree is always ok and should not issue a warning.
     abs_include_path = path_from_root('tests')
-    err = run_process([PYTHON, EMCC, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).stderr
+    err = run_process([PYTHON, EMCC, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
     warning = '-I or -L of an absolute path "-I%s" encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).' % abs_include_path
-    assert(warning not in err)
+    self.assertNotContained(warning, err)
 
     # Hide warning for this include path
-    err = run_process([PYTHON, EMCC, '--valid-abspath', abs_include_path, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stdout=PIPE, stderr=PIPE).stderr
-    assert(warning not in err)
+    err = run_process([PYTHON, EMCC, '--valid-abspath', abs_include_path, '-I%s' % abs_include_path, '-Wwarn-absolute-paths', path_from_root('tests', 'hello_world.c')], stderr=PIPE).stderr
+    self.assertNotContained(warning, err)
 
   def test_valid_abspath_2(self):
     if WINDOWS:
@@ -3948,7 +3949,7 @@ int main()
 
   def test_symbol_map(self):
     for opts in [['-O2'], ['-O3']]:
-      for wasm in [0, 1]:
+      for wasm in [0, 1, 2]:
         print(opts, wasm)
         self.clear()
         create_test_file('src.c', r'''
@@ -3972,8 +3973,7 @@ EM_ASM({ _middle() });
 }
 ''')
         cmd = [PYTHON, EMCC, 'src.c', '--emit-symbol-map'] + opts
-        if not wasm:
-          cmd += ['-s', 'WASM=0']
+        cmd += ['-s', 'WASM=%d' % wasm]
         run_process(cmd)
         # check that the map is correct
         with open('a.out.js.symbols') as f:
@@ -8744,6 +8744,16 @@ end
     create_test_file('file1', ' ')
     run_process([PYTHON, EMAR, 'cr', 'file1.a', 'file1', 'file1'])
 
+  # Temporarily disabled to allow this llvm change to roll
+  # https://reviews.llvm.org/D69665
+  @no_windows('Temporarily disabled under windows')
+  def test_emar_response_file(self):
+    # Test that special character such as single quotes in filenames survive being
+    # sent via response file
+    create_test_file("file'1", ' ')
+    create_test_file("file'2", ' ')
+    Building.emar('cr', 'libfoo.a', ("file'1", "file'2"))
+
   def test_archive_empty(self):
     # This test added because we had an issue with the AUTO_ARCHIVE_INDEXES failing on empty
     # archives (which inherently don't have indexes).
@@ -9067,11 +9077,11 @@ int main() {
     test('inner/a.cpp', 'inner')
 
   @no_fastcomp('dwarf')
-  def test_side_debug(self):
+  def test_separate_dwarf(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gside'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf'])
     self.assertExists('a.out.wasm')
     self.assertExists('a.out.wasm.debug.wasm')
     self.assertLess(os.path.getsize('a.out.wasm'), os.path.getsize('a.out.wasm.debug.wasm'))
@@ -9178,6 +9188,12 @@ test_module().then((test_module_instance) => {
     # run the module
     ret = run_process(NODE_JS + ['--experimental-wasm-threads'] + [os.path.join('subdir', moduleLoader)], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
+
+  @no_windows('node system() does not seem to work, see https://github.com/emscripten-core/emscripten/pull/10547')
+  def test_node_js_system(self):
+    run_process([PYTHON, EMCC, '-DENV_NODE', path_from_root('tests', 'system.c'), '-o', 'a.js', '-O3'])
+    ret = run_process(NODE_JS + ['a.js'], stdout=PIPE).stdout
+    self.assertContained('OK', ret)
 
   def test_is_bitcode(self):
     fname = 'tmp.o'
@@ -10092,6 +10108,9 @@ int main () {
         emcc_args.extend(['--embed-file', f])
     self.do_other_test('mmap_and_munmap', emcc_args)
 
+  def test_mmap_and_munmap_anonymous(self):
+    self.do_other_test('mmap_and_munmap_anonymous', emcc_args=['-s', 'NO_FILESYSTEM'])
+
   def test_mmap_memorygrowth(self):
     self.do_other_test('mmap_memorygrowth', ['-s', 'ALLOW_MEMORY_GROWTH=1'])
 
@@ -10323,16 +10342,30 @@ Module.arguments has been replaced with plain arguments_
     run_process([PYTHON, EMCC, 'empty.c', '-la', '-L.'])
     self.assertContained('success', run_js('a.out.js'))
 
-  def test_werror_python(self):
+  def test_warning_flags(self):
     create_test_file('not_object.bc', 'some text')
     run_process([PYTHON, EMCC, '-c', '-o', 'hello.o', path_from_root('tests', 'hello_world.c')])
-    cmd = [PYTHON, EMCC, 'hello.o', 'not_object.bc', '-o', 'a.o']
+    cmd = [PYTHON, EMCC, 'hello.o', 'not_object.bc', '-o', 'a.wasm']
+
+    # warning that is enabled by default
     stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
-    # Same thing with -Werror should fail
+    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+
+    # -w to suppress warnings
+    stderr = run_process(cmd + ['-w'], stderr=PIPE).stderr
+    self.assertNotContained('WARNING', stderr)
+
+    # -Wno-invalid-input to suppress just this one warning
+    stderr = run_process(cmd + ['-Wno-invalid-input'], stderr=PIPE).stderr
+    self.assertNotContained('WARNING', stderr)
+
+    # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('WARNING: not_object.bc is not a valid input file', stderr)
-    self.assertContained('ERROR: treating warnings as errors (-Werror)', stderr)
+    self.assertContained('ERROR: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
+
+    # with -Werror + -Wno-error=<type> should only warn
+    stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
+    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')

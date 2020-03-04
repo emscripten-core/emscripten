@@ -390,6 +390,7 @@
 -------- T _ZNKSt3__218__time_get_storageIwE15__do_date_orderEv
 -------- T _ZNKSt3__219__iostream_category4nameEv
 -------- T _ZNKSt3__219__iostream_category7messageEi
+-------- T _ZNKSt3__219__libcpp_debug_info4whatEv
 -------- T _ZNKSt3__219__shared_weak_count13__get_deleterERKSt9type_info
 -------- T _ZNKSt3__220__codecvt_utf8_utf16IDiE10do_unshiftER11__mbstate_tPcS4_RS4_
 -------- T _ZNKSt3__220__codecvt_utf8_utf16IDiE11do_encodingEv
@@ -440,7 +441,6 @@
 -------- T _ZNKSt3__223__system_error_category7messageEi
 -------- T _ZNKSt3__224__generic_error_category4nameEv
 -------- T _ZNKSt3__224__generic_error_category7messageEi
--------- T _ZNKSt3__224__libcpp_debug_exception4whatEv
 -------- W _ZNKSt3__24__fs10filesystem12__dir_stream4goodEv
 -------- W _ZNKSt3__24__fs10filesystem16filesystem_error4whatEv
 -------- T _ZNKSt3__24__fs10filesystem18directory_iterator13__dereferenceEv
@@ -909,7 +909,7 @@
 -------- T _ZNSt3__210to_wstringEx
 -------- T _ZNSt3__210to_wstringEy
 -------- T _ZNSt3__211__call_onceERVmPvPFvS2_E
--------- T _ZNSt3__211__libcpp_db10__insert_cEPv
+-------- T _ZNSt3__211__libcpp_db10__insert_cEPvPFPNS_8__c_nodeES1_S1_S3_E
 -------- T _ZNSt3__211__libcpp_db10__insert_iEPv
 -------- T _ZNSt3__211__libcpp_db11__insert_icEPvPKv
 -------- T _ZNSt3__211__libcpp_db15__iterator_copyEPvPKv
@@ -1186,6 +1186,7 @@
 -------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initEPKwmm
 -------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initEmw
 -------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initIPKwEENS_9enable_ifIXsr21__is_forward_iteratorIT_EE5valueEvE4typeESA_SA_
+-------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initIPcEENS_9enable_ifIXsr21__is_forward_iteratorIT_EE5valueEvE4typeES9_S9_
 -------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__initIPwEENS_9enable_ifIXsr21__is_forward_iteratorIT_EE5valueEvE4typeES9_S9_
 -------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6__zeroEv
 -------- W _ZNSt3__212basic_stringIwNS_11char_traitsIwEENS_9allocatorIwEEE6appendEPKw
@@ -1484,6 +1485,7 @@
 -------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEED1Ev
 -------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEED2Ev
 -------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEEaSEOS3_
+-------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEElsEDn
 -------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEElsEPFRNS_8ios_baseES5_E
 -------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEElsEPFRNS_9basic_iosIcS2_EES6_E
 -------- W _ZNSt3__213basic_ostreamIcNS_11char_traitsIcEEElsEPFRS3_S4_E
@@ -1522,6 +1524,7 @@
 -------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEED1Ev
 -------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEED2Ev
 -------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEEaSEOS3_
+-------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEElsEDn
 -------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEElsEPFRNS_8ios_baseES5_E
 -------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEElsEPFRNS_9basic_iosIwS2_EES6_E
 -------- W _ZNSt3__213basic_ostreamIwNS_11char_traitsIwEEElsEPFRS3_S4_E
@@ -2015,18 +2018,7 @@
 -------- W _ZNSt3__223mersenne_twister_engineIjLm32ELm624ELm397ELm31ELj2567483615ELm11ELj4294967295ELm7ELj2636928640ELm15ELj4022730752ELm18ELj1812433253EE4seedEj
 -------- W _ZNSt3__223mersenne_twister_engineIjLm32ELm624ELm397ELm31ELj2567483615ELm11ELj4294967295ELm7ELj2636928640ELm15ELj4022730752ELm18ELj1812433253EEclEv
 -------- W _ZNSt3__224__generic_error_categoryD0Ev
--------- W _ZNSt3__224__libcpp_debug_exception28__libcpp_debug_exception_impC2ERKS1_
--------- W _ZNSt3__224__libcpp_debug_exception28__libcpp_debug_exception_impC2Ev
--------- W _ZNSt3__224__libcpp_debug_exception28__libcpp_debug_exception_impD2Ev
--------- T _ZNSt3__224__libcpp_debug_exceptionC1ERKNS_19__libcpp_debug_infoE
--------- T _ZNSt3__224__libcpp_debug_exceptionC1ERKS0_
--------- T _ZNSt3__224__libcpp_debug_exceptionC1Ev
--------- T _ZNSt3__224__libcpp_debug_exceptionC2ERKNS_19__libcpp_debug_infoE
--------- T _ZNSt3__224__libcpp_debug_exceptionC2ERKS0_
--------- T _ZNSt3__224__libcpp_debug_exceptionC2Ev
--------- T _ZNSt3__224__libcpp_debug_exceptionD0Ev
--------- T _ZNSt3__224__libcpp_debug_exceptionD1Ev
--------- T _ZNSt3__224__libcpp_debug_exceptionD2Ev
+-------- W _ZNSt3__224__put_character_sequenceIcNS_11char_traitsIcEEEERNS_13basic_ostreamIT_T0_EES7_PKS4_m
 -------- W _ZNSt3__225__num_get_signed_integralIlEET_PKcS3_Rji
 -------- W _ZNSt3__225__num_get_signed_integralIxEET_PKcS3_Rji
 -------- T _ZNSt3__225notify_all_at_thread_exitERNS_18condition_variableENS_11unique_lockINS_5mutexEEE
@@ -2051,7 +2043,6 @@
 -------- W _ZNSt3__227__num_get_unsigned_integralItEET_PKcS3_Rji
 -------- W _ZNSt3__227__num_get_unsigned_integralIyEET_PKcS3_Rji
 -------- T _ZNSt3__229__libcpp_abort_debug_functionERKNS_19__libcpp_debug_infoE
--------- T _ZNSt3__229__libcpp_throw_debug_functionERKNS_19__libcpp_debug_infoE
 -------- D _ZNSt3__23cinE
 -------- T _ZNSt3__24__fs10filesystem10__absoluteERKNS1_4pathEPNS_10error_codeE
 -------- T _ZNSt3__24__fs10filesystem10hash_valueERKNS1_4pathE
@@ -2116,8 +2107,6 @@
 -------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIA3_cPccLb1EE11__range_endEPKc
 -------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIA3_cPccLb1EE13__range_beginEPKc
 -------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIA3_cPccLb1EE15__first_or_nullEPKc
--------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIA4097_cPccLb1EE11__range_endEPKc
--------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIA4097_cPccLb1EE13__range_beginEPKc
 -------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIPKcS4_cLb1EE11__range_endES4_
 -------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIPKcS4_cLb1EE13__range_beginES4_
 -------- W _ZNSt3__24__fs10filesystem24__is_pathable_char_arrayIPcS3_cLb1EE11__range_endEPKc
@@ -2142,7 +2131,6 @@
 -------- T _ZNSt3__24__fs10filesystem4path8iterator11__incrementEv
 -------- W _ZNSt3__24__fs10filesystem4pathC2IA1_cvEERKT_NS2_6formatE
 -------- W _ZNSt3__24__fs10filesystem4pathC2IA2_cvEERKT_NS2_6formatE
--------- W _ZNSt3__24__fs10filesystem4pathC2IA4097_cvEERKT_NS2_6formatE
 -------- W _ZNSt3__24__fs10filesystem4pathC2INS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEvEERKT_NS2_6formatE
 -------- W _ZNSt3__24__fs10filesystem4pathC2INS_17basic_string_viewIcNS_11char_traitsIcEEEEvEERKT_NS2_6formatE
 -------- W _ZNSt3__24__fs10filesystem4pathC2IPKcvEERKT_NS2_6formatE
@@ -2154,7 +2142,6 @@
 -------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceIA1_cEEvRNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEERKT_
 -------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceIA2_cEEvRNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEERKT_
 -------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceIA3_cEEvRNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEERKT_
--------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceIA4097_cEEvRNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEERKT_
 -------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceINS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEEEvRSA_RKT_
 -------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceINS_17basic_string_viewIcNS_11char_traitsIcEEEEEEvRNS_12basic_stringIcS7_NS_9allocatorIcEEEERKT_
 -------- W _ZNSt3__24__fs10filesystem8_PathCVTIcE15__append_sourceIPKcEEvRNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEERKT_
@@ -2207,6 +2194,8 @@
 -------- D _ZNSt3__25wclogE
 -------- D _ZNSt3__25wcoutE
 -------- T _ZNSt3__26__clocEv
+-------- T _ZNSt3__26__itoa8__u32toaEjPc
+-------- T _ZNSt3__26__itoa8__u64toaEyPc
 -------- W _ZNSt3__26__sortIRNS_6__lessIaaEEPaEEvT0_S5_T_
 -------- W _ZNSt3__26__sortIRNS_6__lessIccEEPcEEvT0_S5_T_
 -------- W _ZNSt3__26__sortIRNS_6__lessIddEEPdEEvT0_S5_T_
@@ -2371,14 +2360,10 @@
 -------- T _ZNSt3__26thread6detachEv
 -------- T _ZNSt3__26threadD1Ev
 -------- T _ZNSt3__26threadD2Ev
--------- W _ZNSt3__26vectorINS_17basic_string_viewIcNS_11char_traitsIcEEEENS_9allocatorIS4_EEE21__push_back_slow_pathIS4_EEvOT_
 -------- W _ZNSt3__26vectorINS_17basic_string_viewIcNS_11char_traitsIcEEEENS_9allocatorIS4_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS4_RS6_EE
--------- W _ZNSt3__26vectorINS_4pairINS_17basic_string_viewIcNS_11char_traitsIcEEEENS_4__fs10filesystem12PathPartKindEEENS_9allocatorIS9_EEE24__emplace_back_slow_pathIJRS5_RS8_EEEvDpOT_
 -------- W _ZNSt3__26vectorINS_4pairINS_17basic_string_viewIcNS_11char_traitsIcEEEENS_4__fs10filesystem12PathPartKindEEENS_9allocatorIS9_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS9_RSB_EE
 -------- W _ZNSt3__26vectorINS_4pairINS_17basic_string_viewIcNS_11char_traitsIcEEEENS_4__fs10filesystem12PathPartKindEEENS_9allocatorIS9_EEE7reserveEm
--------- W _ZNSt3__26vectorINS_4pairIPNS_18condition_variableEPNS_5mutexEEENS_18__hidden_allocatorIS6_EEE21__push_back_slow_pathIS6_EEvOT_
 -------- W _ZNSt3__26vectorINS_4pairIPNS_18condition_variableEPNS_5mutexEEENS_18__hidden_allocatorIS6_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS6_RS8_EE
--------- W _ZNSt3__26vectorIPNS_17__assoc_sub_stateENS_18__hidden_allocatorIS2_EEE21__push_back_slow_pathIRKS2_EEvOT_
 -------- W _ZNSt3__26vectorIPNS_17__assoc_sub_stateENS_18__hidden_allocatorIS2_EEE26__swap_out_circular_bufferERNS_14__split_bufferIS2_RS4_EE
 -------- W _ZNSt3__26vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lm28EEEE11__vallocateEm
 -------- W _ZNSt3__26vectorIPNS_6locale5facetENS_15__sso_allocatorIS3_Lm28EEEE13__vdeallocateEv
@@ -2625,10 +2610,6 @@
 -------- W _ZNSt3__28time_putIwNS_19ostreambuf_iteratorIwNS_11char_traitsIwEEEEED1Ev
 -------- W _ZNSt3__28time_putIwNS_19ostreambuf_iteratorIwNS_11char_traitsIwEEEEED2Ev
 -------- W _ZNSt3__28valarrayImE6resizeEmm
--------- W _ZNSt3__28valarrayImEC1Em
--------- W _ZNSt3__28valarrayImEC2Em
--------- W _ZNSt3__28valarrayImED1Ev
--------- W _ZNSt3__28valarrayImED2Ev
 -------- W _ZNSt3__29__num_getIcE17__stage2_int_loopEciPcRS2_RjcRKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPjRSD_PKc
 -------- W _ZNSt3__29__num_getIcE17__stage2_int_prepERNS_8ios_baseERc
 -------- W _ZNSt3__29__num_getIcE19__stage2_float_loopEcRbRcPcRS4_ccRKNS_12basic_stringIcNS_11char_traitsIcEENS_9allocatorIcEEEEPjRSE_RjS4_
@@ -2719,6 +2700,8 @@
 -------- T _ZNSt3__29to_stringEm
 -------- T _ZNSt3__29to_stringEx
 -------- T _ZNSt3__29to_stringEy
+-------- W _ZNSt3__2lsINS_11char_traitsIcEEEERNS_13basic_ostreamIcT_EES6_PKc
+-------- W _ZNSt3__2lsIwNS_11char_traitsIwEEEERNS_13basic_ostreamIT_T0_EES7_PKc
 -------- W _ZNSt3__2plIcNS_11char_traitsIcEENS_9allocatorIcEEEENS_12basic_stringIT_T0_T1_EEPKS6_RKS9_
 -------- T _ZSt17__throw_bad_allocv
 -------- T _ZSt17current_exceptionv
@@ -2832,7 +2815,6 @@
 -------- D _ZTINSt3__223__future_error_categoryE
 -------- D _ZTINSt3__223__system_error_categoryE
 -------- D _ZTINSt3__224__generic_error_categoryE
--------- D _ZTINSt3__224__libcpp_debug_exceptionE
 -------- D _ZTINSt3__24__fs10filesystem16filesystem_errorE
 -------- D _ZTINSt3__25ctypeIcEE
 -------- D _ZTINSt3__25ctypeIwEE
@@ -2972,7 +2954,6 @@
 -------- D _ZTSNSt3__223__future_error_categoryE
 -------- D _ZTSNSt3__223__system_error_categoryE
 -------- D _ZTSNSt3__224__generic_error_categoryE
--------- D _ZTSNSt3__224__libcpp_debug_exceptionE
 -------- D _ZTSNSt3__24__fs10filesystem16filesystem_errorE
 -------- D _ZTSNSt3__25ctypeIcEE
 -------- D _ZTSNSt3__25ctypeIwEE
@@ -3108,7 +3089,6 @@
 -------- D _ZTVNSt3__223__future_error_categoryE
 -------- D _ZTVNSt3__223__system_error_categoryE
 -------- D _ZTVNSt3__224__generic_error_categoryE
--------- D _ZTVNSt3__224__libcpp_debug_exceptionE
 -------- D _ZTVNSt3__24__fs10filesystem16filesystem_errorE
 -------- D _ZTVNSt3__25ctypeIcEE
 -------- D _ZTVNSt3__25ctypeIwEE

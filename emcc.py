@@ -1023,7 +1023,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             libs.append((i, libname))
             newargs[i] = ''
           else:
-            logger.warning(arg + ' is not a valid input file')
+            shared.WarningManager.warn('invalid-input', arg + ' is not a valid input file')
         elif file_suffix.endswith(STATICLIB_ENDINGS):
           if not shared.Building.is_ar(arg):
             if shared.Building.is_bitcode(arg):
@@ -1117,7 +1117,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.STRICT = int(strict_cmdline.split('=', 1)[1])
 
     if options.separate_asm and final_suffix != '.html':
-      shared.WarningManager.warn('SEPARATE_ASM')
+      shared.WarningManager.warn('separate-asm', "--separate-asm works best when compiling to HTML.  Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.")
 
     # Apply optimization level settings
     shared.Settings.apply_opt_level(opt_level=options.opt_level, shrink_level=options.shrink_level, noisy=True)
@@ -1204,7 +1204,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # when we emit asm.js, closure 2 would break that, so warn (note that
       # with wasm2js in the wasm backend, we don't emit asm.js anyhow)
       if options.use_closure_compiler == 2 and shared.Settings.ASM_JS == 1 and not shared.Settings.WASM_BACKEND:
-        shared.WarningManager.warn('ALMOST_ASM', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
+        shared.WarningManager.warn('almost-asm', 'not all asm.js optimizations are possible with --closure 2, disabling those - your code will be run more slowly')
         shared.Settings.ASM_JS = 2
 
     if shared.Settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
@@ -1929,8 +1929,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.ALLOW_MEMORY_GROWTH and shared.Settings.ASM_JS == 1:
       # this is an issue in asm.js, but not wasm
       if not shared.Settings.WASM:
-        shared.WarningManager.warn('ALMOST_ASM')
-        shared.Settings.ASM_JS = 2 # memory growth does not validate as asm.js http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+        # memory growth does not validate as asm.js
+        # http://discourse.wicg.io/t/request-for-comments-switching-resizing-heaps-in-asm-js/641/23
+        shared.WarningManager.warn('almost-asm', 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.')
+        shared.Settings.ASM_JS = 2
 
     if shared.Settings.NODE_CODE_CACHING:
       if shared.Settings.WASM_ASYNC_COMPILATION:
@@ -2831,11 +2833,11 @@ def parse_args(newargs):
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
           shared.warning('gforce_dwarf is a temporary option that will eventually disappear')
-        elif requested_level.startswith('side'):
+        elif requested_level.startswith('separate-dwarf'):
           # Emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
           shared.Settings.FULL_DWARF = 1
-          shared.Settings.SIDE_DEBUG = 1
+          shared.Settings.SEPARATE_DWARF = 1
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -2971,7 +2973,7 @@ def parse_args(newargs):
         # that are e.g. x86 specific and nonportable. The emscripten bundled
         # headers are modified to be portable, local system ones are generally not.
         shared.WarningManager.warn(
-            'ABSOLUTE_PATHS', '-I or -L of an absolute path "' + newargs[i] +
+            'absolute-paths', '-I or -L of an absolute path "' + newargs[i] +
             '" encountered. If this is to a local system header/library, it may '
             'cause problems (local system files make sense for compiling natively '
             'on your system, but not necessarily to JavaScript).')
@@ -3331,9 +3333,9 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
 
   # emit the final symbols, either in the binary or in a symbol map.
   # this will also remove debug info if we only kept it around in the intermediate invocations.
-  # note that wasm2js handles the symbol map itself (as it manipulates and then
-  # replaces the wasm with js)
-  if options.emit_symbol_map and not shared.Settings.WASM2JS:
+  # note that if we aren't emitting a binary (like in wasm2js) then we don't
+  # have anything to do here.
+  if options.emit_symbol_map and os.path.exists(wasm_binary_target):
     shared.Building.handle_final_wasm_symbols(wasm_file=wasm_binary_target, symbols_file=symbols_file, debug_info=debug_info)
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
@@ -3360,7 +3362,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     with open(final, 'w') as f:
       f.write(js)
 
-  if shared.Settings.FULL_DWARF and shared.Settings.SIDE_DEBUG:
+  if shared.Settings.FULL_DWARF and shared.Settings.SEPARATE_DWARF:
     shared.Building.emit_debug_on_side(wasm_binary_target)
 
 

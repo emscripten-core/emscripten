@@ -764,6 +764,14 @@ mergeInto(LibraryManager.library, {
             // We are happening synchronously, so no need for async.
             return;
           }
+#if ASSERTIONS
+          // This async operation did not happen synchronously, so we did
+          // unwind. In that case there can be no compiled code on the stack,
+          // as it might break later operations (we can rewind ok now, but if
+          // we unwind again, we would unwind through the extra compiled code
+          // too).
+          assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
+#endif
 #if ASYNCIFY_DEBUG
           err('ASYNCIFY: start rewind ' + Asyncify.currData);
 #endif
