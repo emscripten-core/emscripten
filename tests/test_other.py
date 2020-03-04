@@ -8530,15 +8530,11 @@ int main() {
       (['-flto'], True),
       (['-flto=thin'], True),
       (['-s', 'WASM_OBJECT_FILES=0'], True),
+      (['-s', 'WASM_OBJECT_FILES=1'], False),
     ]:
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp')] + flags + ['-c', '-o', 'a.o'])
       seen_bitcode = Building.is_bitcode('a.o')
       self.assertEqual(expect_bitcode, seen_bitcode, 'must emit LTO-capable bitcode when flags indicate so (%s)' % str(flags))
-
-  @no_fastcomp('wasm backend lto specific')
-  def test_lto_legacy_flags(self):
-    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.o', '-s', 'WASM_OBJECT_FILES=1'])
-    self.assertContained('Invalid command line option -s WASM_OBJECT_FILES=1: For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow', err)
 
   def test_wasm_nope(self):
     for opts in [[], ['-O2']]:

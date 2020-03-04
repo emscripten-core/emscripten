@@ -435,6 +435,10 @@ def apply_settings(changes):
       # used for warnings in emscripten.py
       shared.Settings.USER_EXPORTED_FUNCTIONS = shared.Settings.EXPORTED_FUNCTIONS[:]
 
+    # TODO(sbc): Remove this legacy way.
+    if key == 'WASM_OBJECT_FILES':
+      shared.Settings.LTO = 0 if value else 'full'
+
 
 def find_output_arg(args):
   """Find and remove any -o arguments.  The final one takes precedence.
@@ -1126,10 +1130,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # want to opt out of ERROR_ON_UNDEFINED_SYMBOLS.
     if 'WARN_ON_UNDEFINED_SYMBOLS=0' in settings_changes:
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
-
-    # TODO(sbc): Remove this legacy way.
-    if 'WASM_OBJECT_FILES=0' in settings_changes:
-      shared.Settings.LTO = 'full'
 
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
