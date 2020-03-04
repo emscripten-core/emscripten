@@ -295,9 +295,13 @@ code on the stack, then that could interfere with properly rewinding and
 resuming execution, in confusing ways, and therefore an assertion will be
 thrown in a build with ``ASSERTIONS``.
 
-Specifically, the problem there is that while rewinding will work properly,
+(Specifically, the problem there is that while rewinding will work properly,
 if you later unwind again, that unwinding will also unwind through that extra
-compiled code that was on the stack - causing a later rewind to behave badly.
+compiled code that was on the stack - causing a later rewind to behave badly.)
+
+A simple workaround you may find useful is to do a setTimeout of 0, replacing
+``wakeUp()`` with ``setTimeout(wakeUp, 0);``. That will run ``wakeUp`` in a
+later callback, when nothing else is on the stack.
 
 Migrating from older APIs
 #########################
