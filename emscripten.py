@@ -683,7 +683,7 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
-    shared.WarningManager.warn('ALMOST_ASM', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    shared.WarningManager.warn('almost-asm', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     shared.Settings.ASM_JS = 2
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
@@ -695,7 +695,7 @@ def update_settings_glue(metadata, DEBUG):
   if metadata['simd']:
     shared.Settings.SIMD = 1
     if shared.Settings.ASM_JS != 2:
-      shared.WarningManager.warn('ALMOST_ASM', 'disabling asm.js validation due to use of SIMD')
+      shared.WarningManager.warn('almost-asm', 'disabling asm.js validation due to use of SIMD')
       shared.Settings.ASM_JS = 2
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']

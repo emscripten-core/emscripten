@@ -835,20 +835,20 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
-  def assertContained(self, values, string, additional_info='', check_all=False):
+  def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
     values = list(map(asstr, values))
     if callable(string):
       string = string()
 
-    if (all if check_all else any)(value in string for value in values):
-      return # success
-    self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
-      limit_size(values[0]), limit_size(string),
-      limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
-      additional_info
-    ))
+    if not any(v in string for v in values):
+      diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
+      diff = ''.join(a.rstrip() + '\n' for a in diff)
+      self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
+        limit_size(values[0]), limit_size(string), limit_size(diff),
+        additional_info
+      ))
 
   def assertNotContained(self, value, string):
     if callable(value):
@@ -922,7 +922,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     Return the stderr of the subprocess.
     """
     proc = run_process(cmd, check=False, stderr=PIPE, **args)
-    self.assertNotEqual(proc.returncode, 0)
+    self.assertNotEqual(proc.returncode, 0, 'subprocess unexpectedly succeeded. stderr:\n' + proc.stderr)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
     # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
@@ -1164,8 +1164,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
+          elif assert_all:
+            for o in expected_output:
+              self.assertContained(o, js_output)
           else:
-            self.assertContained(expected_output, js_output, check_all=assert_all)
+            self.assertContained(expected_output, js_output)
             if check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
