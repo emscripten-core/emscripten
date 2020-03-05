@@ -615,9 +615,6 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // [compile+link] - affects user code at compile and system libraries at link
 var EXCEPTION_CATCHING_WHITELIST = [];
 
-// New WebAssembly exception handling (experimental)
-var EXCEPTION_HANDLING = 0;
-
 // By default we handle exit() in node, by catching the Exit exception. However,
 // this means we catch all process exceptions. If you disable this, then we no
 // longer do that, and exceptions work normally, which can be useful for libraries

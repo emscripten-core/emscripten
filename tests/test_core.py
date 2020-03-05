@@ -98,7 +98,6 @@ def with_both_exception_handling(f):
     if self.is_wasm_backend() and V8_ENGINE and \
        V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
       self.emcc_args.append('-fwasm-exceptions')
-      self.set_setting('EXCEPTION_HANDLING', 1)
       f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-eh']])
   return decorated
 

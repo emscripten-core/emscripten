@@ -2977,15 +2977,15 @@ def parse_args(newargs):
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
-      settings_changes.append('EXCEPTION_HANDLING=0')
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 1
+      shared.Settings.EXCEPTION_HANDLING = 1
     elif newargs[i] == '-fexceptions':
       eh_enabled = True
     elif newargs[i] == '-fwasm-exceptions':
       wasm_eh_enabled = True
     elif newargs[i] == '-fignore-exceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -3032,10 +3032,10 @@ def parse_args(newargs):
     # wasm exception handling by default when -fexceptions is given when wasm
     # exception handling becomes stable.
     if eh_enabled:
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 0
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
       if wasm_eh_enabled:
-        settings_changes.append('EXCEPTION_HANDLING=1')
+        shared.Settings.EXCEPTION_HANDLING = 1
 
   if should_exit:
     sys.exit(0)
