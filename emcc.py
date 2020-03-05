@@ -1422,7 +1422,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND:
       newargs.append('-fignore-exceptions')
 
     if shared.Settings.DEAD_FUNCTIONS:
@@ -2089,8 +2089,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               cmd += ['-mllvm', a]
         else:
           cmd.append('-emit-llvm')
-        if shared.Settings.EXCEPTION_HANDLING:
-          cmd += ['-fwasm-exceptions']
         shared.print_compiler_stage(cmd)
         shared.check_call(cmd)
         if output_file != '-':
@@ -3030,17 +3028,14 @@ def parse_args(newargs):
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
 
-    # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
-    # exception handling by default when -fexceptions is given when wasm
+    # TODO Currently using '-fexceptions' only means Emscripten EH. Switch to
+    # wasm exception handling by default when -fexceptions is given when wasm
     # exception handling becomes stable.
-    if wasm_eh_enabled:
-      settings_changes.append('EXCEPTION_HANDLING=1')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
-    elif eh_enabled:
-      settings_changes.append('EXCEPTION_HANDLING=0')
+    if eh_enabled:
       settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
       settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
+      if wasm_eh_enabled:
+        settings_changes.append('EXCEPTION_HANDLING=1')
 
   if should_exit:
     sys.exit(0)
