@@ -185,3 +185,4 @@ var CAN_ADDRESS_2GB = 0;
 // sections.
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = 0;
+
