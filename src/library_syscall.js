@@ -13,12 +13,13 @@ var SyscallsLibrary = {
 #endif
   ],
   $SYSCALLS: {
+    mappings: {},
+
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
     DEFAULT_POLLMASK: {{{ cDefine('POLLIN') }}} | {{{ cDefine('POLLOUT') }}},
 
     // global state
-    mappings: {},
     umask: 0x1FF,  // S_IRWXU | S_IRWXG | S_IRWXO
 
     // shared utilities
@@ -223,7 +224,6 @@ var SyscallsLibrary = {
 #endif
   ],
   $syscallMmap2: function(addr, len, prot, flags, fd, off) {
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     off <<= 12; // undo pgoffset
     var ptr;
     var allocated = false;
@@ -242,17 +242,18 @@ var SyscallsLibrary = {
       _memset(ptr, 0, len);
       allocated = true;
     } else {
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var info = FS.getStream(fd);
       if (!info) return -{{{ cDefine('EBADF') }}};
       var res = FS.mmap(info, HEAPU8, addr, len, off, prot, flags);
       ptr = res.ptr;
       allocated = res.allocated;
+#else // no filesystem support; report lack of support
+      return -{{{ cDefine('ENOSYS') }}};
+#endif
     }
     SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, offset: off };
     return ptr;
-#else // no filesystem support; report lack of support
-    return -{{{ cDefine('ENOSYS') }}};
-#endif
   },
 
   $syscallMunmap__deps: ['$SYSCALLS',
@@ -261,7 +262,6 @@ var SyscallsLibrary = {
 #endif
   ],
   $syscallMunmap: function(addr, len) {
-#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
     if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
@@ -269,18 +269,22 @@ var SyscallsLibrary = {
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
     if (len === info.len) {
+#if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
       SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
       FS.munmap(stream);
+#else
+#if ASSERTIONS
+      // Without FS support, only anonymous mappings are supported.
+      assert(SYSCALLS.mappings[addr].flags & {{{ cDefine('MAP_ANONYMOUS') }}});
+#endif
+#endif
       SYSCALLS.mappings[addr] = null;
       if (info.allocated) {
         _free(info.malloc);
       }
     }
     return 0;
-#else // no filesystem support; report lack of support
-    return -{{{ cDefine('ENOSYS') }}};
-#endif
   },
 
   __syscall1: function(status) { // exit

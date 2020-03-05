@@ -32,13 +32,15 @@ Current Trunk
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
-- Remove WASM_OBJECT_FILES setting.  There are many standard ways to enable
+- Deprecate WASM_OBJECT_FILES setting.  There are many standard ways to enable
   bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
+- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+  compiled code on the stack when starting to rewind, which is dangerous.
 
 v1.39.8: 02/14/2020
 -------------------
