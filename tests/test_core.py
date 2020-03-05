@@ -8118,6 +8118,13 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
   @no_fastcomp('wasm-backend specific feature')
+  def test_asyncify_assertions(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
+    self.set_setting('ASSERTIONS', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
+
+  @no_fastcomp('wasm-backend specific feature')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
