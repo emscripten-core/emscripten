@@ -310,6 +310,7 @@ var SAFE_HEAP_LOG = 0;
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
+// [fastcomp-only]
 var RESERVED_FUNCTION_POINTERS = 0;
 
 // Whether to allow function pointers to alias if they have a different type.
@@ -1798,7 +1799,8 @@ var LEGACY_SETTINGS = [
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
-  ['WASM_OBJECT_FILES', [1], 'Use -flto or -fto=thin instead'],
+  // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
+  ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
   ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],

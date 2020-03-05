@@ -37,10 +37,6 @@ Repositories and branches of interest
 =====================================
 
 The Emscripten main repository is https://github.com/emscripten-core/emscripten.
-The main branch is **incoming**, which exists for historic reasons as we did
-not always have good pre-commit CI, and so we landed code on incoming first,
-tested, then merged to master. Today we have extensive pre-commit CI on GitHub,
-so the incoming branch functions like the master branch in most projects.
 
 Aside from the Emscripten repo, the other codebases of interest are LLVM
 and Binaryen, which Emscripten invokes, and
@@ -51,13 +47,13 @@ and Binaryen, which Emscripten invokes, and
 Submitting patches
 ==================
 
-Patches should be submitted as *pull requests* to the **incoming** branch.
+Patches should be submitted as *pull requests* to the **master** branch.
 
-.. note:: Before submitting your first patch, add yourself to the `AUTHORS <https://github.com/emscripten-core/emscripten/blob/incoming/AUTHORS>`_ file. By doing so, you agree to license your code under the project's :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
+.. note:: Before submitting your first patch, add yourself to the `AUTHORS <https://github.com/emscripten-core/emscripten/blob/master/AUTHORS>`_ file. By doing so, you agree to license your code under the project's :ref:`open source licenses (MIT/LLVM) <emscripten-license>`.
 
 When submitting patches, please:
 
-- Make pull requests to **incoming**, not master.
+- Make pull requests to **master**.
 - Add an automatic test if you add any new functionality or fix a bug. Search
   in ``tests/*.py`` for related tests, as often the simplest thing is to add to
   an existing one. If you're not sure how to test your code, feel free to ask
