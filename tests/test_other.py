@@ -7134,17 +7134,25 @@ Resolved: "/" => "/"
   def test_2GB_plus(self):
     # when the heap size can be over 2GB, we rewrite pointers to be unsigned
     def test(page_diff):
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=%d' % (2**31 + page_diff * 64 * 1024)])
+      args = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH']
+      if page_diff is not None:
+        args += ['-s', 'MAXIMUM_MEMORY=%d' % (2**31 + page_diff * 64 * 1024)]
+      print(args)
+      run_process(args)
       return os.path.getsize('a.out.js')
 
     less = test(-1)
     equal = test(0)
     more = test(1)
+    none = test(None)
 
     # exactly 2GB still doesn't require unsigned pointers, as we can't address
     # the 2GB location in memory
     self.assertEqual(less, equal)
     self.assertLess(equal, more)
+    # not specifying maximum memory does not result in unsigned pointers, as the
+    # default maximum memory is 2GB.
+    self.assertEqual(less, none)
 
   def test_sixtyfour_bit_return_value(self):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
@@ -10482,11 +10490,6 @@ int main() {
 
   @no_fastcomp('wasm backend only')
   def test_4GB(self):
-    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
-    self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
-
-  @no_fastcomp('wasm backend only')
-  def test_unsigned_pointers_in_2GB(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
 
