@@ -10481,8 +10481,13 @@ int main() {
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
 
-  @no_fastcomp('lld only')
+  @no_fastcomp('wasm backend only')
   def test_4GB(self):
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
+    self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
+
+  @no_fastcomp('wasm backend only')
+  def test_unsigned_pointers_in_2GB(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
 
