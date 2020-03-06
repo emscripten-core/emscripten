@@ -2604,7 +2604,6 @@ Module["preRun"].push(function () {
   # (this only makes sense in the old deprecated -s DISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR=0 mode)
   def test_html5_special_event_targets(self):
     self.btest(path_from_root('tests', 'browser', 'html5_special_event_targets.cpp'), args=['-lGL'], expected='0')
-#'--shell-file', path_from_root('tests', 'webgl_create_context2_shell.html')
 
   @requires_graphics_hardware
   def test_html5_webgl_destroy_context(self):
