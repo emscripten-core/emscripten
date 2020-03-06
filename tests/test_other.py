@@ -7122,12 +7122,18 @@ Resolved: "/" => "/"
 
   @no_fastcomp("fastcomp doesn't support 2GB+")
   def test_emmalloc_2GB(self):
-    def test(args, text):
-      stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
-      self.assertContained(text, stderr)
+    def test(args, text=None):
+      if text:
+        stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
+        self.assertContained(text, stderr)
+      else:
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
 
     test(['-s', 'INITIAL_MEMORY=2GB'], 'INITIAL_MEMORY must be less than 2GB due to current spec limitations')
-    test(['-s', 'ALLOW_MEMORY_GROWTH'], 'emmalloc only works on <2GB of memory. Use the default allocator, or set MAXIMUM_MEMORY')
+    # emmalloc allows growth by default (as the max size is fine), but not if
+    # a too-high max is set
+    test(['-s', 'ALLOW_MEMORY_GROWTH'])
+    test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=1GB'])
     test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=3GB'], 'emmalloc only works on <2GB of memory. Use the default allocator, or decrease MAXIMUM_MEMORY')
 
   @no_fastcomp("fastcomp doesn't support 2GB+")

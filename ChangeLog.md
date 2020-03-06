@@ -18,6 +18,12 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+- Support 2GB+ heap sizes. To do this we modify the JS code to have unsigned
+  pointers (we need all 32 bits in them now), which can slightly increase code
+  size (>>> instead of >>). This only happens when the heap size may be over
+  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
+  higher value. See #10601
+
 v1.39.9: 03/05/2020
 -------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
@@ -27,13 +33,6 @@ v1.39.9: 03/05/2020
   which are more accurate and match wasm conventions. The old names are still
   supported as aliases.
 - Updated of libc++abi and libc++ to llvm 9.0.0 (#10510)
-- Support 2GB+ heap sizes. To do this we modify the JS code to have unsigned
-  pointers (we need all 32 bits in them now), which can slightly increase code
-  size (>>> instead of >>). This only happens when the heap size may be over
-  2GB, but note that that happens when using `ALLOW_MEMORY_GROWTH` without
-  setting `MAXIMUM_MEMORY` (as without a maximum we assume it can grow all the
-  way up). To avoid that tiny regression, set that flag to `2GB` or lower.
-  See #10601
 - Refactor syscall interface: Syscalls are no longer variadic (except those
   that are inherently such as open) and no longer take the syscall number as
   arg0.  This should be invisible to most users but will effect any external
