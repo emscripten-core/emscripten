@@ -8702,31 +8702,31 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ], ['-Wno-return-stack-address']),
     'static_buffer_overflow': ('test_asan_static_buffer_overflow.c', [
       'AddressSanitizer: global-buffer-overflow on address',
-    ], ['-fno-builtin-memset']),
+    ], []),
     'heap_buffer_overflow_c': ('test_asan_heap_buffer_overflow.c', [
       'AddressSanitizer: heap-buffer-overflow on address',
-    ], ['-fno-builtin-memset']),
+    ], []),
     'heap_buffer_overflow_cpp': ('test_asan_heap_buffer_overflow.cpp', [
       'AddressSanitizer: heap-buffer-overflow on address',
-    ], ['-fno-builtin-memset']),
+    ], []),
     'stack_buffer_overflow': ('test_asan_stack_buffer_overflow.c', [
       'AddressSanitizer: stack-buffer-overflow'
-    ], ['-fno-builtin-memset']),
+    ], []),
     'bitfield_unround_size': ('test_asan_bitfield_unround_size.c', [
       'AddressSanitizer: stack-buffer-overflow'
-    ], ['-fno-builtin-memset']),
+    ], []),
     'bitfield_unround_offset': ('test_asan_bitfield_unround_offset.c', [
       'AddressSanitizer: stack-buffer-overflow'
-    ], ['-fno-builtin-memset']),
+    ], []),
     'bitfield_round': ('test_asan_bitfield_round.c', [
       'AddressSanitizer: stack-buffer-overflow'
-    ], ['-fno-builtin-memset']),
+    ], []),
     'memset_null': ('test_asan_memset_null.c', [
       'AddressSanitizer: null-pointer-dereference on address 0x00000001'
-    ], ['-fno-builtin-memset']),
+    ], []),
     'memset_freed': ('test_asan_memset_freed.c', [
       'AddressSanitizer: heap-use-after-free on address'
-    ], ['-fno-builtin-memset']),
+    ], []),
     'strcpy': ('test_asan_strcpy.c', [
       'AddressSanitizer: heap-buffer-overflow on address'
     ], ['-fno-builtin-strcpy']),
