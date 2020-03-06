@@ -8836,8 +8836,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     test()
 
   @no_fastcomp('new wasm backend atomics')
-  def test_emscripten_atomics(self):
+  def test_emscripten_atomics_stub(self):
     self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
+
+  @no_fastcomp('new wasm backend atomics')
+  @node_pthreads
+  def test_emscripten_atomics(self, js_engines):
+    self.set_setting('USE_PTHREADS', '1')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics', js_engines=js_engines)
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
