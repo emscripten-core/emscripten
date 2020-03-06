@@ -8835,6 +8835,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.emcc_args += ['-DPOOL']
     test()
 
+  def test_emscripten_atomics(self):
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
+
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):
     # Could also test with -s ALLOW_TABLE_GROWTH=1
