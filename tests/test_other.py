@@ -6918,6 +6918,50 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([PYTHON, EMCC, 'test.cpp'])
     self.assertContained('undefined symbol: my_js', err)
 
+  def test_js_lib_to_system_lib(self):
+    # memset is in compiled code, so a js library __deps can't access it. it
+    # would need to be in deps_info.json or EXPORTED_FUNCTIONS
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  depper__deps: ['memset'],
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    create_test_file('test.cpp', r'''
+#include <string.h>
+#include <stdio.h>
+
+extern "C" {
+extern void depper(char*);
+}
+
+int main(int argc, char** argv) {
+  char buffer[11];
+  buffer[10] = '\0';
+  // call by a pointer, to force linking of memset, no llvm intrinsic here
+  volatile auto ptr = memset;
+  (*ptr)(buffer, 'a', 10);
+  depper(buffer);
+  puts(buffer);
+}
+''')
+
+    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11'])
+    self.assertContained('_memset may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library', err)
+
+    # without the dep, and with EXPORTED_FUNCTIONS, it works ok
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
+    self.assertContained('dddddddddd', run_js('a.out.js'))
+
   def test_realpath(self):
     create_test_file('src.c', r'''
 #include <stdlib.h>
