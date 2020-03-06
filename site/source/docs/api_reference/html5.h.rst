@@ -63,11 +63,20 @@ The typical format of registration functions is as follows (some methods may omi
 The ``target`` parameter is the ID of the HTML element to which the callback registration is to be applied. This field has the following special meanings:
 
   - ``0`` or ``NULL``: A default element is chosen automatically based on the event type, which should be reasonable most of the time.
-  - ``#window``: The event listener is applied to the JavaScript ``window`` object.
-  - ``#document``: The event listener is applied to the JavaScript ``document`` object.
-  - ``#screen``: The event listener is applied to the JavaScript ``window.screen`` object.
-  - ``#canvas``: The event listener is applied to the Emscripten default WebGL canvas element.
-  - Any other string **without a leading hash "#"** sign: The event listener is applied to the element on the page with the given ID.
+  - ``EMSCRIPTEN_EVENT_TARGET_DOCUMENT``: The ``document``object.
+  - ``EMSCRIPTEN_EVENT_TARGET_WINDOW``: The ``window`` object.
+  - Any other string will be used to find an element on the page using ``document.querySelector(target)``.
+
+If the above are insufficient for you, you can add custom mappings in JavaScript
+using something like
+
+  .. code-block:: cpp
+
+    SpecialEventTargets["#canvas"] = Module.canvas;
+
+That will let #canvas map to the canvas held in Module.canvas. (You can write
+that JavaScript in an ``EM_JS`` or ``EM_ASM`` block that happens before you
+call the registration function, for example.)
 
 .. _userdata-parameter-html5-api:
 
