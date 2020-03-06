@@ -6918,6 +6918,7 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([PYTHON, EMCC, 'test.cpp'])
     self.assertContained('undefined symbol: my_js', err)
 
+  @no_fastcomp('fastcomp links in memset in JS in a hackish way')
   def test_js_lib_to_system_lib(self):
     # memset is in compiled code, so a js library __deps can't access it. it
     # would need to be in deps_info.json or EXPORTED_FUNCTIONS
