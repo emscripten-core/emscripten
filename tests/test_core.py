@@ -8720,6 +8720,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
                 basename=name, expected_output=[''], assert_returncode=None)
 
+  # note: these tests have things like -fno-builtin-memset in order to avoid
+  # clang optimizing things away. for example, a memset might be optimized into
+  # stores, and then the stores identified as dead, which leaves nothing for
+  # asan to test. here we want to test asan itself, so we work around that.
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',

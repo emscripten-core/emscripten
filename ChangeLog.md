@@ -17,6 +17,16 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove hacks from `memset` handling, in particular, remove it from
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` and ifdef it out in the wasm backend case
+  in the JS library, so the JS library version is never included in that case
+  (it can arrive from compiler_rt if it is needed). A noticeable difference is
+  that a JS library cannot add a `__dep` to `memset` - deps only work for JS
+  library functions, but `memset` is from compiled code. If you hit that issue,
+  just add `_memset` to `EXPORTED_FUNCTIONS`.
+
+v1.39.9: 03/05/2020
+-------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
   internal emscripten errors. The behviour of these flags matches the gcc/clang
   counterparts.
@@ -32,7 +42,7 @@ Current Trunk
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
-- Deprecate WASM_OBJECT_FILES setting.  There are many standard ways to enable
+- Deprecate `WASM_OBJECT_FILES` setting.  There are many standard ways to enable
   bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
@@ -41,13 +51,11 @@ Current Trunk
   alias or the target function must contain a signature annotation. (#10550)
 - Add an check in Asyncify builds with `ASSERTIONS` that we do not have
   compiled code on the stack when starting to rewind, which is dangerous.
-- Remove hacks from `memset` handling, in particular, remove it from
-  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` and ifdef it out in the wasm backend case
-  in the JS library, so the JS library version is never included in that case
-  (it can arrive from compiler_rt if it is needed). A noticeable difference is
-  that a JS library cannot add a `__dep` to `memset` - deps only work for JS
-  library functions, but `memset` is from compiled code. If you hit that issue,
-  just add `_memset` to `EXPORTED_FUNCTIONS`.
+- Implement libc system() for node.js (#10547).
+- Standalone mode improvements, time (#10530, #10536), sysconf (#10535),
+  getpagesize (#10533), _Exit (#10534)
+- Fix many closure compiler warnings (e.g. #10525).
+- Avoid unnecessary syscall proxying (#10511).
 
 v1.39.8: 02/14/2020
 -------------------
