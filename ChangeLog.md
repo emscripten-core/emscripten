@@ -41,6 +41,13 @@ Current Trunk
   alias or the target function must contain a signature annotation. (#10550)
 - Add an check in Asyncify builds with `ASSERTIONS` that we do not have
   compiled code on the stack when starting to rewind, which is dangerous.
+- Remove hacks from `memset` handling, in particular, remove it from
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` and ifdef it out in the wasm backend case
+  in the JS library, so the JS library version is never included in that case
+  (it can arrive from compiler_rt if it is needed). A noticeable difference is
+  that a JS library cannot add a `__dep` to `memset` - deps only work for JS
+  library functions, but `memset` is from compiled code. If you hit that issue,
+  just add `_memset` to `EXPORTED_FUNCTIONS`.
 
 v1.39.8: 02/14/2020
 -------------------
