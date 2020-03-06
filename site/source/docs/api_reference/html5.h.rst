@@ -63,7 +63,7 @@ The typical format of registration functions is as follows (some methods may omi
 The ``target`` parameter is the ID of the HTML element to which the callback registration is to be applied. This field has the following special meanings:
 
   - ``0`` or ``NULL``: A default element is chosen automatically based on the event type, which should be reasonable most of the time.
-  - ``EMSCRIPTEN_EVENT_TARGET_DOCUMENT``: The ``document``object.
+  - ``EMSCRIPTEN_EVENT_TARGET_DOCUMENT``: The ``document`` object.
   - ``EMSCRIPTEN_EVENT_TARGET_WINDOW``: The ``window`` object.
   - Any other string will be used to find an element on the page using ``document.querySelector(target)``.
 
@@ -74,7 +74,7 @@ using something like
 
     SpecialEventTargets["#canvas"] = Module.canvas;
 
-That will let #canvas map to the canvas held in Module.canvas. (You can write
+That will let ``#canvas`` map to the canvas held in Module.canvas. (You can write
 that JavaScript in an ``EM_JS`` or ``EM_ASM`` block that happens before you
 call the registration function, for example.)
 
