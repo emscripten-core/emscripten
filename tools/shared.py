@@ -1880,10 +1880,10 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
-      if Settings.ALLOW_MEMORY_GROWTH and Settings.MAXIMUM_MEMORY != -1:
-        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
-      elif not Settings.ALLOW_MEMORY_GROWTH:
+      if not Settings.ALLOW_MEMORY_GROWTH:
         cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
+      elif Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
