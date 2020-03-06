@@ -3176,6 +3176,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
       cmd += ['--mem-max=-1']
+    elif not shared.Settings.ALLOW_MEMORY_GROWTH:
+      cmd += ['--mem-max=' + str(shared.Settings.TOTAL_MEMORY)]
     elif shared.Settings.MAXIMUM_MEMORY >= 0:
       cmd += ['--mem-max=' + str(shared.Settings.MAXIMUM_MEMORY)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
