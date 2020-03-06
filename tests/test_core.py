@@ -5732,7 +5732,6 @@ PORT: 3979
   def test_js_lib_dep_memset(self):
     create_test_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
-  depper__deps: ['memset'],
   depper: function(ptr) {
     _memset(ptr, 'd'.charCodeAt(0), 10);
   },
@@ -5749,14 +5748,12 @@ extern void depper(char*);
 int main(int argc, char** argv) {
   char buffer[11];
   buffer[10] = '\0';
-  // call by a pointer, to force linking of memset, no llvm intrinsic here
-  volatile auto ptr = memset;
-  (*ptr)(buffer, 'a', 10);
   depper(buffer);
   puts(buffer);
 }
 '''
     self.emcc_args += ['--js-library', 'lib.js',  '-std=c++11']
+    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_memset'])
     self.do_run(src, 'dddddddddd')
     # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
     # undefined symbols at link time so perhaps have it imply this setting?
