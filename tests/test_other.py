@@ -8199,6 +8199,7 @@ int main() {
     'O3': (['-O3'], [], [],          85), # noqa
     'Os': (['-Os'], [], [],          85), # noqa
     'Oz': (['-Oz'], [], [],          85), # noqa
+    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 267), # noqa
   })
   @no_fastcomp()
   def test_metadce_minimal(self, *args):
