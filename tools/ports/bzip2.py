@@ -6,8 +6,8 @@
 import os
 import shutil
 
-VERSION = 'master' # TODO: '1.0.6'
-HASH = '7f7b894e65d4028b64df9316321baf0f5898d630579aaca4cb0bbe8acb00d2929eb3539f71ad71b6cd1fdb1d205c7d6761aca82894eeb6b01f8a1640e3eb0f86'
+VERSION = '1.0.6'
+HASH = '512cbfde5144067f677496452f3335e9368fd5d7564899cb49e77847b9ae7dca598218276637cbf5ec524523be1e8ace4ad36a148ef7f4badf3f6d5a002a4bb2'
 
 
 def get(ports, settings, shared):
