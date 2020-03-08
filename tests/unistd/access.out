@@ -52,3 +52,7 @@ errno: 44
 W_OK(): -1
 errno: 44
 
+F_OK(filetorename): -1
+errno: 44
+F_OK(renamedfile): 0
+errno: 0
