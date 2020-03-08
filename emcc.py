@@ -1422,7 +1422,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
       newargs.append('-fignore-exceptions')
 
     if shared.Settings.DEAD_FUNCTIONS:
@@ -3028,14 +3028,17 @@ def parse_args(newargs):
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
 
-    # TODO Currently using '-fexceptions' only means Emscripten EH. Switch to
-    # wasm exception handling by default when -fexceptions is given when wasm
+    # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
+    # exception handling by default when -fexceptions is given when wasm
     # exception handling becomes stable.
-    if eh_enabled:
+    if wasm_eh_enabled:
+      shared.Settings.EXCEPTION_HANDLING = 1
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 1
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+    elif eh_enabled:
+      shared.Settings.EXCEPTION_HANDLING = 0
       shared.Settings.DISABLE_EXCEPTION_THROWING = 0
       shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
-      if wasm_eh_enabled:
-        shared.Settings.EXCEPTION_HANDLING = 1
 
   if should_exit:
     sys.exit(0)

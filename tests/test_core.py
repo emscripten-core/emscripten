@@ -94,6 +94,7 @@ def with_both_exception_handling(f):
   def decorated(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     f(self, None)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     # Wasm EH is currently supported only in wasm backend and V8
     if self.is_wasm_backend() and V8_ENGINE and \
        V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):

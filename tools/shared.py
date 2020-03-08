@@ -1753,15 +1753,14 @@ class Building(object):
     # disable slow and relatively unimportant optimization passes
     args = ['-combiner-global-alias-analysis=false']
 
-    # Emscripten exception handling
-    if not Settings.EXCEPTION_HANDLING:
-      if Settings.DISABLE_EXCEPTION_CATCHING != 1:
-        args += ['-enable-emscripten-cxx-exceptions']
-      if Settings.DISABLE_EXCEPTION_CATCHING == 2:
-        whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
-        args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
+    # asm.js-style exception handling
+    if Settings.DISABLE_EXCEPTION_CATCHING != 1:
+      args += ['-enable-emscripten-cxx-exceptions']
+    if Settings.DISABLE_EXCEPTION_CATCHING == 2:
+      whitelist = ','.join(Settings.EXCEPTION_CATCHING_WHITELIST or ['__fake'])
+      args += ['-emscripten-cxx-exceptions-whitelist=' + whitelist]
 
-    # Emscripten setjmp/longjmp handling
+    # asm.js-style setjmp/longjmp handling
     args += ['-enable-emscripten-sjlj']
 
     # better (smaller, sometimes faster) codegen, see binaryen#1054
