@@ -602,10 +602,15 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
     return 0
 
   if '--version' in args:
-    try:
-      revision = run_process(['git', 'show'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.splitlines()[0]
-    except Exception:
-      revision = '(unknown revision)'
+    # if the emscripten folder is not a git repo, don't run git show - that can
+    # look up and find the revision in a parent directory that is a git repo
+    if not os.path.exists(shared.path_from_root('.git')):
+      revision = 'unknown revision'
+    else:
+      try:
+        revision = run_process(['git', 'show'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.splitlines()[0]
+      except Exception:
+        revision = 'failed to get revision'
     print('''emcc (Emscripten gcc/clang-like replacement) %s (%s)
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
