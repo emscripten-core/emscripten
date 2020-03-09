@@ -949,16 +949,16 @@ class benchmark(runner.RunnerCore):
                       force_c=True, shared_args=['-I' + path_from_root('tests', 'zlib')], lib_builder=lib_builder)
 
   def test_zzz_coremark(self): # Called thus so it runs late in the alphabetical cycle... it is long
-    src = open(path_from_root('tests', 'benchmark', 'coremark', 'core_main.c'), 'r').read()
+    src = open(path_from_root('tests', 'third_party', 'coremark', 'core_main.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library('benchmark/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library('third_party/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
     def output_parser(output):
       iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
       return 100000.0 / float(iters_sec)
 
-    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'benchmark', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
+    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
