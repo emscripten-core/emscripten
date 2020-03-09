@@ -18,6 +18,12 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 
+v1.39.10: 03/09/2020
+--------------------
+- Fix a SIMD regression in 1.39.9 (#10658).
+- Fix `emscripten_atomic_exchange_u8,16,32,64` (#10657).
+- Switch bzip2 to an emscripten-ports mirror.
+
 v1.39.9: 03/05/2020
 -------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
