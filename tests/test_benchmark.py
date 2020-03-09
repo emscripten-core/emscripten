@@ -191,7 +191,7 @@ class EmscriptenBenchmarker(Benchmarker):
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
       env_init = self.env.copy()
-      env_init['CFLAGS'] = LLVM_FEATURE_FLAGS
+      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS)
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
