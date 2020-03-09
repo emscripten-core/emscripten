@@ -1180,7 +1180,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.emcc_args.remove('-Werror')
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
-  def get_poppler_library(self, env_init):
+  def get_poppler_library(self, env_init=None):
     # The fontconfig symbols are all missing from the poppler build
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
@@ -1203,7 +1203,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       '-Wno-tautological-compare',
       '-Wno-unknown-pragmas',
     ]
-    env_init = env_init.copy()
+    env_init = env_init.copy() if env_init else {}
     env_init['FONTCONFIG_CFLAGS'] = ' '
     env_init['FONTCONFIG_LIBS'] = ' '
 
