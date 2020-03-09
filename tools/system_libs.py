@@ -1633,14 +1633,20 @@ class Ports(object):
 
   @staticmethod
   def run_commands(commands):
-    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
-    # that the ports are built in the correct configuration.
-    def add_args(cmd):
-      # this must only be called on a standard build command
-      assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
-      # add standard cflags, but also allow the cmd to override them
-      return cmd[:2] + get_cflags() + cmd[2:]
-    run_build_commands([add_args(c) for c in commands])
+    if os.environ.get('EMCC_BUILDING_PORT'):
+      shared.exit_with_error("EMCC_BUILDING_PORT is already set in the env, indicating an attempt to build a port while another is already building - make sure you are not injecting -s USE_X using CFLAGS or EMMAKEN_CFLAGS")
+    os.environ['EMCC_BUILDING_PORT'] = '1'
+    try:
+      # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
+      # that the ports are built in the correct configuration.
+      def add_args(cmd):
+        # this must only be called on a standard build command
+        assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+        # add standard cflags, but also allow the cmd to override them
+        return cmd[:2] + get_cflags() + cmd[2:]
+      run_build_commands([add_args(c) for c in commands])
+    finally:
+      del os.environ['EMCC_BUILDING_PORT']
 
   @staticmethod
   def create_lib(libname, inputs): # make easily available for port objects
