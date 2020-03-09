@@ -8,11 +8,9 @@ __cxa_free_exception
 __cxa_rethrow
 __cxa_throw
 __cxa_uncaught_exceptions
-__lock
 __map_file
 __resumeException
 __syscall91
-__unlock
 abort
 emscripten_get_sbrk_ptr
 emscripten_memcpy_big

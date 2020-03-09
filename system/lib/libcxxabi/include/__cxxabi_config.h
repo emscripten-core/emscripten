@@ -1,9 +1,8 @@
 //===-------------------------- __cxxabi_config.h -------------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 
@@ -62,12 +61,18 @@
 
 #if defined(__clang__)
 #define _LIBCXXABI_COMPILER_CLANG
+#elif defined(__GNUC__)
+#define _LIBCXXABI_COMPILER_GCC
 #endif
 
 #if __has_attribute(__no_sanitize__) && defined(_LIBCXXABI_COMPILER_CLANG)
 #define _LIBCXXABI_NO_CFI __attribute__((__no_sanitize__("cfi")))
 #else
 #define _LIBCXXABI_NO_CFI
+#endif
+
+#if defined(__arm__)
+#  define _LIBCXXABI_GUARD_ABI_ARM
 #endif
 
 #endif // ____CXXABI_CONFIG_H

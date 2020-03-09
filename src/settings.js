@@ -104,11 +104,6 @@ var MEM_INIT_METHOD = 0;
 // it will fail silently.
 var TOTAL_STACK = 5*1024*1024;
 
-// The total amount of memory to use. Using more memory than this will
-// cause us to expand the heap, which can be costly with typed arrays:
-// we need to copy the old heap into a new one in that case.
-var TOTAL_MEMORY = 16777216;
-
 // What malloc()/free() to use, out of
 //  * dlmalloc - a powerful general-purpose malloc
 //  * emmalloc - a simple and compact malloc designed for emscripten
@@ -126,7 +121,7 @@ var MALLOC = "dlmalloc";
 // but makes sense for the web since we have a fixed amount of memory that
 // must all be allocated up front, and so (a) failing mallocs are much more
 // likely than on other platforms, and (b) people need a way to find out
-// how big that initial allocation (TOTAL_MEMORY) must be.
+// how big that initial allocation (INITIAL_MEMORY) must be.
 // If you set this to 0, then you get the standard malloc behavior of
 // returning NULL (0) when it fails.
 var ABORTING_MALLOC = 1;
@@ -137,8 +132,28 @@ var ABORTING_MALLOC = 1;
 // [fastcomp-only]
 var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 
+// The initial amount of memory to use. Using more memory than this will
+// cause us to expand the heap, which can be costly with typed arrays:
+// we need to copy the old heap into a new one in that case.
+// If ALLOW_MEMORY_GROWTH is set, this initial amount of memory can increase
+// later; if not, then it is the final and total amount of memory.
+//
+// (This option was formerly called TOTAL_MEMORY.)
+var INITIAL_MEMORY = 16777216;
+
+// Set the maximum size of memory in the wasm module (in bytes). Without this,
+// INITIAL_MEMORY is used (as it is used for the initial value), or if memory
+// growth is enabled, the default value here (-1) is to have no limit, but you
+// can set this to set a maximum size that growth will stop at.
+//
+// This setting only matters for wasm, as in asm.js there is no place to set
+// a maximum, and only when ALLOW_MEMORY_GROWTH is set.
+//
+// (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
+var MAXIMUM_MEMORY = -1;
+
 // If false, we abort with an error if we try to allocate more memory than
-// we can (TOTAL_MEMORY). If true, we will grow the memory arrays at
+// we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
 // runtime, seamlessly and dynamically. This has a performance cost in asm.js,
 // both during the actual growth and in general (the latter is because in
 // that case we must be careful about optimizations, in particular the
@@ -295,6 +310,7 @@ var SAFE_HEAP_LOG = 0;
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
+// [fastcomp-only]
 var RESERVED_FUNCTION_POINTERS = 0;
 
 // Whether to allow function pointers to alias if they have a different type.
@@ -485,7 +501,7 @@ var MAX_WEBGL_VERSION = 1;
 var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
-// This automatically turns out FULL_ES2.
+// This automatically turns on FULL_ES2.
 var FULL_ES3 = 0;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
@@ -722,7 +738,7 @@ var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 // FIXME: should this just be  0  if we want everything?
 var INCOMING_MODULE_JS_API = [
   'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
-  'SDL_numSimultaneouslyQueuedBuffers', 'TOTAL_MEMORY', 'wasmMemory', 'arguments',
+  'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
   'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
   'instantiateWasm', 'keyboardListeningElementfreePreloadedMediaOnUse',
@@ -920,7 +936,7 @@ var LINKABLE = 0;
 var STRICT = 0;
 
 // Automatically attempt to add archive indexes at link time to archives that 
-// don't already have them.  This can heppen when GNU ar or GNU ranlib is used
+// don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
 // [link]
@@ -1217,13 +1233,6 @@ var STANDALONE_WASM = 0;
 // environment.
 var WASM_BACKEND = 0;
 
-// Whether to compile object files as wasm as opposed to the default
-// of using LLVM IR.
-// Setting to zero will enable LTO and at link time will also enable bitcode
-// versions of the standard libraries.
-// [compile+link]
-var WASM_OBJECT_FILES = 1;
-
 // An optional comma-separated list of script hooks to run after binaryen,
 // in binaryen's /scripts dir.
 var BINARYEN_SCRIPTS = "";
@@ -1267,14 +1276,6 @@ var BINARYEN_PASSES = "";
 // setting this does not override/replace the default passes, and it is
 // appended at the end of the list of passes.
 var BINARYEN_EXTRA_PASSES = "";
-
-// Set the maximum size of memory in the wasm module (in bytes). Without this,
-// TOTAL_MEMORY is used (as it is used for the initial value), or if memory
-// growth is enabled, the default value here (-1) is to have no limit, but you
-// can set this to set a maximum size that growth will stop at.
-//
-// (This option was formerly called BINARYEN_MEM_MAX)
-var WASM_MEM_MAX = -1;
 
 // Whether to compile the wasm asynchronously, which is more efficient and does
 // not block the main thread. This is currently required for all but the
@@ -1582,9 +1583,9 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-// If set to 1, all JS libraries will be automaticially available at link time.
+// If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
-// need to explictly specify -lfoo.js in at link time in order to access
+// need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 
@@ -1775,6 +1776,7 @@ var ASM_PRIMITIVE_VARS = ['__THREW__', 'threwValue', 'setjmpId', 'tempInt', 'tem
 // This allows existing build systems to keep specifying one of the supported
 // settings, for backwards compatibility.
 var LEGACY_SETTINGS = [
+  ['BINARYEN', 'WASM'],
   ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
   ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
   ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
@@ -1791,5 +1793,10 @@ var LEGACY_SETTINGS = [
   ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
-  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP']
+  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
+  // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
+  ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
+  ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
+  ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
+  ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
 ];

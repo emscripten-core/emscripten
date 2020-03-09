@@ -78,6 +78,7 @@
 -------- T _ZNKSt9bad_alloc4whatEv
 -------- T _ZNKSt9exception4whatEv
 -------- W _ZNKSt9type_info4nameEv
+-------- W _ZNKSt9type_infoeqERKS_
 -------- T _ZNSt10bad_typeidC1Ev
 -------- T _ZNSt10bad_typeidC2Ev
 -------- T _ZNSt10bad_typeidD0Ev

@@ -97,9 +97,8 @@ Link Time Optimization (LTO) lets the compiler do more optimizations, as it can 
 Separately from that flag, the linker must also receive LLVM bitcode files in order to run LTO on them. With fastcomp that is always the case; with the LLVM wasm backend, object files main contain either wasm or bitcode. The linker can handle a mix of the two, but can only do LTO on the bitcode files. You can control that with the following flags:
 
 - The ``-flto`` flag tells the compiler to emit bitcode in object files, but does *not* affect system libraries.
-- The ``-s WASM_OBJECT_FILES=0`` flag also tells the compiler to emit bitcode in object files (like ``-flto``), and also to emit bitcode in system libraries.
 
-Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all source files with ``-s WASM_OBJECT_FILES=0`` and link with ``-s WASM_OBJECT_FILES=0 --llvm-lto 1``.
+Thus, to allow maximal LTO opportunities with the LLVM wasm backend, build all source files with ``-flto`` and link with ``-flto --llvm-lto 1``.
 
 Note that older versions of LLVM had bugs in this area. With the older fastcomp backend LTO should be used carefully.
 

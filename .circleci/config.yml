@@ -68,9 +68,10 @@ commands:
             $PYTHON_BIN ./embuilder.py build ALL
             $PYTHON_BIN tests/runner.py test_hello_world
       - run:
+
           name: embuilder (LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --lto
+            $PYTHON_BIN ./embuilder.py build MINIMAL --lto
             $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: embuilder (PIC)
@@ -80,7 +81,7 @@ commands:
       - run:
           name: embuilder (PIC+LTO)
           command: |
-            $PYTHON_BIN ./embuilder.py build libcompiler_rt libc libc++abi libc++abi-noexcept libc++ libc++-noexcept libal libdlmalloc libdlmalloc-debug libemmalloc libemmalloc-64bit libpthread_stub libc_rt_wasm struct_info libc-wasm --pic --lto
+            $PYTHON_BIN ./embuilder.py build MINIMAL --pic --lto
             $PYTHON_BIN tests/runner.py test_hello_world
       - run:
           name: freeze cache

@@ -15,7 +15,7 @@ local_inc = os.path.join(local_root, 'include')
 
 
 def main():
-  upstream_root = os.path.abspath(sys.argv[1])
+  upstream_root = os.path.join(os.path.abspath(sys.argv[1]), 'libcxxabi')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')
   assert os.path.exists(upstream_inc)

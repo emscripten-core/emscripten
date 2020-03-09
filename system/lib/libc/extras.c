@@ -25,27 +25,9 @@ long* _get_timezone() {
   return &timezone;
 }
 
+// Musl lock internals. As we assume wasi is single-threaded for now, these
+// are no-ops.
 
-// With upstream we use musl's normal getenv code, but with fastcomp
-// we use this constructor and stubs + getenv etc. in JS, because libc
-// is a .bc file and we don't want to have a global constructor there
-// for __environ, which would mean it is always included.
-#ifdef __asmjs__
+void __lock(void* ptr) {}
+void __unlock(void* ptr) {}
 
-char** environ;
-
-char*** _get_environ() {
-  return &environ;
-}
-
-// Call JS to build the default environment.
-
-extern void __buildEnvironment(void*);
-
-// TODO: this needs very high priority, so user ctors that use environ do not happen first
-__attribute__((constructor))
-void __emscripten_environ_constructor(void) {
-  __buildEnvironment((void*)&environ);
-}
-
-#endif // __asmjs__

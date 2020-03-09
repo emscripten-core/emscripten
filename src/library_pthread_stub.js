@@ -37,9 +37,7 @@ var LibraryPThreadStub = {
 
   pthread_cond_init: function() { return 0; },
   pthread_cond_destroy: function() { return 0; },
-  pthread_cond_wait: function() { return 0; },
   pthread_cond_timedwait: function() { return 0; },
-  pthread_cond_signal: function() { return 0; },
 
   pthread_condattr_init: function() { return 0; },
   pthread_condattr_destroy: function() { return 0; },
@@ -47,13 +45,6 @@ var LibraryPThreadStub = {
   pthread_condattr_setpshared: function() { return 0; },
   pthread_condattr_getclock: function() { return 0; },
   pthread_condattr_getpshared: function() { return 0; },
-
-  pthread_cond_broadcast__asm: true,
-  pthread_cond_broadcast__sig: 'ii',
-  pthread_cond_broadcast: function(x) {
-    x = x | 0;
-    return 0;
-  },
 
   pthread_attr_init: function(attr) {
     /* int pthread_attr_init(pthread_attr_t *attr); */
@@ -107,11 +98,6 @@ var LibraryPThreadStub = {
   // pthread_sigmask - examine and change mask of blocked signals
   pthread_sigmask: function(how, set, oldset) {
     err('pthread_sigmask() is not supported: this is a no-op.');
-    return 0;
-  },
-
-  pthread_atfork: function(prepare, parent, child) {
-    err('fork() is not supported: pthread_atfork is a no-op.');
     return 0;
   },
 

@@ -805,20 +805,27 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   # Tests that the given two multiline text content are identical, modulo line
   # ending differences (\r\n on Windows, \n on Unix).
-  def assertTextDataIdentical(self, text1, text2, msg=None):
+  def assertTextDataIdentical(self, text1, text2, msg=None,
+                              fromfile='expected', tofile='actual'):
     text1 = text1.replace('\r\n', '\n')
     text2 = text2.replace('\r\n', '\n')
-    return self.assertIdentical(text1, text2, msg)
+    return self.assertIdentical(text1, text2, msg, fromfile, tofile)
 
-  def assertIdentical(self, values, y, msg=None):
-    if type(values) not in [list, tuple]:
+  def assertIdentical(self, values, y, msg=None,
+                      fromfile='expected', tofile='actual'):
+    if type(values) not in (list, tuple):
       values = [values]
     for x in values:
       if x == y:
         return # success
-    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'), fromfile='expected', tofile='actual')
+    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
+                                      fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
-    fail_message = "Expected to have '%s' == '%s', diff:\n\n%s" % (limit_size(values[0]), limit_size(y), limit_size(diff))
+    if EMTEST_VERBOSE:
+      print("Expected to have '%s' == '%s'" % limit_size(values[0]), limit_size(y))
+    fail_message = 'Unexpected difference:\n' + limit_size(diff)
+    if not EMTEST_VERBOSE:
+      fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
     if msg:
       fail_message += '\n' + msg
     self.fail(fail_message)
@@ -828,20 +835,20 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
-  def assertContained(self, values, string, additional_info='', check_all=False):
+  def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
     values = list(map(asstr, values))
     if callable(string):
       string = string()
 
-    if (all if check_all else any)(value in string for value in values):
-      return # success
-    self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
-      limit_size(values[0]), limit_size(string),
-      limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
-      additional_info
-    ))
+    if not any(v in string for v in values):
+      diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
+      diff = ''.join(a.rstrip() + '\n' for a in diff)
+      self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
+        limit_size(values[0]), limit_size(string), limit_size(diff),
+        additional_info
+      ))
 
   def assertNotContained(self, value, string):
     if callable(value):
@@ -915,7 +922,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     Return the stderr of the subprocess.
     """
     proc = run_process(cmd, check=False, stderr=PIPE, **args)
-    self.assertNotEqual(proc.returncode, 0)
+    self.assertNotEqual(proc.returncode, 0, 'subprocess unexpectedly succeeded. stderr:\n' + proc.stderr)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
     # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
@@ -1033,8 +1040,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.clear_setting('SIDE_MODULE')
     self.clear_setting('RUNTIME_LINKED_LIBS')
 
-    # XXX in wasm each lib load currently takes 5MB; default TOTAL_MEMORY=16MB is thus not enough
-    self.set_setting('TOTAL_MEMORY', 32 * 1024 * 1024)
+    # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
+    self.set_setting('INITIAL_MEMORY', 32 * 1024 * 1024)
 
     so = '.wasm' if self.is_wasm() else '.js'
 
@@ -1134,8 +1141,6 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
     # Run in both JavaScript engines, if optimizing - significant differences there (typed arrays)
     js_engines = self.filtered_js_engines(js_engines)
-    if len(js_engines) == 0:
-      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     # Make sure to get asm.js validation checks, using sm, even if not testing all vms.
     if len(js_engines) > 1 and not self.use_all_engines:
       if SPIDERMONKEY_ENGINE in js_engines and not self.is_wasm_backend():
@@ -1150,6 +1155,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       if len(wasm_engines) == 0:
         logger.warning('no wasm engine was found to run the standalone part of this test')
       js_engines += wasm_engines
+    if len(js_engines) == 0:
+      self.skipTest('No JS engine present to run this test with. Check %s and the paths therein.' % EM_CONFIG)
     for engine in js_engines:
       js_output = self.run_generated_code(engine, js_file, args, output_nicerizer=output_nicerizer, assert_returncode=assert_returncode)
       js_output = js_output.replace('\r\n', '\n')
@@ -1157,8 +1164,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
+          elif assert_all:
+            for o in expected_output:
+              self.assertContained(o, js_output)
           else:
-            self.assertContained(expected_output, js_output, check_all=assert_all)
+            self.assertContained(expected_output, js_output)
             if check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
@@ -1235,6 +1245,15 @@ def harness_server_func(in_queue, out_queue, port):
         return f
       else:
         return SimpleHTTPRequestHandler.send_head(self)
+
+    # Add COOP, COEP and CORP headers
+    def end_headers(self):
+      self.send_header('Access-Control-Allow-Origin', '*')
+      self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+      self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+      self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+
+      return SimpleHTTPRequestHandler.end_headers(self)
 
     def do_GET(self):
       if self.path == '/run_harness':
@@ -1526,12 +1545,12 @@ class BrowserCore(RunnerCore):
         if (typeof WebGLClient !== 'undefined') {
           // trigger reftest from RAF as well, needed for workers where there is no pre|postRun on the main thread
           var realRAF = window.requestAnimationFrame;
-          window.requestAnimationFrame = function(func) {
+          window.requestAnimationFrame = /** @suppress{checkTypes} */ (function(func) {
             realRAF(function() {
               func();
               realRAF(doReftest);
             });
-          };
+          });
 
           // trigger reftest from canvas render too, for workers not doing GL
           var realWOM = worker.onmessage;

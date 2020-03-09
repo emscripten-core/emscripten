@@ -16,7 +16,7 @@ Download and install
     `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_). (While we
     don't officially support other ways of getting Emscripten, we definitely
     appreciate the efforts by third parties to
-    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/incoming/docs/process.md#packaging-emscripten>`_
+    `package Emscripten <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#packaging-emscripten>`_
     for users' convenience, and we'd like to help out, please get in touch if
     you are such a packager!)
 
@@ -86,7 +86,7 @@ You can also specify which backend you want to use, either ``fastcomp`` or ``ups
     ./emsdk install 1.38.45-fastcomp
 
 
-There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/incoming/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
+There are also "tip-of-tree builds", which are the very latest code that passes integration tests on `Chromium CI <https://ci.chromium.org/p/emscripten-releases>`_. This is updated much more frequently than tagged releases, but may be less stable (we `tag releases manually <https://github.com/emscripten-core/emscripten/blob/master/docs/process.md#minor-version-updates-1xy-to-1xy1>`_ using a more careful procedure). Tip-of-tree builds may be useful for continuous integration that uses the emsdk (as Emscripten's GitHub CI does), and you may want to use it in your own CI as well, so that if you find a regression on your project you can report it and prevent it from reaching a tagged release. Tip-of-builds may also be useful if you want to test a feature that just landed but didn't reach a release yet. To use a tip-of-tree build, use the ``tot`` target, and note that you must specify the backend explicitly,
 
   ::
 

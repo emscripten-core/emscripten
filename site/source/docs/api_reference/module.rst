@@ -61,7 +61,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
   Allows you to provide your own ``WebAssembly.Memory`` to use as the memory. The properites used to initialize the memory should match the compiler options.
 
-  For example, if you set ``TOTAL_MEMORY`` to 8MB without memory growth, then the ``wasmMemory`` you provide (if any) should have both the ``'initial'`` and ``'maximum'`` set to 128 (due to WASM page sizes being 64KB).
+  For example, if you set ``INITIAL_MEMORY`` to 8MB without memory growth, then the ``wasmMemory`` you provide (if any) should have both the ``'initial'`` and ``'maximum'`` set to 128 (due to WASM page sizes being 64KB).
 
 .. js:attribute:: Module.locateFile
 

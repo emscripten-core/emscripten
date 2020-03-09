@@ -33,6 +33,8 @@ void __attribute__((noinline)) kitten()
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE, "Info log to console: int: %d, string: %s", 42, "hello");
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_WARN, "Warning message to console.");
 	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR, "Error message to console! This should appear in red!");
+	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_INFO, "Info message to console.");
+	emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_DEBUG, "Debug message to console.");
 
 	// Log to with full callstack information (both original C source and JS callstacks):
 	emscripten_log(EM_LOG_C_STACK | EM_LOG_JS_STACK | EM_LOG_DEMANGLE, "A message with as full call stack information as possible:");

@@ -126,8 +126,6 @@ def get(ports, settings, shared):
                  '-Wno-unused-parameter']
       if settings.USE_PTHREADS:
         command += ['-pthread']
-      if settings.WASM_OBJECT_FILES != 1:
-        command += ['-flto']
       commands.append(command)
 
       o_s.append(o)

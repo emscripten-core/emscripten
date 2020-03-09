@@ -6,7 +6,8 @@ struct tm *__localtime_r(const time_t *restrict t, struct tm *restrict tm)
 {
 	/* Reject time_t values whose year would overflow int because
 	 * __secs_to_zone cannot safely handle them. */
-	if (*t < INT_MIN * 31622400LL || *t > INT_MAX * 31622400LL) {
+	// XXX EMSCRIPTEN: add casts to (long long) to avoid a new clang warning
+	if (((long long)*t) < INT_MIN * 31622400LL || ((long long)*t) > INT_MAX * 31622400LL) {
 		errno = EOVERFLOW;
 		return 0;
 	}

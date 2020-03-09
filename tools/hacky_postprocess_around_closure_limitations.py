@@ -1,6 +1,11 @@
 # This file further processes an output JS file to optimize down to even smaller size that Closure is unable to do
+import os
 import re
 import sys
+
+sys.path.insert(1, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from tools import shared
 
 f = open(sys.argv[1], 'r').read()
 orig_size = len(f)
@@ -45,6 +50,18 @@ f = re.sub(r'[\n\s]+\n\s*', '\n', f)
 f = re.sub(r'([;{}=,\+\-\*/\(\)\[\]])[\n]', r'\1', f)
 f = re.sub(r'([;{}=,\*/\(\)\[\]])[\s]', r'\1', f)
 
-optimized_size = len(f)
+# Work around https://github.com/google/closure-compiler/issues/3548 / https://github.com/google/closure-compiler/issues/3230 :
+# TODO: can drop this when the above issue is fixed.
+# parseInt(b.slice(d+1),void 0)
+# ->
+# parseInt(b.slice(d+1))
+f = re.sub(r'parseInt\(([^,;]+),void 0\)', r'parseInt(\1)', f)
+
+# Finally, rerun minifier because the above changes may have left redundant whitespaces
+open(sys.argv[1], 'w').write(f)
+minified = shared.Building.js_optimizer_no_asmjs(sys.argv[1], ['minifyWhitespace'], acorn=True, return_output=True)
+open(sys.argv[1], 'w').write(minified)
+
+# optimized_size = len(f)
 # print('Further optimized ' + str(optimized_size - orig_size) + ' bytes (' + str(orig_size) + ' -> ' + str(optimized_size) + ' bytes, {0:.2f}'.format((optimized_size-orig_size)*100.0/orig_size) + '%)')
 open(sys.argv[1], 'w').write(f)

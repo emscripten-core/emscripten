@@ -126,6 +126,7 @@ var LibraryEmbind = {
    the appropriate overload to call from an function overload table. This selector function is only used if multiple overloads are
    actually registered, since it carries a slight performance penalty. */
   $exposePublicSymbol__deps: ['$ensureOverloadTable', '$throwBindingError'],
+  $exposePublicSymbol__docs: '/** @param {number=} numArguments */',
   $exposePublicSymbol: function(name, value, numArguments) {
     if (Module.hasOwnProperty(name)) {
         if (undefined === numArguments || (undefined !== Module[name].overloadTable && undefined !== Module[name].overloadTable[numArguments])) {
@@ -150,6 +151,7 @@ var LibraryEmbind = {
   },
 
   $replacePublicSymbol__deps: ['$throwInternalError'],
+  $replacePublicSymbol__docs: '/** @param {number=} numArguments */',
   $replacePublicSymbol: function(name, value, numArguments) {
     if (!Module.hasOwnProperty(name)) {
         throwInternalError('Replacing nonexistant public symbol');
@@ -298,6 +300,7 @@ var LibraryEmbind = {
     '$awaitingDependencies', '$registeredTypes',
     '$typeDependencies', '$throwBindingError',
     '$whenDependentTypesAreResolved'],
+  $registerType__docs: '/** @param {Object=} options */',
   $registerType: function(rawType, registeredInstance, options) {
     options = options || {};
 
@@ -393,7 +396,7 @@ var LibraryEmbind = {
     return ret;
   },
 
-  $getTypeName__deps: ['free', '$readLatin1String'],
+  $getTypeName__deps: ['$readLatin1String'],
   $getTypeName: function(type) {
     var ptr = ___getTypeName(type);
     var rv = readLatin1String(ptr);
@@ -631,36 +634,34 @@ var LibraryEmbind = {
             var length = HEAPU32[value >> 2];
 
             var str;
-            if(stdStringIsUTF8) {
+            if (stdStringIsUTF8) {
                 //ensure null termination at one-past-end byte if not present yet
                 var endChar = HEAPU8[value + 4 + length];
                 var endCharSwap = 0;
-                if(endChar != 0)
-                {
-                  endCharSwap = endChar;
-                  HEAPU8[value + 4 + length] = 0;
+                if (endChar != 0) {
+                    endCharSwap = endChar;
+                    HEAPU8[value + 4 + length] = 0;
                 }
 
                 var decodeStartPtr = value + 4;
-                //looping here to support possible embedded '0' bytes
+                // Looping here to support possible embedded '0' bytes
                 for (var i = 0; i <= length; ++i) {
-                  var currentBytePtr = value + 4 + i;
-                  if(HEAPU8[currentBytePtr] == 0)
-                  {
-                    var stringSegment = UTF8ToString(decodeStartPtr);
-                    if(str === undefined)
-                      str = stringSegment;
-                    else
-                    {
-                      str += String.fromCharCode(0);
-                      str += stringSegment;
+                    var currentBytePtr = value + 4 + i;
+                    if (HEAPU8[currentBytePtr] == 0) {
+                        var stringSegment = UTF8ToString(decodeStartPtr);
+                        if (str === undefined) {
+                            str = stringSegment;
+                        } else {
+                            str += String.fromCharCode(0);
+                            str += stringSegment;
+                        }
+                        decodeStartPtr = currentBytePtr + 1;
                     }
-                    decodeStartPtr = currentBytePtr + 1;
-                  }
                 }
 
-                if(endCharSwap != 0)
-                  HEAPU8[value + 4 + length] = endCharSwap;
+                if (endCharSwap != 0) {
+                    HEAPU8[value + 4 + length] = endCharSwap;
+                }
             } else {
                 var a = new Array(length);
                 for (var i = 0; i < length; ++i) {
@@ -698,7 +699,7 @@ var LibraryEmbind = {
             if (stdStringIsUTF8 && valueIsOfTypeString) {
                 stringToUTF8(value, ptr + 4, length + 1);
             } else {
-                if(valueIsOfTypeString) {
+                if (valueIsOfTypeString) {
                     for (var i = 0; i < length; ++i) {
                         var charCode = value.charCodeAt(i);
                         if (charCode > 255) {
@@ -729,39 +730,72 @@ var LibraryEmbind = {
     '$readLatin1String', '$registerType',
     '$simpleReadValueFromPointer'],
   _embind_register_std_wstring: function(rawType, charSize, name) {
-    // nb. do not cache HEAPU16 and HEAPU32, they may be destroyed by emscripten_resize_heap().
     name = readLatin1String(name);
-    var getHeap, shift;
+    var decodeString, encodeString, getHeap, lengthBytesUTF, shift;
     if (charSize === 2) {
+        decodeString = UTF16ToString;
+        encodeString = stringToUTF16;
+        lengthBytesUTF = lengthBytesUTF16;
         getHeap = function() { return HEAPU16; };
         shift = 1;
     } else if (charSize === 4) {
+        decodeString = UTF32ToString;
+        encodeString = stringToUTF32;
+        lengthBytesUTF = lengthBytesUTF32;
         getHeap = function() { return HEAPU32; };
         shift = 2;
     }
     registerType(rawType, {
         name: name,
         'fromWireType': function(value) {
-            var HEAP = getHeap();
+            // Code mostly taken from _embind_register_std_string fromWireType
             var length = HEAPU32[value >> 2];
-            var a = new Array(length);
-            var start = (value + 4) >> shift;
-            for (var i = 0; i < length; ++i) {
-                a[i] = String.fromCharCode(HEAP[start + i]);
+            var HEAP = getHeap();
+            var str;
+            // Ensure null termination at one-past-end byte if not present yet
+            var endChar = HEAP[(value + 4 + length * charSize) >> shift];
+            var endCharSwap = 0;
+            if (endChar != 0) {
+                endCharSwap = endChar;
+                HEAP[(value + 4 + length * charSize) >> shift] = 0;
             }
+
+            var decodeStartPtr = value + 4;
+            // Looping here to support possible embedded '0' bytes
+            for (var i = 0; i <= length; ++i) {
+                var currentBytePtr = value + 4 + i * charSize;
+                if (HEAP[currentBytePtr >> shift] == 0) {
+                    var stringSegment = decodeString(decodeStartPtr);
+                    if (str === undefined) {
+                        str = stringSegment;
+                    } else {
+                        str += String.fromCharCode(0);
+                        str += stringSegment;
+                    }
+                    decodeStartPtr = currentBytePtr + charSize;
+                }
+            }
+
+            if (endCharSwap != 0) {
+                HEAP[(value + 4 + length * charSize) >> shift] = endCharSwap;
+            }
+
             _free(value);
-            return a.join('');
+
+            return str;
         },
         'toWireType': function(destructors, value) {
-            // assumes 4-byte alignment
-            var length = value.length;
-            var ptr = _malloc(4 + length * charSize);
-            var HEAP = getHeap();
-            HEAPU32[ptr >> 2] = length;
-            var start = (ptr + 4) >> shift;
-            for (var i = 0; i < length; ++i) {
-                HEAP[start + i] = value.charCodeAt(i);
+            if (!(typeof value === 'string')) {
+                throwBindingError('Cannot pass non-string to C++ string type ' + name);
             }
+
+            // assumes 4-byte alignment
+            var length = lengthBytesUTF(value);
+            var ptr = _malloc(4 + length + charSize);
+            HEAPU32[ptr >> 2] = length >> shift;
+
+            encodeString(value, ptr + 4, length + charSize);
+
             if (destructors !== null) {
                 destructors.push(_free, ptr);
             }
@@ -817,7 +851,7 @@ var LibraryEmbind = {
         var heap = HEAPU32;
         var size = heap[handle]; // in elements
         var data = heap[handle + 1]; // byte offset into emscripten heap
-        return new TA(heap['buffer'], data, size);
+        return new TA(buffer, data, size);
     }
 
     name = readLatin1String(name);
@@ -1073,34 +1107,12 @@ var LibraryEmbind = {
 #endif
     }
 
-    var fp;
-    if (Module['FUNCTION_TABLE_' + signature] !== undefined) {
-        fp = Module['FUNCTION_TABLE_' + signature][rawFunction];
-    } else if (typeof FUNCTION_TABLE !== "undefined") {
-        fp = FUNCTION_TABLE[rawFunction];
-    } else {
-        // asm.js does not give direct access to the function tables,
-        // and thus we must go through the dynCall interface which allows
-        // calling into a signature's function table by pointer value.
-        //
-        // https://github.com/dherman/asm.js/issues/83
-        //
-        // This has three main penalties:
-        // - dynCall is another function call in the path from JavaScript to C++.
-        // - JITs may not predict through the function table indirection at runtime.
-        var dc = Module['dynCall_' + signature];
-        if (dc === undefined) {
-            // We will always enter this branch if the signature
-            // contains 'f' and PRECISE_F32 is not enabled.
-            //
-            // Try again, replacing 'f' with 'd'.
-            dc = Module['dynCall_' + signature.replace(/f/g, 'd')];
-            if (dc === undefined) {
-                throwBindingError("No dynCall invoker for signature: " + signature);
-            }
-        }
-        fp = makeDynCaller(dc);
-    }
+#if MINIMAL_RUNTIME
+    var dc = asm['dynCall_' + signature];
+#else
+    var dc = Module['dynCall_' + signature];
+#endif
+    var fp = makeDynCaller(dc);
 
     if (typeof fp !== "function") {
         throwBindingError("unknown function pointer with signature " + signature + ": " + rawFunction);
@@ -1485,6 +1497,14 @@ var LibraryEmbind = {
     RegisteredPointer.prototype['fromWireType'] = RegisteredPointer_fromWireType;
   },
 
+  $RegisteredPointer__docs: `/** @constructor
+    @param {*=} pointeeType,
+    @param {*=} sharingPolicy,
+    @param {*=} rawGetPointee,
+    @param {*=} rawConstructor,
+    @param {*=} rawShare,
+    @param {*=} rawDestructor,
+     */`,
   $RegisteredPointer__deps: [
     '$constNoSmartPtrRawPointerToWireType', '$genericPointerToWireType',
     '$nonConstNoSmartPtrRawPointerToWireType', '$init_RegisteredPointer'],
@@ -1839,6 +1859,7 @@ var LibraryEmbind = {
     }
   },
 
+  $RegisteredClass__docs: '/** @constructor */',
   $RegisteredClass: function(
     name,
     constructor,

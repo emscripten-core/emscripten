@@ -22,7 +22,7 @@ intptr_t *emscripten_get_sbrk_ptr(void);
 // be overallocated, see src/settings.js variables MEMORY_GROWTH_GEOMETRIC_STEP,
 // MEMORY_GROWTH_GEOMETRIC_CAP and MEMORY_GROWTH_LINEAR_STEP. This function
 // cannot be used to shrink the size of the heap.
-int emscripten_resize_heap(size_t requested_growth_bytes);
+int emscripten_resize_heap(size_t requested_size);
 
 // Returns the current size of the WebAssembly heap.
 size_t emscripten_get_heap_size(void);

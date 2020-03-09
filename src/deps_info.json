@@ -29,8 +29,8 @@
   "freelocale": ["free"],
   "nl_langinfo": ["malloc"],
   "inet_ntoa": ["malloc"],
-  "gethostbyname": ["malloc", "free", "htons", "ntohs"],
-  "gethostbyname_r": ["malloc", "free", "htons", "ntohs"],
+  "gethostbyname": ["malloc", "free", "htons", "ntohs", "memcpy"],
+  "gethostbyname_r": ["malloc", "free", "htons", "ntohs", "memcpy"],
   "getaddrinfo": ["malloc", "htonl", "htons", "ntohs"],
   "getnameinfo": ["htons", "ntohs"],
   "getpeername": ["htons", "ntohs"],
@@ -41,7 +41,7 @@
   "setprotoent": ["malloc"],
   "emscripten_run_script_string": ["malloc", "free"],
   "emscripten_log": ["strlen"],
-  "uuid_compare": ["memcmp"],
+  "uuid_compare": ["memcmp", "memcpy", "memset"],
   "SDL_Init": ["malloc", "free"],
   "SDL_GL_GetProcAddress": ["emscripten_GetProcAddress"],
   "Mix_LoadWAV_RW": ["fileno"],
@@ -94,5 +94,11 @@
   "_embind_register_std_string": ["malloc", "free"],
   "_embind_register_std_wstring": ["malloc", "free"],
   "__syscall192": ["emscripten_builtin_memalign"],
-  "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"]
+  "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"],
+  "$getTypeName": ["free"],
+  "_embind_register_std_string": ["free"],
+  "_embind_register_std_wstring": ["free"],
+  "_embind_register_function": ["free"],
+  "_embind_register_class": ["free"],
+  "_embind_register_enum_value": ["free"]
 }

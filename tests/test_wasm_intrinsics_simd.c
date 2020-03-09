@@ -96,8 +96,14 @@ v128_t TESTFN f64x2_make(double first) {
 v128_t TESTFN i8x16_shuffle_interleave_bytes(v128_t x, v128_t y) {
   return wasm_v8x16_shuffle(x, y, 0, 17, 2, 19, 4, 21, 6, 23, 8, 25, 10, 27, 12, 29, 14, 31);
 }
+v128_t TESTFN i16x8_shuffle_reverse(v128_t vec) {
+  return wasm_v16x8_shuffle(vec, vec, 7, 6, 5, 4, 3, 2, 1, 0);
+}
 v128_t TESTFN i32x4_shuffle_reverse(v128_t vec) {
-  return wasm_v8x16_shuffle(vec, vec, 12, 13, 14, 15, 8, 9, 10, 11, 4, 5, 6, 7, 0, 1, 2, 3);
+  return wasm_v32x4_shuffle(vec, vec, 3, 2, 1, 0);
+}
+v128_t TESTFN i64x2_shuffle_reverse(v128_t vec) {
+  return wasm_v64x2_shuffle(vec, vec, 1, 0);
 }
 
 #ifdef __wasm_unimplemented_simd128__
@@ -874,7 +880,14 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
     ),
     i8x16(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
   );
+  expect_vec(
+    i16x8_shuffle_reverse(
+      (v128_t)i16x8(1, 2, 3, 4, 5, 6, 7, 8)
+    ),
+    (v128_t)i16x8(8, 7, 6, 5, 4, 3, 2, 1)
+  );
   expect_vec(i32x4_shuffle_reverse((v128_t)i32x4(1, 2, 3, 4)), i32x4(4, 3, 2, 1));
+  expect_vec(i64x2_shuffle_reverse((v128_t)i64x2(1, 2)), i64x2(2, 1));
 
 #ifdef  __wasm_unimplemented_simd128__
 

@@ -1,9 +1,8 @@
 //===------------------------- cxa_default_handlers.cpp -------------------===//
 //
-//                     The LLVM Compiler Infrastructure
-//
-// This file is dual licensed under the MIT and the University of Illinois Open
-// Source Licenses. See LICENSE.TXT for details.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //
 // This file implements the default terminate_handler and unexpected_handler.
@@ -26,6 +25,7 @@ static const char* cause = "uncaught";
 __attribute__((noreturn))
 static void demangling_terminate_handler()
 {
+#ifndef _LIBCXXABI_NO_EXCEPTIONS
     // If there might be an uncaught exception
     using namespace __cxxabiv1;
     __cxa_eh_globals* globals = __cxa_get_globals_fast();
@@ -77,6 +77,7 @@ static void demangling_terminate_handler()
                 abort_message("terminating with %s foreign exception", cause);
         }
     }
+#endif
     // Else just note that we're terminating
     abort_message("terminating");
 }

@@ -111,7 +111,7 @@ var EMIT_SYMBOL_MAP = 0;
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
 
-// List of function explictly exported by user on the command line.
+// List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
 // name of the file containing wasm text, if relevant
@@ -169,4 +169,15 @@ var TARGET_NOT_SUPPORTED = 0x7FFFFFFF;
 // Wasm backend does not apply C name mangling (== prefix with an underscore) to
 // the following functions. (it also does not mangle any function that starts with
 // string "dynCall_")
-var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', 'establishStackSpace', '__growWasmMemory', '__heap_base', '__data_end'];
+var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 'stackAlloc', 'stackSave', 'stackRestore', '__growWasmMemory', '__heap_base', '__data_end'];
+
+// Internal: value of -flto argument (either full or thin)
+var LTO = 0;
+
+// Whether to emit DWARF in a separate wasm file on the side (this is not called
+// "split" because there is already a DWARF concept by that name).
+// When DWARF is on the side, the main file has no DWARF info, while the side
+// file, ending in .debug.wasm, has the same wasm binary + all the debug
+// sections.
+// This has no effect if DWARF is not being emitted.
+var SEPARATE_DWARF = 0;

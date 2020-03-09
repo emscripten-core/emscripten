@@ -562,7 +562,7 @@ EMSCRIPTEN_METADATA_MAJOR, EMSCRIPTEN_METADATA_MINOR = (0, 3)
 # change, increment EMSCRIPTEN_ABI_MINOR if EMSCRIPTEN_ABI_MAJOR == 0
 # or the ABI change is backwards compatible, otherwise increment
 # EMSCRIPTEN_ABI_MAJOR and set EMSCRIPTEN_ABI_MINOR = 0.
-EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 20)
+EMSCRIPTEN_ABI_MAJOR, EMSCRIPTEN_ABI_MINOR = (0, 25)
 
 
 def generate_sanity():
@@ -703,6 +703,7 @@ LLVM_NM = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-nm')))
 LLVM_INTERPRETER = os.path.expanduser(build_llvm_tool_path(exe_suffix('lli')))
 LLVM_COMPILER = os.path.expanduser(build_llvm_tool_path(exe_suffix('llc')))
 LLVM_DWARFDUMP = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-dwarfdump')))
+LLVM_OBJCOPY = os.path.expanduser(build_llvm_tool_path(exe_suffix('llvm-objcopy')))
 WASM_LD = os.path.expanduser(build_llvm_tool_path(exe_suffix('wasm-ld')))
 
 EMSCRIPTEN = path_from_root('emscripten.py')
@@ -750,56 +751,81 @@ def get_canonical_temp_dir(temp_dir):
 
 
 class WarningManager(object):
-  warnings = {
-    'ABSOLUTE_PATHS': {
-      'enabled': False,  # warning about absolute-paths is disabled by default
+  warnings = {}
+
+  @staticmethod
+  def add_warning(name, enabled=True, part_of_all=True):
+    WarningManager.warnings[name] = {
+      'enabled': enabled,
+      'part_of_all': part_of_all,
       'printed': False,
-      'message': '-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).',
-    },
-    'SEPARATE_ASM': {
-      'enabled': True,
-      'printed': False,
-      'message': "--separate-asm works best when compiling to HTML. Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.",
-    },
-    'ALMOST_ASM': {
-      'enabled': True,
-      'printed': False,
-      'message': 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.',
-    },
-  }
+      'error': False,
+    }
 
   @staticmethod
   def capture_warnings(cmd_args):
     for i in range(len(cmd_args)):
+      if cmd_args[i] == '-w':
+        for warning in WarningManager.warnings.values():
+          warning['enabled'] = False
+        continue
+
       if not cmd_args[i].startswith('-W'):
         continue
 
-      # special case pre-existing warn-absolute-paths
-      if cmd_args[i] == '-Wwarn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = True
-      elif cmd_args[i] == '-Wno-warn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = False
-      else:
-        # convert to string representation of Warning
-        warning_enum = cmd_args[i].replace('-Wno-', '').replace('-W', '')
-        warning_enum = warning_enum.upper().replace('-', '_')
+      if cmd_args[i] == '-Wall':
+        for warning in WarningManager.warnings.values():
+          if warning['part_of_all']:
+            warning['enabled'] = True
+        continue
 
-        if warning_enum in WarningManager.warnings:
-          WarningManager.warnings[warning_enum]['enabled'] = not cmd_args[i].startswith('-Wno-')
+      if cmd_args[i] == '-Werror':
+        for warning in WarningManager.warnings.values():
+          warning['error'] = True
+        continue
+
+      if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
+        warning_name = cmd_args[i].split('=', 1)[1]
+        if warning_name in WarningManager.warnings:
+          WarningManager.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
           cmd_args[i] = ''
+          continue
+
+      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+      enabled = not cmd_args[i].startswith('-Wno-')
+
+      # special case pre-existing warn-absolute-paths
+      if warning_name == 'warn-absolute-paths':
+        WarningManager.warnings['absolute-paths']['enabled'] = enabled
+        cmd_args[i] = ''
+        continue
+
+      if warning_name in WarningManager.warnings:
+        WarningManager.warnings[warning_name]['enabled'] = enabled
+        cmd_args[i] = ''
+        continue
 
     return cmd_args
 
   @staticmethod
-  def warn(warning_type, message=None):
+  def warn(warning_type, message, *args):
     warning_info = WarningManager.warnings[warning_type]
+    msg = (message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']'
     if warning_info['enabled'] and not warning_info['printed']:
       warning_info['printed'] = True
-      if message is None:
-        message = warning_info['message']
-      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
+      if warning_info['error']:
+        exit_with_error(msg + ' [-Werror]')
+      else:
+        logger.warning(msg)
+    else:
+      logger.debug('disabled warning: ' + msg)
+
+
+# warning about absolute-paths is disabled by default, and not enabled by -Wall
+WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
+WarningManager.add_warning('separate-asm')
+WarningManager.add_warning('almost-asm')
+WarningManager.add_warning('invalid-input')
 
 
 class Configuration(object):
@@ -1325,13 +1351,6 @@ def print_compiler_stage(cmd):
     sys.stderr.flush()
 
 
-def static_library_name(name):
-  if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
-    return name + '.a'
-  else:
-    return name + '.bc'
-
-
 def mangle_c_symbol_name(name):
   return '_' + name if not name.startswith('$') else name[1:]
 
@@ -1572,8 +1591,9 @@ class Building(object):
 
     return None
 
-  # Returns a clone of the given environment with all directories that contain sh.exe removed from the PATH.
-  # Used to work around CMake limitation with MinGW Makefiles, where sh.exe is not allowed to be present.
+  # Returns a clone of the given environment with all directories that contain
+  # sh.exe removed from the PATH.  Used to work around CMake limitation with
+  # MinGW Makefiles, where sh.exe is not allowed to be present.
   @staticmethod
   def remove_sh_exe_from_path(env):
     env = env.copy()
@@ -1585,28 +1605,32 @@ class Building(object):
     return env
 
   @staticmethod
-  def handle_CMake_toolchain(args, env):
-
-    def has_substr(array, substr):
-      for arg in array:
-        if substr in arg:
-          return True
-      return False
+  def handle_cmake_toolchain(args, env):
+    def has_substr(args, substr):
+      return any(substr in s for s in args)
 
     # Append the Emscripten toolchain file if the user didn't specify one.
     if not has_substr(args, '-DCMAKE_TOOLCHAIN_FILE'):
       args.append('-DCMAKE_TOOLCHAIN_FILE=' + path_from_root('cmake', 'Modules', 'Platform', 'Emscripten.cmake'))
+    node_js = NODE_JS
 
-    # On Windows specify MinGW Makefiles or ninja if we have them and no other toolchain was specified, to keep CMake
-    # from pulling in a native Visual Studio, or Unix Makefiles.
+    if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
+      node_js = NODE_JS[0].replace('"', '\"')
+      args.append('-DCMAKE_CROSSCOMPILING_EMULATOR="%s"' % node_js)
+
+    # On Windows specify MinGW Makefiles or ninja if we have them and no other
+    # toolchain was specified, to keep CMake from pulling in a native Visual
+    # Studio, or Unix Makefiles.
     if WINDOWS and '-G' not in args:
       if Building.which('mingw32-make'):
         args += ['-G', 'MinGW Makefiles']
       elif Building.which('ninja'):
         args += ['-G', 'Ninja']
 
-    # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles is being used. This happens quite often,
-    # so do this automatically on behalf of the user. See http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
+    # CMake has a requirement that it wants sh.exe off PATH if MinGW Makefiles
+    # is being used. This happens quite often, so do this automatically on
+    # behalf of the user. See
+    # http://www.cmake.org/Wiki/CMake_MinGW_Compiler_Issues
     if WINDOWS and 'MinGW Makefiles' in args:
       env = Building.remove_sh_exe_from_path(env)
 
@@ -1614,35 +1638,31 @@ class Building(object):
 
   @staticmethod
   def configure(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
-    if not args:
-      return
-    if env is None:
+    if env:
+      env = env.copy()
+    else:
       env = Building.get_building_env(cflags=cflags)
     if 'cmake' in args[0]:
-      # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with CMake. This is because CMake
-      #       does expect to be able to do config-time builds with emcc.
-      args, env = Building.handle_CMake_toolchain(args, env)
+      # Note: EMMAKEN_JUST_CONFIGURE shall not be enabled when configuring with
+      #       CMake. This is because CMake does expect to be able to do
+      #       config-time builds with emcc.
+      args, env = Building.handle_cmake_toolchain(args, env)
     else:
-      # When we configure via a ./configure script, don't do config-time compilation with emcc, but instead
-      # do builds natively with Clang. This is a heuristic emulation that may or may not work.
+      # When we configure via a ./configure script, don't do config-time
+      # compilation with emcc, but instead do builds natively with Clang. This
+      # is a heuristic emulation that may or may not work.
       env['EMMAKEN_JUST_CONFIGURE'] = '1'
-    if EM_BUILD_VERBOSE >= 3:
-      print('configure: ' + str(args), file=sys.stderr)
     if EM_BUILD_VERBOSE >= 2:
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
+    print('configure: ' + ' '.join(args), file=sys.stderr)
     run_process(args, stdout=stdout, stderr=stderr, env=env, **kwargs)
-    if 'EMMAKEN_JUST_CONFIGURE' in env:
-      del env['EMMAKEN_JUST_CONFIGURE']
 
   @staticmethod
   def make(args, stdout=None, stderr=None, env=None, cflags=[], **kwargs):
     if env is None:
       env = Building.get_building_env(cflags=cflags)
-    if not args:
-      exit_with_error('Executable to run not specified.')
-    # args += ['VERBOSE=1']
 
     # On Windows prefer building with mingw32-make instead of make, if it exists.
     if WINDOWS:
@@ -1661,7 +1681,7 @@ class Building(object):
       stdout = None
     if EM_BUILD_VERBOSE >= 1:
       stderr = None
-    print('make: ' + str(args), file=sys.stderr)
+    print('make: ' + ' '.join(args), file=sys.stderr)
     run_process(args, stdout=stdout, stderr=stderr, env=env, shell=WINDOWS, **kwargs)
 
   @staticmethod
@@ -1754,7 +1774,7 @@ class Building(object):
     # other otherwise for linking of bitcode we must use our python
     # code (necessary for asm.js, for wasm bitcode see
     # https://bugs.llvm.org/show_bug.cgi?id=40654)
-    if Settings.WASM_BACKEND and Settings.WASM_OBJECT_FILES:
+    if Settings.WASM_BACKEND and not Settings.LTO:
       Building.link_lld(linker_inputs, target, ['--relocatable'])
     else:
       Building.link(linker_inputs, target)
@@ -1855,15 +1875,15 @@ class Building(object):
     if not Settings.SIDE_MODULE:
       cmd += [
         '-z', 'stack-size=%s' % Settings.TOTAL_STACK,
-        '--initial-memory=%d' % Settings.TOTAL_MEMORY,
+        '--initial-memory=%d' % Settings.INITIAL_MEMORY,
       ]
       use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
-      if Settings.WASM_MEM_MAX != -1:
-        cmd.append('--max-memory=%d' % Settings.WASM_MEM_MAX)
+      if Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       elif not Settings.ALLOW_MEMORY_GROWTH:
-        cmd.append('--max-memory=%d' % Settings.TOTAL_MEMORY)
+        cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
@@ -1908,8 +1928,7 @@ class Building(object):
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
-        warning('object %s is not a valid object file for emscripten, cannot link', f)
-        return False
+        exit_with_error('unknown file type: %s', f)
       provided = new_symbols.defs.union(new_symbols.commons)
       do_add = force_add or not unresolved_symbols.isdisjoint(provided)
       if do_add:
@@ -1977,17 +1996,7 @@ class Building(object):
           # Command line flags should already be vetted by the time this method
           # is called, so this is an internal error
           assert False, 'unsupported link flag: ' + f
-      elif not Building.is_ar(absolute_path_f):
-        if Building.is_bitcode(absolute_path_f):
-          if has_ar:
-            consider_object(absolute_path_f, force_add=True)
-          else:
-            # If there are no archives then we can simply link all valid object
-            # files and skip the symbol table stuff.
-            actual_files.append(f)
-        else:
-          logging.debug('ignoring non-bitcode file for link: %s' % absolute_path_f)
-      else:
+      elif Building.is_ar(absolute_path_f):
         # Extract object files from ar archives, and link according to gnu ld semantics
         # (link in an entire .o from the archive if it supplies symbols still unresolved)
         consider_archive(absolute_path_f, in_whole_archive or force_add_all)
@@ -1995,6 +2004,15 @@ class Building(object):
         # so we can loop back around later.
         if current_archive_group is not None:
           current_archive_group.append(absolute_path_f)
+      elif Building.is_bitcode(absolute_path_f):
+        if has_ar:
+          consider_object(f, force_add=True)
+        else:
+          # If there are no archives then we can simply link all valid object
+          # files and skip the symbol table stuff.
+          actual_files.append(f)
+      else:
+        exit_with_error('unknown file type: %s', f)
 
     # We have to consider the possibility that --start-group was used without a matching
     # --end-group; GNU ld permits this behavior and implicitly treats the end of the
@@ -2055,16 +2073,8 @@ class Building(object):
     cmd = [LLVM_OPT] + inputs + opts + ['-o', target]
     cmd = Building.get_command_with_possible_response_file(cmd)
     print_compiler_stage(cmd)
-    try:
-      run_process(cmd, stdout=PIPE)
-      assert os.path.exists(target), 'llvm optimizer emitted no output.'
-    except subprocess.CalledProcessError as e:
-      for i in inputs:
-        if not os.path.exists(i):
-          warning('Note: Input file "' + i + '" did not exist.')
-        elif not Building.is_bitcode(i):
-          warning('Note: Input file "' + i + '" exists but was not an LLVM bitcode file suitable for Emscripten. Perhaps accidentally mixing native built object files with Emscripten?')
-      exit_with_error('Failed to run llvm optimizations: ' + e.output)
+    check_call(cmd)
+    assert os.path.exists(target), 'llvm optimizer emitted no output.'
     if not out:
       shutil.move(filename + '.opt.bc', filename)
     return target
@@ -2095,17 +2105,21 @@ class Building(object):
       if ':' in line:
         continue
       parts = [seg for seg in line.split(' ') if len(seg)]
-      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols as  -------- T name
+      # pnacl-nm will print zero offsets for bitcode, and newer llvm-nm will print present symbols
+      # as  -------- T name
       if len(parts) == 3 and parts[0] == "--------" or re.match(r'^[\da-f]{8}$', parts[0]):
         parts.pop(0)
-      if len(parts) == 2:  # ignore lines with absolute offsets, these are not bitcode anyhow (e.g. |00000630 t d_source_name|)
+      if len(parts) == 2:
+        # ignore lines with absolute offsets, these are not bitcode anyhow
+        # e.g. |00000630 t d_source_name|
         status, symbol = parts
         if status == 'U':
           undefs.append(symbol)
         elif status == 'C':
           commons.append(symbol)
         elif (not include_internal and status == status.upper()) or \
-             (include_internal and status in ['W', 't', 'T', 'd', 'D']): # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
+             (include_internal and status in ['W', 't', 'T', 'd', 'D']):
+          # FIXME: using WTD in the previous line fails due to llvm-nm behavior on macOS,
           #        so for now we assume all uppercase are normally defined external symbols
           defs.append(symbol)
     return ObjectFileInfo(0, None, set(defs), set(undefs), set(commons))
@@ -2152,8 +2166,6 @@ class Building(object):
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    cmd = [PYTHON, EMAR, action, output_filename] + filenames[:5]
-
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
     cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
     try:
@@ -2269,7 +2281,7 @@ class Building(object):
     # Keep JS code comments intact through the acorn optimization pass so that JSDoc comments
     # will be carried over to a later Closure run.
     if acorn and Settings.USE_CLOSURE_COMPILER:
-      cmd += ['--preserveComments']
+      cmd += ['--closureFriendly']
     if not return_output:
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
@@ -2288,7 +2300,7 @@ class Building(object):
     if Settings.WASM_BACKEND:
       logger.debug('Ctor evalling in the wasm backend is disabled due to https://github.com/emscripten-core/emscripten/issues/9527')
       return
-    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.TOTAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
+    cmd = [PYTHON, path_from_root('tools', 'ctor_evaller.py'), js_file, binary_file, str(Settings.INITIAL_MEMORY), str(Settings.TOTAL_STACK), str(Settings.GLOBAL_BASE), binaryen_bin, str(int(debug_info))]
     if binaryen_bin:
       cmd += Building.get_binaryen_feature_flags()
     print_compiler_stage(cmd)
@@ -2400,7 +2412,7 @@ class Building(object):
 
       # Closure externs file contains known symbols to be extern to the minification, Closure
       # should not minify these symbol names.
-      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs.js')]
+      CLOSURE_EXTERNS = [path_from_root('src', 'closure-externs', 'closure-externs.js')]
 
       # Closure compiler needs to know about all exports that come from the asm.js/wasm module, because to optimize for small code size,
       # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
@@ -2420,23 +2432,25 @@ class Building(object):
         NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
         NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
                         if name.endswith('.js')]
-        CLOSURE_EXTERNS += [path_from_root('src', 'node-externs.js')] + NODE_EXTERNS
+        CLOSURE_EXTERNS += [path_from_root('src', 'closure-externs', 'node-externs.js')] + NODE_EXTERNS
 
       # V8/SpiderMonkey shell specific externs
       if Settings.target_environment_may_be('shell'):
-        V8_EXTERNS = [path_from_root('src', 'v8-externs.js')]
-        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'spidermonkey-externs.js')]
+        V8_EXTERNS = [path_from_root('src', 'closure-externs', 'v8-externs.js')]
+        SPIDERMONKEY_EXTERNS = [path_from_root('src', 'closure-externs', 'spidermonkey-externs.js')]
         CLOSURE_EXTERNS += V8_EXTERNS + SPIDERMONKEY_EXTERNS
 
       # Web environment specific externs
       if Settings.target_environment_may_be('web') or Settings.target_environment_may_be('worker'):
-        BROWSER_EXTERNS_BASE = path_from_root('third_party', 'closure-compiler', 'browser-externs')
+        BROWSER_EXTERNS_BASE = path_from_root('src', 'closure-externs', 'browser-externs')
         if os.path.isdir(BROWSER_EXTERNS_BASE):
           BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
           BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
                              if name.endswith('.js')]
           CLOSURE_EXTERNS += BROWSER_EXTERNS
 
+      if Settings.MINIMAL_RUNTIME and Settings.USE_PTHREADS and not Settings.MODULARIZE:
+        CLOSURE_EXTERNS += [path_from_root('src', 'minimal_runtime_worker_externs.js')]
       outfile = filename + '.cc.js'
 
       args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS',
@@ -2472,14 +2486,16 @@ class Building(object):
           logger.warn('Closure compiler completed with warnings:\n')
 
       # Print input file (long wall of text!)
-      if os.getenv('EMCC_DEBUG') and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
-        logger.debug(open(filename, 'r').read())
+      if DEBUG == 2 and (proc.returncode != 0 or (len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet')):
+        input_file = open(filename, 'r').read().splitlines()
+        for i in range(len(input_file)):
+          sys.stderr.write(str(i + 1) + ': ' + input_file[i] + '\n')
 
       if proc.returncode != 0:
         logger.error(proc.stderr) # print list of errors (possibly long wall of text if input was minified)
 
         # Exit and print final hint to get clearer output
-        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=1 set')
+        exit_with_error('closure compiler failed (rc: %d.%s)', proc.returncode, '' if pretty else ' the error message may be clearer with -g1 and EMCC_DEBUG=2 set')
 
       if len(proc.stderr.strip()) > 0 and Settings.CLOSURE_WARNINGS != 'quiet':
         # print list of warnings (possibly long wall of text if input was minified)
@@ -2491,8 +2507,8 @@ class Building(object):
         # Exit and/or print final hint to get clearer output
         if not pretty:
           logger.warn('(rerun with -g1 linker flag for an unminified output)')
-        elif not os.getenv('EMCC_DEBUG'):
-          logger.warn('(rerun with EMCC_DEBUG=1 enabled to dump Closure input file)')
+        elif DEBUG != 2:
+          logger.warn('(rerun with EMCC_DEBUG=2 enabled to dump Closure input file)')
 
         if Settings.CLOSURE_WARNINGS == 'error':
           exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
@@ -2584,6 +2600,8 @@ class Building(object):
       'fd_fdstat_get',
       'fd_sync',
       'proc_exit',
+      'clock_res_get',
+      'clock_time_get',
     ])
     for item in graph:
       if 'import' in item and item['import'][1][1:] in WASI_IMPORTS:
@@ -2756,6 +2774,27 @@ class Building(object):
     with open(js_file, 'w') as f:
       f.write(all_js)
     return js_file
+
+  @staticmethod
+  def emit_debug_on_side(wasm_file):
+    # extract the DWARF info from the main file, and leave the wasm with
+    # debug into as a file on the side
+    # TODO: emit only debug sections in the side file, and not the entire
+    #       wasm as well
+    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
+    shutil.move(wasm_file, wasm_file_with_dwarf)
+    run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
+
+    # embed a section in the main wasm to point to the file with external DWARF,
+    # see https://yurydelendik.github.io/webassembly-dwarf/#external-DWARF
+    section_name = b'\x13external_debug_info' # section name, including prefixed size
+    contents = asbytes(wasm_file_with_dwarf)
+    section_size = len(section_name) + len(contents)
+    with open(wasm_file, 'ab') as f:
+      f.write(b'\0') # user section is code 0
+      f.write(WebAssembly.lebify(section_size))
+      f.write(section_name)
+      f.write(contents)
 
   @staticmethod
   def apply_wasm_memory_growth(js_file):
@@ -2988,8 +3027,6 @@ class JS(object):
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
-  module_export_name_substitution_pattern = '"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__"'
-
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
     return ident.replace('%', '$').replace('@', '_').replace('.', '_')
@@ -3006,6 +3043,9 @@ class JS(object):
     if data_uri is None:
       data_uri = Settings.SINGLE_FILE
     if data_uri:
+      # if the path does not exist, then there is no data to encode
+      if not os.path.exists(path):
+        return ''
       with open(path, 'rb') as f:
         data = base64.b64encode(f.read())
       return 'data:application/octet-stream;base64,' + asstr(data)
@@ -3239,7 +3279,7 @@ class WebAssembly(object):
   def add_emscripten_metadata(js_file, wasm_file):
     WASM_PAGE_SIZE = 65536
 
-    mem_size = Settings.TOTAL_MEMORY // WASM_PAGE_SIZE
+    mem_size = Settings.INITIAL_MEMORY // WASM_PAGE_SIZE
     table_size = Settings.WASM_TABLE_SIZE
     global_base = Settings.GLOBAL_BASE
 

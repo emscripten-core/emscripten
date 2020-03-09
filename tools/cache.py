@@ -45,10 +45,8 @@ class Cache(object):
     if use_subdir:
       if shared.Settings.WASM_BACKEND:
         subdir = 'wasm'
-        if shared.Settings.WASM_OBJECT_FILES:
-          subdir += '-obj'
-        else:
-          subdir += '-bc'
+        if shared.Settings.LTO:
+          subdir += '-lto'
         if shared.Settings.RELOCATABLE:
           subdir += '-pic'
       else:

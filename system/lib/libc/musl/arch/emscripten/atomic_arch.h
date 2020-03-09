@@ -5,6 +5,12 @@
 #include <emscripten.h>
 #include <emscripten/threading.h>
 
+#ifdef __wasm__
+#define a_clz_l __builtin_clz
+#define a_ctz_l __builtin_ctz
+#define a_clz_64 __builtin_clzll
+#define a_ctz_64 __builtin_ctzll
+#else // asm.js
 #define a_ctz_l a_ctz_l
 static inline int a_ctz_l(unsigned long x)
 {
@@ -28,6 +34,7 @@ static inline int a_ctz_64(uint64_t x)
 	else
 		return a_ctz_l((unsigned long)lo);
 }
+#endif // __wasm__
 
 #define a_and_64 a_and_64
 static inline void a_and_64(volatile uint64_t *p, uint64_t v)

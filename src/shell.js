@@ -23,8 +23,13 @@
 // can continue to use Module afterwards as well.
 #if USE_CLOSURE_COMPILER
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
-var Module;
-if (!Module) Module = "__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__";
+var /** @type {{
+  noImageDecoding: boolean,
+  noAudioDecoding: boolean,
+  canvas: HTMLCanvasElement
+}}
+ */ Module;
+if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
 #else
 var Module = typeof {{{ EXPORT_NAME }}} !== 'undefined' ? {{{ EXPORT_NAME }}} : {};
 #endif // USE_CLOSURE_COMPILER
@@ -94,9 +99,12 @@ var _scriptDir = (typeof document !== 'undefined' && document.currentScript) ? d
 
 if (ENVIRONMENT_IS_WORKER) {
   _scriptDir = self.location.href;
-} else if (ENVIRONMENT_IS_NODE) {
+}
+#if ENVIRONMENT_MAY_BE_NODE
+else if (ENVIRONMENT_IS_NODE) {
   _scriptDir = __filename;
 }
+#endif // ENVIRONMENT_MAY_BE_NODE
 #endif
 #endif
 
@@ -240,9 +248,9 @@ if (ENVIRONMENT_IS_SHELL) {
 
   if (typeof print !== 'undefined') {
     // Prefer to use print/printErr where they exist, as they usually work better.
-    if (typeof console === 'undefined') console = {};
-    console.log = print;
-    console.warn = console.error = typeof printErr !== 'undefined' ? printErr : print;
+    if (typeof console === 'undefined') console = /** @type{!Console} */({});
+    console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
+    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (typeof printErr !== 'undefined' ? printErr : print);
   }
 
 #if WASM == 2
@@ -290,7 +298,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
 
   // Differentiate the Web Worker from the Node Worker case, as reading must
   // be done differently.
-#if USE_PTHREADS
+#if USE_PTHREADS && ENVIRONMENT_MAY_BE_NODE
   if (ENVIRONMENT_IS_NODE) {
 
 #include "node_shell_read.js"
@@ -356,6 +364,7 @@ assert(typeof Module['read'] === 'undefined', 'Module.read option was removed (m
 assert(typeof Module['readAsync'] === 'undefined', 'Module.readAsync option was removed (modify readAsync in JS)');
 assert(typeof Module['readBinary'] === 'undefined', 'Module.readBinary option was removed (modify readBinary in JS)');
 assert(typeof Module['setWindowTitle'] === 'undefined', 'Module.setWindowTitle option was removed (modify setWindowTitle in JS)');
+assert(typeof Module['TOTAL_MEMORY'] === 'undefined', 'Module.TOTAL_MEMORY has been renamed Module.INITIAL_MEMORY');
 {{{ makeRemovedModuleAPIAssert('read', 'read_') }}}
 {{{ makeRemovedModuleAPIAssert('readAsync') }}}
 {{{ makeRemovedModuleAPIAssert('readBinary') }}}

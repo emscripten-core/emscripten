@@ -244,6 +244,8 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_DEMANGLE 32
 #define EM_LOG_NO_PATHS 64
 #define EM_LOG_FUNC_PARAMS 128
+#define EM_LOG_DEBUG    256
+#define EM_LOG_INFO     512
 
 void emscripten_log(int flags, ...);
 

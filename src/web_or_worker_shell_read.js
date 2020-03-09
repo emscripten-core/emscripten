@@ -26,7 +26,7 @@
         xhr.open('GET', url, false);
         xhr.responseType = 'arraybuffer';
         xhr.send(null);
-        return new Uint8Array(xhr.response);
+        return new Uint8Array(/** @type{!ArrayBuffer} */(xhr.response));
 #if SUPPORT_BASE64_EMBEDDING
       } catch (err) {
         var data = tryParseAsDataURI(url);

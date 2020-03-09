@@ -331,7 +331,7 @@ var LibraryEmVal = {
   },
 
   _emval_lookupTypes__deps: ['$requireRegisteredType'],
-  _emval_lookupTypes: function(argCount, argTypes, argWireTypes) {
+  _emval_lookupTypes: function(argCount, argTypes) {
     var a = new Array(argCount);
     for (var i = 0; i < argCount; ++i) {
         a[i] = requireRegisteredType(

@@ -32,7 +32,7 @@ function getNativeTypeSize(type) {
       if (type[type.length-1] === '*') {
         return 4; // A pointer
       } else if (type[0] === 'i') {
-        var bits = parseInt(type.substr(1));
+        var bits = Number(type.substr(1));
         assert(bits % 8 === 0, 'getNativeTypeSize invalid bits ' + bits + ', type ' + type);
         return bits / 8;
       } else {
@@ -101,3 +101,12 @@ function reSign(value, bits, ignore) {
 // Allocated here in JS, after we have the runtime etc. prepared.
 // This constant is emitted into the JS or wasm code.
 var DYNAMICTOP_PTR = makeStaticAlloc(4);
+
+// "Process info" for syscalls is static and cannot change, so define it using
+// some fixed values
+var PROCINFO = {
+  ppid: 1,
+  pid: 42,
+  sid: 42,
+  pgid: 42
+};

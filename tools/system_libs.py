@@ -59,35 +59,36 @@ def dir_is_newer(dir_a, dir_b):
 def get_cflags(force_object_files=False):
   flags = []
   if shared.Settings.WASM_BACKEND:
-    if force_object_files:
-      flags += ['-s', 'WASM_OBJECT_FILES=1']
-    elif not shared.Settings.WASM_OBJECT_FILES:
-      flags += ['-s', 'WASM_OBJECT_FILES=0']
+    if shared.Settings.LTO and not force_object_files:
+      flags += ['-flto=' + shared.Settings.LTO]
   if shared.Settings.RELOCATABLE:
     flags += ['-s', 'RELOCATABLE']
   return flags
 
 
-def run_build_command(cmd):
-  # this must only be called on a standard build command
-  assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
-  # add standard cflags, but also allow the cmd to override them
-  cmd = cmd[:2] + get_cflags() + cmd[2:]
+def run_one_command(cmd):
+  # Helper function used by run_build_commands.
+  if shared.EM_BUILD_VERBOSE:
+    print(' '.join(cmd))
   shared.run_process(cmd, stdout=stdout, stderr=stderr)
 
 
-def run_commands(commands):
+def run_build_commands(commands):
   cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
     for command in commands:
-      run_build_command(command)
+      run_one_command(command)
   else:
     pool = shared.Building.get_multiprocessing_pool()
     # https://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
     # https://bugs.python.org/issue8296
     # 999999 seconds (about 11 days) is reasonably huge to not trigger actual timeout
     # and is smaller than the maximum timeout value 4294967.0 for Python 3 on Windows (threading.TIMEOUT_MAX)
-    pool.map_async(run_build_command, commands, chunksize=1).get(999999)
+    pool.map_async(run_one_command, commands, chunksize=1).get(999999)
+
+
+def static_library_ext():
+  return '.a' if shared.Settings.WASM_BACKEND else '.bc'
 
 
 def create_lib(libname, inputs):
@@ -146,7 +147,19 @@ def get_wasm_libc_rt_files():
     path_components=['system', 'lib', 'libc'],
     filenames=['emscripten_memcpy.c', 'emscripten_memset.c',
                'emscripten_memmove.c'])
-  return math_files + other_files
+  # Calls to iprintf can be generated during codegen. Ideally we wouldn't
+  # compile these with -O2 like we do the rest of compiler-rt since its
+  # probably not performance sensitive.  However we don't currently have
+  # a way to set per-file compiler flags.  And hopefully we should be able
+  # move all this stuff back into libc once we it LTO compatible.
+  iprintf_files = files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'stdio'],
+    filenames=['__towrite.c', '__overflow.c', 'fwrite.c', 'fputs.c',
+               'printf.c', 'puts.c', '__lockfile.c'])
+  iprintf_files += files_in_path(
+    path_components=['system', 'lib', 'libc', 'musl', 'src', 'string'],
+    filenames=['strlen.c'])
+  return math_files + other_files + iprintf_files
 
 
 class Library(object):
@@ -259,7 +272,7 @@ class Library(object):
   src_glob = None
   src_glob_exclude = None
 
-  # Whether to always generate WASM object files, even though WASM_OBJECT_FILES=0.
+  # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
 
   def __init__(self):
@@ -362,7 +375,7 @@ class Library(object):
       o = self.in_temp(os.path.basename(src) + '.o')
       commands.append([shared.PYTHON, self.emcc, '-c', src, '-o', o] + cflags)
       objects.append(o)
-    run_commands(commands)
+    run_build_commands(commands)
     return objects
 
   def build(self):
@@ -414,7 +427,7 @@ class Library(object):
     """
     Return the appropriate file extension for this library.
     """
-    return '.a' if shared.Settings.WASM_BACKEND else '.bc'
+    return static_library_ext()
 
   def get_filename(self):
     """
@@ -565,7 +578,6 @@ class NoExceptLibrary(Library):
 class MuslInternalLibrary(Library):
   includes = [
     ['system', 'lib', 'libc', 'musl', 'src', 'internal'],
-    ['system', 'lib', 'libc', 'musl', 'arch', 'js'],
   ]
 
   cflags = [
@@ -728,9 +740,16 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           if not cancel:
             libc_files.append(os.path.join(musl_srcdir, dirpath, f))
 
+    # Allowed files from blacklisted modules
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'time'],
+        filenames=['clock_settime.c'])
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'legacy'],
+        filenames=['getpagesize.c'])
+
     if shared.Settings.WASM_BACKEND:
       # See libc_extras below
-      libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'extras.c'))
       # Include all the getenv stuff with the wasm backend. With fastcomp we
       # still use JS because libc is a .bc file and we don't want to have a
       # global constructor there for __environ, which would mean it is always
@@ -739,7 +758,13 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
           path_components=['system', 'lib', 'libc', 'musl', 'src', 'env'],
           filenames=['__environ.c', 'getenv.c', 'putenv.c', 'setenv.c', 'unsetenv.c'])
 
-    libc_files.append(shared.path_from_root('system', 'lib', 'libc', 'wasi-helpers.c'))
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'sched'],
+        filenames=['sched_yield.c'])
+
+    libc_files += files_in_path(
+        path_components=['system', 'lib', 'libc'],
+        filenames=['extras.c', 'wasi-helpers.c'])
 
     return libc_files
 
@@ -780,11 +805,12 @@ class libc_wasm(MuslInternalLibrary):
                'tan.c', 'tanf.c', 'tanl.c', 'acos.c', 'acosf.c', 'acosl.c',
                'asin.c', 'asinf.c', 'asinl.c', 'atan.c', 'atanf.c', 'atanl.c',
                'atan2.c', 'atan2f.c', 'atan2l.c', 'exp.c', 'expf.c', 'expl.c',
-               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c']
+               'log.c', 'logf.c', 'logl.c', 'pow.c', 'powf.c', 'powl.c',
+               'sqrtl.c', 'ceill.c', 'floorl.c', 'fabsl.c']
 
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins
-    return shared.Settings.WASM
+    return super(libc_wasm, self).can_use() and shared.Settings.WASM
 
 
 class crt1(MuslInternalLibrary):
@@ -799,30 +825,37 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return shared.Settings.STANDALONE_WASM
+    return super(crt1, self).can_use() and shared.Settings.STANDALONE_WASM
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(crt1, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_extras(MuslInternalLibrary):
   """This library is separate from libc itself for fastcomp only so that the
-  constructor it contains can be DCE'd.  With the wasm backend libc it is a .a
-  file so object file granularity applies.
+  constructor it contains can be DCE'd.  Such tricks are not needed wih the
+  the wasm backend because it uses .o file linking granularity.
   """
 
   name = 'libc-extras'
   src_dir = ['system', 'lib', 'libc']
-  src_files = ['extras.c']
+  src_files = ['extras_fastcomp.c']
 
   def can_build(self):
-    return not shared.Settings.WASM_BACKEND
+    return super(libc_extras, self).can_build() and not shared.Settings.WASM_BACKEND
 
 
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
-  cflags = ['-std=c++11', '-Oz', '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
+  cflags = [
+      '-std=c++11',
+      '-Oz',
+      '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
+      # Remove this once we update to include this llvm
+      # revision: https://reviews.llvm.org/D64961
+      '-D_LIBCXXABI_GUARD_ABI_ARM',
+    ]
 
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
@@ -869,18 +902,21 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
     'algorithm.cpp',
     'any.cpp',
     'bind.cpp',
+    'charconv.cpp',
     'chrono.cpp',
     'condition_variable.cpp',
+    'condition_variable_destructor.cpp',
     'debug.cpp',
     'exception.cpp',
-    'future.cpp',
     'functional.cpp',
+    'future.cpp',
     'hash.cpp',
     'ios.cpp',
     'iostream.cpp',
     'locale.cpp',
     'memory.cpp',
     'mutex.cpp',
+    'mutex_destructor.cpp',
     'new.cpp',
     'optional.cpp',
     'random.cpp',
@@ -959,7 +995,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
     return name
 
   def can_use(self):
-    return shared.Settings.MALLOC != 'none'
+    return super(libmalloc, self).can_use() and shared.Settings.MALLOC != 'none'
 
   @classmethod
   def vary_on(cls):
@@ -1175,7 +1211,7 @@ class CompilerRTWasmLibrary(Library):
   force_object_files = True
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(CompilerRTWasmLibrary, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
@@ -1197,6 +1233,7 @@ class libubsan_minimal_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
 class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   name = 'libsanitizer_common_rt_wasm'
   depends = ['libc++abi']
+  includes = [['system', 'lib', 'libc', 'musl', 'src', 'internal']]
   js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
@@ -1298,16 +1335,26 @@ class libstandalonewasm(MuslInternalLibrary):
                    '__month_to_secs.c',
                    '__tm_to_secs.c',
                    '__tz.c',
-                   '__year_to_secs.c'])
+                   '__year_to_secs.c',
+                   'gettimeofday.c',
+                   'localtime.c',
+                   'localtime_r.c',
+                   'gmtime.c',
+                   'gmtime_r.c',
+                   'nanosleep.c',
+                   'mktime.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     exit_files = files_in_path(
         path_components=['system', 'lib', 'libc', 'musl', 'src', 'exit'],
         filenames=['assert.c'])
-    return base_files + time_files + exit_files
+    conf_files = files_in_path(
+        path_components=['system', 'lib', 'libc', 'musl', 'src', 'conf'],
+        filenames=['sysconf.c'])
+    return base_files + time_files + exit_files + conf_files
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(libstandalonewasm, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
@@ -1529,7 +1576,7 @@ class Ports(object):
 
   @staticmethod
   def get_lib_name(name):
-    return shared.static_library_name(name)
+    return name + static_library_ext()
 
   @staticmethod
   def get_include_dir():
@@ -1580,13 +1627,20 @@ class Ports(object):
       commands.append([shared.PYTHON, shared.EMCC, '-c', src, '-O2', '-o', obj, '-w'] + include_commands + flags)
       objects.append(obj)
 
-    run_commands(commands)
+    Ports.run_commands(commands)
     create_lib(output_path, objects)
     return output_path
 
   @staticmethod
-  def run_commands(commands): # make easily available for port objects
-    run_commands(commands)
+  def run_commands(commands):
+    # Runs a sequence of compiler commands, adding importand cflags as defined by get_cflags() so
+    # that the ports are built in the correct configuration.
+    def add_args(cmd):
+      # this must only be called on a standard build command
+      assert cmd[0] == shared.PYTHON and cmd[1] in (shared.EMCC, shared.EMXX)
+      # add standard cflags, but also allow the cmd to override them
+      return cmd[:2] + get_cflags() + cmd[2:]
+    run_build_commands([add_args(c) for c in commands])
 
   @staticmethod
   def create_lib(libname, inputs): # make easily available for port objects

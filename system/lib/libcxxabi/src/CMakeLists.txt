@@ -25,17 +25,25 @@ if (LIBCXXABI_ENABLE_NEW_DELETE_DEFINITIONS)
 endif()
 
 if (LIBCXXABI_ENABLE_EXCEPTIONS)
-  list(APPEND LIBCXXABI_SOURCES cxa_exception.cpp)
-  list(APPEND LIBCXXABI_SOURCES cxa_personality.cpp)
+  list(APPEND LIBCXXABI_SOURCES
+    cxa_exception.cpp
+    cxa_personality.cpp
+  )
 else()
-  list(APPEND LIBCXXABI_SOURCES cxa_noexception.cpp)
+  list(APPEND LIBCXXABI_SOURCES
+    cxa_noexception.cpp
+  )
 endif()
 
 if (LIBCXXABI_ENABLE_THREADS AND (UNIX OR FUCHSIA) AND NOT (APPLE OR CYGWIN))
-  list(APPEND LIBCXXABI_SOURCES cxa_thread_atexit.cpp)
+  list(APPEND LIBCXXABI_SOURCES
+    cxa_thread_atexit.cpp
+  )
 endif()
 
-set(LIBCXXABI_HEADERS ../include/cxxabi.h)
+set(LIBCXXABI_HEADERS
+  ../include/cxxabi.h
+)
 
 # Add all the headers to the project for IDEs.
 if (MSVC_IDE OR XCODE)
@@ -139,28 +147,19 @@ if (LLVM_ENABLE_MODULES)
   string(REPLACE "-Wl,-z,defs" "" CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
 endif()
 
-# Add a object library that contains the compiled source files.
-add_library(cxxabi_objects OBJECT ${LIBCXXABI_SOURCES} ${LIBCXXABI_HEADERS})
-set_target_properties(cxxabi_objects
-                      PROPERTIES
-                        CXX_EXTENSIONS
-                          OFF
-                        CXX_STANDARD
-                          11
-                        CXX_STANDARD_REQUIRED
-                          ON
-                        COMPILE_FLAGS
-                          "${LIBCXXABI_COMPILE_FLAGS}"
-                        POSITION_INDEPENDENT_CODE
-                          ON)
+if ("${CMAKE_OSX_ARCHITECTURES}" MATCHES "^(armv6|armv7|armv7s)$")
+  set(LIBCXXABI_USE_SJLJ_EXCEPTIONS ON)
+else()
+  set(LIBCXXABI_USE_SJLJ_EXCEPTIONS OFF)
+endif()
 
 # Build the shared library.
 if (LIBCXXABI_ENABLE_SHARED)
-  add_library(cxxabi_shared SHARED $<TARGET_OBJECTS:cxxabi_objects>)
+  add_library(cxxabi_shared SHARED ${LIBCXXABI_SOURCES} ${LIBCXXABI_HEADERS})
   if(COMMAND llvm_setup_rpath)
     llvm_setup_rpath(cxxabi_shared)
   endif()
-  target_link_libraries(cxxabi_shared ${LIBCXXABI_LIBRARIES} ${LIBCXXABI_SHARED_LIBRARIES})
+  target_link_libraries(cxxabi_shared PRIVATE ${LIBCXXABI_SHARED_LIBRARIES} ${LIBCXXABI_LIBRARIES})
   set_target_properties(cxxabi_shared
                         PROPERTIES
                           CXX_EXTENSIONS
@@ -169,32 +168,46 @@ if (LIBCXXABI_ENABLE_SHARED)
                             11
                           CXX_STANDARD_REQUIRED
                             ON
+                          COMPILE_FLAGS
+                            "${LIBCXXABI_COMPILE_FLAGS}"
                           LINK_FLAGS
                             "${LIBCXXABI_LINK_FLAGS} ${LIBCXXABI_SHARED_LINK_FLAGS}"
                           OUTPUT_NAME
                             "c++abi"
-                          POSITION_INDEPENDENT_CODE
-                            ON
                           SOVERSION
                             "1"
                           VERSION
                             "1.0")
+
+  if(LIBCXXABI_ENABLE_PIC)
+    set_target_properties(cxxabi_shared PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  endif()
+
   list(APPEND LIBCXXABI_BUILD_TARGETS "cxxabi_shared")
   if (LIBCXXABI_INSTALL_SHARED_LIBRARY)
     list(APPEND LIBCXXABI_INSTALL_TARGETS "cxxabi_shared")
+  endif()
+
+  # -exported_symbols_list is only available on Apple platforms
+  if (APPLE)
+    target_link_libraries(cxxabi_shared PRIVATE "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/../lib/itanium-base.exp")
+
+    if (LIBCXXABI_ENABLE_NEW_DELETE_DEFINITIONS)
+      target_link_libraries(cxxabi_shared PRIVATE "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/../lib/new-delete.exp")
+    endif()
+
+    if (LIBCXXABI_USE_SJLJ_EXCEPTIONS)
+      target_link_libraries(cxxabi_shared PRIVATE "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/../lib/personality-sjlj.exp")
+    else()
+      target_link_libraries(cxxabi_shared PRIVATE "-Wl,-exported_symbols_list,${CMAKE_CURRENT_SOURCE_DIR}/../lib/personality-v0.exp")
+    endif()
   endif()
 endif()
 
 # Build the static library.
 if (LIBCXXABI_ENABLE_STATIC)
-  set(cxxabi_static_sources $<TARGET_OBJECTS:cxxabi_objects>)
-  if (LIBCXXABI_USE_LLVM_UNWINDER AND LIBCXXABI_STATICALLY_LINK_UNWINDER_IN_STATIC_LIBRARY)
-    if (TARGET unwind_static OR HAVE_LIBUNWIND)
-      list(APPEND cxxabi_static_sources $<TARGET_OBJECTS:unwind_objects>)
-    endif()
-  endif()
-  add_library(cxxabi_static STATIC ${cxxabi_static_sources})
-  target_link_libraries(cxxabi_static ${LIBCXXABI_LIBRARIES} ${LIBCXXABI_STATIC_LIBRARIES})
+  add_library(cxxabi_static STATIC ${LIBCXXABI_SOURCES} ${LIBCXXABI_HEADERS})
+  target_link_libraries(cxxabi_static PRIVATE ${LIBCXXABI_STATIC_LIBRARIES} ${LIBCXXABI_LIBRARIES})
   set_target_properties(cxxabi_static
                         PROPERTIES
                           CXX_EXTENSIONS
@@ -203,15 +216,53 @@ if (LIBCXXABI_ENABLE_STATIC)
                             11
                           CXX_STANDARD_REQUIRED
                             ON
+                          COMPILE_FLAGS
+                            "${LIBCXXABI_COMPILE_FLAGS}"
                           LINK_FLAGS
                             "${LIBCXXABI_LINK_FLAGS}"
                           OUTPUT_NAME
-                            "c++abi"
-                          POSITION_INDEPENDENT_CODE
-                            ON)
+                            "c++abi")
+
+  if(LIBCXXABI_ENABLE_PIC)
+    set_target_properties(cxxabi_static PROPERTIES POSITION_INDEPENDENT_CODE ON)
+  endif()
+
+  if(LIBCXXABI_HERMETIC_STATIC_LIBRARY)
+    append_flags_if_supported(CXXABI_STATIC_LIBRARY_FLAGS -fvisibility=hidden)
+    # If the hermetic library doesn't define the operator new/delete functions
+    # then its code shouldn't declare them with hidden visibility.  They might
+    # actually be provided by a shared library at link time.
+    if (LIBCXXABI_ENABLE_NEW_DELETE_DEFINITIONS)
+      append_flags_if_supported(CXXABI_STATIC_LIBRARY_FLAGS -fvisibility-global-new-delete-hidden)
+    endif()
+    target_compile_options(cxxabi_static PRIVATE ${CXXABI_STATIC_LIBRARY_FLAGS})
+    target_compile_definitions(cxxabi_static
+      PRIVATE
+        _LIBCXXABI_DISABLE_VISIBILITY_ANNOTATIONS
+        _LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS)
+  endif()
+
   list(APPEND LIBCXXABI_BUILD_TARGETS "cxxabi_static")
   if (LIBCXXABI_INSTALL_STATIC_LIBRARY)
     list(APPEND LIBCXXABI_INSTALL_TARGETS "cxxabi_static")
+  endif()
+
+  if (APPLE)
+    set(MERGE_ARCHIVES_LIBTOOL "--use-libtool" "--libtool" "${CMAKE_LIBTOOL}")
+  endif()
+
+  # Merge the the libc++abi.a and libunwind.a into one.
+  if(LIBCXXABI_USE_LLVM_UNWINDER AND LIBCXXABI_STATICALLY_LINK_UNWINDER_IN_STATIC_LIBRARY)
+    add_custom_command(TARGET cxxabi_static POST_BUILD
+      COMMAND ${PYTHON_EXECUTABLE} ${LIBCXXABI_LIBCXX_PATH}/utils/merge_archives.py
+      ARGS
+        -o "$<TARGET_LINKER_FILE:cxxabi_static>"
+        --ar "${CMAKE_AR}"
+        ${MERGE_ARCHIVES_LIBTOOL}
+        "$<TARGET_LINKER_FILE:cxxabi_static>"
+        "$<TARGET_LINKER_FILE:unwind_static>"
+      WORKING_DIRECTORY ${LIBCXXABI_BUILD_DIR}
+    )
   endif()
 endif()
 
@@ -220,8 +271,8 @@ add_custom_target(cxxabi DEPENDS ${LIBCXXABI_BUILD_TARGETS})
 
 if (LIBCXXABI_INSTALL_LIBRARY)
   install(TARGETS ${LIBCXXABI_INSTALL_TARGETS}
-    LIBRARY DESTINATION ${LIBCXXABI_INSTALL_PREFIX}lib${LIBCXXABI_LIBDIR_SUFFIX} COMPONENT cxxabi
-    ARCHIVE DESTINATION ${LIBCXXABI_INSTALL_PREFIX}lib${LIBCXXABI_LIBDIR_SUFFIX} COMPONENT cxxabi
+    LIBRARY DESTINATION ${LIBCXXABI_INSTALL_PREFIX}${LIBCXXABI_INSTALL_LIBRARY_DIR} COMPONENT cxxabi
+    ARCHIVE DESTINATION ${LIBCXXABI_INSTALL_PREFIX}${LIBCXXABI_INSTALL_LIBRARY_DIR} COMPONENT cxxabi
     )
 endif()
 

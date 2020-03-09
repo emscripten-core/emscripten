@@ -11,12 +11,15 @@
 -------- T atan2l
 -------- T atanf
 -------- T atanl
+-------- T ceill
 -------- T cos
 -------- T cosf
 -------- T cosl
 -------- T exp
 -------- T expf
 -------- T expl
+-------- T fabsl
+-------- T floorl
 -------- T log
 -------- T logf
 -------- T logl
@@ -26,6 +29,7 @@
 -------- T sin
 -------- T sinf
 -------- T sinl
+-------- T sqrtl
 -------- T tan
 -------- T tanf
 -------- T tanl

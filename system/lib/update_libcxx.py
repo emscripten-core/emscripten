@@ -36,7 +36,8 @@ def copy_tree(upstream_dir, local_dir):
 
 
 def main():
-  libcxx_dir = os.path.abspath(sys.argv[1])
+  llvm_dir = os.path.abspath(sys.argv[1])
+  libcxx_dir  = os.path.join(llvm_dir, 'libcxx')
   upstream_inc = os.path.join(libcxx_dir, 'include')
   upstream_src = os.path.join(libcxx_dir, 'src')
   assert os.path.exists(upstream_inc)

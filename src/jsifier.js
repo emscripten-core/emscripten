@@ -58,6 +58,11 @@ function demangleCSymbolName(f) {
   return f[0] == '_' ? f.substr(1) : '$' + f;
 }
 
+function isJsLibraryConfigIdentifier(ident) {
+  return ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline')
+   || ident.endsWith('__deps') || ident.endsWith('__postset') || ident.endsWith('__docs') || ident.endsWith('__import');
+}
+
 // JSifier
 function JSify(data, functionsOnly) {
   var mainPass = !functionsOnly;
@@ -75,7 +80,7 @@ function JSify(data, functionsOnly) {
       assert(!SIDE_MODULE, 'Cannot have both INCLUDE_FULL_LIBRARY and SIDE_MODULE set.')
       libFuncsToInclude = (MAIN_MODULE || SIDE_MODULE) ? DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.slice(0) : [];
       for (var key in LibraryManager.library) {
-        if (!key.match(/__(deps|postset|inline|asm|sig)$/)) {
+        if (!isJsLibraryConfigIdentifier(key)) {
           libFuncsToInclude.push(key);
         }
       }
@@ -138,7 +143,7 @@ function JSify(data, functionsOnly) {
       if (typeof ident == 'function') return ident();
 
       // don't process any special identifiers. These are looked up when processing the base name of the identifier.
-      if (ident.endsWith('__sig') || ident.endsWith('__proxy') || ident.endsWith('__asm') || ident.endsWith('__inline') || ident.endsWith('__deps') || ident.endsWith('__postset')) {
+      if (isJsLibraryConfigIdentifier(ident)) {
         return '';
       }
 
@@ -176,6 +181,10 @@ function JSify(data, functionsOnly) {
         if (!RELOCATABLE) {
           // emit a stub that will fail at runtime
           LibraryManager.library[ident] = new Function("err('missing function: " + ident + "'); abort(-1);");
+          // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
+          // regarding this function, marking ot a variadic function that can take in anything and return anything.
+          // (not useful to warn/error multiple times)
+          LibraryManager.library[ident + '__docs'] = '/** @type {function(...*):?} */';
         } else {
           var isGlobalAccessor = ident.startsWith('g$');
           var realIdent = ident;
@@ -239,6 +248,16 @@ function JSify(data, functionsOnly) {
       } else if (typeof snippet === 'function') {
         isFunction = true;
         snippet = processLibraryFunction(snippet, ident, finalName);
+        // Functions that start with '$' should not be imported to asm.js/wasm module, since they are
+        // intended to be exclusive to JS code only.
+        if (ident[0] != '$') {
+          Functions.libraryFunctions[finalName] = 1;
+        }
+      }
+
+      // If a JS library item specifies xxx_import: true, then explicitly mark that symbol to be imported
+      // to asm.js/wasm module.
+      if (LibraryManager.library[ident + '__import']) {
         Functions.libraryFunctions[finalName] = 1;
       }
 
@@ -330,7 +349,13 @@ function JSify(data, functionsOnly) {
           }
         });
       }
-      return depsText + contentText;
+
+      var commentText = '';
+      if (LibraryManager.library[ident + '__docs']) {
+        commentText = LibraryManager.library[ident + '__docs'] + '\n';
+      }
+
+      return depsText + commentText + contentText;
     }
 
     itemsDict.functionStub.push(item);

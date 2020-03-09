@@ -97,6 +97,9 @@ function getCFunc(ident) {
 }
 
 // C calling interface.
+/** @param {Array=} argTypes
+    @param {Arguments|Array=} args
+    @param {Object=} opts */
 function ccall(ident, returnType, argTypes, args, opts) {
   // For fast lookup of conversion functions
   var toC = {
@@ -189,6 +192,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
   return ret;
 }
 
+/** @param {Array=} argTypes
+    @param {Object=} opts */
 function cwrap(ident, returnType, argTypes, opts) {
 #if !ASSERTIONS
   argTypes = argTypes || [];
@@ -373,7 +378,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // At the 'load' stage of Worker startup, we are just loading this script
   // but not ready to run yet. At 'run' we receive proper values for the stack
   // etc. and can launch a pthread. Set some fake values there meanwhile to
-  // catch bugs, then set the real values in establishStackSpaceInJsModule later.
+  // catch bugs, then set the real values in establishStackSpace later.
 #if ASSERTIONS || STACK_OVERFLOW_CHECK >= 2
   STACK_MAX = STACKTOP = STACK_MAX = 0x7FFFFFFF;
 #endif
@@ -397,10 +402,10 @@ if (Module['TOTAL_STACK']) assert(TOTAL_STACK === Module['TOTAL_STACK'], 'the st
 Module['TOTAL_STACK'] = TOTAL_STACK;
 #endif
 
-{{{ makeModuleReceiveWithVar('INITIAL_TOTAL_MEMORY', 'TOTAL_MEMORY', TOTAL_MEMORY) }}}
+{{{ makeModuleReceiveWithVar('INITIAL_INITIAL_MEMORY', 'INITIAL_MEMORY', INITIAL_MEMORY) }}}
 
 #if ASSERTIONS
-assert(INITIAL_TOTAL_MEMORY >= TOTAL_STACK, 'TOTAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_TOTAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
+assert(INITIAL_INITIAL_MEMORY >= TOTAL_STACK, 'INITIAL_MEMORY should be larger than TOTAL_STACK, was ' + INITIAL_INITIAL_MEMORY + '! (TOTAL_STACK=' + TOTAL_STACK + ')');
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 assert(typeof Int32Array !== 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray !== undefined && Int32Array.prototype.set !== undefined,
@@ -572,7 +577,9 @@ function addOnPostRun(cb) {
   __ATPOSTRUN__.unshift(cb);
 }
 
+/** @param {number|boolean=} ignore */
 {{{ unSign }}}
+/** @param {number|boolean=} ignore */
 {{{ reSign }}}
 
 #include "runtime_math.js"
@@ -598,8 +605,9 @@ function getUniqueRunDependency(id) {
     if (!runDependencyTracking[id]) return id;
     id = orig + Math.random();
   }
-#endif
+#else
   return id;
+#endif
 }
 
 function addRunDependency(id) {
@@ -687,6 +695,7 @@ Module["preloadedWasm"] = {}; // maps url to wasm instance exports
 var abortDecorators = [];
 #endif
 
+/** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
   if (Module['onAbort']) {
@@ -777,9 +786,7 @@ function lookupSymbol(ptr) { // for a pointer, print out all symbols that resolv
 
 var memoryInitializer = null;
 
-#if MEMORYPROFILER
 #include "memoryprofiler.js"
-#endif
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems) && !ASMFS
 // show errors on likely calls to FS when it was not included
@@ -1084,7 +1091,7 @@ err(module);
       err('failed to compile wasm module: ' + str);
       if (str.indexOf('imported Memory') >= 0 ||
           str.indexOf('memory import') >= 0) {
-        err('Memory size incompatibility issues may be due to changing TOTAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set TOTAL_MEMORY at runtime to something smaller than it was at compile time).');
+        err('Memory size incompatibility issues may be due to changing INITIAL_MEMORY at runtime to something too large. Use ALLOW_MEMORY_GROWTH to allow any size memory (and also make sure not to set INITIAL_MEMORY at runtime to something smaller than it was at compile time).');
       }
       throw e;
     }

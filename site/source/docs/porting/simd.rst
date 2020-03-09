@@ -12,7 +12,7 @@ At the source level, the GCC/Clang `SIMD Vector Extensions <https://gcc.gnu.org/
 
        #include <wasm_simd128.h>
 
-Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `wasm_simd128.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/wasm_simd128.h>`. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself.
+Separate documentation for the intrinsics header is a work in progress, but its usage is straightforward and its source can be found at `wasm_simd128.h <https://github.com/emscripten-core/emscripten/blob/master/system/include/wasm_simd128.h>`. These intrinsics are under active development in parallel with the SIMD proposal and should not be considered any more stable than the proposal itself. Note that most engines will also require an extra flag to enable SIMD. For example, Node requires `--experimental-wasm-simd`.
 
 WebAssembly SIMD is not supported when using the Fastcomp backend.
 
