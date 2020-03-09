@@ -134,7 +134,7 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
       env.update(clang_native.get_clang_native_env())
-      native_args += lib_builder(self.name, native=True, env_init=env, { 'CFLAGS': LLVM_FEATURE_FLAGS })
+      native_args += lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -190,7 +190,9 @@ class EmscriptenBenchmarker(Benchmarker):
     os.environ = self.env.copy()
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
-      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
+      env_init = self.env.copy()
+      env_init['CFLAGS'] = LLVM_FEATURE_FLAGS
+      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
