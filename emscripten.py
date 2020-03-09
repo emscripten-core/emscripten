@@ -138,7 +138,7 @@ def parse_fastcomp_output(backend_output, DEBUG):
   metadata_raw = backend_output[metadata_split + len(metadata_split_marker):]
   mem_init = backend_output[end_funcs + len(end_funcs_marker):metadata_split]
 
-  # we no longer use the "Runtime" object. TODO: stop emiting it in the backend
+  # we no longer use the "Runtime" object. TODO: stop emitting it in the backend
   mem_init = mem_init.replace('Runtime.', '')
 
   try:
@@ -2610,7 +2610,7 @@ def create_sending_wasm(invoke_funcs, forwarded_json, metadata):
 
 def create_receiving_wasm(exports, initializers):
   # When not declaring asm exports this section is empty and we instead programatically export
-  # synbols on the global object by calling exportAsmFunctions after initialization
+  # symbols on the global object by calling exportAsmFunctions after initialization
   if not shared.Settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 

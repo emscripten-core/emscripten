@@ -6020,10 +6020,10 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_intrinsics_simd(self, js_engines):
-    self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall'])
+    self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
-    self.emcc_args.append('-munimplemented-simd128')
+    self.emcc_args.extend(['-munimplemented-simd128', '-xc', '-std=c99'])
     self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
@@ -8118,6 +8118,13 @@ extern "C" {
     self.do_run_in_out_file_test('tests', 'core', 'emscripten_scan_registers')
 
   @no_fastcomp('wasm-backend specific feature')
+  def test_asyncify_assertions(self):
+    self.set_setting('ASYNCIFY', 1)
+    self.set_setting('ASYNCIFY_IMPORTS', ['suspend'])
+    self.set_setting('ASSERTIONS', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'asyncify_assertions')
+
+  @no_fastcomp('wasm-backend specific feature')
   @no_wasm2js('TODO: lazy loading in wasm2js')
   @parameterized({
     'conditional': (True,),
@@ -8683,6 +8690,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run(open(path_from_root('tests', 'core', name)).read(),
                 basename=name, expected_output=[''], assert_returncode=None)
 
+  # note: these tests have things like -fno-builtin-memset in order to avoid
+  # clang optimizing things away. for example, a memset might be optimized into
+  # stores, and then the stores identified as dead, which leaves nothing for
+  # asan to test. here we want to test asan itself, so we work around that.
   @parameterized({
     'use_after_free_c': ('test_asan_use_after_free.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -8823,6 +8834,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.emcc_args += ['-DPOOL']
     test()
+
+  @no_fastcomp('new wasm backend atomics')
+  def test_emscripten_atomics_stub(self):
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics')
+
+  @no_fastcomp('new wasm backend atomics')
+  @node_pthreads
+  def test_emscripten_atomics(self, js_engines):
+    self.set_setting('USE_PTHREADS', '1')
+    self.do_run_in_out_file_test('tests', 'core', 'pthread', 'emscripten_atomics', js_engines=js_engines)
 
   # Tests the emscripten_get_exported_function() API.
   def test_emscripten_get_exported_function(self):

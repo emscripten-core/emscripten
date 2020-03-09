@@ -14,16 +14,16 @@
 #include <pthread.h>
 
 uint8_t emscripten_atomic_exchange_u8(void /*uint8_t*/* addr, uint8_t newVal) {
-  return __c11_atomic_exchange((_Atomic uintptr_t*)addr, newVal, __ATOMIC_SEQ_CST);
+  return __c11_atomic_exchange((_Atomic uint8_t*)addr, newVal, __ATOMIC_SEQ_CST);
 }
 uint16_t emscripten_atomic_exchange_u16(void /*uint16_t*/* addr, uint16_t newVal) {
-  return __c11_atomic_exchange((_Atomic uintptr_t*)addr, newVal, __ATOMIC_SEQ_CST);
+  return __c11_atomic_exchange((_Atomic uint16_t*)addr, newVal, __ATOMIC_SEQ_CST);
 }
 uint32_t emscripten_atomic_exchange_u32(void /*uint32_t*/* addr, uint32_t newVal) {
-  return __c11_atomic_exchange((_Atomic uintptr_t*)addr, newVal, __ATOMIC_SEQ_CST);
+  return __c11_atomic_exchange((_Atomic uint32_t*)addr, newVal, __ATOMIC_SEQ_CST);
 }
 uint64_t emscripten_atomic_exchange_u64(void /*uint64_t*/* addr, uint64_t newVal) {
-  return __c11_atomic_exchange((_Atomic uintptr_t*)addr, newVal, __ATOMIC_SEQ_CST);
+  return __c11_atomic_exchange((_Atomic uint64_t*)addr, newVal, __ATOMIC_SEQ_CST);
 }
 
 uint8_t emscripten_atomic_cas_u8(void /*uint8_t*/* addr, uint8_t oldVal, uint8_t newVal) {

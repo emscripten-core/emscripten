@@ -21,6 +21,15 @@ Current Trunk
   you add, and does not need to contain the list of default system imports like
   ``emscripten_sleep``. There is no harm in providing them, though, so this
   is not a breaking change.
+
+v1.39.10: 03/09/2020
+--------------------
+- Fix a SIMD regression in 1.39.9 (#10658).
+- Fix `emscripten_atomic_exchange_u8,16,32,64` (#10657).
+- Switch bzip2 to an emscripten-ports mirror.
+
+v1.39.9: 03/05/2020
+-------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
   internal emscripten errors. The behviour of these flags matches the gcc/clang
   counterparts.
@@ -36,13 +45,20 @@ Current Trunk
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
-- Remove WASM_OBJECT_FILES setting.  There are many standard ways to enable
-  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+- Deprecate `WASM_OBJECT_FILES` setting.  There are many standard ways to enable
+  bitcode objects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
+- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+  compiled code on the stack when starting to rewind, which is dangerous.
+- Implement libc system() for node.js (#10547).
+- Standalone mode improvements, time (#10530, #10536), sysconf (#10535),
+  getpagesize (#10533), _Exit (#10534)
+- Fix many closure compiler warnings (e.g. #10525).
+- Avoid unnecessary syscall proxying (#10511).
 
 v1.39.8: 02/14/2020
 -------------------
