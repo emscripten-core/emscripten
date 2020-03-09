@@ -134,7 +134,7 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
       env.update(clang_native.get_clang_native_env())
-      native_args += lib_builder(self.name, native=True, env_init=env)
+      native_args += lib_builder(self.name, native=True, env_init=env, { 'CFLAGS': LLVM_FEATURE_FLAGS })
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = [
@@ -183,13 +183,6 @@ class EmscriptenBenchmarker(Benchmarker):
     for k, v in env.items():
       self.env[k] = v
     self.binaryen_opts = binaryen_opts[:]
-
-  def prepare(self):
-    # add the feature flags to build commands for libraries as well (easier
-    # this way than editing each one separately). this isn't needed for
-    # native builds, so the comparison is still apples-to-apples.
-    assert not os.environ.get('EMMAKEN_CFLAGS')
-    os.environ['EMMAKEN_CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS)
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     self.filename = filename
@@ -1050,7 +1043,7 @@ class benchmark(runner.RunnerCore):
       ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
-      return self.get_poppler_library()
+      return self.get_poppler_library(env_init=env_init)
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
