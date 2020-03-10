@@ -25,6 +25,12 @@ Current Trunk
   library functions, but `memset` is from compiled code. If you hit that issue,
   just add `_memset` to `EXPORTED_FUNCTIONS`.
 
+v1.39.10: 03/09/2020
+--------------------
+- Fix a SIMD regression in 1.39.9 (#10658).
+- Fix `emscripten_atomic_exchange_u8,16,32,64` (#10657).
+- Switch bzip2 to an emscripten-ports mirror.
+
 v1.39.9: 03/05/2020
 -------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
@@ -43,7 +49,7 @@ v1.39.9: 03/05/2020
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
 - Deprecate `WASM_OBJECT_FILES` setting.  There are many standard ways to enable
-  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+  bitcode objects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)

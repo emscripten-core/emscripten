@@ -634,32 +634,22 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_mul(v128_t a, v128_t b) {
 
 // v128_t wasm_i8x16_min_s(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_min_s(v128_t a, v128_t b) {
-  __i8x16 a_ = (__i8x16)a;
-  __i8x16 b_ = (__i8x16)b;
-  return (v128_t)(a_ < b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_min_s_i8x16((__i8x16)a, (__i8x16)b);
 }
 
 // v128_t wasm_i8x16_min_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_min_u(v128_t a, v128_t b) {
-  __u8x16 a_ = (__u8x16)a;
-  __u8x16 b_ = (__u8x16)b;
-  return (v128_t)(a_ < b_ ? a_ : b_);
-
+  return (v128_t)__builtin_wasm_min_u_i8x16((__i8x16)a, (__i8x16)b);
 }
 
 // v128_t wasm_i8x16_max_s(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_max_s(v128_t a, v128_t b) {
-  __i8x16 a_ = (__i8x16)a;
-  __i8x16 b_ = (__i8x16)b;
-  return (v128_t)(a_ > b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_max_s_i8x16((__i8x16)a, (__i8x16)b);
 }
 
 // v128_t wasm_i8x16_max_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_max_u(v128_t a, v128_t b) {
-  __u8x16 a_ = (__u8x16)a;
-  __u8x16 b_ = (__u8x16)b;
-  return (v128_t)(a_ > b_ ? a_ : b_);
-
+  return (v128_t)__builtin_wasm_max_u_i8x16((__i8x16)a, (__i8x16)b);
 }
 
 // v128_t wasm_i8x16_avgr_u(v128_t a, v128_t b)
@@ -734,30 +724,22 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_mul(v128_t a, v128_t b) {
 
 // v128_t wasm_i16x8_min_s(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_min_s(v128_t a, v128_t b) {
-  __i16x8 a_ = (__i16x8)a;
-  __i16x8 b_ = (__i16x8)b;
-  return (v128_t)(a_ < b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_min_s_i16x8((__i16x8)a, (__i16x8)b);
 }
 
 // v128_t wasm_i16x8_min_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_min_u(v128_t a, v128_t b) {
-  __u16x8 a_ = (__u16x8)a;
-  __u16x8 b_ = (__u16x8)b;
-  return (v128_t)(a_ < b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_min_u_i16x8((__i16x8)a, (__i16x8)b);
 }
 
 // v128_t wasm_i16x8_max_s(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_max_s(v128_t a, v128_t b) {
-  __i16x8 a_ = (__i16x8)a;
-  __i16x8 b_ = (__i16x8)b;
-  return (v128_t)(a_ > b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_max_s_i16x8((__i16x8)a, (__i16x8)b);
 }
 
 // v128_t wasm_i16x8_max_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_max_u(v128_t a, v128_t b) {
-  __u16x8 a_ = (__u16x8)a;
-  __u16x8 b_ = (__u16x8)b;
-  return (v128_t)(a_ > b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_max_u_i16x8((__i16x8)a, (__i16x8)b);
 }
 
 // v128_t wasm_i16x8_avgr_u(v128_t a, v128_t b)
@@ -812,30 +794,22 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_mul(v128_t a, v128_t b) {
 
 // v128_t wasm_i32x4_min_s(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_min_s(v128_t a, v128_t b) {
-  __i32x4 a_ = (__i32x4)a;
-  __i32x4 b_ = (__i32x4)b;
-  return (v128_t)(a_ < b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_min_s_i32x4((__i32x4)a, (__i32x4)b);
 }
 
 // v128_t wasm_i32x4_min_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_min_u(v128_t a, v128_t b) {
-  __u32x4 a_ = (__u32x4)a;
-  __u32x4 b_ = (__u32x4)b;
-  return (v128_t)(a_ < b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_min_u_i32x4((__i32x4)a, (__i32x4)b);
 }
 
 // v128_t wasm_i32x4_max_s(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_max_s(v128_t a, v128_t b) {
-  __i32x4 a_ = (__i32x4)a;
-  __i32x4 b_ = (__i32x4)b;
-  return (v128_t)(a_ > b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_max_s_i32x4((__i32x4)a, (__i32x4)b);
 }
 
 // v128_t wasm_i32x4_max_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_max_u(v128_t a, v128_t b) {
-  __u32x4 a_ = (__u32x4)a;
-  __u32x4 b_ = (__u32x4)b;
-  return (v128_t)(a_ > b_ ? a_ : b_);
+  return (v128_t)__builtin_wasm_max_u_i32x4((__i32x4)a, (__i32x4)b);
 }
 
 // v128_t wasm_i64x2_neg(v128_t a)
