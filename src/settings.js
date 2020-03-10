@@ -840,12 +840,7 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-  'memcpy',
-  'malloc',
-  'free',
-  'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
