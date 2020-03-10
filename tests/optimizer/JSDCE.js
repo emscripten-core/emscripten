@@ -91,3 +91,12 @@ ___cxa_find_matching_catch_after();
 var dotMath = Math.something;
 var dotOther = Side.effect;
 
+function allocate() {
+}
+var FS = {
+ foo: function(stream, offset, length) {
+  stream.allocate; // this should not keep allocate() alive
+  FS; // keep FS alive itself
+ },
+};
+

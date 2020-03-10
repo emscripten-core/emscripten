@@ -66,3 +66,10 @@ function ___cxa_find_matching_catch_after() {
 ___cxa_find_matching_catch_after();
 
 var dotOther = Side.effect;
+
+var FS = {
+ foo: function(stream, offset, length) {
+  stream.allocate;
+  FS;
+ }
+};

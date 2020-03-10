@@ -347,6 +347,13 @@ function JSDCE(ast, multipleIterations) {
           c(node.value);
         });
       },
+      MemberExpression(node, c) {
+        c(node.object);
+        // ignore a property identifier (a.X)
+        if (node.property.type !== 'Identifier') {
+          c(node.property);
+        }
+      },
       FunctionDeclaration(node, c) {
         handleFunction(node, c, true /* defun */);
       },
