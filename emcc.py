@@ -1387,9 +1387,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if not shared.Settings.MINIMAL_RUNTIME:
       # Always need malloc and free to be kept alive and exported, for internal use and other modules
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
-      if shared.Settings.WASM_BACKEND:
-        # setjmp/longjmp and exception handling JS code depends on this so we
-        # include it by default.  Should be eliminated by meta-DCE if unused.
+
+    if shared.Settings.WASM_BACKEND:
+      if shared.Settings.DISABLE_EXCEPTION_CATCHING == 0 or shared.Settings.SUPPORT_LONGJMP:
         shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
