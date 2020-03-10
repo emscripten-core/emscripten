@@ -17,13 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
-- Remove hacks from `memset` handling, in particular, remove it from
-  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE` and ifdef it out in the wasm backend case
-  in the JS library, so the JS library version is never included in that case
-  (it can arrive from compiler_rt if it is needed). A noticeable difference is
-  that a JS library cannot add a `__dep` to `memset` - deps only work for JS
-  library functions, but `memset` is from compiled code. If you hit that issue,
-  just add `_memset` to `EXPORTED_FUNCTIONS`.
+- Remove hacks from `memset` handling, in particular, in the wasm backend,
+  completely remove the JS version of memset from the JS library and from
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. The regular C version will be linked in
+  from compiler_rt normally. A noticeable difference you may see is that
+  a JS library cannot add a `__dep` to `memset` - deps only work for JS
+  library functions, but now we only have the regular C version. If you hit that
+  issue, just add `_memset` to `EXPORTED_FUNCTIONS` (or adjust
+  `deps_info.json`).
 
 v1.39.10: 03/09/2020
 --------------------
