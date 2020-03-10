@@ -43,7 +43,7 @@
   "emscripten_log": ["strlen"],
   "uuid_clear": ["memset"],
   "uuid_compare": ["memcmp", "memcpy", "memset"],
-  "SDL_Init": ["malloc", "free", "memset"],
+  "SDL_Init": ["malloc", "free", "memset", "memcpy"],
   "SDL_GL_GetProcAddress": ["emscripten_GetProcAddress"],
   "Mix_LoadWAV_RW": ["fileno"],
   "eglGetProcAddress": ["emscripten_GetProcAddress"],
