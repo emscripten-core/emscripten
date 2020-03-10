@@ -104,6 +104,8 @@
   "_embind_register_function": ["free"],
   "_embind_register_class": ["free"],
   "_embind_register_enum_value": ["free"],
-  "setjmp": "setThrew",
-  "longjmp": "setThrew"
+  "setjmp": ["setThrew", "realloc"],
+  "longjmp": ["setThrew", "realloc"],
+  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc"],
+  "saveSetjmp": ["setThrew", "realloc"]
 }
