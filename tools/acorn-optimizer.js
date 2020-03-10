@@ -349,8 +349,9 @@ function JSDCE(ast, multipleIterations) {
       },
       MemberExpression(node, c) {
         c(node.object);
-        // ignore a property identifier (a.X)
-        if (node.property.type !== 'Identifier') {
+        // Ignore a property identifier (a.X), but notice a[X] (computed
+        // is true) and a["X"] (it will be a Literal and not Identifier).
+        if (node.property.type !== 'Identifier' || node.computed) {
           c(node.property);
         }
       },
