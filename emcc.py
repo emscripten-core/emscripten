@@ -1388,10 +1388,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # Always need malloc and free to be kept alive and exported, for internal use and other modules
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
-    if shared.Settings.WASM_BACKEND:
-      if shared.Settings.DISABLE_EXCEPTION_CATCHING == 0 or shared.Settings.SUPPORT_LONGJMP:
-        shared.Settings.EXPORTED_FUNCTIONS += ['_setThrew']
-
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
       exit_with_error('cannot have both DYNAMIC_EXECUTION=0 and RELOCATABLE enabled at the same time, since RELOCATABLE needs to eval()')
 
