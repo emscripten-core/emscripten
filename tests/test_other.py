@@ -2278,6 +2278,7 @@ int f() {
         output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
+  @no_fastcomp('wasm2js-only')
   def test_js_optimizer_wasm2js(self):
     # run the js optimizer in a similar way as wasm2js does
     shutil.copyfile(path_from_root('tests', 'optimizer', 'wasm2js.js'), 'wasm2js.js')
