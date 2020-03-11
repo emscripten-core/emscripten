@@ -8995,6 +8995,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
     def build():
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '-s', 'WASM=0'])
       with open('a.out.js') as f:
+        # FIXME: newline differences can exist, ignore for now
         return f.read().replace('\n', '')
 
     normal = build()
