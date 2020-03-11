@@ -56,7 +56,7 @@ NATIVE_OPTIMIZER = os.environ.get('EMCC_NATIVE_OPTIMIZER') or '2' # use optimize
 def split_funcs(js, just_split=False):
   if just_split:
     return [('(json)', line) for line in js.splitlines()]
-  parts = [('function ' + part).strip() for part in js.split('function ')[1:]]
+  parts = ['function ' + part for part in js.split('function ')[1:]]
   funcs = []
   for func in parts:
     m = func_sig.search(func)
@@ -64,6 +64,9 @@ def split_funcs(js, just_split=False):
       continue
     ident = m.group(1)
     assert ident
+    # if the function has a // comment, then we cannot remove newlines
+    if '//' not in func:
+      func = func.strip()
     funcs.append((ident, func))
   return funcs
 
