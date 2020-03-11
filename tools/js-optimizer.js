@@ -4581,6 +4581,7 @@ function minifyGlobals(ast) {
   var next = 0;
   function getMinified(name) {
     if (minified[name]) return minified[name];
+    ensureMinifiedNames(next);
     return minified[name] = minifiedNames[next++];
   }
   var first = true; // do not minify initial 'var asm ='
@@ -4594,19 +4595,16 @@ function minifyGlobals(ast) {
       var vars = node[1];
       for (var i = 0; i < vars.length; i++) {
         var name = vars[i][0];
-        ensureMinifiedNames(next);
         vars[i][0] = getMinified(name);
       }
     } else if (type === 'defun') {
       var name = node[1];
-      ensureMinifiedNames(next);
       node[1] = getMinified(name);
     }
   });
   // add all globals in function chunks, i.e. not here but passed to us
   for (var i = 0; i < extraInfo.globals.length; i++) {
     name = extraInfo.globals[i];
-    ensureMinifiedNames(next);
     minified[name] = getMinified(name);
   }
   // apply minification
@@ -4634,7 +4632,7 @@ function minifyLocals(ast) {
     } else {
       // non-asm.js code - scan the whole function, which is inefficient
       var localNames = {};
-      for (var param in fun[2]) {
+      for (var param of fun[2]) {
         localNames[param] = 1;
       }
       traverse(ast, function(node, type) {
