@@ -2278,6 +2278,14 @@ int f() {
         output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
+  def test_js_optimizer_wasm2js(self):
+    # run the js optimizer in a similar way as wasm2js does
+    shutil.copyfile(path_from_root('tests', 'optimizer', 'wasm2js.js'), 'wasm2js.js')
+    run_process([PYTHON, path_from_root('tools', 'js_optimizer.py'), 'wasm2js.js', 'minifyNames', 'last'])
+    with open(path_from_root('tests', 'optimizer', 'wasm2js-output.js')) as expected:
+      with open('wasm2js.js.jsopt.js') as actual:
+        self.assertIdentical(expected.read(), actual.read())
+
   def test_m_mm(self):
     create_test_file('foo.c', '#include <emscripten.h>')
     for opt in ['M', 'MM']:
