@@ -64,9 +64,6 @@ def split_funcs(js, just_split=False):
       continue
     ident = m.group(1)
     assert ident
-    # if the function has a // comment, then we cannot remove newlines
-    if '//' not in func:
-      func = func.strip()
     funcs.append((ident, func))
   return funcs
 

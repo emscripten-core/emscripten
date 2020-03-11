@@ -7693,7 +7693,7 @@ int main() {
 
       expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value-output.js'))
 
-      self.assertIdentical(output_file_contents, expected_file_contents)
+      self.assertIdentical(expected_file_contents, output_file_contents)
     finally:
       tools.tempfiles.try_delete(output_file)
 
