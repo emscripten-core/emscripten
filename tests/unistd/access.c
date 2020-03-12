@@ -52,6 +52,17 @@ int main() {
     printf("\n");
   }
 
+  EM_ASM({FS.writeFile('filetorename',  'renametest');});
+  
+  rename("filetorename", "renamedfile");
+
+  errno = 0;
+  printf("F_OK(%s): %d\n", "filetorename", access("filetorename", F_OK));
+  printf("errno: %d\n", errno);
+  errno = 0;
+  printf("F_OK(%s): %d\n", "renamedfile", access("renamedfile", F_OK));
+  printf("errno: %d\n", errno);
+
 #ifndef __EMSCRIPTEN_ASMFS__
   // Restore full permissions on all created files so that python test runner rmtree
   // won't have problems on deleting the files. On Windows, calling shutil.rmtree()

@@ -113,7 +113,7 @@ var EMIT_SYMBOL_MAP = 0;
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
 
-// List of function explictly exported by user on the command line.
+// List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
 // name of the file containing wasm text, if relevant

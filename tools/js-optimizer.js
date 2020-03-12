@@ -4637,7 +4637,7 @@ function minifyLocals(ast) {
       for (var param in fun[2]) {
         localNames[param] = 1;
       }
-      traverse(ast, function(node, type) {
+      traverse(fun, function(node, type) {
         if (type === 'var') {
           node[1].forEach(function(defn) {
             var name = defn[0];

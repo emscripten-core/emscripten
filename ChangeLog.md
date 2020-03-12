@@ -17,8 +17,25 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove hacks from `memset` handling, in particular, in the wasm backend,
+  completely remove the JS version of memset from the JS library and from
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. The regular C version will be linked in
+  from compiler_rt normally. A noticeable difference you may see is that
+  a JS library cannot add a `__dep` to `memset` - deps only work for JS
+  library functions, but now we only have the regular C version. If you hit that
+  issue, just add `_memset` to `EXPORTED_FUNCTIONS` (or adjust
+  `deps_info.json`).
+
+v1.39.10: 03/09/2020
+--------------------
+- Fix a SIMD regression in 1.39.9 (#10658).
+- Fix `emscripten_atomic_exchange_u8,16,32,64` (#10657).
+- Switch bzip2 to an emscripten-ports mirror.
+
+v1.39.9: 03/05/2020
+-------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
-  internal emscripten errors. The behviour of these flags matches the gcc/clang
+  internal emscripten errors. The behavior of these flags matches the gcc/clang
   counterparts.
 - Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
   which are more accurate and match wasm conventions. The old names are still
@@ -32,8 +49,8 @@ Current Trunk
 - Removed src/library_vr.js, as it was outdated and nonfunctional, and the WebVR
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
-- Remove WASM_OBJECT_FILES setting.  There are many standard ways to enable
-  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+- Deprecate `WASM_OBJECT_FILES` setting.  There are many standard ways to enable
+  bitcode objects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
@@ -47,6 +64,13 @@ Current Trunk
   and background see #10325.
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
+- Add an check in Asyncify builds with `ASSERTIONS` that we do not have
+  compiled code on the stack when starting to rewind, which is dangerous.
+- Implement libc system() for node.js (#10547).
+- Standalone mode improvements, time (#10530, #10536), sysconf (#10535),
+  getpagesize (#10533), _Exit (#10534)
+- Fix many closure compiler warnings (e.g. #10525).
+- Avoid unnecessary syscall proxying (#10511).
 
 v1.39.8: 02/14/2020
 -------------------

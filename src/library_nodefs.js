@@ -184,6 +184,7 @@ mergeInto(LibraryManager.library, {
           if (!e.code) throw e;
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
+        oldNode.name = newName;
       },
       unlink: function(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
