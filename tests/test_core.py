@@ -334,7 +334,8 @@ class TestCoreBase(RunnerCore):
       # that we are doing cross-compilation
       # and skip attempting to run the generated executable with './a.out',
       # which would fail since we are building a .js file.
-      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
+      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
+                        '--disable-demos', '--disable-dependency-tracking']
       generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                         os.path.join('src', '.libs', 'libBulletCollision.a'),
                         os.path.join('src', '.libs', 'libLinearMath.a')]
@@ -6041,24 +6042,17 @@ return malloc(size);
 
   @needs_make('make')
   def test_lua(self):
-    self.emcc_args = ['-g1'] + self.emcc_args
     self.emcc_args.remove('-Werror')
-
-    INITIAL_MEMORY = self.get_setting('INITIAL_MEMORY')
 
     if self.is_emterpreter():
       self.set_setting('PRECISE_F32', 1)
 
-    for aggro in ([0, 1] if self.get_setting('ASM_JS') and '-O2' in self.emcc_args else [0]):
-      self.set_setting('AGGRESSIVE_VARIABLE_ELIMINATION', aggro)
-      self.set_setting('INITIAL_MEMORY', INITIAL_MEMORY)
-      print(aggro)
-      self.do_run('',
-                  'hello lua world!\n17\n1\n2\n3\n4\n7',
-                  args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
-                  includes=[path_from_root('tests', 'lua')],
-                  output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
+    self.do_run('',
+                'hello lua world!\n17\n1\n2\n3\n4\n7',
+                args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
+                libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                includes=[path_from_root('tests', 'lua')],
+                output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
   @needs_make('configure script')
   @is_slow_test
@@ -7387,8 +7381,7 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_fastcomp('DWARF is only supported in upstream')
   def test_dwarf(self):
-    self.emcc_args.append('-gforce_dwarf')
-    self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
+    self.emcc_args.append('-g')
 
     create_test_file('src.cpp', '''
       #include <emscripten.h>
