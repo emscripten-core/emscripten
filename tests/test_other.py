@@ -9000,6 +9000,7 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                              ^
 '''), stderr)
 
+  @no_fastcomp('wasm2js only')
   def test_js_optimizer_chunk_size_determinism(self):
     def build():
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '-s', 'WASM=0'])
