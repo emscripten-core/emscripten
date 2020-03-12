@@ -17,6 +17,20 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove hacks from `memset` handling, in particular, in the wasm backend,
+  completely remove the JS version of memset from the JS library and from
+  `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. The regular C version will be linked in
+  from compiler_rt normally. A noticeable difference you may see is that
+  a JS library cannot add a `__dep` to `memset` - deps only work for JS
+  library functions, but now we only have the regular C version. If you hit that
+  issue, just add `_memset` to `EXPORTED_FUNCTIONS` (or adjust
+  `deps_info.json`).
+
+v1.39.10: 03/09/2020
+--------------------
+- Fix a SIMD regression in 1.39.9 (#10658).
+- Fix `emscripten_atomic_exchange_u8,16,32,64` (#10657).
+- Switch bzip2 to an emscripten-ports mirror.
 
 v1.39.9: 03/05/2020
 -------------------
@@ -36,7 +50,7 @@ v1.39.9: 03/05/2020
   specification has been obsoleted in favor of the upcoming WebXR specification.
   (#10460)
 - Deprecate `WASM_OBJECT_FILES` setting.  There are many standard ways to enable
-  bitcode abjects (-flto, -flto=full, -flto=thin, -emit-llvm).
+  bitcode objects (-flto, -flto=full, -flto=thin, -emit-llvm).
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)

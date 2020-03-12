@@ -501,7 +501,7 @@ var MAX_WEBGL_VERSION = 1;
 var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
-// This automatically turns out FULL_ES2.
+// This automatically turns on FULL_ES2.
 var FULL_ES3 = 0;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
@@ -840,13 +840,7 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-  'memcpy',
-  'memset',
-  'malloc',
-  'free',
-  'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
@@ -936,7 +930,7 @@ var LINKABLE = 0;
 var STRICT = 0;
 
 // Automatically attempt to add archive indexes at link time to archives that 
-// don't already have them.  This can heppen when GNU ar or GNU ranlib is used
+// don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
 // [link]
@@ -1583,9 +1577,9 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-// If set to 1, all JS libraries will be automaticially available at link time.
+// If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
-// need to explictly specify -lfoo.js in at link time in order to access
+// need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 

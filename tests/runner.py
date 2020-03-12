@@ -1180,7 +1180,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.emcc_args.remove('-Werror')
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
-  def get_poppler_library(self):
+  def get_poppler_library(self, env_init=None):
     # The fontconfig symbols are all missing from the poppler build
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
@@ -1203,10 +1203,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       '-Wno-tautological-compare',
       '-Wno-unknown-pragmas',
     ]
+    env_init = env_init.copy() if env_init else {}
+    env_init['FONTCONFIG_CFLAGS'] = ' '
+    env_init['FONTCONFIG_LIBS'] = ' '
+
     poppler = self.get_library(
         'poppler',
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
-        env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
+        env_init=env_init,
         configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
 
     return poppler + freetype
