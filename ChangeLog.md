@@ -35,7 +35,7 @@ v1.39.10: 03/09/2020
 v1.39.9: 03/05/2020
 -------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
-  internal emscripten errors. The behviour of these flags matches the gcc/clang
+  internal emscripten errors. The behavior of these flags matches the gcc/clang
   counterparts.
 - Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
   which are more accurate and match wasm conventions. The old names are still
