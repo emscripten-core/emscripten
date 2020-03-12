@@ -6159,10 +6159,7 @@ return malloc(size);
 
     asserts = self.get_setting('ASSERTIONS')
 
-    # bullet can be built with cmake or with configure; for now disable
-    # configure as it adds -g which hits
-    # https://bugs.llvm.org/show_bug.cgi?id=44920
-    for use_cmake in [True]:
+    for use_cmake in [False, True]: # If false, use a configure script to configure Bullet build.
       print('cmake', use_cmake)
       # Windows cannot run configure sh scripts.
       if WINDOWS and not use_cmake:

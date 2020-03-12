@@ -17,6 +17,14 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Enable DWARF support: with building with -g, normal DWARF emitting happens,
+  and when linking with -g we preserve that and update it. This is a change
+  from before, where we assumed DWARF was unneeded and did not emit it, so this
+  can increase the size of debug builds (i.e. builds compiling and/or linking
+  with -g). This change is necessary for full debugging support, that is, to
+  be able to build with -g and use a debugger. Before this change only the
+  -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
+  and background see #10325.
 - Remove hacks from `memset` handling, in particular, in the wasm backend,
   completely remove the JS version of memset from the JS library and from
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. The regular C version will be linked in
@@ -54,14 +62,6 @@ v1.39.9: 03/05/2020
 - Removed EmscriptenWebGLContextAttributes::preferLowPowerToHighPerformance
   option that has become unsupported by WebGL. Access
   EmscriptenWebGLContextAttributes::powerPreference instead. (#10505)
-- Enable DWARF support: with building with -g, normal DWARF emitting happens,
-  and when linking with -g we preserve that and update it. This is a change
-  from before, where we assumed DWARF was unneeded and did not emit it, so this
-  can increase the size of debug builds (i.e. builds compiling and/or linking
-  with -g). This change is necessary for full debugging support, that is, to
-  be able to build with -g and use a debugger. Before this change only the
-  -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
-  and background see #10325.
 - When implementing forwarding function aliases in JS libraries, either the
   alias or the target function must contain a signature annotation. (#10550)
 - Add an check in Asyncify builds with `ASSERTIONS` that we do not have
