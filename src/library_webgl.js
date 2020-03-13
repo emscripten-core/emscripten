@@ -2427,11 +2427,13 @@ var LibraryGL = {
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
       var view = GL.miniTempBufferFloatViews[4*count-1];
+      // hoist the heap out of the loop for size and for pthreads+growth.
+      var heap = HEAPF32;
       for (var i = 0; i < 4*count; i += 4) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+        view[i] = heap[value + 4*i >> 2];
+        view[i+1] = heap[value + 4*i+4 >> 2];
+        view[i+2] = heap[value + 4*i+8 >> 2];
+        view[i+3] = heap[value + 4*i+12 >> 2];
       }
     } else
 #endif
@@ -2537,8 +2539,7 @@ var LibraryGL = {
     if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
       var view = GL.miniTempBufferFloatViews[16*count-1];
-      // hoist the heap out of the loop to help optimize the case of
-      // pthreads + growth.
+      // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
       for (var i = 0; i < 16*count; i += 16) {
         view[i] = heap[value + 4*i >> 2];
