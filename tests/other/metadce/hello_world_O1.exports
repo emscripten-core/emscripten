@@ -8,7 +8,6 @@ dynCall_jiji
 free
 main
 malloc
-setThrew
 stackAlloc
 stackRestore
 stackSave
