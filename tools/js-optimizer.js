@@ -4670,6 +4670,14 @@ function minifyLocals(ast) {
             usedNames[minified] = 1;
           }
         }
+      } else if (type === 'call') {
+        // We should never call a local name, as in asm.js-style code our
+        // locals are just numbers, not functions; functions are all declared
+        // in the outer scope. If a local is called, that is a bug.
+        if (node[1][0] === 'name') {
+          var name = node[1][1];
+          assert(!isLocalName(name), 'cannot call a local');
+        }
       }
     });
 
