@@ -5321,10 +5321,12 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     orig_compiler_opts = self.emcc_args[:]
-    for fs in ['MEMFS']:
+    for fs in ['MEMFS', 'NODEFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run_from_file(src, out)
 
   @also_with_noderawfs
