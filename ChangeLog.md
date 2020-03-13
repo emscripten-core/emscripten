@@ -17,6 +17,10 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
+  you add, and does not need to contain the list of default system imports like
+  ``emscripten_sleep``. There is no harm in providing them, though, so this
+  is not a breaking change.
 - Enable DWARF support: with building with -g, normal DWARF emitting happens,
   and when linking with -g we preserve that and update it. This is a change
   from before, where we assumed DWARF was unneeded and did not emit it, so this

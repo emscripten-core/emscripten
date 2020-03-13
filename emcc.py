@@ -97,10 +97,17 @@ SUPPORTED_LLD_LINKER_FLAGS = (
     '-mllvm'
 )
 
-
 LIB_PREFIXES = ('', 'lib')
 
 DEFERRED_RESPONSE_FILES = ('EMTERPRETIFY_BLACKLIST', 'EMTERPRETIFY_WHITELIST', 'EMTERPRETIFY_SYNCLIST')
+
+DEFAULT_ASYNCIFY_IMPORTS = [
+  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
+  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
+  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
+  'emscripten_scan_registers', 'emscripten_lazy_load_code',
+  'emscripten_fiber_swap',
+  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync']
 
 # Mapping of emcc opt levels to llvm opt levels. We use llvm opt level 3 in emcc
 # opt levels 2 and 3 (emcc 3 is unsafe opts, so unsuitable for the only level to
@@ -1859,17 +1866,19 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # see what it itself calls)
             if shared.Settings.USE_PTHREADS:
               shared.Settings.ASYNCIFY_IMPORTS += ['__call_main']
-            if shared.Settings.ASYNCIFY_IMPORTS:
-              # return the full import name, including module. The name may
-              # already have a module prefix; if not, we assume it is "env".
-              def get_full_import_name(name):
-                if '.' in name:
-                  return name
-                return 'env.' + name
+            # add the default imports
+            shared.Settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
 
-              shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
+            # return the full import name, including module. The name may
+            # already have a module prefix; if not, we assume it is "env".
+            def get_full_import_name(name):
+              if '.' in name:
+                return name
+              return 'env.' + name
 
-              passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
+            shared.Settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in shared.Settings.ASYNCIFY_IMPORTS]
+
+            passes += ['--pass-arg=asyncify-imports@%s' % ','.join(shared.Settings.ASYNCIFY_IMPORTS)]
 
             # shell escaping can be confusing; try to emit useful warnings
             def check_human_readable_list(items):
