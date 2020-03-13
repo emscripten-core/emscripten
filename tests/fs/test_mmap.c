@@ -21,6 +21,9 @@
 int main() {
   EM_ASM(
     FS.mkdir('yolo');
+    #if NODEFS
+        FS.mount(NODEFS, { root: '.' }, 'yolo');
+    #endif
     FS.writeFile('/yolo/in.txt', 'mmap ftw!');
   );
 
@@ -176,7 +179,7 @@ int main() {
     printf("/yolo/sharedoffset.txt content=%s %d\n", buffer + offset, offset);
     fclose(fd);
   }
-
+#if !defined(NODEFS)
   /**
    * MMAP to an 'over-allocated' file
    * 
@@ -219,6 +222,7 @@ int main() {
 
     close(fd);
   }
+#endif
 
   return 0;
 }
