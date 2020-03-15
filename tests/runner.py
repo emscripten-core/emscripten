@@ -1353,6 +1353,24 @@ class BrowserCore(RunnerCore):
 
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
+  
+  def get_browser_open_func():
+    if not EMTEST_BROWSER:
+      print("Using default system browser")
+      return webbrowser.open_new
+    browser_args = shlex.split(EMTEST_BROWSER)
+    # If the given browser is just a type, use the built-in functionality
+    # of the webbrowser module to open that type of browser
+    if len(browser_args) == 1 and '/' not in browser_args[0]:
+      print("Using Emscripten browser: " + browser_args[0])
+      return webbrowser.get(browser_args[0]).open_new
+    # If the given browser is a specific program with additional parameters,
+    # delegate to that command
+    else:
+      print("Using Emscripten browser: " + str(browser_args))
+      def run_browser_cmd(url):
+        subprocess.Popen(browser_args + [url])
+      return run_browser_cmd
 
   @classmethod
   def setUpClass(cls):
@@ -1361,23 +1379,14 @@ class BrowserCore(RunnerCore):
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
-    if not EMTEST_BROWSER:
-      print("Using default system browser")
-    else:
-      cmd = shlex.split(EMTEST_BROWSER)
-
-      def run_in_other_browser(url):
-        subprocess.Popen(cmd + [url])
-
-      webbrowser.open_new = run_in_other_browser
-      print("Using Emscripten browser: " + str(cmd))
+    browser_open = cls.get_browser_open_func()
     cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    webbrowser.open_new('http://localhost:%s/run_harness' % cls.port)
+    browser_open('http://localhost:%s/run_harness' % cls.port)
 
   @classmethod
   def tearDownClass(cls):
