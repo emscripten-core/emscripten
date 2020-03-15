@@ -1353,7 +1353,7 @@ class BrowserCore(RunnerCore):
 
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
-  
+
   def get_browser_open_func():
     if not EMTEST_BROWSER:
       print("Using default system browser")
@@ -1368,6 +1368,7 @@ class BrowserCore(RunnerCore):
     # delegate to that command
     else:
       print("Using Emscripten browser: " + str(browser_args))
+
       def run_browser_cmd(url):
         subprocess.Popen(browser_args + [url])
       return run_browser_cmd
