@@ -589,7 +589,9 @@ var ENVIRONMENT = '';
 //   * LZ4 files are read-only.
 var LZ4 = 0;
 
-// Emscripten exception handling options
+// Emscripten exception handling options.
+// These options only pertain to Emscripten exception handling and do not
+// control the experimental native wasm exception handling option.
 
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
