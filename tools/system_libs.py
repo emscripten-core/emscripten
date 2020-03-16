@@ -554,8 +554,8 @@ class NoExceptLibrary(Library):
       raise Exception('Invalid exception mode')
     super(NoExceptLibrary, self).__init__(**kwargs)
 
-  def can_build(self):
-    if not super(NoExceptLibrary, self).can_build():
+  def can_use(self):
+    if not super(NoExceptLibrary, self).can_use():
       return False
     # Wasm exception handling is only supported in the wasm backend
     return shared.Settings.WASM_BACKEND or self.eh_mode != 'wasm'
@@ -987,7 +987,7 @@ class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
     super(libunwind, self).__init__(**kwargs)
 
   def can_build(self):
-    return super(libunwind, self).can_build() and shared.Settings.WASM_BACKEND and self.eh_mode == 'wasm'
+    return super(libunwind, self).can_build() and shared.Settings.WASM_BACKEND
 
   def can_use(self):
     return super(libunwind, self).can_use() and shared.Settings.WASM_BACKEND and self.eh_mode == 'wasm'
