@@ -2724,7 +2724,7 @@ def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
   should_exit = False
-  eh_enabled = True
+  eh_enabled = False
   wasm_eh_enabled = False
 
   def check_bad_eq(arg):
