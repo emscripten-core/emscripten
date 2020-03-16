@@ -63,7 +63,7 @@ if (memoryInitializer) {
     };
     var doBrowserLoad = function() {
       readAsync(memoryInitializer, applyMemoryInitializer, function() {
-        throw 'could not load memory initializer ' + memoryInitializer;
+        returned_promise_reject(new Error('could not load memory initializer ' + memoryInitializer));
       });
     };
 #if SUPPORT_BASE64_EMBEDDING
@@ -115,36 +115,6 @@ if (memoryInitializer) {
 #endif
 
 var calledRun;
-
-#if MODULARIZE
-#if MODULARIZE_INSTANCE == 0
-// Modularize mode returns a function, which can be called to
-// create instances. The instances provide a then() method,
-// must like a Promise, that receives a callback. The callback
-// is called when the module is ready to run, with the module
-// as a parameter. (Like a Promise, it also returns the module
-// so you can use the output of .then(..)).
-Module['then'] = function(func) {
-  // We may already be ready to run code at this time. if
-  // so, just queue a call to the callback.
-  if (calledRun) {
-    func(Module);
-  } else {
-    // we are not ready to call then() yet. we must call it
-    // at the same time we would call onRuntimeInitialized.
-#if ASSERTIONS && !expectToReceiveOnModule('onRuntimeInitialized')
-    abort('.then() requires adding onRuntimeInitialized to INCOMING_MODULE_JS_API');
-#endif
-    var old = Module['onRuntimeInitialized'];
-    Module['onRuntimeInitialized'] = function() {
-      if (old) old();
-      func(Module);
-    };
-  }
-  return Module;
-};
-#endif
-#endif
 
 /**
  * @constructor
@@ -314,6 +284,9 @@ function run(args) {
 
     preMain();
 
+#if MODULARIZE
+    returned_promise_resolve(Module);
+#endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     if (Module['onRuntimeInitialized']) Module['onRuntimeInitialized']();
 #endif
@@ -424,9 +397,17 @@ function exit(status, implicit) {
     // if exit() was called, we may warn the user if the runtime isn't actually being shut down
     if (!implicit) {
 #if EXIT_RUNTIME == 0
-      err('program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)');
+      var msg = 'program exited (with status: ' + status + '), but EXIT_RUNTIME is not set, so halting execution but not exiting the runtime or preventing further async execution (build with EXIT_RUNTIME=1, if you want a true shutdown)';
+      err(msg);
+#if MODULARIZE
+      returned_promise_reject(msg);
+#endif // MODULARIZE
 #else
-      err('program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)');
+      var msg = 'program exited (with status: ' + status + '), but noExitRuntime is set due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)';
+      err(msg);
+#if MODULARIZE
+      returned_promise_reject(msg);
+#endif // MODULARIZE
 #endif // EXIT_RUNTIME
     }
 #endif // ASSERTIONS
