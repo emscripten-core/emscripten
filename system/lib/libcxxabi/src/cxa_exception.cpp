@@ -255,12 +255,7 @@ will call terminate, assuming that there was no handler for the
 exception.
 */
 void
-#ifdef __USING_WASM_EXCEPTIONS__
-// In wasm, destructors return their argument
-__cxa_throw(void *thrown_object, std::type_info *tinfo, void *(*dest)(void *)) {
-#else
 __cxa_throw(void *thrown_object, std::type_info *tinfo, void (*dest)(void *)) {
-#endif
     __cxa_eh_globals *globals = __cxa_get_globals();
     __cxa_exception* exception_header = cxa_exception_from_thrown_object(thrown_object);
 
