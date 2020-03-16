@@ -1354,24 +1354,26 @@ class BrowserCore(RunnerCore):
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
 
-  def get_browser_open_func():
+  @staticmethod
+  def browser_open(url):
     if not EMTEST_BROWSER:
       print("Using default system browser")
-      return webbrowser.open_new
-    browser_args = shlex.split(EMTEST_BROWSER)
-    # If the given browser is just a type, use the built-in functionality
-    # of the webbrowser module to open that type of browser
-    if len(browser_args) == 1 and '/' not in browser_args[0]:
-      print("Using Emscripten browser: " + browser_args[0])
-      return webbrowser.get(browser_args[0]).open_new
-    # If the given browser is a specific program with additional parameters,
-    # delegate to that command
-    else:
-      print("Using Emscripten browser: " + str(browser_args))
+      webbrowser.open_new(url)
+      return
 
-      def run_browser_cmd(url):
-        subprocess.Popen(browser_args + [url])
-      return run_browser_cmd
+    browser_args = shlex.split(EMTEST_BROWSER)
+    # If the given browser is a string with no separators, assume it's one
+    # of the types that the webbrowser module accepts like `safari`,
+    # `firefox`, or `chrome`. See https://docs.python.org/2/library/webbrowser.html
+    # for the full list
+    if len(browser_args) == 1 and os.path.sep not in browser_args[0]:
+      print("Using Emscripten browser: " + browser_args[0])
+      webbrowser.get(browser_args[0]).open_new(url)
+      return
+    # Else assume the given browser is a specific program with additional
+    # parameters and delegate to that
+    print("Using Emscripten browser: " + str(browser_args))
+    subprocess.Popen(browser_args + [url])
 
   @classmethod
   def setUpClass(cls):
@@ -1380,14 +1382,13 @@ class BrowserCore(RunnerCore):
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
-    browser_open = cls.get_browser_open_func()
     cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    browser_open('http://localhost:%s/run_harness' % cls.port)
+    cls.browser_open('http://localhost:%s/run_harness' % cls.port)
 
   @classmethod
   def tearDownClass(cls):
