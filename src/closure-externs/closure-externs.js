@@ -994,3 +994,11 @@ var threadInfoStruct;
 var selfThreadId;
 /** @suppress {duplicate} */
 var noExitRuntime;
+
+// These functions are declared in emcc.py but used in postamble.js; we need
+// to explicitly tell Closure Compiler about their existence since the
+// postamble is optimized independently
+/** @type {Function} */
+var returned_promise_resolve;
+/** @type {Function} */
+var returned_promise_reject;

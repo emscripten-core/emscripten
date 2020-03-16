@@ -63,7 +63,12 @@ if (memoryInitializer) {
     };
     var doBrowserLoad = function() {
       readAsync(memoryInitializer, applyMemoryInitializer, function() {
-        returned_promise_reject(new Error('could not load memory initializer ' + memoryInitializer));
+        var e = new Error('could not load memory initializer ' + memoryInitializer);
+#if MODULARIZE
+          returned_promise_reject(e);
+#else
+          throw e;
+#endif
       });
     };
 #if SUPPORT_BASE64_EMBEDDING

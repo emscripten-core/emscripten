@@ -3353,10 +3353,10 @@ window.close = function() {
   @requires_sync_compilation
   def test_modularize(self):
     for opts in [
-      [], 
-      ['-O1'], 
-      ['-O2', '-profiling'], 
-      ['-O2'], 
+      [],
+      ['-O1'],
+      ['-O2', '-profiling'],
+      ['-O2'],
       ['-O2', '--closure', '1']
     ]:
       for args, code in [

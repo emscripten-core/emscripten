@@ -3355,13 +3355,14 @@ def modularize():
 
   src = '''
 function(%(EXPORT_NAME)s) {
-  return new Promise((returned_promise_resolve, returned_promise_reject) => {
-  
+  var returned_promise_resolve, returned_promise_reject;
+  var promise = new Promise((resolve, reject) => (returned_promise_resolve=resolve, returned_promise_reject=reject));
+
   %(EXPORT_NAME)s = %(EXPORT_NAME)s || {};
 
 %(src)s
 
-  });
+  return promise;
 }
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
