@@ -73,8 +73,6 @@
   "__cxa_free_exception": ["free"],
   "__cxa_throw": ["setThrew"],
   "_formatString": ["strlen"],
-  "setjmp": ["realloc"],
-  "saveSetjmp": ["realloc"],
   "glfwSleep": ["sleep"],
   "glBegin": ["malloc", "free"],
   "bind": ["htonl", "htons", "ntohs"],
