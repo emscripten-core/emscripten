@@ -349,7 +349,8 @@ class TestCoreBase(RunnerCore):
       # that we are doing cross-compilation
       # and skip attempting to run the generated executable with './a.out',
       # which would fail since we are building a .js file.
-      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu', '--disable-demos', '--disable-dependency-tracking']
+      configure_args = ['--disable-shared', '--host=i686-pc-linux-gnu',
+                        '--disable-demos', '--disable-dependency-tracking']
       generated_libs = [os.path.join('src', '.libs', 'libBulletDynamics.a'),
                         os.path.join('src', '.libs', 'libBulletCollision.a'),
                         os.path.join('src', '.libs', 'libLinearMath.a')]
@@ -1228,7 +1229,6 @@ int main() {
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
   @no_emterpreter
-  @no_wasm_backend('MINIMAL_RUNTIME not yet available in Wasm backend')
   def test_exceptions_minimal_runtime(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
@@ -5355,10 +5355,12 @@ main( int argv, char ** argc ) {
 
   def test_fs_mmap(self):
     orig_compiler_opts = self.emcc_args[:]
-    for fs in ['MEMFS']:
+    for fs in ['MEMFS', 'NODEFS']:
       src = path_from_root('tests', 'fs', 'test_mmap.c')
       out = path_from_root('tests', 'fs', 'test_mmap.out')
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
+      if fs == 'NODEFS':
+        self.emcc_args += ['-lnodefs.js']
       self.do_run_from_file(src, out)
 
   @also_with_noderawfs
@@ -5764,41 +5766,6 @@ PORT: 3979
     self.emcc_args += ['--js-library', path_from_root('tests', 'unicode_library.js')]
     self.do_run(open('main.cpp').read(), u'Unicode snowman \u2603 says hello!')
 
-  def test_js_lib_dep_memset(self):
-    create_test_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
-  depper__deps: ['memset'],
-  depper: function(ptr) {
-    _memset(ptr, 'd'.charCodeAt(0), 10);
-  },
-});
-''')
-    src = r'''
-#include <string.h>
-#include <stdio.h>
-
-extern "C" {
-extern void depper(char*);
-}
-
-int main(int argc, char** argv) {
-  char buffer[11];
-  buffer[10] = '\0';
-  // call by a pointer, to force linking of memset, no llvm intrinsic here
-  volatile auto ptr = memset;
-  (*ptr)(buffer, 'a', 10);
-  depper(buffer);
-  puts(buffer);
-}
-'''
-    self.emcc_args += ['--js-library', 'lib.js',  '-std=c++11']
-    self.do_run(src, 'dddddddddd')
-    # TODO(sbc): It seems that INCLUDE_FULL_LIBRARY will generally generate
-    # undefined symbols at link time so perhaps have it imply this setting?
-    self.set_setting('WARN_ON_UNDEFINED_SYMBOLS', 0)
-    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
-    self.do_run(src, 'dddddddddd')
-
   def test_funcptr_import_type(self):
     self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_funcptr_import_type.js'), '-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_funcptr_import_type')
@@ -6111,24 +6078,17 @@ return malloc(size);
 
   @needs_make('make')
   def test_lua(self):
-    self.emcc_args = ['-g1'] + self.emcc_args
     self.emcc_args.remove('-Werror')
-
-    INITIAL_MEMORY = self.get_setting('INITIAL_MEMORY')
 
     if self.is_emterpreter():
       self.set_setting('PRECISE_F32', 1)
 
-    for aggro in ([0, 1] if self.get_setting('ASM_JS') and '-O2' in self.emcc_args else [0]):
-      self.set_setting('AGGRESSIVE_VARIABLE_ELIMINATION', aggro)
-      self.set_setting('INITIAL_MEMORY', INITIAL_MEMORY)
-      print(aggro)
-      self.do_run('',
-                  'hello lua world!\n17\n1\n2\n3\n4\n7',
-                  args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                  libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
-                  includes=[path_from_root('tests', 'lua')],
-                  output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
+    self.do_run('',
+                'hello lua world!\n17\n1\n2\n3\n4\n7',
+                args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
+                libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                includes=[path_from_root('tests', 'lua')],
+                output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
   @needs_make('configure script')
   @is_slow_test
@@ -7457,8 +7417,7 @@ err = err = function(){};
   @no_wasm2js('TODO: source maps in wasm2js')
   @no_fastcomp('DWARF is only supported in upstream')
   def test_dwarf(self):
-    self.emcc_args.append('-gforce_dwarf')
-    self.emcc_args.remove('-Werror') # ignore warning on force-dwarf
+    self.emcc_args.append('-g')
 
     create_test_file('src.cpp', '''
       #include <emscripten.h>
