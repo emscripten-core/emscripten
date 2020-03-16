@@ -2975,7 +2975,7 @@ def parse_args(newargs):
     elif newargs[i] == '-fno-exceptions':
       shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
       shared.Settings.DISABLE_EXCEPTION_THROWING = 1
-      shared.Settings.EXCEPTION_HANDLING = 1
+      shared.Settings.EXCEPTION_HANDLING = 0
     elif newargs[i] == '-fexceptions':
       eh_enabled = True
     elif newargs[i] == '-fwasm-exceptions':
