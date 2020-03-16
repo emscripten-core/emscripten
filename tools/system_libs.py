@@ -554,6 +554,12 @@ class NoExceptLibrary(Library):
       raise Exception('Invalid exception mode')
     super(NoExceptLibrary, self).__init__(**kwargs)
 
+  def can_build(self):
+    if not super(NoExceptLibrary, self).can_build():
+      return False
+    # Wasm exception handling is only supported in the wasm backend
+    return shared.Settings.WASM_BACKEND or self.eh_mode != 'wasm'
+
   def can_use(self):
     if not super(NoExceptLibrary, self).can_use():
       return False
