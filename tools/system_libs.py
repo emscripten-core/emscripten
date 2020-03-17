@@ -78,6 +78,7 @@ def run_one_command(cmd):
       del safe_env[opt]
   shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
+
 def run_build_commands(commands):
   cores = min(len(commands), shared.Building.get_num_cores())
   if cores <= 1:
