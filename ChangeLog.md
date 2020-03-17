@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Remove arc4random function form library.js.  This is a BSD-only library
+  function.  Anyone requiring BSD compat should be able to use something like
+  https://libbsd.freedesktop.org/.
 - Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
   you add, and does not need to contain the list of default system imports like
   ``emscripten_sleep``. There is no harm in providing them, though, so this
