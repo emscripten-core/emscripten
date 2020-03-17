@@ -1225,7 +1225,6 @@ int main() {
   def test_exceptions_off(self):
     for support_longjmp in [0, 1]:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.set_setting('EXCEPTION_HANDLING', 0)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
   @no_emterpreter
@@ -1470,6 +1469,7 @@ int main(int argc, char **argv)
 
   # TODO Enable @with_both_exception_handling (unknown error)
   def test_exceptions_typed(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
