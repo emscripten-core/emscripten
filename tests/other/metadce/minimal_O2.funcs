@@ -5,7 +5,6 @@ $add
 $dlfree
 $dlmalloc
 $sbrk
-$setThrew
 $stackAlloc
 $stackRestore
 $stackSave

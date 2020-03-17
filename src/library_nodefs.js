@@ -184,6 +184,7 @@ mergeInto(LibraryManager.library, {
           if (!e.code) throw e;
           throw new FS.ErrnoError(NODEFS.convertNodeCode(e));
         }
+        oldNode.name = newName;
       },
       unlink: function(parent, name) {
         var path = PATH.join2(NODEFS.realPath(parent), name);
@@ -291,6 +292,29 @@ mergeInto(LibraryManager.library, {
         }
 
         return position;
+      },
+      mmap: function(stream, buffer, offset, length, position, prot, flags) {
+        if (!FS.isFile(stream.node.mode)) {
+          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+        }
+        var ptr = _malloc(length);
+
+        assert(offset === 0);
+        NODEFS.stream_ops.read(stream, buffer, ptr + offset, length, position);
+        
+        return { ptr: ptr, allocated: true };
+      },
+      msync: function(stream, buffer, offset, length, mmapFlags) {
+        if (!FS.isFile(stream.node.mode)) {
+          throw new FS.ErrnoError({{{ cDefine('ENODEV') }}});
+        }
+        if (mmapFlags & {{{ cDefine('MAP_PRIVATE') }}}) {
+          // MAP_PRIVATE calls need not to be synced back to underlying fs
+          return 0;
+        }
+
+        var bytesWritten = NODEFS.stream_ops.write(stream, buffer, 0, length, offset, false);
+        return 0;
       }
     }
   }

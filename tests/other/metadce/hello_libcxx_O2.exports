@@ -26,7 +26,6 @@ dynCall_viijii
 free
 main
 malloc
-setThrew
 stackAlloc
 stackRestore
 stackSave
