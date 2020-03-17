@@ -6,7 +6,7 @@
 
 extern "C" {
 
-_Unwind_Reason_Code __gxx_personality_v0(int version, _Unwind_Action actions,
+_Unwind_Reason_Code __gxx_personality_w0(int version, _Unwind_Action actions,
                                          uint64_t exceptionClass,
                                          _Unwind_Exception *unwind_exception,
                                          _Unwind_Context *context);
@@ -39,7 +39,7 @@ _Unwind_Reason_Code _Unwind_CallPersonality(void *exception_ptr) {
 
   // Call personality function. Wasm does not have two-phase unwinding, so we
   // only do the cleanup phase.
-  _Unwind_Reason_Code ret = __gxx_personality_v0(
+  _Unwind_Reason_Code ret = __gxx_personality_w0(
       1, _UA_CLEANUP_PHASE, exception_object->exception_class, exception_object,
       (struct _Unwind_Context *)&__wasm_lpad_context);
   return ret;
