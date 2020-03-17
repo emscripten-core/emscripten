@@ -181,7 +181,7 @@ var Promise = (function() {
 
   Promise.all = function(arr) {
     return new Promise(function(resolve, reject) {
-      if (!isArray(arr)) {
+      if (!Array.isArray(arr)) {
         return reject(new TypeError('Promise.all accepts an array'));
       }
 
@@ -237,7 +237,7 @@ var Promise = (function() {
 
   Promise.race = function(arr) {
     return new Promise(function(resolve, reject) {
-      if (!isArray(arr)) {
+      if (!Array.isArray(arr)) {
         return reject(new TypeError('Promise.race accepts an array'));
       }
 
