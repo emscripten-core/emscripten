@@ -67,10 +67,11 @@
   "__cxa_find_matching_catch_7": ["__cxa_is_pointer_type", "__cxa_can_catch"],
   "__cxa_find_matching_catch_8": ["__cxa_is_pointer_type", "__cxa_can_catch"],
   "__cxa_find_matching_catch_9": ["__cxa_is_pointer_type", "__cxa_can_catch"],
-  "__cxa_begin_catch": ["_ZSt18uncaught_exceptionv"],
+  "__cxa_begin_catch": ["_ZSt18uncaught_exceptionv", "setThrew"],
   "__cxa_end_catch": ["free"],
-  "__cxa_allocate_exception": ["malloc"],
+  "__cxa_allocate_exception": ["malloc", "setThrew"],
   "__cxa_free_exception": ["free"],
+  "__cxa_throw": ["setThrew"],
   "_formatString": ["strlen"],
   "setjmp": ["realloc"],
   "saveSetjmp": ["realloc"],
@@ -109,5 +110,9 @@
   "_embind_register_std_wstring": ["free"],
   "_embind_register_function": ["free"],
   "_embind_register_class": ["free"],
-  "_embind_register_enum_value": ["free"]
+  "_embind_register_enum_value": ["free"],
+  "setjmp": ["setThrew", "realloc"],
+  "longjmp": ["setThrew", "realloc"],
+  "emscripten_longjmp_jmpbuf": ["setThrew", "realloc"],
+  "saveSetjmp": ["setThrew", "realloc"]
 }

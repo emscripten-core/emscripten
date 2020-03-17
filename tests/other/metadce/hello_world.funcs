@@ -51,7 +51,6 @@ $printf
 $printf_core
 $pthread_self
 $sbrk
-$setThrew
 $stackAlloc
 $stackRestore
 $stackSave

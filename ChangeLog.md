@@ -17,6 +17,18 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
+  you add, and does not need to contain the list of default system imports like
+  ``emscripten_sleep``. There is no harm in providing them, though, so this
+  is not a breaking change.
+- Enable DWARF support: with building with -g, normal DWARF emitting happens,
+  and when linking with -g we preserve that and update it. This is a change
+  from before, where we assumed DWARF was unneeded and did not emit it, so this
+  can increase the size of debug builds (i.e. builds compiling and/or linking
+  with -g). This change is necessary for full debugging support, that is, to
+  be able to build with -g and use a debugger. Before this change only the
+  -gforce_dwarf flag enabled DWARF; that flag is now removed. For more info
+  and background see #10325.
 - Remove hacks from `memset` handling, in particular, in the wasm backend,
   completely remove the JS version of memset from the JS library and from
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. The regular C version will be linked in
@@ -35,7 +47,7 @@ v1.39.10: 03/09/2020
 v1.39.9: 03/05/2020
 -------------------
 - Add support for -Wall, -Werror, -w, -Wno-error=, -Werror=, for controlling
-  internal emscripten errors. The behviour of these flags matches the gcc/clang
+  internal emscripten errors. The behavior of these flags matches the gcc/clang
   counterparts.
 - Rename `TOTAL_MEMORY` to `INITIAL_MEMORY` and `WASM_MEM_MAX` to `MAXIMUM_MEMORY`,
   which are more accurate and match wasm conventions. The old names are still
