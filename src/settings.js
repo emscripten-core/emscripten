@@ -637,18 +637,14 @@ var NODEJS_CATCH_REJECTION = 1;
 // On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
-// The imports which can do a sync operation. If you add more you will need to
-// add them to here.
-// If the names here do not include a "module." prefix, the module is assumed
-// to be "env".
-var ASYNCIFY_IMPORTS = [
-  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
-  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
-  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
-  'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'emscripten_fiber_swap',
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
-];
+// Imports which can do a sync operation, in addition to the default ones that
+// emscripten defines like emscripten_sleep. If you add more you will need to
+// mention them to here, or else they will not work (in ASSERTIONS builds an
+// error will be shown).
+// Note that this list used to contain the default ones, which meant that you
+// had to list them when adding your own; the default ones are now added
+// automatically.
+var ASYNCIFY_IMPORTS = [];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
@@ -840,13 +836,7 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-  'memcpy',
-  'memset',
-  'malloc',
-  'free',
-  'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if

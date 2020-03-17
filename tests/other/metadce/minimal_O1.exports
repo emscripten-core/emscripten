@@ -5,7 +5,6 @@ __wasm_call_ctors
 add
 free
 malloc
-setThrew
 stackAlloc
 stackRestore
 stackSave

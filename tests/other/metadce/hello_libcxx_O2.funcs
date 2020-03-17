@@ -171,7 +171,6 @@ $sbrk
 $scalbn
 $scalbnl
 $scanexp
-$setThrew
 $sn_write
 $snprintf
 $sscanf

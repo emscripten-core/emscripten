@@ -2278,6 +2278,15 @@ int f() {
         output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
+  @no_fastcomp('wasm2js-only')
+  def test_js_optimizer_wasm2js(self):
+    # run the js optimizer in a similar way as wasm2js does
+    shutil.copyfile(path_from_root('tests', 'optimizer', 'wasm2js.js'), 'wasm2js.js')
+    run_process([PYTHON, path_from_root('tools', 'js_optimizer.py'), 'wasm2js.js', 'minifyNames', 'last'])
+    with open(path_from_root('tests', 'optimizer', 'wasm2js-output.js')) as expected:
+      with open('wasm2js.js.jsopt.js') as actual:
+        self.assertIdentical(expected.read(), actual.read())
+
   def test_m_mm(self):
     create_test_file('foo.c', '#include <emscripten.h>')
     for opt in ['M', 'MM']:
@@ -2355,30 +2364,34 @@ int f() {
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.out.wasm'] + compile_args)
 
     no_size, line_size, full_size = test(compile_to_object)
-
     self.assertLess(no_size, line_size)
-    # currently we don't support full debug info anyhow, so line tables
-    # is all we have
-    self.assertEqual(line_size, full_size)
+    self.assertLess(line_size, full_size)
 
-    def compile_to_executable(compile_args):
+    def compile_to_executable(compile_args, link_args):
       # compile with the specified args
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.o'] + compile_args)
       # link with debug info
-      run_process([PYTHON, EMCC, 'a.o', '-g'])
+      run_process([PYTHON, EMCC, 'a.o'] + link_args)
 
-    no_size, line_size, full_size = test(compile_to_executable)
+    def compile_to_debug_executable(compile_args):
+      return compile_to_executable(compile_args, ['-g'])
 
-    # currently we strip all debug info from the final wasm anyhow, until
-    # we have full dwarf support
+    no_size, line_size, full_size = test(compile_to_debug_executable)
+    self.assertLess(no_size, line_size)
+    self.assertLess(line_size, full_size)
+
+    def compile_to_release_executable(compile_args):
+      return compile_to_executable(compile_args, [])
+
+    no_size, line_size, full_size = test(compile_to_release_executable)
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   @no_fastcomp()
-  def test_force_dwarf(self):
+  def test_dwarf(self):
     def compile_with_dwarf(args, output):
-      # Test that the -gforce_dwarf flag forces enabling dwarf info in object files and linked wasm
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-gforce_dwarf'] + args)
+      # Test that -g enables dwarf info in object files and linked wasm
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-g'] + args)
 
     def verify(output):
       info = run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
@@ -6918,6 +6931,51 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([PYTHON, EMCC, 'test.cpp'])
     self.assertContained('undefined symbol: my_js', err)
 
+  @no_fastcomp('fastcomp links in memset in JS in a hackish way')
+  def test_js_lib_to_system_lib(self):
+    # memset is in compiled code, so a js library __deps can't access it. it
+    # would need to be in deps_info.json or EXPORTED_FUNCTIONS
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  depper__deps: ['memset'],
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    create_test_file('test.cpp', r'''
+#include <string.h>
+#include <stdio.h>
+
+extern "C" {
+extern void depper(char*);
+}
+
+int main(int argc, char** argv) {
+  char buffer[11];
+  buffer[10] = '\0';
+  // call by a pointer, to force linking of memset, no llvm intrinsic here
+  volatile auto ptr = memset;
+  (*ptr)(buffer, 'a', 10);
+  depper(buffer);
+  puts(buffer);
+}
+''')
+
+    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11'])
+    self.assertContained('_memset may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library', err)
+
+    # without the dep, and with EXPORTED_FUNCTIONS, it works ok
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
+    self.assertContained('dddddddddd', run_js('a.out.js'))
+
   def test_realpath(self):
     create_test_file('src.c', r'''
 #include <stdlib.h>
@@ -8256,7 +8314,6 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10652, True, True, True, False), # noqa
   })
   @no_fastcomp()
-  @unittest.skip("Allow LLVM roll to proceed")
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
@@ -9053,7 +9110,7 @@ int main() {
 
   @no_fastcomp('dwarf')
   def test_separate_dwarf(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf'])

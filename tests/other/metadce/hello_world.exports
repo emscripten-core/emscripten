@@ -12,7 +12,6 @@ fflush
 free
 main
 malloc
-setThrew
 stackAlloc
 stackRestore
 stackSave
