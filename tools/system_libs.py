@@ -987,7 +987,7 @@ class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libunwind'
   cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
   src_dir = ['system', 'lib', 'libunwind', 'src']
-  src_files = ['libunwind.cpp', 'Unwind-wasm.cpp']
+  src_files = ['Unwind-wasm.cpp']
 
   def __init__(self, **kwargs):
     super(libunwind, self).__init__(**kwargs)
