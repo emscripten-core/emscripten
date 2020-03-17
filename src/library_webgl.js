@@ -2429,11 +2429,12 @@ var LibraryGL = {
       var view = GL.miniTempBufferFloatViews[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      for (var i = 0; i < 4*count; i += 4) {
-        view[i] = heap[value + 4*i >> 2];
-        view[i+1] = heap[value + 4*i+4 >> 2];
-        view[i+2] = heap[value + 4*i+8 >> 2];
-        view[i+3] = heap[value + 4*i+12 >> 2];
+      value >>= 2;
+      for (var i = 0; i < 4 * count; i += 4) {
+        view[i] = heap[value + i];
+        view[i + 1] = heap[value + i + 1];
+        view[i + 2] = heap[value + i + 2];
+        view[i + 3] = heap[value + i + 3];
       }
     } else
 #endif
@@ -2541,23 +2542,24 @@ var LibraryGL = {
       var view = GL.miniTempBufferFloatViews[16*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      for (var i = 0; i < 16*count; i += 16) {
-        view[i] = heap[value + 4*i >> 2];
-        view[i+1] = heap[value + 4*i+4 >> 2];
-        view[i+2] = heap[value + 4*i+8 >> 2];
-        view[i+3] = heap[value + 4*i+12 >> 2];
-        view[i+4] = heap[value + 4*i+16 >> 2];
-        view[i+5] = heap[value + 4*i+20 >> 2];
-        view[i+6] = heap[value + 4*i+24 >> 2];
-        view[i+7] = heap[value + 4*i+28 >> 2];
-        view[i+8] = heap[value + 4*i+32 >> 2];
-        view[i+9] = heap[value + 4*i+36 >> 2];
-        view[i+10] = heap[value + 4*i+40 >> 2];
-        view[i+11] = heap[value + 4*i+44 >> 2];
-        view[i+12] = heap[value + 4*i+48 >> 2];
-        view[i+13] = heap[value + 4*i+52 >> 2];
-        view[i+14] = heap[value + 4*i+56 >> 2];
-        view[i+15] = heap[value + 4*i+60 >> 2];
+      value >>= 2;
+      for (var i = 0; i < 16 * count; i += 16) {
+        view[i] = heap[value + i];
+        view[i + 1] = heap[value + i + 1];
+        view[i + 2] = heap[value + i + 2];
+        view[i + 3] = heap[value + i + 3];
+        view[i + 4] = heap[value + i + 4];
+        view[i + 5] = heap[value + i + 5];
+        view[i + 6] = heap[value + i + 6];
+        view[i + 7] = heap[value + i + 7];
+        view[i + 8] = heap[value + i + 8];
+        view[i + 9] = heap[value + i + 9];
+        view[i + 10] = heap[value + i + 10];
+        view[i + 11] = heap[value + i + 11];
+        view[i + 12] = heap[value + i + 12];
+        view[i + 13] = heap[value + i + 13];
+        view[i + 14] = heap[value + i + 14];
+        view[i + 15] = heap[value + i + 15];
       }
     } else
 #endif
