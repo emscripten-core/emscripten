@@ -966,7 +966,7 @@ _UA_CLEANUP_PHASE
 
 #if !defined(_LIBCXXABI_ARM_EHABI)
 #ifdef __USING_WASM_EXCEPTIONS__
-_Unwind_Reason_Code __gxx_personality_w0
+_Unwind_Reason_Code __gxx_personality_wasm0
 #elif defined(__SEH__) && !defined(__USING_SJLJ_EXCEPTIONS__)
 static _Unwind_Reason_Code __gxx_personality_imp
 #else
