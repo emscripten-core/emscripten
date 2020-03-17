@@ -7638,20 +7638,6 @@ mergeInto(LibraryManager.library, {
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=[]'], stderr=PIPE)
     self.assertContained(WARNING, proc.stderr)
 
-  def test_arc4random(self):
-    create_test_file('src.c', r'''
-#include <stdlib.h>
-#include <stdio.h>
-
-int main() {
-  printf("%d\n", arc4random());
-  printf("%d\n", arc4random());
-}
-    ''')
-    run_process([PYTHON, EMCC, 'src.c', '-Wno-implicit-function-declaration'])
-
-    self.assertContained('0\n740882966\n', run_js('a.out.js'))
-
   ############################################################
   # Function eliminator tests
   ############################################################

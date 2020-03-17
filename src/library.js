@@ -930,11 +930,6 @@ LibraryManager.library = {
     return limit;
   },
 
-  // For compatibility, call to rand() when code requests arc4random(), although this is *not* at all
-  // as strong as rc4 is. See https://man.openbsd.org/arc4random
-  arc4random__sig: 'i',
-  arc4random: 'rand',
-
   // ==========================================================================
   // string.h
   // ==========================================================================

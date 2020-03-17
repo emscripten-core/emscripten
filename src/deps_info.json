@@ -1,5 +1,4 @@
 {
-  "arc4random": ["rand"],
   "freopen": ["free"],
   "munmap": ["free"],
   "getenv": ["malloc", "free", "_get_environ"],
