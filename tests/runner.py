@@ -178,7 +178,7 @@ def env_modify(updates):
   # This could also be done with mock.patch.dict() but taking a dependency
   # on the mock library is probably not worth the benefit.
   old_env = os.environ.copy()
-  print("env_modify: " + str(updates))
+  logger.info("env_modify: " + str(updates))
   # Seting a value to None means clear the environment variable
   clears = [key for key, value in updates.items() if value is None]
   updates = {key: value for key, value in updates.items() if value is not None}
@@ -420,7 +420,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   @classmethod
   def setUpClass(cls):
     super(RunnerCore, cls).setUpClass()
-    print('(checking sanity from test runner)') # do this after we set env stuff
+    logger.debug('(checking sanity from test runner)') # do this after we set env stuff
     shared.check_sanity(force=True)
 
   def setUp(self):
@@ -479,9 +479,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
         left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
         if len(left_over_files):
-          print('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
+          logger.error('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
           for f in left_over_files:
-            print('leaked file: ' + f, file=sys.stderr)
+            logger.error('leaked file: ' + f, file=sys.stderr)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
       # Make sure we don't leave stuff around
@@ -645,7 +645,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         inputs = [object_file + '.alone'] + [f + '.o' for f in additional_files] + libraries
         Building.link_to_object(inputs, object_file)
         if not os.path.exists(object_file):
-          print("Failed to link LLVM binaries:\n\n", object_file)
+          logger.error("Failed to link LLVM binaries:\n\n", object_file)
           self.fail("Linkage error")
 
       # Finalize
@@ -690,13 +690,13 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       }
       simd = m.group(1)
       if simd in bugs:
-        print(("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
+        logger.warning(("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
                " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd]), file=sys.stderr)
         err = err.replace(m.group(0), '')
 
     # check for asm.js validation
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
-      print("[was asm.js'ified]", file=sys.stderr)
+      logger.info("[was asm.js'ified]", file=sys.stderr)
     # check for an asm.js validation error, if we expect one
     elif 'asm.js' in err and not self.is_wasm() and self.get_setting('ASM_JS') == 1:
       self.fail("did NOT asm.js'ify: " + err)
@@ -757,8 +757,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     # Make sure that we produced proper line endings to the .js file we are about to run.
     self.assertEqual(line_endings.check_line_endings(filename), 0)
     error = None
-    if EMTEST_VERBOSE:
-      print("Running '%s' under '%s'" % (filename, engine))
+    logger.debug("Running '%s' under '%s'" % (filename, engine))
     try:
       with chdir(self.get_dir()):
         jsrun.run_js(filename, engine, args, check_timeout,
@@ -777,9 +776,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       ret = out + err
     if error or EMTEST_VERBOSE:
-      print('-- begin program output --')
-      print(ret, end='')
-      print('-- end program output --')
+      logger.info('-- begin program output --')
+      logger.info(ret, end='')
+      logger.info('-- end program output --')
     if error:
       self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
 
@@ -821,8 +820,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
-    if EMTEST_VERBOSE:
-      print("Expected to have '%s' == '%s'" % limit_size(values[0]), limit_size(y))
+    logger.debug('Expected to have %s == %s', limit_size(values[0]), limit_size(y))
     fail_message = 'Unexpected difference:\n' + limit_size(diff)
     if not EMTEST_VERBOSE:
       fail_message += '\nFor full output run with EMTEST_VERBOSE=1.'
@@ -892,7 +890,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if self.library_cache.get(cache_name):
-      print('<load %s from cache> ' % cache_name, file=sys.stderr)
+      logger.debug('Loading %s from cache ' % cache_name, file=sys.stderr)
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
@@ -901,7 +899,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         generated_libs.append(bc_file)
       return generated_libs
 
-    print('<building and saving %s into cache> ' % cache_name, file=sys.stderr)
+    logger.debug('Building and saving %s into cache ' % cache_name, file=sys.stderr)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
@@ -1172,7 +1170,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
             if check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
-          print('(test did not pass in JS engine: %s)' % engine)
+          logger.error('(test did not pass in JS engine: %s)' % engine, exc_info=True)
           raise
 
   def get_freetype_library(self):
@@ -1261,8 +1259,7 @@ def harness_server_func(in_queue, out_queue, port):
 
     def do_GET(self):
       if self.path == '/run_harness':
-        if DEBUG:
-          print('[server startup]')
+        logger.debug('server startup')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -1274,8 +1271,7 @@ def harness_server_func(in_queue, out_queue, port):
         else:
           path = self.path
           url = '?'
-        if DEBUG:
-          print('[server response:', path, url, ']')
+        logger.debug('server response: %s %s', path, url)
         if out_queue.empty():
           out_queue.put(path)
         else:
@@ -1304,7 +1300,7 @@ def harness_server_func(in_queue, out_queue, port):
             xhr.open('GET', encodeURI('http://localhost:8888?stdout=' + text));
             xhr.send();
         '''
-        print('[client logging:', unquote_plus(self.path), ']')
+        logger.info('[client logging:', unquote_plus(self.path), ']')
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
@@ -1314,8 +1310,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         if not in_queue.empty():
           url, dir = in_queue.get()
-          if DEBUG:
-            print('[queue command:', url, dir, ']')
+          logger.debug('[queue command: %s %s ]', url, dir,)
           assert in_queue.empty(), 'should not be any blockage - one test runs at a time'
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
@@ -1327,8 +1322,7 @@ def harness_server_func(in_queue, out_queue, port):
           self.wfile.write(b'(wait)')
       else:
         # Use SimpleHTTPServer default file serving operation for GET.
-        if DEBUG:
-          print('[simple HTTP serving:', unquote_plus(self.path), ']')
+        logger.debug('[simple HTTP serving: %s ]', unquote_plus(self.path))
         SimpleHTTPRequestHandler.do_GET(self)
 
     def log_request(code=0, size=0):
@@ -1376,7 +1370,7 @@ class BrowserCore(RunnerCore):
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
-    print('[Browser harness server on process %d]' % cls.harness_server.pid)
+    logger.debug('[Browser harness server on process %d]' % cls.harness_server.pid)
     webbrowser.open_new('http://localhost:%s/run_harness' % cls.port)
 
   @classmethod
@@ -1385,7 +1379,7 @@ class BrowserCore(RunnerCore):
     if not has_browser():
       return
     cls.harness_server.terminate()
-    print('[Browser harness server terminated]')
+    logger.debug('[Browser harness server terminated]')
     if WINDOWS:
       # On Windows, shutil.rmtree() in tearDown() raises this exception if we do not wait a bit:
       # WindowsError: [Error 32] The process cannot access the file because it is being used by another process.
@@ -1408,8 +1402,7 @@ class BrowserCore(RunnerCore):
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping browser launch - check your setup!')
     self.assert_out_queue_empty('previous test')
-    if DEBUG:
-      print('[browser launch:', html_file, ']')
+    logger.debug('[browser launch: %s ]', html_file)
     if expectedResult is not None:
       try:
         self.harness_in_queue.put((
@@ -1429,7 +1422,7 @@ class BrowserCore(RunnerCore):
           time.sleep(0.1)
         if not received_output:
           BrowserCore.unresponsive_tests += 1
-          print('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
+          logger.info('[unresponsive tests: %d]' % BrowserCore.unresponsive_tests)
         if output is None:
           # the browser harness reported an error already, and sent a None to tell
           # us to also fail the test
@@ -1442,8 +1435,7 @@ class BrowserCore(RunnerCore):
             self.assertIdentical(expectedResult, output)
           except Exception as e:
             if tries_left > 0:
-              print('[test error (see below), automatically retrying]')
-              print(e)
+              logger.error('[test error (see below), automatically retrying]', exc_info=True)
               return self.run_browser(html_file, message, expectedResult, timeout, tries_left - 1)
             else:
               raise e
@@ -1452,11 +1444,11 @@ class BrowserCore(RunnerCore):
       self.assert_out_queue_empty('this test')
     else:
       webbrowser.open_new(os.path.abspath(html_file))
-      print('A web browser window should have opened a page containing the results of a part of this test.')
-      print('You need to manually look at the page to see that it works ok: ' + message)
-      print('(sleeping for a bit to keep the directory alive for the web browser..)')
+      logger.info('A web browser window should have opened a page containing the results of a part of this test.')
+      logger.info('You need to manually look at the page to see that it works ok: ' + message)
+      logger.info('(sleeping for a bit to keep the directory alive for the web browser..)')
       time.sleep(5)
-      print('(moving on..)')
+      logger.info('(moving on..)')
 
   def with_report_result(self, user_code):
     return '''
@@ -1617,7 +1609,6 @@ class BrowserCore(RunnerCore):
       if not manual_reference:
         args = args + ['--pre-js', 'reftest.js', '-s', 'GL_TESTING=1']
     all_args = ['-s', 'IN_TEST_HARNESS=1', filepath, '-o', outfile] + args
-    # print('all args:', all_args)
     try_delete(outfile)
     self.compile_btest(all_args)
     self.assertExists(outfile)
@@ -1633,7 +1624,7 @@ class BrowserCore(RunnerCore):
                  original_args + ['-s', 'WASM=0'], outfile, message, also_proxied=False, timeout=timeout)
 
     if also_proxied:
-      print('proxied...')
+      logger.info('proxied...')
       if reference:
         assert not manual_reference
         manual_reference = True
@@ -1693,13 +1684,13 @@ def build_library(name,
                              cwd=project_dir)
     except subprocess.CalledProcessError:
       with open(os.path.join(project_dir, 'configure_out')) as f:
-        print('-- configure stdout --')
-        print(f.read())
-        print('-- end configure stdout --')
+        logger.info('-- configure stdout --')
+        logger.info(f.read())
+        logger.info('-- end configure stdout --')
       with open(os.path.join(project_dir, 'configure_err')) as f:
-        print('-- configure stderr --')
-        print(f.read())
-        print('-- end configure stderr --')
+        logger.info('-- configure stderr --')
+        logger.error(f.read(), exc_info=True)
+        logger.info('-- end configure stderr --')
       raise
 
   def open_make_out(mode='r'):
@@ -1720,13 +1711,13 @@ def build_library(name,
                       cwd=project_dir)
   except subprocess.CalledProcessError:
     with open_make_out() as f:
-      print('-- make stdout --')
-      print(f.read())
-      print('-- end make stdout --')
+      logger.info('-- make stdout --')
+      logger.info(f.read())
+      logger.info('-- end make stdout --')
     with open_make_err() as f:
-      print('-- make stderr --')
-      print(f.read())
-      print('-- end stderr --')
+      logger.info('-- make stderr --')
+      logger.error(f.read(), exc_info=True)
+      logger.info('-- end stderr --')
     raise
 
   if cache is not None:
@@ -1741,11 +1732,11 @@ def build_library(name,
 def check_js_engines():
   working_engines = list(filter(jsrun.check_engine, shared.JS_ENGINES))
   if len(working_engines) < len(shared.JS_ENGINES):
-    print('Not all the JS engines in JS_ENGINES appears to work.')
+    logger.error('Not all the JS engines in JS_ENGINES appears to work.')
     exit(1)
 
   if EMTEST_ALL_ENGINES:
-    print('(using ALL js engines)')
+    logger.info('(using ALL js engines)')
   else:
     logger.warning('use EMTEST_ALL_ENGINES=1 in the env to run against all JS '
                    'engines, which is slower but provides more coverage')
@@ -1787,7 +1778,7 @@ def tests_with_expanded_wildcards(args, all_tests):
     else:
       new_args += [arg]
   if not new_args and args:
-    print('No tests found to run in set: ' + str(args))
+    logger.error('No tests found to run in set: ' + str(args))
     sys.exit(1)
   return new_args
 
@@ -1797,9 +1788,9 @@ def skip_requested_tests(args, modules):
     if arg.startswith('skip:'):
       which = [arg.split('skip:')[1]]
 
-      print(','.join(which), file=sys.stderr)
+      logger.info(','.join(which), file=sys.stderr)
       for test in which:
-        print('will skip "%s"' % test, file=sys.stderr)
+        logger.info('will skip "%s"' % test, file=sys.stderr)
         suite_name, test_name = test.split('.')
         for m in modules:
           try:
@@ -1848,7 +1839,7 @@ def get_random_test_parameters(arg):
 
 def choose_random_tests(base, num_tests, relevant_modes):
   tests = [t for t in dir(base) if t.startswith('test_')]
-  print()
+  logger.info()
   chosen = set()
   while len(chosen) < num_tests:
     test = random.choice(tests)
@@ -1857,11 +1848,11 @@ def choose_random_tests(base, num_tests, relevant_modes):
     before = len(chosen)
     chosen.add(new_test)
     if len(chosen) > before:
-      print('* ' + new_test)
+      logger.info('* ' + new_test)
     else:
       # we may have hit the limit
       if len(chosen) == len(tests) * len(relevant_modes):
-        print('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
+        logger.info('(all possible tests chosen! %d = %d*%d)' % (len(chosen), len(tests), len(relevant_modes)))
         break
   return list(chosen)
 
@@ -1869,14 +1860,14 @@ def choose_random_tests(base, num_tests, relevant_modes):
 def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
-  print()
-  print('running those %d randomly-selected tests. if they all pass, then there is a '
+  logger.info()
+  logger.info('running those %d randomly-selected tests. if they all pass, then there is a '
         'greater than 95%% chance that at least %.2f%% of the test suite will pass'
         % (num_tests, expected))
-  print()
+  logger.info()
 
   def show():
-    print('if all tests passed then there is a greater than 95%% chance that at least '
+    logger.info('if all tests passed then there is a greater than 95%% chance that at least '
           '%.2f%% of the test suite will pass'
           % (expected))
   atexit.register(show)
@@ -1926,12 +1917,12 @@ def run_tests(options, suites):
   resultMessages = []
   num_failures = 0
 
-  print('Test suites:')
-  print([s[0] for s in suites])
+  logger.info('Test suites:')
+  logger.info(str([s[0] for s in suites]))
   # Run the discovered tests
   testRunner = unittest.TextTestRunner(verbosity=2)
   for mod_name, suite in suites:
-    print('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
+    logger.info('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
     res = testRunner.run(suite)
     msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
            (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
@@ -1939,11 +1930,11 @@ def run_tests(options, suites):
     resultMessages.append(msg)
 
   if len(resultMessages) > 1:
-    print('====================')
-    print()
-    print('TEST SUMMARY')
+    logger.info('====================')
+    logger.info()
+    logger.info('TEST SUMMARY')
     for msg in resultMessages:
-      print('    ' + msg)
+      logger.info('    ' + msg)
 
   # Return the number of failures as the process exit code for automating success/failure reporting.
   return min(num_failures, 255)
@@ -1973,7 +1964,7 @@ def main(args):
   tests = args_for_random_tests(tests, modules)
   suites, unmatched_tests = load_test_suites(tests, modules)
   if unmatched_tests:
-    print('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
+    logger.error('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
   return run_tests(options, suites)
