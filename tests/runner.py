@@ -479,9 +479,9 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
         left_over_files = [f for f in left_over_files if not any([f.startswith(prefix) for prefix in ignorable_file_prefixes])]
         if len(left_over_files):
-          logger.error('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:', file=sys.stderr)
+          logger.error('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:')
           for f in left_over_files:
-            logger.error('leaked file: ' + f, file=sys.stderr)
+            logger.error('leaked file: ' + f)
           self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
 
       # Make sure we don't leave stuff around
@@ -690,13 +690,15 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       }
       simd = m.group(1)
       if simd in bugs:
-        logger.warning(("\nWARNING: ignoring asm.js type error from {} due to implementation not yet available in SpiderMonkey." +
-               " See https://bugzilla.mozilla.org/show_bug.cgi?id={}\n").format(simd, bugs[simd]), file=sys.stderr)
+        logger.warning(
+          "\nWARNING: ignoring asm.js type error from %s due to implementation not yet available in SpiderMonkey." +
+          " See https://bugzilla.mozilla.org/show_bug.cgi?id=%s\n",
+          simd, bugs[simd])
         err = err.replace(m.group(0), '')
 
     # check for asm.js validation
     if 'uccessfully compiled asm.js code' in err and 'asm.js link error' not in err:
-      logger.info("[was asm.js'ified]", file=sys.stderr)
+      logger.info("[was asm.js'ified]")
     # check for an asm.js validation error, if we expect one
     elif 'asm.js' in err and not self.is_wasm() and self.get_setting('ASM_JS') == 1:
       self.fail("did NOT asm.js'ify: " + err)
@@ -890,7 +892,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     cache_name = ''.join([(c if c in valid_chars else '_') for c in cache_name])
 
     if self.library_cache.get(cache_name):
-      logger.debug('Loading %s from cache ' % cache_name, file=sys.stderr)
+      logger.debug('Loading %s from cache ' % cache_name)
       generated_libs = []
       for basename, contents in self.library_cache[cache_name]:
         bc_file = os.path.join(build_dir, cache_name + '_' + basename)
@@ -899,7 +901,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         generated_libs.append(bc_file)
       return generated_libs
 
-    logger.debug('Building and saving %s into cache ' % cache_name, file=sys.stderr)
+    logger.debug('Building and saving %s into cache ' % cache_name)
 
     return build_library(name, build_dir, output_dir, generated_libs, configure,
                          configure_args, make, make_args, self.library_cache,
@@ -1788,9 +1790,9 @@ def skip_requested_tests(args, modules):
     if arg.startswith('skip:'):
       which = [arg.split('skip:')[1]]
 
-      logger.info(','.join(which), file=sys.stderr)
+      logger.warning(','.join(which))
       for test in which:
-        logger.info('will skip "%s"' % test, file=sys.stderr)
+        logger.warning('will skip "%s"' % test)
         suite_name, test_name = test.split('.')
         for m in modules:
           try:
@@ -1861,15 +1863,17 @@ def print_random_test_statistics(num_tests):
   std = 0.5 / math.sqrt(num_tests)
   expected = 100.0 * (1.0 - std)
   logger.info()
-  logger.info('running those %d randomly-selected tests. if they all pass, then there is a '
-        'greater than 95%% chance that at least %.2f%% of the test suite will pass'
-        % (num_tests, expected))
+  logger.info(
+    'running those %d randomly-selected tests. if they all pass, then there is a '
+    'greater than 95%% chance that at least %.2f%% of the test suite will pass'
+    % (num_tests, expected))
   logger.info()
 
   def show():
-    logger.info('if all tests passed then there is a greater than 95%% chance that at least '
-          '%.2f%% of the test suite will pass'
-          % (expected))
+    logger.info(
+      'if all tests passed then there is a greater than 95%% chance that at least '
+      '%.2f%% of the test suite will pass'
+      % (expected))
   atexit.register(show)
 
 
