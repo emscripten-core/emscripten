@@ -69,29 +69,29 @@
     <textarea class="emscripten" id="output" rows="8"></textarea>
     <hr>
     <script type='text/javascript'>
-      // Work around Chromium autoplay policy
+      // Work around browser autoplay policy
       // https://github.com/emscripten-core/emscripten/issues/6511
       // An array of all contexts to resume on the page
       const audioContexList = [];
       (function() {
-          // A proxy object to intercept AudioContexts and 
-          // add them to the array for tracking and resuming later
-          self.AudioContext = new Proxy(self.AudioContext, {
-              construct(target, args) {
-                  const result = new target(...args);
-                  audioContexList.push(result);
-                  return result;
-              }
-          });
+        // A proxy object to intercept AudioContexts and 
+        // add them to the array for tracking and resuming later
+        self.AudioContext = new Proxy(self.AudioContext, {
+          construct(target, args) {
+            const result = new target(...args);
+            audioContexList.push(result);
+            return result;
+          }
+        });
       })();
 
       function resumeAudio() {
-          audioContexList.forEach(ctx => {
-              if (ctx.state == "suspended") ctx.resume();
-          });
+        audioContexList.forEach(ctx => {
+          if (ctx.state == "suspended") ctx.resume();
+        });
 
-          document.getElementById("canvas").removeEventListener("click", resumeAudio);
-          document.removeEventListener("keydown", resumeAudio);
+        document.getElementById("canvas").removeEventListener("click", resumeAudio);
+        document.removeEventListener("keydown", resumeAudio);
       }
       document.getElementById("canvas").addEventListener("click", resumeAudio);
       document.addEventListener("keydown", resumeAudio);
