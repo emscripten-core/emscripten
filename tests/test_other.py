@@ -9014,13 +9014,17 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
 
     normal = build()
 
-    with env_modify({'EMCC_JSOPT_MIN_CHUNK_SIZE': '1'}):
-      with env_modify({'EMCC_JSOPT_MAX_CHUNK_SIZE': '1'}):
-        tiny = build()
+    with env_modify({
+      'EMCC_JSOPT_MIN_CHUNK_SIZE': '1',
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '1'
+    }):
+      tiny = build()
 
-    with env_modify({'EMCC_JSOPT_MIN_CHUNK_SIZE': '4294967296'}):
-      with env_modify({'EMCC_JSOPT_MAX_CHUNK_SIZE': '4294967296'}):
-        huge = build()
+    with env_modify({
+      'EMCC_JSOPT_MIN_CHUNK_SIZE': '4294967296',
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '4294967296'
+    }):
+      huge = build()
 
     self.assertIdentical(normal, tiny)
     self.assertIdentical(normal, huge)
