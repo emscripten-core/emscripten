@@ -7706,7 +7706,7 @@ int main() {
 
       expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value-output.js'))
 
-      self.assertIdentical(output_file_contents, expected_file_contents)
+      self.assertIdentical(expected_file_contents, output_file_contents)
     finally:
       tools.tempfiles.try_delete(output_file)
 
@@ -9004,6 +9004,31 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
   1024: function() {var x = !<->5.;}
                              ^
 '''), stderr)
+
+  @no_fastcomp('wasm2js only')
+  def test_js_optimizer_chunk_size_determinism(self):
+    def build():
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '-s', 'WASM=0'])
+      with open('a.out.js') as f:
+        # FIXME: newline differences can exist, ignore for now
+        return f.read().replace('\n', '')
+
+    normal = build()
+
+    with env_modify({
+      'EMCC_JSOPT_MIN_CHUNK_SIZE': '1',
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '1'
+    }):
+      tiny = build()
+
+    with env_modify({
+      'EMCC_JSOPT_MIN_CHUNK_SIZE': '4294967296',
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '4294967296'
+    }):
+      huge = build()
+
+    self.assertIdentical(normal, tiny)
+    self.assertIdentical(normal, huge)
 
   def test_EM_ASM_ES6(self):
     # check we show a proper understandable error for JS parse problems
