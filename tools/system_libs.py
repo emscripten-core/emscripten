@@ -1535,6 +1535,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
     force_include.add('libasan_rt_wasm')
     add_library(system_libs_map['libasan_rt_wasm'])
 
+  # the sanitizer runtimes may call mmap, which will need a few things. sadly
+  # the usual deps_info mechanism does not work since we scan only user files
+  # for things, and not libraries (to be able to scan libraries, we'd need to
+  # somehow figure out which of their object files will actually be linked in -
+  # but only lld knows that). so just directly handle that here.
+  if shared.Settings.UBSAN_RUNTIME or shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
+    shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name('memset'))
+
   if shared.Settings.STANDALONE_WASM:
     add_library(system_libs_map['libstandalonewasm'])
 

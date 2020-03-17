@@ -50,8 +50,14 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 
 
 class Benchmarker(object):
+  # called when we init the object, which is during startup, even if we are
+  # not running benchmarks
   def __init__(self, name):
     self.name = name
+
+  # called when we actually start to run benchmarks
+  def prepare(self):
+    pass
 
   def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
     self.times = []
@@ -184,7 +190,9 @@ class EmscriptenBenchmarker(Benchmarker):
     os.environ = self.env.copy()
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
-      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=self.env.copy())
+      env_init = self.env.copy()
+      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS)
+      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     try_delete(final)
@@ -348,6 +356,9 @@ class benchmark(runner.RunnerCore):
   @classmethod
   def setUpClass(cls):
     super(benchmark, cls).setUpClass()
+
+    for benchmarker in benchmarkers:
+      benchmarker.prepare()
 
     fingerprint = ['ignoring compilation' if IGNORE_COMPILATION else 'including compilation', time.asctime()]
     try:
@@ -939,6 +950,18 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('zlib', src, '''ok.''',
                       force_c=True, shared_args=['-I' + path_from_root('tests', 'zlib')], lib_builder=lib_builder)
 
+  def test_zzz_coremark(self): # Called thus so it runs late in the alphabetical cycle... it is long
+    src = open(path_from_root('tests', 'third_party', 'coremark', 'core_main.c'), 'r').read()
+
+    def lib_builder(name, native, env_init):
+      return self.get_library('third_party/coremark', [os.path.join('coremark.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+
+    def output_parser(output):
+      iters_sec = re.search(r'Iterations/Sec   : ([\d\.]+)', output).group(1)
+      return 100000.0 / float(iters_sec)
+
+    self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
+
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
 
@@ -1022,7 +1045,7 @@ class benchmark(runner.RunnerCore):
       ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):
-      return self.get_poppler_library()
+      return self.get_poppler_library(env_init=env_init)
 
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',

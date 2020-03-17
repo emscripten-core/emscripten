@@ -1068,7 +1068,6 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
-#endif
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -1127,6 +1126,7 @@ LibraryManager.library = {
     }
     return (end-num)|0;
   },
+#endif // !WASM_BACKEND
 
   memcpy__sig: 'iiii',
   memmove__sig: 'iiii',
@@ -2876,7 +2876,9 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
+#if !WASM_BACKEND
   times__deps: ['memset'],
+#endif
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
