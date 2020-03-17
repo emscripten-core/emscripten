@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Upstream Clang now defaults to `-fno-common`. See
+  https://reviews.llvm.org/rG2c36c23f347
 - Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
   you add, and does not need to contain the list of default system imports like
   ``emscripten_sleep``. There is no harm in providing them, though, so this
