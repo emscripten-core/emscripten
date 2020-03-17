@@ -54,7 +54,11 @@ __cxa_free_exception(void *thrown_exception) _NOTHROW;
 // 2.4.3 Throwing the Exception Object
 extern _LIBCXXABI_FUNC_VIS _LIBCXXABI_NORETURN void
 __cxa_throw(void *thrown_exception, std::type_info *tinfo,
+#ifdef __USING_WASM_EXCEPTIONS__
+            void *(*dest)(void *));
+#else
             void (*dest)(void *));
+#endif
 
 // 2.5.3 Exception Handlers
 extern _LIBCXXABI_FUNC_VIS void *
