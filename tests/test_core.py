@@ -6098,11 +6098,6 @@ return malloc(size);
                 no_build=True)
 
   def test_sqlite(self):
-    # gcc -O3 -I/home/alon/Dev/emscripten/tests/sqlite -ldl src.c
-    self.banned_js_engines = [NODE_JS] # OOM in older node
-    if '-O' not in str(self.emcc_args):
-      self.banned_js_engines += [SPIDERMONKEY_ENGINE] # SM bug 1066759
-
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
     self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_sqlite3_open', '_sqlite3_close', '_sqlite3_exec', '_sqlite3_free'])
     if self.get_setting('ASM_JS') == 1 and '-g' in self.emcc_args:
