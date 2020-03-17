@@ -45,7 +45,7 @@ function initRuntime(asm) {
 #endif
 
 #if USE_PTHREADS
-  //Export needed variables that worker.js needs to Module.
+  // Export needed variables that worker.js needs to Module.
 #if WASM_BACKEND
   Module['_emscripten_tls_init'] = _emscripten_tls_init;
 #endif
