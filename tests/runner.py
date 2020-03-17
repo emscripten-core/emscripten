@@ -1357,7 +1357,7 @@ class BrowserCore(RunnerCore):
   @staticmethod
   def browser_open(url):
     if not EMTEST_BROWSER:
-      print("Using default system browser")
+      logger.info('Using default system browser')
       webbrowser.open_new(url)
       return
 
@@ -1367,12 +1367,12 @@ class BrowserCore(RunnerCore):
     # `firefox`, or `chrome`. See https://docs.python.org/2/library/webbrowser.html
     # for the full list
     if len(browser_args) == 1 and os.path.sep not in browser_args[0]:
-      print("Using Emscripten browser: " + browser_args[0])
+      logger.info('Using Emscripten browser: %s', browser_args[0])
       webbrowser.get(browser_args[0]).open_new(url)
       return
     # Else assume the given browser is a specific program with additional
     # parameters and delegate to that
-    print("Using Emscripten browser: " + str(browser_args))
+    logger.info('Using Emscripten browser: %s', str(browser_args))
     subprocess.Popen(browser_args + [url])
 
   @classmethod
