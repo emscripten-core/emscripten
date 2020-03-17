@@ -1241,22 +1241,20 @@ def harness_server_func(in_queue, out_queue, port):
           self.send_error(404, "File not found: " + path)
           return None
         self.send_response(200)
-        self.send_header("Content-type", 'application/javascript')
-        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+        self.send_header('Content-type', 'application/javascript')
         self.send_header('Connection', 'close')
-        self.send_header('Expires', '-1')
         self.end_headers()
         return f
       else:
         return SimpleHTTPRequestHandler.send_head(self)
 
-    # Add COOP, COEP and CORP headers
+    # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
       self.send_header('Access-Control-Allow-Origin', '*')
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
       self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-
+      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
 
     def do_GET(self):
