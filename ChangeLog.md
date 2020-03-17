@@ -28,9 +28,9 @@ Current Trunk
   with -g). This change is necessary for full debugging support, that is, to
   be able to build with `-g` and use a debugger. Before this change only the
   `-gforce_dwarf` flag enabled DWARF; that flag is now removed. If you want
-  the old behavior, build your object files with `-gline-tables-only` (which
-  will only add line table info, which is enough for things like source maps,
-  and does not include full DWARF). For more info and background see #10325.
+  the old behavior, build your object files with `-gline-tables-only` (that will
+  only add line table info, which is just enough for things like source maps and
+  does not include full debug info). For more info and background see #10325.
 - Remove hacks from `memset` handling, in particular, in the wasm backend,
   completely remove the JS version of memset from the JS library and from
   `DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`. The regular C version will be linked in
