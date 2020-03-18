@@ -823,7 +823,11 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  getenv__deps: ['$ENV'],
+  getenv__deps: ['$ENV',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
   getenv: function(name) {
@@ -4572,7 +4576,11 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
