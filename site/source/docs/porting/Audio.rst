@@ -51,7 +51,7 @@ The above snippet usually works in native applications because most OpenAL imple
 What you must do instead is perform each such query only once per "main loop iteration" (i.e the callback you provide via :c:func:`emscripten_set_main_loop` or :c:func:`emscripten_set_main_loop_arg`).
 
 .. note::
-    Starting in 2018, Chromium and other browsers set the state of a JavaScript ``AudioContext`` to ``'suspended'`` until user input. Emscripten's default HTML shell includes a workaround that attempts to resume all audio contexts on the page the first time the user either clicks on the canvas or presses a key.
+    Starting in 2018, Chromium and other browsers set the state of a JavaScript ``AudioContext`` to ``'suspended'`` until user input. ``shell_audio.html`` and ``shell_minimal_audio.html`` include a workaround that attempts to resume all audio contexts on the page the first time the user either clicks on the canvas or presses a key.
 
 
 .. _Audio-openal-capture-behavior-g:
