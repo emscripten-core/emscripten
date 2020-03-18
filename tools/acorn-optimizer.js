@@ -112,10 +112,17 @@ function nullify(node) {
   node.raw = 'null';
 }
 
-function undefinedify(node) {
+// This converts the node into something that terser will ignore in a var
+// declaration, that is, it is a way to get rid of initial values.
+function convertToNothingInVarInit(node) {
   node.type = 'Literal';
   node.value = undefined;
   node.raw = 'undefined';
+}
+
+function convertToNull(node) {
+  node.type = 'Identifier';
+  node.name = 'null';
 }
 
 function setLiteralValue(item, value) {
@@ -840,7 +847,24 @@ function applyDCEGraphRemovals(ast) {
         var value = node.right;
         if ((full in unused) &&
             (isAsmUse(value) || !hasSideEffects(value))) {
-          undefinedify(node);
+          // This will be in a var init, and we just remove that value.
+          convertToNothingInVarInit(node);
+        }
+      }
+    } else if (node.type === 'ExpressionStatement') {
+      var expr = node.expression;
+      // In the minimal runtime code pattern we have just
+      //   x = asm['x']
+      // and never in a var.
+      if (expr.operator === '=' &&
+          expr.left.type === 'Identifier' &&
+          isAsmUse(expr.right)) {
+        var name = expr.left.name;
+        if (name === getAsmOrModuleUseName(expr.right)) {
+          var full = 'emcc$export$' + name;
+          if (full in unused) {
+            emptyOut(node);
+          }
         }
       }
     }

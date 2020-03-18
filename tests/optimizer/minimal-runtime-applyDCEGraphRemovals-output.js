@@ -10,7 +10,7 @@ WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
  expD1 = asm["expD1"];
  expD2 = asm["expD2"];
  expD3 = asm["expD3"];
- expD4 = asm["expD4"];
+
  initRuntime(asm);
  ready();
 });
