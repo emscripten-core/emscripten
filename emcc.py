@@ -1383,6 +1383,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.FULL_ES3:
       shared.Settings.FULL_ES2 = 1
+      shared.Settings.MAX_WEBGL_VERSION = max(2, shared.Settings.MAX_WEBGL_VERSION)
 
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
