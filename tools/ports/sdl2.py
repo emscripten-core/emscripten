@@ -19,13 +19,6 @@ def get(ports, settings, shared):
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
-    # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
-    ports.clear_project_build('sdl2_image')
-    ports.clear_project_build('sdl2_mixer')
-    ports.clear_project_build('sdl2_net')
-    ports.clear_project_build('sdl2_ttf')
-    ports.clear_project_build('sdl2_gfx')
-
     # copy includes to a location so they can be used as 'SDL2/'
     source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
     ports.install_headers(source_include_path, target='SDL2')

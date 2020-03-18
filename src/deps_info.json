@@ -1,5 +1,4 @@
 {
-  "arc4random": ["rand"],
   "freopen": ["free"],
   "munmap": ["free"],
   "getenv": ["malloc", "free", "_get_environ"],
@@ -73,8 +72,6 @@
   "__cxa_free_exception": ["free"],
   "__cxa_throw": ["setThrew"],
   "_formatString": ["strlen"],
-  "setjmp": ["realloc"],
-  "saveSetjmp": ["realloc"],
   "glfwSleep": ["sleep"],
   "glBegin": ["malloc", "free"],
   "bind": ["htonl", "htons", "ntohs"],

@@ -36,8 +36,12 @@
  {
   "name": "emcc$export$_main",
   "export": "_main",
-  "reaches": [],
-  "root": true
+  "reaches": []
+ },
+ {
+  "name": "emcc$export$_unused",
+  "export": "c",
+  "reaches": []
  },
  {
   "name": "emcc$import$_emscripten_console_log",
