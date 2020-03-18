@@ -3349,10 +3349,6 @@ def modularize():
   logger.debug('Modularizing, assigning to var ' + shared.Settings.EXPORT_NAME)
   src = open(final).read()
 
-  # TODO: exports object generation for MINIMAL_RUNTIME. As a temp measure, multithreaded MINIMAL_RUNTIME builds export like regular
-  # runtime does, so that worker.js can see the JS module contents.
-  exports_object = '{}' if shared.Settings.MINIMAL_RUNTIME and not shared.Settings.USE_PTHREADS else shared.Settings.EXPORT_NAME
-
   src = '''
 function(%(EXPORT_NAME)s) {
   var returned_promise_resolve, returned_promise_reject;
@@ -3367,7 +3363,6 @@ function(%(EXPORT_NAME)s) {
 ''' % {
     'EXPORT_NAME': shared.Settings.EXPORT_NAME,
     'src': src,
-    'exports_object': exports_object
   }
 
   if not shared.Settings.MODULARIZE_INSTANCE:
@@ -3408,7 +3403,7 @@ var %(EXPORT_NAME)s = (function() {
     # and the user can decide whether to use Module there or something
     # else etc.).
     src = '''
-var %(EXPORT_NAME)s = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
+var initPromise = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
 ''' % {
       'EXPORT_NAME': shared.Settings.EXPORT_NAME,
       'src': src
