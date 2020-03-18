@@ -2431,10 +2431,11 @@ var LibraryGL = {
       var heap = HEAPF32;
       value >>= 2;
       for (var i = 0; i < 4 * count; i += 4) {
-        view[i] = heap[value + i];
-        view[i + 1] = heap[value + i + 1];
-        view[i + 2] = heap[value + i + 2];
-        view[i + 3] = heap[value + i + 3];
+        var dst = value + i;
+        view[i] = heap[dst];
+        view[i + 1] = heap[dst + 1];
+        view[i + 2] = heap[dst + 2];
+        view[i + 3] = heap[dst + 3];
       }
     } else
 #endif
@@ -2544,22 +2545,23 @@ var LibraryGL = {
       var heap = HEAPF32;
       value >>= 2;
       for (var i = 0; i < 16 * count; i += 16) {
-        view[i] = heap[value + i];
-        view[i + 1] = heap[value + i + 1];
-        view[i + 2] = heap[value + i + 2];
-        view[i + 3] = heap[value + i + 3];
-        view[i + 4] = heap[value + i + 4];
-        view[i + 5] = heap[value + i + 5];
-        view[i + 6] = heap[value + i + 6];
-        view[i + 7] = heap[value + i + 7];
-        view[i + 8] = heap[value + i + 8];
-        view[i + 9] = heap[value + i + 9];
-        view[i + 10] = heap[value + i + 10];
-        view[i + 11] = heap[value + i + 11];
-        view[i + 12] = heap[value + i + 12];
-        view[i + 13] = heap[value + i + 13];
-        view[i + 14] = heap[value + i + 14];
-        view[i + 15] = heap[value + i + 15];
+        var dst = value + i;
+        view[i] = heap[dst];
+        view[i + 1] = heap[dst + 1];
+        view[i + 2] = heap[dst + 2];
+        view[i + 3] = heap[dst + 3];
+        view[i + 4] = heap[dst + 4];
+        view[i + 5] = heap[dst + 5];
+        view[i + 6] = heap[dst + 6];
+        view[i + 7] = heap[dst + 7];
+        view[i + 8] = heap[dst + 8];
+        view[i + 9] = heap[dst + 9];
+        view[i + 10] = heap[dst + 10];
+        view[i + 11] = heap[dst + 11];
+        view[i + 12] = heap[dst + 12];
+        view[i + 13] = heap[dst + 13];
+        view[i + 14] = heap[dst + 14];
+        view[i + 15] = heap[dst + 15];
       }
     } else
 #endif
