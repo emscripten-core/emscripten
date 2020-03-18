@@ -212,7 +212,6 @@ var LibraryManager = {
           if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
         }
-        if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           // When functions are aliased, the alias target must provide a signature for the function so that an efficient form of forwarding can be implemented.

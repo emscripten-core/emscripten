@@ -933,6 +933,9 @@ var LibraryWebGPU = {
     return WebGPU.mgrShaderModule.create(device["createShaderModule"](desc));
   },
 
+#if MINIMAL_RUNTIME
+  wgpuDeviceSetUncapturedErrorCallback__deps: ['$allocateUTF8'],
+#endif
   wgpuDeviceSetUncapturedErrorCallback: function(deviceId, callback, userdata) {
     var device = WebGPU["mgrDevice"].get(deviceId);
     device["onuncapturederror"] = function(ev) {

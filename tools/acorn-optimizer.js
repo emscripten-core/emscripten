@@ -550,7 +550,7 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
@@ -563,6 +563,14 @@ function emitDCEGraph(ast) {
   //   return Module["asm"]["_malloc"].apply(null, arguments);
   //  });
   //
+  // or, in the minimal runtime, it looks like
+  //
+  //  WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+  //   var asm = output.instance.exports;
+  //   ..
+  //   _malloc = asm["malloc"];
+  //   ..
+  //  });
   var imports = [];
   var defuns = [];
   var dynCallNames = [];
@@ -570,6 +578,7 @@ function emitDCEGraph(ast) {
   var modulePropertyToGraphName = {};
   var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
   var foundAsmLibraryArgAssign = false;
+  var foundMinimalRuntimeExports = false;
   var graph = [];
 
   function saveAsmExport(name, asmName) {
@@ -628,15 +637,68 @@ function emitDCEGraph(ast) {
               // name may be slightly different (extra "_" in wasm backend)
               saveAsmExport(name, asmName);
               emptyOut(node); // ignore this in the second pass; this does not root
+              return;
             }
           }
         }
+      }
+      // A variable declaration that has no initial values can be ignored in
+      // the second pass, these are just declarations, not roots - an actual
+      // use must be found in order to root.
+      if (!node.declarations.reduce(function(hasInit, decl) {
+            return hasInit || !!decl.init
+          }, false)) {
+        emptyOut(node);
       }
     } else if (node.type === 'FunctionDeclaration') {
       defuns.push(node);
       var name = node.id.name;
       nameToGraphName[name] = getGraphName(name, 'defun');
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
+    } else if (node.type === 'FunctionExpression') {
+      // Check if this is the minimal runtime exports function, which looks like
+      //   function(output) { var asm = output.instance.exports;
+      if (node.params.length === 1 && node.params[0].type === 'Identifier' &&
+          node.params[0].name === 'output' && node.body.type === 'BlockStatement') {
+        var body = node.body.body;
+        if (body.length >= 1) {
+          var first = body[0];
+          if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
+            var decl = first.declarations[0];
+            if (decl.id.type === 'Identifier' && decl.id.name === 'asm') {
+              var value = decl.init;
+              if (value.type === 'MemberExpression' &&
+                  value.object.type === 'MemberExpression' &&
+                  value.object.object.type === 'Identifier' &&
+                  value.object.object.name === 'output' &&
+                  value.object.property.type === 'Identifier' &&
+                  value.object.property.name === 'instance' &&
+                  value.property.type === 'Identifier' &&
+                  value.property.name === 'exports') {
+                // This looks very much like what we are looking for.
+                assert(!foundMinimalRuntimeExports);
+                for (var i = 1; i < body.length; i++) {
+                  var item = body[i];
+                  if (item.type === 'ExpressionStatement' &&
+                      item.expression.type === 'AssignmentExpression' &&
+                      item.expression.operator === '=' &&
+                      item.expression.left.type === 'Identifier' &&
+                      item.expression.right.type === 'MemberExpression' &&
+                      item.expression.right.object.type === 'Identifier' &&
+                      item.expression.right.object.name === 'asm' &&
+                      item.expression.right.property.type === 'Literal') {
+                    var name = item.expression.left.name;
+                    var asmName = item.expression.right.property.value;
+                    saveAsmExport(name, asmName);
+                    emptyOut(item); // ignore all this in the second pass; this does not root
+                  }
+                }
+                foundMinimalRuntimeExports = true;
+              }
+            }
+          }
+        }
+      }
     }
   });
   // must find the info we need
