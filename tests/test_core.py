@@ -2004,7 +2004,6 @@ int main(int argc, char **argv) {
   # Then this must still be compiled separately from other code using EM_ASM
   # macros with arities 1-3. Otherwise this may incorrectly report a success.
   def test_em_asm_parameter_pack(self):
-    self.emcc_args += ['-std=c++11']
     self.do_run_in_out_file_test('tests', 'core', 'test_em_asm_parameter_pack')
 
   def test_em_asm_arguments_side_effects(self):
@@ -2183,12 +2182,8 @@ int main(int argc, char **argv) {
   def test_llvmswitch(self):
       self.do_run_in_out_file_test('tests', 'core', 'test_llvmswitch')
 
-  # By default, when user has not specified a -std flag, Emscripten should always build .cpp files using the C++03 standard,
-  # i.e. as if "-std=c++03" had been passed on the command line. On Linux with Clang 3.2 this is the case, but on Windows
-  # with Clang 3.2 -std=c++11 has been chosen as default, because of
-  # < jrose> clb: it's deliberate, with the idea that for people who don't care about the standard, they should be using the "best" thing we can offer on that platform
-  def test_cxx03_do_run(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_cxx03_do_run')
+  def test_cxx_version(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_cxx_version')
 
   @no_wasm2js('massive switches can break js engines')
   @no_emterpreter
@@ -4987,7 +4982,6 @@ Module = {
 
   def test_getdents64_special_cases(self):
     self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
-    self.emcc_args += ['-std=c++11']
     src = path_from_root('tests', 'fs', 'test_getdents64_special_cases.cpp')
     out = path_from_root('tests', 'fs', 'test_getdents64_special_cases.out')
     self.do_run_from_file(src, out, assert_identical=True)
@@ -4996,7 +4990,6 @@ Module = {
     self.banned_js_engines = [V8_ENGINE] # https://bugs.chromium.org/p/v8/issues/detail?id=6881
     src = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.cpp')
     out = path_from_root('tests', 'fs', 'test_getcwd_with_non_ascii_name.out')
-    self.emcc_args += ['-std=c++11']
     self.do_run_from_file(src, out, assert_identical=True)
 
   def test_fwrite_0(self):
@@ -5201,7 +5194,6 @@ main( int argv, char ** argc ) {
     else:
       self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS',
                        ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
-    self.emcc_args += ['-std=c++11']
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
   def test_utf8_textdecoder(self):
@@ -5606,7 +5598,6 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic')
 
   def test_atomic_cxx(self):
-    self.emcc_args += ['-std=c++11']
     # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
     is_lock_free = self.is_wasm_backend()
     self.emcc_args += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
@@ -5679,8 +5670,6 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_stdvec')
 
   def test_random_device(self):
-    self.emcc_args += ['-std=c++11']
-
     self.do_run_in_out_file_test('tests', 'core', 'test_random_device')
 
   def test_reinterpreted_ptrs(self):
@@ -5732,7 +5721,7 @@ PORT: 3979
     self.do_run(open('main.cpp').read(), u'Unicode snowman \u2603 says hello!')
 
   def test_funcptr_import_type(self):
-    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_funcptr_import_type.js'), '-std=c++11']
+    self.emcc_args += ['--js-library', path_from_root('tests', 'core', 'test_funcptr_import_type.js')]
     self.do_run_in_out_file_test('tests', 'core', 'test_funcptr_import_type')
 
   @no_asan('ASan does not work with EXPORT_ALL')
@@ -7166,7 +7155,7 @@ someweirdtext
     self.do_run_in_out_file_test('tests', 'core', 'test_embind_5')
 
   def test_embind_custom_marshal(self):
-    self.emcc_args += ['--bind', '-std=c++11', '--pre-js', path_from_root('tests', 'embind', 'test_custom_marshal.js')]
+    self.emcc_args += ['--bind', '--pre-js', path_from_root('tests', 'embind', 'test_custom_marshal.js')]
     self.do_run_in_out_file_test('tests', 'embind', 'test_custom_marshal', assert_identical=True)
 
   def test_embind_float_constants(self):
@@ -7180,11 +7169,11 @@ someweirdtext
                           path_from_root('tests', 'embind', 'test_negative_constants.out'))
 
   def test_embind_unsigned(self):
-    self.emcc_args += ['--bind', '--std=c++11']
+    self.emcc_args += ['--bind']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_unsigned.cpp'), path_from_root('tests', 'embind', 'test_unsigned.out'))
 
   def test_embind_val(self):
-    self.emcc_args += ['--bind', '--std=c++11']
+    self.emcc_args += ['--bind']
     self.do_run_from_file(path_from_root('tests', 'embind', 'test_val.cpp'), path_from_root('tests', 'embind', 'test_val.out'))
 
   def test_embind_no_rtti(self):
@@ -8010,7 +7999,6 @@ extern "C" {
   @no_fastcomp('Fibers are not implemented for fastcomp')
   def test_fibers_asyncify(self):
     self.set_setting('ASYNCIFY', 1)
-    self.emcc_args += ['-std=gnu++11']
     src = open(path_from_root('tests', 'test_fibers.cpp')).read()
     self.do_run(src, '*leaf-0-100-1-101-1-102-2-103-3-104-5-105-8-106-13-107-21-108-34-109-*')
 
@@ -8576,7 +8564,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_null_ref(self, args):
-    self.emcc_args += ['-std=c++11'] + args
+    self.emcc_args += args
     self.do_run(open(path_from_root('tests', 'core', 'test_ubsan_full_null_ref.cpp')).read(),
                 assert_all=True, expected_output=[
       "src.cpp:3:12: runtime error: reference binding to null pointer of type 'int'",
@@ -8612,7 +8600,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_fastcomp('ubsan not supported on fastcomp')
   @no_wasm2js('TODO: sanitizers in wasm2js')
   def test_ubsan_full_stack_trace(self, g_flag, expected_output):
-    self.emcc_args += ['-std=c++11', '-fsanitize=null', g_flag, '-s', 'ALLOW_MEMORY_GROWTH=1']
+    self.emcc_args += ['-fsanitize=null', g_flag, '-s', 'ALLOW_MEMORY_GROWTH=1']
 
     if g_flag == '-g4':
       if not self.get_setting('WASM'):
@@ -8631,7 +8619,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
 
   def test_template_class_deduction(self):
-    self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction')
 
   @parameterized({
@@ -8696,7 +8683,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ], ['-fno-builtin-memchr']),
     'vector': ('test_asan_vector.cpp', [
       'AddressSanitizer: container-overflow on address'
-    ], ['-std=c++11']),
+    ]),
   })
   @no_fastcomp('asan not supported on fastcomp')
   def test_asan(self, name, expected_output, cflags=None):

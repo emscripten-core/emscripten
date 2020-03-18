@@ -819,9 +819,9 @@ f.close()
   def test_use_cxx(self):
     create_test_file('empty_file', ' ')
     dash_xc = run_process([PYTHON, EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
-    self.assertNotContained('-std=c++03', dash_xc)
+    self.assertNotContained('-x c++', dash_xc)
     dash_xcpp = run_process([PYTHON, EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
-    self.assertContained('-std=c++03', dash_xcpp)
+    self.assertContained('-x c++', dash_xcpp)
 
   def test_cxx03(self):
     for compiler in [EMCC, EMXX]:
@@ -6962,7 +6962,7 @@ int main(int argc, char** argv) {
 }
 ''')
 
-    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11'])
+    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js'])
     self.assertContained('_memset may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library', err)
 
     # without the dep, and with EXPORTED_FUNCTIONS, it works ok
@@ -6973,7 +6973,7 @@ mergeInto(LibraryManager.library, {
   },
 });
 ''')
-    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
+    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
     self.assertContained('dddddddddd', run_js('a.out.js'))
 
   def test_realpath(self):
@@ -7205,7 +7205,7 @@ Resolved: "/" => "/"
     run_process([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
 
   def test_dash_s(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_dash_s_response_file_string(self):
@@ -7216,7 +7216,7 @@ Resolved: "/" => "/"
   def test_dash_s_response_file_list(self):
     create_test_file('response_file', '["_main", "_malloc"]\n')
     response_file = os.path.abspath('response_file')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file, '-std=c++03'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file])
 
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
@@ -7765,13 +7765,13 @@ mergeInto(LibraryManager.library, {
   @no_wasm_backend('uses CYBERDWARF')
   def test_cyberdwarf_pointers(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                 '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
+                 '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
     run_js('test_pointers.js', engine=NODE_JS)
 
   @no_wasm_backend('uses CYBERDWARF')
   def test_cyberdwarf_union(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                 '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
+                 '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
     run_js('test_union.js', engine=NODE_JS)
 
   def test_source_file_with_fixed_language_mode(self):
@@ -7784,10 +7784,10 @@ int main() {
   return 0;
 }
     ''')
-    run_process([PYTHON, EMCC, '-Wall', '-std=c++14', '-x', 'c++', 'src_tmp_fixed_lang'])
+    run_process([PYTHON, EMCC, '-Wall', '-x', 'c++', 'src_tmp_fixed_lang'])
     self.assertContained("Test_source_fixed_lang_hello", run_js('a.out.js'))
 
-    stderr = self.expect_fail([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'])
+    stderr = self.expect_fail([PYTHON, EMCC, '-Wall', 'src_tmp_fixed_lang'])
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
 
   def test_disable_inlining(self):

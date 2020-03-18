@@ -231,7 +231,6 @@ class EmccOptions(object):
     self.force_js_opts = False
     self.llvm_opts = None
     self.llvm_lto = None
-    self.default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
@@ -870,11 +869,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if use_cxx:
       clang_compiler = CXX
-      # If user did not specify a default -std for C++ code, specify the emscripten default.
-      if options.default_cxx_std:
-        newargs += [options.default_cxx_std]
     else:
-      # Compiling C code with .c files, don't enforce a default C++ std.
       clang_compiler = CC
 
     if '-print-search-dirs' in newargs:
@@ -2852,12 +2847,6 @@ def parse_args(newargs):
       newargs[i] = ''
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
-      if options.default_cxx_std:
-        # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
-        options.default_cxx_std = '-std=c++11'
-    elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
-      # User specified a standard to use, clear Emscripten from specifying it.
-      options.default_cxx_std = None
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       options.embed_files.append(newargs[i + 1])
