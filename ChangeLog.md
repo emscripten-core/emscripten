@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Program entry points without extensions are now shell scripts rather than
+  python programs. See #10729.  This means that `python emcc` no longer works.
+  However `emcc`, `emcc.py` and `python emcc.py` all continue to work.
+  The reason for this change is that `#!/usr/bin/env python` is no longer
+  portable since the python symlink was dropped from Ubuntu 20.04.
 
 v1.39.11: 03/20/2020
 --------------------
@@ -27,7 +32,7 @@ v1.39.11: 03/20/2020
   https://libbsd.freedesktop.org/.
 - Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
   you add, and does not need to contain the list of default system imports like
-  ``emscripten_sleep``. There is no harm in providing them, though, so this
+  `emscripten_sleep`. There is no harm in providing them, though, so this
   is not a breaking change.
 - Enable DWARF support: When compiling with `-g`, normal DWARF emitting happens,
   and when linking with `-g` we preserve that and update it. This is a change

@@ -710,7 +710,7 @@ EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
 EMXX = path_from_root('em++.py')
 EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib')
+EMRANLIB = path_from_root('emranlib.py')
 EMCONFIG = path_from_root('em-config')
 EMLINK = path_from_root('emlink.py')
 EMCONFIGURE = path_from_root('emconfigure.py')
@@ -1538,9 +1538,7 @@ class Building(object):
     # not to, as some configure scripts expect e.g. CC to be a literal executable
     # (but "python emcc.py" is not a file that exists).
     # note that we point to emcc etc. here, without a suffix, instead of to
-    # emcc.py etc. The unsuffixed versions have the python_selector logic that can
-    # pick the right version as needed (which is not crucial right now as we support
-    # both 2 and 3, but eventually we may be 3-only).
+    # emcc.py etc.
     env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
     env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
