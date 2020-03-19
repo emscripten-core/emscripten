@@ -572,7 +572,7 @@ class NoExceptLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING, **kwargs)
+    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING == 1, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -1137,7 +1137,7 @@ class libasmfs(CXXLibrary, MTLibrary):
   def can_build(self):
     # ASMFS is looking for a maintainer
     # https://github.com/emscripten-core/emscripten/issues/9534
-    return False
+    return True
 
 
 class libhtml5(Library):

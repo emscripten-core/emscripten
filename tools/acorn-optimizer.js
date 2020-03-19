@@ -573,7 +573,8 @@ function emitDCEGraph(ast) {
   // or, in the minimal runtime, it looks like
   //
   //  WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
-  //   var asm = output.instance.exports;
+  //   var asm = output.instance.exports; // may also not have "var", if
+  //                                      // declared outside and used elsewhere
   //   ..
   //   _malloc = asm["malloc"];
   //   ..
@@ -670,38 +671,48 @@ function emitDCEGraph(ast) {
         var body = node.body.body;
         if (body.length >= 1) {
           var first = body[0];
+          var target, value; // "(var?) target = value"
+          // Look either for  var asm =  or just   asm =
           if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
             var decl = first.declarations[0];
-            if (decl.id.type === 'Identifier' && decl.id.name === 'asm') {
-              var value = decl.init;
-              if (value.type === 'MemberExpression' &&
-                  value.object.type === 'MemberExpression' &&
-                  value.object.object.type === 'Identifier' &&
-                  value.object.object.name === 'output' &&
-                  value.object.property.type === 'Identifier' &&
-                  value.object.property.name === 'instance' &&
-                  value.property.type === 'Identifier' &&
-                  value.property.name === 'exports') {
-                // This looks very much like what we are looking for.
-                assert(!foundMinimalRuntimeExports);
-                for (var i = 1; i < body.length; i++) {
-                  var item = body[i];
-                  if (item.type === 'ExpressionStatement' &&
-                      item.expression.type === 'AssignmentExpression' &&
-                      item.expression.operator === '=' &&
-                      item.expression.left.type === 'Identifier' &&
-                      item.expression.right.type === 'MemberExpression' &&
-                      item.expression.right.object.type === 'Identifier' &&
-                      item.expression.right.object.name === 'asm' &&
-                      item.expression.right.property.type === 'Literal') {
-                    var name = item.expression.left.name;
-                    var asmName = item.expression.right.property.value;
-                    saveAsmExport(name, asmName);
-                    emptyOut(item); // ignore all this in the second pass; this does not root
-                  }
+            target = decl.id;
+            value = decl.init;
+          } else if (first.type === 'ExpressionStatement' &&
+                     first.expression.type === 'AssignmentExpression') {
+            var assign = first.expression;
+            if (assign.operator === '=') {
+              target = assign.left;
+              value = assign.right;
+            }
+          }
+          if (target.type === 'Identifier' && target.name === 'asm' && value) {
+            if (value.type === 'MemberExpression' &&
+                value.object.type === 'MemberExpression' &&
+                value.object.object.type === 'Identifier' &&
+                value.object.object.name === 'output' &&
+                value.object.property.type === 'Identifier' &&
+                value.object.property.name === 'instance' &&
+                value.property.type === 'Identifier' &&
+                value.property.name === 'exports') {
+              // This looks very much like what we are looking for.
+              assert(!foundMinimalRuntimeExports);
+              for (var i = 1; i < body.length; i++) {
+                var item = body[i];
+                if (item.type === 'ExpressionStatement' &&
+                    item.expression.type === 'AssignmentExpression' &&
+                    item.expression.operator === '=' &&
+                    item.expression.left.type === 'Identifier' &&
+                    item.expression.right.type === 'MemberExpression' &&
+                    item.expression.right.object.type === 'Identifier' &&
+                    item.expression.right.object.name === 'asm' &&
+                    item.expression.right.property.type === 'Literal') {
+                  var name = item.expression.left.name;
+                  var asmName = item.expression.right.property.value;
+                  saveAsmExport(name, asmName);
+                  emptyOut(item); // ignore all this in the second pass; this does not root
                 }
-                foundMinimalRuntimeExports = true;
               }
+              foundMinimalRuntimeExports = true;
             }
           }
         }
