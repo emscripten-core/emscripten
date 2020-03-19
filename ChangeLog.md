@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- The default c++ version is no longer fixed at c++03.  We now fall back to
+  clang's default which is currently c++14.
 - Remove arc4random function form library.js.  This is a BSD-only library
   function.  Anyone requiring BSD compat should be able to use something like
   https://libbsd.freedesktop.org/.
