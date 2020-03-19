@@ -5522,8 +5522,6 @@ main( int argv, char ** argc ) {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
     orig_compiler_opts = self.emcc_args[:]
-    src = open(path_from_root('tests', 'unistd', 'misc.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'misc.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
