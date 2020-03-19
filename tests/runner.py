@@ -1362,14 +1362,15 @@ class BrowserCore(RunnerCore):
       return
 
     browser_args = shlex.split(EMTEST_BROWSER)
-    # If the given browser is a string with no separators, assume it's one
-    # of the types that the webbrowser module accepts like `safari`,
-    # `firefox`, or `chrome`. See https://docs.python.org/2/library/webbrowser.html
-    # for the full list
-    if len(browser_args) == 1 and os.path.sep not in browser_args[0]:
-      logger.info('Using Emscripten browser: %s', browser_args[0])
-      webbrowser.get(browser_args[0]).open_new(url)
-      return
+    # If the given browser is a scalar, treat it like one of the possible types
+    # from https://docs.python.org/2/library/webbrowser.html
+    if len(browser_args) == 1:
+      try:
+        webbrowser.get(browser_args[0]).open_new(url)
+        logger.info('Using Emscripten browser: %s', browser_args[0])
+        return
+      except:
+        pass
     # Else assume the given browser is a specific program with additional
     # parameters and delegate to that
     logger.info('Using Emscripten browser: %s', str(browser_args))
