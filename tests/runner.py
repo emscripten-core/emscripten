@@ -1366,10 +1366,12 @@ class BrowserCore(RunnerCore):
     # from https://docs.python.org/2/library/webbrowser.html
     if len(browser_args) == 1:
       try:
+        # This throws if the type of browser isn't available
         webbrowser.get(browser_args[0]).open_new(url)
         logger.info('Using Emscripten browser: %s', browser_args[0])
         return
       except:
+        # Ignore the exception and fallback to the custom command logic
         pass
     # Else assume the given browser is a specific program with additional
     # parameters and delegate to that
