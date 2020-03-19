@@ -17,6 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Support 2GB+ heap sizes. To do this we modify the JS code to have unsigned
+  pointers (we need all 32 bits in them now), which can slightly increase code
+  size (>>> instead of >>). This only happens when the heap size may be over
+  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
+  higher value (i.e. by default you do not get support for 2GB+ heaps).
+  See #10601
 - The default c++ version is no longer fixed at c++03.  We now fall back to
   clang's default which is currently c++14.
 - Remove arc4random function form library.js.  This is a BSD-only library
@@ -50,12 +56,6 @@ v1.39.10: 03/09/2020
 - Fix a SIMD regression in 1.39.9 (#10658).
 - Fix `emscripten_atomic_exchange_u8,16,32,64` (#10657).
 - Switch bzip2 to an emscripten-ports mirror.
-
-- Support 2GB+ heap sizes. To do this we modify the JS code to have unsigned
-  pointers (we need all 32 bits in them now), which can slightly increase code
-  size (>>> instead of >>). This only happens when the heap size may be over
-  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
-  higher value. See #10601
 
 v1.39.9: 03/05/2020
 -------------------
