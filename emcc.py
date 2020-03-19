@@ -40,7 +40,7 @@ import base64
 from subprocess import PIPE
 
 import emscripten
-from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger
+from tools import shared, system_libs, client_mods, js_optimizer, jsrun, colored_logger, diagnostics
 from tools.shared import unsuffixed, unsuffixed_basename, WINDOWS, safe_copy, safe_move, run_process, asbytes, read_and_preprocess, exit_with_error, DEBUG
 from tools.response_file import substitute_response_files
 from tools.minimal_runtime_shell import generate_minimal_runtime_html
@@ -3007,6 +3007,7 @@ def parse_args(newargs):
       settings_changes.append('USE_PTHREADS=1')
     elif newargs[i] in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
       colored_logger.disable()
+      diagnostics.color_enabled = False
     elif newargs[i] == '-no-canonical-prefixes':
       options.expand_symlinks = False
     elif newargs[i] == '-Werror':
