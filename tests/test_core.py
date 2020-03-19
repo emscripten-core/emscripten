@@ -1384,6 +1384,20 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_2')
 
+  def test_exceptions_white_list_uncaught(self):
+    self.emcc_args += ['-std=c++11']
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
+    # Wasm does not add an underscore to function names. For wasm, the
+    # mismatches are fixed in fixImports() function in JS glue code.
+    if not self.is_wasm_backend():
+      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["__Z4testv"])
+    else:
+      self.set_setting('EXCEPTION_CATCHING_WHITELIST', ["_Z4testv"])
+    # otherwise it is inlined and not identified
+    self.set_setting('INLINING_LIMIT', 1)
+
+    self.do_run_in_out_file_test('tests', 'third_party', 'test_exceptions_white_list_uncaught')
+
   def test_exceptions_uncaught(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
