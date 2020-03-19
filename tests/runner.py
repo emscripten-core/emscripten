@@ -1370,7 +1370,7 @@ class BrowserCore(RunnerCore):
         webbrowser.get(browser_args[0]).open_new(url)
         logger.info('Using Emscripten browser: %s', browser_args[0])
         return
-      except:
+      except webbrowser.Error:
         # Ignore the exception and fallback to the custom command logic
         pass
     # Else assume the given browser is a specific program with additional
