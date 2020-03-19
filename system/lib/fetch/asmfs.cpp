@@ -1778,7 +1778,7 @@ long __syscall3(long fd, long buf, long count) // read
     err('read(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
 #endif
 
-  iovec io = {(void*)buf, count};
+  iovec io = {(void*)buf, (size_t)count};
   return readv(fd, &io, 1);
 }
 
@@ -1855,7 +1855,7 @@ long __syscall4(long fd, long buf, long count) // write
     err('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
 #endif
 
-  iovec io = {(void*)buf, count};
+  iovec io = {(void*)buf, (size_t)count};
   return writev(fd, &io, 1);
 }
 
