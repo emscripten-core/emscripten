@@ -933,14 +933,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
           settings_changes.append(key)
           newargs[i] = newargs[i + 1] = ''
-          if key == 'WASM_BACKEND=1':
-            exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
     newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
     for s in settings_changes:
       key, value = s.split('=', 1)
       settings_key_changes.add(key)
+      if key == 'WASM_BACKEND':
+        exit_with_error('do not set -s WASM_BACKEND, this is detected based on the llvm version in use')
 
     # Find input files
 
