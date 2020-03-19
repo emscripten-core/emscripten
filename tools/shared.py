@@ -970,7 +970,8 @@ def emsdk_cflags():
 
   cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
-    path_from_root('system', 'lib', 'libcxxabi', 'include')
+    path_from_root('system', 'lib', 'libcxxabi', 'include'),
+    path_from_root('system', 'lib', 'libunwind', 'include')
   ]
 
   def include_directive(paths):
@@ -2645,13 +2646,13 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def asyncify_lazy_load_code(wasm_binary_target, options, debug):
+  def asyncify_lazy_load_code(wasm_binary_target, debug):
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code
     args = ['--remove-memory', '--mod-asyncify-never-unwind']
-    if options.opt_level > 0:
-      args.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if Settings.OPT_LEVEL > 0:
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
     Building.run_wasm_opt(wasm_binary_target,
                           wasm_binary_target + '.lazy.wasm',
                           args=args,
@@ -2662,8 +2663,8 @@ class Building(object):
     # TODO: support other asyncify stuff, imports that don't always unwind?
     # TODO: source maps etc.
     args = ['--mod-asyncify-always-and-only-unwind']
-    if options.opt_level > 0:
-      args.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if Settings.OPT_LEVEL > 0:
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
     Building.run_wasm_opt(infile=wasm_binary_target,
                           outfile=wasm_binary_target,
                           args=args,
@@ -2980,10 +2981,13 @@ class Building(object):
     if emit_source_map:
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
-    if outfile and tool == 'wasm-opt' and not Settings.FULL_DWARF:
-      # remove any dwarf debug info sections, as currently we are not able to
-      # properly update it anyhow, and in the case of source maps, we have
-      # that info in the map anyhow
+    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
+      # remove any dwarf debug info sections, if the debug level is <3, as
+      # we don't need them; also remove them if we the level is 4, as then we
+      # want a source map, which is implemented separately from dwarf
+      # TODO: once fastcomp is gone, either remove source maps entirely, or
+      #       support them by emitting a source map at the end from the dwarf,
+      #       and use llvm-objcpy to remove that final dwarf
       cmd += ['--strip-dwarf']
 
     ret = check_call(cmd, stdout=stdout).stdout

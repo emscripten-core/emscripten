@@ -514,7 +514,7 @@ var MAX_WEBGL_VERSION = 1;
 var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
-// This automatically turns out FULL_ES2.
+// This automatically turns on FULL_ES2 and WebGL2 support.
 var FULL_ES3 = 0;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
@@ -650,18 +650,14 @@ var NODEJS_CATCH_REJECTION = 1;
 // On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
-// The imports which can do a sync operation. If you add more you will need to
-// add them to here.
-// If the names here do not include a "module." prefix, the module is assumed
-// to be "env".
-var ASYNCIFY_IMPORTS = [
-  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
-  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
-  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
-  'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'emscripten_fiber_swap',
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
-];
+// Imports which can do a sync operation, in addition to the default ones that
+// emscripten defines like emscripten_sleep. If you add more you will need to
+// mention them to here, or else they will not work (in ASSERTIONS builds an
+// error will be shown).
+// Note that this list used to contain the default ones, which meant that you
+// had to list them when adding your own; the default ones are now added
+// automatically.
+var ASYNCIFY_IMPORTS = [];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
@@ -853,13 +849,7 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-  'memcpy',
-  'memset',
-  'malloc',
-  'free',
-  'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
@@ -949,7 +939,7 @@ var LINKABLE = 0;
 var STRICT = 0;
 
 // Automatically attempt to add archive indexes at link time to archives that 
-// don't already have them.  This can heppen when GNU ar or GNU ranlib is used
+// don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
 // [link]
@@ -1596,9 +1586,9 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-// If set to 1, all JS libraries will be automaticially available at link time.
+// If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
-// need to explictly specify -lfoo.js in at link time in order to access
+// need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 

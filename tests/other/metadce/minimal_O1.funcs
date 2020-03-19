@@ -6,7 +6,6 @@ $dlfree
 $dlmalloc
 $emscripten_get_sbrk_ptr
 $sbrk
-$setThrew
 $stackAlloc
 $stackRestore
 $stackSave

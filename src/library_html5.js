@@ -399,8 +399,9 @@ var LibraryJSEvents = {
 
   // Outline access to function .getBoundingClientRect() since it is a long string. Closure compiler does not outline access to it by itself, but it can inline access if
   // there is only one caller to this function.
+  _getBoundingClientRect__deps: ['_specialEventTargets'],
   _getBoundingClientRect: function(e) {
-    return e.getBoundingClientRect();
+    return __specialEventTargets.indexOf(e) < 0 ? e.getBoundingClientRect() : {'left':0,'top':0};
   },
 
   // Copies mouse event data from the given JS mouse event 'e' to the specified Emscripten mouse event structure in the HEAP.
@@ -456,7 +457,7 @@ var LibraryJSEvents = {
       {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.canvasY, '0', 'i32') }}};
     }
 #endif
-    var rect = __specialEventTargets.indexOf(target) < 0 ? __getBoundingClientRect(target) : {'left':0,'top':0};
+    var rect = __getBoundingClientRect(target);
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetX, 'e.clientX - rect.left', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenMouseEvent.targetY, 'e.clientY - rect.top', 'i32') }}};
 

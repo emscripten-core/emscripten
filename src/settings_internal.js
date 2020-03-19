@@ -71,8 +71,6 @@ var DYNAMIC_BASE = -1;
 // -Werror was specified on the command line.
 var WARNINGS_ARE_ERRORS = 0;
 
-// Temporary setting to force generation and preservation of full DWARF debug info
-var FULL_DWARF = 0;
 // Maximum seen global alignment; received from the backend.
 var MAX_GLOBAL_ALIGN = -1;
 
@@ -93,14 +91,18 @@ var SYSTEM_JS_LIBRARIES = [];
 // RETAIN_COMPILER_SETTINGS
 var EMSCRIPTEN_VERSION = '';
 
-// This will contain the optimization level (-Ox). You should not modify this.
-var OPT_LEVEL = 0;
-
 // Will be set to 0 if -fno-rtti is used on the command line.
 var USE_RTTI = 1;
 
+// This will contain the optimization level (-Ox). You should not modify this.
+var OPT_LEVEL = 0;
+
 // This will contain the debug level (-gx). You should not modify this.
 var DEBUG_LEVEL = 0;
+
+// This will contain the shrink level (1 or 2 for -Os or -Oz, or just 0).
+// You should not modify this.
+var SHRINK_LEVEL = 0;
 
 // Whether we are profiling functions. You should not modify this.
 var PROFILING_FUNCS = 0;
@@ -111,7 +113,7 @@ var EMIT_SYMBOL_MAP = 0;
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
 
-// List of function explictly exported by user on the command line.
+// List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
 // name of the file containing wasm text, if relevant

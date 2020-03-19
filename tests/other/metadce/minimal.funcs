@@ -15,7 +15,6 @@ $dlmalloc
 $emscripten_get_sbrk_ptr
 $fflush
 $sbrk
-$setThrew
 $stackAlloc
 $stackRestore
 $stackSave

@@ -1803,7 +1803,7 @@ keydown(100);keyup(100); // trigger the end
 
   @requires_graphics_hardware
   def test_clientside_vertex_arrays_es3(self):
-    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'MAX_WEBGL_VERSION=2', '-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
+    self.btest('clientside_vertex_arrays_es3.c', reference='gl_triangle.png', args=['-s', 'FULL_ES3=1', '-s', 'USE_GLFW=3', '-lglfw', '-lGLESv2'])
 
   def test_emscripten_api(self):
     self.btest('emscripten_api_browser.cpp', '1', args=['-s', '''EXPORTED_FUNCTIONS=['_main', '_third']''', '-lSDL'])
@@ -3230,7 +3230,7 @@ window.close = function() {
     cocos2d_root = os.path.join(system_libs.Ports.get_build_dir(), 'cocos2d')
     preload_file = os.path.join(cocos2d_root, 'samples', 'HelloCpp', 'Resources') + '@'
     self.btest('cocos2d_hello.cpp', reference='cocos2d_hello.png', reference_slack=1,
-               args=['-s', 'USE_COCOS2D=3', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0', '--std=c++11',
+               args=['-s', 'USE_COCOS2D=3', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
                      '--preload-file', preload_file, '--use-preload-plugins',
                      '-Wno-inconsistent-missing-override'],
                message='You should see Cocos2d logo')
@@ -3626,7 +3626,7 @@ window.close = function() {
   def test_pthread_64bit_cxx11_atomics(self):
     for opt in [['-O0'], ['-O3']]:
       for pthreads in [[], ['-s', 'USE_PTHREADS=1']]:
-        self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads + ['-std=c++11'])
+        self.btest(path_from_root('tests', 'pthread', 'test_pthread_64bit_cxx11_atomics.cpp'), expected='0', args=opt + pthreads)
 
   # Test c++ std::thread::hardware_concurrency()
   @requires_threads
@@ -3737,7 +3737,7 @@ window.close = function() {
   # Test that threads can rejoin the pool once detached and finished
   @requires_threads
   def test_std_thread_detach(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-std=c++11', '-s', 'USE_PTHREADS=1'])
+    self.btest(path_from_root('tests', 'pthread', 'test_std_thread_detach.cpp'), expected='0', args=['-s', 'USE_PTHREADS=1'])
 
   # Test pthread_cancel() operation
   @requires_threads
@@ -3971,19 +3971,19 @@ window.close = function() {
   # Test that STACK_BASE and STACK_MAX correctly bound the stack on pthreads.
   @requires_threads
   def test_pthread_stack_bounds(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS', '-std=c++11'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_stack_bounds.cpp'), expected='1', args=['-s', 'USE_PTHREADS'])
 
   # Test that real `thread_local` works.
   @no_fastcomp('thread_local is only supported on WASM backend')
   @requires_threads
   def test_pthread_tls(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls.cpp'), expected='1337', args=['-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS', '-std=c++11'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls.cpp'), expected='1337', args=['-s', 'PROXY_TO_PTHREAD', '-s', 'USE_PTHREADS'])
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
   @no_fastcomp('thread_local is only supported on WASM backend')
   @requires_threads
   def test_pthread_tls_main(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS', '-std=c++11'])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_tls_main.cpp'), expected='1337', args=['-s', 'USE_PTHREADS'])
 
   @no_fastcomp('WASM backend stack protection')
   @requires_threads
@@ -3997,7 +3997,7 @@ window.close = function() {
   @no_fastcomp('LSan is only supported on WASM backend')
   @requires_threads
   def test_pthread_lsan(self, name, args=[]):
-    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
+    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=leak', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
 
   @parameterized({
     # Reusing the LSan test files for ASan.
@@ -4007,12 +4007,12 @@ window.close = function() {
   @no_fastcomp('ASan is only supported on WASM backend')
   @requires_threads
   def test_pthread_asan(self, name, args=[]):
-    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
+    self.btest(path_from_root('tests', 'pthread', name + '.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', path_from_root('tests', 'pthread', name + '.js')] + args)
 
   @no_fastcomp('ASan is only supported on WASM backend')
   @requires_threads
   def test_pthread_asan_use_after_free(self):
-    self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '-std=c++11', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
+    self.btest(path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.cpp'), expected='1', args=['-fsanitize=address', '-s', 'INITIAL_MEMORY=256MB', '-s', 'USE_PTHREADS', '-s', 'PROXY_TO_PTHREAD', '--pre-js', path_from_root('tests', 'pthread', 'test_pthread_asan_use_after_free.js')])
 
   # Tests MAIN_THREAD_EM_ASM_INT() function call signatures.
   def test_main_thread_em_asm_signatures(self):
@@ -4373,7 +4373,7 @@ window.close = function() {
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest('fetch/to_memory.cpp',
                expected='1',
-               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DFILE_DOES_NOT_EXIST'],
+               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-DFILE_DOES_NOT_EXIST'],
                also_asmjs=True)
 
     # Test the positive case when the file URL exists. (http 200)
@@ -4381,14 +4381,14 @@ window.close = function() {
     for arg in [[], ['-s', 'FETCH_SUPPORT_INDEXEDDB=0']]:
       self.btest('fetch/to_memory.cpp',
                  expected='1',
-                 args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'] + arg,
+                 args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'] + arg,
                  also_asmjs=True)
 
   def test_fetch_to_indexdb(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/to_indexeddb.cpp',
                expected='1',
-               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
                also_asmjs=True)
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
@@ -4396,14 +4396,14 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/cached_xhr.cpp',
                expected='1',
-               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
+               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1'],
                also_asmjs=True)
 
   # Tests that response headers get set on emscripten_fetch_t values.
   @requires_threads
   def test_fetch_response_headers(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/response_headers.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], also_asmjs=True)
+    self.btest('fetch/response_headers.cpp', expected='1', args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'], also_asmjs=True)
 
   # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
   def test_fetch_stream_file(self):
@@ -4418,7 +4418,7 @@ window.close = function() {
         f.write(s)
     self.btest('fetch/stream_file.cpp',
                expected='1',
-               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'INITIAL_MEMORY=536870912'],
+               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'INITIAL_MEMORY=536870912'],
                also_asmjs=True)
 
   # Tests emscripten_fetch() usage in synchronous mode when used from the main
@@ -4427,7 +4427,7 @@ window.close = function() {
   @no_wasm_backend("WASM2JS does not yet support pthreads")
   def test_fetch_sync_xhr(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/sync_xhr.cpp', expected='1', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/sync_xhr.cpp', expected='1', args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Tests emscripten_fetch() usage when user passes none of the main 3 flags (append/replace/no_download).
   # In that case, in append is implicitly understood.
@@ -4449,7 +4449,7 @@ window.close = function() {
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
     self.btest('fetch/sync_xhr.cpp',
                expected='1',
-               args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'],
+               args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '--proxy-to-worker'],
                also_asmjs=True)
 
   # Tests waiting on EMSCRIPTEN_FETCH_WAITABLE request from a worker thread
@@ -4457,7 +4457,7 @@ window.close = function() {
   @requires_threads
   def test_fetch_sync_fetch_in_main_thread(self):
     shutil.copyfile(path_from_root('tests', 'gears.png'), 'gears.png')
-    self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['--std=c++11', '-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('fetch/sync_fetch_in_main_thread.cpp', expected='0', args=['-s', 'FETCH_DEBUG=1', '-s', 'FETCH=1', '-s', 'WASM=0', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   @requires_threads
   @no_wasm_backend("WASM2JS does not yet support pthreads")
@@ -4858,7 +4858,7 @@ window.close = function() {
 
   @requires_threads
   def test_embind_with_pthreads(self):
-    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-std=c++11', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
+    self.btest('embind_with_pthreads.cpp', '1', args=['--bind', '-s', 'USE_PTHREADS=1', '-s', 'PROXY_TO_PTHREAD=1'])
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

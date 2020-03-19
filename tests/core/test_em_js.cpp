@@ -17,7 +17,7 @@ EM_JS(double, noarg_double, (void), {
 });
 EM_JS(void, intarg, (int x), { out("  takes ints: " + x);});
 EM_JS(void, doublearg, (double d), { out("  takes doubles: " + d);});
-EM_JS(double, stringarg, (char* str), {
+EM_JS(double, stringarg, (const char* str), {
   out("  takes strings: " + UTF8ToString(str));
   return 7.75;
 });

@@ -819,13 +819,9 @@ f.close()
   def test_use_cxx(self):
     create_test_file('empty_file', ' ')
     dash_xc = run_process([PYTHON, EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
-    self.assertNotContained('-std=c++03', dash_xc)
+    self.assertNotContained('-x c++', dash_xc)
     dash_xcpp = run_process([PYTHON, EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
-    self.assertContained('-std=c++03', dash_xcpp)
-
-  def test_cxx03(self):
-    for compiler in [EMCC, EMXX]:
-      run_process([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')])
+    self.assertContained('-x c++', dash_xcpp)
 
   def test_cxx11(self):
     for std in ['-std=c++11', '--std=c++11']:
@@ -2171,6 +2167,8 @@ int f() {
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph5.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph5-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
+      (path_from_root('tests', 'optimizer', 'minimal-runtime-applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-applyDCEGraphRemovals-output.js')).read(),
+       ['applyDCEGraphRemovals']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
       (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges-output.js')).read(),
@@ -2180,6 +2178,8 @@ int f() {
       (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noPrint']),
+      (path_from_root('tests', 'optimizer', 'minimal-runtime-2-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-2-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
@@ -2280,6 +2280,15 @@ int f() {
         output = run_process([tools.js_optimizer.get_native_optimizer(), input] + passes, stdin=PIPE, stdout=PIPE).stdout
         check_js(output, expected)
 
+  @no_fastcomp('wasm2js-only')
+  def test_js_optimizer_wasm2js(self):
+    # run the js optimizer in a similar way as wasm2js does
+    shutil.copyfile(path_from_root('tests', 'optimizer', 'wasm2js.js'), 'wasm2js.js')
+    run_process([PYTHON, path_from_root('tools', 'js_optimizer.py'), 'wasm2js.js', 'minifyNames', 'last'])
+    with open(path_from_root('tests', 'optimizer', 'wasm2js-output.js')) as expected:
+      with open('wasm2js.js.jsopt.js') as actual:
+        self.assertIdentical(expected.read(), actual.read())
+
   def test_m_mm(self):
     create_test_file('foo.c', '#include <emscripten.h>')
     for opt in ['M', 'MM']:
@@ -2357,30 +2366,34 @@ int f() {
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.out.wasm'] + compile_args)
 
     no_size, line_size, full_size = test(compile_to_object)
-
     self.assertLess(no_size, line_size)
-    # currently we don't support full debug info anyhow, so line tables
-    # is all we have
-    self.assertEqual(line_size, full_size)
+    self.assertLess(line_size, full_size)
 
-    def compile_to_executable(compile_args):
+    def compile_to_executable(compile_args, link_args):
       # compile with the specified args
       run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'a.o'] + compile_args)
       # link with debug info
-      run_process([PYTHON, EMCC, 'a.o', '-g'])
+      run_process([PYTHON, EMCC, 'a.o'] + link_args)
 
-    no_size, line_size, full_size = test(compile_to_executable)
+    def compile_to_debug_executable(compile_args):
+      return compile_to_executable(compile_args, ['-g'])
 
-    # currently we strip all debug info from the final wasm anyhow, until
-    # we have full dwarf support
+    no_size, line_size, full_size = test(compile_to_debug_executable)
+    self.assertLess(no_size, line_size)
+    self.assertLess(line_size, full_size)
+
+    def compile_to_release_executable(compile_args):
+      return compile_to_executable(compile_args, [])
+
+    no_size, line_size, full_size = test(compile_to_release_executable)
     self.assertEqual(no_size, line_size)
     self.assertEqual(line_size, full_size)
 
   @no_fastcomp()
-  def test_force_dwarf(self):
+  def test_dwarf(self):
     def compile_with_dwarf(args, output):
-      # Test that the -gforce_dwarf flag forces enabling dwarf info in object files and linked wasm
-      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-gforce_dwarf'] + args)
+      # Test that -g enables dwarf info in object files and linked wasm
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', output, '-g'] + args)
 
     def verify(output):
       info = run_process([LLVM_DWARFDUMP, '--all', output], stdout=PIPE).stdout
@@ -6920,6 +6933,51 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([PYTHON, EMCC, 'test.cpp'])
     self.assertContained('undefined symbol: my_js', err)
 
+  @no_fastcomp('fastcomp links in memset in JS in a hackish way')
+  def test_js_lib_to_system_lib(self):
+    # memset is in compiled code, so a js library __deps can't access it. it
+    # would need to be in deps_info.json or EXPORTED_FUNCTIONS
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  depper__deps: ['memset'],
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    create_test_file('test.cpp', r'''
+#include <string.h>
+#include <stdio.h>
+
+extern "C" {
+extern void depper(char*);
+}
+
+int main(int argc, char** argv) {
+  char buffer[11];
+  buffer[10] = '\0';
+  // call by a pointer, to force linking of memset, no llvm intrinsic here
+  volatile auto ptr = memset;
+  (*ptr)(buffer, 'a', 10);
+  depper(buffer);
+  puts(buffer);
+}
+''')
+
+    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js'])
+    self.assertContained('_memset may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library', err)
+
+    # without the dep, and with EXPORTED_FUNCTIONS, it works ok
+    create_test_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  depper: function(ptr) {
+    _memset(ptr, 'd'.charCodeAt(0), 10);
+  },
+});
+''')
+    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
+    self.assertContained('dddddddddd', run_js('a.out.js'))
+
   def test_realpath(self):
     create_test_file('src.c', r'''
 #include <stdlib.h>
@@ -7189,7 +7247,7 @@ Resolved: "/" => "/"
     run_process([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
 
   def test_dash_s(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_dash_s_response_file_string(self):
@@ -7200,7 +7258,7 @@ Resolved: "/" => "/"
   def test_dash_s_response_file_list(self):
     create_test_file('response_file', '["_main", "_malloc"]\n')
     response_file = os.path.abspath('response_file')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file, '-std=c++03'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file])
 
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
@@ -7622,20 +7680,6 @@ mergeInto(LibraryManager.library, {
     proc = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'EXPORTED_FUNCTIONS=[]'], stderr=PIPE)
     self.assertContained(WARNING, proc.stderr)
 
-  def test_arc4random(self):
-    create_test_file('src.c', r'''
-#include <stdlib.h>
-#include <stdio.h>
-
-int main() {
-  printf("%d\n", arc4random());
-  printf("%d\n", arc4random());
-}
-    ''')
-    run_process([PYTHON, EMCC, 'src.c', '-Wno-implicit-function-declaration'])
-
-    self.assertContained('0\n740882966\n', run_js('a.out.js'))
-
   ############################################################
   # Function eliminator tests
   ############################################################
@@ -7690,7 +7734,7 @@ int main() {
 
       expected_file_contents = self.get_file_contents(path_from_root('tests', 'optimizer', 'test-function-eliminator-replace-array-value-output.js'))
 
-      self.assertIdentical(output_file_contents, expected_file_contents)
+      self.assertIdentical(expected_file_contents, output_file_contents)
     finally:
       tools.tempfiles.try_delete(output_file)
 
@@ -7763,13 +7807,13 @@ int main() {
   @no_wasm_backend('uses CYBERDWARF')
   def test_cyberdwarf_pointers(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                 '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
+                 '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
     run_js('test_pointers.js', engine=NODE_JS)
 
   @no_wasm_backend('uses CYBERDWARF')
   def test_cyberdwarf_union(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                 '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
+                 '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
     run_js('test_union.js', engine=NODE_JS)
 
   def test_source_file_with_fixed_language_mode(self):
@@ -7782,10 +7826,10 @@ int main() {
   return 0;
 }
     ''')
-    run_process([PYTHON, EMCC, '-Wall', '-std=c++14', '-x', 'c++', 'src_tmp_fixed_lang'])
+    run_process([PYTHON, EMCC, '-Wall', '-x', 'c++', 'src_tmp_fixed_lang'])
     self.assertContained("Test_source_fixed_lang_hello", run_js('a.out.js'))
 
-    stderr = self.expect_fail([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'])
+    stderr = self.expect_fail([PYTHON, EMCC, '-Wall', 'src_tmp_fixed_lang'])
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
 
   def test_disable_inlining(self):
@@ -8241,6 +8285,7 @@ int main() {
     'O3': (['-O3'], [], [],          85), # noqa
     'Os': (['-Os'], [], [],          85), # noqa
     'Oz': (['-Oz'], [], [],          85), # noqa
+    'Os_mr': (['-Os', '-s', 'MINIMAL_RUNTIME'], [], [], 85), # noqa
   })
   @no_fastcomp()
   def test_metadce_minimal(self, *args):
@@ -8298,7 +8343,6 @@ int main() {
     'main_module_2': (['-O3', '-s', 'MAIN_MODULE=2'], [], [],  10652, True, True, True, False), # noqa
   })
   @no_fastcomp()
-  @unittest.skip("Allow LLVM roll to proceed")
   def test_metadce_hello(self, *args):
     self.run_metadce_test('hello_world.cpp', *args)
 
@@ -8986,6 +9030,31 @@ var ASM_CONSTS = [function() { var x = !<->5.; }];
                              ^
 '''), stderr)
 
+  @no_fastcomp('wasm2js only')
+  def test_js_optimizer_chunk_size_determinism(self):
+    def build():
+      run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O3', '-s', 'WASM=0'])
+      with open('a.out.js') as f:
+        # FIXME: newline differences can exist, ignore for now
+        return f.read().replace('\n', '')
+
+    normal = build()
+
+    with env_modify({
+      'EMCC_JSOPT_MIN_CHUNK_SIZE': '1',
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '1'
+    }):
+      tiny = build()
+
+    with env_modify({
+      'EMCC_JSOPT_MIN_CHUNK_SIZE': '4294967296',
+      'EMCC_JSOPT_MAX_CHUNK_SIZE': '4294967296'
+    }):
+      huge = build()
+
+    self.assertIdentical(normal, tiny)
+    self.assertIdentical(normal, huge)
+
   def test_EM_ASM_ES6(self):
     # check we show a proper understandable error for JS parse problems
     create_test_file('src.cpp', r'''
@@ -9092,7 +9161,7 @@ int main() {
 
   @no_fastcomp('dwarf')
   def test_separate_dwarf(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gforce_dwarf'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-g'])
     self.assertExists('a.out.wasm')
     self.assertNotExists('a.out.wasm.debug.wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf'])
