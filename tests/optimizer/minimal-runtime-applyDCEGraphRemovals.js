@@ -17,8 +17,4 @@ expD1;
 Module['expD2'];
 asm['expD3'];
 
-expI1;
-Module['expI2'];
-asm['expI3'];
-
 // EXTRA_INFO: { "unused": ["emcc$import$number", "emcc$import$name", "emcc$import$func", "emcc$export$expD4", "emcc$export$expI4"] }

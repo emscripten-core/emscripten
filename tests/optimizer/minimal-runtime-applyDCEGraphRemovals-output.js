@@ -20,9 +20,3 @@ expD1;
 Module["expD2"];
 
 asm["expD3"];
-
-expI1;
-
-Module["expI2"];
-
-asm["expI3"];
