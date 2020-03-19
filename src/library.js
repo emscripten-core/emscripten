@@ -307,7 +307,7 @@ LibraryManager.library = {
         var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #endif
 #else // no growth
-        maxHeapSize = HEAPU8.length;
+        var maxHeapSize = HEAPU8.length;
 #endif
         return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
