@@ -3397,11 +3397,10 @@ var %(EXPORT_NAME)s = (function() {
         'src': src
       }
   else:
-    # Create the MODULARIZE_INSTANCE instance
-    # Note that we notice the global Module object, just like in normal
-    # non-MODULARIZE mode (while MODULARIZE has the user create the instances,
-    # and the user can decide whether to use Module there or something
-    # else etc.).
+    # Create the promise for the MODULARIZE_INSTANCE instance
+    # Note that the global, custom-named Module object is passed to the factory
+    # invocation just like in non-MODULARIZE mode; MODULARIZE code has the user
+    # creates the instance, leaving it up to them to pass in any Module seed.
     src = '''
 var initPromise = (%(src)s)(typeof %(EXPORT_NAME)s === 'object' ? %(EXPORT_NAME)s : {});
 ''' % {
