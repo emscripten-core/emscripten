@@ -411,14 +411,15 @@ def apply_settings(changes):
     if key in shared.Settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
 
+    # map legacy settings which have aliases to the new names
+    # but keep the original key so errors are correctly reported via the `setattr` below
+    user_key = key
     if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
-      actual_key = shared.Settings.alt_names[key]
-    else:
-      actual_key = key
+      key = shared.Settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
-    if actual_key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
-                      'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
+    if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
+               'GL_MAX_TEMP_BUFFER_SIZE', 'MAXIMUM_MEMORY', 'DEFAULT_PTHREAD_STACK_SIZE'):
       value = str(shared.expand_byte_size_suffixes(value))
 
     if value[0] == '@':
@@ -430,7 +431,7 @@ def apply_settings(changes):
       value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
-    setattr(shared.Settings, key, value)
+    setattr(shared.Settings, user_key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
       exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')
