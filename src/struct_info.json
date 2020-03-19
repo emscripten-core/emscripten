@@ -507,7 +507,14 @@
             "TIOCGWINSZ",
             "TIOCSWINSZ"
         ],
-        "structs": {}
+        "structs": {
+            "winsize": [
+                "ws_row", 
+                "ws_col", 
+                "ws_xpixel", 
+                "ws_ypixel"
+            ]
+	}
     }, 
     {
         "file": "libc/unistd.h", 
