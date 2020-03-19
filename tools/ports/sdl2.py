@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'version_18'
-HASH = '3a677c06d693c1568543eeb9179f9211a8c482738dab4400ccbc39aabe0cd1e57085e63ba1c25e9faefda1e06046d3b528298c96bb20c132b7c80e2e0aba972c'
+TAG = 'version_19'
+HASH = '5ee4c38ed8372ef1c9bca0d3826279be97bdb6150570b0e2b7c0e3a8c33f446b3ebd5df6385fccf6c25ac0fbb4ab00ed4728b52320951e648e38867cfd154795'
 SUBDIR = 'SDL2-' + TAG
 
 
@@ -19,13 +19,6 @@ def get(ports, settings, shared):
   libname = ports.get_lib_name('libSDL2' + ('-mt' if settings.USE_PTHREADS else ''))
 
   def create():
-    # we are rebuilding SDL, clear dependant projects so they copy in their includes to ours properly
-    ports.clear_project_build('sdl2_image')
-    ports.clear_project_build('sdl2_mixer')
-    ports.clear_project_build('sdl2_net')
-    ports.clear_project_build('sdl2_ttf')
-    ports.clear_project_build('sdl2_gfx')
-
     # copy includes to a location so they can be used as 'SDL2/'
     source_include_path = os.path.join(ports.get_dir(), 'sdl2', SUBDIR, 'include')
     ports.install_headers(source_include_path, target='SDL2')

@@ -823,7 +823,11 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  getenv__deps: ['$ENV'],
+  getenv__deps: ['$ENV',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
   getenv: function(name) {
@@ -929,11 +933,6 @@ LibraryManager.library = {
     }
     return limit;
   },
-
-  // For compatibility, call to rand() when code requests arc4random(), although this is *not* at all
-  // as strong as rc4 is. See https://man.openbsd.org/arc4random
-  arc4random__sig: 'i',
-  arc4random: 'rand',
 
   // ==========================================================================
   // string.h
@@ -1068,7 +1067,6 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
-#endif
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -1127,6 +1125,7 @@ LibraryManager.library = {
     }
     return (end-num)|0;
   },
+#endif // !WASM_BACKEND
 
   memcpy__sig: 'iiii',
   memmove__sig: 'iiii',
@@ -2876,7 +2875,9 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
+#if !WASM_BACKEND
   times__deps: ['memset'],
+#endif
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
@@ -4575,7 +4576,11 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;

@@ -23,7 +23,6 @@ $main
 $memcpy
 $puts
 $sbrk
-$setThrew
 $stackAlloc
 $stackRestore
 $stackSave

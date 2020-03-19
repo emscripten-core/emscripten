@@ -2427,11 +2427,15 @@ var LibraryGL = {
     if (4*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
       var view = GL.miniTempBufferFloatViews[4*count-1];
-      for (var i = 0; i < 4*count; i += 4) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
+      // hoist the heap out of the loop for size and for pthreads+growth.
+      var heap = HEAPF32;
+      value >>= 2;
+      for (var i = 0; i < 4 * count; i += 4) {
+        var dst = value + i;
+        view[i] = heap[dst];
+        view[i + 1] = heap[dst + 1];
+        view[i + 2] = heap[dst + 2];
+        view[i + 3] = heap[dst + 3];
       }
     } else
 #endif
@@ -2537,23 +2541,27 @@ var LibraryGL = {
     if (16*count <= GL.MINI_TEMP_BUFFER_SIZE) {
       // avoid allocation when uploading few enough uniforms
       var view = GL.miniTempBufferFloatViews[16*count-1];
-      for (var i = 0; i < 16*count; i += 16) {
-        view[i] = {{{ makeGetValue('value', '4*i', 'float') }}};
-        view[i+1] = {{{ makeGetValue('value', '4*i+4', 'float') }}};
-        view[i+2] = {{{ makeGetValue('value', '4*i+8', 'float') }}};
-        view[i+3] = {{{ makeGetValue('value', '4*i+12', 'float') }}};
-        view[i+4] = {{{ makeGetValue('value', '4*i+16', 'float') }}};
-        view[i+5] = {{{ makeGetValue('value', '4*i+20', 'float') }}};
-        view[i+6] = {{{ makeGetValue('value', '4*i+24', 'float') }}};
-        view[i+7] = {{{ makeGetValue('value', '4*i+28', 'float') }}};
-        view[i+8] = {{{ makeGetValue('value', '4*i+32', 'float') }}};
-        view[i+9] = {{{ makeGetValue('value', '4*i+36', 'float') }}};
-        view[i+10] = {{{ makeGetValue('value', '4*i+40', 'float') }}};
-        view[i+11] = {{{ makeGetValue('value', '4*i+44', 'float') }}};
-        view[i+12] = {{{ makeGetValue('value', '4*i+48', 'float') }}};
-        view[i+13] = {{{ makeGetValue('value', '4*i+52', 'float') }}};
-        view[i+14] = {{{ makeGetValue('value', '4*i+56', 'float') }}};
-        view[i+15] = {{{ makeGetValue('value', '4*i+60', 'float') }}};
+      // hoist the heap out of the loop for size and for pthreads+growth.
+      var heap = HEAPF32;
+      value >>= 2;
+      for (var i = 0; i < 16 * count; i += 16) {
+        var dst = value + i;
+        view[i] = heap[dst];
+        view[i + 1] = heap[dst + 1];
+        view[i + 2] = heap[dst + 2];
+        view[i + 3] = heap[dst + 3];
+        view[i + 4] = heap[dst + 4];
+        view[i + 5] = heap[dst + 5];
+        view[i + 6] = heap[dst + 6];
+        view[i + 7] = heap[dst + 7];
+        view[i + 8] = heap[dst + 8];
+        view[i + 9] = heap[dst + 9];
+        view[i + 10] = heap[dst + 10];
+        view[i + 11] = heap[dst + 11];
+        view[i + 12] = heap[dst + 12];
+        view[i + 13] = heap[dst + 13];
+        view[i + 14] = heap[dst + 14];
+        view[i + 15] = heap[dst + 15];
       }
     } else
 #endif

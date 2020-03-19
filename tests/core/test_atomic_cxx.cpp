@@ -6,9 +6,9 @@
 //------------------------------------------------------------------------------
 //  test C++11 atomics
 //  compile native version with:
-//  clang -std=c++11 -Wno-format test_atomic_cxx.cpp
+//  clang -Wno-format test_atomic_cxx.cpp
 //  compile emscripten version with:
-//  emcc -std=c++11 -Wno-format test_atomic_cxx.cpp
+//  emcc -Wno-format test_atomic_cxx.cpp
 //------------------------------------------------------------------------------
 #include <atomic>
 #include <cstdio>
