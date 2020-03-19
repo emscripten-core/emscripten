@@ -14,7 +14,7 @@
 int main(int argc, char **argv)
 {
   char *buf1 = (char*)malloc(100);
-  char *data1 = "hello";
+  const char *data1 = "hello";
   memcpy(buf1, data1, strlen(data1)+1);
 
   float *buf2 = (float*)malloc(100);

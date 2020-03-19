@@ -5360,18 +5360,16 @@ main( int argv, char ** argc ) {
   def test_unistd_access(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
-    src = open(path_from_root('tests', 'unistd', 'access.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'access.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'access', js_engines=[NODE_JS])
     # Node.js fs.chmod is nearly no-op on Windows
     if not WINDOWS:
       self.emcc_args = orig_compiler_opts
       self.emcc_args += ['-s', 'NODERAWFS=1']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'access', js_engines=[NODE_JS])
 
   def test_unistd_curdir(self):
     src = open(path_from_root('tests', 'unistd', 'curdir.c')).read()
@@ -5480,8 +5478,6 @@ main( int argv, char ** argc ) {
   def test_unistd_links(self):
     self.clear()
     orig_compiler_opts = self.emcc_args[:]
-    src = open(path_from_root('tests', 'unistd', 'links.c')).read()
-    expected = open(path_from_root('tests', 'unistd', 'links.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
       if WINDOWS and fs == 'NODEFS':
         print('Skipping NODEFS part of this test for test_unistd_links on Windows, since it would require administrative privileges.', file=sys.stderr)
@@ -5492,7 +5488,7 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'links', js_engines=[NODE_JS])
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   def test_unistd_symlink_on_nodefs(self):
@@ -5532,7 +5528,7 @@ main( int argv, char ** argc ) {
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run_in_out_file_test('tests', 'unistd', 'misc', js_engines=[NODE_JS])
 
   # i64s in the API, which we'd need to legalize for JS, so in standalone mode
   # all we can test is wasm VMs
@@ -5915,6 +5911,8 @@ return malloc(size);
       self.do_run(src, '*\n' + s[0:20] + '\n' + s[4096:4096 + 20] + '\n*\n')
 
   def test_cubescript(self):
+    # uses register keyword
+    self.emcc_args.append('-std=c++03')
     if self.run_name == 'asm3':
       self.emcc_args += ['--closure', '1'] # Use closure here for some additional coverage
 
@@ -6141,6 +6139,7 @@ return malloc(size);
   @is_slow_test
   def test_the_bullet(self): # Called thus so it runs late in the alphabetical cycle... it is long
     self.set_setting('DEAD_FUNCTIONS', ['__ZSt9terminatev'])
+    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
 
     asserts = self.get_setting('ASSERTIONS')
 
@@ -6445,7 +6444,7 @@ return malloc(size);
 
     def run_all(x):
       print(x)
-      for name in glob.glob(path_from_root('tests', 'fuzz', '*.c')) + glob.glob(path_from_root('tests', 'fuzz', '*.cpp')):
+      for name in sorted(glob.glob(path_from_root('tests', 'fuzz', '*.c')) + glob.glob(path_from_root('tests', 'fuzz', '*.cpp'))):
         # if os.path.basename(name) != '4.c':
         #   continue
         if 'newfail' in name:
@@ -6461,8 +6460,12 @@ return malloc(size);
           continue # LLVM LTO bug
 
         print(name)
+        if name.endswith('.cpp'):
+          self.emcc_args.append('-std=c++03')
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
                     open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=name.endswith('.c'), assert_returncode=None)
+        if name.endswith('.cpp'):
+          self.emcc_args.remove('-std=c++03')
 
     run_all('normal')
 
@@ -7764,7 +7767,7 @@ Module['onRuntimeInitialized'] = function() {
 #include <stdio.h>
 #include <emscripten.h>
 extern "C" {
-  char* stringf(char* param) {
+  const char* stringf(char* param) {
     emscripten_sleep(20);
     printf(param);
     return "second";
@@ -8619,6 +8622,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                 post_build=modify_env, assert_all=True, expected_output=expected_output)
 
   def test_template_class_deduction(self):
+    self.emcc_args += ['-std=c++17']
     self.do_run_in_out_file_test('tests', 'core', 'test_template_class_deduction')
 
   @parameterized({

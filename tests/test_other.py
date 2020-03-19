@@ -823,10 +823,6 @@ f.close()
     dash_xcpp = run_process([PYTHON, EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
     self.assertContained('-x c++', dash_xcpp)
 
-  def test_cxx03(self):
-    for compiler in [EMCC, EMXX]:
-      run_process([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')])
-
   def test_cxx11(self):
     for std in ['-std=c++11', '--std=c++11']:
       for compiler in [EMCC, EMXX]:
