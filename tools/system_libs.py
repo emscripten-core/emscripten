@@ -1137,7 +1137,7 @@ class libasmfs(CXXLibrary, MTLibrary):
   def can_build(self):
     # ASMFS is looking for a maintainer
     # https://github.com/emscripten-core/emscripten/issues/9534
-    return False
+    return True
 
 
 class libhtml5(Library):
