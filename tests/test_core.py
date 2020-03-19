@@ -1382,12 +1382,11 @@ int main(int argc, char **argv)
 
     if not self.is_wasm():
       print(size, empty_size, fake_size, disabled_size)
-
-      assert size - empty_size > 0.0025 * size, [empty_size, size]  # big change when we disable entirely
-      assert size - fake_size > 0.0025 * size, [fake_size, size]
-      assert abs(empty_size - fake_size) < 0.007 * size, [empty_size, fake_size]
-      assert empty_size - disabled_size < 0.007 * size, [empty_size, disabled_size]  # full disable removes a little bit more
-      assert fake_size - disabled_size < 0.007 * size, [disabled_size, fake_size]
+      assert empty_size == fake_size, [empty_size, fake_size]
+      # big change when we disable exception catching of the function
+      assert size - empty_size > 0.01 * size, [empty_size, size]
+      # full disable removes a little bit more
+      assert empty_size - disabled_size > 0.005 * size, [empty_size, disabled_size]
 
   def test_exceptions_white_list_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
