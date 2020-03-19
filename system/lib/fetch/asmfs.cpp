@@ -818,40 +818,6 @@ static void print_stream(void* bytes, int numBytes, bool stdout) {
   buffer_end = new_buffer_size;
 }
 
-long __syscall3(int which, ...) // read
-{
-  va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  void* buf = va_arg(vl, void*);
-  size_t count = va_arg(vl, size_t);
-  va_end(vl);
-#ifdef ASMFS_DEBUG
-  EM_ASM(
-    err('read(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
-#endif
-
-  iovec io = {buf, count};
-  return __syscall145(145 /*readv*/, fd, &io, 1);
-}
-
-long __syscall4(int which, ...) // write
-{
-  va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  void* buf = va_arg(vl, void*);
-  size_t count = va_arg(vl, size_t);
-  va_end(vl);
-#ifdef ASMFS_DEBUG
-  EM_ASM(
-    err('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
-#endif
-
-  iovec io = {buf, count};
-  return __syscall146(146 /*writev*/, fd, &io, 1);
-}
-
 // TODO: Make thread-local storage.
 static emscripten_asmfs_open_t __emscripten_asmfs_file_open_behavior_mode =
   EMSCRIPTEN_ASMFS_OPEN_REMOTE_DISCOVER;
@@ -1088,16 +1054,14 @@ static long open(const char* pathname, int flags, int mode) {
   return (long)desc;
 }
 
-long __syscall5(int which, ...) // open
+long __syscall5(long path, long flags, ...) // open
 {
   va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  int flags = va_arg(vl, int);
+  va_start(vl, flags);
   int mode = va_arg(vl, int);
   va_end(vl);
 
-  return open(pathname, flags, mode);
+  return open((const char *)path, flags, mode);
 }
 
 static long close(int fd) {
@@ -1235,13 +1199,8 @@ long __syscall6(int which, ...) // close
   return close(fd);
 }
 
-long __syscall9(int which, ...) // link
+long __syscall9(long oldpath, long newpath) // link
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* oldpath = va_arg(vl, const char*);
-  const char* newpath = va_arg(vl, const char*);
-  va_end(vl);
 #ifdef ASMFS_DEBUG
   EM_ASM(err('link(oldpath="' + UTF8ToString($0) + '", newpath="' + UTF8ToString($1) + '")'),
     oldpath, newpath);
@@ -1252,12 +1211,9 @@ long __syscall9(int which, ...) // link
   RETURN_ERRNO(ENOTSUP, "TODO: link() is a stub and not yet implemented in ASMFS");
 }
 
-long __syscall10(int which, ...) // unlink
+long __syscall10(long path) // unlink
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('unlink(pathname="' + UTF8ToString($0) + '")'), pathname);
 #endif
@@ -1316,12 +1272,9 @@ long __syscall10(int which, ...) // unlink
   return 0;
 }
 
-long __syscall12(int which, ...) // chdir
+long __syscall12(long path) // chdir
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('chdir(pathname="' + UTF8ToString($0) + '")'), pathname);
 #endif
@@ -1355,14 +1308,9 @@ long __syscall12(int which, ...) // chdir
   return 0;
 }
 
-long __syscall14(int which, ...) // mknod
+long __syscall14(long path, long mode, long dev) // mknod
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  mode_t mode = va_arg(vl, mode_t);
-  int dev = va_arg(vl, int);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('mknod(pathname="' + UTF8ToString($0) + '", mode=0' + ($1).toString(8) + ', dev=' +
              $2 + ')'),
@@ -1375,13 +1323,9 @@ long __syscall14(int which, ...) // mknod
   RETURN_ERRNO(ENOTSUP, "TODO: mknod() is a stub and not yet implemented in ASMFS");
 }
 
-long __syscall15(int which, ...) // chmod
+long __syscall15(long path, long mode) // chmod
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  int mode = va_arg(vl, int);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('chmod(pathname="' + UTF8ToString($0) + '", mode=0' + ($1).toString(8) + ')'),
     pathname, mode);
@@ -1419,13 +1363,9 @@ long __syscall15(int which, ...) // chmod
   return 0;
 }
 
-long __syscall33(int which, ...) // access
+long __syscall33(long path, long mode) // access
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  int mode = va_arg(vl, int);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('access(pathname="' + UTF8ToString($0) + '", mode=0' + ($1).toString(8) + ')'),
     pathname, mode);
@@ -1474,12 +1414,11 @@ long __syscall33(int which, ...) // access
   return 0;
 }
 
-long __syscall36(int which, ...) // sync
+long __syscall36() // sync
 {
 #ifdef ASMFS_DEBUG
   EM_ASM(err('sync()'));
 #endif
-  ((void)which);
 
   // Spec mandates that "sync() is always successful".
   return 0;
@@ -1570,23 +1509,14 @@ uint64_t emscripten_asmfs_compute_memory_usage() {
   return emscripten_asmfs_compute_memory_usage_at_node(filesystem_root());
 }
 
-long __syscall39(int which, ...) // mkdir
+long __syscall39(long path, long mode) // mkdir
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  mode_t mode = va_arg(vl, mode_t);
-  va_end(vl);
-
-  return emscripten_asmfs_mkdir(pathname, mode);
+  return emscripten_asmfs_mkdir((const char *)path, mode);
 }
 
-long __syscall40(int which, ...) // rmdir
+long __syscall40(long path) // rmdir
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('rmdir(pathname="' + UTF8ToString($0) + '")'), pathname);
 #endif
@@ -1638,12 +1568,8 @@ long __syscall40(int which, ...) // rmdir
   return 0;
 }
 
-long __syscall41(int which, ...) // dup
+long __syscall41(long fd) // dup
 {
-  va_list vl;
-  va_start(vl, which);
-  unsigned int fd = va_arg(vl, unsigned int);
-  va_end(vl);
 #ifdef ASMFS_DEBUG
   EM_ASM(err('dup(fd=' + $0 + ')'), fd);
 #endif
@@ -1664,12 +1590,10 @@ long __syscall41(int which, ...) // dup
 
 // TODO: syscall42: int pipe(int pipefd[2]);
 
-long __syscall54(int which, ...) // ioctl/sysctl
+long __syscall54(long fd, long request, ...) // ioctl/sysctl
 {
   va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  int request = va_arg(vl, int);
+  va_start(vl, request);
   char* argp = va_arg(vl, char*);
   va_end(vl);
 #ifdef ASMFS_DEBUG
@@ -1775,14 +1699,8 @@ long __syscall140(int which, ...) // llseek
 
 // TODO: syscall144 msync
 
-long __syscall145(int which, ...) // readv
+static long readv(int fd, const iovec *iov, int iovcnt) // syscall145
 {
-  va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  const iovec* iov = va_arg(vl, const iovec*);
-  int iovcnt = va_arg(vl, int);
-  va_end(vl);
 #ifdef ASMFS_DEBUG
   EM_ASM(err('readv(fd=' + $0 + ', iov=0x' + ($1).toString(16) + ', iovcnt=' + $2 + ')'), fd, iov,
     iovcnt);
@@ -1853,14 +1771,19 @@ long __syscall145(int which, ...) // readv
   return numRead;
 }
 
-long __syscall146(int which, ...) // writev
+long __syscall3(long fd, long buf, long count) // read
 {
-  va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  const iovec* iov = va_arg(vl, const iovec*);
-  int iovcnt = va_arg(vl, int);
-  va_end(vl);
+#ifdef ASMFS_DEBUG
+  EM_ASM(
+    err('read(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
+#endif
+
+  iovec io = {(void*)buf, (size_t)count};
+  return readv(fd, &io, 1);
+}
+
+static long writev(int fd, const iovec *iov, int iovcnt) // syscall146
+{
 #ifdef ASMFS_DEBUG
   EM_ASM(err('writev(fd=' + $0 + ', iov=0x' + ($1).toString(16) + ', iovcnt=' + $2 + ')'), fd, iov,
     iovcnt);
@@ -1925,6 +1848,17 @@ long __syscall146(int which, ...) // writev
   return total_write_amount;
 }
 
+long __syscall4(long fd, long buf, long count) // write
+{
+#ifdef ASMFS_DEBUG
+  EM_ASM(
+    err('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
+#endif
+
+  iovec io = {(void*)buf, (size_t)count};
+  return writev(fd, &io, 1);
+}
+
 // WASI support: provide a shim between the wasi fd_write syscall and the
 // syscall146 that is implemented here in ASMFS.
 // TODO: Refactor ASMFS's syscall146 into a direct handler for fd_write.
@@ -1937,7 +1871,7 @@ __wasi_errno_t __wasi_fd_write(
 )
 {
   long result;
-  result = __syscall146(146 /*writev*/, fd, iovs, iovs_len);
+  result = writev(fd, (const iovec*)iovs, iovs_len);
   if (result < 0) {
     *nwritten = 0;
     return result;
@@ -1952,13 +1886,8 @@ __wasi_errno_t __wasi_fd_write(
 // TODO: syscall180: pread64
 // TODO: syscall181: pwrite64
 
-long __syscall183(int which, ...) // getcwd
+long __syscall183(long buf, long size) // getcwd
 {
-  va_list vl;
-  va_start(vl, which);
-  char* buf = va_arg(vl, char*);
-  size_t size = va_arg(vl, size_t);
-  va_end(vl);
 #ifdef ASMFS_DEBUG
   EM_ASM(err('getcwd(buf=0x' + $0 + ', size= ' + $1 + ')'), buf, size);
 #endif
@@ -1974,8 +1903,8 @@ long __syscall183(int which, ...) // getcwd
   // TODO: RETURN_ERRNO(ENOENT, "The current working directory has been unlinked");
   // TODO: RETURN_ERRNO(EACCES, "Permission to read or search a component of the filename was
   // denied");
-  inode_abspath(cwd, buf, size);
-  if (strlen(buf) >= size - 1)
+  inode_abspath(cwd, (char *)buf, size);
+  if (strlen((char *)buf) >= size - 1)
     RETURN_ERRNO(ERANGE, "The size argument is less than the length of the absolute pathname of the working directory, including the terminating null byte.  You need to allocate a bigger array and try again");
 
   return 0;
@@ -2021,13 +1950,9 @@ static long __stat64(inode* node, struct stat* buf) {
   return 0;
 }
 
-long __syscall195(int which, ...) // SYS_stat64
+long __syscall195(long path, long buf) // SYS_stat64
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  struct stat* buf = va_arg(vl, struct stat*);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('SYS_stat64(pathname="' + UTF8ToString($0) + '", buf=0x' + ($1).toString(16) + ')'),
     pathname, buf);
@@ -2066,16 +1991,12 @@ long __syscall195(int which, ...) // SYS_stat64
   if (err == ENOENT || !node)
     RETURN_ERRNO(ENOENT, "A component of pathname does not exist");
 
-  return __stat64(node, buf);
+  return __stat64(node, (struct stat *)buf);
 }
 
-long __syscall196(int which, ...) // SYS_lstat64
+long __syscall196(long path, long buf) // SYS_lstat64
 {
-  va_list vl;
-  va_start(vl, which);
-  const char* pathname = va_arg(vl, const char*);
-  struct stat* buf = va_arg(vl, struct stat*);
-  va_end(vl);
+  const char* pathname = (const char *)path;
 #ifdef ASMFS_DEBUG
   EM_ASM(err('SYS_lstat64(pathname="' + UTF8ToString($0) + '", buf=0x' + ($1).toString(16) + ')'),
     pathname, buf);
@@ -2107,16 +2028,11 @@ long __syscall196(int which, ...) // SYS_lstat64
   if (err == ENOENT || !node)
     RETURN_ERRNO(ENOENT, "A component of pathname does not exist");
 
-  return __stat64(node, buf);
+  return __stat64(node, (struct stat*)buf);
 }
 
-long __syscall197(int which, ...) // SYS_fstat64
+long __syscall197(long fd, long buf) // SYS_fstat64
 {
-  va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  struct stat* buf = va_arg(vl, struct stat*);
-  va_end(vl);
 #ifdef ASMFS_DEBUG
   EM_ASM(
     err('SYS_fstat64(fd="' + UTF8ToString($0) + '", buf=0x' + ($1).toString(16) + ')'), fd, buf);
@@ -2130,21 +2046,16 @@ long __syscall197(int which, ...) // SYS_fstat64
   if (!node)
     RETURN_ERRNO(ENOENT, "A component of pathname does not exist");
 
-  return __stat64(node, buf);
+  return __stat64(node, (struct stat*)buf);
 }
 
 // TODO: syscall198: lchown
 // TODO: syscall207: fchown32
 // TODO: syscall212: chown32
 
-long __syscall220(int which, ...) // getdents64 (get directory entries 64-bit)
+long __syscall220(long fd, long dirp, long count) // getdents64 (get directory entries 64-bit)
 {
-  va_list vl;
-  va_start(vl, which);
-  unsigned int fd = va_arg(vl, unsigned int);
-  dirent* de = va_arg(vl, dirent*);
-  unsigned int count = va_arg(vl, unsigned int);
-  va_end(vl);
+  dirent* de = (dirent*)dirp;
   unsigned int dirents_size =
     count /
     sizeof(dirent); // The number of dirent structures that can fit into the provided buffer.

@@ -28,7 +28,7 @@ def get(ports, settings, shared):
     shutil.copytree(source_path, dest_path)
 
     final = os.path.join(dest_path, libname)
-    ports.build_port(os.path.join(dest_path, 'icu4c', 'source', 'common'), final, [os.path.join(dest_path, 'icu4c', 'source', 'common')], ['--std=c++11', '-DU_COMMON_IMPLEMENTATION=1'])
+    ports.build_port(os.path.join(dest_path, 'icu4c', 'source', 'common'), final, [os.path.join(dest_path, 'icu4c', 'source', 'common')], ['-DU_COMMON_IMPLEMENTATION=1'])
 
     ports.install_header_dir(os.path.join(dest_path, 'icu4c', 'source', 'common', 'unicode'))
     return final

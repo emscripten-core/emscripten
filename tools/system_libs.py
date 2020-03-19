@@ -572,7 +572,7 @@ class NoExceptLibrary(Library):
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING, **kwargs)
+    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING == 1, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -849,7 +849,6 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
   depends = ['libc']
   cflags = [
-      '-std=c++11',
       '-Oz',
       '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
       # Remove this once we update to include this llvm
@@ -894,7 +893,7 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
   depends = ['libc++abi']
 
-  cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
+  cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
   src_dir = ['system', 'lib', 'libcxx']
@@ -1085,7 +1084,6 @@ class libgl(MTLibrary):
 
 class libembind(CXXLibrary):
   name = 'libembind'
-  cflags = ['-std=c++11']
   depends = ['libc++abi']
   never_force = True
 
@@ -1137,7 +1135,7 @@ class libasmfs(CXXLibrary, MTLibrary):
   def can_build(self):
     # ASMFS is looking for a maintainer
     # https://github.com/emscripten-core/emscripten/issues/9534
-    return False
+    return True
 
 
 class libhtml5(Library):
@@ -1237,7 +1235,6 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
-  cflags = ['-std=c++11']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
   src_glob = '*.cc'
   src_glob_exclude = ['sanitizer_common_nolibc.cc']
@@ -1248,7 +1245,6 @@ class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  cflags = ['-std=c++11']
   src_glob = '*.cc'
 
 
