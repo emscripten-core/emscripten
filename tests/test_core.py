@@ -1396,7 +1396,7 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
+    self.do_run_in_out_file_test('tests', 'third_party', 'test_exceptions_white_list_uncaught')
 
   def test_exceptions_uncaught(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
