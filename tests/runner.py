@@ -779,7 +779,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       ret = out + err
     if error or EMTEST_VERBOSE:
       logger.info('-- begin program output --')
-      logger.info(ret, end='')
+      logger.info(ret)
       logger.info('-- end program output --')
     if error:
       self.fail('JS subprocess failed (%s): %s.  Output:\n%s' % (error.cmd, error.returncode, ret))
