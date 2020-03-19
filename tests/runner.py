@@ -1266,6 +1266,10 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
+        # the test is reporting its result. first change dir away from the
+        # test dir, as it will be deleted now that the test is finishing, and
+        # if we got a ping at that time, we'd return an error
+        os.chdir(path_from_root())
         # for debugging, tests may encode the result and their own url (window.location) as result|url
         if '|' in self.path:
           path, url = self.path.split('|', 1)
@@ -1293,6 +1297,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
+
       elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
@@ -1311,6 +1316,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         if not in_queue.empty():
+          # there is a new test ready to be served
           url, dir = in_queue.get()
           if DEBUG:
             print('[queue command:', url, dir, ']')
@@ -1318,7 +1324,7 @@ def harness_server_func(in_queue, out_queue, port):
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
           self.wfile.write(b'COMMAND:' + url)
-          # move us to the right place to serve the files
+          # move us to the right place to serve the files for the new test
           os.chdir(dir)
         else:
           # the browser must keep polling
