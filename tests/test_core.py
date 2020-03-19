@@ -5964,6 +5964,8 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_builtin_simd(self, js_engines):
+    # TODO(tlively): fix these warnings
+    self.emcc_args.append('-Wno-c++11-narrowing')
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(), 'Success!',
                 js_engines=js_engines)
     self.emcc_args.append('-munimplemented-simd128')
@@ -5972,6 +5974,8 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_intrinsics_simd(self, js_engines):
+    # TODO(tlively): fix these warnings
+    self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
                 js_engines=js_engines)
