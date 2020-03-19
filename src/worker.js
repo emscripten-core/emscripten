@@ -108,7 +108,7 @@ this.onmessage = function(e) {
 #endif
 #else
       Module['wasmModule'] = e.data.wasmModule;
-#endif
+#endif // MINIMAL_RUNTIME
 
       {{{ makeAsmImportsAccessInPthread('wasmMemory') }}} = e.data.wasmMemory;
 
@@ -135,17 +135,19 @@ this.onmessage = function(e) {
       }
 #endif
 
-#endif
+#endif // WASM
 
 #if !MINIMAL_RUNTIME || MODULARIZE
       {{{ makeAsmImportsAccessInPthread('ENVIRONMENT_IS_PTHREAD') }}} = true;
 #endif
 
-var initPromise;
 #if MODULARIZE && EXPORT_ES6
-      initPromise = import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
+      import(e.data.urlOrBlob).then(function({{{ EXPORT_NAME }}}) {
         return {{{ EXPORT_NAME }}}.default(Module);
-      })
+      }).then(function(instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #else
       if (typeof e.data.urlOrBlob === 'string') {
         importScripts(e.data.urlOrBlob);
@@ -156,20 +158,24 @@ var initPromise;
       }
 #if MODULARIZE && !MODULARIZE_INSTANCE
 #if MINIMAL_RUNTIME
-      initPromise = {{{ EXPORT_NAME }}}(imports);
+      {{{ EXPORT_NAME }}}(imports).then(function(instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #else
-      initPromise = {{{ EXPORT_NAME }}}(Module);
+      {{{ EXPORT_NAME }}}(Module).then(function(instance) {
+        Module = instance;
+        postMessage({ 'cmd': 'loaded' });
+      });
 #endif
 #endif
 
-if (initPromise === undefined) {
-  postMessage({ 'cmd': 'loaded' });
-} else {
-  initPromise.then(function(mod) {
-    Module = mod;
-    postMessage({ 'cmd': 'loaded' });
-  });
-}
+#if !MODULARIZE && (!MINIMAL_RUNTIME || !WASM)
+      // MINIMAL_RUNTIME always compiled Wasm (&Wasm2JS) asynchronously, even in pthreads. But
+      // regular runtime and asm.js are loaded synchronously, so in those cases
+      // we are now loaded, and can post back to main thread.
+      postMessage({ 'cmd': 'loaded' });
+#endif
 
 #endif
     } else if (e.data.cmd === 'objectTransfer') {
