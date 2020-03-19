@@ -826,7 +826,7 @@ WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
 WarningManager.add_warning('separate-asm')
 WarningManager.add_warning('almost-asm')
 WarningManager.add_warning('invalid-input')
-# Don't show lecacy settings warnings by default
+# Don't show legacy settings warnings by default
 WarningManager.add_warning('legacy-settings', enabled=False, part_of_all=False)
 
 
