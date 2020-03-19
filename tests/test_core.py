@@ -1385,8 +1385,8 @@ int main(int argc, char **argv)
       assert empty_size == fake_size, [empty_size, fake_size]
       # big change when we disable exception catching of the function
       assert size - empty_size > 0.01 * size, [empty_size, size]
-      # full disable removes a little bit more
-      assert empty_size - disabled_size > 0.005 * size, [empty_size, disabled_size]
+      # full disable can remove a little bit more
+      assert empty_size >= disabled_size, [empty_size, disabled_size]
 
   def test_exceptions_white_list_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
