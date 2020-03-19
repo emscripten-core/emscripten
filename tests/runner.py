@@ -1352,6 +1352,30 @@ class BrowserCore(RunnerCore):
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
 
+  @staticmethod
+  def browser_open(url):
+    if not EMTEST_BROWSER:
+      logger.info('Using default system browser')
+      webbrowser.open_new(url)
+      return
+
+    browser_args = shlex.split(EMTEST_BROWSER)
+    # If the given browser is a scalar, treat it like one of the possible types
+    # from https://docs.python.org/2/library/webbrowser.html
+    if len(browser_args) == 1:
+      try:
+        # This throws if the type of browser isn't available
+        webbrowser.get(browser_args[0]).open_new(url)
+        logger.info('Using Emscripten browser: %s', browser_args[0])
+        return
+      except webbrowser.Error:
+        # Ignore the exception and fallback to the custom command logic
+        pass
+    # Else assume the given browser is a specific program with additional
+    # parameters and delegate to that
+    logger.info('Using Emscripten browser: %s', str(browser_args))
+    subprocess.Popen(browser_args + [url])
+
   @classmethod
   def setUpClass(cls):
     super(BrowserCore, cls).setUpClass()
@@ -1359,23 +1383,13 @@ class BrowserCore(RunnerCore):
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
-    if not EMTEST_BROWSER:
-      print("Using default system browser")
-    else:
-      cmd = shlex.split(EMTEST_BROWSER)
-
-      def run_in_other_browser(url):
-        subprocess.Popen(cmd + [url])
-
-      webbrowser.open_new = run_in_other_browser
-      print("Using Emscripten browser: " + str(cmd))
     cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    webbrowser.open_new('http://localhost:%s/run_harness' % cls.port)
+    cls.browser_open('http://localhost:%s/run_harness' % cls.port)
 
   @classmethod
   def tearDownClass(cls):
