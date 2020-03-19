@@ -5964,10 +5964,10 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_builtin_simd(self, js_engines):
-    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(), 'Success!',
+    self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(), 'Success!',
                 js_engines=js_engines)
     self.emcc_args.append('-munimplemented-simd128')
-    self.build(open(path_from_root('tests', 'test_wasm_builtin_simd.c')).read(),
+    self.build(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
