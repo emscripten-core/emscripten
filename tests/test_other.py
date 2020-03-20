@@ -6094,27 +6094,27 @@ Descriptor desc;
       assert ('is a helper for' in output.stderr) == fail
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
-    check('emmake', [])
-    check('emconfigure', [])
-    check('emmake', ['--version'])
-    check('emconfigure', ['--version'])
-    check('emmake', ['make'], fail=False)
-    check('emconfigure', ['configure'], fail=False)
-    check('emconfigure', ['./configure'], fail=False)
-    check('emcmake', ['cmake'], fail=False)
+    check('emmake.py', [])
+    check('emconfigure.py', [])
+    check('emmake.py', ['--version'])
+    check('emconfigure.py', ['--version'])
+    check('emmake.py', ['make'], fail=False)
+    check('emconfigure.py', ['configure'], fail=False)
+    check('emconfigure.py', ['./configure'], fail=False)
+    check('emcmake.py', ['cmake'], fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
-    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emconfigure.py', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emmake.py', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check('emconfigure.py', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
   @no_windows('This test is broken, https://github.com/emscripten-core/emscripten/issues/8872')
   def test_emmake_python(self):
@@ -6135,7 +6135,7 @@ print(os.environ.get('NM'))
       out = run_process([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
       print('via emmake')
-      out = run_process([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = run_process([PYTHON, path_from_root('emmake.py'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
 
   def test_module_onexit(self):
@@ -7253,10 +7253,6 @@ Resolved: "/" => "/"
         has = Building.which(python) is not None
       print(python, has)
       if has:
-        print('  checking emcc...')
-        run_process([python, trim_py_suffix(EMCC), '--version'], stdout=PIPE)
-        print('  checking em++...')
-        run_process([python, trim_py_suffix(EMXX), '--version'], stdout=PIPE)
         print('  checking emcc.py...')
         run_process([python, EMCC, '--version'], stdout=PIPE)
         print('  checking em++.py...')
