@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.11: 03/20/2020
+--------------------
 - The default c++ version is no longer fixed at c++03.  We now fall back to
   clang's default which is currently c++14.
 - Remove arc4random function form library.js.  This is a BSD-only library
