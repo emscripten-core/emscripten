@@ -1831,24 +1831,24 @@ Module['%(full)s'] = function() {
   # function has been added to the table, at a specific relative address
   # (relative to __table_base). We need to note as the single correct address
   # for that function.
-  # Note that the code here is for the main module, where __table_base is 0.
   # Note also that the main module will just use the table and indexes
   # directly itself, that is, it won't call a fp$ import to get the index. The
   # importance of the fp$s are that they let other modules call the main
   # module's functions properly, and in particular, function pointers can be
   # compared - each function is in the table at a single unique location.
-  for name in metadata['namedGlobals']:
+  for name, relative_index in metadata['namedGlobals'].items():
     if not name.startswith('rfp$'):
       continue
     # mangle for Module, and remove initial "r" to get the fp$ func
     # which returns the index
     fpname = '_' + asmjs_mangle(name)[2:]
-    # the values of exported globals are ready for us to use in NAMED_GLOBALS.
+    # in main modules __table_base is 1 (0 is reserved for the null pointer).
+    absolute_index = int(relative_index) + 1
     accessors.append('''
 Module['%(fpname)s'] = function() {
-  return NAMED_GLOBALS['%(name)s'];
+  return %(value)d
 }
-''' % {'name': name, 'fpname': fpname})
+''' % {'fpname': fpname, 'value': absolute_index})
 
   return '\n'.join(accessors)
 
