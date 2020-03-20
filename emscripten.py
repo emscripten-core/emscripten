@@ -1827,6 +1827,23 @@ Module['%(full)s'] = function() {
 }
 ''' % {'full': asmjs_mangle(fullname), 'mangled': mangled, 'original': name, 'assert': assertion, 'sig': sig})
 
+  # Process `rfp$XXX` exports. Relative Function Pointer exports indicate a
+  # function has been added to the table, at a specific relative address
+  # (relative to __table_base). We need to note as the single correct address
+  # for that function.
+  # Note that the code here is for the main module, where __table_base is 0.
+  for name in metadata['namedGlobals']:
+    if not name.startswith('rfp$'):
+      continue
+    # mangle for Module, and remove initial "r" to get the fp$.. func
+    # which returns the index
+    fpname = '_' + asmjs_mangle(name)[2:]
+    accessors.append('''
+Module['%(fpname)s'] = function() {
+  return asm['%(name)s'];
+}
+''' % {'name': name, 'fpname': fpname})
+
   return '\n'.join(accessors)
 
 
