@@ -172,6 +172,7 @@ for.end:                                          ; preds = %for.body, %entry
 }
 '''
 
+
 def main():
   global POSTAMBLE
   filename, ofilename = sys.argv[1], sys.argv[2]
@@ -184,7 +185,7 @@ def main():
 declare i32 @printf(i8*, ...)
 '''
 
-  summaries = re.search('\^0 = module:', data)
+  summaries = re.search(r'\^0 = module:', data)
   if summaries:
     summaries_start = summaries.start()
     # Strip ThinLTO summaries since we don't want to have to generate
@@ -272,7 +273,6 @@ declare i32 @printf(i8*, ...)
       if len(pre):
         lines[i] = pre + '\n' + lines[i]
         lines_added += 1
-
 
   ll = '\n'.join(lines) + '\n'
   meta_start = ll.find('\n!')
