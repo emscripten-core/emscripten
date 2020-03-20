@@ -47,6 +47,10 @@ v1.39.11: 03/20/2020
   library functions, but now we only have the regular C version. If you hit that
   issue, just add `_memset` to `EXPORTED_FUNCTIONS` (or adjust
   `deps_info.json`).
+- Minimal runtime code size optimizations, see #10725, #10724, #10663.
+- wasm2js fix for a long-existing but very rare correctness bug, see #10682.
+- Use atomics in musl lock/unlock in pthreads builds, which may fix very rare
+  pthreads + stdio issues (none have been reported though). See #10670.
 
 v1.39.10: 03/09/2020
 --------------------
