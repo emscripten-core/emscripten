@@ -6498,8 +6498,7 @@ return malloc(size);
     # Autodebug the code
     def do_autodebug(filename):
       Building.llvm_dis(filename + '.o', filename + '.ll')
-      output = run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'], stdout=PIPE, stderr=self.stderr_redirect).stdout
-      assert 'Success.' in output, output
+      run_process([PYTHON, AUTODEBUGGER, filename + '.ll', filename + '.auto.ll'])
       # rebuild .bc
       # TODO: use code in do_autodebug_post for this
       self.prep_ll_file(filename, filename + '.auto.ll', force_recompile=True)
