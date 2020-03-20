@@ -7,11 +7,14 @@
 """
 
 import ctypes
+import logging
 import os
 import sys
 
+
 WINDOWS = sys.platform.startswith('win')
 
+logger = logging.getLogger('diagnostics')
 color_enabled = sys.stderr.isatty()
 tool_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
 
@@ -145,11 +148,102 @@ def diag(level, msg, *args):
 
 def error(msg, *args):
   diag(ERROR, msg, *args)
+  sys.exit(1)
 
 
 def warn(msg, *args):
   diag(WARN, msg, *args)
 
 
+class WarningManager(object):
+  warnings = {}
+
+  def add_warning(self, name, enabled=True, part_of_all=True):
+    self.warnings[name] = {
+      'enabled': enabled,
+      'part_of_all': part_of_all,
+      'error': False,
+    }
+
+  def capture_warnings(self, cmd_args):
+    for i in range(len(cmd_args)):
+      if cmd_args[i] == '-w':
+        for warning in self.warnings.values():
+          warning['enabled'] = False
+        continue
+
+      if not cmd_args[i].startswith('-W'):
+        continue
+
+      if cmd_args[i] == '-Wall':
+        for warning in self.warnings.values():
+          if warning['part_of_all']:
+            warning['enabled'] = True
+        continue
+
+      if cmd_args[i] == '-Werror':
+        for warning in self.warnings.values():
+          warning['error'] = True
+        continue
+
+      if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
+        warning_name = cmd_args[i].split('=', 1)[1]
+        if warning_name in self.warnings:
+          self.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
+          cmd_args[i] = ''
+          continue
+
+      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+      enabled = not cmd_args[i].startswith('-Wno-')
+
+      # special case pre-existing warn-absolute-paths
+      if warning_name == 'warn-absolute-paths':
+        self.warnings['absolute-paths']['enabled'] = enabled
+        cmd_args[i] = ''
+        continue
+
+      if warning_name in self.warnings:
+        self.warnings[warning_name]['enabled'] = enabled
+        cmd_args[i] = ''
+        continue
+
+    return cmd_args
+
+  def warning(self, warning_type, message, *args):
+    warning_info = self.warnings[warning_type]
+    msg = (message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']'
+    if warning_info['enabled']:
+      if warning_info['error']:
+        error(msg + ' [-Werror]')
+      else:
+        warn(msg)
+    else:
+      logger.debug('disabled warning: ' + msg)
+
+
+def add_warning(name, enabled=True, part_of_all=True):
+  manager.add_warning(name, enabled, part_of_all)
+
+
+def enable_warning(name, as_error=False):
+  manager.warnings[name]['enabled'] = True
+  if as_error:
+    manager.warnings[name]['error'] = True
+
+
+def disable_warning(name):
+  manager.warnings[name]['enabled'] = False
+
+
+def warning(warning_type, message, *args):
+  manager.warning(warning_type, message, *args)
+
+
+def capture_warnings(argv):
+  return manager.capture_warnings(argv)
+
+
 if WINDOWS:
   default_color = get_color_windows()
+
+manager = WarningManager()

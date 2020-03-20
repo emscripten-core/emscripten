@@ -55,17 +55,22 @@ logger = logging.getLogger('shared')
 if sys.version_info < (2, 7, 12):
   logger.debug('python versions older than 2.7.12 are known to run into outdated SSL certificate related issues, https://github.com/emscripten-core/emscripten/issues/6275')
 
+# warning about absolute-paths is disabled by default, and not enabled by -Wall
+diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
+diagnostics.add_warning('separate-asm')
+diagnostics.add_warning('almost-asm')
+diagnostics.add_warning('invalid-input')
+# Don't show legacy settings warnings by default
+diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
+# Catch-all for other emcc warnings
+diagnostics.add_warning('linkflags')
+diagnostics.add_warning('emcc')
+diagnostics.add_warning('undefined')
+diagnostics.add_warning('version-check')
+
 
 def exit_with_error(msg, *args):
   diagnostics.error(msg, *args)
-  sys.exit(1)
-
-
-# TODO(sbc): Convert all caller to WarningManager
-def warning(msg, *args):
-  diagnostics.warn(str(msg), *args)
-  if Settings.WARNINGS_ARE_ERRORS:
-    exit_with_error('treating warnings as errors (-Werror)')
 
 
 # On Windows python suffers from a particularly nasty bug if python is spawning
@@ -471,7 +476,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if expected in actual:
     return True
-  warning('LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
+  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
   return False
 
 
@@ -536,10 +541,10 @@ def check_node_version():
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
-    warning('node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
     return False
   except Exception as e:
-    warning('cannot check node version: %s', e)
+    diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return False
 
 
@@ -750,86 +755,6 @@ def get_emscripten_temp_dir():
 
 def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
-
-
-class WarningManager(object):
-  warnings = {}
-
-  @staticmethod
-  def add_warning(name, enabled=True, part_of_all=True):
-    WarningManager.warnings[name] = {
-      'enabled': enabled,
-      'part_of_all': part_of_all,
-      'printed': False,
-      'error': False,
-    }
-
-  @staticmethod
-  def capture_warnings(cmd_args):
-    for i in range(len(cmd_args)):
-      if cmd_args[i] == '-w':
-        for warning in WarningManager.warnings.values():
-          warning['enabled'] = False
-        continue
-
-      if not cmd_args[i].startswith('-W'):
-        continue
-
-      if cmd_args[i] == '-Wall':
-        for warning in WarningManager.warnings.values():
-          if warning['part_of_all']:
-            warning['enabled'] = True
-        continue
-
-      if cmd_args[i] == '-Werror':
-        for warning in WarningManager.warnings.values():
-          warning['error'] = True
-        continue
-
-      if cmd_args[i].startswith('-Werror=') or cmd_args[i].startswith('-Wno-error='):
-        warning_name = cmd_args[i].split('=', 1)[1]
-        if warning_name in WarningManager.warnings:
-          WarningManager.warnings[warning_name]['error'] = not cmd_args[i].startswith('-Wno-')
-          cmd_args[i] = ''
-          continue
-
-      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
-      enabled = not cmd_args[i].startswith('-Wno-')
-
-      # special case pre-existing warn-absolute-paths
-      if warning_name == 'warn-absolute-paths':
-        WarningManager.warnings['absolute-paths']['enabled'] = enabled
-        cmd_args[i] = ''
-        continue
-
-      if warning_name in WarningManager.warnings:
-        WarningManager.warnings[warning_name]['enabled'] = enabled
-        cmd_args[i] = ''
-        continue
-
-    return cmd_args
-
-  @staticmethod
-  def warn(warning_type, message, *args):
-    warning_info = WarningManager.warnings[warning_type]
-    msg = (message % args) + ' [-W' + warning_type.lower().replace('_', '-') + ']'
-    if warning_info['enabled'] and not warning_info['printed']:
-      warning_info['printed'] = True
-      if warning_info['error']:
-        exit_with_error(msg + ' [-Werror]')
-      else:
-        diagnostics.warn(msg)
-    else:
-      logger.debug('disabled warning: ' + msg)
-
-
-# warning about absolute-paths is disabled by default, and not enabled by -Wall
-WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
-WarningManager.add_warning('separate-asm')
-WarningManager.add_warning('almost-asm')
-WarningManager.add_warning('invalid-input')
-# Don't show legacy settings warnings by default
-WarningManager.add_warning('legacy-settings', enabled=False, part_of_all=False)
 
 
 class Configuration(object):
@@ -1177,7 +1102,7 @@ class SettingsManager(object):
         fixed_values, error_message = self.legacy_settings[attr]
         if fixed_values and value not in fixed_values:
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-        WarningManager.warn('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
+        diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
 
       if attr in self.alt_names:
         alt_name = self.alt_names[attr]
@@ -1274,7 +1199,7 @@ def warn_if_duplicate_entries(archive_contents, archive_filename):
       if curr not in warned and curr in archive_contents[i + 1:]:
         msg += '\n   duplicate: %s' % curr
         warned.add(curr)
-    warning(msg)
+    diagnostics.warning('emcc', msg)
 
 
 # This function creates a temporary directory specified by the 'dir' field in
@@ -1928,7 +1853,7 @@ class Building(object):
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
       if not new_symbols.is_valid_for_nm():
-        warning('object %s is not valid according to llvm-nm, cannot link', f)
+        diagnostics.warning('emcc', 'object %s is not valid according to llvm-nm, cannot link', f)
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
@@ -2380,7 +2305,7 @@ class Building(object):
     try:
       output = run_process(CLOSURE_COMPILER + args + ['--version'], stdout=PIPE, env=env).stdout
     except Exception as e:
-      warning(str(e))
+      logger.warn(str(e))
       exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
     if 'Version:' not in output:
       exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
@@ -2949,7 +2874,7 @@ class Building(object):
     # Allow the expected version or the following one in order avoid needing to update both
     # emscripten and binaryen in lock step in emscripten-releases.
     if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):
-      warning('unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+      diagnostics.warning('version-check', 'unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
 
   @staticmethod
   def get_binaryen_bin():
