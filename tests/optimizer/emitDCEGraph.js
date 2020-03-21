@@ -99,6 +99,7 @@ Module['dynCall_vi'](ptr, 1); // use on module
 dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall(string, )
 // and viii is never used, so definitely legitimately eliminatable
 
+// Don't crash on this code pattern, which regressed in #10724
 (function(output) {
   x++;
 });
