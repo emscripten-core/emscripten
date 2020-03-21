@@ -685,7 +685,7 @@ function emitDCEGraph(ast) {
               value = assign.right;
             }
           }
-          if (target.type === 'Identifier' && target.name === 'asm' && value) {
+          if (target && target.type === 'Identifier' && target.name === 'asm' && value) {
             if (value.type === 'MemberExpression' &&
                 value.object.type === 'MemberExpression' &&
                 value.object.object.type === 'Identifier' &&
