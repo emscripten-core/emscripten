@@ -2539,7 +2539,7 @@ def add_standard_wasm_imports(send_items_map):
       return low;
     }'''
     send_items_map['load_val_f32'] = '''function(loc, value) {
-      console.log('loaload_val_i32d_ptr ' + [loc, value]);
+      console.log('load_val_f32 ' + [loc, value]);
       return value;
     }'''
     send_items_map['load_val_f64'] = '''function(loc, value) {
@@ -2560,7 +2560,7 @@ def add_standard_wasm_imports(send_items_map):
       return low;
     }'''
     send_items_map['store_val_f32'] = '''function(loc, value) {
-      console.log('loastore_val_i32d_ptr ' + [loc, value]);
+      console.log('store_val_f32 ' + [loc, value]);
       return value;
     }'''
     send_items_map['store_val_f64'] = '''function(loc, value) {
