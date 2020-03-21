@@ -99,3 +99,7 @@ Module['dynCall_vi'](ptr, 1); // use on module
 dynCall('vii', ptr, [2, 3]); // use indirectly, depending on analysis of dynCall(string, )
 // and viii is never used, so definitely legitimately eliminatable
 
+(function(output) {
+  x++;
+});
+
