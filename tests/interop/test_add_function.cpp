@@ -15,10 +15,6 @@ int bar() {
   return 2;
 }
 
-int baz() {
-  return 3;
-}
-
 int main(int argc, char **argv) {
   int fp = atoi(argv[1]);
   printf("fp: %d\n", fp);
@@ -37,15 +33,14 @@ int main(int argc, char **argv) {
     }
     assert(wasmTable.length === beforeLength);
   });
-#endif
-  // We have a guarantee of index uniqueness for each
+  // In the wasm backend, we have a guarantee of index uniqueness for each
   // function.
   EM_ASM({
     assert(wasmTable.length >= 3);
     assert(addFunction(wasmTable.get(1)) === 1);
     assert(addFunction(wasmTable.get(2)) === 2);
-  }, &foo, &bar, &baz);
-
+  }, &foo, &bar);
+#endif
   printf("ok\n");
   return 0;
 }
