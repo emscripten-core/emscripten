@@ -109,11 +109,15 @@ function addFunctionWasm(func, sig) {
   if (!functionsInTableMap) {
     functionsInTableMap = new WeakMap();
     for (var i = 0; i < table.length; i++) {
-      functionsInTableMap[table.get(i)] = i;
+      var item = table.get(i);
+      // Ignore null values.
+      if (item) {
+        functionsInTableMap.set(item, i);
+      }
     }
   }
-  if (functionsInTableMap[func]) {
-    return functionsInTableMap[func];
+  if (functionsInTableMap.has(func)) {
+    return functionsInTableMap.get(func);
   }
 #endif
 
@@ -160,6 +164,9 @@ function addFunctionWasm(func, sig) {
 }
 
 function removeFunctionWasm(index) {
+#if WASM_BACKEND
+  functionsInTableMap.delete(wasmTable.get(index));
+#endif
   freeTableIndexes.push(index);
 }
 #endif
