@@ -94,16 +94,13 @@ function convertJsFunctionToWasm(func, sig) {
 
 var freeTableIndexes = [];
 
-#if WASM_BACKEND
 // Weak map of functions in the table to their indexes, created on first use.
 var functionsInTableMap;
-#endif
 
 // Add a wasm function to the table.
 function addFunctionWasm(func, sig) {
   var table = wasmTable;
 
-#if WASM_BACKEND
   // Check if the function is already in the table, to ensure each function
   // gets a unique index. First, create the map if this is the first use.
   if (!functionsInTableMap) {
@@ -119,7 +116,6 @@ function addFunctionWasm(func, sig) {
   if (functionsInTableMap.has(func)) {
     return functionsInTableMap.get(func);
   }
-#endif
 
   // It's not in the table, add it now.
   var ret;
@@ -156,17 +152,13 @@ function addFunctionWasm(func, sig) {
     table.set(ret, wrapped);
   }
 
-#if WASM_BACKEND
   functionsInTableMap[func] = ret;
-#endif
 
   return ret;
 }
 
 function removeFunctionWasm(index) {
-#if WASM_BACKEND
   functionsInTableMap.delete(wasmTable.get(index));
-#endif
   freeTableIndexes.push(index);
 }
 #endif
