@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
+  flags explcitly.  If there are other flags that it would be useful for us
+  to ignore we can add them to the list of ignored flags.
 - Optionally support 2GB+ heap sizes. To do this we make the JS code have unsigned
   pointers (we need all 32 bits in them now), which can slightly increase code
   size (>>> instead of >>). This only happens when the heap size may be over
@@ -24,7 +27,7 @@ Current Trunk
   higher value (i.e. by default you do not get support for 2GB+ heaps).
   See #10601
 - `--llvm-lto` flag is now ignored when using the upstream llvm backend.
-  With the upstrema backend LTO is controlled via `-flto`.
+  With the upstream backend LTO is controlled via `-flto`.
 - Require format string for emscripten_log.
 - Program entry points without extensions are now shell scripts rather than
   python programs. See #10729.  This means that `python emcc` no longer works.

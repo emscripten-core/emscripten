@@ -82,20 +82,12 @@ SUPPORTED_LINKER_FLAGS = (
     '-whole-archive', '-no-whole-archive'
 )
 
-SUPPORTED_LLD_LINKER_FLAG_PREFIXES = (
-    '-l',
-    '-L',
-    '--trace-symbol',
-    '-debug',
-    '--export')
-
-SUPPORTED_LLD_LINKER_FLAGS = (
-    '--fatal-warnings',
-    '--no-check-features',
-    '--trace',
-    '--no-threads',
-    '-mllvm'
-)
+# Maps to true if the the flag takes an argument
+UNSUPPORTED_LLD_FLAGS = {
+    '--print-map': False,
+    '-M': False,
+    '-soname': True
+}
 
 LIB_PREFIXES = ('', 'lib')
 
@@ -542,6 +534,37 @@ def get_all_js_library_funcs(temp_files):
     shared.Settings.INCLUDE_FULL_LIBRARY = old_full
     shared.Settings.LINKABLE = old_linkable
   return library_fns_list
+
+
+def filter_link_flags(flags, using_lld):
+  def is_supported(f):
+    if using_lld:
+      for flag, takes_arg in UNSUPPORTED_LLD_FLAGS.items():
+        if f.startswith(flag):
+          diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
+          return False, takes_arg
+      return True, False
+    else:
+      if f in SUPPORTED_LINKER_FLAGS:
+        return True, False
+      # Silently ignore -l/-L flags when not using lld.  If using lld allow
+      # them to pass through the linker
+      if f.startswith('-l') or f.startswith('-L'):
+        return False, False
+      diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
+      return False, False
+
+  results = []
+  skip_next = False
+  for f in flags:
+    if skip_next:
+      skip_next = False
+      continue
+    keep, skip_next = is_supported(f[1])
+    if keep:
+      results.append(f)
+
+  return results
 
 
 #
@@ -1269,26 +1292,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       link_to_object = True
 
     using_lld = shared.Settings.WASM_BACKEND and not (link_to_object and shared.Settings.LTO)
-
-    def is_supported_link_flag(f):
-      if f in SUPPORTED_LINKER_FLAGS:
-        return True
-      if using_lld:
-        # Add flags here to allow -Wl, options to be passed all the way through
-        # to the linker.
-        if any(f.startswith(prefix) for prefix in SUPPORTED_LLD_LINKER_FLAG_PREFIXES):
-          return True
-        if f in SUPPORTED_LLD_LINKER_FLAGS:
-          return True
-      else:
-        # Silently ignore -l/-L flags when not using lld.  If using lld allow
-        # them to pass through the linker
-        if f.startswith('-l') or f.startswith('-L'):
-          return False
-      diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
-      return False
-
-    link_flags = [f for f in link_flags if is_supported_link_flag(f[1])]
+    link_flags = filter_link_flags(link_flags, using_lld)
 
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
