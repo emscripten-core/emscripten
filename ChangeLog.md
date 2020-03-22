@@ -22,6 +22,11 @@ Current Trunk
   However `emcc`, `emcc.py` and `python emcc.py` all continue to work.
   The reason for this change is that `#!/usr/bin/env python` is no longer
   portable since the python symlink was dropped from Ubuntu 20.04.
+- New EM_IMPORT macro to mark C/C++ symbols as imported from outside the module
+  (i.e. imported from JS).  Currently we still default to assuming that *all*
+  undefined symbols can come from JS, but in the future we hope to mark such
+  symbols explicitly to allow the linker to report on genuinely undefined
+  symbols.
 
 v1.39.11: 03/20/2020
 --------------------
