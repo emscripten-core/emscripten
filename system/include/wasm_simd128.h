@@ -567,6 +567,11 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_v128_bitselect(v128_t a, v128_t
   return (v128_t)__builtin_wasm_bitselect((__i32x4)a, (__i32x4)b, (__i32x4)mask);
 }
 
+// v128_t wasm_i8x16_abs(v128_t a)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_abs(v128_t a) {
+  return (v128_t)__builtin_wasm_abs_i8x16((__i8x16)a);
+}
+
 // v128_t wasm_i8x16_neg(v128_t a)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_neg(v128_t a) {
   return (v128_t)(-(__u8x16)a);
@@ -657,6 +662,11 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i8x16_avgr_u(v128_t a, v128_t b
   return (v128_t)__builtin_wasm_avgr_u_i8x16((__i8x16)a, (__i8x16)b);
 }
 
+// v128_t wasm_i16x8_abs(v128_t a)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_abs(v128_t a) {
+  return (v128_t)__builtin_wasm_abs_i16x8((__i16x8)a);
+}
+
 // v128_t wasm_i16x8_neg(v128_t a)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_neg(v128_t a) {
   return (v128_t)(-(__u16x8)a);
@@ -745,6 +755,11 @@ static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_max_u(v128_t a, v128_t b)
 // v128_t wasm_i16x8_avgr_u(v128_t a, v128_t b)
 static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i16x8_avgr_u(v128_t a, v128_t b) {
   return (v128_t)__builtin_wasm_avgr_u_i16x8((__i16x8)a, (__i16x8)b);
+}
+
+// v128_t wasm_i32x4_abs(v128_t a)
+static __inline__ v128_t __DEFAULT_FN_ATTRS wasm_i32x4_abs(v128_t a) {
+  return (v128_t)__builtin_wasm_abs_i32x4((__i32x4)a);
 }
 
 // v128_t wasm_i32x4_neg(v128_t a)
