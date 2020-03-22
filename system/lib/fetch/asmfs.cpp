@@ -1646,8 +1646,6 @@ __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd, __wasi_filedelta_t offset,
       emscripten_fetch_wait(desc->node->fetch, INFINITY);
   }
 
-  // TODO: The following does not work, for some reason seek is getting called with 32-bit signed
-  // offsets?
   int64_t newPos;
   switch (whence) {
     case SEEK_SET:
