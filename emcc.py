@@ -2214,7 +2214,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
          not shared.Settings.BOOTSTRAPPING_STRUCT_INFO and \
          not shared.Settings.SIDE_MODULE: # shared libraries/side modules link no C libraries, need them in parent
         extra_files_to_link = system_libs.get_ports(shared.Settings)
-        extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
+        if '-nostdlib' not in newargs and '-nodefaultlibs' not in newargs:
+          extra_files_to_link += system_libs.calculate([f for _, f in sorted(temp_files)] + extra_files_to_link, in_temp, stdout_=None, stderr_=None, forced=forced_stdlibs)
         linker_inputs += extra_files_to_link
 
     # exit block 'calculate system libraries'
@@ -3750,7 +3751,9 @@ def process_libraries(libs, lib_dirs, temp_files):
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
-    suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
+    suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
+    if not shared.Settings.WASM_BACKEND:
+      suffixes.append('.bc')
 
     found = False
     for prefix in LIB_PREFIXES:
