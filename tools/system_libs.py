@@ -550,8 +550,7 @@ class MTLibrary(Library):
 class NoExceptLibrary(Library):
   def __init__(self, **kwargs):
     self.eh_mode = kwargs.pop('eh_mode')
-    if self.eh_mode not in ('noexcept', 'emscripten', 'wasm'):
-      raise Exception('Invalid exception mode')
+    assert self.eh_mode in ('noexcept', 'emscripten', 'wasm')
     super(NoExceptLibrary, self).__init__(**kwargs)
 
   def can_build(self):
