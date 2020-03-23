@@ -3275,7 +3275,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if options.use_closure_compiler:
     final = run_closure_compiler(final)
 
-  symbols_file = target + '.symbols' if options.emit_symbol_map else None
+  symbols_file = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
 
   if shared.Settings.WASM2JS:
     if shared.Settings.WASM == 2:
