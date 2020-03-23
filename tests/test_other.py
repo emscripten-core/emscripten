@@ -8689,15 +8689,18 @@ int main() {
       # skip unhelpful option combinations
       if emterpreter_file_enabled and not emterpreter_enabled:
         continue
+      if self.is_wasm_backend() and emterpreter_enabled:
+        continue
+      if wasm_enabled and meminit1_enabled:
+        continue
+      if closure_enabled and debug_enabled:
+        continue
 
       expect_wasm = wasm_enabled
       expect_emterpretify_file = emterpreter_file_enabled
       expect_meminit = meminit1_enabled and not wasm_enabled
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
       expect_wat = debug_enabled and wasm_enabled and not self.is_wasm_backend()
-
-      if self.is_wasm_backend() and emterpreter_enabled:
-        continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
       should_run_js = expect_success and not emterpreter_enabled
@@ -8722,20 +8725,33 @@ int main() {
       if not wasm_enabled:
         cmd += ['-s', 'WASM=0']
 
-      print(' '.join(cmd))
       self.clear()
       if not expect_success:
         self.expect_fail(cmd)
         continue
 
-      run_process(cmd)
-      print(os.listdir('.'))
-      assert expect_emterpretify_file == os.path.exists('a.out.dat')
-      assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
-      assert expect_wasm == os.path.exists('a.out.wasm')
-      assert expect_wat == os.path.exists('a.out.wat')
-      if should_run_js:
-        self.assertContained('hello, world!', run_js('a.out.js'))
+      def do_test(cmd):
+        print(' '.join(cmd))
+        run_process(cmd)
+        print(os.listdir('.'))
+        assert expect_emterpretify_file == os.path.exists('a.out.dat')
+        assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+        assert expect_wasm == os.path.exists('a.out.wasm')
+        assert expect_wat == os.path.exists('a.out.wat')
+        if should_run_js:
+          self.assertContained('hello, world!', run_js('a.out.js'))
+
+      do_test(cmd)
+
+      # additional combinations that are not part of the big product()
+
+      if self.is_wasm_backend() and debug_enabled:
+        separate_dwarf_cmd = cmd + ['-gseparate-dwarf']
+        if wasm_enabled:
+          do_test(separate_dwarf_cmd)
+          self.assertExists('a.out.wasm.debug.wasm')
+        else:
+          self.expect_fail(separate_dwarf_cmd)
 
   def test_emar_M(self):
     create_test_file('file1', ' ')
