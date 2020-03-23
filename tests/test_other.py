@@ -4574,9 +4574,9 @@ int main() {
     create_test_file('src.c', r'''
 #include <sys/time.h>
 #include <stddef.h>
-extern int __syscall295(int);
+extern int __sys_openat(int);
 int main() {
-  return __syscall295(0);
+  return __sys_openat(0);
 }''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
 

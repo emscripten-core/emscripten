@@ -1,6 +1,7 @@
 ___gxx_personality_v0
 ___map_file
 ___setErrNo
+___sys_munmap
 ___syscall91
 ___wasi_fd_close
 ___wasi_fd_read
