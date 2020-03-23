@@ -246,7 +246,7 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_DEBUG    256
 #define EM_LOG_INFO     512
 
-void emscripten_log(int flags, ...);
+void emscripten_log(int flags, const char* format, ...);
 
 int emscripten_get_callstack(int flags, char *out, int maxbytes);
 
