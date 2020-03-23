@@ -66,3 +66,14 @@ function ___cxa_find_matching_catch_after() {
 ___cxa_find_matching_catch_after();
 
 var dotOther = Side.effect;
+
+var FS = {
+ foo: function(stream, offset, length) {
+  stream.allocate;
+  FS;
+  for (var __exportedFunc in asm) {
+   var jsname = __exportedFunc;
+   global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+  }
+ }
+};
