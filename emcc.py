@@ -3750,7 +3750,9 @@ def process_libraries(libs, lib_dirs, temp_files):
   # Find library files
   for i, lib in libs:
     logger.debug('looking for library "%s"', lib)
-    suffixes = STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS
+    suffixes = list(STATICLIB_ENDINGS + DYNAMICLIB_ENDINGS)
+    if not shared.Settings.WASM_BACKEND:
+      suffixes.append('.bc')
 
     found = False
     for prefix in LIB_PREFIXES:
