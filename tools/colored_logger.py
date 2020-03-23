@@ -49,12 +49,6 @@ def add_coloring_to_emit_windows(fn):
     ctypes.windll.kernel32.SetConsoleTextAttribute(hdl, code)
 
   def new(*args):
-    FOREGROUND_BLUE      = 0x0001 # noqa; text color contains blue.
-    FOREGROUND_GREEN     = 0x0002 # noqa; text color contains green.
-    FOREGROUND_RED       = 0x0004 # noqa; text color contains red.
-    FOREGROUND_INTENSITY = 0x0008 # noqa; text color is intensified.
-    FOREGROUND_WHITE     = FOREGROUND_BLUE|FOREGROUND_GREEN |FOREGROUND_RED # noqa
-
     # wincon.h
     FOREGROUND_BLACK     = 0x0000 # noqa
     FOREGROUND_BLUE      = 0x0001 # noqa
@@ -65,6 +59,8 @@ def add_coloring_to_emit_windows(fn):
     FOREGROUND_YELLOW    = 0x0006 # noqa
     FOREGROUND_GREY      = 0x0007 # noqa
     FOREGROUND_INTENSITY = 0x0008 # foreground color is intensified.
+
+    FOREGROUND_WHITE     = FOREGROUND_BLUE|FOREGROUND_GREEN |FOREGROUND_RED # noqa
 
     BACKGROUND_BLACK     = 0x0000 # noqa
     BACKGROUND_BLUE      = 0x0010 # noqa
@@ -88,6 +84,7 @@ def add_coloring_to_emit_windows(fn):
         color = FOREGROUND_MAGENTA
     else:
         color = FOREGROUND_WHITE
+
     old_color = _get_color()
     _set_color(color)
     ret = fn(*args)

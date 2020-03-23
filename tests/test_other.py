@@ -9864,11 +9864,11 @@ int main () {
 
     # By default warnings are not shown
     stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # Adding or -Wlegacy-settings enables the warning
     stderr = run_process(cmd + ['-Wlegacy-settings'], stderr=PIPE).stderr
-    self.assertContained('WARNING: use of legacy setting: SPLIT_MEMORY', stderr)
+    self.assertContained('warning: use of legacy setting: SPLIT_MEMORY', stderr)
     self.assertContained('[-Wlegacy-settings]', stderr)
 
   def test_strict_mode_legacy_settings(self):
@@ -10083,7 +10083,7 @@ int main () {
     returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    self.assertIn(b"shared:ERROR: \x1b[31m", output)
+    self.assertIn(b"\x1b[31merror: ", output)
 
   @parameterized({
     'fno_diagnostics_color': ['-fno-diagnostics-color'],
@@ -10356,10 +10356,10 @@ Module.arguments has been replaced with plain arguments_
   @no_fastcomp('lld-specific')
   def test_supported_linker_flags(self):
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,waka'], stderr=PIPE).stderr
-    self.assertContained('WARNING: ignoring unsupported linker flag: `waka', out)
+    self.assertContained('warning: ignoring unsupported linker flag: `waka', out)
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,--no-threads,-mllvm,-debug,--trace,--trace-symbol=main'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING: ignoring unsupported linker flag', out)
+    self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
@@ -10401,23 +10401,23 @@ Module.arguments has been replaced with plain arguments_
 
     # warning that is enabled by default
     stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
     # -w to suppress warnings
     stderr = run_process(cmd + ['-w'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # -Wno-invalid-input to suppress just this one warning
     stderr = run_process(cmd + ['-Wno-invalid-input'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('ERROR: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
+    self.assertContained('emcc: error: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
 
     # with -Werror + -Wno-error=<type> should only warn
     stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')

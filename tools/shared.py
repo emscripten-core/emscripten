@@ -34,6 +34,8 @@ from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
+from . import diagnostics
+
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
@@ -55,13 +57,13 @@ if sys.version_info < (2, 7, 12):
 
 
 def exit_with_error(msg, *args):
-  logger.error(str(msg), *args)
+  diagnostics.error(msg, *args)
   sys.exit(1)
 
 
 # TODO(sbc): Convert all caller to WarningManager
 def warning(msg, *args):
-  logger.warning(str(msg), *args)
+  diagnostics.warn(str(msg), *args)
   if Settings.WARNINGS_ARE_ERRORS:
     exit_with_error('treating warnings as errors (-Werror)')
 
@@ -816,7 +818,7 @@ class WarningManager(object):
       if warning_info['error']:
         exit_with_error(msg + ' [-Werror]')
       else:
-        logger.warning(msg)
+        diagnostics.warn(msg)
     else:
       logger.debug('disabled warning: ' + msg)
 
@@ -845,7 +847,7 @@ class Configuration(object):
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        logger.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
