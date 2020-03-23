@@ -17,12 +17,28 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Require format string for emscripten_log.
+- Program entry points without extensions are now shell scripts rather than
+  python programs. See #10729.  This means that `python emcc` no longer works.
+  However `emcc`, `emcc.py` and `python emcc.py` all continue to work.
+  The reason for this change is that `#!/usr/bin/env python` is no longer
+  portable since the python symlink was dropped from Ubuntu 20.04.
+- New EM_IMPORT macro to mark C/C++ symbols as imported from outside the module
+  (i.e. imported from JS).  Currently we still default to assuming that *all*
+  undefined symbols can come from JS, but in the future we hope to mark such
+  symbols explicitly to allow the linker to report on genuinely undefined
+  symbols.
+
+v1.39.11: 03/20/2020
+--------------------
+- The default c++ version is no longer fixed at c++03.  We now fall back to
+  clang's default which is currently c++14.
 - Remove arc4random function form library.js.  This is a BSD-only library
   function.  Anyone requiring BSD compat should be able to use something like
   https://libbsd.freedesktop.org/.
 - Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
   you add, and does not need to contain the list of default system imports like
-  ``emscripten_sleep``. There is no harm in providing them, though, so this
+  `emscripten_sleep`. There is no harm in providing them, though, so this
   is not a breaking change.
 - Enable DWARF support: When compiling with `-g`, normal DWARF emitting happens,
   and when linking with `-g` we preserve that and update it. This is a change
@@ -42,6 +58,10 @@ Current Trunk
   library functions, but now we only have the regular C version. If you hit that
   issue, just add `_memset` to `EXPORTED_FUNCTIONS` (or adjust
   `deps_info.json`).
+- Minimal runtime code size optimizations, see #10725, #10724, #10663.
+- wasm2js fix for a long-existing but very rare correctness bug, see #10682.
+- Use atomics in musl lock/unlock in pthreads builds, which may fix very rare
+  pthreads + stdio issues (none have been reported though). See #10670.
 
 v1.39.10: 03/09/2020
 --------------------

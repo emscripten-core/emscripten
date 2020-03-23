@@ -44,6 +44,8 @@ However, due to JavaScript's event-driven nature, most *persistent* storage opti
 File systems
 ============
 
+.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (PROXYFS).
+
 .. _filesystem-api-memfs:
 
 MEMFS

@@ -819,13 +819,9 @@ f.close()
   def test_use_cxx(self):
     create_test_file('empty_file', ' ')
     dash_xc = run_process([PYTHON, EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
-    self.assertNotContained('-std=c++03', dash_xc)
+    self.assertNotContained('-x c++', dash_xc)
     dash_xcpp = run_process([PYTHON, EMCC, '-v', '-xc++', 'empty_file'], stderr=PIPE).stderr
-    self.assertContained('-std=c++03', dash_xcpp)
-
-  def test_cxx03(self):
-    for compiler in [EMCC, EMXX]:
-      run_process([PYTHON, compiler, path_from_root('tests', 'hello_cxx03.cpp')])
+    self.assertContained('-x c++', dash_xcpp)
 
   def test_cxx11(self):
     for std in ['-std=c++11', '--std=c++11']:
@@ -2171,6 +2167,8 @@ int f() {
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'emitDCEGraph5.js'), open(path_from_root('tests', 'optimizer', 'emitDCEGraph5-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
+      (path_from_root('tests', 'optimizer', 'minimal-runtime-applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-applyDCEGraphRemovals-output.js')).read(),
+       ['applyDCEGraphRemovals']),
       (path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals.js'), open(path_from_root('tests', 'optimizer', 'applyDCEGraphRemovals-output.js')).read(),
        ['applyDCEGraphRemovals']),
       (path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges.js'), open(path_from_root('tests', 'optimizer', 'applyImportAndExportNameChanges-output.js')).read(),
@@ -2180,6 +2178,8 @@ int f() {
       (path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify.js'), open(path_from_root('tests', 'optimizer', 'detectSign-modulus-emterpretify-output.js')).read(),
        ['noPrintMetadata', 'emterpretify', 'noEmitAst']),
       (path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-emitDCEGraph-output.js')).read(),
+       ['emitDCEGraph', 'noPrint']),
+      (path_from_root('tests', 'optimizer', 'minimal-runtime-2-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'minimal-runtime-2-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
       (path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph.js'), open(path_from_root('tests', 'optimizer', 'standalone-emitDCEGraph-output.js')).read(),
        ['emitDCEGraph', 'noPrint']),
@@ -4574,9 +4574,9 @@ int main() {
     create_test_file('src.c', r'''
 #include <sys/time.h>
 #include <stddef.h>
-extern int __syscall295(int);
+extern int __sys_openat(int);
 int main() {
-  return __syscall295(0);
+  return __sys_openat(0);
 }''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
 
@@ -6094,27 +6094,27 @@ Descriptor desc;
       assert ('is a helper for' in output.stderr) == fail
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
-    check('emmake', [])
-    check('emconfigure', [])
-    check('emmake', ['--version'])
-    check('emconfigure', ['--version'])
-    check('emmake', ['make'], fail=False)
-    check('emconfigure', ['configure'], fail=False)
-    check('emconfigure', ['./configure'], fail=False)
-    check('emcmake', ['cmake'], fail=False)
+    check('emmake.py', [])
+    check('emconfigure.py', [])
+    check('emmake.py', ['--version'])
+    check('emconfigure.py', ['--version'])
+    check('emmake.py', ['make'], fail=False)
+    check('emconfigure.py', ['configure'], fail=False)
+    check('emconfigure.py', ['./configure'], fail=False)
+    check('emcmake.py', ['cmake'], fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
-    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emconfigure.py', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emmake.py', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check('emconfigure.py', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
   @no_windows('This test is broken, https://github.com/emscripten-core/emscripten/issues/8872')
   def test_emmake_python(self):
@@ -6135,7 +6135,7 @@ print(os.environ.get('NM'))
       out = run_process([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
       print('via emmake')
-      out = run_process([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = run_process([PYTHON, path_from_root('emmake.py'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
 
   def test_module_onexit(self):
@@ -6962,7 +6962,7 @@ int main(int argc, char** argv) {
 }
 ''')
 
-    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11'])
+    err = self.expect_fail([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js'])
     self.assertContained('_memset may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library', err)
 
     # without the dep, and with EXPORTED_FUNCTIONS, it works ok
@@ -6973,7 +6973,7 @@ mergeInto(LibraryManager.library, {
   },
 });
 ''')
-    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js',  '-std=c++11', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
+    run_process([PYTHON, EMCC, 'test.cpp', '--js-library', 'lib.js', '-s', 'EXPORTED_FUNCTIONS=[_main,_memset]'])
     self.assertContained('dddddddddd', run_js('a.out.js'))
 
   def test_realpath(self):
@@ -7205,7 +7205,7 @@ Resolved: "/" => "/"
     run_process([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
 
   def test_dash_s(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', '-std=c++03'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s'])
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_dash_s_response_file_string(self):
@@ -7216,7 +7216,7 @@ Resolved: "/" => "/"
   def test_dash_s_response_file_list(self):
     create_test_file('response_file', '["_main", "_malloc"]\n')
     response_file = os.path.abspath('response_file')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file, '-std=c++03'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file])
 
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
@@ -7253,10 +7253,6 @@ Resolved: "/" => "/"
         has = Building.which(python) is not None
       print(python, has)
       if has:
-        print('  checking emcc...')
-        run_process([python, trim_py_suffix(EMCC), '--version'], stdout=PIPE)
-        print('  checking em++...')
-        run_process([python, trim_py_suffix(EMXX), '--version'], stdout=PIPE)
         print('  checking emcc.py...')
         run_process([python, EMCC, '--version'], stdout=PIPE)
         print('  checking em++.py...')
@@ -7765,13 +7761,13 @@ mergeInto(LibraryManager.library, {
   @no_wasm_backend('uses CYBERDWARF')
   def test_cyberdwarf_pointers(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_pointers.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                 '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
+                 '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_pointers.js'])
     run_js('test_pointers.js', engine=NODE_JS)
 
   @no_wasm_backend('uses CYBERDWARF')
   def test_cyberdwarf_union(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'debugger', 'test_union.cpp'), '-Oz', '-s', 'CYBERDWARF=1',
-                 '-std=c++11', '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
+                 '--pre-js', path_from_root('tests', 'debugger', 'test_preamble.js'), '-o', 'test_union.js'])
     run_js('test_union.js', engine=NODE_JS)
 
   def test_source_file_with_fixed_language_mode(self):
@@ -7784,10 +7780,10 @@ int main() {
   return 0;
 }
     ''')
-    run_process([PYTHON, EMCC, '-Wall', '-std=c++14', '-x', 'c++', 'src_tmp_fixed_lang'])
+    run_process([PYTHON, EMCC, '-Wall', '-x', 'c++', 'src_tmp_fixed_lang'])
     self.assertContained("Test_source_fixed_lang_hello", run_js('a.out.js'))
 
-    stderr = self.expect_fail([PYTHON, EMCC, '-Wall', '-std=c++14', 'src_tmp_fixed_lang'])
+    stderr = self.expect_fail([PYTHON, EMCC, '-Wall', 'src_tmp_fixed_lang'])
     self.assertContained("Input file has an unknown suffix, don't know what to do with it!", stderr)
 
   def test_disable_inlining(self):
@@ -9863,6 +9859,18 @@ int main () {
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  def test_legacy_settings(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
+
+    # By default warnings are not shown
+    stderr = run_process(cmd, stderr=PIPE).stderr
+    self.assertNotContained('warning', stderr)
+
+    # Adding or -Wlegacy-settings enables the warning
+    stderr = run_process(cmd + ['-Wlegacy-settings'], stderr=PIPE).stderr
+    self.assertContained('warning: use of legacy setting: SPLIT_MEMORY', stderr)
+    self.assertContained('[-Wlegacy-settings]', stderr)
+
   def test_strict_mode_legacy_settings(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
     run_process(cmd)
@@ -9893,7 +9901,7 @@ int main () {
     self.set_setting('STRICT', 1)
     self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
 
-  def test_strict_mode_renamed_setting(self):
+  def test_renamed_setting(self):
     # Verify that renamed settings are available by either name (when not in
     # strict mode.
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
@@ -10075,7 +10083,7 @@ int main () {
     returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    self.assertIn(b"shared:ERROR: \x1b[31m", output)
+    self.assertIn(b"\x1b[31merror: ", output)
 
   @parameterized({
     'fno_diagnostics_color': ['-fno-diagnostics-color'],
@@ -10348,10 +10356,10 @@ Module.arguments has been replaced with plain arguments_
   @no_fastcomp('lld-specific')
   def test_supported_linker_flags(self):
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,waka'], stderr=PIPE).stderr
-    self.assertContained('WARNING: ignoring unsupported linker flag: `waka', out)
+    self.assertContained('warning: ignoring unsupported linker flag: `waka', out)
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,--no-threads,-mllvm,-debug,--trace,--trace-symbol=main'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING: ignoring unsupported linker flag', out)
+    self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
@@ -10393,23 +10401,23 @@ Module.arguments has been replaced with plain arguments_
 
     # warning that is enabled by default
     stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
     # -w to suppress warnings
     stderr = run_process(cmd + ['-w'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # -Wno-invalid-input to suppress just this one warning
     stderr = run_process(cmd + ['-Wno-invalid-input'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('ERROR: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
+    self.assertContained('emcc: error: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
 
     # with -Werror + -Wno-error=<type> should only warn
     stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')
@@ -10544,3 +10552,17 @@ int main() {
     self.assertTrue(shared.Building.is_bitcode('main.bc'))
     run_process([PYTHON, EMCC, '-c', '-o', 'main.o', 'main.bc'])
     self.assertTrue(shared.Building.is_wasm('main.o'))
+
+  def test_nostdlib(self):
+    # First ensure all the system libs are built
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c')])
+
+    self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib']))
+    self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs']))
+
+    # Buil again but with explit system libraries
+    libs = ['-lc', '-lcompiler_rt']
+    if self.is_wasm_backend():
+      libs.append('-lc_rt_wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib'] + libs)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs'] + libs)

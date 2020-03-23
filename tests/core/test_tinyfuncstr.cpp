@@ -8,8 +8,8 @@
 #include <stdio.h>
 
 struct Class {
-  static char *name1() { return "nameA"; }
-  char *name2() { return "nameB"; }
+  static const char *name1() { return "nameA"; }
+  const char *name2() { return "nameB"; }
 };
 
 int main() {

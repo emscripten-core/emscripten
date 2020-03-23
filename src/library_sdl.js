@@ -15,12 +15,21 @@
 //                   or otherwise).
 
 var LibrarySDL = {
+  $SDL_unicode__docs: '/** @suppress{missingProperties} */',
+  $SDL_unicode: function() { return SDL.unicode},
+
+  $SDL_ttfContext__docs: '/** @suppress{missingProperties} */',
+  $SDL_ttfContext: function() { return SDL.ttfContext},
+
+  $SDL_audio__docs: '/** @suppress{missingProperties} */',
+  $SDL_audio: function() { return SDL.audio},
+
   $SDL__deps: [
 #if FILESYSTEM
     '$FS',
 #endif
     '$PATH', '$Browser', 'SDL_GetTicks', 'SDL_LockSurface',
-
+    '$SDL_unicode', '$SDL_ttfContext', '$SDL_audio'
   ],
   $SDL: {
     defaults: {
@@ -672,7 +681,7 @@ var LibrarySDL = {
           // won't fire. However, it's fine (and in some cases necessary) to
           // preventDefault for keys that don't generate a character. Otherwise,
           // preventDefault is the right thing to do in general.
-          if (event.type !== 'keydown' || (!SDL.unicode && !SDL.textInput) || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
+          if (event.type !== 'keydown' || (!SDL_unicode() && !SDL.textInput) || (event.keyCode === 8 /* backspace */ || event.keyCode === 9 /* tab */)) {
             event.preventDefault();
           }
 
@@ -1050,7 +1059,7 @@ var LibrarySDL = {
     estimateTextWidth: function(fontData, text) {
       var h = fontData.size;
       var fontString = SDL.makeFontString(h, fontData.name);
-      var tempCtx = SDL.ttfContext;
+      var tempCtx = SDL_ttfContext();
 #if ASSERTIONS
       assert(tempCtx, 'TTF_Init must have been called');
 #endif
@@ -1178,27 +1187,28 @@ var LibrarySDL = {
       // The input audio data is interleaved across the channels, i.e. [L, R, L, R, L, R, ...] and is either 8-bit, 16-bit or float as
       // supported by the SDL API. The output audio wave data for Web Audio API must be in planar buffers of [-1,1]-normalized Float32 data,
       // so perform a buffer conversion for the data.
-      var numChannels = SDL.audio.channels;
+      var audio = SDL_audio();
+      var numChannels = audio.channels;
       for(var c = 0; c < numChannels; ++c) {
         var channelData = dstAudioBuffer['getChannelData'](c);
         if (channelData.length != sizeSamplesPerChannel) {
           throw 'Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!';
         }
-        if (SDL.audio.format == 0x8010 /*AUDIO_S16LSB*/) {
+        if (audio.format == 0x8010 /*AUDIO_S16LSB*/) {
           for(var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*2', 'i16', 0, 0) }}}) / 0x8000;
           }
-        } else if (SDL.audio.format == 0x0008 /*AUDIO_U8*/) {
+        } else if (audio.format == 0x0008 /*AUDIO_U8*/) {
           for(var j = 0; j < sizeSamplesPerChannel; ++j) {
             var v = ({{{ makeGetValue('heapPtr', 'j*numChannels + c', 'i8', 0, 0) }}});
             channelData[j] = ((v >= 0) ? v-128 : v+128) /128;
           }
-        } else if (SDL.audio.format == 0x8120 /*AUDIO_F32*/) {
+        } else if (audio.format == 0x8120 /*AUDIO_F32*/) {
           for(var j = 0; j < sizeSamplesPerChannel; ++j) {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float', 0, 0) }}});
           }
         } else {
-          throw 'Invalid SDL audio format ' + SDL.audio.format + '!';
+          throw 'Invalid SDL audio format ' + audio.format + '!';
         }
       }
     },

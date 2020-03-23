@@ -290,15 +290,15 @@ var SyscallsLibrary = {
     return 0;
   },
 
-  __syscall1: function(status) { // exit
+  __sys_exit: function(status) {
     exit(status);
     // no return
   },
-  __syscall3: function(fd, buf, count) { // read
+  __sys_read: function(fd, buf, count) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
   },
-  __syscall4: function(fd, buf, count) { // write
+  __sys_write: function(fd, buf, count) {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count);
@@ -310,81 +310,81 @@ var SyscallsLibrary = {
     return count;
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall5: function(path, flags, varargs) { // open
+  __sys_open: function(path, flags, varargs) {
     var pathname = SYSCALLS.getStr(path);
     var mode = SYSCALLS.get();
     var stream = FS.open(pathname, flags, mode);
     return stream.fd;
   },
-  __syscall9__nothrow: true,
-  __syscall9__proxy: false,
-  __syscall9: function(oldpath, newpath) { // link
+  __sys_link__nothrow: true,
+  __sys_link__proxy: false,
+  __sys_link: function(oldpath, newpath) {
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
-  __syscall10: function(path) { // unlink
+  __sys_unlink: function(path) {
     path = SYSCALLS.getStr(path);
     FS.unlink(path);
     return 0;
   },
-  __syscall12: function(path) { // chdir
+  __sys_chdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.chdir(path);
     return 0;
   },
-  __syscall14: function(path, mode, dev) { // mknod
+  __sys_mknod: function(path, mode, dev) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doMknod(path, mode, dev);
   },
-  __syscall15: function(path, mode) { // chmod
+  __sys_chmod: function(path, mode) {
     path = SYSCALLS.getStr(path);
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall20__nothrow: true,
-  __syscall20__proxy: false,
-  __syscall20: function() { // getpid
+  __sys_getpid__nothrow: true,
+  __sys_getpid__proxy: false,
+  __sys_getpid: function() {
     return {{{ PROCINFO.pid }}};
   },
-  __syscall29__nothrow: true,
-  __syscall29__proxy: false,
-  __syscall29: function() { // pause
+  __sys_pause__nothrow: true,
+  __sys_pause__proxy: false,
+  __sys_pause: function() {
     return -{{{ cDefine('EINTR') }}}; // we can't pause
   },
-  __syscall33: function(path, amode) { // access
+  __sys_access: function(path, amode) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doAccess(path, amode);
   },
-  __syscall34__nothrow: true,
-  __syscall34__proxy: false,
-  __syscall34: function(inc) { // nice
+  __sys_nice__nothrow: true,
+  __sys_nice__proxy: false,
+  __sys_nice: function(inc) {
     return -{{{ cDefine('EPERM') }}}; // no meaning to nice for our single-process environment
   },
-  __syscall36__proxy: false,
-  __syscall36__nothrow: true,
-  __syscall36: function() { // sync
+  __sys_sync__proxy: false,
+  __sys_sync__nothrow: true,
+  __sys_sync: function() {
     return 0;
   },
-  __syscall38: function(old_path, new_path) { // rename
+  __sys_rename: function(old_path, new_path) {
     old_path = SYSCALLS.getStr(old_path);
     new_path = SYSCALLS.getStr(new_path);
     FS.rename(old_path, new_path);
     return 0;
   },
-  __syscall39: function(path, mode) { // mkdir
+  __sys_mkdir: function(path, mode) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doMkdir(path, mode);
   },
-  __syscall40: function(path) { // rmdir
+  __sys_rmdir: function(path) {
     path = SYSCALLS.getStr(path);
     FS.rmdir(path);
     return 0;
   },
-  __syscall41: function(fd) { // dup
+  __sys_dup: function(fd) {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.open(old.path, old.flags, 0).fd;
   },
-  __syscall42__deps: ['$PIPEFS'],
-  __syscall42: function(fdPtr) { // pipe
+  __sys_pipe__deps: ['$PIPEFS'],
+  __sys_pipe: function(fdPtr) {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefine('EFAULT') }}});
     }
@@ -396,12 +396,12 @@ var SyscallsLibrary = {
 
     return 0;
   },
-  __syscall51__nothrow: true,
-  __syscall51__proxy: false,
-  __syscall51: function(filename) { // acct
+  __sys_acct__nothrow: true,
+  __sys_acct__proxy: false,
+  __sys_acct: function(filename) {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported features
   },
-  __syscall54: function(fd, op, varargs) { // ioctl
+  __sys_ioctl: function(fd, op, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
     err('no-op in ioctl syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
@@ -458,44 +458,44 @@ var SyscallsLibrary = {
     }
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  __syscall57__nothrow: true,
-  __syscall57__proxy: false,
-  __syscall57: function(pid, pgid) { // setpgid
+  __sys_setpgid__nothrow: true,
+  __sys_setpgid__proxy: false,
+  __sys_setpgid: function(pid, pgid) {
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
     if (pgid && pgid !== {{{ PROCINFO.pgid }}}) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
-  __syscall60: function(mask) { // umask
+  __sys_umask: function(mask) {
     var old = SYSCALLS.umask;
     SYSCALLS.umask = mask;
     return old;
   },
-  __syscall63: function(oldfd, suggestFD) { // dup2
+  __sys_dup2: function(oldfd, suggestFD) {
     var old = SYSCALLS.getStreamFromFD(oldfd);
     if (old.fd === suggestFD) return suggestFD;
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
-  __syscall64__nothrow: true,
-  __syscall64__proxy: false,
-  __syscall64: function() { // getppid
+  __sys_getppid__nothrow: true,
+  __sys_getppid__proxy: false,
+  __sys_getppid: function() {
     return {{{ PROCINFO.ppid }}};
   },
-  __syscall65__nothrow: true,
-  __syscall65__proxy: false,
-  __syscall65: function() { // getpgrp
+  __sys_getpgrp__nothrow: true,
+  __sys_getpgrp__proxy: false,
+  __sys_getpgrp: function() {
     return {{{ PROCINFO.pgid }}};
   },
-  __syscall66__nothrow: true,
-  __syscall66__proxy: false,
-  __syscall66: function() { // setsid
+  __sys_setsid__nothrow: true,
+  __sys_setsid__proxy: false,
+  __sys_setsid: function() {
     return 0; // no-op
   },
-  __syscall75__nothrow: true,
-  __syscall75__proxy: false,
-  __syscall75: function(varargs) { // setrlimit
+  __sys_setrlimit__nothrow: true,
+  __sys_setrlimit__proxy: false,
+  __sys_setrlimit: function(varargs) {
     return 0; // no-op
   },
-  __syscall77: function(who, usage) { // getrusage
+  __sys_getrusage: function(who, usage) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -506,37 +506,37 @@ var SyscallsLibrary = {
     {{{ makeSetValue('usage', C_STRUCTS.rusage.ru_stime.tv_usec, '4', 'i32') }}};
     return 0;
   },
-  __syscall83: function(target, linkpath) { // symlink
+  __sys_symlink: function(target, linkpath) {
     target = SYSCALLS.getStr(target);
     linkpath = SYSCALLS.getStr(linkpath);
     FS.symlink(target, linkpath);
     return 0;
   },
-  __syscall85: function(path, buf, bufsize) { // readlink
+  __sys_readlink: function(path, buf, bufsize) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall91__deps: ['$syscallMunmap'],
-  __syscall91: function(addr, len) { // munmap
+  __sys_munmap__deps: ['$syscallMunmap'],
+  __sys_munmap: function(addr, len) {
     return syscallMunmap(addr, len);
   },
-  __syscall94: function(fd, mode) { // fchmod
+  __sys_fchmod: function(fd, mode) {
     FS.fchmod(fd, mode);
     return 0;
   },
-  __syscall96__nothrow: true,
-  __syscall96__proxy: false,
-  __syscall96: function() { // getpriority
+  __sys_getpriority__nothrow: true,
+  __sys_getpriority__proxy: false,
+  __sys_getpriority: function() {
     return 0;
   },
-  __syscall97__nothrow: true,
-  __syscall97__proxy: false,
-  __syscall97: function() { // setpriority
+  __sys_setpriority__nothrow: true,
+  __sys_setpriority__proxy: false,
+  __sys_setpriority: function() {
     return -{{{ cDefine('EPERM') }}};
   },
 #if PROXY_POSIX_SOCKETS == 0
-  __syscall102__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
-  __syscall102: function(call, socketvararg) { // socketcall
+  __sys_socketcall__deps: ['$SOCKFS', '$DNS', '_read_sockaddr', '_write_sockaddr'],
+  __sys_socketcall: function(call, socketvararg) {
 #if SYSCALL_DEBUG
       err('    (socketcall begin: "' + call + '")');
 #endif
@@ -755,25 +755,25 @@ var SyscallsLibrary = {
     }
   },
 #endif // ~PROXY_POSIX_SOCKETS==0
-  __syscall104__nothrow: true,
-  __syscall104__proxy: false,
-  __syscall104: function(which, new_value, old_value) { // setitimer
+  __sys_setitimer__nothrow: true,
+  __sys_setitimer__proxy: false,
+  __sys_setitimer: function(which, new_value, old_value) {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall114__proxy: false,
-  __syscall114: function(pid, wstart, options, rusage) { // wait4
+  __sys_wait4__proxy: false,
+  __sys_wait4: function(pid, wstart, options, rusage) {
     abort('cannot wait on child processes');
   },
-  __syscall121__nothrow: true,
-  __syscall121__proxy: false,
-  __syscall121: function(name, size) { // setdomainname
+  __sys_setdomainname__nothrow: true,
+  __sys_setdomainname__proxy: false,
+  __sys_setdomainname: function(name, size) {
     return -{{{ cDefine('EPERM') }}};
   },
 #if MINIMAL_RUNTIME
-  __syscall122__deps: ['$writeAsciiToMemory'],
+  __sys_uname__deps: ['$writeAsciiToMemory'],
 #endif
-  __syscall122__proxy: false,
-  __syscall122: function(buf) { // uname
+  __sys_uname__proxy: false,
+  __sys_uname: function(buf) {
     if (!buf) return -{{{ cDefine('EFAULT') }}}
     var layout = {{{ JSON.stringify(C_STRUCTS.utsname) }}};
     var copyString = function(element, value) {
@@ -787,23 +787,23 @@ var SyscallsLibrary = {
     copyString('machine', 'x86-JS');
     return 0;
   },
-  __syscall125__nothrow: true,
-  __syscall125__proxy: false,
-  __syscall125: function(addr, len, size) { // mprotect
+  __sys_mprotect__nothrow: true,
+  __sys_mprotect__proxy: false,
+  __sys_mprotect: function(addr, len, size) {
     return 0; // let's not and say we did
   },
-  __syscall132__nothrow: true,
-  __syscall132__proxy: false,
-  __syscall132: function(pid) { // getpgid
+  __sys_getpgid__nothrow: true,
+  __sys_getpgid__proxy: false,
+  __sys_getpgid: function(pid) {
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
     return {{{ PROCINFO.pgid }}};
   },
-  __syscall133: function(fd) { // fchdir
+  __sys_fchdir: function(fd) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.chdir(stream.path);
     return 0;
   },
-  __syscall142: function(nfds, readfds, writefds, exceptfds, timeout) { // newselect
+  __sys__newselect: function(nfds, readfds, writefds, exceptfds, timeout) {
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds not supported
@@ -884,52 +884,52 @@ var SyscallsLibrary = {
     
     return total;
   },
-  __syscall144: function(addr, len, flags) { // msync
+  __sys_msync: function(addr, len, flags) {
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
     return 0;
   },
-  __syscall147__nothrow: true,
-  __syscall147__proxy: false,
-  __syscall147: function(pid) { // getsid
+  __sys_getsid__nothrow: true,
+  __sys_getsid__proxy: false,
+  __sys_getsid: function(pid) {
     if (pid && pid !== {{{ PROCINFO.pid }}}) return -{{{ cDefine('ESRCH') }}};
     return {{{ PROCINFO.sid }}};
   },
-  __syscall148: function(fd) { // fdatasync
+  __sys_fdatasync: function(fd) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall150__nothrow: true,
-  __syscall150__proxy: false,
-  __syscall150__sig: 'iii',
-  __syscall150: function(addr, len) { // mlock
+  __sys_mlock__nothrow: true,
+  __sys_mlock__proxy: false,
+  __sys_mlock__sig: 'iii',
+  __sys_mlock: function(addr, len) {
     return 0;
   },
-  __syscall151__nothrow: true,
-  __syscall151__proxy: false,
-  __syscall151__sig: 'iii',
-  __syscall151: function(addr, len) { // munlock
+  __sys_munlock__nothrow: true,
+  __sys_munlock__proxy: false,
+  __sys_munlock__sig: 'iii',
+  __sys_munlock: function(addr, len) {
     return 0;
   },
-  __syscall152__nothrow: true,
-  __syscall152__proxy: false,
-  __syscall152__sig: 'ii',
-  __syscall152: function(flags) { // mlockall
+  __sys_mlockall__nothrow: true,
+  __sys_mlockall__proxy: false,
+  __sys_mlockall__sig: 'ii',
+  __sys_mlockall: function(flags) {
     return 0;
   },
-  __syscall153__nothrow: true,
-  __syscall153__proxy: false,
-  __syscall153__sig: 'i',
-  __syscall153: function() { // munlockall
+  __sys_munlockall__nothrow: true,
+  __sys_munlockall__proxy: false,
+  __sys_munlockall__sig: 'i',
+  __sys_munlockall: function() {
     return 0;
   },
-  __syscall163__nothrow: true,
-  __syscall163__proxy: false,
-  __syscall163: function(old_addr, old_size, new_size, flags) { // mremap
+  __sys_mremap__nothrow: true,
+  __sys_mremap__proxy: false,
+  __sys_mremap: function(old_addr, old_size, new_size, flags) {
     return -{{{ cDefine('ENOMEM') }}}; // never succeed
   },
-  __syscall168: function(fds, nfds, timeout) { // poll
+  __sys_poll: function(fds, nfds, timeout) {
     var nonzero = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -949,25 +949,25 @@ var SyscallsLibrary = {
     }
     return nonzero;
   },
-  __syscall178__nothrow: true,
-  __syscall178__proxy: false,
-  __syscall178: function(tgid, pid, uinfo) { // rt_sigqueueinfo
+  __sys_rt_sigqueueinfo__nothrow: true,
+  __sys_rt_sigqueueinfo__proxy: false,
+  __sys_rt_sigqueueinfo: function(tgid, pid, uinfo) {
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_rt_sigqueueinfo');
 #endif
     return 0;
   },
-  __syscall180: function(fd, buf, count, zero, low, high) { // pread64
+  __sys_pread64: function(fd, buf, count, zero, low, high) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(low, high);
     return FS.read(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
-  __syscall181: function(fd, buf, count, zero, low, high) { // pwrite64
+  __sys_pwrite64: function(fd, buf, count, zero, low, high) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(low, high);
     return FS.write(stream, {{{ heapAndOffset('HEAP8', 'buf') }}}, count, offset);
   },
-  __syscall183: function(buf, size) { // getcwd
+  __sys_getcwd: function(buf, size) {
     if (size === 0) return -{{{ cDefine('EINVAL') }}};
     var cwd = FS.cwd();
     var cwdLengthInBytes = lengthBytesUTF8(cwd);
@@ -975,7 +975,7 @@ var SyscallsLibrary = {
     stringToUTF8(cwd, buf, size);
     return buf;
   },
-  __syscall191: function(resource, rlim) { // ugetrlimit
+  __sys_ugetrlimit: function(resource, rlim) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -985,107 +985,110 @@ var SyscallsLibrary = {
     {{{ makeSetValue('rlim', C_STRUCTS.rlimit.rlim_max + 4, '-1', 'i32') }}};  // RLIM_INFINITY
     return 0; // just report no limits
   },
-  __syscall192__deps: ['$syscallMmap2'],
-  __syscall192: function(addr, len, prot, flags, fd, off) { // mmap2
+  __sys_mmap2__deps: ['$syscallMmap2'],
+  __sys_mmap2: function(addr, len, prot, flags, fd, off) {
     return syscallMmap2(addr, len, prot, flags, fd, off);
   },
-  __syscall193: function(path, zero, low, high) { // truncate64
+  __sys_truncate64: function(path, zero, low, high) {
     path = SYSCALLS.getStr(path);
     var length = SYSCALLS.get64(low, high);
     FS.truncate(path, length);
     return 0;
   },
-  __syscall194: function(fd, zero, low, high) { // ftruncate64
+  __sys_ftruncate64: function(fd, zero, low, high) {
     var length = SYSCALLS.get64(low, high);
     FS.ftruncate(fd, length);
     return 0;
   },
-  __syscall195: function(path, buf) { // SYS_stat64
+  __sys_stat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.stat, path, buf);
   },
-  __syscall196: function(path, buf) { // SYS_lstat64
+  __sys_lstat64: function(path, buf) {
     path = SYSCALLS.getStr(path);
     return SYSCALLS.doStat(FS.lstat, path, buf);
   },
-  __syscall197: function(fd, buf) { // SYS_fstat64
+  __sys_fstat64: function(fd, buf) {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doStat(FS.stat, stream.path, buf);
   },
-  __syscall198: function(path, owner, group) { // lchown32
+  __sys_lchown32: function(path, owner, group) {
     path = SYSCALLS.getStr(path);
     FS.chown(path, owner, group); // XXX we ignore the 'l' aspect, and do the same as chown
     return 0;
   },
-  __syscall199__sig: 'i',
-  __syscall199__nothrow: true,
-  __syscall199__proxy: false,
-  __syscall199: '__syscall202',     // getuid32
-  __syscall200__sig: 'i',
-  __syscall200__nothrow: true,
-  __syscall200__proxy: false,
-  __syscall200: '__syscall202',     // getgid32
-  __syscall201__sig: 'i',
-  __syscall201__nothrow: true,
-  __syscall201__proxy: false,
-  __syscall201: '__syscall202',     // geteuid32
-  __syscall202__nothrow: true,
-  __syscall202__proxy: false,
-  __syscall202: function() { // getgid32
+  __sys_getuid32__sig: 'i',
+  __sys_getuid32__nothrow: true,
+  __sys_getuid32__proxy: false,
+  __sys_getuid32: '__sys_getegid32',
+  __sys_getgid32__sig: 'i',
+  __sys_getgid32__nothrow: true,
+  __sys_getgid32__proxy: false,
+  __sys_getgid32: '__sys_getegid32',
+  __sys_geteuid32__sig: 'i',
+  __sys_geteuid32__nothrow: true,
+  __sys_geteuid32__proxy: false,
+  __sys_geteuid32: '__sys_getegid32',
+  __sys_getegid32__nothrow: true,
+  __sys_getegid32__proxy: false,
+  __sys_getegid32: function() {
     return 0;
   },
-  __syscall207: function(fd, owner, group) { // fchown32
+  __sys_fchown32: function(fd, owner, group) {
     FS.fchown(fd, owner, group);
     return 0;
   },
-  __syscall212: function(path, owner, group) { // chown32
+  __sys_chown32: function(path, owner, group) {
     path = SYSCALLS.getStr(path);
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall203__sig: 'ii',
-  __syscall203__nothrow: true,
-  __syscall203__proxy: false,
-  __syscall203: '__syscall214',     // setreuid32
-  __syscall204__sig: 'ii',
-  __syscall204__nothrow: true,
-  __syscall204__proxy: false,
-  __syscall204: '__syscall214',     // setregid32
-  __syscall213__sig: 'ii',
-  __syscall213__nothrow: true,
-  __syscall213__proxy: false,
-  __syscall213: '__syscall214',     // setuid32
-  __syscall214__sig: 'ii',
-  __syscall214__nothrow: true,
-  __syscall214__proxy: false,
-  __syscall214: function(uid) { // setgid32
+  __sys_setreuid32__sig: 'iii',
+  __sys_setreuid32__nothrow: true,
+  __sys_setreuid32__proxy: false,
+  __sys_setreuid32: '__sys_setregid32',
+  __sys_setregid32__sig: 'iii',
+  __sys_setregid32__nothrow: true,
+  __sys_setregid32__proxy: false,
+  __sys_setregid32: function(ruid, euid) {
     if (uid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
-  __syscall205__nothrow: true,
-  __syscall205__proxy: false,
-  __syscall205: function(size, list) { // getgroups32
+  __sys_setuid32__sig: 'ii',
+  __sys_setuid32__nothrow: true,
+  __sys_setuid32__proxy: false,
+  __sys_setuid32: '__sys_setgid32',
+  __sys_setgid32__sig: 'ii',
+  __sys_setgid32__nothrow: true,
+  __sys_setgid32__proxy: false,
+  __sys_setgid32: function(uid) {
+    if (uid !== 0) return -{{{ cDefine('EPERM') }}};
+    return 0;
+  },
+  __sys_getgroups32__nothrow: true,
+  __sys_getgroups32__proxy: false,
+  __sys_getgroups32: function(size, list) {
     if (size < 1) return -{{{ cDefine('EINVAL') }}};
     {{{ makeSetValue('list', '0', '0', 'i32') }}};
     return 1;
   },
-  __syscall208__nothrow: true,
-  __syscall208__proxy: false,
-  __syscall208__sig: 'iiii',
-  __syscall208: '__syscall210',     // setresuid32
-  __syscall210__nothrow: true,
-  __syscall210__proxy: false,
-  __syscall210: function(ruid, euid, suid) { // setresgid32
+  __sys_setresuid32__nothrow: true,
+  __sys_setresuid32__proxy: false,
+  __sys_setresuid32__sig: 'iiii',
+  __sys_setresuid32: '__sys_setresgid32',
+  __sys_setresgid32__nothrow: true,
+  __sys_setresgid32__proxy: false,
+  __sys_setresgid32: function(ruid, euid, suid) {
     if (euid !== 0) return -{{{ cDefine('EPERM') }}};
     return 0;
   },
-  __syscall209__sig: 'iiii',
-  __syscall209__nothrow: true,
-  __syscall209__proxy: false,
-  __syscall209: '__syscall211',     // getresuid
-  __syscall211__nothrow: true,
-  __syscall211__proxy: false,
-  __syscall211: function(ruid, euid, suid) { // getresgid32
+  __sys_getresuid32__sig: 'iiii',
+  __sys_getresuid32__nothrow: true,
+  __sys_getresuid32__proxy: false,
+  __sys_getresuid32: '__sys_getresgid32',
+  __sys_getresgid32__nothrow: true,
+  __sys_getresgid32__proxy: false,
+  __sys_getresgid32: function(ruid, euid, suid) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1094,17 +1097,17 @@ var SyscallsLibrary = {
     {{{ makeSetValue('suid', '0', '0', 'i32') }}};
     return 0;
   },
-  __syscall218__nothrow: true,
-  __syscall218__proxy: false,
-  __syscall218: function(addr, length, vec) { // mincore
+  __sys_mincore__nothrow: true,
+  __sys_mincore__proxy: false,
+  __sys_mincore: function(addr, length, vec) {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall219__nothrow: true,
-  __syscall219__proxy: false,
-  __syscall219: function(addr, length, advice) { // madvise
+  __sys_madvise1__nothrow: true,
+  __sys_madvise1__proxy: false,
+  __sys_madvise1: function(addr, length, advice) {
     return 0; // advice is welcome, but ignored
   },
-  __syscall220: function(fd, dirp, count) { // SYS_getdents64
+  __sys_getdents64: function(fd, dirp, count) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     if (!stream.getdents) {
       stream.getdents = FS.readdir(stream.path);
@@ -1142,8 +1145,8 @@ var SyscallsLibrary = {
     FS.llseek(stream, idx * struct_size, {{{ cDefine('SEEK_SET') }}});
     return pos;
   },
-  __syscall221__deps: ['__setErrNo'],
-  __syscall221: function(fd, cmd, varargs) { // fcntl64
+  __sys_fcntl64__deps: ['__setErrNo'],
+  __sys_fcntl64: function(fd, cmd, varargs) {
 #if SYSCALLS_REQUIRE_FILESYSTEM == 0
 #if SYSCALL_DEBUG
     err('no-op in fcntl64 syscall due to SYSCALLS_REQUIRE_FILESYSTEM=0');
@@ -1205,13 +1208,13 @@ var SyscallsLibrary = {
   },
 
 #if MINIMAL_RUNTIME
-  __syscall252__deps: ['$exit'],
+  __sys_exit_group__deps: ['$exit'],
 #endif
-  __syscall252: function(status) { // exit_group
+  __sys_exit_group: function(status) {
     exit(status);
     return 0;
   },
-  __syscall268: function(path, size, buf) { // statfs64
+  __sys_statfs64: function(path, size, buf) {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
@@ -1230,16 +1233,16 @@ var SyscallsLibrary = {
     {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, '255', 'i32') }}};
     return 0;
   },
-  __syscall269: function(fd, size, buf) { // fstatfs64
+  __sys_fstatfs64: function(fd, size, buf) {
     var stream = SYSCALLS.getStreamFromFD(fd);
-    return ___syscall([268, 0, size, buf], 0);
+    return ___sys_statfs64(0, size, buf);
   },
-  __syscall272__nothrow: true,
-  __syscall272__proxy: false,
-  __syscall272: function(fd, offset, len, advice) { // fadvise64_64
+  __sys_fadvise64_64__nothrow: true,
+  __sys_fadvise64_64__proxy: false,
+  __sys_fadvise64_64: function(fd, offset, len, advice) {
     return 0; // your advice is important to us (but we can't use it)
   },
-  __syscall295: function(dirfd, path, flags, varargs) { // openat
+  __sys_openat: function(dirfd, path, flags, varargs) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1248,7 +1251,7 @@ var SyscallsLibrary = {
     var mode = SYSCALLS.get();
     return FS.open(path, flags, mode).fd;
   },
-  __syscall296: function(dirfd, path, mode) { // mkdirat
+  __sys_mkdirat: function(dirfd, path, mode) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1256,7 +1259,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doMkdir(path, mode);
   },
-  __syscall297: function(dirfd, path, mode, dev) { // mknodat
+  __sys_mknodat: function(dirfd, path, mode, dev) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1264,7 +1267,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doMknod(path, mode, dev);
   },
-  __syscall298: function(dirfd, path, owner, group, flags) { // fchownat
+  __sys_fchownat: function(dirfd, path, owner, group, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1276,7 +1279,7 @@ var SyscallsLibrary = {
     FS.chown(path, owner, group);
     return 0;
   },
-  __syscall300: function(dirfd, path, buf, flags) { // fstatat64
+  __sys_fstatat64: function(dirfd, path, buf, flags) {
     path = SYSCALLS.getStr(path);
     var nofollow = flags & {{{ cDefine('AT_SYMLINK_NOFOLLOW') }}};
     flags = flags & (~{{{ cDefine('AT_SYMLINK_NOFOLLOW') }}});
@@ -1286,7 +1289,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doStat(nofollow ? FS.lstat : FS.stat, path, buf);
   },
-  __syscall301: function(dirfd, path, flags) { // unlinkat
+  __sys_unlinkat: function(dirfd, path, flags) {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     if (flags === 0) {
@@ -1298,7 +1301,7 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall302: function(olddirfd, oldpath, newdirfd, newpath) { // renameat
+  __sys_renameat: function(olddirfd, oldpath, newdirfd, newpath) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1309,12 +1312,12 @@ var SyscallsLibrary = {
     FS.rename(oldpath, newpath);
     return 0;
   },
-  __syscall303__nothrow: true,
-  __syscall303__proxy: false,
-  __syscall303: function(olddirfd, oldpath, newdirfd, newpath, flags) { // linkat
+  __sys_linkat__nothrow: true,
+  __sys_linkat__proxy: false,
+  __sys_linkat: function(olddirfd, oldpath, newdirfd, newpath, flags) {
     return -{{{ cDefine('EMLINK') }}}; // no hardlinks for us
   },
-  __syscall304: function(target, newdirfd, linkpath) { // symlinkat
+  __sys_symlinkat: function(target, newdirfd, linkpath) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1322,7 +1325,7 @@ var SyscallsLibrary = {
     FS.symlink(target, linkpath);
     return 0;
   },
-  __syscall305: function(dirfd, path, buf, bufsize) { // readlinkat
+  __sys_readlinkat: function(dirfd, path, buf, bufsize) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1330,7 +1333,7 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doReadlink(path, buf, bufsize);
   },
-  __syscall306: function(dirfd, path, mode, varargs) { // fchmodat
+  __sys_fchmodat: function(dirfd, path, mode, varargs) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1340,7 +1343,7 @@ var SyscallsLibrary = {
     FS.chmod(path, mode);
     return 0;
   },
-  __syscall307: function(dirfd, path, amode, flags) { // faccessat
+  __sys_faccessat: function(dirfd, path, amode, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1351,12 +1354,12 @@ var SyscallsLibrary = {
     path = SYSCALLS.calculateAt(dirfd, path);
     return SYSCALLS.doAccess(path, amode);
   },
-  __syscall308__nothrow: true,
-  __syscall308__proxy: false,
-  __syscall308: function() { // pselect
+  __sys_pselect6__nothrow: true,
+  __sys_pselect6__proxy: false,
+  __sys_pselect6: function() {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall320: function(dirfd, path, times, flags) { // utimensat
+  __sys_utimensat: function(dirfd, path, times, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1375,7 +1378,7 @@ var SyscallsLibrary = {
     FS.utime(path, atime, mtime);
     return 0;  
   },
-  __syscall324: function(fd, mode, off_low, off_high, len_low, len_high) { // fallocate
+  __sys_fallocate: function(fd, mode, off_low, off_high, len_low, len_high) {
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(off_low, off_high);
     var len = SYSCALLS.get64(len_low, len_high);
@@ -1385,7 +1388,7 @@ var SyscallsLibrary = {
     FS.allocate(stream, offset, len);
     return 0;
   },
-  __syscall330: function(fd, suggestFD, flags) { // dup3
+  __sys_dup3: function(fd, suggestFD, flags) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1396,19 +1399,19 @@ var SyscallsLibrary = {
     if (old.fd === suggestFD) return -{{{ cDefine('EINVAL') }}};
     return SYSCALLS.doDup(old.path, old.flags, suggestFD);
   },
-  __syscall331__nothrow: true,
-  __syscall331__proxy: false,
-  __syscall331: function(fds, flags) { // pipe2
+  __sys_pipe2__nothrow: true,
+  __sys_pipe2__proxy: false,
+  __sys_pipe2: function(fds, flags) {
     return -{{{ cDefine('ENOSYS') }}}; // unsupported feature
   },
-  __syscall333: function(fd, iov, iovcnt, low, high) { // preadv
+  __sys_preadv: function(fd, iov, iovcnt, low, high) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
     var stream = SYSCALLS.getStreamFromFD(fd);
     return SYSCALLS.doReadv(stream, iov, iovcnt, offset);
   },
-  __syscall334: function(fd, iov, iovcnt, low, high) { // pwritev
+  __sys_pwritev: function(fd, iov, iovcnt, low, high) {
 #if SYSCALL_DEBUG
     err('warning: untested syscall');
 #endif
@@ -1416,15 +1419,15 @@ var SyscallsLibrary = {
     var offset = SYSCALLS.get64(low, high);
     return SYSCALLS.doWritev(stream, iov, iovcnt, offset);
   },
-  __syscall337__nothrow: true,
-  __syscall337__proxy: false,
-  __syscall337: function(sockfd, msgvec, vlen, flags) { // recvmmsg
+  __sys_recvmmsg__nothrow: true,
+  __sys_recvmmsg__proxy: false,
+  __sys_recvmmsg: function(sockfd, msgvec, vlen, flags) {
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_recvmmsg');
 #endif
     return 0;
   },
-  __syscall340: function(pid, resource, new_limit, old_limit) { // prlimit64
+  __sys_prlimit64: function(pid, resource, new_limit, old_limit) {
     if (old_limit) { // just report no limits
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur, '-1', 'i32') }}};  // RLIM_INFINITY
       {{{ makeSetValue('old_limit', C_STRUCTS.rlimit.rlim_cur + 4, '-1', 'i32') }}};  // RLIM_INFINITY
@@ -1433,9 +1436,9 @@ var SyscallsLibrary = {
     }
     return 0;
   },
-  __syscall345__nothrow: true,
-  __syscall345__proxy: false,
-  __syscall345: function(sockfd, msg, flags) { // sendmmsg
+  __sys_sendmmsg__nothrow: true,
+  __sys_sendmmsg__proxy: false,
+  __sys_sendmmsg: function(sockfd, msg, flags) {
 #if SYSCALL_DEBUG
     err('warning: ignoring SYS_sendmmsg');
 #endif
@@ -1591,125 +1594,232 @@ var SyscallsLibrary = {
 #endif // WASM_BACKEND && ASYNCIFY
 #endif // EMTERPRETIFY_ASYNC
   },
-};
 
-#if SYSCALL_DEBUG
-// This list is derived from musl/arch/emscripten/bits/syscall.h.in using:
-// awk '{ printf "%3s: \"%s\",\n", $3, $2 }' syscall.h.in | sed "s/__NR_//"
-var SYSCALL_CODE_TO_NAME = {
-    1: "exit",
-    3: "read",
-    4: "write",
-    5: "open",
-    9: "link",
-   10: "unlink",
-   12: "chdir",
-   14: "mknod",
-   15: "chmod",
-   20: "getpid",
-   29: "pause",
-   33: "access",
-   34: "nice",
-   36: "sync",
-   38: "rename",
-   39: "mkdir",
-   40: "rmdir",
-   41: "dup",
-   42: "pipe",
-   51: "acct",
-   54: "ioctl",
-   57: "setpgid",
-   60: "umask",
-   63: "dup2",
-   64: "getppid",
-   65: "getpgrp",
-   66: "setsid",
-   75: "setrlimit",
-   77: "getrusage",
-   83: "symlink",
-   85: "readlink",
-   91: "munmap",
-   94: "fchmod",
-   96: "getpriority",
-   97: "setpriority",
-  102: "socketcall",
-  104: "setitimer",
-  114: "wait4",
-  121: "setdomainname",
-  122: "uname",
-  125: "mprotect",
-  132: "getpgid",
-  133: "fchdir",
-  142: "_newselect",
-  144: "msync",
-  147: "getsid",
-  148: "fdatasync",
-  150: "mlock",
-  151: "munlock",
-  152: "mlockall",
-  153: "munlockall",
-  163: "mremap",
-  168: "poll",
-  178: "rt_sigqueueinfo",
-  180: "pread64",
-  181: "pwrite64",
-  183: "getcwd",
-  191: "ugetrlimit",
-  192: "mmap2",
-  193: "truncate64",
-  194: "ftruncate64",
-  195: "stat64",
-  196: "lstat64",
-  197: "fstat64",
-  198: "lchown32",
-  199: "getuid32",
-  200: "getgid32",
-  201: "geteuid32",
-  202: "getegid32",
-  203: "setreuid32",
-  204: "setregid32",
-  205: "getgroups32",
-  207: "fchown32",
-  208: "setresuid32",
-  209: "getresuid32",
-  210: "setresgid32",
-  211: "getresgid32",
-  212: "chown32",
-  213: "setuid32",
-  214: "setgid32",
-  218: "mincore",
-  219: "madvise",
-  219: "madvise1",
-  220: "getdents64",
-  221: "fcntl64",
-  252: "exit_group",
-  268: "statfs64",
-  269: "fstatfs64",
-  272: "fadvise64_64",
-  295: "openat",
-  296: "mkdirat",
-  297: "mknodat",
-  298: "fchownat",
-  300: "fstatat64",
-  301: "unlinkat",
-  302: "renameat",
-  303: "linkat",
-  304: "symlinkat",
-  305: "readlinkat",
-  306: "fchmodat",
-  307: "faccessat",
-  308: "pselect6",
-  320: "utimensat",
-  324: "fallocate",
-  330: "dup3",
-  331: "pipe2",
-  333: "preadv",
-  334: "pwritev",
-  337: "recvmmsg",
-  340: "prlimit64",
-  345: "sendmmsg",
-};
+#if !WASM_BACKEND
+  // Fastcomp doesn't support the import_name attribute so we have to alias
+  // the internal musl names to the JS names
+  __syscall1__sig: 'ii',
+  __syscall1: '__sys_exit',
+  __syscall3__sig: 'iiii',
+  __syscall3: '__sys_read',
+  __syscall4__sig: 'iiii',
+  __syscall4: '__sys_write',
+  __syscall5__sig: 'iiii',
+  __syscall5: '__sys_open',
+  __syscall9__sig: 'iii',
+  __syscall9: '__sys_link',
+  __syscall10__sig: 'ii',
+  __syscall10: '__sys_unlink',
+  __syscall12__sig: 'ii',
+  __syscall12: '__sys_chdir',
+  __syscall14__sig: 'iiii',
+  __syscall14: '__sys_mknod',
+  __syscall15__sig: 'iii',
+  __syscall15: '__sys_chmod',
+  __syscall20__sig: 'i',
+  __syscall20: '__sys_getpid',
+  __syscall29__sig: 'i',
+  __syscall29: '__sys_pause',
+  __syscall33__sig: 'iii',
+  __syscall33: '__sys_access',
+  __syscall34__sig: 'ii',
+  __syscall34: '__sys_nice',
+  __syscall36__sig: 'i',
+  __syscall36: '__sys_sync',
+  __syscall38__sig: 'iii',
+  __syscall38: '__sys_rename',
+  __syscall39__sig: 'iii',
+  __syscall39: '__sys_mkdir',
+  __syscall40__sig: 'ii',
+  __syscall40: '__sys_rmdir',
+  __syscall41__sig: 'ii',
+  __syscall41: '__sys_dup',
+  __syscall42__sig: 'ii',
+  __syscall42: '__sys_pipe',
+  __syscall51__sig: 'ii',
+  __syscall51: '__sys_acct',
+  __syscall54__sig: 'iiii',
+  __syscall54: '__sys_ioctl',
+  __syscall57__sig: 'iii',
+  __syscall57: '__sys_setpgid',
+  __syscall60__sig: 'ii',
+  __syscall60: '__sys_umask',
+  __syscall63__sig: 'iii',
+  __syscall63: '__sys_dup2',
+  __syscall64__sig: 'i',
+  __syscall64: '__sys_getppid',
+  __syscall65__sig: 'i',
+  __syscall65: '__sys_getpgrp',
+  __syscall66__sig: 'i',
+  __syscall66: '__sys_setsid',
+  __syscall75__sig: 'iii',
+  __syscall75: '__sys_setrlimit',
+  __syscall77__sig: 'iii',
+  __syscall77: '__sys_getrusage',
+  __syscall83__sig: 'iii',
+  __syscall83: '__sys_symlink',
+  __syscall85__sig: 'iiii',
+  __syscall85: '__sys_readlink',
+  __syscall91__sig: 'iii',
+  __syscall91: '__sys_munmap',
+  __syscall94__sig: 'iii',
+  __syscall94: '__sys_fchmod',
+  __syscall96__sig: 'iii',
+  __syscall96: '__sys_getpriority',
+  __syscall97__sig: 'iiii',
+  __syscall97: '__sys_setpriority',
+  __syscall102__sig: 'iii',
+  __syscall102: '__sys_socketcall',
+  __syscall104__sig: 'iiii',
+  __syscall104: '__sys_setitimer',
+  __syscall114__sig: 'iiiii',
+  __syscall114: '__sys_wait4',
+  __syscall121__sig: 'iii',
+  __syscall121: '__sys_setdomainname',
+  __syscall122__sig: 'ii',
+  __syscall122: '__sys_uname',
+  __syscall125__sig: 'iiii',
+  __syscall125: '__sys_mprotect',
+  __syscall132__sig: 'ii',
+  __syscall132: '__sys_getpgid',
+  __syscall133__sig: 'ii',
+  __syscall133: '__sys_fchdir',
+  __syscall142__sig: 'iiiiii',
+  __syscall142: '__sys__newselect',
+  __syscall144__sig: 'iiii',
+  __syscall144: '__sys_msync',
+  __syscall147__sig: 'ii',
+  __syscall147: '__sys_getsid',
+  __syscall148__sig: 'ii',
+  __syscall148: '__sys_fdatasync',
+  __syscall150__sig: 'iii',
+  __syscall150: '__sys_mlock',
+  __syscall151__sig: 'iii',
+  __syscall151: '__sys_munlock',
+  __syscall152__sig: 'ii',
+  __syscall152: '__sys_mlockall',
+  __syscall153__sig: 'i',
+  __syscall153: '__sys_munlockall',
+  __syscall163__sig: 'iiiiii',
+  __syscall163: '__sys_mremap',
+  __syscall168__sig: 'iiii',
+  __syscall168: '__sys_poll',
+  __syscall178__sig: 'iiii',
+  __syscall178: '__sys_rt_sigqueueinfo',
+  __syscall180__sig: 'iiiiiii',
+  __syscall180: '__sys_pread64',
+  __syscall181__sig: 'iiiiiii',
+  __syscall181: '__sys_pwrite64',
+  __syscall183__sig: 'iii',
+  __syscall183: '__sys_getcwd',
+  __syscall191__sig: 'iii',
+  __syscall191: '__sys_ugetrlimit',
+  __syscall192__sig: 'iiiiiii',
+  __syscall192: '__sys_mmap2',
+  __syscall193__sig: 'iiiii',
+  __syscall193: '__sys_truncate64',
+  __syscall194__sig: 'iiiii',
+  __syscall194: '__sys_ftruncate64',
+  __syscall195__sig: 'iii',
+  __syscall195: '__sys_stat64',
+  __syscall196__sig: 'iii',
+  __syscall196: '__sys_lstat64',
+  __syscall197__sig: 'iii',
+  __syscall197: '__sys_fstat64',
+  __syscall198__sig: 'iiii',
+  __syscall198: '__sys_lchown32',
+  __syscall199__sig: 'i',
+  __syscall199: '__sys_getuid32',
+  __syscall200__sig: 'i',
+  __syscall200: '__sys_getgid32',
+  __syscall201__sig: 'i',
+  __syscall201: '__sys_geteuid32',
+  __syscall202__sig: 'i',
+  __syscall202: '__sys_getegid32',
+  __syscall203__sig: 'iii',
+  __syscall203: '__sys_setreuid32',
+  __syscall204__sig: 'iii',
+  __syscall204: '__sys_setregid32',
+  __syscall205__sig: 'iii',
+  __syscall205: '__sys_getgroups32',
+  __syscall207__sig: 'iiii',
+  __syscall207: '__sys_fchown32',
+  __syscall208__sig: 'iiii',
+  __syscall208: '__sys_setresuid32',
+  __syscall209__sig: 'iiii',
+  __syscall209: '__sys_getresuid32',
+  __syscall210__sig: 'iiii',
+  __syscall210: '__sys_setresgid32',
+  __syscall211__sig: 'iiii',
+  __syscall211: '__sys_getresgid32',
+  __syscall212__sig: 'iiii',
+  __syscall212: '__sys_chown32',
+  __syscall213__sig: 'ii',
+  __syscall213: '__sys_setuid32',
+  __syscall214__sig: 'ii',
+  __syscall214: '__sys_setgid32',
+  __syscall218__sig: 'iiii',
+  __syscall218: '__sys_mincore',
+  __syscall219__sig: 'iiii',
+  __syscall219: '__sys_madvise1',
+  __syscall220__sig: 'iiii',
+  __syscall220: '__sys_getdents64',
+  __syscall221__sig: 'iiii',
+  __syscall221: '__sys_fcntl64',
+  __syscall252__sig: 'ii',
+  __syscall252: '__sys_exit_group',
+  __syscall268__sig: 'iiii',
+  __syscall268: '__sys_statfs64',
+  __syscall269__sig: 'iiii',
+  __syscall269: '__sys_fstatfs64',
+  __syscall272__sig: 'iiiiiiii',
+  __syscall272: '__sys_fadvise64_64',
+  __syscall295__sig: 'iiiii',
+  __syscall295: '__sys_openat',
+  __syscall296__sig: 'iiii',
+  __syscall296: '__sys_mkdirat',
+  __syscall297__sig: 'iiiii',
+  __syscall297: '__sys_mknodat',
+  __syscall298__sig: 'iiiiii',
+  __syscall298: '__sys_fchownat',
+  __syscall300__sig: 'iiiii',
+  __syscall300: '__sys_fstatat64',
+  __syscall301__sig: 'iiii',
+  __syscall301: '__sys_unlinkat',
+  __syscall302__sig: 'iiiii',
+  __syscall302: '__sys_renameat',
+  __syscall303__sig: 'iiiiii',
+  __syscall303: '__sys_linkat',
+  __syscall304__sig: 'iiii',
+  __syscall304: '__sys_symlinkat',
+  __syscall305__sig: 'iiiii',
+  __syscall305: '__sys_readlinkat',
+  __syscall306__sig: 'iiiii',
+  __syscall306: '__sys_fchmodat',
+  __syscall307__sig: 'iiiii',
+  __syscall307: '__sys_faccessat',
+  __syscall308__sig: 'iiiiiii',
+  __syscall308: '__sys_pselect6',
+  __syscall320__sig: 'iiiii',
+  __syscall320: '__sys_utimensat',
+  __syscall324__sig: 'iiiiiii',
+  __syscall324: '__sys_fallocate',
+  __syscall330__sig: 'iiii',
+  __syscall330: '__sys_dup3',
+  __syscall331__sig: 'iii',
+  __syscall331: '__sys_pipe2',
+  __syscall333__sig: 'iiiiii',
+  __syscall333: '__sys_preadv',
+  __syscall334__sig: 'iiiiii',
+  __syscall334: '__sys_pwritev',
+  __syscall337__sig: 'iiiiii',
+  __syscall337: '__sys_recvmmsg',
+  __syscall340__sig: 'iiiii',
+  __syscall340: '__sys_prlimit64',
+  __syscall345__sig: 'iiiiii',
+  __syscall345: '__sys_sendmmsg',
 #endif
+};
 
 var WASI_SYSCALLS = set([
   'fd_write',
@@ -1731,14 +1841,14 @@ if (!WASM_BACKEND) {
 
 for (var x in SyscallsLibrary) {
   var which = null; // if this is a musl syscall, its number
-  var m = /^__syscall(\d+)$/.exec(x);
   var wasi = false;
-  if (m) {
-    which = +m[1];
-  } else if (x in WASI_SYSCALLS) {
+  if (x in WASI_SYSCALLS) {
     wasi = true;
   } else {
-    continue;
+    var match = /^__sys_[^_]*$/.exec(x);
+    if (!match) {
+      continue;
+    }
   }
   var t = SyscallsLibrary[x];
   if (typeof t === 'string') continue;
@@ -1754,22 +1864,18 @@ for (var x in SyscallsLibrary) {
     });
   }
   var pre = '', post = '';
-  if (which && t.indexOf(', varargs') != -1) {
+  if (!wasi && t.indexOf(', varargs') != -1) {
     pre += 'SYSCALLS.varargs = varargs;\n';
   }
 #if SYSCALL_DEBUG
-  if (which && t.indexOf(', varargs') != -1) {
+  if (!wasi && t.indexOf(', varargs') != -1) {
     if (canThrow) {
       post += 'finally { SYSCALLS.varargs = undefined; }\n';
     } else {
       post += 'SYSCALLS.varargs = undefined;\n';
     }
   }
-  if (which) {
-    pre += "err('syscall! ' + [" + which + ", '" + SYSCALL_CODE_TO_NAME[which] + "']);\n";
-  } else {
-    pre += "err('syscall! " + x + "');\n";
-  }
+  pre += "err('syscall! " + x + "');\n";
   pre += "var canWarn = true;\n";
   pre += "var ret = (function() {\n";
   post += "})();\n";

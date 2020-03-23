@@ -34,6 +34,8 @@ from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
+from . import diagnostics
+
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
@@ -55,13 +57,13 @@ if sys.version_info < (2, 7, 12):
 
 
 def exit_with_error(msg, *args):
-  logger.error(str(msg), *args)
+  diagnostics.error(msg, *args)
   sys.exit(1)
 
 
 # TODO(sbc): Convert all caller to WarningManager
 def warning(msg, *args):
-  logger.warning(str(msg), *args)
+  diagnostics.warn(str(msg), *args)
   if Settings.WARNINGS_ARE_ERRORS:
     exit_with_error('treating warnings as errors (-Werror)')
 
@@ -710,8 +712,8 @@ EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
 EMXX = path_from_root('em++.py')
 EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib')
-EMCONFIG = path_from_root('em-config')
+EMRANLIB = path_from_root('emranlib.py')
+EMCONFIG = path_from_root('em-config.py')
 EMLINK = path_from_root('emlink.py')
 EMCONFIGURE = path_from_root('emconfigure.py')
 EMMAKE = path_from_root('emmake.py')
@@ -816,7 +818,7 @@ class WarningManager(object):
       if warning_info['error']:
         exit_with_error(msg + ' [-Werror]')
       else:
-        logger.warning(msg)
+        diagnostics.warn(msg)
     else:
       logger.debug('disabled warning: ' + msg)
 
@@ -826,6 +828,8 @@ WarningManager.add_warning('absolute-paths', enabled=False, part_of_all=False)
 WarningManager.add_warning('separate-asm')
 WarningManager.add_warning('almost-asm')
 WarningManager.add_warning('invalid-input')
+# Don't show legacy settings warnings by default
+WarningManager.add_warning('legacy-settings', enabled=False, part_of_all=False)
 
 
 class Configuration(object):
@@ -843,7 +847,7 @@ class Configuration(object):
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        logger.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -1166,13 +1170,14 @@ class SettingsManager(object):
           self.attrs.pop(a, None)
 
       if attr in self.legacy_settings:
+        # TODO(sbc): Rather then special case this we should have STRICT turn on the
+        # legacy-settings warning below
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
         fixed_values, error_message = self.legacy_settings[attr]
         if fixed_values and value not in fixed_values:
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-        else:
-          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+        WarningManager.warn('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
 
       if attr in self.alt_names:
         alt_name = self.alt_names[attr]
@@ -1535,9 +1540,7 @@ class Building(object):
     # not to, as some configure scripts expect e.g. CC to be a literal executable
     # (but "python emcc.py" is not a file that exists).
     # note that we point to emcc etc. here, without a suffix, instead of to
-    # emcc.py etc. The unsuffixed versions have the python_selector logic that can
-    # pick the right version as needed (which is not crucial right now as we support
-    # both 2 and 3, but eventually we may be 3-only).
+    # emcc.py etc.
     env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
     env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
