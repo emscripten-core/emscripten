@@ -10552,3 +10552,17 @@ int main() {
     self.assertTrue(shared.Building.is_bitcode('main.bc'))
     run_process([PYTHON, EMCC, '-c', '-o', 'main.o', 'main.bc'])
     self.assertTrue(shared.Building.is_wasm('main.o'))
+
+  def test_nostdlib(self):
+    # First ensure all the system libs are built
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c')])
+
+    self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib']))
+    self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs']))
+
+    # Buil again but with explit system libraries
+    libs = ['-lc', '-lcompiler_rt']
+    if self.is_wasm_backend():
+      libs.append('-lc_rt_wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib'] + libs)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs'] + libs)
