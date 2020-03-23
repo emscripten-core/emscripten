@@ -4342,16 +4342,11 @@ LibraryManager.library = {
   },
 
   emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
-  emscripten_log: function(flags, varargs) {
-    // Extract the (optionally-existing) printf format specifier field from varargs.
-    var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
+  emscripten_log: function(flags, format, varargs) {
     var str = '';
-    if (format) {
-      var result = __formatString(format, varargs);
-      for(var i = 0 ; i < result.length; ++i) {
-        str += String.fromCharCode(result[i]);
-      }
+    var result = __formatString(format, varargs);
+    for (var i = 0 ; i < result.length; ++i) {
+      str += String.fromCharCode(result[i]);
     }
     _emscripten_log_js(flags, str);
   },
@@ -4723,9 +4718,9 @@ LibraryManager.library = {
   // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
   // Note that "smart" radix handling is employed for input string:
   // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: function(str) {
-    // TODO: If issues below are resolved, add a suitable suppression or remove this comment.
-    return parseInt(str, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+    return parseInt(str);
   },
 
   // Converts a JS string to an integer base-10, with signaling error

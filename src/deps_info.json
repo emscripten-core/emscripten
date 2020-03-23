@@ -102,7 +102,7 @@
   "_embind_register_std_wstring": ["malloc", "free"],
   "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"],
   "$getTypeName": ["free"],
-  "__syscall77": ["memset"],
+  "__sys_getrusage": ["memset"],
   "_embind_register_std_string": ["free"],
   "_embind_register_std_wstring": ["free"],
   "_embind_register_function": ["free"],

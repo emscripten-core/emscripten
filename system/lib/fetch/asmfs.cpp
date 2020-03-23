@@ -1189,13 +1189,8 @@ EMSCRIPTEN_RESULT emscripten_asmfs_preload_file(
   return EMSCRIPTEN_RESULT_SUCCESS;
 }
 
-long __syscall6(int which, ...) // close
+__wasi_errno_t __wasi_fd_close(__wasi_fd_t fd)
 {
-  va_list vl;
-  va_start(vl, which);
-  int fd = va_arg(vl, int);
-  va_end(vl);
-
   return close(fd);
 }
 
@@ -1614,13 +1609,8 @@ long __syscall54(long fd, long request, ...) // ioctl/sysctl
 // TODO: syscall94: fchmod
 // TODO: syscall102: socketcall
 
-long __syscall118(int which, ...) // fsync
+__wasi_errno_t __wasi_fd_sync(__wasi_fd_t fd)
 {
-  va_list vl;
-  va_start(vl, which);
-  unsigned int fd = va_arg(vl, unsigned int);
-  va_end(vl);
-
   FileDescriptor* desc = (FileDescriptor*)fd;
   if (!desc || desc->magic != EM_FILEDESCRIPTOR_MAGIC)
     RETURN_ERRNO(EBADF, "fd isn't a valid open file descriptor");
@@ -1634,20 +1624,13 @@ long __syscall118(int which, ...) // fsync
 
 // TODO: syscall133: fchdir
 
-long __syscall140(int which, ...) // llseek
+__wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd, __wasi_filedelta_t offset,
+    __wasi_whence_t whence, __wasi_filesize_t *newoffset)
 {
-  va_list vl;
-  va_start(vl, which);
-  unsigned int fd = va_arg(vl, unsigned int);
-  unsigned long offset_high = va_arg(vl, unsigned long);
-  unsigned long offset_low = va_arg(vl, unsigned long);
-  off_t* result = va_arg(vl, off_t*);
-  unsigned int whence = va_arg(vl, unsigned int);
-  va_end(vl);
 #ifdef ASMFS_DEBUG
-  EM_ASM(err('llseek(fd=' + $0 + ', offset_high=' + $1 + ', offset_low=' + $2 + ', result=0x' +
-             ($3).toString(16) + ', whence=' + $4 + ')'),
-    fd, offset_high, offset_low, result, whence);
+  EM_ASM(err('llseek(fd=' + $0 + ', offset=' + $1 + ', newoffset=0x' +
+             ($2).toString(16) + ', whence=' + $3 + ')'),
+    fd, offset, newoffset, whence);
 #endif
 
   FileDescriptor* desc = (FileDescriptor*)fd;
@@ -1663,10 +1646,6 @@ long __syscall140(int which, ...) // llseek
       emscripten_fetch_wait(desc->node->fetch, INFINITY);
   }
 
-  // TODO: The following does not work, for some reason seek is getting called with 32-bit signed
-  // offsets?
-  //	int64_t offset = (int64_t)(((uint64_t)offset_high << 32) | (uint64_t)offset_low);
-  int64_t offset = (int64_t)(int32_t)offset_low;
   int64_t newPos;
   switch (whence) {
     case SEEK_SET:
@@ -1692,8 +1671,8 @@ long __syscall140(int which, ...) // llseek
 
   desc->file_pos = newPos;
 
-  if (result)
-    *result = desc->file_pos;
+  if (newoffset)
+    *newoffset = desc->file_pos;
   return 0;
 }
 
@@ -1778,7 +1757,7 @@ long __syscall3(long fd, long buf, long count) // read
     err('read(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
 #endif
 
-  iovec io = {(void*)buf, count};
+  iovec io = {(void*)buf, (size_t)count};
   return readv(fd, &io, 1);
 }
 
@@ -1855,7 +1834,7 @@ long __syscall4(long fd, long buf, long count) // write
     err('write(fd=' + $0 + ', buf=0x' + ($1).toString(16) + ', count=' + $2 + ')'), fd, buf, count);
 #endif
 
-  iovec io = {(void*)buf, count};
+  iovec io = {(void*)buf, (size_t)count};
   return writev(fd, &io, 1);
 }
 

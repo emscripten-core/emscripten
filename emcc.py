@@ -231,7 +231,6 @@ class EmccOptions(object):
     self.force_js_opts = False
     self.llvm_opts = None
     self.llvm_lto = None
-    self.default_cxx_std = '-std=c++03' # Enforce a consistent C++ standard when compiling .cpp files, if user does not specify one on the cmdline.
     self.use_closure_compiler = None
     self.closure_args = []
     self.js_transform = None
@@ -402,9 +401,6 @@ def apply_settings(changes):
     if key.startswith('NO_') and value in ('0', '1'):
       key = key[3:]
       value = str(1 - int(value))
-    # map legacy settings which have aliases to the new names
-    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
-      key = shared.Settings.alt_names[key]
     return key, value
 
   for change in changes:
@@ -413,6 +409,12 @@ def apply_settings(changes):
 
     if key in shared.Settings.internal_settings:
       exit_with_error('%s is an internal setting and cannot be set from command line', key)
+
+    # map legacy settings which have aliases to the new names
+    # but keep the original key so errors are correctly reported via the `setattr` below
+    user_key = key
+    if key in shared.Settings.legacy_settings and key in shared.Settings.alt_names:
+      key = shared.Settings.alt_names[key]
 
     # In those settings fields that represent amount of memory, translate suffixes to multiples of 1024.
     if key in ('TOTAL_STACK', 'INITIAL_MEMORY', 'MEMORY_GROWTH_LINEAR_STEP', 'MEMORY_GROWTH_GEOMETRIC_STEP',
@@ -428,7 +430,7 @@ def apply_settings(changes):
       value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
-    setattr(shared.Settings, key, value)
+    setattr(shared.Settings, user_key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
       exit_with_error('BINARYEN_TRAP_MODE is not supported by the LLVM wasm backend')
@@ -870,11 +872,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if use_cxx:
       clang_compiler = CXX
-      # If user did not specify a default -std for C++ code, specify the emscripten default.
-      if options.default_cxx_std:
-        newargs += [options.default_cxx_std]
     else:
-      # Compiling C code with .c files, don't enforce a default C++ std.
       clang_compiler = CC
 
     if '-print-search-dirs' in newargs:
@@ -933,14 +931,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
           settings_changes.append(key)
           newargs[i] = newargs[i + 1] = ''
-          if key == 'WASM_BACKEND=1':
-            exit_with_error('do not set -s WASM_BACKEND, instead set EMCC_WASM_BACKEND=1 in the environment')
     newargs = [arg for arg in newargs if arg]
 
     settings_key_changes = set()
     for s in settings_changes:
       key, value = s.split('=', 1)
       settings_key_changes.add(key)
+      if key == 'WASM_BACKEND':
+        exit_with_error('do not set -s WASM_BACKEND, this is detected based on the llvm version in use')
 
     # Find input files
 
@@ -1384,6 +1382,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if shared.Settings.FULL_ES3:
       shared.Settings.FULL_ES2 = 1
+      shared.Settings.MAX_WEBGL_VERSION = max(2, shared.Settings.MAX_WEBGL_VERSION)
 
     if shared.Settings.EMBIND:
       forced_stdlibs.append('libembind')
@@ -2854,12 +2853,6 @@ def parse_args(newargs):
       newargs[i] = ''
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
-      if options.default_cxx_std:
-        # Force C++11 for embind code, but only if user has not explicitly overridden a standard.
-        options.default_cxx_std = '-std=c++11'
-    elif newargs[i].startswith('-std=') or newargs[i].startswith('--std='):
-      # User specified a standard to use, clear Emscripten from specifying it.
-      options.default_cxx_std = None
     elif newargs[i].startswith('--embed-file'):
       check_bad_eq(newargs[i])
       options.embed_files.append(newargs[i + 1])
