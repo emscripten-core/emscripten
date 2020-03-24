@@ -69,7 +69,8 @@ upgrade from fastcomp to upstream:
   * Another thing you might notice is that fastcomp's link stage is able to
     perform some types of link time optimization by default that the LLVM
     backend requires flags for (for example,
-    `propagate the "noexcept" property <https://github.com/emscripten-core/emscripten/issues/9817#issuecomment-553459496>`_),
+    `propagate the "noexcept" property <https://github.com/emscripten-core/emscripten/issues/9817#issuecomment-553459496>`_,
+    but that specific regression has been fixed meanwhile),
     which can have an impact on performance. Building with LTO in the wasm
     backend can achieve similar things, see the previous bullet point.
 
@@ -85,6 +86,13 @@ upgrade from fastcomp to upstream:
   example, the ``RESERVED_FUNCTION_POINTERS`` setting exists there to work
   around the fact that we can't grow the table. In the upstream backend table
   growth is easy, and you can just enable ``ALLOW_TABLE_GROWTH``.
+
+* Fastcomp and upstream use very different LLVM and clang versions (fastcomp
+  has been stuck on LLVM 6, upstream is many releases after). This affects
+  optimizations, usually by making the upstream version faster and smaller.
+  However, in rare cases you may see a regression (for example, in some cases
+  UNoptimized code may be
+  `less optimal in upstream <https://github.com/emscripten-core/emscripten/issues/10753#issuecomment-603486677>`_).
 
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
