@@ -547,31 +547,36 @@ class MTLibrary(Library):
     return super(MTLibrary, cls).get_default_variation(is_mt=shared.Settings.USE_PTHREADS, **kwargs)
 
 
+class exceptions(object):
+  none = 0 # Don't use exception support
+  emscripten = 1
+  wasm = 2
+
+
 class NoExceptLibrary(Library):
   def __init__(self, **kwargs):
     self.eh_mode = kwargs.pop('eh_mode')
-    assert self.eh_mode in ('noexcept', 'emscripten', 'wasm')
     super(NoExceptLibrary, self).__init__(**kwargs)
 
   def can_build(self):
     if not super(NoExceptLibrary, self).can_build():
       return False
     # Wasm exception handling is only supported in the wasm backend
-    return shared.Settings.WASM_BACKEND or self.eh_mode != 'wasm'
+    return shared.Settings.WASM_BACKEND or self.eh_mode != exceptions.wasm
 
   def can_use(self):
     if not super(NoExceptLibrary, self).can_use():
       return False
     # Wasm exception handling is only supported in the wasm backend
-    return shared.Settings.WASM_BACKEND or self.eh_mode != 'wasm'
+    return shared.Settings.WASM_BACKEND or self.eh_mode != exceptions.wasm
 
   def get_cflags(self):
     cflags = super(NoExceptLibrary, self).get_cflags()
-    if self.eh_mode == 'noexcept':
+    if self.eh_mode == exceptions.none:
       cflags += ['-fno-exceptions']
-    elif self.eh_mode == 'emscripten':
+    elif self.eh_mode == exceptions.emscripten:
       cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
-    elif self.eh_mode == 'wasm':
+    elif self.eh_mode == exceptions.wasm:
       cflags += ['-fwasm-exceptions']
     return cflags
 
@@ -579,27 +584,27 @@ class NoExceptLibrary(Library):
     name = super(NoExceptLibrary, self).get_base_name()
     # TODO Currently emscripten-based exception is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == 'noexcept':
+    if self.eh_mode == exceptions.none:
       name += '-noexcept'
-    elif self.eh_mode == 'wasm':
+    elif self.eh_mode == exceptions.wasm:
       name += '-except'
     return name
 
   @classmethod
   def variations(cls, **kwargs):
     combos = super(NoExceptLibrary, cls).variations()
-    return ([dict(eh_mode='noexcept', **combo) for combo in combos] +
-            [dict(eh_mode='emscripten', **combo) for combo in combos] +
-            [dict(eh_mode='wasm', **combo) for combo in combos])
+    return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
+            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
+            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
     if shared.Settings.EXCEPTION_HANDLING:
-      eh_mode = 'wasm'
+      eh_mode = exceptions.wasm
     elif shared.Settings.DISABLE_EXCEPTION_CATCHING == 1:
-      eh_mode = 'noexcept'
+      eh_mode = exceptions.none
     else:
-      eh_mode = 'emscripten'
+      eh_mode = exceptions.emscripten
     return super(NoExceptLibrary, cls).get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
@@ -884,7 +889,7 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
     ]
 
   def get_depends(self):
-    if self.eh_mode == 'wasm':
+    if self.eh_mode == exceptions.wasm:
       return ['libc', 'libunwind']
     return ['libc']
 
@@ -893,11 +898,11 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.eh_mode == 'noexcept':
+    if self.eh_mode == exceptions.none:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
-    elif self.eh_mode == 'emscripten':
+    elif self.eh_mode == exceptions.emscripten:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == 'wasm':
+    elif self.eh_mode == exceptions.wasm:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
@@ -918,9 +923,9 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp'
     ]
-    if self.eh_mode == 'noexcept':
+    if self.eh_mode == exceptions.none:
       filenames += ['cxa_noexception.cpp']
-    elif self.eh_mode == 'wasm':
+    elif self.eh_mode == exceptions.wasm:
       filenames += [
         'cxa_exception.cpp',
         'cxa_noexception.cpp',
@@ -994,18 +999,18 @@ class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
     return super(libunwind, self).can_build() and shared.Settings.WASM_BACKEND
 
   def can_use(self):
-    return super(libunwind, self).can_use() and shared.Settings.WASM_BACKEND and self.eh_mode == 'wasm'
+    return super(libunwind, self).can_use() and shared.Settings.WASM_BACKEND and self.eh_mode == exceptions.wasm
 
   def get_cflags(self):
     cflags = super(libunwind, self).get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
-    if self.eh_mode == 'noexcept':
+    if self.eh_mode == exceptions.none:
       cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
-    elif self.eh_mode == 'emscripten':
+    elif self.eh_mode == exceptions.emscripten:
       cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode == 'wasm':
+    elif self.eh_mode == exceptions.wasm:
       cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
