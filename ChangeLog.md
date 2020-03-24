@@ -17,6 +17,8 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- `--llvm-lto` flag is now ignored when using the upstream llvm backend.
+  With the upstrema backend LTO is controlled via `-flto`.
 - Require format string for emscripten_log.
 - Program entry points without extensions are now shell scripts rather than
   python programs. See #10729.  This means that `python emcc` no longer works.

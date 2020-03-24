@@ -7105,10 +7105,10 @@ Resolved: "/" => "/"
         assert ('warning: emterpreter bytecode is fairly large' in stderr) == need_warning, stderr
         assert ('It is recommended to use  -s EMTERPRETIFY_FILE=..' in stderr) == need_warning, stderr
 
+  @no_wasm_backend("llvm-lto is fastcomp only flag")
   def test_llvm_lto(self):
     sizes = {}
-    # wasm backend doesn't have the fancy lto modes 2 and 3
-    lto_levels = [0, 1, 2, 3] if not self.is_wasm_backend() else [0, 1]
+    lto_levels = [0, 1, 2, 3]
     for lto in lto_levels:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '--llvm-lto', str(lto)]
       if self.is_wasm_backend():
