@@ -2830,7 +2830,9 @@ def parse_args(newargs):
           # if a file is provided, use that; otherwise use the default location
           # (note that we do not know the default location until all args have
           # been parsed, so just note True for now).
-          if '=' in requested_level:
+          if requested_level != 'separate-dwarf':
+            if not requested_level.startswith('separate-dwarf=') or requested_level.count('=') != 1:
+              exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
             shared.Settings.SEPARATE_DWARF = requested_level.split('=')[1]
           else:
             shared.Settings.SEPARATE_DWARF = True

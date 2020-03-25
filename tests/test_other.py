@@ -9152,6 +9152,10 @@ int main() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
     self.assertNotExists('a.out.wasm.debug.wasm')
     self.assertExists('with_dwarf.wasm')
+    # the correct notation is to have exactly one '=' and in the right place
+    for invalid in ('-gseparate-dwarf=x=', '-gseparate-dwarfy=', '-gseparate-dwarf-hmm'):
+      stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), invalid])
+      self.assertContained('invalid -gseparate-dwarf=FILENAME notation', stderr)
 
   def test_wasm_producers_section(self):
     # no producers section by default
