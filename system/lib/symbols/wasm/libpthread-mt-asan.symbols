@@ -22,9 +22,9 @@
 -------- T __vm_unlock
 -------- T __vm_wait
 -------- T __wait
+-------- T _emscripten_call_on_thread
 -------- T _pthread_getcanceltype
 -------- T _pthread_isduecanceled
--------- T emscripten_async_queue_on_thread_
 -------- T emscripten_async_run_in_main_runtime_thread_
 -------- T emscripten_async_run_in_main_thread
 -------- T emscripten_async_waitable_close
