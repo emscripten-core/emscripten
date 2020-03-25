@@ -337,12 +337,12 @@ void _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUN
 // Queues the given function call to be performed on the specified thread. If
 // it is already on the right thread, it will just execute it; otherwise it
 // will queue it on the right thread asynchronously.
-#define emscripten_call_on_thread_maybe_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_queue_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+#define emscripten_call_on_thread_maybe_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
 
 // Similar to emscripten_queue_on_thread_maybe_async, but always runs the
 // function asynchronously, even if on the same thread. This is less efficient
 // but may be simpler to reason about in some cases.
-#define emscripten_call_on_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_queue_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
+#define emscripten_call_on_thread_async(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(1, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
 
 // Returns 1 if the current thread is the thread that hosts the Emscripten runtime.
 int emscripten_is_main_runtime_thread(void);
