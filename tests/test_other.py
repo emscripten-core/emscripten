@@ -9659,6 +9659,21 @@ int main () {
     ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
     self.assertTextDataIdentical('hello, world!\n', ret)
 
+  @parameterized({
+    'O0': (False, []), # noqa
+    'O2': (False, ['-O2']), # noqa
+    'O2_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
+    'O2_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '-s', 'WASM=0']), # noqa
+    'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
+  })
+  @no_fastcomp()
+  def test_emit_emscripten_license(self, expect_license, args):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args)
+    with open('a.out.js') as f:
+      js = f.read()
+    self.assertContainedIf('Copyright 2020 Emscripten authors', js, expect_license)
+    self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
+
   def test_add_emscripten_metadata_not_emitted(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
                  '-o', 'hello_world.js'])

@@ -2179,6 +2179,15 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
+  def prepend_emscripten_license_in_file(filename):
+    with open(filename) as f:
+      js = f.read()
+    js = JS.emscripten_license + js
+    with open(filename, 'w') as f:
+      f.write(js)
+    return filename
+
+  @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
     from . import js_optimizer
     try:
@@ -2188,6 +2197,8 @@ class Building(object):
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
+    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+      Building.prepend_emscripten_license_in_file(ret)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2214,9 +2225,14 @@ class Building(object):
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
       check_call(cmd, stdout=open(next, 'w'))
+      if Settings.EMIT_EMSCRIPTEN_LICENSE:
+        Building.prepend_emscripten_license_in_file(next)
       return next
     else:
-      return check_call(cmd, stdout=PIPE).stdout
+      output = check_call(cmd, stdout=PIPE).stdout
+      if Settings.EMIT_EMSCRIPTEN_LICENSE:
+        output = JS.emscripten_license + output
+      return output
 
   @staticmethod
   def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
@@ -2956,6 +2972,13 @@ class JS(object):
   memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
+
+  emscripten_license = '''/**
+ * @license
+ * Copyright 2020 Emscripten authors
+ * SPDX-License-Identifier: MIT
+ */
+'''
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent

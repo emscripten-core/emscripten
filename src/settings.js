@@ -1292,6 +1292,14 @@ var WASM_ASYNC_COMPILATION = 1;
 //       created it)
 var EMIT_PRODUCERS_SECTION = 0;
 
+// If set then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+// Emits emscripten license info in the JS output.
+var EMIT_EMSCRIPTEN_LICENSE = 0;
+
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
@@ -1567,11 +1575,6 @@ var ASMFS = 0;
 // Policy, or your CSP header doesn't include either script-src or child-src,
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
-
-// if set to 1, then generated WASM files will contain a custom
-// "emscripten_metadata" section that contains information necessary
-// to execute the file without the accompanying JS file.
-var EMIT_EMSCRIPTEN_METADATA = 0;
 
 // If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
