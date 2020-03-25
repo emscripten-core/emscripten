@@ -449,7 +449,7 @@ pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-static void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
+void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
