@@ -17,6 +17,11 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- `emscripten_async_queue_on_thread` has been renamed to
+  `emscripten_call_on_thread_maybe_async` which properly reflects that is is
+  synchronous if already on the right thread. A new
+  `emscripten_call_on_thread_async` function is added which is always
+  async.
 - `--llvm-lto` flag is now ignored when using the upstream llvm backend.
   With the upstrema backend LTO is controlled via `-flto`.
 - Require format string for emscripten_log.

@@ -449,7 +449,7 @@ pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
+static void EMSCRIPTEN_KEEPALIVE emscripten_call_on_thread_maybe_async(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
@@ -526,7 +526,7 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_call_on_thread(
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_async_run_in_main_thread(em_queued_call* call) {
-  emscripten_async_queue_call_on_thread(emscripten_main_browser_thread_id(), call);
+  emscripten_call_on_thread_maybe_async(emscripten_main_browser_thread_id(), call);
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call* call) {
@@ -846,7 +846,8 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_on_thread_(
+void EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
+  int forceAsync,
   pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
   em_queued_call* q = em_queued_call_malloc();
@@ -883,7 +884,17 @@ void EMSCRIPTEN_KEEPALIVE emscripten_async_queue_on_thread_(
   // returning here, and it is the callee's responsibility to free up the memory after the call has
   // been performed.
   q->calleeDelete = 1;
-  emscripten_async_queue_call_on_thread(targetThread, q);
+  // The maybe_async() function will not be async on the same thread; force
+  // async if the user asked for that.
+  if (forceAsync) {
+    EM_ASM({
+      setTimeout(function() {
+        _emscripten_call_on_thread_maybe_async($0, $1);
+      }, 0);
+    }, targetThread, q);
+  } else {
+    emscripten_call_on_thread_maybe_async(targetThread, q);
+  }
 }
 
 void llvm_memory_barrier() { emscripten_atomic_fence(); }
