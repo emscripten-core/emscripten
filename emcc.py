@@ -1432,7 +1432,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
       newargs.append('-fignore-exceptions')
 
     if shared.Settings.DEAD_FUNCTIONS:
@@ -2729,6 +2729,8 @@ def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
   should_exit = False
+  eh_enabled = False
+  wasm_eh_enabled = False
 
   def check_bad_eq(arg):
     if '=' in arg:
@@ -2980,13 +2982,15 @@ def parse_args(newargs):
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 1
+      shared.Settings.EXCEPTION_HANDLING = 0
     elif newargs[i] == '-fexceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
+      eh_enabled = True
+    elif newargs[i] == '-fwasm-exceptions':
+      wasm_eh_enabled = True
     elif newargs[i] == '-fignore-exceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -3027,6 +3031,18 @@ def parse_args(newargs):
       options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
+
+    # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
+    # exception handling by default when -fexceptions is given when wasm
+    # exception handling becomes stable.
+    if wasm_eh_enabled:
+      shared.Settings.EXCEPTION_HANDLING = 1
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 1
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+    elif eh_enabled:
+      shared.Settings.EXCEPTION_HANDLING = 0
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 0
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if should_exit:
     sys.exit(0)

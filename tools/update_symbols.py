@@ -28,7 +28,8 @@ from tools.system_libs import Library
 
 # Libraries that need .symbols file
 target_libs = ['libal', 'libc', 'libc-extras', 'libcompiler_rt', 'libc-wasm',
-               'libc++', 'libc++abi', 'libgl', 'libhtml5', 'libpthread']
+               'libc++', 'libc++abi', 'libgl', 'libhtml5', 'libpthread',
+               'libunwind']
 
 
 def get_symbols_dir():

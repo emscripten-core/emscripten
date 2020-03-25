@@ -16,6 +16,6 @@ Local modifications are marked with the comment: 'XXX EMSCRIPTEN'
 1. Add __cxa_can_catch and __cxa_is_pointer_type to private_typeinfo.cpp.
 
 2. Duplicate __isOurExceptionClass in cxa_handlers.cpp since we don't compile
-   cxa_exception.cpp.
+   cxa_exception.cpp in Emscripten EH mode.
 
-3. Define and use NOTHROW macro in cxxabi.h
+3. Define and use _NOTHROW macro in cxxabi.h
