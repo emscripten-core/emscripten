@@ -2825,9 +2825,17 @@ def parse_args(newargs):
         if requested_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
         elif requested_level.startswith('separate-dwarf'):
-          # Emit full DWARF but also emit it in a file on the side
+          # emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
-          shared.Settings.SEPARATE_DWARF = 1
+          # if a file is provided, use that; otherwise use the default location
+          # (note that we do not know the default location until all args have
+          # been parsed, so just note True for now).
+          if requested_level != 'separate-dwarf':
+            if not requested_level.startswith('separate-dwarf=') or requested_level.count('=') != 1:
+              exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
+            shared.Settings.SEPARATE_DWARF = requested_level.split('=')[1]
+          else:
+            shared.Settings.SEPARATE_DWARF = True
         # a non-integer level can be something like -gline-tables-only. keep
         # the flag for the clang frontend to emit the appropriate DWARF info.
         # set the emscripten debug level to 3 so that we do not remove that
@@ -3317,7 +3325,11 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
     save_intermediate_with_wasm('symbolmap', wasm_binary_target)
 
   if shared.Settings.DEBUG_LEVEL >= 3 and shared.Settings.SEPARATE_DWARF and os.path.exists(wasm_binary_target):
-    shared.Building.emit_debug_on_side(wasm_binary_target)
+    # if the dwarf filename wasn't provided, use the default target + a suffix
+    dwarf_target = shared.Settings.SEPARATE_DWARF
+    if dwarf_target is True:
+      dwarf_target = wasm_binary_target + '.debug.wasm'
+    shared.Building.emit_debug_on_side(wasm_binary_target, dwarf_target)
 
   # replace placeholder strings with correct subresource locations
   if shared.Settings.SINGLE_FILE:
