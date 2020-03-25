@@ -2267,15 +2267,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         force_archive_contents = all(t.endswith(STATICLIB_ENDINGS) for _, t in temp_files) or shared.Settings.LINKABLE
 
         # if  EMCC_DEBUG=2  then we must link now, so the temp files are complete.
-        # if using the wasm backend, we might be using vanilla LLVM, which does not allow our fastcomp deferred linking opts.
+        # if using the wasm backend, we might be using vanilla LLVM, which does not allow our
+        # fastcomp deferred linking opts.
         # TODO: we could check if this is a fastcomp build, and still speed things up here
         just_calculate = DEBUG != 2 and not shared.Settings.WASM_BACKEND
         if shared.Settings.WASM_BACKEND:
-          # If LTO is enabled then use the -O opt level as the LTO level
-          if options.llvm_lto:
-            lto_level = shared.Settings.OPT_LEVEL
-          else:
-            lto_level = 0
           all_externals = None
           if shared.Settings.LLD_REPORT_UNDEFINED:
             all_externals = get_all_js_library_funcs(misc_temp_files)
@@ -2283,7 +2279,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # TODO(sbc): This is an incomplete list of __invoke functions.  Perhaps add
             # support for wildcard to wasm-ld.
             all_externals += ['emscripten_longjmp_jmpbuf', '__invoke_void', '__invoke_i32_i8*_...']
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, lto_level=lto_level, all_external_symbols=all_externals)
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, all_external_symbols=all_externals)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
@@ -2776,6 +2772,8 @@ def parse_args(newargs):
       else:
         shared.Settings.LTO = "full"
     elif newargs[i].startswith('--llvm-lto'):
+      if shared.Settings.WASM_BACKEND:
+        logger.warning('--llvm-lto ignored when using llvm backend')
       check_bad_eq(newargs[i])
       options.llvm_lto = int(newargs[i + 1])
       newargs[i] = ''
