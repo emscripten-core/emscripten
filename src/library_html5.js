@@ -2840,7 +2840,7 @@ var LibraryJSEvents = {
     return {{{ cDefine('EMSCRIPTEN_RESULT_SUCCESS') }}};
   },
 
-  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8'
+  emscripten_set_offscreencanvas_size_on_target_thread_js__deps: ['$stringToNewUTF8', '_emscripten_call_on_thread'
 #if MINIMAL_RUNTIME && !WASM_BACKEND
   , '$stackSave', '$stackAlloc', '$stackRestore'
 #endif
