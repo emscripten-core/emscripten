@@ -449,7 +449,7 @@ pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-static void EMSCRIPTEN_KEEPALIVE emscripten_call_on_thread_maybe_async(
+static void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
@@ -526,7 +526,7 @@ static void EMSCRIPTEN_KEEPALIVE emscripten_call_on_thread_maybe_async(
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_async_run_in_main_thread(em_queued_call* call) {
-  emscripten_call_on_thread_maybe_async(emscripten_main_browser_thread_id(), call);
+  do_emscripten_call_on_thread_maybe_async(emscripten_main_browser_thread_id(), call);
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call* call) {
@@ -889,11 +889,11 @@ void EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   if (forceAsync) {
     EM_ASM({
       setTimeout(function() {
-        _emscripten_call_on_thread_maybe_async($0, $1);
+        _do_emscripten_call_on_thread_maybe_async($0, $1);
       }, 0);
     }, targetThread, q);
   } else {
-    emscripten_call_on_thread_maybe_async(targetThread, q);
+    do_emscripten_call_on_thread_maybe_async(targetThread, q);
   }
 }
 
