@@ -9147,6 +9147,12 @@ int main() {
       self.assertIn(b'external_debug_info', wasm)
       self.assertIn(b'a.out.wasm.debug.wasm', wasm)
 
+  @no_fastcomp('dwarf')
+  def test_separate_dwarf_with_filename(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
+    self.assertNotExists('a.out.wasm.debug.wasm')
+    self.assertExists('with_dwarf.wasm')
+
   def test_wasm_producers_section(self):
     # no producers section by default
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')])
