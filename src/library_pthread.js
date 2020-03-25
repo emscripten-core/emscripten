@@ -1335,10 +1335,10 @@ var LibraryPThread = {
     // the stack by the bytes used.
     tempDoublePtr = STACK_BASE;
 #if ASSERTIONS
-    assert(tempDoublePtr % 8 == 0);
+    assert(tempDoublePtr % 16 == 0);
 #endif
-    STACK_BASE += 8;
-    STACKTOP += 8;
+    STACK_BASE += 16;
+    STACKTOP += 16;
 #endif
 
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2

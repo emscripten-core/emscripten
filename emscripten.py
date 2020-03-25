@@ -1898,7 +1898,7 @@ function asmJsEstablishStackFrame(stackBase, stackMax) {
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
   tempDoublePtr = STACKTOP;
-  STACKTOP = (STACKTOP + 8)|0;
+  STACKTOP = (STACKTOP + 16)|0;
 }
 ''')
 
