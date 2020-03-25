@@ -548,7 +548,19 @@ class MTLibrary(Library):
 
 
 class exceptions(object):
-  none = 0 # Don't use exception support
+  """
+  This represents exception handling mode of Emscripten. Currently there are
+  three modes of exception handling:
+  - None: Does not handle exceptions. This includes -fno-exceptions, which
+    prevents both throwing and catching, and -fignore-exceptions, which only
+    allows throwing, but library-wise they use the same version.
+  - Emscripten: Emscripten provides exception handling capability using JS
+    emulation. This causes code size increase and performance degradation.
+  - Wasm: Wasm native exception handling support uses Wasm EH instructions and
+    is meant to be fast. You need to use a VM that has the EH support to use
+    this. This is not fully working yet and still experimental.
+  """
+  none = 0
   emscripten = 1
   wasm = 2
 
