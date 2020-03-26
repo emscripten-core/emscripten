@@ -17,6 +17,12 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Optionally support 2GB+ heap sizes. To do this we make the JS code have unsigned
+  pointers (we need all 32 bits in them now), which can slightly increase code
+  size (>>> instead of >>). This only happens when the heap size may be over
+  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
+  higher value (i.e. by default you do not get support for 2GB+ heaps).
+  See #10601
 - `--llvm-lto` flag is now ignored when using the upstream llvm backend.
   With the upstrema backend LTO is controlled via `-flto`.
 - Require format string for emscripten_log.

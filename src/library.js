@@ -300,16 +300,14 @@ LibraryManager.library = {
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
-#if WASM
-        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#if ALLOW_MEMORY_GROWTH
+#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
+        var maxHeapSize = 4*1024*1024*1024;
 #else
-        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #endif
-#if MAXIMUM_MEMORY != -1
-        maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#endif
-#if !ALLOW_MEMORY_GROWTH
-        maxHeapSize = HEAPU8.length;
+#else // no growth
+        var maxHeapSize = HEAPU8.length;
 #endif
         return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:

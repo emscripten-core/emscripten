@@ -76,15 +76,15 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
 #if WASM
 
 #if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
-var wasmMaximumMemory = {{{ MAXIMUM_MEMORY }}};
+var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
 #else
-var wasmMaximumMemory = {{{ INITIAL_MEMORY }}};
+var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
 #endif
 
 var wasmMemory = new WebAssembly.Memory({
-  'initial': {{{ INITIAL_MEMORY }}} >> 16
+  'initial': {{{ INITIAL_MEMORY >>> 16 }}}
 #if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != -1
-  , 'maximum': wasmMaximumMemory >> 16
+  , 'maximum': wasmMaximumMemory
 #endif
 #if USE_PTHREADS
   , 'shared': true

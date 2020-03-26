@@ -141,16 +141,29 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // (This option was formerly called TOTAL_MEMORY.)
 var INITIAL_MEMORY = 16777216;
 
-// Set the maximum size of memory in the wasm module (in bytes). Without this,
-// INITIAL_MEMORY is used (as it is used for the initial value), or if memory
-// growth is enabled, the default value here (-1) is to have no limit, but you
-// can set this to set a maximum size that growth will stop at.
+// Set the maximum size of memory in the wasm module (in bytes). This is only
+// relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
+// INITIAL_MEMORY is the final size of memory anyhow.
 //
-// This setting only matters for wasm, as in asm.js there is no place to set
-// a maximum, and only when ALLOW_MEMORY_GROWTH is set.
+// If this value is -1, it means there is no specified limit.
+//
+// This setting only matters for wasm and wasm2js, as in asm.js with fastcomp
+// there is no place to set a maximum.
+//
+// Note that the default value here is 2GB, which means that by default if you
+// enable memory growth then we can grow up to 2GB but no higher. 2GB is a
+// natural limit for several reasons:
+//
+//   * If the maximum heap size is over 2GB, then pointers must be unsigned in
+//     JavaScript, which increases code size. We don't want memory growth builds
+//     to be larger unless someone explicitly opts in to >2GB+ heaps.
+//   * Historically no VM has supported more >2GB+, and only recently (Mar 2020)
+//     has support started to appear. As support is limited, it's safer for
+//     people to opt into >2GB+ heaps rather than get a build that may not
+//     work on all VMs.
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
-var MAXIMUM_MEMORY = -1;
+var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at

@@ -998,7 +998,7 @@ base align: 0, 0, 0, 0'''])
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-s', 'INITIAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
+    self.emcc_args += ['-s', 'INITIAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=2147418112'] + list(args)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_trim')
 
@@ -5490,7 +5490,7 @@ main( int argv, char ** argc ) {
   def test_unistd_sysconf_phys_pages(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')).read()
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
-      expected = (2 * 1024 * 1024 * 1024 - 16777216) // 16384
+      expected = (2 * 1024 * 1024 * 1024) // 16384
     else:
       expected = 16 * 1024 * 1024 // 16384
     self.do_run(src, str(expected) + ', errno: 0')
