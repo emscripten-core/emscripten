@@ -2973,7 +2973,8 @@ class JS(object):
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
 
-  emscripten_license = '''/**
+  emscripten_license = '''\
+/**
  * @license
  * Copyright 2020 Emscripten authors
  * SPDX-License-Identifier: MIT
