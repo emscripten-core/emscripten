@@ -255,6 +255,9 @@ var SyscallsLibrary = {
       return -{{{ cDefine('ENOSYS') }}};
 #endif
     }
+#if CAN_ADDRESS_2GB
+    ptr >>>= 0;
+#endif
     SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, offset: off };
     return ptr;
   },
@@ -265,7 +268,10 @@ var SyscallsLibrary = {
 #endif
   ],
   $syscallMunmap: function(addr, len) {
-    if (addr === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
+#if CAN_ADDRESS_2GB
+    addr >>>= 0;
+#endif
+    if ((addr | 0) === {{{ cDefine('MAP_FAILED') }}} || len === 0) {
       return -{{{ cDefine('EINVAL') }}};
     }
     // TODO: support unmmap'ing parts of allocations
@@ -885,6 +891,9 @@ var SyscallsLibrary = {
     return total;
   },
   __sys_msync: function(addr, len, flags) {
+#if CAN_ADDRESS_2GB
+    addr >>>= 0;
+#endif
     var info = SYSCALLS.mappings[addr];
     if (!info) return 0;
     SYSCALLS.doMsync(addr, FS.getStream(info.fd), len, info.flags, 0);
