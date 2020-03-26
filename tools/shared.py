@@ -2195,7 +2195,7 @@ class Building(object):
       return code
 
   @staticmethod
-  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
+  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
     from . import js_optimizer
     try:
       ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
@@ -2204,7 +2204,8 @@ class Building(object):
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
-    ret = Building.maybe_add_license(filename=ret)
+    if not no_license:
+      ret = Building.maybe_add_license(filename=ret)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2685,7 +2686,7 @@ class Building(object):
         temp = configuration.get_temp_files().get('.js').name
         with open(temp, 'w') as f:
           f.write(wasm2js_js)
-        temp = Building.js_optimizer(temp, passes)
+        temp = Building.js_optimizer(temp, passes, no_license=True)
         with open(temp) as f:
           wasm2js_js = f.read()
     # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
