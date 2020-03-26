@@ -1432,7 +1432,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if exception catching is disabled, we can prevent that code from being
     # generated in the frontend
-    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND:
+    if shared.Settings.DISABLE_EXCEPTION_CATCHING == 1 and shared.Settings.WASM_BACKEND and not shared.Settings.EXCEPTION_HANDLING:
       newargs.append('-fignore-exceptions')
 
     if shared.Settings.DEAD_FUNCTIONS:
@@ -2001,6 +2001,23 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     if not shared.Settings.LEGALIZE_JS_FFI:
       assert shared.Building.is_wasm_only(), 'LEGALIZE_JS_FFI incompatible with RUNNING_JS_OPTS.'
+
+    # check if we can address the 2GB mark and higher: either if we start at
+    # 2GB, or if we allow growth to either any amount or to 2GB or more.
+    if shared.Settings.WASM_BACKEND and \
+       (shared.Settings.INITIAL_MEMORY > 2 * 1024 * 1024 * 1024 or
+        (shared.Settings.ALLOW_MEMORY_GROWTH and
+         (shared.Settings.MAXIMUM_MEMORY < 0 or
+          shared.Settings.MAXIMUM_MEMORY > 2 * 1024 * 1024 * 1024))):
+      shared.Settings.CAN_ADDRESS_2GB = 1
+      if shared.Settings.MALLOC == 'emmalloc':
+        if shared.Settings.INITIAL_MEMORY >= 2 * 1024 * 1024 * 1024:
+          suggestion = 'decrease INITIAL_MEMORY'
+        elif shared.Settings.MAXIMUM_MEMORY < 0:
+          suggestion = 'set MAXIMUM_MEMORY'
+        else:
+          suggestion = 'decrease MAXIMUM_MEMORY'
+        exit_with_error('emmalloc only works on <2GB of memory. Use the default allocator, or ' + suggestion)
 
     shared.Settings.EMSCRIPTEN_VERSION = shared.EMSCRIPTEN_VERSION
     shared.Settings.PROFILING_FUNCS = options.profiling_funcs
@@ -2729,6 +2746,8 @@ def parse_args(newargs):
   options = EmccOptions()
   settings_changes = []
   should_exit = False
+  eh_enabled = False
+  wasm_eh_enabled = False
 
   def check_bad_eq(arg):
     if '=' in arg:
@@ -2980,13 +2999,15 @@ def parse_args(newargs):
       settings_changes.append('PTHREADS_PROFILING=1')
       newargs[i] = ''
     elif newargs[i] == '-fno-exceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=1')
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 1
+      shared.Settings.EXCEPTION_HANDLING = 0
     elif newargs[i] == '-fexceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=0')
-      settings_changes.append('DISABLE_EXCEPTION_THROWING=0')
+      eh_enabled = True
+    elif newargs[i] == '-fwasm-exceptions':
+      wasm_eh_enabled = True
     elif newargs[i] == '-fignore-exceptions':
-      settings_changes.append('DISABLE_EXCEPTION_CATCHING=1')
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
     elif newargs[i] == '--default-obj-ext':
       newargs[i] = ''
       options.default_object_extension = newargs[i + 1]
@@ -3027,6 +3048,18 @@ def parse_args(newargs):
       options.expand_symlinks = False
     elif newargs[i] == '-fno-rtti':
       shared.Settings.USE_RTTI = 0
+
+    # TODO Currently -fexceptions only means Emscripten EH. Switch to wasm
+    # exception handling by default when -fexceptions is given when wasm
+    # exception handling becomes stable.
+    if wasm_eh_enabled:
+      shared.Settings.EXCEPTION_HANDLING = 1
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 1
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 1
+    elif eh_enabled:
+      shared.Settings.EXCEPTION_HANDLING = 0
+      shared.Settings.DISABLE_EXCEPTION_THROWING = 0
+      shared.Settings.DISABLE_EXCEPTION_CATCHING = 0
 
   if should_exit:
     sys.exit(0)
@@ -3163,6 +3196,8 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
       cmd += ['--table-max=-1']
     if shared.Settings.SIDE_MODULE:
       cmd += ['--mem-max=-1']
+    elif not shared.Settings.ALLOW_MEMORY_GROWTH:
+      cmd += ['--mem-max=' + str(shared.Settings.INITIAL_MEMORY)]
     elif shared.Settings.MAXIMUM_MEMORY >= 0:
       cmd += ['--mem-max=' + str(shared.Settings.MAXIMUM_MEMORY)]
     if shared.Settings.LEGALIZE_JS_FFI != 1:
@@ -3253,6 +3288,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if shared.Settings.USE_PTHREADS and shared.Settings.ALLOW_MEMORY_GROWTH:
     final = shared.Building.apply_wasm_memory_growth(final)
 
+  # >=2GB heap support requires pointers in JS to be unsigned. rather than
+  # require all pointers to be unsigned by default, which increases code size
+  # a little, keep them signed, and just unsign them here if we need that.
+  if shared.Settings.CAN_ADDRESS_2GB:
+    final = shared.Building.use_unsigned_pointers_in_js(final)
+
   if shared.Settings.OPT_LEVEL >= 2 and shared.Settings.DEBUG_LEVEL <= 2:
     # minify the JS
     optimizer.do_minify() # calculate how to minify
@@ -3289,7 +3330,7 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
   if options.use_closure_compiler:
     final = run_closure_compiler(final)
 
-  symbols_file = target + '.symbols' if options.emit_symbol_map else None
+  symbols_file = shared.replace_or_append_suffix(target, '.symbols') if options.emit_symbol_map else None
 
   if shared.Settings.WASM2JS:
     if shared.Settings.WASM == 2:

@@ -300,16 +300,14 @@ LibraryManager.library = {
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
-#if WASM
-        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#if ALLOW_MEMORY_GROWTH
+#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
+        var maxHeapSize = 4*1024*1024*1024;
 #else
-        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #endif
-#if MAXIMUM_MEMORY != -1
-        maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#endif
-#if !ALLOW_MEMORY_GROWTH
-        maxHeapSize = HEAPU8.length;
+#else // no growth
+        var maxHeapSize = HEAPU8.length;
 #endif
         return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
@@ -489,7 +487,7 @@ LibraryManager.library = {
     try {
 #if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - buffer.byteLength + 65535) >> 16); // .grow() takes a delta compared to the previous size
+      wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
 #else // asm.js:
       var newBuffer = new ArrayBuffer(size);
@@ -524,6 +522,9 @@ LibraryManager.library = {
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
+#if CAN_ADDRESS_2GB
+    requestedSize = requestedSize >>> 0;
+#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -565,7 +566,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = 2147483648 - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS

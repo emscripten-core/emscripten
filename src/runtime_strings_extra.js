@@ -4,6 +4,9 @@
 // a copy of that string as a Javascript String object.
 
 function AsciiToString(ptr) {
+#if CAN_ADDRESS_2GB
+  ptr >>>= 0;
+#endif
   var str = '';
   while (1) {
     var ch = {{{ makeGetValue('ptr++', 0, 'i8', null, true) }}};
@@ -117,8 +120,7 @@ function UTF32ToString(ptr) {
   var str = '';
   while (1) {
     var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
-    if (utf32 == 0)
-      return str;
+    if (utf32 == 0) return str;
     ++i;
     // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
@@ -143,6 +145,9 @@ function UTF32ToString(ptr) {
 // Returns the number of bytes written, EXCLUDING the null terminator.
 
 function stringToUTF32(str, outPtr, maxBytesToWrite) {
+#if CAN_ADDRESS_2GB
+  outPtr >>>= 0;
+#endif
 #if ASSERTIONS
   assert(outPtr % 4 == 0, 'Pointer passed to stringToUTF32 must be aligned to four bytes!');
 #endif

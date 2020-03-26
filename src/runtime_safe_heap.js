@@ -94,12 +94,15 @@ var SAFE_HEAP_COUNTER = 0;
 
 /** @param {number|boolean=} isFloat */
 function SAFE_HEAP_STORE(dest, value, bytes, isFloat) {
+#if CAN_ADDRESS_2GB
+  dest >>>= 0;
+#endif
 #if SAFE_HEAP_LOG
   out('SAFE_HEAP store: ' + [dest, value, bytes, isFloat, SAFE_HEAP_COUNTER++]);
 #endif
   if (dest <= 0) abort('segmentation fault storing ' + bytes + ' bytes to address ' + dest);
   if (dest % bytes !== 0) abort('alignment error storing to address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+  if (dest + bytes > HEAPU32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when storing ' + bytes + ' bytes to address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
   assert(DYNAMICTOP_PTR);
   assert(HEAP32[DYNAMICTOP_PTR>>2] <= HEAP8.length);
   setValue(dest, value, getSafeHeapType(bytes, isFloat), 1);
@@ -110,9 +113,12 @@ function SAFE_HEAP_STORE_D(dest, value, bytes) {
 
 /** @param {number|boolean=} isFloat */
 function SAFE_HEAP_LOAD(dest, bytes, unsigned, isFloat) {
+#if CAN_ADDRESS_2GB
+  dest >>>= 0;
+#endif
   if (dest <= 0) abort('segmentation fault loading ' + bytes + ' bytes from address ' + dest);
   if (dest % bytes !== 0) abort('alignment error loading from address ' + dest + ', which was expected to be aligned to a multiple of ' + bytes);
-  if (dest + bytes > HEAP32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
+  if (dest + bytes > HEAPU32[DYNAMICTOP_PTR>>2]) abort('segmentation fault, exceeded the top of the available dynamic heap when loading ' + bytes + ' bytes from address ' + dest + '. DYNAMICTOP=' + HEAP32[DYNAMICTOP_PTR>>2]);
   assert(DYNAMICTOP_PTR);
   assert(HEAP32[DYNAMICTOP_PTR>>2] <= HEAP8.length);
   var type = getSafeHeapType(bytes, isFloat);

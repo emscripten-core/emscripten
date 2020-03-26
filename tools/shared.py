@@ -1808,10 +1808,10 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
-      if Settings.MAXIMUM_MEMORY != -1:
-        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
-      elif not Settings.ALLOW_MEMORY_GROWTH:
+      if not Settings.ALLOW_MEMORY_GROWTH:
         cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
+      elif Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
@@ -2753,6 +2753,11 @@ class Building(object):
         with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
           ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
     return ret
+
+  @staticmethod
+  def use_unsigned_pointers_in_js(js_file):
+    logger.debug('using unsigned pointers in JS')
+    return Building.acorn_optimizer(js_file, ['unsignPointers'])
 
   @staticmethod
   def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
