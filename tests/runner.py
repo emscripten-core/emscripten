@@ -1178,7 +1178,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
   def get_freetype_library(self):
     if '-Werror' in self.emcc_args:
       self.emcc_args.remove('-Werror')
-    return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
+    return self.get_library(os.path.join('third_party', 'freetype'), os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
   def get_poppler_library(self, env_init=None):
     # The fontconfig symbols are all missing from the poppler build
@@ -1186,8 +1186,8 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
     self.emcc_args += [
-      '-I' + path_from_root('tests', 'freetype', 'include'),
-      '-I' + path_from_root('tests', 'poppler', 'include')
+      '-I' + path_from_root('tests', 'third_party', 'freetype', 'include'),
+      '-I' + path_from_root('tests', 'third_party', 'poppler', 'include')
     ]
 
     freetype = self.get_freetype_library()
@@ -1208,7 +1208,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     env_init['FONTCONFIG_LIBS'] = ' '
 
     poppler = self.get_library(
-        'poppler',
+        os.path.join('third_party', 'poppler'),
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
         env_init=env_init,
         configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
@@ -1217,12 +1217,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_zlib_library(self):
     if WINDOWS:
-      return self.get_library('zlib', os.path.join('libz.a'),
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                               configure=[path_from_root('emconfigure.bat')],
                               configure_args=['cmake', '.'],
                               make=['mingw32-make'],
                               make_args=[])
-    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+    return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,

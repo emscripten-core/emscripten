@@ -355,7 +355,7 @@ class TestCoreBase(RunnerCore):
                         os.path.join('src', '.libs', 'libBulletCollision.a'),
                         os.path.join('src', '.libs', 'libLinearMath.a')]
 
-    return self.get_library('bullet', generated_libs,
+    return self.get_library(os.path.join('third_party', 'bullet'), generated_libs,
                             configure=configure_commands,
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
@@ -4637,11 +4637,11 @@ res64 - external 64\n''', header='''
   @needs_make('mingw32-make')
   @needs_dlfcn
   def test_dylink_zlib(self):
-    self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
+    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
-    self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
+    self.dylink_test(main=open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
                      side=zlib_archive,
-                     expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
+                     expected=open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
                      force_c=True)
 
   # @needs_dlfcn
@@ -6088,7 +6088,7 @@ return malloc(size);
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -6111,7 +6111,7 @@ return malloc(size);
                 open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
                 ['font.ttf', 'test!', '150', '120', '25'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
@@ -6119,14 +6119,14 @@ return malloc(size);
                 open(path_from_root('tests', 'freetype', 'ref_2.txt')).read(),
                 ['font.ttf', 'w', '32', '32', '25'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt')).read(),
                 ['font.ttf', 'W', '32', '32', '0'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
     self.do_run(None,
@@ -6147,6 +6147,7 @@ return malloc(size);
     # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
     # yet have the new clang with that flag
     self.emcc_args += ['-Wno-unknown-warning-option']
+    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'sqlite')]
 
     src = '''
        #define SQLITE_DISABLE_LFS
@@ -6154,7 +6155,7 @@ return malloc(size);
        #define SQLITE_INT64_TYPE long long int
        #define SQLITE_THREADSAFE 0
     '''
-    src += open(path_from_root('tests', 'sqlite', 'sqlite3.c')).read()
+    src += open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c')).read()
     src += open(path_from_root('tests', 'sqlite', 'benchmark.c')).read()
     self.do_run(src,
                 open(path_from_root('tests', 'sqlite', 'benchmark.txt')).read(),
@@ -6179,10 +6180,10 @@ return malloc(size);
       make_args = ['libz.a']
       configure = ['sh', './configure']
 
-    self.do_run(open(path_from_root('tests', 'zlib', 'example.c')).read(),
-                open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
-                libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure),
-                includes=[path_from_root('tests', 'zlib'), 'building', 'zlib'],
+    self.do_run(open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
+                open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
+                libraries=self.get_library(os.path.join('third_party', 'zlib'), 'libz.a', make_args=make_args, configure=configure),
+                includes=[path_from_root('tests', 'third_party', 'zlib'), 'building', 'zlib'],
                 force_c=True)
 
   @needs_make('make')
@@ -6203,13 +6204,13 @@ return malloc(size);
       self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
 
       def test():
-        self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
+        self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
                     [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
                      open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
                     libraries=self.get_bullet_library(use_cmake),
-                    includes=[path_from_root('tests', 'bullet', 'src')])
+                    includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
       test()
 
   @needs_make('depends on freetype')
@@ -6275,9 +6276,9 @@ return malloc(size);
       };
       """ % line_splitter(str(image_bytes)))
 
-    shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
+    shutil.copy(path_from_root('tests', 'third_party', 'openjpeg', 'opj_config.h'), self.get_dir())
 
-    lib = self.get_library('openjpeg',
+    lib = self.get_library(os.path.join('third_party', 'openjpeg'),
                            [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
@@ -6324,13 +6325,13 @@ return malloc(size);
     self.emcc_args += ['--pre-js', 'pre.js']
 
     def do_test():
-      self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
+      self.do_run(open(path_from_root('tests', 'third_party', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
                   'Successfully generated', # The real test for valid output is in image_compare
                   '-i image.j2k -o image.raw'.split(' '),
                   libraries=lib,
-                  includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
-                            path_from_root('tests', 'openjpeg', 'codec'),
-                            path_from_root('tests', 'openjpeg', 'common'),
+                  includes=[path_from_root('tests', 'third_party', 'openjpeg', 'libopenjpeg'),
+                            path_from_root('tests', 'third_party', 'openjpeg', 'codec'),
+                            path_from_root('tests', 'third_party', 'openjpeg', 'common'),
                             os.path.join(self.get_build_dir(), 'openjpeg')],
                   force_c=True,
                   assert_returncode=0,
@@ -6350,7 +6351,7 @@ return malloc(size);
     # The python build contains several undefined symbols
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
-    bitcode = path_from_root('tests', 'python', 'python.bc')
+    bitcode = path_from_root('tests', 'third_party', 'python', 'python.bc')
     pyscript = dedent('''\
       print '***'
       print "hello python world!"
