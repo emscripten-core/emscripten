@@ -4576,9 +4576,9 @@ int main() {
     create_test_file('src.c', r'''
 #include <sys/time.h>
 #include <stddef.h>
-extern int __syscall295(int);
+extern int __sys_openat(int);
 int main() {
-  return __syscall295(0);
+  return __sys_openat(0);
 }''')
     run_process([PYTHON, EMCC, 'src.c', '-s', 'NO_FILESYSTEM=1'])
 
@@ -6096,27 +6096,27 @@ Descriptor desc;
       assert ('is a helper for' in output.stderr) == fail
       assert ('Typical usage' in output.stderr) == fail
       self.assertContained(expect, output.stdout)
-    check('emmake', [])
-    check('emconfigure', [])
-    check('emmake', ['--version'])
-    check('emconfigure', ['--version'])
-    check('emmake', ['make'], fail=False)
-    check('emconfigure', ['configure'], fail=False)
-    check('emconfigure', ['./configure'], fail=False)
-    check('emcmake', ['cmake'], fail=False)
+    check('emmake.py', [])
+    check('emconfigure.py', [])
+    check('emmake.py', ['--version'])
+    check('emconfigure.py', ['--version'])
+    check('emmake.py', ['make'], fail=False)
+    check('emconfigure.py', ['configure'], fail=False)
+    check('emconfigure.py', ['./configure'], fail=False)
+    check('emcmake.py', ['cmake'], fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('CROSS_COMPILE'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
-    check('emmake', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emconfigure.py', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
+    check('emmake.py', [PYTHON, 'test.py'], expect=path_from_root('em'), fail=False)
 
     create_test_file('test.py', '''
 import os
 print(os.environ.get('NM'))
 ''')
-    check('emconfigure', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check('emconfigure.py', [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
 
   @no_windows('This test is broken, https://github.com/emscripten-core/emscripten/issues/8872')
   def test_emmake_python(self):
@@ -6137,7 +6137,7 @@ print(os.environ.get('NM'))
       out = run_process([PYTHON, path_from_root('system', 'bin', 'sdl2-config')] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
       print('via emmake')
-      out = run_process([PYTHON, path_from_root('emmake'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
+      out = run_process([PYTHON, path_from_root('emmake.py'), 'sdl2-config'] + args, stdout=PIPE, stderr=PIPE).stdout
       assert expected in out, out
 
   def test_module_onexit(self):
@@ -7107,10 +7107,10 @@ Resolved: "/" => "/"
         assert ('warning: emterpreter bytecode is fairly large' in stderr) == need_warning, stderr
         assert ('It is recommended to use  -s EMTERPRETIFY_FILE=..' in stderr) == need_warning, stderr
 
+  @no_wasm_backend("llvm-lto is fastcomp only flag")
   def test_llvm_lto(self):
     sizes = {}
-    # wasm backend doesn't have the fancy lto modes 2 and 3
-    lto_levels = [0, 1, 2, 3] if not self.is_wasm_backend() else [0, 1]
+    lto_levels = [0, 1, 2, 3]
     for lto in lto_levels:
       cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_libcxx.cpp'), '-O2', '--llvm-lto', str(lto)]
       if self.is_wasm_backend():
@@ -7295,10 +7295,6 @@ Resolved: "/" => "/"
         has = Building.which(python) is not None
       print(python, has)
       if has:
-        print('  checking emcc...')
-        run_process([python, trim_py_suffix(EMCC), '--version'], stdout=PIPE)
-        print('  checking em++...')
-        run_process([python, trim_py_suffix(EMXX), '--version'], stdout=PIPE)
         print('  checking emcc.py...')
         run_process([python, EMCC, '--version'], stdout=PIPE)
         print('  checking em++.py...')
@@ -8732,15 +8728,18 @@ int main() {
       # skip unhelpful option combinations
       if emterpreter_file_enabled and not emterpreter_enabled:
         continue
+      if self.is_wasm_backend() and emterpreter_enabled:
+        continue
+      if wasm_enabled and meminit1_enabled:
+        continue
+      if closure_enabled and debug_enabled:
+        continue
 
       expect_wasm = wasm_enabled
       expect_emterpretify_file = emterpreter_file_enabled
       expect_meminit = meminit1_enabled and not wasm_enabled
       expect_success = not (emterpreter_file_enabled and single_file_enabled)
       expect_wat = debug_enabled and wasm_enabled and not self.is_wasm_backend()
-
-      if self.is_wasm_backend() and emterpreter_enabled:
-        continue
 
       # currently, the emterpreter always fails with JS output since we do not preload the emterpreter file, which in non-HTML we would need to do manually
       should_run_js = expect_success and not emterpreter_enabled
@@ -8765,20 +8764,33 @@ int main() {
       if not wasm_enabled:
         cmd += ['-s', 'WASM=0']
 
-      print(' '.join(cmd))
       self.clear()
       if not expect_success:
         self.expect_fail(cmd)
         continue
 
-      run_process(cmd)
-      print(os.listdir('.'))
-      assert expect_emterpretify_file == os.path.exists('a.out.dat')
-      assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
-      assert expect_wasm == os.path.exists('a.out.wasm')
-      assert expect_wat == os.path.exists('a.out.wat')
-      if should_run_js:
-        self.assertContained('hello, world!', run_js('a.out.js'))
+      def do_test(cmd):
+        print(' '.join(cmd))
+        run_process(cmd)
+        print(os.listdir('.'))
+        assert expect_emterpretify_file == os.path.exists('a.out.dat')
+        assert expect_meminit == (os.path.exists('a.out.mem') or os.path.exists('a.out.js.mem'))
+        assert expect_wasm == os.path.exists('a.out.wasm')
+        assert expect_wat == os.path.exists('a.out.wat')
+        if should_run_js:
+          self.assertContained('hello, world!', run_js('a.out.js'))
+
+      do_test(cmd)
+
+      # additional combinations that are not part of the big product()
+
+      if self.is_wasm_backend() and debug_enabled:
+        separate_dwarf_cmd = cmd + ['-gseparate-dwarf']
+        if wasm_enabled:
+          do_test(separate_dwarf_cmd)
+          self.assertExists('a.out.wasm.debug.wasm')
+        else:
+          self.expect_fail(separate_dwarf_cmd)
 
   def test_emar_M(self):
     create_test_file('file1', ' ')
@@ -9173,6 +9185,16 @@ int main() {
       wasm = f.read()
       self.assertIn(b'external_debug_info', wasm)
       self.assertIn(b'a.out.wasm.debug.wasm', wasm)
+
+  @no_fastcomp('dwarf')
+  def test_separate_dwarf_with_filename(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-gseparate-dwarf=with_dwarf.wasm'])
+    self.assertNotExists('a.out.wasm.debug.wasm')
+    self.assertExists('with_dwarf.wasm')
+    # the correct notation is to have exactly one '=' and in the right place
+    for invalid in ('-gseparate-dwarf=x=', '-gseparate-dwarfy=', '-gseparate-dwarf-hmm'):
+      stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), invalid])
+      self.assertContained('invalid -gseparate-dwarf=FILENAME notation', stderr)
 
   def test_wasm_producers_section(self):
     # no producers section by default
@@ -9902,6 +9924,18 @@ int main () {
     with env_modify({'EMCC_STRICT': '1'}):
       self.do_run(open(path_from_root('tests', 'hello_world.c')).read(), 'hello, world!')
 
+  def test_legacy_settings(self):
+    cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
+
+    # By default warnings are not shown
+    stderr = run_process(cmd, stderr=PIPE).stderr
+    self.assertNotContained('warning', stderr)
+
+    # Adding or -Wlegacy-settings enables the warning
+    stderr = run_process(cmd + ['-Wlegacy-settings'], stderr=PIPE).stderr
+    self.assertContained('warning: use of legacy setting: SPLIT_MEMORY', stderr)
+    self.assertContained('[-Wlegacy-settings]', stderr)
+
   def test_strict_mode_legacy_settings(self):
     cmd = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'SPLIT_MEMORY=0']
     run_process(cmd)
@@ -9932,7 +9966,7 @@ int main () {
     self.set_setting('STRICT', 1)
     self.do_run(src, 'invalid compiler setting: BINARYEN_METHOD')
 
-  def test_strict_mode_renamed_setting(self):
+  def test_renamed_setting(self):
     # Verify that renamed settings are available by either name (when not in
     # strict mode.
     self.set_setting('RETAIN_COMPILER_SETTINGS', 1)
@@ -10114,7 +10148,7 @@ int main () {
     returncode, output = self.run_on_pty([PYTHON, EMCC, 'src.c'])
     self.assertNotEqual(returncode, 0)
     self.assertIn(b"\x1b[1msrc.c:1:13: \x1b[0m\x1b[0;1;31merror: \x1b[0m\x1b[1mexpected '}'\x1b[0m", output)
-    self.assertIn(b"shared:ERROR: \x1b[31m", output)
+    self.assertIn(b"\x1b[31merror: ", output)
 
   @parameterized({
     'fno_diagnostics_color': ['-fno-diagnostics-color'],
@@ -10387,10 +10421,10 @@ Module.arguments has been replaced with plain arguments_
   @no_fastcomp('lld-specific')
   def test_supported_linker_flags(self):
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,waka'], stderr=PIPE).stderr
-    self.assertContained('WARNING: ignoring unsupported linker flag: `waka', out)
+    self.assertContained('warning: ignoring unsupported linker flag: `waka', out)
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,--no-threads,-mllvm,-debug,--trace,--trace-symbol=main'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING: ignoring unsupported linker flag', out)
+    self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
@@ -10432,23 +10466,23 @@ Module.arguments has been replaced with plain arguments_
 
     # warning that is enabled by default
     stderr = run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
     # -w to suppress warnings
     stderr = run_process(cmd + ['-w'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # -Wno-invalid-input to suppress just this one warning
     stderr = run_process(cmd + ['-Wno-invalid-input'], stderr=PIPE).stderr
-    self.assertNotContained('WARNING', stderr)
+    self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
     stderr = self.expect_fail(cmd + ['-Werror'])
-    self.assertContained('ERROR: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
+    self.assertContained('emcc: error: not_object.bc is not a valid input file [-Winvalid-input] [-Werror]', stderr)
 
     # with -Werror + -Wno-error=<type> should only warn
     stderr = run_process(cmd + ['-Werror', '-Wno-error=invalid-input'], stderr=PIPE).stderr
-    self.assertContained('WARNING: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
+    self.assertContained('emcc: warning: not_object.bc is not a valid input file [-Winvalid-input]', stderr)
 
   def test_emranlib(self):
     create_test_file('foo.c', 'int foo = 1;')
@@ -10583,3 +10617,17 @@ int main() {
     self.assertTrue(shared.Building.is_bitcode('main.bc'))
     run_process([PYTHON, EMCC, '-c', '-o', 'main.o', 'main.bc'])
     self.assertTrue(shared.Building.is_wasm('main.o'))
+
+  def test_nostdlib(self):
+    # First ensure all the system libs are built
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c')])
+
+    self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib']))
+    self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs']))
+
+    # Buil again but with explit system libraries
+    libs = ['-lc', '-lcompiler_rt']
+    if self.is_wasm_backend():
+      libs.append('-lc_rt_wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib'] + libs)
+    run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs'] + libs)

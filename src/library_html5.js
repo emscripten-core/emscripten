@@ -1198,6 +1198,8 @@ var LibraryJSEvents = {
       return JSEvents.fullscreenEnabled() ? {{{ cDefine('EMSCRIPTEN_RESULT_INVALID_TARGET') }}} : {{{ cDefine('EMSCRIPTEN_RESULT_NOT_SUPPORTED') }}};
     }
 
+    __currentFullscreenStrategy = strategy;
+
     if (strategy.canvasResizedCallback) {
 #if USE_PTHREADS
       if (strategy.canvasResizedCallbackTargetThread) JSEvents.queueEventHandlerOnThread_iiii(strategy.canvasResizedCallbackTargetThread, strategy.canvasResizedCallback, {{{ cDefine('EMSCRIPTEN_EVENT_CANVASRESIZED') }}}, 0, strategy.canvasResizedCallbackUserData);
@@ -1563,7 +1565,6 @@ var LibraryJSEvents = {
       canvasResizedCallback: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallback, 'i32') }}},
       canvasResizedCallbackUserData: {{{ makeGetValue('fullscreenStrategy', C_STRUCTS.EmscriptenFullscreenStrategy.canvasResizedCallbackUserData, 'i32') }}}
     };
-    __currentFullscreenStrategy = strategy;
 
     return __emscripten_do_request_fullscreen(target, strategy);
   },
@@ -2653,7 +2654,7 @@ var LibraryJSEvents = {
   },
 
   emscripten_webgl_destroy_context_calling_thread: function(contextHandle) {
-    if (GL.currentContext == contextHandle) GL.currentContext = 0;
+    if (GL.currentContext == contextHandle) GL.currentContext = null;
     GL.deleteContext(contextHandle);
   },
 

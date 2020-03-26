@@ -353,6 +353,14 @@ function JSDCE(ast, multipleIterations) {
           c(node.value);
         });
       },
+      MemberExpression(node, c) {
+        c(node.object);
+        // Ignore a property identifier (a.X), but notice a[X] (computed
+        // is true) and a["X"] (it will be a Literal and not Identifier).
+        if (node.property.type !== 'Identifier' || node.computed) {
+          c(node.property);
+        }
+      },
       FunctionDeclaration(node, c) {
         handleFunction(node, c, true /* defun */);
       },
@@ -684,7 +692,7 @@ function emitDCEGraph(ast) {
               value = assign.right;
             }
           }
-          if (target.type === 'Identifier' && target.name === 'asm' && value) {
+          if (target && target.type === 'Identifier' && target.name === 'asm' && value) {
             if (value.type === 'MemberExpression' &&
                 value.object.type === 'MemberExpression' &&
                 value.object.object.type === 'Identifier' &&

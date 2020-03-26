@@ -68,9 +68,6 @@ var DYNAMICTOP_PTR = -1;
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
 
-// -Werror was specified on the command line.
-var WARNINGS_ARE_ERRORS = 0;
-
 // Maximum seen global alignment; received from the backend.
 var MAX_GLOBAL_ALIGN = -1;
 
@@ -187,3 +184,6 @@ var CAN_ADDRESS_2GB = 0;
 // sections.
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = 0;
+
+// New WebAssembly exception handling (experimental)
+var EXCEPTION_HANDLING = 0;

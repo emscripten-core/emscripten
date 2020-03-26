@@ -1,6 +1,4 @@
 __ZSt18uncaught_exceptionv
-___cxa_can_catch
-___cxa_is_pointer_type
 ___errno_location
 _emscripten_get_sbrk_ptr
 _free

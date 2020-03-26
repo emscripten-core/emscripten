@@ -404,10 +404,8 @@ $__ZTv0_n12_NSt3__213basic_ostreamIcNS_11char_traitsIcEEED0Ev
 $__ZTv0_n12_NSt3__213basic_ostreamIcNS_11char_traitsIcEEED1Ev
 $__Znwm
 $___ctype_get_mb_cur_max
-$___cxa_can_catch
 $___cxa_guard_acquire
 $___cxa_guard_release
-$___cxa_is_pointer_type
 $___dynamic_cast
 $___emscripten_stdout_close
 $___emscripten_stdout_seek

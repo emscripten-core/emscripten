@@ -243,7 +243,7 @@ class sanity(RunnerCore):
         if 'LLVM_ROOT' not in settings:
           self.assertContained('Error in evaluating %s' % EM_CONFIG, output)
         elif 'runner.py' not in ' '.join(command):
-          self.assertContained('ERROR', output) # sanity check should fail
+          self.assertContained('error:', output) # sanity check should fail
 
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version appears incorrect'
