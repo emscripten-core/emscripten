@@ -963,12 +963,13 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
-    src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
+    src = open(path_from_root('tests', 'benchmark', 'box2d_benchmark.cpp')).read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library('box2d', [os.path.join('box2d.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests',
+    'third_party', 'box2d')], lib_builder=lib_builder)
 
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_zzz_bullet(self):

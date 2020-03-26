@@ -6088,7 +6088,7 @@ return malloc(size);
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -6111,7 +6111,7 @@ return malloc(size);
                 open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
                 ['font.ttf', 'test!', '150', '120', '25'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
@@ -6119,14 +6119,14 @@ return malloc(size);
                 open(path_from_root('tests', 'freetype', 'ref_2.txt')).read(),
                 ['font.ttf', 'w', '32', '32', '25'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt')).read(),
                 ['font.ttf', 'W', '32', '32', '0'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
     self.do_run(None,
@@ -6147,6 +6147,7 @@ return malloc(size);
     # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
     # yet have the new clang with that flag
     self.emcc_args += ['-Wno-unknown-warning-option']
+    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'sqlite')]
 
     src = '''
        #define SQLITE_DISABLE_LFS
@@ -6154,7 +6155,7 @@ return malloc(size);
        #define SQLITE_INT64_TYPE long long int
        #define SQLITE_THREADSAFE 0
     '''
-    src += open(path_from_root('tests', 'sqlite', 'sqlite3.c')).read()
+    src += open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c')).read()
     src += open(path_from_root('tests', 'sqlite', 'benchmark.c')).read()
     self.do_run(src,
                 open(path_from_root('tests', 'sqlite', 'benchmark.txt')).read(),
@@ -6350,7 +6351,7 @@ return malloc(size);
     # The python build contains several undefined symbols
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
-    bitcode = path_from_root('tests', 'python', 'python.bc')
+    bitcode = path_from_root('tests', 'third_party', 'python', 'python.bc')
     pyscript = dedent('''\
       print '***'
       print "hello python world!"
