@@ -2180,11 +2180,15 @@ class Building(object):
 
   @staticmethod
   def maybe_add_license(filename=None, code=None):
-    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+    # EMIT_EMSCRIPTEN_LICENSE is not supported in fastcomp since the JS
+    # optimization pipeline there is much more complex, and fastcomp is
+    # deprecated anyhow
+    if Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND:
       if filename:
         with open(filename) as f:
           code = f.read()
-        code = JS.emscripten_license + code
+      code = JS.emscripten_license + code
+      if filename:
         with open(filename, 'w') as f:
           f.write(code)
       else:
