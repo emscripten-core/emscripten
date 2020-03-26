@@ -34,6 +34,8 @@ from .toolchain_profiler import ToolchainProfiler
 from .tempfiles import try_delete
 from . import jsrun, cache, tempfiles, colored_logger
 from . import response_file
+from . import diagnostics
+
 
 __rootpath__ = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
 WINDOWS = sys.platform.startswith('win')
@@ -53,17 +55,22 @@ logger = logging.getLogger('shared')
 if sys.version_info < (2, 7, 12):
   logger.debug('python versions older than 2.7.12 are known to run into outdated SSL certificate related issues, https://github.com/emscripten-core/emscripten/issues/6275')
 
+# warning about absolute-paths is disabled by default, and not enabled by -Wall
+diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
+diagnostics.add_warning('separate-asm')
+diagnostics.add_warning('almost-asm')
+diagnostics.add_warning('invalid-input')
+# Don't show legacy settings warnings by default
+diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
+# Catch-all for other emcc warnings
+diagnostics.add_warning('linkflags')
+diagnostics.add_warning('emcc')
+diagnostics.add_warning('undefined')
+diagnostics.add_warning('version-check')
+
 
 def exit_with_error(msg, *args):
-  logger.error(str(msg), *args)
-  sys.exit(1)
-
-
-# TODO(sbc): Convert all caller to WarningManager
-def warning(msg, *args):
-  logger.warning(str(msg), *args)
-  if Settings.WARNINGS_ARE_ERRORS:
-    exit_with_error('treating warnings as errors (-Werror)')
+  diagnostics.error(msg, *args)
 
 
 # On Windows python suffers from a particularly nasty bug if python is spawning
@@ -177,20 +184,19 @@ def run_process(cmd, check=True, input=None, *args, **kw):
 
   debug_text = '%sexecuted %s' % ('successfully ' if check else '', ' '.join(cmd))
 
-  if hasattr(subprocess, 'run'):
-    # Python 3.5 and above only
-    kw.setdefault('encoding', 'utf-8')
-    result = subprocess.run(cmd, check=check, input=input, *args, **kw)
-  else:
-    # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
-    if input is not None:
-      kw['stdin'] = subprocess.PIPE
-    proc = Popen(cmd, *args, **kw)
-    stdout, stderr = proc.communicate(input)
-    result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
-    if check:
-      result.check_returncode()
+  if hasattr(subprocess, "run"):
+    ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+    logger.debug(debug_text)
+    return ret
 
+  # Python 2 compatibility: Introduce Python 3 subprocess.run-like behavior
+  if input is not None:
+    kw['stdin'] = subprocess.PIPE
+  proc = Popen(cmd, *args, **kw)
+  stdout, stderr = proc.communicate(input)
+  result = Py2CompletedProcess(cmd, proc.returncode, stdout, stderr)
+  if check:
+    result.check_returncode()
   logger.debug(debug_text)
   return result
 
@@ -470,7 +476,7 @@ def check_llvm_version():
   actual = get_clang_version()
   if expected in actual:
     return True
-  warning('LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
+  diagnostics.warning('version-check', 'LLVM version appears incorrect (seeing "%s", expected "%s")', actual, expected)
   return False
 
 
@@ -535,10 +541,10 @@ def check_node_version():
     version = tuple(map(int, actual.replace('v', '').replace('-pre', '').split('.')))
     if version >= EXPECTED_NODE_VERSION:
       return True
-    warning('node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
+    diagnostics.warning('version-check', 'node version appears too old (seeing "%s", expected "%s")', actual, 'v' + ('.'.join(map(str, EXPECTED_NODE_VERSION))))
     return False
   except Exception as e:
-    warning('cannot check node version: %s', e)
+    diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return False
 
 
@@ -711,8 +717,8 @@ EMSCRIPTEN = path_from_root('emscripten.py')
 EMCC = path_from_root('emcc.py')
 EMXX = path_from_root('em++.py')
 EMAR = path_from_root('emar.py')
-EMRANLIB = path_from_root('emranlib')
-EMCONFIG = path_from_root('em-config')
+EMRANLIB = path_from_root('emranlib.py')
+EMCONFIG = path_from_root('em-config.py')
 EMLINK = path_from_root('emlink.py')
 EMCONFIGURE = path_from_root('emconfigure.py')
 EMMAKE = path_from_root('emmake.py')
@@ -751,59 +757,6 @@ def get_canonical_temp_dir(temp_dir):
   return os.path.join(temp_dir, 'emscripten_temp')
 
 
-class WarningManager(object):
-  warnings = {
-    'ABSOLUTE_PATHS': {
-      'enabled': False,  # warning about absolute-paths is disabled by default
-      'printed': False,
-      'message': '-I or -L of an absolute path encountered. If this is to a local system header/library, it may cause problems (local system files make sense for compiling natively on your system, but not necessarily to JavaScript).',
-    },
-    'SEPARATE_ASM': {
-      'enabled': True,
-      'printed': False,
-      'message': "--separate-asm works best when compiling to HTML. Otherwise, you must yourself load the '.asm.js' file that is emitted separately, and must do so before loading the main '.js' file.",
-    },
-    'ALMOST_ASM': {
-      'enabled': True,
-      'printed': False,
-      'message': 'not all asm.js optimizations are possible with ALLOW_MEMORY_GROWTH, disabling those.',
-    },
-  }
-
-  @staticmethod
-  def capture_warnings(cmd_args):
-    for i in range(len(cmd_args)):
-      if not cmd_args[i].startswith('-W'):
-        continue
-
-      # special case pre-existing warn-absolute-paths
-      if cmd_args[i] == '-Wwarn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = True
-      elif cmd_args[i] == '-Wno-warn-absolute-paths':
-        cmd_args[i] = ''
-        WarningManager.warnings['ABSOLUTE_PATHS']['enabled'] = False
-      else:
-        # convert to string representation of Warning
-        warning_enum = cmd_args[i].replace('-Wno-', '').replace('-W', '')
-        warning_enum = warning_enum.upper().replace('-', '_')
-
-        if warning_enum in WarningManager.warnings:
-          WarningManager.warnings[warning_enum]['enabled'] = not cmd_args[i].startswith('-Wno-')
-          cmd_args[i] = ''
-
-    return cmd_args
-
-  @staticmethod
-  def warn(warning_type, message=None):
-    warning_info = WarningManager.warnings[warning_type]
-    if warning_info['enabled'] and not warning_info['printed']:
-      warning_info['printed'] = True
-      if message is None:
-        message = warning_info['message']
-      warning(message + ' [-W' + warning_type.lower().replace('_', '-') + ']')
-
-
 class Configuration(object):
   def __init__(self, environ=os.environ):
     self.EMSCRIPTEN_TEMP_DIR = None
@@ -819,7 +772,7 @@ class Configuration(object):
         self.EMSCRIPTEN_TEMP_DIR = self.CANONICAL_TEMP_DIR
         safe_ensure_dirs(self.EMSCRIPTEN_TEMP_DIR)
       except Exception as e:
-        logger.error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
+        exit_with_error(str(e) + 'Could not create canonical temp dir. Check definition of TEMP_DIR in ' + hint_config_file_location())
 
   def get_temp_files(self):
     return tempfiles.TempFiles(
@@ -946,7 +899,8 @@ def emsdk_cflags():
 
   cxx_include_paths = [
     path_from_root('system', 'include', 'libcxx'),
-    path_from_root('system', 'lib', 'libcxxabi', 'include')
+    path_from_root('system', 'lib', 'libcxxabi', 'include'),
+    path_from_root('system', 'lib', 'libunwind', 'include')
   ]
 
   def include_directive(paths):
@@ -1141,13 +1095,14 @@ class SettingsManager(object):
           self.attrs.pop(a, None)
 
       if attr in self.legacy_settings:
+        # TODO(sbc): Rather then special case this we should have STRICT turn on the
+        # legacy-settings warning below
         if self.attrs['STRICT']:
           exit_with_error('legacy setting used in strict mode: %s', attr)
         fixed_values, error_message = self.legacy_settings[attr]
         if fixed_values and value not in fixed_values:
           exit_with_error('Invalid command line option -s ' + attr + '=' + str(value) + ': ' + error_message)
-        else:
-          logger.debug('Option -s ' + attr + '=' + str(value) + ' has been removed from the codebase. (' + error_message + ')')
+        diagnostics.warning('legacy-settings', 'use of legacy setting: %s (%s)', attr, error_message)
 
       if attr in self.alt_names:
         alt_name = self.alt_names[attr]
@@ -1244,7 +1199,7 @@ def warn_if_duplicate_entries(archive_contents, archive_filename):
       if curr not in warned and curr in archive_contents[i + 1:]:
         msg += '\n   duplicate: %s' % curr
         warned.add(curr)
-    warning(msg)
+    diagnostics.warning('emcc', msg)
 
 
 # This function creates a temporary directory specified by the 'dir' field in
@@ -1510,9 +1465,7 @@ class Building(object):
     # not to, as some configure scripts expect e.g. CC to be a literal executable
     # (but "python emcc.py" is not a file that exists).
     # note that we point to emcc etc. here, without a suffix, instead of to
-    # emcc.py etc. The unsuffixed versions have the python_selector logic that can
-    # pick the right version as needed (which is not crucial right now as we support
-    # both 2 and 3, but eventually we may be 3-only).
+    # emcc.py etc.
     env['CC'] = quote(unsuffixed(EMCC)) if not WINDOWS else 'python %s' % quote(EMCC)
     env['CXX'] = quote(unsuffixed(EMXX)) if not WINDOWS else 'python %s' % quote(EMXX)
     env['AR'] = quote(unsuffixed(EMAR)) if not WINDOWS else 'python %s' % quote(EMAR)
@@ -1766,7 +1719,7 @@ class Building(object):
     return target
 
   @staticmethod
-  def link_lld(args, target, opts=[], lto_level=0, all_external_symbols=None):
+  def link_lld(args, target, opts=[], all_external_symbols=None):
     if not os.path.exists(WASM_LD):
       exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
     # runs lld to link things.
@@ -1788,7 +1741,6 @@ class Building(object):
         WASM_LD,
         '-o',
         target,
-        '--lto-O%d' % lto_level,
     ] + args
 
     if all_external_symbols:
@@ -1856,10 +1808,10 @@ class Building(object):
       use_start_function = Settings.STANDALONE_WASM
       if not use_start_function:
         cmd += ['--no-entry']
-      if Settings.MAXIMUM_MEMORY != -1:
-        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
-      elif not Settings.ALLOW_MEMORY_GROWTH:
+      if not Settings.ALLOW_MEMORY_GROWTH:
         cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
+      elif Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
@@ -1900,7 +1852,7 @@ class Building(object):
       # Check if the object was valid according to llvm-nm. It also accepts
       # native object files.
       if not new_symbols.is_valid_for_nm():
-        warning('object %s is not valid according to llvm-nm, cannot link', f)
+        diagnostics.warning('emcc', 'object %s is not valid according to llvm-nm, cannot link', f)
         return False
       # Check the object is valid for us, and not a native object file.
       if not Building.is_bitcode(f):
@@ -2142,8 +2094,6 @@ class Building(object):
   @staticmethod
   def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
     try_delete(output_filename)
-    cmd = [PYTHON, EMAR, action, output_filename] + filenames[:5]
-
     response_filename = response_file.create_response_file(filenames, TEMP_DIR)
     cmd = [PYTHON, EMAR, action, output_filename] + ['@' + response_filename]
     try:
@@ -2354,7 +2304,7 @@ class Building(object):
     try:
       output = run_process(CLOSURE_COMPILER + args + ['--version'], stdout=PIPE, env=env).stdout
     except Exception as e:
-      warning(str(e))
+      logger.warn(str(e))
       exit_with_error('closure compiler ("%s --version") did not execute properly!' % str(CLOSURE_COMPILER))
     if 'Version:' not in output:
       exit_with_error('unrecognized closure compiler --version output (%s):\n%s' % (str(CLOSURE_COMPILER), output))
@@ -2623,13 +2573,13 @@ class Building(object):
     return Building.acorn_optimizer(js_file, passes, extra_info=json.dumps(extra_info))
 
   @staticmethod
-  def asyncify_lazy_load_code(wasm_binary_target, options, debug):
+  def asyncify_lazy_load_code(wasm_binary_target, debug):
     # create the lazy-loaded wasm. remove the memory segments from it, as memory
     # segments have already been applied by the initial wasm, and apply the knowledge
     # that it will only rewind, after which optimizations can remove some code
     args = ['--remove-memory', '--mod-asyncify-never-unwind']
-    if options.opt_level > 0:
-      args.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if Settings.OPT_LEVEL > 0:
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
     Building.run_wasm_opt(wasm_binary_target,
                           wasm_binary_target + '.lazy.wasm',
                           args=args,
@@ -2640,8 +2590,8 @@ class Building(object):
     # TODO: support other asyncify stuff, imports that don't always unwind?
     # TODO: source maps etc.
     args = ['--mod-asyncify-always-and-only-unwind']
-    if options.opt_level > 0:
-      args.append(Building.opt_level_to_str(options.opt_level, options.shrink_level))
+    if Settings.OPT_LEVEL > 0:
+      args.append(Building.opt_level_to_str(Settings.OPT_LEVEL, Settings.SHRINK_LEVEL))
     Building.run_wasm_opt(infile=wasm_binary_target,
                           outfile=wasm_binary_target,
                           args=args,
@@ -2754,12 +2704,11 @@ class Building(object):
     return js_file
 
   @staticmethod
-  def emit_debug_on_side(wasm_file):
+  def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
     # extract the DWARF info from the main file, and leave the wasm with
     # debug into as a file on the side
     # TODO: emit only debug sections in the side file, and not the entire
     #       wasm as well
-    wasm_file_with_dwarf = wasm_file + '.debug.wasm'
     shutil.move(wasm_file, wasm_file_with_dwarf)
     run_process([LLVM_OBJCOPY, '--remove-section=.debug*', wasm_file_with_dwarf, wasm_file])
 
@@ -2784,6 +2733,11 @@ class Building(object):
         with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
           ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
     return ret
+
+  @staticmethod
+  def use_unsigned_pointers_in_js(js_file):
+    logger.debug('using unsigned pointers in JS')
+    return Building.acorn_optimizer(js_file, ['unsignPointers'])
 
   @staticmethod
   def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
@@ -2923,7 +2877,7 @@ class Building(object):
     # Allow the expected version or the following one in order avoid needing to update both
     # emscripten and binaryen in lock step in emscripten-releases.
     if version not in (EXPECTED_BINARYEN_VERSION, EXPECTED_BINARYEN_VERSION + 1):
-      warning('unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
+      diagnostics.warning('version-check', 'unexpected binaryen version: %s (expected %s)', version, EXPECTED_BINARYEN_VERSION)
 
   @staticmethod
   def get_binaryen_bin():
@@ -2953,10 +2907,13 @@ class Building(object):
     if emit_source_map:
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
-    if outfile and tool == 'wasm-opt' and not Settings.FULL_DWARF:
-      # remove any dwarf debug info sections, as currently we are not able to
-      # properly update it anyhow, and in the case of source maps, we have
-      # that info in the map anyhow
+    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
+      # remove any dwarf debug info sections, if the debug level is <3, as
+      # we don't need them; also remove them if we the level is 4, as then we
+      # want a source map, which is implemented separately from dwarf
+      # TODO: once fastcomp is gone, either remove source maps entirely, or
+      #       support them by emitting a source map at the end from the dwarf,
+      #       and use llvm-objcpy to remove that final dwarf
       cmd += ['--strip-dwarf']
 
     ret = check_call(cmd, stdout=stdout).stdout

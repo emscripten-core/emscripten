@@ -28,11 +28,11 @@ WebAssembly is emitted by default, without the need for any special flags.
 Backends
 --------
 
-Emscripten can currently (July 2019) use 2 backends to generate WebAssembly: **fastcomp** (the asm.js backend, together with asm2wasm) and the **upstream LLVM wasm backend**.
-
-Fastcomp is currently the default, but we hope to `switch the default soon to the upstream backend <https://v8.dev/blog/emscripten-llvm-wasm>`_.
-
-To use fastcomp, just use the emsdk normally to get ``latest``. For the upstream backend, use ``latest-upstream`` (or, if you are not using the emsdk, you can set LLVM in the ``.emscripten`` file to point to a build you make of very recent LLVM - preferably from git/svn master).
+Emscripten emits WebAssembly using the **upstream LLVM wasm backend**, since
+version ``1.39.0`` (October 2019), and the old **fastcomp** backend is
+deprecated (you can still use the deprecated fastcomp backend by getting
+``latest-fastcomp`` instead of the normal ``latest``, or ``1.39.0-fastcomp``
+instead of ``1.39.0``, etc.).
 
 There are some differences you may notice between the two backends, if you
 upgrade from fastcomp to upstream:
@@ -61,9 +61,10 @@ upgrade from fastcomp to upstream:
 
   * You can enable LTO object files with the usual llvm compiler flags (-flto,
     -flto=full, -flto=thin, -emit-llvm).  These flags will make the wasm backend
-    behave more like fastcomp. Neither fastcomp nor the wasm backend without
-    wasm object files will run the LLVM optimization passes by default, even if
-    using LLVM IR in object files; for that you must pass ``--llvm-lto 1``.
+    behave more like fastcomp. With fastcomp LTO optimization passes will not
+    be run by default; for that you must pass ``--llvm-lto 1``.  With the llvm
+    backend LTO passes will be run on any object files that are in bitcode
+    format.
 
   * Another thing you might notice is that fastcomp's link stage is able to
     perform some types of link time optimization by default that the LLVM
@@ -79,6 +80,11 @@ upgrade from fastcomp to upstream:
   format and cannot create archive indexes.  In particular, if you run GNU
   `strip` on an archive file that contains WebAssembly object files it will
   remove the index which makes the archive unusable at link time.
+
+* Fastcomp emits asm.js and so has some limitations on function pointers. For
+  example, the ``RESERVED_FUNCTION_POINTERS`` setting exists there to work
+  around the fact that we can't grow the table. In the upstream backend table
+  growth is easy, and you can just enable ``ALLOW_TABLE_GROWTH``.
 
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 

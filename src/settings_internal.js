@@ -68,11 +68,6 @@ var DYNAMICTOP_PTR = -1;
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
 
-// -Werror was specified on the command line.
-var WARNINGS_ARE_ERRORS = 0;
-
-// Temporary setting to force generation and preservation of full DWARF debug info
-var FULL_DWARF = 0;
 // Maximum seen global alignment; received from the backend.
 var MAX_GLOBAL_ALIGN = -1;
 
@@ -93,14 +88,18 @@ var SYSTEM_JS_LIBRARIES = [];
 // RETAIN_COMPILER_SETTINGS
 var EMSCRIPTEN_VERSION = '';
 
-// This will contain the optimization level (-Ox). You should not modify this.
-var OPT_LEVEL = 0;
-
 // Will be set to 0 if -fno-rtti is used on the command line.
 var USE_RTTI = 1;
 
+// This will contain the optimization level (-Ox). You should not modify this.
+var OPT_LEVEL = 0;
+
 // This will contain the debug level (-gx). You should not modify this.
 var DEBUG_LEVEL = 0;
+
+// This will contain the shrink level (1 or 2 for -Os or -Oz, or just 0).
+// You should not modify this.
+var SHRINK_LEVEL = 0;
 
 // Whether we are profiling functions. You should not modify this.
 var PROFILING_FUNCS = 0;
@@ -111,7 +110,7 @@ var EMIT_SYMBOL_MAP = 0;
 // tracks the list of EM_ASM signatures that are proxied between threads.
 var PROXIED_FUNCTION_SIGNATURES = [];
 
-// List of function explictly exported by user on the command line.
+// List of function explicitly exported by user on the command line.
 var USER_EXPORTED_FUNCTIONS = [];
 
 // name of the file containing wasm text, if relevant
@@ -173,3 +172,18 @@ var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 's
 
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
+
+// Whether we may be accessing the address 2GB or higher. If so then we need
+// to be using unsigned pointers in JS.
+var CAN_ADDRESS_2GB = 0;
+
+// Whether to emit DWARF in a separate wasm file on the side (this is not called
+// "split" because there is already a DWARF concept by that name).
+// When DWARF is on the side, the main file has no DWARF info, while the side
+// file, ending in .debug.wasm, has the same wasm binary + all the debug
+// sections.
+// This has no effect if DWARF is not being emitted.
+var SEPARATE_DWARF = 0;
+
+// New WebAssembly exception handling (experimental)
+var EXCEPTION_HANDLING = 0;

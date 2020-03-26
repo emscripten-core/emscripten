@@ -835,20 +835,20 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     text2 = text2.replace('\r\n', '\n')
     return self.assertContained(text1, text2)
 
-  def assertContained(self, values, string, additional_info='', check_all=False):
+  def assertContained(self, values, string, additional_info=''):
     if type(values) not in [list, tuple]:
       values = [values]
     values = list(map(asstr, values))
     if callable(string):
       string = string()
 
-    if (all if check_all else any)(value in string for value in values):
-      return # success
-    self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
-      limit_size(values[0]), limit_size(string),
-      limit_size(''.join([a.rstrip() + '\n' for a in difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')])),
-      additional_info
-    ))
+    if not any(v in string for v in values):
+      diff = difflib.unified_diff(values[0].split('\n'), string.split('\n'), fromfile='expected', tofile='actual')
+      diff = ''.join(a.rstrip() + '\n' for a in diff)
+      self.fail("Expected to find '%s' in '%s', diff:\n\n%s\n%s" % (
+        limit_size(values[0]), limit_size(string), limit_size(diff),
+        additional_info
+      ))
 
   def assertNotContained(self, value, string):
     if callable(value):
@@ -922,7 +922,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     Return the stderr of the subprocess.
     """
     proc = run_process(cmd, check=False, stderr=PIPE, **args)
-    self.assertNotEqual(proc.returncode, 0)
+    self.assertNotEqual(proc.returncode, 0, 'subprocess unexpectedly succeeded. stderr:\n' + proc.stderr)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
     # due to "Access is denied" https://github.com/emscripten-core/emscripten/issues/718
@@ -1164,8 +1164,11 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
         try:
           if assert_identical:
             self.assertIdentical(expected_output, js_output)
+          elif assert_all:
+            for o in expected_output:
+              self.assertContained(o, js_output)
           else:
-            self.assertContained(expected_output, js_output, check_all=assert_all)
+            self.assertContained(expected_output, js_output)
             if check_for_error:
               self.assertNotContained('ERROR', js_output)
         except Exception:
@@ -1177,7 +1180,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.emcc_args.remove('-Werror')
     return self.get_library('freetype', os.path.join('objs', '.libs', 'libfreetype.a'), configure_args=['--disable-shared', '--without-zlib'])
 
-  def get_poppler_library(self):
+  def get_poppler_library(self, env_init=None):
     # The fontconfig symbols are all missing from the poppler build
     # e.g. FcConfigSubstitute
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
@@ -1200,10 +1203,14 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       '-Wno-tautological-compare',
       '-Wno-unknown-pragmas',
     ]
+    env_init = env_init.copy() if env_init else {}
+    env_init['FONTCONFIG_CFLAGS'] = ' '
+    env_init['FONTCONFIG_LIBS'] = ' '
+
     poppler = self.get_library(
         'poppler',
         [os.path.join('utils', 'pdftoppm.o'), os.path.join('utils', 'parseargs.o'), os.path.join('poppler', '.libs', 'libpoppler.a')],
-        env_init={'FONTCONFIG_CFLAGS': ' ', 'FONTCONFIG_LIBS': ' '},
+        env_init=env_init,
         configure_args=['--disable-libjpeg', '--disable-libpng', '--disable-poppler-qt', '--disable-poppler-qt4', '--disable-cms', '--disable-cairo-output', '--disable-abiword-output', '--disable-shared'])
 
     return poppler + freetype
@@ -1234,22 +1241,20 @@ def harness_server_func(in_queue, out_queue, port):
           self.send_error(404, "File not found: " + path)
           return None
         self.send_response(200)
-        self.send_header("Content-type", 'application/javascript')
-        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+        self.send_header('Content-type', 'application/javascript')
         self.send_header('Connection', 'close')
-        self.send_header('Expires', '-1')
         self.end_headers()
         return f
       else:
         return SimpleHTTPRequestHandler.send_head(self)
 
-    # Add COOP, COEP and CORP headers
+    # Add COOP, COEP, CORP, and no-caching headers
     def end_headers(self):
       self.send_header('Access-Control-Allow-Origin', '*')
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
       self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-
+      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
 
     def do_GET(self):
@@ -1261,6 +1266,10 @@ def harness_server_func(in_queue, out_queue, port):
         self.end_headers()
         self.wfile.write(open(path_from_root('tests', 'browser_harness.html'), 'rb').read())
       elif 'report_' in self.path:
+        # the test is reporting its result. first change dir away from the
+        # test dir, as it will be deleted now that the test is finishing, and
+        # if we got a ping at that time, we'd return an error
+        os.chdir(path_from_root())
         # for debugging, tests may encode the result and their own url (window.location) as result|url
         if '|' in self.path:
           path, url = self.path.split('|', 1)
@@ -1288,6 +1297,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
+
       elif 'stdout=' in self.path or 'stderr=' in self.path or 'exception=' in self.path:
         '''
           To get logging to the console from browser tests, add this to
@@ -1306,6 +1316,7 @@ def harness_server_func(in_queue, out_queue, port):
         self.send_header('Content-type', 'text/html')
         self.end_headers()
         if not in_queue.empty():
+          # there is a new test ready to be served
           url, dir = in_queue.get()
           if DEBUG:
             print('[queue command:', url, dir, ']')
@@ -1313,7 +1324,7 @@ def harness_server_func(in_queue, out_queue, port):
           assert out_queue.empty(), 'the single response from the last test was read'
           # tell the browser to load the test
           self.wfile.write(b'COMMAND:' + url)
-          # move us to the right place to serve the files
+          # move us to the right place to serve the files for the new test
           os.chdir(dir)
         else:
           # the browser must keep polling
@@ -1347,6 +1358,30 @@ class BrowserCore(RunnerCore):
   def __init__(self, *args, **kwargs):
     super(BrowserCore, self).__init__(*args, **kwargs)
 
+  @staticmethod
+  def browser_open(url):
+    if not EMTEST_BROWSER:
+      logger.info('Using default system browser')
+      webbrowser.open_new(url)
+      return
+
+    browser_args = shlex.split(EMTEST_BROWSER)
+    # If the given browser is a scalar, treat it like one of the possible types
+    # from https://docs.python.org/2/library/webbrowser.html
+    if len(browser_args) == 1:
+      try:
+        # This throws if the type of browser isn't available
+        webbrowser.get(browser_args[0]).open_new(url)
+        logger.info('Using Emscripten browser: %s', browser_args[0])
+        return
+      except webbrowser.Error:
+        # Ignore the exception and fallback to the custom command logic
+        pass
+    # Else assume the given browser is a specific program with additional
+    # parameters and delegate to that
+    logger.info('Using Emscripten browser: %s', str(browser_args))
+    subprocess.Popen(browser_args + [url])
+
   @classmethod
   def setUpClass(cls):
     super(BrowserCore, cls).setUpClass()
@@ -1354,23 +1389,13 @@ class BrowserCore(RunnerCore):
     cls.port = int(os.getenv('EMTEST_BROWSER_PORT', '8888'))
     if not has_browser():
       return
-    if not EMTEST_BROWSER:
-      print("Using default system browser")
-    else:
-      cmd = shlex.split(EMTEST_BROWSER)
-
-      def run_in_other_browser(url):
-        subprocess.Popen(cmd + [url])
-
-      webbrowser.open_new = run_in_other_browser
-      print("Using Emscripten browser: " + str(cmd))
     cls.browser_timeout = 60
     cls.harness_in_queue = multiprocessing.Queue()
     cls.harness_out_queue = multiprocessing.Queue()
     cls.harness_server = multiprocessing.Process(target=harness_server_func, args=(cls.harness_in_queue, cls.harness_out_queue, cls.port))
     cls.harness_server.start()
     print('[Browser harness server on process %d]' % cls.harness_server.pid)
-    webbrowser.open_new('http://localhost:%s/run_harness' % cls.port)
+    cls.browser_open('http://localhost:%s/run_harness' % cls.port)
 
   @classmethod
   def tearDownClass(cls):

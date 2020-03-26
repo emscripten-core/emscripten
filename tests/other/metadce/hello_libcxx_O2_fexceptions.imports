@@ -9,7 +9,7 @@ __cxa_throw
 __cxa_uncaught_exceptions
 __map_file
 __resumeException
-__syscall91
+__sys_munmap
 abort
 emscripten_memcpy_big
 emscripten_resize_heap

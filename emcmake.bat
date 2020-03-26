@@ -1,2 +1,2 @@
 @echo off
-python "%~dp0\emcmake" %*
+python "%~dp0\emcmake.py" %*

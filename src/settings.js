@@ -141,16 +141,29 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // (This option was formerly called TOTAL_MEMORY.)
 var INITIAL_MEMORY = 16777216;
 
-// Set the maximum size of memory in the wasm module (in bytes). Without this,
-// INITIAL_MEMORY is used (as it is used for the initial value), or if memory
-// growth is enabled, the default value here (-1) is to have no limit, but you
-// can set this to set a maximum size that growth will stop at.
+// Set the maximum size of memory in the wasm module (in bytes). This is only
+// relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
+// INITIAL_MEMORY is the final size of memory anyhow.
 //
-// This setting only matters for wasm, as in asm.js there is no place to set
-// a maximum, and only when ALLOW_MEMORY_GROWTH is set.
+// If this value is -1, it means there is no specified limit.
+//
+// This setting only matters for wasm and wasm2js, as in asm.js with fastcomp
+// there is no place to set a maximum.
+//
+// Note that the default value here is 2GB, which means that by default if you
+// enable memory growth then we can grow up to 2GB but no higher. 2GB is a
+// natural limit for several reasons:
+//
+//   * If the maximum heap size is over 2GB, then pointers must be unsigned in
+//     JavaScript, which increases code size. We don't want memory growth builds
+//     to be larger unless someone explicitly opts in to >2GB+ heaps.
+//   * Historically no VM has supported more >2GB+, and only recently (Mar 2020)
+//     has support started to appear. As support is limited, it's safer for
+//     people to opt into >2GB+ heaps rather than get a build that may not
+//     work on all VMs.
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
-var MAXIMUM_MEMORY = -1;
+var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
@@ -310,6 +323,7 @@ var SAFE_HEAP_LOG = 0;
 // In asm.js mode, we cannot simply add function pointers to function tables, so
 // we reserve some slots for them. An alternative to this is to use
 // EMULATED_FUNCTION_POINTERS, in which case we don't need to reserve.
+// [fastcomp-only]
 var RESERVED_FUNCTION_POINTERS = 0;
 
 // Whether to allow function pointers to alias if they have a different type.
@@ -500,7 +514,7 @@ var MAX_WEBGL_VERSION = 1;
 var WEBGL2_BACKWARDS_COMPATIBILITY_EMULATION = 0;
 
 // Forces support for all GLES3 features, not just the WebGL2-friendly subset.
-// This automatically turns out FULL_ES2.
+// This automatically turns on FULL_ES2 and WebGL2 support.
 var FULL_ES3 = 0;
 
 // Includes code to emulate various desktop GL features. Incomplete but useful
@@ -588,6 +602,10 @@ var ENVIRONMENT = '';
 //   * LZ4 files are read-only.
 var LZ4 = 0;
 
+// Emscripten exception handling options.
+// These options only pertain to Emscripten exception handling and do not
+// control the experimental native wasm exception handling option.
+
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
 // currently (in the future, wasm should improve that). When exceptions are
@@ -636,18 +654,14 @@ var NODEJS_CATCH_REJECTION = 1;
 // On upstream this uses the Asyncify pass in Binaryen. TODO: whitelist, coroutines
 var ASYNCIFY = 0;
 
-// The imports which can do a sync operation. If you add more you will need to
-// add them to here.
-// If the names here do not include a "module." prefix, the module is assumed
-// to be "env".
-var ASYNCIFY_IMPORTS = [
-  'emscripten_sleep', 'emscripten_wget', 'emscripten_wget_data', 'emscripten_idb_load',
-  'emscripten_idb_store', 'emscripten_idb_delete', 'emscripten_idb_exists',
-  'emscripten_idb_load_blob', 'emscripten_idb_store_blob', 'SDL_Delay',
-  'emscripten_scan_registers', 'emscripten_lazy_load_code',
-  'emscripten_fiber_swap',
-  'wasi_snapshot_preview1.fd_sync', '__wasi_fd_sync',
-];
+// Imports which can do a sync operation, in addition to the default ones that
+// emscripten defines like emscripten_sleep. If you add more you will need to
+// mention them to here, or else they will not work (in ASSERTIONS builds an
+// error will be shown).
+// Note that this list used to contain the default ones, which meant that you
+// had to list them when adding your own; the default ones are now added
+// automatically.
+var ASYNCIFY_IMPORTS = [];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
 // If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
@@ -839,13 +853,7 @@ var RETAIN_COMPILER_SETTINGS = 0;
 // may be slightly misleading, as this is for any JS library element, and not
 // just functions. For example, you can include the Browser object by adding
 // "$Browser" to this list.
-var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [
-  'memcpy',
-  'memset',
-  'malloc',
-  'free',
-  'emscripten_get_heap_size', // Used by dynamicAlloc() and -s FETCH=1
-];
+var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 
 // This list is also used to determine auto-exporting of library dependencies
 // (i.e., functions that might be dependencies of JS library functions, that if
@@ -935,7 +943,7 @@ var LINKABLE = 0;
 var STRICT = 0;
 
 // Automatically attempt to add archive indexes at link time to archives that 
-// don't already have them.  This can heppen when GNU ar or GNU ranlib is used
+// don't already have them.  This can happen when GNU ar or GNU ranlib is used
 // rather than `llvm-ar` or `emar` since the former don't understand the wasm
 // object format.
 // [link]
@@ -1499,14 +1507,6 @@ var ELIMINATE_DUPLICATE_FUNCTIONS_PASSES = 5;
 // the ctors.
 var EVAL_CTORS = 0;
 
-// Whether to emit DWARF in a wasm file on the side (this is not called
-// "split"/"separate" because there is already a DWARF concept by that name).
-// When DWARF is on the side, the main file has no DWARF info, while the side
-// file, ending in .debug.wasm, has the same wasm binary + all the debug
-// sections.
-// This has no effect if DWARF is not being emitted.
-var SIDE_DEBUG = 0;
-
 // see http://kripken.github.io/emscripten-site/docs/debugging/CyberDWARF.html
 // [fastcomp-only]
 var CYBERDWARF = 0;
@@ -1590,9 +1590,9 @@ var SINGLE_FILE = 0;
 // to execute the file without the accompanying JS file.
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
-// If set to 1, all JS libraries will be automaticially available at link time.
+// If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
-// need to explictly specify -lfoo.js in at link time in order to access
+// need to explicitly specify -lfoo.js in at link time in order to access
 // library function in library_foo.js.
 var AUTO_JS_LIBRARIES = 1;
 
@@ -1801,7 +1801,8 @@ var LEGACY_SETTINGS = [
   ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
   ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
   ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
-  ['WASM_OBJECT_FILES', [1], 'Use -flto or -fto=thin instead'],
+  // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
+  ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
   ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],

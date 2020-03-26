@@ -70,7 +70,13 @@ def run_one_command(cmd):
   # Helper function used by run_build_commands.
   if shared.EM_BUILD_VERBOSE:
     print(' '.join(cmd))
-  shared.run_process(cmd, stdout=stdout, stderr=stderr)
+  # building system libraries and ports should be hermetic in that it is not
+  # affected by things like EMMAKEN_CFLAGS which the user may have set
+  safe_env = os.environ.copy()
+  for opt in ['EMMAKEN_CFLAGS']:
+    if opt in safe_env:
+      del safe_env[opt]
+  shared.run_process(cmd, stdout=stdout, stderr=stderr, env=safe_env)
 
 
 def run_build_commands(commands):
@@ -547,32 +553,77 @@ class MTLibrary(Library):
     return super(MTLibrary, cls).get_default_variation(is_mt=shared.Settings.USE_PTHREADS, **kwargs)
 
 
+class exceptions(object):
+  """
+  This represents exception handling mode of Emscripten. Currently there are
+  three modes of exception handling:
+  - None: Does not handle exceptions. This includes -fno-exceptions, which
+    prevents both throwing and catching, and -fignore-exceptions, which only
+    allows throwing, but library-wise they use the same version.
+  - Emscripten: Emscripten provides exception handling capability using JS
+    emulation. This causes code size increase and performance degradation.
+  - Wasm: Wasm native exception handling support uses Wasm EH instructions and
+    is meant to be fast. You need to use a VM that has the EH support to use
+    this. This is not fully working yet and still experimental.
+  """
+  none = 0
+  emscripten = 1
+  wasm = 2
+
+
 class NoExceptLibrary(Library):
   def __init__(self, **kwargs):
-    self.is_noexcept = kwargs.pop('is_noexcept')
+    self.eh_mode = kwargs.pop('eh_mode')
     super(NoExceptLibrary, self).__init__(**kwargs)
+
+  def can_build(self):
+    if not super(NoExceptLibrary, self).can_build():
+      return False
+    # Wasm exception handling is only supported in the wasm backend
+    return shared.Settings.WASM_BACKEND or self.eh_mode != exceptions.wasm
+
+  def can_use(self):
+    if not super(NoExceptLibrary, self).can_use():
+      return False
+    # Wasm exception handling is only supported in the wasm backend
+    return shared.Settings.WASM_BACKEND or self.eh_mode != exceptions.wasm
 
   def get_cflags(self):
     cflags = super(NoExceptLibrary, self).get_cflags()
-    if self.is_noexcept:
+    if self.eh_mode == exceptions.none:
       cflags += ['-fno-exceptions']
-    else:
+    elif self.eh_mode == exceptions.emscripten:
       cflags += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
+    elif self.eh_mode == exceptions.wasm:
+      cflags += ['-fwasm-exceptions']
     return cflags
 
   def get_base_name(self):
     name = super(NoExceptLibrary, self).get_base_name()
-    if self.is_noexcept:
+    # TODO Currently emscripten-based exception is the default mode, thus no
+    # suffixes. Change the default to wasm exception later.
+    if self.eh_mode == exceptions.none:
       name += '-noexcept'
+    elif self.eh_mode == exceptions.wasm:
+      name += '-except'
     return name
 
   @classmethod
-  def vary_on(cls):
-    return super(NoExceptLibrary, cls).vary_on() + ['is_noexcept']
+  def variations(cls, **kwargs):
+    combos = super(NoExceptLibrary, cls).variations()
+    return ([dict(eh_mode=exceptions.none, **combo) for combo in combos] +
+            [dict(eh_mode=exceptions.emscripten, **combo) for combo in combos] +
+            [dict(eh_mode=exceptions.wasm, **combo) for combo in combos])
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    return super(NoExceptLibrary, cls).get_default_variation(is_noexcept=shared.Settings.DISABLE_EXCEPTION_CATCHING, **kwargs)
+    if shared.Settings.EXCEPTION_HANDLING:
+      eh_mode = exceptions.wasm
+    elif shared.Settings.DISABLE_EXCEPTION_CATCHING == 1:
+      eh_mode = exceptions.none
+    else:
+      eh_mode = exceptions.emscripten
+    return super(NoExceptLibrary, cls).get_default_variation(eh_mode=eh_mode, **kwargs)
 
 
 class MuslInternalLibrary(Library):
@@ -810,7 +861,7 @@ class libc_wasm(MuslInternalLibrary):
 
   def can_use(self):
     # if building to wasm, we need more math code, since we have fewer builtins
-    return shared.Settings.WASM
+    return super(libc_wasm, self).can_use() and shared.Settings.WASM
 
 
 class crt1(MuslInternalLibrary):
@@ -825,10 +876,10 @@ class crt1(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return shared.Settings.STANDALONE_WASM
+    return super(crt1, self).can_use() and shared.Settings.STANDALONE_WASM
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(crt1, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_extras(MuslInternalLibrary):
@@ -842,14 +893,12 @@ class libc_extras(MuslInternalLibrary):
   src_files = ['extras_fastcomp.c']
 
   def can_build(self):
-    return not shared.Settings.WASM_BACKEND
+    return super(libc_extras, self).can_build() and not shared.Settings.WASM_BACKEND
 
 
 class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++abi'
-  depends = ['libc']
   cflags = [
-      '-std=c++11',
       '-Oz',
       '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
       # Remove this once we update to include this llvm
@@ -857,13 +906,22 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
       '-D_LIBCXXABI_GUARD_ABI_ARM',
     ]
 
+  def get_depends(self):
+    if self.eh_mode == exceptions.wasm:
+      return ['libc', 'libunwind']
+    return ['libc']
+
   def get_cflags(self):
     cflags = super(libcxxabi, self).get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.is_noexcept:
+    if self.eh_mode == exceptions.none:
       cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
+    elif self.eh_mode == exceptions.emscripten:
+      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+    elif self.eh_mode == exceptions.wasm:
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
     return cflags
 
   def get_files(self):
@@ -883,8 +941,15 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp'
     ]
-    if self.is_noexcept:
+    if self.eh_mode == exceptions.none:
       filenames += ['cxa_noexception.cpp']
+    elif self.eh_mode == exceptions.wasm:
+      filenames += [
+        'cxa_exception.cpp',
+        'cxa_noexception.cpp',
+        'cxa_personality.cpp'
+      ]
+
     return files_in_path(
         path_components=['system', 'lib', 'libcxxabi', 'src'],
         filenames=filenames)
@@ -894,7 +959,7 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
   name = 'libc++'
   depends = ['libc++abi']
 
-  cflags = ['-std=c++11', '-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
+  cflags = ['-DLIBCXX_BUILDING_LIBCXXABI=1', '-D_LIBCPP_BUILDING_LIBRARY', '-Oz',
             '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS']
 
   src_dir = ['system', 'lib', 'libcxx']
@@ -937,6 +1002,35 @@ class libcxx(NoBCLibrary, CXXLibrary, NoExceptLibrary, MTLibrary):
     os.path.join('filesystem', 'int128_builtins.cpp'),
     os.path.join('filesystem', 'operations.cpp')
   ]
+
+
+class libunwind(CXXLibrary, NoExceptLibrary, MTLibrary):
+  name = 'libunwind'
+  cflags = ['-Oz', '-D_LIBUNWIND_DISABLE_VISIBILITY_ANNOTATIONS']
+  src_dir = ['system', 'lib', 'libunwind', 'src']
+  src_files = ['Unwind-wasm.cpp']
+
+  def __init__(self, **kwargs):
+    super(libunwind, self).__init__(**kwargs)
+
+  def can_build(self):
+    return super(libunwind, self).can_build() and shared.Settings.WASM_BACKEND
+
+  def can_use(self):
+    return super(libunwind, self).can_use() and shared.Settings.WASM_BACKEND and self.eh_mode == exceptions.wasm
+
+  def get_cflags(self):
+    cflags = super(libunwind, self).get_cflags()
+    cflags.append('-DNDEBUG')
+    if not self.is_mt:
+      cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
+    if self.eh_mode == exceptions.none:
+      cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
+    elif self.eh_mode == exceptions.emscripten:
+      cflags.append('-D__USING_EMSCRIPTEN_EXCEPTIONS__')
+    elif self.eh_mode == exceptions.wasm:
+      cflags.append('-D__USING_WASM_EXCEPTIONS__')
+    return cflags
 
 
 class libmalloc(MTLibrary, NoBCLibrary):
@@ -995,7 +1089,7 @@ class libmalloc(MTLibrary, NoBCLibrary):
     return name
 
   def can_use(self):
-    return shared.Settings.MALLOC != 'none'
+    return super(libmalloc, self).can_use() and shared.Settings.MALLOC != 'none'
 
   @classmethod
   def vary_on(cls):
@@ -1085,7 +1179,6 @@ class libgl(MTLibrary):
 
 class libembind(CXXLibrary):
   name = 'libembind'
-  cflags = ['-std=c++11']
   depends = ['libc++abi']
   never_force = True
 
@@ -1137,7 +1230,7 @@ class libasmfs(CXXLibrary, MTLibrary):
   def can_build(self):
     # ASMFS is looking for a maintainer
     # https://github.com/emscripten-core/emscripten/issues/9534
-    return False
+    return True
 
 
 class libhtml5(Library):
@@ -1211,7 +1304,7 @@ class CompilerRTWasmLibrary(Library):
   force_object_files = True
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(CompilerRTWasmLibrary, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 class libc_rt_wasm(AsanInstrumentedLibrary, CompilerRTWasmLibrary, MuslInternalLibrary):
@@ -1237,7 +1330,6 @@ class libsanitizer_common_rt_wasm(CompilerRTWasmLibrary, MTLibrary):
   js_depends = ['memalign', 'emscripten_builtin_memalign', '__data_end', '__heap_base']
   never_force = True
 
-  cflags = ['-std=c++11']
   src_dir = ['system', 'lib', 'compiler-rt', 'lib', 'sanitizer_common']
   src_glob = '*.cc'
   src_glob_exclude = ['sanitizer_common_nolibc.cc']
@@ -1248,7 +1340,6 @@ class SanitizerLibrary(CompilerRTWasmLibrary, MTLibrary):
   never_force = True
 
   includes = [['system', 'lib', 'compiler-rt', 'lib']]
-  cflags = ['-std=c++11']
   src_glob = '*.cc'
 
 
@@ -1354,7 +1445,7 @@ class libstandalonewasm(MuslInternalLibrary):
     return base_files + time_files + exit_files + conf_files
 
   def can_build(self):
-    return shared.Settings.WASM_BACKEND
+    return super(libstandalonewasm, self).can_build() and shared.Settings.WASM_BACKEND
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
@@ -1534,6 +1625,14 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   if shared.Settings.USE_ASAN:
     force_include.add('libasan_rt_wasm')
     add_library(system_libs_map['libasan_rt_wasm'])
+
+  # the sanitizer runtimes may call mmap, which will need a few things. sadly
+  # the usual deps_info mechanism does not work since we scan only user files
+  # for things, and not libraries (to be able to scan libraries, we'd need to
+  # somehow figure out which of their object files will actually be linked in -
+  # but only lld knows that). so just directly handle that here.
+  if shared.Settings.UBSAN_RUNTIME or shared.Settings.USE_LSAN or shared.Settings.USE_ASAN:
+    shared.Settings.EXPORTED_FUNCTIONS.append(mangle_c_symbol_name('memset'))
 
   if shared.Settings.STANDALONE_WASM:
     add_library(system_libs_map['libstandalonewasm'])

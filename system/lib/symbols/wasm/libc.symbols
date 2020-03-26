@@ -348,6 +348,7 @@
 -------- T cimagl
 -------- T clearerr
 -------- W clearerr_unlocked
+-------- T clock_settime
 -------- T clog
 -------- T clogf
 -------- T clogl

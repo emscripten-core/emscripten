@@ -7,7 +7,6 @@ add
 fflush
 free
 malloc
-setThrew
 stackAlloc
 stackRestore
 stackSave

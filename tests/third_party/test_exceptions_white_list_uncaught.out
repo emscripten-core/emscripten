@@ -1,0 +1,4 @@
+Exception thrown
+~Foo() called during stack unwinding
+Exception caught: test exception
+~Foo() called normally

@@ -12,7 +12,8 @@ is found, or exits with 1 if the variable does not exist.
 '''
 
 from __future__ import print_function
-import os, sys, re
+import sys
+import re
 from tools import shared
 
 if len(sys.argv) != 2 or \
@@ -22,4 +23,3 @@ if len(sys.argv) != 2 or \
   exit(1)
 
 print(getattr(shared, sys.argv[1]))
-

@@ -1297,7 +1297,7 @@ __base_class_type_info::search_below_dst(__dynamic_cast_info* info,
 
 // XXX EMSCRIPTEN
 
-#ifdef __EMSCRIPTEN__
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
 extern "C" {
 
 int __cxa_can_catch(__shim_type_info* catchType, __shim_type_info* excpType, void **thrown) {
@@ -1316,6 +1316,6 @@ int __cxa_is_pointer_type(__shim_type_info* type) {
 }
 
 }
-#endif // __EMSCRIPTEN__
+#endif // __USING_EMSCRIPTEN_EXCEPTIONS__
 
 }  // __cxxabiv1

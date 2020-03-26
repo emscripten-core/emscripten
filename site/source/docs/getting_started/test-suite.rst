@@ -4,7 +4,7 @@
 Emscripten Test Suite
 =====================
 
-Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to pass on the master branch (and almost always on the incoming branch). In addition to correctness tests, there are also benchmarks that you can run.
+Emscripten has a comprehensive test suite, which covers virtually all Emscripten functionality. These tests are an excellent resource for developers as they provide practical examples of most features, and are known to pass on the master branch. In addition to correctness tests, there are also benchmarks that you can run.
 
 This article explains how to run the test and benchmark suite, and provides an overview of what tests are available.
 

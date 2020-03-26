@@ -1187,7 +1187,7 @@ FS.staticInit();` +
       if (!stream.stream_ops.write) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
-      if (stream.flags & {{{ cDefine('O_APPEND') }}}) {
+      if (stream.seekable && stream.flags & {{{ cDefine('O_APPEND') }}}) {
         // seek to the end before writing in append mode
         FS.llseek(stream, 0, {{{ cDefine('SEEK_END') }}});
       }

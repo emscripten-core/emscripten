@@ -300,16 +300,14 @@ LibraryManager.library = {
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
-#if WASM
-        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#if ALLOW_MEMORY_GROWTH
+#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
+        var maxHeapSize = 4*1024*1024*1024;
 #else
-        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #endif
-#if MAXIMUM_MEMORY != -1
-        maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#endif
-#if !ALLOW_MEMORY_GROWTH
-        maxHeapSize = HEAPU8.length;
+#else // no growth
+        var maxHeapSize = HEAPU8.length;
 #endif
         return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
@@ -647,9 +645,46 @@ LibraryManager.library = {
 
   system__deps: ['__setErrNo'],
   system: function(command) {
+#if ENVIRONMENT_MAY_BE_NODE
+    if (ENVIRONMENT_IS_NODE) {
+      if (!command) return 1; // shell is available
+
+      var cmdstr = UTF8ToString(command);
+      if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
+
+      var cp = require('child_process');
+      var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
+
+      var _W_EXITCODE = function(ret, sig) {
+        return ((ret) << 8 | (sig));
+      }
+
+      // this really only can happen if process is killed by signal
+      if (ret.status === null) {
+        // sadly node doesn't expose such function
+        var signalToNumber = function(sig) {
+          // implement only the most common ones, and fallback to SIGINT
+          switch (sig) {
+            case 'SIGHUP': return 1;
+            case 'SIGINT': return 2;
+            case 'SIGQUIT': return 3;
+            case 'SIGFPE': return 8;
+            case 'SIGKILL': return 9;
+            case 'SIGALRM': return 14;
+            case 'SIGTERM': return 15;
+          }
+          return 2; // SIGINT
+        }
+        return _W_EXITCODE(0, signalToNumber(ret.signal));
+      }
+
+      return _W_EXITCODE(ret.status, 0);
+    }
+#endif // ENVIRONMENT_MAY_BE_NODE
     // int system(const char *command);
     // http://pubs.opengroup.org/onlinepubs/000095399/functions/system.html
     // Can't call external programs.
+    if (!command) return 0; // no shell available
     ___setErrNo({{{ cDefine('EAGAIN') }}});
     return -1;
   },
@@ -789,7 +824,11 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  getenv__deps: ['$ENV'],
+  getenv__deps: ['$ENV',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
   getenv: function(name) {
@@ -895,11 +934,6 @@ LibraryManager.library = {
     }
     return limit;
   },
-
-  // For compatibility, call to rand() when code requests arc4random(), although this is *not* at all
-  // as strong as rc4 is. See https://man.openbsd.org/arc4random
-  arc4random__sig: 'i',
-  arc4random: 'rand',
 
   // ==========================================================================
   // string.h
@@ -1034,7 +1068,6 @@ LibraryManager.library = {
     }
     return dest | 0;
   },
-#endif
 
   memset__inline: function(ptr, value, num, align) {
     return makeSetValues(ptr, 0, value, 'null', num, align);
@@ -1093,6 +1126,7 @@ LibraryManager.library = {
     }
     return (end-num)|0;
   },
+#endif // !WASM_BACKEND
 
   memcpy__sig: 'iiii',
   memmove__sig: 'iiii',
@@ -2842,7 +2876,9 @@ LibraryManager.library = {
   // sys/times.h
   // ==========================================================================
 
+#if !WASM_BACKEND
   times__deps: ['memset'],
+#endif
   times: function(buffer) {
     // clock_t times(struct tms *buffer);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/times.html
@@ -4307,16 +4343,11 @@ LibraryManager.library = {
   },
 
   emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
-  emscripten_log: function(flags, varargs) {
-    // Extract the (optionally-existing) printf format specifier field from varargs.
-    var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
+  emscripten_log: function(flags, format, varargs) {
     var str = '';
-    if (format) {
-      var result = __formatString(format, varargs);
-      for(var i = 0 ; i < result.length; ++i) {
-        str += String.fromCharCode(result[i]);
-      }
+    var result = __formatString(format, varargs);
+    for (var i = 0 ; i < result.length; ++i) {
+      str += String.fromCharCode(result[i]);
     }
     _emscripten_log_js(flags, str);
   },
@@ -4541,7 +4572,11 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
@@ -4684,9 +4719,9 @@ LibraryManager.library = {
   // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
   // Note that "smart" radix handling is employed for input string:
   // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: function(str) {
-    // TODO: If issues below are resolved, add a suitable suppression or remove this comment.
-    return parseInt(str, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+    return parseInt(str);
   },
 
   // Converts a JS string to an integer base-10, with signaling error
