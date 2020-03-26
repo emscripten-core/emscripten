@@ -2179,7 +2179,27 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
+  def maybe_add_license(filename=None, code=None):
+    # EMIT_EMSCRIPTEN_LICENSE is not supported in fastcomp since the JS
+    # optimization pipeline there is much more complex, and fastcomp is
+    # deprecated anyhow
+    if Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND:
+      if filename:
+        with open(filename) as f:
+          code = f.read()
+      code = JS.emscripten_license + code
+      if filename:
+        with open(filename, 'w') as f:
+          f.write(code)
+      else:
+        code = JS.emscripten_license + code
+    if filename:
+      return filename
+    else:
+      return code
+
+  @staticmethod
+  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
     from . import js_optimizer
     try:
       ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
@@ -2188,6 +2208,8 @@ class Building(object):
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
+    if not no_license:
+      ret = Building.maybe_add_license(filename=ret)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2214,9 +2236,12 @@ class Building(object):
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
       check_call(cmd, stdout=open(next, 'w'))
+      next = Building.maybe_add_license(filename=next)
       return next
     else:
-      return check_call(cmd, stdout=PIPE).stdout
+      output = check_call(cmd, stdout=PIPE).stdout
+      output = Building.maybe_add_license(code=output)
+      return output
 
   @staticmethod
   def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
@@ -2665,7 +2690,9 @@ class Building(object):
         temp = configuration.get_temp_files().get('.js').name
         with open(temp, 'w') as f:
           f.write(wasm2js_js)
-        temp = Building.js_optimizer(temp, passes)
+        # pass no_license since we are only optimizing a subset of the JS. if
+        # a license is needed, the js as a whole will have it anyhow.
+        temp = Building.js_optimizer(temp, passes, no_license=True)
         with open(temp) as f:
           wasm2js_js = f.read()
     # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
@@ -2961,6 +2988,14 @@ class JS(object):
   memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
+
+  emscripten_license = '''\
+/**
+ * @license
+ * Copyright 2020 Emscripten authors
+ * SPDX-License-Identifier: MIT
+ */
+'''
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent
