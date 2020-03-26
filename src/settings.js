@@ -49,6 +49,9 @@
 // The [fastcomp-only] annotation means that a flag only affects code generation
 // in fastcomp.
 //
+// The [upstream-only] annotation means that a flag only affects code generation
+// in upstream.
+//
 
 // Tuning
 
@@ -1298,6 +1301,7 @@ var EMIT_PRODUCERS_SECTION = 0;
 var EMIT_EMSCRIPTEN_METADATA = 0;
 
 // Emits emscripten license info in the JS output.
+// [upstream-only]
 var EMIT_EMSCRIPTEN_LICENSE = 0;
 
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them

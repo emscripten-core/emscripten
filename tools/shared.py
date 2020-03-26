@@ -2179,13 +2179,20 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def prepend_emscripten_license_in_file(filename):
-    with open(filename) as f:
-      js = f.read()
-    js = JS.emscripten_license + js
-    with open(filename, 'w') as f:
-      f.write(js)
-    return filename
+  def maybe_add_license(filename=None, code=None):
+    if Settings.EMIT_EMSCRIPTEN_LICENSE:
+      if filename:
+        with open(filename) as f:
+          code = f.read()
+        code = JS.emscripten_license + code
+        with open(filename, 'w') as f:
+          f.write(code)
+      else:
+        code = JS.emscripten_license + code
+    if filename:
+      return filename
+    else:
+      return code
 
   @staticmethod
   def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
@@ -2197,8 +2204,7 @@ class Building(object):
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
-    if Settings.EMIT_EMSCRIPTEN_LICENSE:
-      Building.prepend_emscripten_license_in_file(ret)
+    ret = Building.maybe_add_license(filename=ret)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2225,13 +2231,11 @@ class Building(object):
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
       check_call(cmd, stdout=open(next, 'w'))
-      if Settings.EMIT_EMSCRIPTEN_LICENSE:
-        Building.prepend_emscripten_license_in_file(next)
+      next = Building.maybe_add_license(filename=next)
       return next
     else:
       output = check_call(cmd, stdout=PIPE).stdout
-      if Settings.EMIT_EMSCRIPTEN_LICENSE:
-        output = JS.emscripten_license + output
+      output = Building.maybe_add_license(code=output)
       return output
 
   @staticmethod
