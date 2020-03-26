@@ -2690,6 +2690,8 @@ class Building(object):
         temp = configuration.get_temp_files().get('.js').name
         with open(temp, 'w') as f:
           f.write(wasm2js_js)
+        # pass no_license since we are only optimizing a subset of the JS. if
+        # a license is needed, the js as a whole will have it anyhow.
         temp = Building.js_optimizer(temp, passes, no_license=True)
         with open(temp) as f:
           wasm2js_js = f.read()
