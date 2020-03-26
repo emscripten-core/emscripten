@@ -1217,12 +1217,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
 
   def get_zlib_library(self):
     if WINDOWS:
-      return self.get_library('zlib', os.path.join('libz.a'),
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
                               configure=[path_from_root('emconfigure.bat')],
                               configure_args=['cmake', '.'],
                               make=['mingw32-make'],
                               make_args=[])
-    return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'])
+    return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
 
 
 # Run a server and a web page. When a test runs, we tell the server about it,

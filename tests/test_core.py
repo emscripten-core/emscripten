@@ -355,7 +355,7 @@ class TestCoreBase(RunnerCore):
                         os.path.join('src', '.libs', 'libBulletCollision.a'),
                         os.path.join('src', '.libs', 'libLinearMath.a')]
 
-    return self.get_library('bullet', generated_libs,
+    return self.get_library(os.path.join('third_party', 'bullet'), generated_libs,
                             configure=configure_commands,
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
@@ -4637,11 +4637,11 @@ res64 - external 64\n''', header='''
   @needs_make('mingw32-make')
   @needs_dlfcn
   def test_dylink_zlib(self):
-    self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
+    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
-    self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
+    self.dylink_test(main=open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
                      side=zlib_archive,
-                     expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
+                     expected=open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
                      force_c=True)
 
   # @needs_dlfcn
@@ -6180,10 +6180,10 @@ return malloc(size);
       make_args = ['libz.a']
       configure = ['sh', './configure']
 
-    self.do_run(open(path_from_root('tests', 'zlib', 'example.c')).read(),
-                open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
-                libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure),
-                includes=[path_from_root('tests', 'zlib'), 'building', 'zlib'],
+    self.do_run(open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
+                open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
+                libraries=self.get_library(os.path.join('third_party', 'zlib'), 'libz.a', make_args=make_args, configure=configure),
+                includes=[path_from_root('tests', 'third_party', 'zlib'), 'building', 'zlib'],
                 force_c=True)
 
   @needs_make('make')
@@ -6204,13 +6204,13 @@ return malloc(size);
       self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
 
       def test():
-        self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
+        self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
                     [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
                      open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
                     libraries=self.get_bullet_library(use_cmake),
-                    includes=[path_from_root('tests', 'bullet', 'src')])
+                    includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
       test()
 
   @needs_make('depends on freetype')
@@ -6276,9 +6276,9 @@ return malloc(size);
       };
       """ % line_splitter(str(image_bytes)))
 
-    shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
+    shutil.copy(path_from_root('tests', 'third_party', 'openjpeg', 'opj_config.h'), self.get_dir())
 
-    lib = self.get_library('openjpeg',
+    lib = self.get_library(os.path.join('third_party', 'openjpeg'),
                            [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
@@ -6325,13 +6325,13 @@ return malloc(size);
     self.emcc_args += ['--pre-js', 'pre.js']
 
     def do_test():
-      self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
+      self.do_run(open(path_from_root('tests', 'third_party', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
                   'Successfully generated', # The real test for valid output is in image_compare
                   '-i image.j2k -o image.raw'.split(' '),
                   libraries=lib,
-                  includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
-                            path_from_root('tests', 'openjpeg', 'codec'),
-                            path_from_root('tests', 'openjpeg', 'common'),
+                  includes=[path_from_root('tests', 'third_party', 'openjpeg', 'libopenjpeg'),
+                            path_from_root('tests', 'third_party', 'openjpeg', 'codec'),
+                            path_from_root('tests', 'third_party', 'openjpeg', 'common'),
                             os.path.join(self.get_build_dir(), 'openjpeg')],
                   force_c=True,
                   assert_returncode=0,
