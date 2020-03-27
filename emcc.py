@@ -633,7 +633,11 @@ emcc: supported targets: llvm bitcode, javascript, NOT elf
     # look up and find the revision in a parent directory that is a git repo
     revision = ''
     if os.path.exists(shared.path_from_root('.git')):
-      revision = ' (' + run_process(['git', 'show'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.splitlines()[0] + ')'
+      revision = run_process(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE, cwd=shared.path_from_root()).stdout.strip()
+    elif os.path.exists(shared.path_from_root('emscripten-revision.txt')):
+      revision = open(shared.path_from_root('emscripten-revision.txt')).read().strip()
+    if revision:
+      revision = ' (%s)' % revision
     print('''emcc (Emscripten gcc/clang-like replacement) %s%s
 Copyright (C) 2014 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.

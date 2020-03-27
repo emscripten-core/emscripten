@@ -11,7 +11,7 @@ install:
 	@rm -rf $(DISTDIR)
 	mkdir $(DISTDIR)
 	cp -ar * $(DISTDIR)
-	echo "$(VERSION) ($(GIT_HASH))" > $(DISTDIR)/emscripten-version.txt
+	echo "$(GIT_HASH)" > $(DISTDIR)/emscripten-revision.txt
 	for exclude in $(EXCLUDES); do rm -rf $(DISTDIR)/$$exclude; done
 
 # Create an distributable archive of emscripten suitable for use

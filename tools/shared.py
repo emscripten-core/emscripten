@@ -553,8 +553,7 @@ def set_version_globals():
   filename = path_from_root('emscripten-version.txt')
   with open(filename) as f:
     EMSCRIPTEN_VERSION = f.read().strip().replace('"', '')
-  version = EMSCRIPTEN_VERSION.split()[0]
-  parts = [int(x) for x in version.split('.')]
+  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
