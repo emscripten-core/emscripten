@@ -485,5 +485,5 @@
 -------- T __cxa_uncaught_exceptions
 -------- D __cxa_unexpected_handler
 -------- T __dynamic_cast
--------- T __gxx_personality_v0
+-------- T __gxx_personality_wasm0
 -------- T abort_message
