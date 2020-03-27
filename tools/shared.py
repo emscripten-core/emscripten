@@ -2469,12 +2469,13 @@ class Building(object):
       # closure compiler will automatically preserve @license blocks, but we
       # have an explicit flag for that (EMIT_EMSCRIPTEN_LICENSE), which we
       # don't have a way to tell closure about. remove the comment here if we
-      # don't want it.
+      # don't want it (closure will aggregate all such comments into a single
+      # big one at the top of the file)
       if not(Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND):
         with open(outfile) as f:
           code = f.read()
-        if code.startswith(JS.closured_emscripten_license):
-          code = code[len(JS.closured_emscripten_license):]
+        if code.startswith('/*'):
+          code = code[code.find('*/') + 2:]
           with open(outfile, 'w') as f:
             f.write(code)
 
@@ -3007,14 +3008,6 @@ class JS(object):
  * Copyright 2010 Emscripten authors
  * SPDX-License-Identifier: MIT
  */
-'''
-
-  closured_emscripten_license = '''\
-/*
-
- Copyright 2010 The Emscripten Authors
- SPDX-License-Identifier: MIT
-*/
 '''
 
   @staticmethod
