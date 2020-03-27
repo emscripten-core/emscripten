@@ -137,6 +137,10 @@ If you package Emscripten for users in some manner, the details in the rest of
 this document should be helpful with understanding versioning and so forth.
 This section goes into that in more detail.
 
+You can use `make install` or `make dist` to produce a cut down version of
+emscripten suitable for end users.  This mostly excludes certain parts of the
+source tree that are only relevant to emscripten developers.
+
 The core
 [DEPS](https://chromium.googlesource.com/emscripten-releases/+/refs/heads/master/DEPS)
 file in the chromium `emscripten-releases` contains all the information about versions
