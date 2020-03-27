@@ -85,7 +85,7 @@ SUPPORTED_LINKER_FLAGS = (
 # Maps to true if the the flag takes an argument
 UNSUPPORTED_LLD_FLAGS = {
     # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
-    '-bind_at_load', False,
+    '-bind_at_load': False,
     # wasm-ld doesn't support map files yet.
     '--print-map': False,
     '-M': False,
