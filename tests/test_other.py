@@ -9712,10 +9712,10 @@ int main () {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.js') as f:
       js = f.read()
-    self.assertContainedIf('Copyright 2020 Emscripten authors', js, expect_license)
+    self.assertContainedIf('Copyright 2010 Emscripten authors', js, expect_license)
     self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
     if expect_license:
-      self.assertEqual(js.count('Copyright 2020 Emscripten authors'), 1)
+      self.assertEqual(js.count('Copyright 2010 Emscripten authors'), 1)
 
   def test_add_emscripten_metadata_not_emitted(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),

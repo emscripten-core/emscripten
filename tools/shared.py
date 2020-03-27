@@ -3004,7 +3004,7 @@ class JS(object):
   emscripten_license = '''\
 /**
  * @license
- * Copyright 2020 Emscripten authors
+ * Copyright 2010 Emscripten authors
  * SPDX-License-Identifier: MIT
  */
 '''
@@ -3012,7 +3012,7 @@ class JS(object):
   closured_emscripten_license = '''\
 /*
 
- Copyright 2020 The Emscripten Authors
+ Copyright 2010 The Emscripten Authors
  SPDX-License-Identifier: MIT
 */
 '''
