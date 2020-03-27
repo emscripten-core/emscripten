@@ -5846,6 +5846,11 @@ int main(void) {
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta(js_engines)
 
+  @bleeding_edge_wasm_backend
+  def test_4GB(self, js_engines):
+    # TODO aelso tast new safe heap that chaks all params for negatervs
+    self.do_run_in_out_file_test('tests', 'core', 'test_4GB')
+
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark', assert_returncode=None)
 
