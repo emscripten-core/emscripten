@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 mergeInto(LibraryManager.library, {
   emmalloc_unclaimed_heap_memory__deps: ['emscripten_get_sbrk_ptr'],
   emmalloc_unclaimed_heap_memory: function() {

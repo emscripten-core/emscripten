@@ -1,7 +1,8 @@
-// Copyright 2019 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+//
+// @license
+// Copyright 2019 The Emscripten Authors
+// SPDX-License-Identifier: MIT
+//
 
 //
 // Settings in this file work exactly like those in settings.js but are not

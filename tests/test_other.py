@@ -9699,15 +9699,16 @@ int main () {
     self.assertTextDataIdentical('hello, world!\n', ret)
 
   @parameterized({
-    'O0': (False, []), # noqa
     'O2': (False, ['-O2']), # noqa
     'O2_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
     'O2_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '-s', 'WASM=0']), # noqa
     'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
     'O2_closure_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
   })
-  @no_fastcomp()
   def test_emscripten_license(self, expect_license, args):
+    # fastcomp does not support the new license flag
+    if not self.is_wasm_backend():
+      expect_license = False
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args)
     with open('a.out.js') as f:
       js = f.read()

@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if WASM2JS && 0 // TODO: Figure out a way to enable this kind of sharing.
 
 // Binaryen defines the following function if Wasm2JS is being used:

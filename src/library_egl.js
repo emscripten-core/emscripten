@@ -1,9 +1,10 @@
+/**
+ * @license
+ * Copyright 2012 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 /*
- * Copyright 2012 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
  * The EGL implementation supports only one EGLNativeDisplayType, the
  * EGL_DEFAULT_DISPLAY.  This native display type returns the only supported
  * EGLDisplay handle with the magic value 62000. There is only a single
