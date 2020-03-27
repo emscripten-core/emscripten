@@ -506,7 +506,7 @@ jobs:
       name: win/vs2019
       shell: bash.exe
     environment:
-      # We need python installed before we can test anytyhing.
+      # We need python installed before we can test anything.
       # There seems to be undocument copy of python installed here. Hopefully
       # if this disappears there will be another way of getting a re-installed
       # version.
