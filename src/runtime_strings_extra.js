@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 // runtime_strings_extra.js: Strings related runtime functions that are available only in regular runtime.
 
 // Given a pointer 'ptr' to a null-terminated ASCII-encoded string in the emscripten HEAP, returns

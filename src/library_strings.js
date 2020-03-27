@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if MINIMAL_RUNTIME
 
 #include "runtime_strings_extra.js"
