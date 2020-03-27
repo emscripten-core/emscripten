@@ -978,10 +978,10 @@ class benchmark(runner.RunnerCore):
     src += open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'bullet'), [
-                                         os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                         os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                         os.path.join('src', '.libs', 'libLinearMath.a')],
+      return self.get_library(os.path.join('third_party', 'bullet'),
+                              [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                               os.path.join('src', '.libs', 'libBulletCollision.a'),
+                               os.path.join('src', '.libs', 'libLinearMath.a')],
                               # The --host parameter is needed for 2 reasons:
                               # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
                               # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
