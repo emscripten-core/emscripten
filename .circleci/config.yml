@@ -114,7 +114,9 @@ commands:
       - run:
           name: run tests
           command: |
-            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
+            # skip tests that allocate 2GB+, as they often lead to OOMs. we run
+            # those separately later.
+            $PYTHON_BIN tests/runner.py << parameters.test_targets >> skip:*.test_4GB skip:*.test_2GB_fail
             $PYTHON_BIN tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
@@ -472,6 +474,13 @@ jobs:
     steps:
       - run-tests:
           test_targets: "wasm2"
+  test-upstream-wasm2-serial:
+    executor: bionic
+    steps:
+      - run-tests:
+          test_targets: "wasm2.test_4GB"
+      - run-tests:
+          test_targets: "wasm2.test_2GB_fail"
   test-upstream-wasm3:
     executor: bionic
     steps:
@@ -608,6 +617,9 @@ workflows:
           requires:
             - build-upstream-linux
       - test-upstream-wasm2:
+          requires:
+            - build-upstream-linux
+      - test-upstream-wasm2-serial:
           requires:
             - build-upstream-linux
       - test-upstream-wasm3:
