@@ -5848,8 +5848,12 @@ int main(void) {
 
   @bleeding_edge_wasm_backend
   def test_4GB(self, js_engines):
+    if '-O2' not in self.emcc_args and '-O3' not in self.emcc_args:
+      return self.skipTest('very slow without heavy opts')
     # TODO aelso tast new safe heap that chaks all params for negatervs
-    self.do_run_in_out_file_test('tests', 'core', 'test_4GB')
+    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
+    self.set_setting('MAXIMUM_MEMORY', 4 * 1024 * 1024 * 1024)
+    self.do_run_in_out_file_test('tests', 'core', 'test_4GB', js_engines=js_engines)
 
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark', assert_returncode=None)

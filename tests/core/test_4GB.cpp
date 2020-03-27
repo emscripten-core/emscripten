@@ -10,27 +10,27 @@ int main() {
   std::vector<std::vector<char>> chunks;
   chunks.resize(NUM_CHUNKS);
 
+  puts("allocating");
+
   for (int i = 0; i < NUM_CHUNKS; i++) {
     printf("alloc %d\n", i);
     chunks[i].resize(CHUNK_SIZE);
   }
 
+  puts("testing");
+
   for (int i = 0; i < NUM_CHUNKS; i++) {
     printf("test %d\n", i);
-    // write in C
     chunks[i][i] = i;
-    // read in JS
     int fromJS = EM_ASM_INT({
       return HEAP8[$0];
     }, &chunks[i][i]);
-    assert(fromJS == i);
-    // write in JS
+    printf("wrote %d in C, read %d from JS\n", i, fromJS);
     EM_ASM_INT({
-      HEAP8[$0] = $1 * 2;
+      HEAP8[$0] = 2 * $1;
     }, &chunks[i][i], i);
-    // read in C
     int fromC = chunks[i][i];
-    assert(fromC == 2 * i);
+    printf("wrote %d in JS, read %d from C\n", 2 * i, fromC);
   }
 
   puts("success");
