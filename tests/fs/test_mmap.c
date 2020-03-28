@@ -89,6 +89,44 @@ int main() {
     fclose(fd);
   }
 
+  // Use mmap to read out.txt and modify the contents in memory,
+  // but make sure it's not overwritten on munmap
+  {
+    const char* readonlytext = "readonly mmap\0";
+    const char* text = "write mmap\0";
+    const char* path = "/yolo/outreadonly.txt";
+    size_t readonlytextsize = strlen(readonlytext);
+    size_t textsize = strlen(text);
+
+    int fd = open(path, O_RDWR | O_CREAT, (mode_t)0600);
+    // write contents to the file ( we don't want this to be overwritten on munmap )
+    assert(write(fd, readonlytext, readonlytextsize) != -1);
+    close(fd);    
+
+    fd = open(path, O_RDWR);
+    char *map = (char*)mmap(0, textsize, PROT_READ, MAP_SHARED, fd, 0);
+    assert(map != MAP_FAILED);
+    
+    for (size_t i = 0; i < textsize; i++) {
+      map[i] = text[i];
+    }
+
+    assert(munmap(map, textsize) != -1);
+    close(fd);
+  }
+
+  {
+    FILE* fd = fopen("/yolo/outreadonly.txt", "r");
+    if (fd == NULL) {
+      printf("failed to open /yolo/outreadonly.txt\n");
+      return 1;
+    }
+    char buffer[14];
+    fread(buffer, 1, 15, fd);
+    printf("/yolo/outreadonly.txt content=%s\n", buffer);
+    fclose(fd);
+  }
+
   // MAP_PRIVATE
   {
     const char* text = "written mmap";
