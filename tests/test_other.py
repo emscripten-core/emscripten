@@ -10650,9 +10650,16 @@ int main() {
     self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib']))
     self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs']))
 
-    # Buil again but with explit system libraries
+    # Build again but with explit system libraries
     libs = ['-lc', '-lcompiler_rt']
     if self.is_wasm_backend():
       libs.append('-lc_rt_wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib'] + libs)
     run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs'] + libs)
+
+  def test_argument_match(self):
+    # Verify that emcc arguments match preciely.  We had a bug where only the prefix
+    # was matched
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts', '10'])
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-optsXX'])
+    self.assertContained("error: unsupported option '--js-optsXX'", err)
