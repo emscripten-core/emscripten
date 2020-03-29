@@ -8932,10 +8932,10 @@ end
   def test_noderawfs_disables_embedding(self):
     expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
     base = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NODERAWFS=1']
-    err = self.expect_fail(base + ['--preload-files', 'somefile'])
-    assert expected in err
-    err = self.expect_fail(base + ['--embed-files', 'somefile'])
-    assert expected in err
+    err = self.expect_fail(base + ['--preload-file', 'somefile'])
+    self.assertContained(expected, err)
+    err = self.expect_fail(base + ['--embed-file', 'somefile'])
+    self.assertContained(expected, err)
 
   def test_node_code_caching(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
