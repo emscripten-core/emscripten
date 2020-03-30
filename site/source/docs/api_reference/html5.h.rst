@@ -72,7 +72,7 @@ using something like
 
   .. code-block:: cpp
 
-    SpecialEventTargets["!canvas"] = Module.canvas;
+    SpecialHTMLTargets["!canvas"] = Module.canvas;
 
 That will let ``!canvas`` map to the canvas held in Module.canvas. (You can write
 that JavaScript in an ``EM_JS`` or ``EM_ASM`` block that happens before you
