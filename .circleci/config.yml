@@ -114,9 +114,7 @@ commands:
       - run:
           name: run tests
           command: |
-            # skip tests that allocate 2GB+, as they often lead to OOMs. we run
-            # those separately later.
-            $PYTHON_BIN tests/runner.py << parameters.test_targets >> skip:*.test_4GB skip:*.test_2GB_fail
+            $PYTHON_BIN tests/runner.py << parameters.test_targets >>
             $PYTHON_BIN tools/check_clean.py
   run-tests-mac:
     description: "Runs emscripten tests"
@@ -474,13 +472,6 @@ jobs:
     steps:
       - run-tests:
           test_targets: "wasm2"
-  test-upstream-wasm2-serial:
-    executor: bionic
-    steps:
-      - run-tests:
-          test_targets: "wasm2.test_4GB"
-      - run-tests:
-          test_targets: "wasm2.test_2GB_fail"
   test-upstream-wasm3:
     executor: bionic
     steps:
@@ -515,7 +506,7 @@ jobs:
       name: win/vs2019
       shell: bash.exe
     environment:
-      # We need python installed before we can test anything.
+      # We need python installed before we can test anytyhing.
       # There seems to be undocument copy of python installed here. Hopefully
       # if this disappears there will be another way of getting a re-installed
       # version.
@@ -617,9 +608,6 @@ workflows:
           requires:
             - build-upstream-linux
       - test-upstream-wasm2:
-          requires:
-            - build-upstream-linux
-      - test-upstream-wasm2-serial:
           requires:
             - build-upstream-linux
       - test-upstream-wasm3:
