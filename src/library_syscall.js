@@ -1,7 +1,8 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 var SyscallsLibrary = {
   $SYSCALLS__deps: ['$PATH',
@@ -258,7 +259,7 @@ var SyscallsLibrary = {
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
-    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, flags: flags, offset: off };
+    SYSCALLS.mappings[ptr] = { malloc: ptr, len: len, allocated: allocated, fd: fd, prot: prot, flags: flags, offset: off };
     return ptr;
   },
 
@@ -280,7 +281,9 @@ var SyscallsLibrary = {
     if (len === info.len) {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
       var stream = FS.getStream(info.fd);
-      SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+      if (info.prot & {{{ cDefine('PROT_WRITE') }}}) {
+        SYSCALLS.doMsync(addr, stream, len, info.flags, info.offset);
+      }
       FS.munmap(stream);
 #else
 #if ASSERTIONS

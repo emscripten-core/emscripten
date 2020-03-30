@@ -1084,10 +1084,12 @@ function reattachComments(ast, comments) {
   // Walk through all comments in ascending line number, and match each
   // comment to the appropriate code block.
   for(var i = 0, j = 0; i < comments.length; ++i) {
-    while(j < symbols.length && symbols[j].start.pos < comments[i].end)
+    while(j < symbols.length && symbols[j].start.pos < comments[i].end) {
       ++j;
-    if (j >= symbols.length)
+    }
+    if (j >= symbols.length) {
       break;
+    }
     if (symbols[j].start.pos - comments[i].end > 20) {
       // This comment is too far away to refer to the given symbol. Drop
       // the comment altogether.

@@ -1,8 +1,9 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
-//
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 // no merging, this is the entire library. it is literally just enough to run
 // the bootstrap program that prints out C constants for us, we obviously need
 // to run without any such constants ourselves...

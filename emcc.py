@@ -84,8 +84,12 @@ SUPPORTED_LINKER_FLAGS = (
 
 # Maps to true if the the flag takes an argument
 UNSUPPORTED_LLD_FLAGS = {
+    # macOS-specific linker flag that libtool (ltmain.sh) will if macOS is detected.
+    '-bind_at_load': False,
+    # wasm-ld doesn't support map files yet.
     '--print-map': False,
     '-M': False,
+    # wasm-ld doesn't support soname yet
     '-soname': True
 }
 
@@ -2757,9 +2761,10 @@ def parse_args(newargs):
   eh_enabled = False
   wasm_eh_enabled = False
 
-  def check_bad_eq(arg):
-    if '=' in arg:
+  def check_arg(arg, value):
+    if arg.startswith(value) and '=' in arg:
       exit_with_error('Invalid parameter (do not use "=" with "--" options)')
+    return arg == value
 
   for i in range(len(newargs)):
     # On Windows Vista (and possibly others), excessive spaces in the command line
@@ -2779,15 +2784,13 @@ def parse_args(newargs):
         shared.Settings.SHRINK_LEVEL = 2
         settings_changes.append('INLINING_LIMIT=25')
       shared.Settings.OPT_LEVEL = validate_arg_level(options.requested_level, 3, 'Invalid optimization level: ' + newargs[i], clamp=True)
-    elif newargs[i].startswith('--js-opts'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--js-opts'):
       options.js_opts = int(newargs[i + 1])
       if options.js_opts:
         options.force_js_opts = True
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--llvm-opts'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--llvm-opts'):
       options.llvm_opts = parse_value(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
@@ -2796,41 +2799,34 @@ def parse_args(newargs):
         shared.Settings.LTO = newargs[i].split('=')[1]
       else:
         shared.Settings.LTO = "full"
-    elif newargs[i].startswith('--llvm-lto'):
+    elif check_arg(newargs[i], '--llvm-lto'):
       if shared.Settings.WASM_BACKEND:
         logger.warning('--llvm-lto ignored when using llvm backend')
-      check_bad_eq(newargs[i])
       options.llvm_lto = int(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--closure-args'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--closure-args'):
       args = newargs[i + 1]
       options.closure_args += shlex.split(args)
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--closure'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--closure'):
       options.use_closure_compiler = int(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--js-transform'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--js-transform'):
       options.js_transform = newargs[i + 1]
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--pre-js'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--pre-js'):
       options.pre_js += open(newargs[i + 1]).read() + '\n'
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--post-js'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--post-js'):
       options.post_js += open(newargs[i + 1]).read() + '\n'
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--minify'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--minify'):
       assert newargs[i + 1] == '0', '0 is the only supported option for --minify; 1 has been deprecated'
       shared.Settings.DEBUG_LEVEL = max(1, shared.Settings.DEBUG_LEVEL)
       newargs[i] = ''
@@ -2893,18 +2889,15 @@ def parse_args(newargs):
       newargs[i] = ''
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'emval.js'))
       shared.Settings.SYSTEM_JS_LIBRARIES.append(shared.path_from_root('src', 'embind', 'embind.js'))
-    elif newargs[i].startswith('--embed-file'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--embed-file'):
       options.embed_files.append(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--preload-file'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--preload-file'):
       options.preload_files.append(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--exclude-file'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--exclude-file'):
       options.exclude_files.append(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
@@ -2923,18 +2916,15 @@ def parse_args(newargs):
     elif newargs[i] == '-v':
       shared.PRINT_STAGES = True
       shared.check_sanity(force=True)
-    elif newargs[i].startswith('--shell-file'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--shell-file'):
       options.shell_path = newargs[i + 1]
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--source-map-base'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--source-map-base'):
       options.source_map_base = newargs[i + 1]
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i].startswith('--js-library'):
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--js-library'):
       shared.Settings.SYSTEM_JS_LIBRARIES.append(os.path.abspath(newargs[i + 1]))
       newargs[i] = ''
       newargs[i + 1] = ''
@@ -2944,8 +2934,7 @@ def parse_args(newargs):
     elif newargs[i] == '--jcache':
       logger.error('jcache is no longer supported')
       newargs[i] = ''
-    elif newargs[i] == '--cache':
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--cache'):
       os.environ['EM_CACHE'] = os.path.normpath(newargs[i + 1])
       shared.reconfigure_cache()
       newargs[i] = ''
@@ -2964,13 +2953,11 @@ def parse_args(newargs):
     elif newargs[i] == '--show-ports':
       system_libs.show_ports()
       should_exit = True
-    elif newargs[i] == '--save-bc':
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--save-bc'):
       options.save_bc = newargs[i + 1]
       newargs[i] = ''
       newargs[i + 1] = ''
-    elif newargs[i] == '--memory-init-file':
-      check_bad_eq(newargs[i])
+    elif check_arg(newargs[i], '--memory-init-file'):
       options.memory_init_file = int(newargs[i + 1])
       newargs[i] = ''
       newargs[i + 1] = ''
