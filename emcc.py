@@ -2761,7 +2761,6 @@ def parse_args(newargs):
   eh_enabled = False
   wasm_eh_enabled = False
 
-
   for i in range(len(newargs)):
     # On Windows Vista (and possibly others), excessive spaces in the command line
     # leak into the items in this array, so trim e.g. 'foo.cpp ' -> 'foo.cpp'
@@ -2777,10 +2776,10 @@ def parse_args(newargs):
       # Consume that option and its argument
       if len(newargs) <= i + 1:
         exit_with_error("option '%s' requires an argument" % arg)
-      rtn = newargs[i + 1]
+      ret = newargs[i + 1]
       newargs[i] = ''
       newargs[i + 1] = ''
-      return rtn
+      return ret
 
     if newargs[i].startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
@@ -3037,7 +3036,7 @@ def parse_args(newargs):
   if should_exit:
     sys.exit(0)
 
-  newargs = [arg for arg in newargs if arg]
+  newargs = [a for a in newargs if a]
   return options, settings_changes, newargs
 
 
