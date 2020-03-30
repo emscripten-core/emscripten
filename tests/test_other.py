@@ -10663,3 +10663,7 @@ int main() {
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts', '10'])
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-optsXX'])
     self.assertContained("error: unsupported option '--js-optsXX'", err)
+
+  def test_missing_argument(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts'])
+    self.assertContained("error: option '--js-opts' requires an argument", err)
