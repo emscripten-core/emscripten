@@ -320,6 +320,9 @@ i8x16 TESTFN i8x16_andnot(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_bitselect(i8x16 x, i8x16 y, i8x16 cond) {
   return (i8x16)__builtin_wasm_bitselect((i32x4)x, (i32x4)y, (i32x4)cond);
 }
+i8x16 TESTFN i8x16_abs(i8x16 vec) {
+  return (i8x16)__builtin_wasm_abs_i8x16(vec);
+}
 i8x16 TESTFN i8x16_neg(i8x16 vec) {
   return -vec;
 }
@@ -363,6 +366,9 @@ i8x16 TESTFN i8x16_mul(i8x16 x, i8x16 y) {
 i8x16 TESTFN i8x16_avgr_u(i8x16 x, i8x16 y) {
   return __builtin_wasm_avgr_u_i8x16(x, y);
 }
+i16x8 TESTFN i16x8_abs(i16x8 vec) {
+  return (i16x8)__builtin_wasm_abs_i16x8(vec);
+}
 i16x8 TESTFN i16x8_neg(i16x8 vec) {
   return -vec;
 }
@@ -405,6 +411,9 @@ i16x8 TESTFN i16x8_mul(i16x8 x, i16x8 y) {
 // Skip {min,max}_{s,u} because they do not have short builtin equivalents
 i16x8 TESTFN i16x8_avgr_u(i16x8 x, i16x8 y) {
   return __builtin_wasm_avgr_u_i16x8(x, y);
+}
+i32x4 TESTFN i32x4_abs(i32x4 vec) {
+  return (i32x4)__builtin_wasm_abs_i32x4(vec);
 }
 i32x4 TESTFN i32x4_neg(i32x4 vec) {
   return -vec;
@@ -1076,6 +1085,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
 
   // i8x16 arithmetic
   expect_vec(
+    i8x16_abs((i8x16){0, 1, 42, -3, -56, 127, -128, -126, 0, -1, -42, 3, 56, -127, -128, 126}),
+    ((i8x16){0, 1, 42, 3, 56, 127, -128, 126, 0, 1, 42, 3, 56, 127, -128, 126})
+  );
+  expect_vec(
     i8x16_neg((i8x16){0, 1, 42, -3, -56, 127, -128, -126, 0, -1, -42, 3, 56, -127, -128, 126}),
     ((i8x16){0, -1, -42, 3, 56, -127, -128, 126, 0, 1, 42, -3, -56, 127, -128, -126})
   );
@@ -1170,6 +1183,10 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
 
   // i16x8 arithmetic
   expect_vec(
+    i16x8_abs((i16x8){0, 1, 42, -3, -56, 32767, -32768, 32766}),
+    ((i16x8){0, 1, 42, 3, 56, 32767, -32768, 32766})
+  );
+  expect_vec(
     i16x8_neg((i16x8){0, 1, 42, -3, -56, 32767, -32768, 32766}),
     ((i16x8){0, -1, -42, 3, 56, -32767, -32768, -32766})
   );
@@ -1263,7 +1280,8 @@ int EMSCRIPTEN_KEEPALIVE __attribute__((__optnone__)) main(int argc, char** argv
   );
 
   // i32x4 arithmetic
-  expect_vec(i32x4_neg((i32x4){0, 1, 0x80000000, 0x7fffffff}), ((i32x4){0, -1, 0x80000000, 0x80000001}));
+  expect_vec(i32x4_abs((i32x4){0, 1, 0x80000000, 0x80000001}), ((i32x4){0, 1, 0x80000000, 0x7fffffff}));
+  expect_vec(i32x4_neg((i32x4){0, 1, 0x80000000, 0x80000001}), ((i32x4){0, -1, 0x80000000, 0x7fffffff}));
   expect_eq(i32x4_any_true((i32x4){0, 0, 0, 0}), 0);
   expect_eq(i32x4_any_true((i32x4){0, 0, 1, 0}), 1);
   expect_eq(i32x4_any_true((i32x4){1, 0, 1, 1}), 1);

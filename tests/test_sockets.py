@@ -284,8 +284,8 @@ class sockets(BrowserCore):
     shared.try_delete('enet')
     shutil.copytree(path_from_root('tests', 'enet'), 'enet')
     with chdir('enet'):
-      run_process([PYTHON, path_from_root('emconfigure'), './configure'])
-      run_process([PYTHON, path_from_root('emmake'), 'make'])
+      run_process([PYTHON, path_from_root('emconfigure.py'), './configure'])
+      run_process([PYTHON, path_from_root('emmake.py'), 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + path_from_root('tests', 'enet', 'include')]
 
     for harness in [

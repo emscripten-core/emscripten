@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 mergeInto(LibraryManager.library, {
   emscripten_get_exported_function: function(name) {
     name = UTF8ToString(name);

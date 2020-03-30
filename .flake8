@@ -4,8 +4,7 @@ exclude =
  ./third_party/, # third-party code
  ./tools/filelock.py, # third-party code
  ./tools/scons/, # third-party code
- ./tests/freetype/src/, # third-party code
- ./tests/poppler/poppler/, # third-party code
+ ./tests/third_party/, # third-party code
  ./site/source/conf.py,
  ./tools/debug/,
  ./tools/emdump.py,

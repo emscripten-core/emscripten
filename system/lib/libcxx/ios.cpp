@@ -84,7 +84,7 @@ ios_base::failure::failure(const char* msg, const error_code& ec)
 {
 }
 
-ios_base::failure::~failure() throw()
+ios_base::failure::~failure() _NOEXCEPT
 {
 }
 

@@ -209,15 +209,15 @@ var ensureCache = {
     return ret;
   },
   copy: function(array, view, offset) {
-    var offsetShifted = offset;
+    offset >>>= 0;
     var bytes = view.BYTES_PER_ELEMENT;
     switch (bytes) {
-      case 2: offsetShifted >>= 1; break;
-      case 4: offsetShifted >>= 2; break;
-      case 8: offsetShifted >>= 3; break;
+      case 2: offset >>>= 1; break;
+      case 4: offset >>>= 2; break;
+      case 8: offset >>>= 3; break;
     }
     for (var i = 0; i < array.length; i++) {
-      view[offsetShifted + i] = array[i];
+      view[offset + i] = array[i];
     }
   },
 };

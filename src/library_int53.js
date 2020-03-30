@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 mergeInto(LibraryManager.library, {
 #if ASSERTIONS
   $writeI53ToI64__deps: ['$readI53FromI64', '$readI53FromU64'

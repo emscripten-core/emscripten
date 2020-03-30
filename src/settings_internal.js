@@ -1,7 +1,8 @@
-// Copyright 2019 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+//
+// @license
+// Copyright 2019 The Emscripten Authors
+// SPDX-License-Identifier: MIT
+//
 
 //
 // Settings in this file work exactly like those in settings.js but are not
@@ -67,9 +68,6 @@ var DYNAMICTOP_PTR = -1;
 // The computed initial value of the program break (the sbrk position), which
 // is called DYNAMIC_BASE as it is the start of dynamically-allocated memory.
 var DYNAMIC_BASE = -1;
-
-// -Werror was specified on the command line.
-var WARNINGS_ARE_ERRORS = 0;
 
 // Maximum seen global alignment; received from the backend.
 var MAX_GLOBAL_ALIGN = -1;
@@ -176,6 +174,10 @@ var WASM_FUNCTIONS_THAT_ARE_NOT_NAME_MANGLED = ['setTempRet0', 'getTempRet0', 's
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
 
+// Whether we may be accessing the address 2GB or higher. If so then we need
+// to be using unsigned pointers in JS.
+var CAN_ADDRESS_2GB = 0;
+
 // Whether to emit DWARF in a separate wasm file on the side (this is not called
 // "split" because there is already a DWARF concept by that name).
 // When DWARF is on the side, the main file has no DWARF info, while the side
@@ -183,3 +185,6 @@ var LTO = 0;
 // sections.
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = 0;
+
+// New WebAssembly exception handling (experimental)
+var EXCEPTION_HANDLING = 0;

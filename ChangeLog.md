@@ -17,6 +17,28 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
+  flags explcitly.  If there are other flags that it would be useful for us
+  to ignore we can add them to the list of ignored flags.
+- Optionally support 2GB+ heap sizes. To do this we make the JS code have unsigned
+  pointers (we need all 32 bits in them now), which can slightly increase code
+  size (>>> instead of >>). This only happens when the heap size may be over
+  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
+  higher value (i.e. by default you do not get support for 2GB+ heaps).
+  See #10601
+- `--llvm-lto` flag is now ignored when using the upstream llvm backend.
+  With the upstream backend LTO is controlled via `-flto`.
+- Require format string for emscripten_log.
+- Program entry points without extensions are now shell scripts rather than
+  python programs. See #10729.  This means that `python emcc` no longer works.
+  However `emcc`, `emcc.py` and `python emcc.py` all continue to work.
+  The reason for this change is that `#!/usr/bin/env python` is no longer
+  portable since the python symlink was dropped from Ubuntu 20.04.
+- New EM_IMPORT macro to mark C/C++ symbols as imported from outside the module
+  (i.e. imported from JS).  Currently we still default to assuming that *all*
+  undefined symbols can come from JS, but in the future we hope to mark such
+  symbols explicitly to allow the linker to report on genuinely undefined
+  symbols.
 
 v1.39.11: 03/20/2020
 --------------------
@@ -27,7 +49,7 @@ v1.39.11: 03/20/2020
   https://libbsd.freedesktop.org/.
 - Change the meaning of `ASYNCIFY_IMPORTS`: it now contains only new imports
   you add, and does not need to contain the list of default system imports like
-  ``emscripten_sleep``. There is no harm in providing them, though, so this
+  `emscripten_sleep`. There is no harm in providing them, though, so this
   is not a breaking change.
 - Enable DWARF support: When compiling with `-g`, normal DWARF emitting happens,
   and when linking with `-g` we preserve that and update it. This is a change

@@ -1003,8 +1003,6 @@
 -------- T _ZNSt11logic_erroraSERKS_
 -------- W _ZNSt12bad_any_castD0Ev
 -------- W _ZNSt12experimental15fundamentals_v112bad_any_castD0Ev
--------- W _ZNSt12experimental15fundamentals_v13pmr15memory_resourceC2Ev
--------- W _ZNSt12experimental15fundamentals_v13pmr15memory_resourceD0Ev
 -------- W _ZNSt12experimental15fundamentals_v13pmr15memory_resourceD2Ev
 -------- T _ZNSt12experimental15fundamentals_v13pmr19new_delete_resourceEv
 -------- T _ZNSt12experimental15fundamentals_v13pmr20get_default_resourceEv
@@ -1012,11 +1010,9 @@
 -------- T _ZNSt12experimental15fundamentals_v13pmr20set_default_resourceEPNS1_15memory_resourceE
 -------- W _ZNSt12experimental15fundamentals_v13pmr26__null_memory_resource_imp11do_allocateEmm
 -------- W _ZNSt12experimental15fundamentals_v13pmr26__null_memory_resource_imp13do_deallocateEPvmm
--------- W _ZNSt12experimental15fundamentals_v13pmr26__null_memory_resource_impC2Ev
 -------- W _ZNSt12experimental15fundamentals_v13pmr26__null_memory_resource_impD0Ev
 -------- W _ZNSt12experimental15fundamentals_v13pmr32__new_delete_memory_resource_imp11do_allocateEmm
 -------- W _ZNSt12experimental15fundamentals_v13pmr32__new_delete_memory_resource_imp13do_deallocateEPvmm
--------- W _ZNSt12experimental15fundamentals_v13pmr32__new_delete_memory_resource_impC2Ev
 -------- W _ZNSt12experimental15fundamentals_v13pmr32__new_delete_memory_resource_impD0Ev
 -------- T _ZNSt12experimental19bad_optional_accessD0Ev
 -------- T _ZNSt12experimental19bad_optional_accessD1Ev
@@ -4325,7 +4321,6 @@
 -------- W _ZTTNSt3__214basic_ofstreamIcNS_11char_traitsIcEEEE
 -------- D _ZTTNSt3__29strstreamE
 -------- D _ZTVNSt12experimental15fundamentals_v112bad_any_castE
--------- W _ZTVNSt12experimental15fundamentals_v13pmr15memory_resourceE
 -------- W _ZTVNSt12experimental15fundamentals_v13pmr26__null_memory_resource_impE
 -------- W _ZTVNSt12experimental15fundamentals_v13pmr32__new_delete_memory_resource_impE
 -------- D _ZTVNSt12experimental19bad_optional_accessE

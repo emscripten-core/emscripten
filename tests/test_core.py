@@ -88,6 +88,21 @@ def all_engines(f):
   return decorated
 
 
+# Tests exception handling in emscripten exception handling mode, and if
+# possible, new wasm EH mode.
+def with_both_exception_handling(f):
+  def decorated(self):
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+    f(self, None)
+    self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
+    # Wasm EH is currently supported only in wasm backend and V8
+    if self.is_wasm_backend() and V8_ENGINE and \
+       V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
+      self.emcc_args.append('-fwasm-exceptions')
+      f(self, js_engines=[V8_ENGINE + ['--experimental-wasm-eh']])
+  return decorated
+
+
 def no_emterpreter(f):
   assert callable(f)
   return skip_if(f, 'is_emterpreter')
@@ -340,7 +355,7 @@ class TestCoreBase(RunnerCore):
                         os.path.join('src', '.libs', 'libBulletCollision.a'),
                         os.path.join('src', '.libs', 'libLinearMath.a')]
 
-    return self.get_library('bullet', generated_libs,
+    return self.get_library(os.path.join('third_party', 'bullet'), generated_libs,
                             configure=configure_commands,
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
@@ -983,7 +998,7 @@ base align: 0, 0, 0, 0'''])
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self, *args):
     self.set_setting('MALLOC', 'emmalloc')
-    self.emcc_args += ['-s', 'INITIAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1'] + list(args)
+    self.emcc_args += ['-s', 'INITIAL_MEMORY=128MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'MAXIMUM_MEMORY=2147418112'] + list(args)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_emmalloc_trim')
 
@@ -1199,15 +1214,16 @@ int main() {
 '''
     self.do_run(src, r'''ok.''')
 
-  def test_exceptions(self):
+  @with_both_exception_handling
+  def test_exceptions(self, js_engines):
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.maybe_closure()
     for support_longjmp in [0, 1]:
       self.set_setting('SUPPORT_LONGJMP', support_longjmp)
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'), js_engines=js_engines)
 
-      self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
-
+  def test_exceptions_off(self):
+    for support_longjmp in [0, 1]:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
@@ -1225,6 +1241,7 @@ int main() {
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_custom(self):
     self.set_setting('EXCEPTION_DEBUG', 1)
     # needs to flush stdio streams
@@ -1279,16 +1296,17 @@ int main() {
 
     self.do_run(src, 'Throw...Construct...Caught...Destruct...Throw...Construct...Copy...Caught...Destruct...Destruct...')
 
-  def test_exceptions_2(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_2(self, js_engines):
     for safe in [0, 1]:
       print(safe)
       if safe and '-fsanitize=address' in self.emcc_args:
         # Can't use safe heap with ASan
         continue
       self.set_setting('SAFE_HEAP', safe)
-      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2')
+      self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_2', js_engines=js_engines)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_3(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
@@ -1364,12 +1382,11 @@ int main(int argc, char **argv)
 
     if not self.is_wasm():
       print(size, empty_size, fake_size, disabled_size)
-
-      assert size - empty_size > 0.0025 * size, [empty_size, size]  # big change when we disable entirely
-      assert size - fake_size > 0.0025 * size, [fake_size, size]
-      assert abs(empty_size - fake_size) < 0.007 * size, [empty_size, fake_size]
-      assert empty_size - disabled_size < 0.007 * size, [empty_size, disabled_size]  # full disable removes a little bit more
-      assert fake_size - disabled_size < 0.007 * size, [disabled_size, fake_size]
+      assert empty_size == fake_size, [empty_size, fake_size]
+      # big change when we disable exception catching of the function
+      assert size - empty_size > 0.01 * size, [empty_size, size]
+      # full disable can remove a little bit more
+      assert empty_size >= disabled_size, [empty_size, disabled_size]
 
   def test_exceptions_white_list_2(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 2)
@@ -1396,8 +1413,9 @@ int main(int argc, char **argv)
     # otherwise it is inlined and not identified
     self.set_setting('INLINING_LIMIT', 1)
 
-    self.do_run_in_out_file_test('tests', 'third_party', 'test_exceptions_white_list_uncaught')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_white_list_uncaught')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_uncaught(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
@@ -1436,6 +1454,7 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'success')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_uncaught_2(self):
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       # needs to flush stdio streams
@@ -1461,6 +1480,7 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'OK\n')
 
+  # TODO Enable @with_both_exception_handling (unknown error)
   def test_exceptions_typed(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     # needs to flush stdio streams
@@ -1469,66 +1489,78 @@ int main(int argc, char **argv)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_virtual_inheritance(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_virtual_inheritance')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_convert(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_convert')
 
-  def test_exceptions_multi(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi')
+  # TODO Make setjmp-longjmp also use Wasm exception handling
+  @with_both_exception_handling
+  def test_exceptions_multi(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multi', js_engines=js_engines)
 
-  def test_exceptions_std(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_std(self, js_engines):
     self.emcc_args += ['-s', 'SAFE_HEAP=0']
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_std', js_engines=js_engines)
 
-  def test_exceptions_alias(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias')
+  @with_both_exception_handling
+  def test_exceptions_alias(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_alias', js_engines=js_engines)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_rethrow(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_rethrow')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_resume(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.set_setting('EXCEPTION_DEBUG', 1)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_resume')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_destroy_virtual(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_destroy_virtual')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_refcount(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_refcount')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_primary(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_primary')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_simplify_cfg(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_simplify_cfg')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_libcxx(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_libcxx')
 
-  def test_exceptions_multiple_inherit(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit')
+  @with_both_exception_handling
+  def test_exceptions_multiple_inherit(self, js_engines):
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit', js_engines=js_engines)
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_multiple_inherit_rethrow(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
     self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_multiple_inherit_rethrow')
 
+  # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_bad_typeid(self):
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
 
@@ -3490,6 +3522,7 @@ pre 9
 out!
 ''', force_c=True)
 
+  # TODO Enable @with_both_exception_handling (the test is not working now)
   @needs_dlfcn
   def zzztest_dlfcn_exceptions(self): # TODO: make this work. need to forward tempRet0 across modules
     self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
@@ -4431,6 +4464,7 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
+  # TODO Enable @with_both_exception_handling (wasm-ld error)
   @needs_dlfcn
   def test_dylink_raii_exceptions(self):
     self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
@@ -4603,11 +4637,11 @@ res64 - external 64\n''', header='''
   @needs_make('mingw32-make')
   @needs_dlfcn
   def test_dylink_zlib(self):
-    self.emcc_args += ['-I' + path_from_root('tests', 'zlib'), '-s', 'RELOCATABLE']
+    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'zlib'), '-s', 'RELOCATABLE']
     zlib_archive = self.get_zlib_library()
-    self.dylink_test(main=open(path_from_root('tests', 'zlib', 'example.c')).read(),
+    self.dylink_test(main=open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
                      side=zlib_archive,
-                     expected=open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
+                     expected=open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
                      force_c=True)
 
   # @needs_dlfcn
@@ -5456,7 +5490,7 @@ main( int argv, char ** argc ) {
   def test_unistd_sysconf_phys_pages(self):
     src = open(path_from_root('tests', 'unistd', 'sysconf_phys_pages.c')).read()
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
-      expected = (2 * 1024 * 1024 * 1024 - 16777216) // 16384
+      expected = (2 * 1024 * 1024 * 1024) // 16384
     else:
       expected = 16 * 1024 * 1024 // 16384
     self.do_run(src, str(expected) + ', errno: 0')
@@ -5978,7 +6012,7 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_builtin_simd(self, js_engines):
-    # TODO(tlively): fix these warnings
+    # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.do_run(open(path_from_root('tests', 'test_wasm_builtin_simd.cpp')).read(), 'Success!',
                 js_engines=js_engines)
@@ -5988,7 +6022,7 @@ return malloc(size);
 
   @wasm_simd
   def test_wasm_intrinsics_simd(self, js_engines):
-    # TODO(tlively): fix these warnings
+    # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
     self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
@@ -6054,7 +6088,7 @@ return malloc(size);
     self.do_run('',
                 'hello lua world!\n17\n1\n2\n3\n4\n7',
                 args=['-e', '''print("hello lua world!");print(17);for x = 1,4 do print(x) end;print(10-3)'''],
-                libraries=self.get_library('lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
+                libraries=self.get_library(os.path.join('third_party', 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None),
                 includes=[path_from_root('tests', 'lua')],
                 output_nicerizer=lambda string, err: (string + err).replace('\n\n', '\n').replace('\n\n', '\n'))
 
@@ -6077,7 +6111,7 @@ return malloc(size);
                 open(path_from_root('tests', 'freetype', 'ref.txt')).read(),
                 ['font.ttf', 'test!', '150', '120', '25'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     # github issue 324
     print('[issue 324]')
@@ -6085,14 +6119,14 @@ return malloc(size);
                 open(path_from_root('tests', 'freetype', 'ref_2.txt')).read(),
                 ['font.ttf', 'w', '32', '32', '25'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 2]')
     self.do_run(open(path_from_root('tests', 'freetype', 'main_3.c')).read(),
                 open(path_from_root('tests', 'freetype', 'ref_3.txt')).read(),
                 ['font.ttf', 'W', '32', '32', '0'],
                 libraries=self.get_freetype_library(),
-                includes=[path_from_root('tests', 'freetype', 'include')])
+                includes=[path_from_root('tests', 'third_party', 'freetype', 'include')])
 
     print('[issue 324 case 3]')
     self.do_run(None,
@@ -6113,6 +6147,7 @@ return malloc(size);
     # temporarily ignore unknown flags, which lets the above flag be used on our CI which doesn't
     # yet have the new clang with that flag
     self.emcc_args += ['-Wno-unknown-warning-option']
+    self.emcc_args += ['-I' + path_from_root('tests', 'third_party', 'sqlite')]
 
     src = '''
        #define SQLITE_DISABLE_LFS
@@ -6120,7 +6155,7 @@ return malloc(size);
        #define SQLITE_INT64_TYPE long long int
        #define SQLITE_THREADSAFE 0
     '''
-    src += open(path_from_root('tests', 'sqlite', 'sqlite3.c')).read()
+    src += open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c')).read()
     src += open(path_from_root('tests', 'sqlite', 'benchmark.c')).read()
     self.do_run(src,
                 open(path_from_root('tests', 'sqlite', 'benchmark.txt')).read(),
@@ -6145,10 +6180,10 @@ return malloc(size);
       make_args = ['libz.a']
       configure = ['sh', './configure']
 
-    self.do_run(open(path_from_root('tests', 'zlib', 'example.c')).read(),
-                open(path_from_root('tests', 'zlib', 'ref.txt')).read(),
-                libraries=self.get_library('zlib', os.path.join('libz.a'), make_args=make_args, configure=configure),
-                includes=[path_from_root('tests', 'zlib'), 'building', 'zlib'],
+    self.do_run(open(path_from_root('tests', 'third_party', 'zlib', 'example.c')).read(),
+                open(path_from_root('tests', 'core', 'test_zlib.out')).read(),
+                libraries=self.get_library(os.path.join('third_party', 'zlib'), 'libz.a', make_args=make_args, configure=configure),
+                includes=[path_from_root('tests', 'third_party', 'zlib'), 'building', 'zlib'],
                 force_c=True)
 
   @needs_make('make')
@@ -6169,13 +6204,13 @@ return malloc(size);
       self.set_setting('ASSERTIONS', 2 if use_cmake else asserts)
 
       def test():
-        self.do_run(open(path_from_root('tests', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
+        self.do_run(open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'HelloWorld', 'HelloWorld.cpp')).read(),
                     [open(path_from_root('tests', 'bullet', 'output.txt')).read(), # different roundings
                      open(path_from_root('tests', 'bullet', 'output2.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output3.txt')).read(),
                      open(path_from_root('tests', 'bullet', 'output4.txt')).read()],
                     libraries=self.get_bullet_library(use_cmake),
-                    includes=[path_from_root('tests', 'bullet', 'src')])
+                    includes=[path_from_root('tests', 'third_party', 'bullet', 'src')])
       test()
 
   @needs_make('depends on freetype')
@@ -6241,9 +6276,9 @@ return malloc(size);
       };
       """ % line_splitter(str(image_bytes)))
 
-    shutil.copy(path_from_root('tests', 'openjpeg', 'opj_config.h'), self.get_dir())
+    shutil.copy(path_from_root('tests', 'third_party', 'openjpeg', 'opj_config.h'), self.get_dir())
 
-    lib = self.get_library('openjpeg',
+    lib = self.get_library(os.path.join('third_party', 'openjpeg'),
                            [os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/index.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/convert.c.o'.split('/')),
                             os.path.sep.join('codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o'.split('/')),
@@ -6290,13 +6325,13 @@ return malloc(size);
     self.emcc_args += ['--pre-js', 'pre.js']
 
     def do_test():
-      self.do_run(open(path_from_root('tests', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
+      self.do_run(open(path_from_root('tests', 'third_party', 'openjpeg', 'codec', 'j2k_to_image.c')).read(),
                   'Successfully generated', # The real test for valid output is in image_compare
                   '-i image.j2k -o image.raw'.split(' '),
                   libraries=lib,
-                  includes=[path_from_root('tests', 'openjpeg', 'libopenjpeg'),
-                            path_from_root('tests', 'openjpeg', 'codec'),
-                            path_from_root('tests', 'openjpeg', 'common'),
+                  includes=[path_from_root('tests', 'third_party', 'openjpeg', 'libopenjpeg'),
+                            path_from_root('tests', 'third_party', 'openjpeg', 'codec'),
+                            path_from_root('tests', 'third_party', 'openjpeg', 'common'),
                             os.path.join(self.get_build_dir(), 'openjpeg')],
                   force_c=True,
                   assert_returncode=0,
@@ -6316,7 +6351,7 @@ return malloc(size);
     # The python build contains several undefined symbols
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0)
 
-    bitcode = path_from_root('tests', 'python', 'python.bc')
+    bitcode = path_from_root('tests', 'third_party', 'python', 'python.bc')
     pyscript = dedent('''\
       print '***'
       print "hello python world!"

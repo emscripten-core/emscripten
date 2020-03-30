@@ -1391,7 +1391,7 @@ keydown(100);keyup(100); // trigger the end
     print('    opts')
     self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2'])
     print('    opts+closure')
-    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2', '--closure', '1', '-g1'])
+    self.btest(os.path.join('fs', 'test_lz4fs.cpp'), '1', args=['-DLOAD_MANUALLY', '-s', 'LZ4=1', '-s', 'FORCE_FILESYSTEM=1', '-O2', '--closure', '1', '-g1', '-s', 'CLOSURE_WARNINGS=quiet'])
 
     '''# non-lz4 for comparison
     try:
@@ -2464,12 +2464,12 @@ void *getBindBuffer() {
   def test_emrun_info(self):
     if not has_browser():
       self.skipTest('need a browser')
-    result = run_process([PYTHON, path_from_root('emrun'), '--system_info', '--browser_info'], stdout=PIPE).stdout
+    result = run_process([PYTHON, path_from_root('emrun.py'), '--system_info', '--browser_info'], stdout=PIPE).stdout
     assert 'CPU' in result
     assert 'Browser' in result
     assert 'Traceback' not in result
 
-    result = run_process([PYTHON, path_from_root('emrun'), '--list_browsers'], stdout=PIPE).stdout
+    result = run_process([PYTHON, path_from_root('emrun.py'), '--list_browsers'], stdout=PIPE).stdout
     assert 'Traceback' not in result
 
   # Deliberately named as test_zzz_emrun to make this test the last one
@@ -2484,7 +2484,7 @@ void *getBindBuffer() {
     # and the browser will not close as part of the test, pinning down the cwd on Windows and it wouldn't be possible to delete it. Therefore switch away from that directory
     # before launching.
     os.chdir(path_from_root())
-    args_base = [PYTHON, path_from_root('emrun'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
+    args_base = [PYTHON, path_from_root('emrun.py'), '--timeout', '30', '--safe_firefox_profile', '--kill_exit', '--port', '6939', '--verbose', '--log_stdout', os.path.join(outdir, 'stdout.txt'), '--log_stderr', os.path.join(outdir, 'stderr.txt')]
     if EMTEST_BROWSER is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,

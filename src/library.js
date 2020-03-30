@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -300,16 +301,14 @@ LibraryManager.library = {
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
-#if WASM
-        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#if ALLOW_MEMORY_GROWTH
+#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
+        var maxHeapSize = 4*1024*1024*1024;
 #else
-        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #endif
-#if MAXIMUM_MEMORY != -1
-        maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#endif
-#if !ALLOW_MEMORY_GROWTH
-        maxHeapSize = HEAPU8.length;
+#else // no growth
+        var maxHeapSize = HEAPU8.length;
 #endif
         return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
@@ -489,7 +488,7 @@ LibraryManager.library = {
     try {
 #if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - buffer.byteLength + 65535) >> 16); // .grow() takes a delta compared to the previous size
+      wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
 #else // asm.js:
       var newBuffer = new ArrayBuffer(size);
@@ -524,6 +523,9 @@ LibraryManager.library = {
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
+#if CAN_ADDRESS_2GB
+    requestedSize = requestedSize >>> 0;
+#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -565,7 +567,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = 2147483648 - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -4342,16 +4344,11 @@ LibraryManager.library = {
   },
 
   emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
-  emscripten_log: function(flags, varargs) {
-    // Extract the (optionally-existing) printf format specifier field from varargs.
-    var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
+  emscripten_log: function(flags, format, varargs) {
     var str = '';
-    if (format) {
-      var result = __formatString(format, varargs);
-      for(var i = 0 ; i < result.length; ++i) {
-        str += String.fromCharCode(result[i]);
-      }
+    var result = __formatString(format, varargs);
+    for (var i = 0 ; i < result.length; ++i) {
+      str += String.fromCharCode(result[i]);
     }
     _emscripten_log_js(flags, str);
   },
@@ -4723,9 +4720,9 @@ LibraryManager.library = {
   // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
   // Note that "smart" radix handling is employed for input string:
   // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: function(str) {
-    // TODO: If issues below are resolved, add a suitable suppression or remove this comment.
-    return parseInt(str, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+    return parseInt(str);
   },
 
   // Converts a JS string to an integer base-10, with signaling error

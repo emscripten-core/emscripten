@@ -13,9 +13,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "lzma/Alloc.h"
-#include "lzma/LzmaDec.h"
-#include "lzma/LzmaEnc.h"
+#include "Alloc.h"
+#include "LzmaDec.h"
+#include "LzmaEnc.h"
 
 static void *SzAlloc(void *p, size_t size) { p = p; return MyAlloc(size); }
 static void SzFree(void *p, void *address) { p = p; MyFree(address); }
