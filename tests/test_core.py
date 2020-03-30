@@ -306,26 +306,6 @@ class TestCoreBase(RunnerCore):
       return True
     return False
 
-  def do_run_in_out_file_test(self, *path, **kwargs):
-    test_path = path_from_root(*path)
-
-    def find_files(*ext_list):
-      ret = None
-      count = 0
-      for ext in ext_list:
-        if os.path.isfile(test_path + ext):
-          ret = test_path + ext
-          count += 1
-      assert count > 0, ("No file found at {} with extension {}"
-                         .format(test_path, ext_list))
-      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
-                          .format(test_path, ext_list))
-      return ret
-
-    src = find_files('.c', '.cpp')
-    output = find_files('.out', '.txt')
-    self.do_run_from_file(src, output, **kwargs)
-
   def verify_in_strict_mode(self, filename):
     with open(filename) as infile:
       js = infile.read()
@@ -5845,26 +5825,6 @@ int main(void) {
   def test_fasta_nontrapping(self, js_engines):
     self.emcc_args += ['-mnontrapping-fptoint']
     self.test_fasta(js_engines)
-
-  @bleeding_edge_wasm_backend
-  def test_4GB(self, js_engines):
-    # test that we can allocate in the 2-4GB range, if we enable growth and
-    # set the max appropriately
-    if '-O2' not in self.emcc_args and '-O3' not in self.emcc_args:
-      return self.skipTest('very slow without heavy opts')
-    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-    self.set_setting('MAXIMUM_MEMORY', 4 * 1024 * 1024 * 1024)
-    self.do_run_in_out_file_test('tests', 'core', 'test_4GB', js_engines=js_engines)
-
-  @bleeding_edge_wasm_backend
-  def test_2GB_fail(self, js_engines):
-    # test that growth doesn't go beyond 2GB without the max being set for that,
-    # and that we can catch an allocation failure exception for that
-    if '-O2' not in self.emcc_args and '-O3' not in self.emcc_args:
-      return self.skipTest('very slow without heavy opts')
-    self.set_setting('ALLOW_MEMORY_GROWTH', 1)
-    self.emcc_args += ['-fexceptions']
-    self.do_run_in_out_file_test('tests', 'core', 'test_2GB_fail', js_engines=js_engines)
 
   def test_whets(self):
     self.do_run(open(path_from_root('tests', 'whets.cpp')).read(), 'Single Precision C Whetstone Benchmark', assert_returncode=None)

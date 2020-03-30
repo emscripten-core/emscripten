@@ -1113,6 +1113,26 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     logger.debug('do_run_from_file: %s' % src)
     self.do_run(open(src).read(), open(expected_output).read(), *args, **kwargs)
 
+  def do_run_in_out_file_test(self, *path, **kwargs):
+    test_path = path_from_root(*path)
+
+    def find_files(*ext_list):
+      ret = None
+      count = 0
+      for ext in ext_list:
+        if os.path.isfile(test_path + ext):
+          ret = test_path + ext
+          count += 1
+      assert count > 0, ("No file found at {} with extension {}"
+                         .format(test_path, ext_list))
+      assert count <= 1, ("Test file {} found with multiple valid extensions {}"
+                          .format(test_path, ext_list))
+      return ret
+
+    src = find_files('.c', '.cpp')
+    output = find_files('.out', '.txt')
+    self.do_run_from_file(src, output, **kwargs)
+
   ## Does a complete test - builds, runs, checks output, etc.
   def do_run(self, src, expected_output, args=[], output_nicerizer=None,
              no_build=False, main_file=None, additional_files=[],
