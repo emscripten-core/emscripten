@@ -4996,5 +4996,19 @@ window.close = function() {
 
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
-    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB', '--profiling', '-s', 'ASSERTIONS']
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
+    self.do_run_in_out_file_test('tests', 'browser', 'test_4GB', js_engines=[V8_ENGINE])
+
+  @no_fastcomp('only upstream supports 4GB')
+  @no_firefox('no 4GB support yet')
+  def test_zzz_zzz_2GB_fail(self):
+    # TODO Convert to an actual browser test when it reaches stable.
+    #      For now, keep this in browser as this suite runs serially, which
+    #      means we don't compete for memory with anything else (and run it
+    #      at the very very end, to reduce the risk of it OOM-killing the
+    #      browser).
+
+    # test that we can allocate in the 2-4GB range, if we enable growth and
+    # set the max appropriately
+    self.emcc_args += ['-O2', '-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=4GB']
     self.do_run_in_out_file_test('tests', 'browser', 'test_4GB', js_engines=[V8_ENGINE])
