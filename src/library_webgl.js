@@ -114,7 +114,11 @@ var LibraryGL = {
     uniforms: [],
     shaders: [],
     vaos: [],
+#if USE_PTHREADS // with pthreads a context is a location in memory with some synchronized data between threads
     contexts: {},
+#else            // without pthreads, it's just an integer ID
+    contexts: [],
+#endif
     currentContext: null,
     offscreenCanvases: {}, // DOM ID -> OffscreenCanvas mappings of <canvas> elements that have their rendering control transferred to offscreen.
     timerQueriesEXT: [],
@@ -899,16 +903,21 @@ var LibraryGL = {
 #endif
 
     registerContext: function(ctx, webGLContextAttributes) {
-      var handle = _malloc(8); // Make space on the heap to store GL context attributes that need to be accessible as shared between threads.
+#if USE_PTHREADS
+      // with pthreads a context is a location in memory with some synchronized data between threads
+      var handle = _malloc(8);
 #if GL_ASSERTIONS
       assert(handle, 'malloc() failed in GL.registerContext!');
 #endif
 #if GL_SUPPORT_EXPLICIT_SWAP_CONTROL
       {{{ makeSetValue('handle', 0, 'webGLContextAttributes.explicitSwapControl', 'i32')}}}; // explicitSwapControl
 #endif
-#if USE_PTHREADS
       {{{ makeSetValue('handle', 4, '_pthread_self()', 'i32')}}}; // the thread pointer of the thread that owns the control of the context
-#endif
+#else // USE_PTHREADS
+      // without pthreads a context is just an integer ID
+      var handle = GL.getNewId(GL.contexts);
+#endif // USE_PTHREADS
+
       var context = {
         handle: handle,
         attributes: webGLContextAttributes,
