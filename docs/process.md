@@ -213,6 +213,3 @@ key values in that file include:
 
 If you package emscripten and don't want the ports system to be used, you can
 simply delete the `tools/ports/` directory.
-
-You can also add custom ports to there as well; the system library code will
-just scan to see what exists and use it.
