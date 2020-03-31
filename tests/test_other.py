@@ -10443,7 +10443,7 @@ Module.arguments has been replaced with plain arguments_
     self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
 
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
-                       '-Wl,--no-check-features,--no-threads,-mllvm,-debug'], stderr=PIPE).stderr
+                       '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
 
   @no_fastcomp('lld-specific')
