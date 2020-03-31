@@ -208,3 +208,11 @@ key values in that file include:
  * `BINARYEN_ROOT`: The path to binaryen (the binaries are expected in `/bin` under there; note that
     despite the name this differs from `LLVM_ROOT` which points directly to the binaries).
  * `NODE_JS`: The path to Node.js, which is needed internally.
+
+## Ports
+
+If you package emscripten and don't want the ports system to be used, you can
+simply delete the `tools/ports/` directory.
+
+You can also add custom ports to there as well; the system library code will
+just scan to see what exists and use it.

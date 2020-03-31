@@ -17,9 +17,20 @@ import tarfile
 import zipfile
 from glob import iglob
 
-from . import ports
 from . import shared
 from tools.shared import mangle_c_symbol_name, demangle_c_symbol_name
+
+
+try:
+  from . import ports
+except ImportError:
+  # it's ok if the ports dir doesn't exist: then there are no ports
+  class NoPorts:
+    ports = []
+    ports_by_name = {}
+
+  ports = NoPorts()
+
 
 stdout = None
 stderr = None
