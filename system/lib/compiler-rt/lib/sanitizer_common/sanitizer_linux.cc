@@ -544,8 +544,6 @@ uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
 #endif  // !SANITIZER_SOLARIS && !SANITIZER_NETBSD
 
 #if SANITIZER_EMSCRIPTEN
-extern "C" const char *emscripten_get_env(const char *name);
-
 int __clock_gettime(__sanitizer_clockid_t clk_id, void *tp);
 
 uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
@@ -558,7 +556,7 @@ uptr internal_clock_gettime(__sanitizer_clockid_t clk_id, void *tp) {
 // should be called first inside __asan_init.
 const char *GetEnv(const char *name) {
 #if SANITIZER_FREEBSD || SANITIZER_NETBSD || SANITIZER_OPENBSD || \
-    SANITIZER_SOLARIS
+    SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
   if (::environ != 0) {
     uptr NameLen = internal_strlen(name);
     for (char **Env = ::environ; *Env != 0; Env++) {
@@ -591,8 +589,6 @@ const char *GetEnv(const char *name) {
     p = endp + 1;
   }
   return nullptr;  // Not found.
-#elif SANITIZER_EMSCRIPTEN
-  return emscripten_get_env(name);
 #else
 #error "Unsupported platform"
 #endif

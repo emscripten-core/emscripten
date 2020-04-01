@@ -844,7 +844,6 @@ LibraryManager.library = {
     return _getenv.ret;
   },
   // Alias for sanitizers which intercept getenv.
-  emscripten_get_env: 'getenv',
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
