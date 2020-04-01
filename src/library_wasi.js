@@ -11,9 +11,9 @@ var WasiLibrary = {
     _exit(code);
   },
 
-  $get_env_strings__deps: ['$ENV', '_getExecutableName'],
-  $get_env_strings: function() {
-    if (!get_env_strings.strings) {
+  $getEnvStrings: ['$ENV', '_getExecutableName'],
+  $getEnvStrings: function() {
+    if (!getEnvStrings.strings) {
       // Default values.
       var env = {
         'USER': 'web_user',
@@ -33,15 +33,15 @@ var WasiLibrary = {
       for (var x in env) {
         strings.push(x + '=' + env[x]);
       }
-      get_env_strings.strings = strings;
+      getEnvStrings.strings = strings;
     }
-    return get_env_strings.strings;
+    return getEnvStrings.strings;
   },
 
-  environ_sizes_get__deps: ['$get_env_strings'],
+  environ_sizes_get__deps: ['$getEnvStrings'],
   environ_sizes_get__sig: 'iii',
   environ_sizes_get: function(penviron_count, penviron_buf_size) {
-    var strings = get_env_strings();
+    var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', 'i32') }}};
     var bufSize = 0;
     strings.forEach(function(string) {
@@ -51,7 +51,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  environ_get__deps: ['$get_env_strings'
+  environ_get__deps: ['$getEnvStrings'
 #if MINIMAL_RUNTIME
     , '$writeAsciiToMemory'
 #endif
@@ -59,7 +59,7 @@ var WasiLibrary = {
   environ_get__sig: 'iii',
   environ_get: function(__environ, environ_buf) {
     var bufSize = 0;
-    get_env_strings().forEach(function(string, i) {
+    getEnvStrings().forEach(function(string, i) {
       var ptr = environ_buf + bufSize;
       {{{ makeSetValue('__environ', 'i * 4', 'ptr', 'i32') }}};
       writeAsciiToMemory(string, ptr);
