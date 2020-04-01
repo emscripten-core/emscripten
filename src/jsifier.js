@@ -16,8 +16,13 @@ var STRUCT_LIST = set('struct', 'list');
 var addedLibraryItems = {};
 var asmLibraryFunctions = [];
 
-var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow', 'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan', 'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min', 'Math_max', 'Math_clz32', 'Math_fround',
-                           'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array', 'Uint32Array', 'Float32Array', 'Float64Array'];
+var allExternPrimitives = ['Math_floor', 'Math_abs', 'Math_sqrt', 'Math_pow',
+  'Math_cos', 'Math_sin', 'Math_tan', 'Math_acos', 'Math_asin', 'Math_atan',
+  'Math_atan2', 'Math_exp', 'Math_log', 'Math_ceil', 'Math_imul', 'Math_min',
+  'Math_max', 'Math_clz32', 'Math_fround',
+  'Int8Array', 'Uint8Array', 'Int16Array', 'Uint16Array', 'Int32Array',
+  'Uint32Array', 'Float32Array', 'Float64Array'];
+
 // Specifies the set of referenced built-in primitives such as Math.max etc.
 var usedExternPrimitives = {};
 

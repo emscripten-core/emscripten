@@ -765,6 +765,7 @@ LibraryManager.library = {
   // in both fastcomp and upstream.
   $ENV: {},
 
+#if !WASM_BACKEND
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
@@ -843,7 +844,6 @@ LibraryManager.library = {
     _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
-  // Alias for sanitizers which intercept getenv.
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
@@ -923,6 +923,7 @@ LibraryManager.library = {
     }
     return 0;
   },
+#endif
 
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);

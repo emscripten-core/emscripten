@@ -157,7 +157,9 @@ var LibraryManager = {
       libraries.push('library_webgpu.js');
     }
 
-    if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    if (BOOTSTRAPPING_STRUCT_INFO) {
+      libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    }
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter(function(item, pos) {
