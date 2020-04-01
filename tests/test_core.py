@@ -6021,12 +6021,19 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
+  @unittest.skip('Allow max_{s,u} intrinsic name to roll')
   def test_wasm_intrinsics_simd(self, js_engines):
+    def run():
+      self.do_run(
+          open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
+          'Success!',
+          js_engines=js_engines)
     # Improves test readability
     self.emcc_args.append('-Wno-c++11-narrowing')
     self.emcc_args.extend(['-Wpedantic', '-Werror', '-Wall', '-xc++'])
-    self.do_run(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(), 'Success!',
-                js_engines=js_engines)
+    run()
+    self.emcc_args.append('-funsigned-char')
+    run()
     self.emcc_args.extend(['-munimplemented-simd128', '-xc', '-std=c99'])
     self.build(open(path_from_root('tests', 'test_wasm_intrinsics_simd.c')).read(),
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))

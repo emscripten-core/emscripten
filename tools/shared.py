@@ -227,7 +227,9 @@ def generate_config(path, first_time=False):
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  open(abspath, 'w').write(config_file)
+  with open(abspath, 'w') as f:
+    f.write(config_file)
+
   if first_time:
     print('''
 ==============================================================================
