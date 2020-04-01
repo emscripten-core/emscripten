@@ -818,7 +818,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     for x in values:
       if x == y:
         return # success
-    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
+    diff_lines = difflib.unified_diff(x.splitlines(), y.splitlines(),
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:

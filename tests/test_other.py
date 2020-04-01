@@ -8,6 +8,7 @@
 
 from __future__ import print_function
 from functools import wraps
+import difflib
 import glob
 import gzip
 import itertools
@@ -10656,3 +10657,25 @@ int main() {
       libs.append('-lc_rt_wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib'] + libs)
     run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs'] + libs)
+
+  def test_argument_match(self):
+    # Verify that emcc arguments match precisely.  We had a bug where only the prefix
+    # was matched
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts', '10'])
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-optsXX'])
+    self.assertContained("error: unsupported option '--js-optsXX'", err)
+
+  def test_jsmath(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'normal.js'])
+    normal_js_size = os.path.getsize('normal.js')
+    normal_wasm_size = os.path.getsize('normal.wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'jsmath.js', '-s', 'JS_MATH'])
+    jsmath_js_size = os.path.getsize('jsmath.js')
+    jsmath_wasm_size = os.path.getsize('jsmath.wasm')
+    # js math increases JS size, but decreases wasm, and wins overall
+    self.assertLess(normal_js_size, jsmath_js_size)
+    self.assertLess(jsmath_wasm_size, normal_wasm_size)
+    self.assertLess(jsmath_js_size + jsmath_wasm_size, 0.85 * (normal_js_size + normal_wasm_size))
+    # js math has different output, following JS semantics
+    diff = difflib.unified_diff(run_js('normal.js').splitlines(), run_js('jsmath.js').splitlines())
+    self.assertGreater(len([x for x in diff]), 32)

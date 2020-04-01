@@ -565,6 +565,12 @@ var WORKAROUND_IOS_9_RIGHT_SHIFT_BUG = 0;
 // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
 
+// Use JavaScript math functions like Math.tan. This saves code size as we can avoid shipping
+// compiled musl code. However, it can be significantly slower as it calls out to JS. It
+// also may give different results as JS math is specced somewhat differently than libc, and
+// can also vary between browsers.
+var JS_MATH = 0;
+
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
 var POLYFILL_OLD_MATH_FUNCTIONS = 0;
 
