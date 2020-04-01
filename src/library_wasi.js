@@ -11,7 +11,7 @@ var WasiLibrary = {
     _exit(code);
   },
 
-  $getEnvStrings: ['$ENV', '_getExecutableName'],
+  $getEnvStrings__deps: ['$ENV', '_getExecutableName'],
   $getEnvStrings: function() {
     if (!getEnvStrings.strings) {
       // Default values.
