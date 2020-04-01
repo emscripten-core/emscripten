@@ -9936,6 +9936,7 @@ int main () {
     run_process([PYTHON, EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1', path_from_root('tests', 'hello_world.c')])
     run_process([PYTHON, EMCC, '-s', 'PRECISE_I64_MATH=2', path_from_root('tests', 'hello_world.c')])
 
+  @no_fastcomp('depends on wasm backend .a linking')
   def test_jsmath(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'normal.js'])
     normal_js_size = os.path.getsize('normal.js')

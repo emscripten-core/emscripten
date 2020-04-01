@@ -569,6 +569,7 @@ var GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN = 0;
 // compiled musl code. However, it can be significantly slower as it calls out to JS. It
 // also may give different results as JS math is specced somewhat differently than libc, and
 // can also vary between browsers.
+// [upstream-only]
 var JS_MATH = 0;
 
 // If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
