@@ -225,9 +225,11 @@ def generate_config(path, first_time=False):
   node = find_executable('nodejs') or find_executable('node') or 'node'
   config_file = config_file.replace('\'{{{ NODE }}}\'', repr(node))
 
-  abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  open(abspath, 'w').write(config_file)
+  abspath = os.path.abspath(path)
+  with open(abspath, 'w') as f:
+    f.write(config_file)
+
   if first_time:
     print('''
 ==============================================================================
@@ -301,7 +303,7 @@ else:
   CONFIG_FILE = os.path.expanduser(EM_CONFIG)
   logger.debug('EM_CONFIG is located in ' + CONFIG_FILE)
   if not os.path.exists(CONFIG_FILE):
-    generate_config(EM_CONFIG, first_time=True)
+    generate_config(CONFIG_FILE, first_time=True)
     sys.exit(0)
 
 PYTHON = os.getenv('EM_PYTHON', sys.executable)
