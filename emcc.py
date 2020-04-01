@@ -1164,8 +1164,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
     if not shared.Settings.WASM_BACKEND:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        'memset', 'memcpy', 'malloc', 'free', 'emscripten_get_heap_size']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
 
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
@@ -1403,7 +1402,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs.append('libembind')
 
     if not shared.Settings.MINIMAL_RUNTIME:
-      # Always need malloc and free to be kept alive and exported, for internal use and other modules
+      # Always need malloc and free to be kept alive and exported, for internal use and other
+      # modules
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:

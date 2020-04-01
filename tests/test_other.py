@@ -4778,7 +4778,7 @@ main()
     # fail! not enough stdlibs
     'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
-    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
+    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
   })
   def test_only_force_stdlibs(self, env, fail):
     with env_modify(env):
