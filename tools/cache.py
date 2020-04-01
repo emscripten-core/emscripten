@@ -13,22 +13,23 @@ from . import tempfiles, filelock
 logger = logging.getLogger('cache')
 
 
-# Permanent cache for dlmalloc and stdlibc++
+# Permanent cache for system librarys and ports
 class Cache(object):
-  # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct access to
-  # the Emscripten cache without having to obtain an interprocess lock for it. Generally this
-  # is false, and this is used in the case that Emscripten process recursively calls to itself
-  # when building the cache, in which case the parent Emscripten process has already locked
-  # the cache. Essentially the env. var EM_EXCLUSIVE_CACHE_ACCESS signals from parent to
-  # child process that the child can reuse the lock that the parent already has acquired.
-  EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS') or 0)
+  # If EM_EXCLUSIVE_CACHE_ACCESS is true, this process is allowed to have direct
+  # access to the Emscripten cache without having to obtain an interprocess lock
+  # for it. Generally this is false, and this is used in the case that
+  # Emscripten process recursively calls to itself when building the cache, in
+  # which case the parent Emscripten process has already locked the cache.
+  # Essentially the env. var EM_EXCLUSIVE_CACHE_ACCESS signals from parent to
+  # child process that the child can reuse the lock that the parent already has
+  # acquired.
+  EM_EXCLUSIVE_CACHE_ACCESS = int(os.environ.get('EM_EXCLUSIVE_CACHE_ACCESS', '0'))
 
-  def __init__(self, dirname=None, debug=False, use_subdir=True):
+  def __init__(self, use_subdir=True):
     # figure out the root directory for all caching
-    if dirname is None:
-      dirname = os.environ.get('EM_CACHE')
-      if dirname:
-        dirname = os.path.normpath(dirname)
+    dirname = os.environ.get('EM_CACHE')
+    if dirname:
+      dirname = os.path.normpath(dirname)
     if not dirname:
       dirname = os.path.expanduser(os.path.join('~', '.emscripten_cache'))
     self.root_dirname = dirname
@@ -54,7 +55,6 @@ class Cache(object):
       dirname = os.path.join(dirname, subdir)
 
     self.dirname = dirname
-    self.debug = 'EM_CACHE_DEBUG' in os.environ
     self.acquired_count = 0
 
   def acquire_cache_lock(self):
