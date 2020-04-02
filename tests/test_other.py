@@ -7599,13 +7599,24 @@ mergeInto(LibraryManager.library, {
     create_test_file('src.cpp', r'''
       #include <stdlib.h>
       #include <stdio.h>
-      extern char **environ;
       int main() {
         printf("|%s|\n", getenv("hello"));
       }
     ''')
     run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js'])
     self.assertContained('|world|', run_js('a.out.js'))
+
+    create_test_file('pre.js', r'''
+      var Module = {
+        preRun: [function(module) { module.ENV.hello = 'world' }]
+      };
+    ''')
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ENV"]'])
+    self.assertContained('|world|', run_js('a.out.js'))
+
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ENV"]', '-s', 'MODULARIZE=1'])
+    output = run_process(NODE_JS + ['-e', 'require("./a.out.js")();'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('|world|', output.stdout)
 
   def test_warn_no_filesystem(self):
     WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
