@@ -10437,6 +10437,9 @@ Module.arguments has been replaced with plain arguments_
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--print-map'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
 
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--print-map'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
+
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
@@ -10444,6 +10447,9 @@ Module.arguments has been replaced with plain arguments_
   @no_fastcomp('lld-specific')
   def test_linker_flags_pass_through(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--waka'])
+    self.assertContained('wasm-ld: error: unknown argument: --waka', err)
+
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
   def test_non_wasm_without_wasm_in_vm(self):
