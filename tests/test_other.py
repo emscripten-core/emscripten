@@ -10533,19 +10533,39 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'pthread.c'])
 
-  def test_preprocess_stdin(self):
+  def test_stdin_preprocess(self):
     create_test_file('temp.h', '#include <string>')
     outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
     outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
     self.assertTextDataIdentical(outputStdin, outputFile)
 
-  def test_compile_stdin(self):
+  def test_stdin_compile_only(self):
+    # Should fail without -x lang specifier
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      err = self.expect_fail([PYTHON, EMCC, '-c', '-'], input=f.read())
+    self.assertContained('error: -E or -x required when input is from standard input', err)
+
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-c', '-o', 'out.o', '-x', 'c++', '-'], input=f.read())
+    self.assertExists('out.o')
+
+    # Same again but without an explicit output filename
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-c', '-x', 'c++', '-'], input=f.read())
+    self.assertExists('-.o')
+
+  def test_stdin_compile_and_link(self):
     with open(path_from_root('tests', 'hello_world.cpp')) as f:
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def test_stdout_link(self):
+    # linking to stdout `-` doesn't work, and just produces a file on dist called `-`
+    run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
+    self.assertTrue(shared.Building.is_wasm('-'))
+
   def test_output_to_nowhere(self):
-    nowhere = '/dev/null' if not WINDOWS else 'NUL'
+    nowhere = 'NULL' if WINDOWS else '/dev/null'
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
 
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
