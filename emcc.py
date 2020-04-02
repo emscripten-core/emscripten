@@ -987,7 +987,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # counter for the next index that should be used.
     next_arg_index = len(newargs)
 
-    has_source_inputs = False
     has_header_inputs = False
     lib_dirs = []
 
@@ -1041,7 +1040,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = ''
           if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
-            has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
@@ -1075,7 +1073,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if has_fixed_language_mode:
             newargs[i] = ''
             input_files.append((i, arg))
-            has_source_inputs = True
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
       elif arg == '-r':
@@ -1110,7 +1107,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     newargs = [a for a in newargs if a]
 
     if has_dash_c or has_dash_S:
-      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c or -S'
       if has_dash_c:
         if '-emit-llvm' in newargs:
           final_suffix = '.bc'
@@ -2163,11 +2159,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
               shared.Building.llvm_as(input_file, temp_file)
               temp_files.append((i, temp_file))
+          elif has_fixed_language_mode:
+            compile_source_file(i, input_file)
+          elif input_file == '-':
+            exit_with_error('-E or -x required when input is from standard input')
           else:
-            if has_fixed_language_mode:
-              compile_source_file(i, input_file)
-            else:
-              exit_with_error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
+            exit_with_error(input_file + ': unknown input file suffix')
 
     # exit block 'compile inputs'
     log_time('compile inputs')
@@ -2203,11 +2200,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           assert len(input_files) == 1
           input_file = input_files[0][1]
           temp_file = temp_files[0][1]
-          bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_suffix
-          if temp_file != input_file:
-            safe_move(temp_file, bitcode_target)
-          else:
-            shutil.copyfile(temp_file, bitcode_target)
+          if specified_target != '-':
+            if temp_file != input_file:
+              safe_move(temp_file, specified_target)
+            else:
+              shutil.copyfile(temp_file, specified_target)
           temp_output_base = unsuffixed(temp_file)
           if os.path.exists(temp_output_base + '.d'):
             # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,
