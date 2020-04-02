@@ -10560,7 +10560,7 @@ int main() {
     self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_stdout_link(self):
-    # linking to stdout `-` doesn't work, and just produces a file on dist called `-`
+    # linking to stdout `-` doesn't work, and just produces a file on disc called `-`
     run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
     self.assertTrue(shared.Building.is_wasm('-'))
 
