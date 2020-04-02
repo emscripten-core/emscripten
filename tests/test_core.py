@@ -6020,7 +6020,6 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  @unittest.skip('Allow max_{s,u} intrinsic name to roll')
   def test_wasm_intrinsics_simd(self, js_engines):
     def run():
       self.do_run(
