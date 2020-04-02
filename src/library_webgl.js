@@ -2042,7 +2042,7 @@ var LibraryGL = {
 #endif
     var data = GLctx.getVertexAttrib(index, pname);
     if (pname == 0x889F/*VERTEX_ATTRIB_ARRAY_BUFFER_BINDING*/) {
-      {{{ makeSetValue('params', '0', 'data["name"]', 'i32') }}};
+      {{{ makeSetValue('params', '0', 'data && data["name"]', 'i32') }}};
     } else if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case {{{ cDefine('EM_FUNC_SIG_PARAM_I') }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
