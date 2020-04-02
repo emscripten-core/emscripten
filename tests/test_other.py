@@ -4770,30 +4770,25 @@ main()
     ''')
     run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1'])
 
-  def test_only_force_stdlibs(self):
-    def test(name, fail=False):
-      print(name)
+  @parameterized({
+    'none': [{'EMCC_FORCE_STDLIBS': None}, False],
+    # forced libs is ok, they were there anyhow
+    'normal': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False],
+    # partial list, but ok since we grab them as needed
+    'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
+    # fail! not enough stdlibs
+    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
+    # force all the needed stdlibs, so this works even though we ignore the input file
+    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
+  })
+  def test_only_force_stdlibs(self, env, fail):
+    with env_modify(env):
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
         proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
         self.assertNotEqual(proc.returncode, 0)
       else:
-        self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
-
-    with env_modify({'EMCC_FORCE_STDLIBS': None}):
-      test('normal') # normally is ok
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}):
-      test('forced libs is ok, they were there anyhow')
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc'}):
-      test('partial list, but ok since we grab them as needed')
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      test('fail! not enough stdlibs', fail=True)
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      test('force all the needed stdlibs, so this works even though we ignore the input file')
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_only_force_stdlibs_2(self):
     create_test_file('src.cpp', r'''
@@ -10459,6 +10454,9 @@ Module.arguments has been replaced with plain arguments_
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--print-map'], stderr=PIPE).stderr
     self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
 
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--print-map'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
+
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
                        '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
@@ -10466,6 +10464,9 @@ Module.arguments has been replaced with plain arguments_
   @no_fastcomp('lld-specific')
   def test_linker_flags_pass_through(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--waka'])
+    self.assertContained('wasm-ld: error: unknown argument: --waka', err)
+
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
   def test_non_wasm_without_wasm_in_vm(self):
@@ -10555,19 +10556,45 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'pthread.c'])
 
-  def test_preprocess_stdin(self):
+  def test_stdin_preprocess(self):
     create_test_file('temp.h', '#include <string>')
     outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
     outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
     self.assertTextDataIdentical(outputStdin, outputFile)
 
-  def test_compile_stdin(self):
+  def test_stdin_compile_only(self):
+    # Should fail without -x lang specifier
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      err = self.expect_fail([PYTHON, EMCC, '-c', '-'], input=f.read())
+    self.assertContained('error: -E or -x required when input is from standard input', err)
+
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-c', '-o', 'out.o', '-x', 'c++', '-'], input=f.read())
+    self.assertExists('out.o')
+
+    # Same again but without an explicit output filename
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-c', '-x', 'c++', '-'], input=f.read())
+    self.assertExists('-.o')
+
+  def test_stdin_compile_and_link(self):
     with open(path_from_root('tests', 'hello_world.cpp')) as f:
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def is_object_file(self, filename):
+    if self.is_wasm_backend():
+      return shared.Building.is_wasm('-')
+    else:
+      return shared.Building.is_bitcode('-')
+
+  def test_stdout_link(self):
+    # linking to stdout `-` doesn't work, and just produces a file on disk called `-`
+    run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
+    self.assertTrue(self.is_object_file('-'))
+
   def test_output_to_nowhere(self):
-    nowhere = '/dev/null' if not WINDOWS else 'NUL'
+    nowhere = 'NULL' if WINDOWS else '/dev/null'
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
 
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.

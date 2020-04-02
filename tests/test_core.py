@@ -1480,14 +1480,13 @@ int main(int argc, char **argv)
       '''
       self.do_run(src, 'OK\n')
 
-  # TODO Enable @with_both_exception_handling (unknown error)
-  def test_exceptions_typed(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
+  @with_both_exception_handling
+  def test_exceptions_typed(self, js_engines):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME', 1)
     self.emcc_args += ['-s', 'SAFE_HEAP=0'] # Throwing null will cause an ignorable null pointer access.
 
-    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed')
+    self.do_run_in_out_file_test('tests', 'core', 'test_exceptions_typed', js_engines=js_engines)
 
   # TODO Enable @with_both_exception_handling (EH spec is not supported yet)
   def test_exceptions_virtual_inheritance(self):
@@ -6021,7 +6020,6 @@ return malloc(size);
                self.get_dir(), os.path.join(self.get_dir(), 'src.cpp'))
 
   @wasm_simd
-  @unittest.skip('Allow max_{s,u} intrinsic name to roll')
   def test_wasm_intrinsics_simd(self, js_engines):
     def run():
       self.do_run(
@@ -6428,6 +6426,9 @@ return malloc(size);
       '2xi40',
       # current fastcomp limitations FIXME
       'quoted',
+      # assumes malloc exists in JS
+      'llvm_assume', 'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_invoke_phi',
+      'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_phi', 'longjmp_tiny_phi2',
     ]
     skip_emterp = [
       'funcptr', # test writes to memory we store out bytecode! test is invalid

@@ -987,7 +987,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # counter for the next index that should be used.
     next_arg_index = len(newargs)
 
-    has_source_inputs = False
     has_header_inputs = False
     lib_dirs = []
 
@@ -1013,17 +1012,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # find input files with a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
     # what is left contains no more |-x OPT| things
+    skip = False
     for i in range(len(newargs)):
+      if skip:
+        skip = False
+        continue
+
       arg = newargs[i]
-      if i > 0:
-        prev = newargs[i - 1]
-        if prev in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
-                    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                    '-install_name', '-compatibility_version',
-                    '-current_version', '-I', '-L', '-include-pch'):
-          continue # ignore this gcc-style argument
+      if arg in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
+                 '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+                 '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+                 '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+                 '-install_name', '-compatibility_version',
+                 '-current_version', '-I', '-L', '-include-pch',
+                 '-Xlinker'):
+        skip = True
 
       if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
         arg = os.path.realpath(arg)
@@ -1037,7 +1040,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = ''
           if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
-            has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
@@ -1071,7 +1073,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           if has_fixed_language_mode:
             newargs[i] = ''
             input_files.append((i, arg))
-            has_source_inputs = True
           else:
             exit_with_error(arg + ": Input file has an unknown suffix, don't know what to do with it!")
       elif arg == '-r':
@@ -1091,6 +1092,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for flag_index, flag in enumerate(link_flags_to_add):
           add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
         newargs[i] = ''
+      elif arg == '-Xlinker':
+        add_link_flag(i + 1, newargs[i + 1])
+        newargs[i] = ''
+        newargs[i + 1] = ''
       elif arg == '-s':
         # -s and some other compiler flags are normally passed onto the linker
         # TODO(sbc): Pass this and other flags through when using lld
@@ -1102,7 +1107,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     newargs = [a for a in newargs if a]
 
     if has_dash_c or has_dash_S:
-      assert has_source_inputs or has_header_inputs, 'Must have source code or header inputs to use -c or -S'
       if has_dash_c:
         if '-emit-llvm' in newargs:
           final_suffix = '.bc'
@@ -1164,8 +1168,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS = 0
 
     if not shared.Settings.WASM_BACKEND:
-      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        'memset', 'memcpy', 'malloc', 'free', 'emscripten_get_heap_size']
+      shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['memset', 'memcpy', 'emscripten_get_heap_size']
 
     if shared.Settings.MINIMAL_RUNTIME or 'MINIMAL_RUNTIME=1' in settings_changes or 'MINIMAL_RUNTIME=2' in settings_changes:
       # Remove the default exported functions 'malloc', 'free', etc. those should only be linked in if used
@@ -1403,7 +1406,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       forced_stdlibs.append('libembind')
 
     if not shared.Settings.MINIMAL_RUNTIME:
-      # Always need malloc and free to be kept alive and exported, for internal use and other modules
+      # Always need malloc and free to be kept alive and exported, for internal use and other
+      # modules
       shared.Settings.EXPORTED_FUNCTIONS += ['_malloc', '_free']
 
     if shared.Settings.RELOCATABLE and not shared.Settings.DYNAMIC_EXECUTION:
@@ -2155,11 +2159,12 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
               shared.Building.llvm_as(input_file, temp_file)
               temp_files.append((i, temp_file))
+          elif has_fixed_language_mode:
+            compile_source_file(i, input_file)
+          elif input_file == '-':
+            exit_with_error('-E or -x required when input is from standard input')
           else:
-            if has_fixed_language_mode:
-              compile_source_file(i, input_file)
-            else:
-              exit_with_error(input_file + ': Unknown file suffix when compiling to LLVM bitcode!')
+            exit_with_error(input_file + ': unknown input file suffix')
 
     # exit block 'compile inputs'
     log_time('compile inputs')
@@ -2195,11 +2200,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           assert len(input_files) == 1
           input_file = input_files[0][1]
           temp_file = temp_files[0][1]
-          bitcode_target = specified_target if specified_target else unsuffixed_basename(input_file) + final_suffix
-          if temp_file != input_file:
-            safe_move(temp_file, bitcode_target)
-          else:
-            shutil.copyfile(temp_file, bitcode_target)
+          if specified_target != '-':
+            if temp_file != input_file:
+              safe_move(temp_file, specified_target)
+            else:
+              shutil.copyfile(temp_file, specified_target)
           temp_output_base = unsuffixed(temp_file)
           if os.path.exists(temp_output_base + '.d'):
             # There was a .d file generated, from -MD or -MMD and friends, save a copy of it to where the output resides,

@@ -417,19 +417,19 @@ v128_t TESTFN i8x16_mul(v128_t x, v128_t y) {
   return wasm_i8x16_mul(x, y);
 }
 v128_t TESTFN i8x16_min_s(v128_t x, v128_t y) {
-  return wasm_i8x16_min_s(x, y);
+  return wasm_i8x16_min(x, y);
 }
 v128_t TESTFN i8x16_min_u(v128_t x, v128_t y) {
-  return wasm_i8x16_min_u(x, y);
+  return wasm_u8x16_min(x, y);
 }
 v128_t TESTFN i8x16_max_s(v128_t x, v128_t y) {
-  return wasm_i8x16_max_s(x, y);
+  return wasm_i8x16_max(x, y);
 }
 v128_t TESTFN i8x16_max_u(v128_t x, v128_t y) {
-  return wasm_i8x16_max_u(x, y);
+  return wasm_u8x16_max(x, y);
 }
 v128_t TESTFN i8x16_avgr_u(v128_t x, v128_t y) {
-  return wasm_i8x16_avgr_u(x, y);
+  return wasm_u8x16_avgr(x, y);
 }
 v128_t TESTFN i16x8_abs(v128_t vec) {
   return wasm_i16x8_abs(vec);
@@ -471,19 +471,19 @@ v128_t TESTFN i16x8_sub_saturate_u(v128_t x, v128_t y) {
   return wasm_u16x8_sub_saturate(x, y);
 }
 v128_t TESTFN i16x8_min_s(v128_t x, v128_t y) {
-  return wasm_i16x8_min_s(x, y);
+  return wasm_i16x8_min(x, y);
 }
 v128_t TESTFN i16x8_min_u(v128_t x, v128_t y) {
-  return wasm_i16x8_min_u(x, y);
+  return wasm_u16x8_min(x, y);
 }
 v128_t TESTFN i16x8_max_s(v128_t x, v128_t y) {
-  return wasm_i16x8_max_s(x, y);
+  return wasm_i16x8_max(x, y);
 }
 v128_t TESTFN i16x8_max_u(v128_t x, v128_t y) {
-  return wasm_i16x8_max_u(x, y);
+  return wasm_u16x8_max(x, y);
 }
 v128_t TESTFN i16x8_avgr_u(v128_t x, v128_t y) {
-  return wasm_i16x8_avgr_u(x, y);
+  return wasm_u16x8_avgr(x, y);
 }
 v128_t TESTFN i16x8_mul(v128_t x, v128_t y) {
   return wasm_i16x8_mul(x, y);
@@ -516,16 +516,16 @@ v128_t TESTFN i32x4_sub(v128_t x, v128_t y) {
   return wasm_i32x4_sub(x, y);
 }
 v128_t TESTFN i32x4_min_s(v128_t x, v128_t y) {
-  return wasm_i32x4_min_s(x, y);
+  return wasm_i32x4_min(x, y);
 }
 v128_t TESTFN i32x4_min_u(v128_t x, v128_t y) {
-  return wasm_i32x4_min_u(x, y);
+  return wasm_u32x4_min(x, y);
 }
 v128_t TESTFN i32x4_max_s(v128_t x, v128_t y) {
-  return wasm_i32x4_max_s(x, y);
+  return wasm_i32x4_max(x, y);
 }
 v128_t TESTFN i32x4_max_u(v128_t x, v128_t y) {
-  return wasm_i32x4_max_u(x, y);
+  return wasm_u32x4_max(x, y);
 }
 v128_t TESTFN i32x4_mul(v128_t x, v128_t y) {
   return wasm_i32x4_mul(x, y);

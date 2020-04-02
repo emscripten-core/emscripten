@@ -694,30 +694,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if !MINIMAL_RUNTIME && MALLOC != 'none'
-  // tiny, fake malloc/free implementation. If the program actually uses malloc,
-  // a compiled version will be used; this will only be used if the runtime
-  // needs to allocate something, for which this is good enough if otherwise
-  // no malloc is needed.
-  malloc: function(bytes) {
-    /* Over-allocate to make sure it is byte-aligned by 8.
-     * This will leak memory, but this is only the dummy
-     * implementation (replaced by dlmalloc normally) so
-     * not an issue.
-     */
-#if ASSERTIONS == 2
-    warnOnce('using stub malloc (reference it from C to have the real one included)');
-#endif
-    var ptr = dynamicAlloc(bytes + 8);
-    return (ptr+8) & 0xFFFFFFF8;
-  },
-  free: function() {
-#if ASSERTIONS == 2
-    warnOnce('using stub free (reference it from C to have the real one included)');
-#endif
-  },
-#endif
-
   abs: 'Math_abs',
   labs: 'Math_abs',
 
@@ -765,6 +741,7 @@ LibraryManager.library = {
   // in both fastcomp and upstream.
   $ENV: {},
 
+#if !WASM_BACKEND
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
@@ -843,8 +820,6 @@ LibraryManager.library = {
     _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
-  // Alias for sanitizers which intercept getenv.
-  emscripten_get_env: 'getenv',
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
@@ -924,6 +899,7 @@ LibraryManager.library = {
     }
     return 0;
   },
+#endif
 
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);

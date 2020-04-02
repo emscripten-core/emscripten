@@ -747,7 +747,7 @@ class libc(AsanInstrumentedLibrary, MuslInternalLibrary, MTLibrary):
         'proto.c', 'gethostbyaddr.c', 'gethostbyaddr_r.c', 'gethostbyname.c',
         'gethostbyname2_r.c', 'gethostbyname_r.c', 'gethostbyname2.c',
         'usleep.c', 'alarm.c', 'syscall.c', '_exit.c', 'popen.c',
-        'getgrouplist.c', 'initgroups.c', 'timer_create.c',
+        'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'faccessat.c',
     ]
 
@@ -1513,6 +1513,9 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
         added.add(ident)
         more = True
         for dep in deps:
+          # certain symbols in deps_info.json don't exist in the wasm backend
+          if shared.Settings.WASM_BACKEND and dep in ['_get_environ']:
+            continue
           need.undefs.add(dep)
           if shared.Settings.VERBOSE:
             logger.debug('adding dependency on %s due to deps-info on %s' % (dep, ident))
