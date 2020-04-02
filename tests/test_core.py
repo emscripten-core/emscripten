@@ -6428,6 +6428,9 @@ return malloc(size);
       '2xi40',
       # current fastcomp limitations FIXME
       'quoted',
+      # assumes malloc exists in JS
+      'llvm_assume', 'longjmp_tiny', 'longjmp_tiny_invoke', 'longjmp_tiny_invoke_phi',
+      'longjmp_tiny_keepem', 'longjmp_tiny_keepem_cond', 'longjmp_tiny_phi', 'longjmp_tiny_phi2',
     ]
     skip_emterp = [
       'funcptr', # test writes to memory we store out bytecode! test is invalid
