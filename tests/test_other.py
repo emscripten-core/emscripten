@@ -10446,6 +10446,9 @@ Module.arguments has been replaced with plain arguments_
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--waka'])
     self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--waka'])
+    self.assertContained('wasm-ld: error: unknown argument: --waka', err)
+
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'WASM=0'])

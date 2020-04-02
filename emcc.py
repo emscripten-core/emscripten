@@ -1013,17 +1013,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # find input files with a simple heuristic. we should really analyze
     # based on a full understanding of gcc params, right now we just assume that
     # what is left contains no more |-x OPT| things
+    skip = False
     for i in range(len(newargs)):
+      if skip:
+        skip = False
+        continue
+
       arg = newargs[i]
-      if i > 0:
-        prev = newargs[i - 1]
-        if prev in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
-                    '-Xpreprocessor', '-include', '-imacros', '-idirafter',
-                    '-iprefix', '-iwithprefix', '-iwithprefixbefore',
-                    '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
-                    '-install_name', '-compatibility_version',
-                    '-current_version', '-I', '-L', '-include-pch'):
-          continue # ignore this gcc-style argument
+      if arg in ('-MT', '-MF', '-MQ', '-D', '-U', '-o', '-x',
+                 '-Xpreprocessor', '-include', '-imacros', '-idirafter',
+                 '-iprefix', '-iwithprefix', '-iwithprefixbefore',
+                 '-isysroot', '-imultilib', '-A', '-isystem', '-iquote',
+                 '-install_name', '-compatibility_version',
+                 '-current_version', '-I', '-L', '-include-pch',
+                 '-Xlinker'):
+        skip = True
 
       if options.expand_symlinks and os.path.islink(arg) and get_file_suffix(os.path.realpath(arg)) in SOURCE_ENDINGS + OBJECT_FILE_ENDINGS + DYNAMICLIB_ENDINGS + ASSEMBLY_ENDINGS + HEADER_ENDINGS:
         arg = os.path.realpath(arg)
@@ -1091,6 +1095,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         for flag_index, flag in enumerate(link_flags_to_add):
           add_link_flag(i + float(flag_index) / len(link_flags_to_add), flag)
         newargs[i] = ''
+      elif arg == '-Xlinker':
+        add_link_flag(i + 1, newargs[i + 1])
+        newargs[i] = ''
+        newargs[i + 1] = ''
       elif arg == '-s':
         # -s and some other compiler flags are normally passed onto the linker
         # TODO(sbc): Pass this and other flags through when using lld
