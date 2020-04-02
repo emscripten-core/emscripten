@@ -88,7 +88,6 @@ function fullWalk(node, c) {
 // Recursive post-order walk, calling properties on an object by node type,
 // if the type exists, and if so leaving recursion to that function.
 function recursiveWalk(node, cs) {
-//print('recw1 ' + JSON.stringify(node));
   (function c(node) {
     if (!(node.type in cs)) {
       visitChildren(node, function(child) {
@@ -112,10 +111,17 @@ function nullify(node) {
   node.raw = 'null';
 }
 
-function undefinedify(node) {
+// This converts the node into something that terser will ignore in a var
+// declaration, that is, it is a way to get rid of initial values.
+function convertToNothingInVarInit(node) {
   node.type = 'Literal';
   node.value = undefined;
   node.raw = 'undefined';
+}
+
+function convertToNull(node) {
+  node.type = 'Identifier';
+  node.name = 'null';
 }
 
 function setLiteralValue(item, value) {
@@ -347,6 +353,14 @@ function JSDCE(ast, multipleIterations) {
           c(node.value);
         });
       },
+      MemberExpression(node, c) {
+        c(node.object);
+        // Ignore a property identifier (a.X), but notice a[X] (computed
+        // is true) and a["X"] (it will be a Literal and not Identifier).
+        if (node.property.type !== 'Identifier' || node.computed) {
+          c(node.property);
+        }
+      },
       FunctionDeclaration(node, c) {
         handleFunction(node, c, true /* defun */);
       },
@@ -550,7 +564,7 @@ function emitDCEGraph(ast) {
   //
   // The imports that wasm receives look like this:
   //
-  //  Module.asmLibraryArg = { "abort": abort, "assert": assert, [..] };
+  //  var asmLibraryArg = { "abort": abort, "assert": assert, [..] };
   //
   // The exports are trickier, as they have a different form whether or not
   // async compilation is enabled. It can be either:
@@ -563,6 +577,15 @@ function emitDCEGraph(ast) {
   //   return Module["asm"]["_malloc"].apply(null, arguments);
   //  });
   //
+  // or, in the minimal runtime, it looks like
+  //
+  //  WebAssembly.instantiate(Module["wasm"], imports).then(function(output) {
+  //   var asm = output.instance.exports; // may also not have "var", if
+  //                                      // declared outside and used elsewhere
+  //   ..
+  //   _malloc = asm["malloc"];
+  //   ..
+  //  });
   var imports = [];
   var defuns = [];
   var dynCallNames = [];
@@ -570,6 +593,7 @@ function emitDCEGraph(ast) {
   var modulePropertyToGraphName = {};
   var exportNameToGraphName = {}; // identical to asm['..'] nameToGraphName
   var foundAsmLibraryArgAssign = false;
+  var foundMinimalRuntimeExports = false;
   var graph = [];
 
   function saveAsmExport(name, asmName) {
@@ -628,15 +652,78 @@ function emitDCEGraph(ast) {
               // name may be slightly different (extra "_" in wasm backend)
               saveAsmExport(name, asmName);
               emptyOut(node); // ignore this in the second pass; this does not root
+              return;
             }
           }
         }
+      }
+      // A variable declaration that has no initial values can be ignored in
+      // the second pass, these are just declarations, not roots - an actual
+      // use must be found in order to root.
+      if (!node.declarations.reduce(function(hasInit, decl) {
+            return hasInit || !!decl.init
+          }, false)) {
+        emptyOut(node);
       }
     } else if (node.type === 'FunctionDeclaration') {
       defuns.push(node);
       var name = node.id.name;
       nameToGraphName[name] = getGraphName(name, 'defun');
       emptyOut(node); // ignore this in the second pass; we scan defuns separately
+    } else if (node.type === 'FunctionExpression') {
+      // Check if this is the minimal runtime exports function, which looks like
+      //   function(output) { var asm = output.instance.exports;
+      if (node.params.length === 1 && node.params[0].type === 'Identifier' &&
+          node.params[0].name === 'output' && node.body.type === 'BlockStatement') {
+        var body = node.body.body;
+        if (body.length >= 1) {
+          var first = body[0];
+          var target, value; // "(var?) target = value"
+          // Look either for  var asm =  or just   asm =
+          if (first.type === 'VariableDeclaration' && first.declarations.length === 1) {
+            var decl = first.declarations[0];
+            target = decl.id;
+            value = decl.init;
+          } else if (first.type === 'ExpressionStatement' &&
+                     first.expression.type === 'AssignmentExpression') {
+            var assign = first.expression;
+            if (assign.operator === '=') {
+              target = assign.left;
+              value = assign.right;
+            }
+          }
+          if (target && target.type === 'Identifier' && target.name === 'asm' && value) {
+            if (value.type === 'MemberExpression' &&
+                value.object.type === 'MemberExpression' &&
+                value.object.object.type === 'Identifier' &&
+                value.object.object.name === 'output' &&
+                value.object.property.type === 'Identifier' &&
+                value.object.property.name === 'instance' &&
+                value.property.type === 'Identifier' &&
+                value.property.name === 'exports') {
+              // This looks very much like what we are looking for.
+              assert(!foundMinimalRuntimeExports);
+              for (var i = 1; i < body.length; i++) {
+                var item = body[i];
+                if (item.type === 'ExpressionStatement' &&
+                    item.expression.type === 'AssignmentExpression' &&
+                    item.expression.operator === '=' &&
+                    item.expression.left.type === 'Identifier' &&
+                    item.expression.right.type === 'MemberExpression' &&
+                    item.expression.right.object.type === 'Identifier' &&
+                    item.expression.right.object.name === 'asm' &&
+                    item.expression.right.property.type === 'Literal') {
+                  var name = item.expression.left.name;
+                  var asmName = item.expression.right.property.value;
+                  saveAsmExport(name, asmName);
+                  emptyOut(item); // ignore all this in the second pass; this does not root
+                }
+              }
+              foundMinimalRuntimeExports = true;
+            }
+          }
+        }
+      }
     }
   });
   // must find the info we need
@@ -778,7 +865,24 @@ function applyDCEGraphRemovals(ast) {
         var value = node.right;
         if ((full in unused) &&
             (isAsmUse(value) || !hasSideEffects(value))) {
-          undefinedify(node);
+          // This will be in a var init, and we just remove that value.
+          convertToNothingInVarInit(node);
+        }
+      }
+    } else if (node.type === 'ExpressionStatement') {
+      var expr = node.expression;
+      // In the minimal runtime code pattern we have just
+      //   x = asm['x']
+      // and never in a var.
+      if (expr.operator === '=' &&
+          expr.left.type === 'Identifier' &&
+          isAsmUse(expr.right)) {
+        var name = expr.left.name;
+        if (name === getAsmOrModuleUseName(expr.right)) {
+          var full = 'emcc$export$' + name;
+          if (full in unused) {
+            emptyOut(node);
+          }
         }
       }
     }
@@ -806,6 +910,20 @@ function makeCallExpression(node, name, args) {
   });
 }
 
+function isEmscriptenHEAP(name) {
+  switch (name) {
+    case 'HEAP8':  case 'HEAPU8':
+    case 'HEAP16': case 'HEAPU16':
+    case 'HEAP32': case 'HEAPU32':
+    case 'HEAPF32': case 'HEAPF64': {
+      return true;
+    }
+    default: {
+      return false;
+    }
+  }
+}
+
 // Instrument heap accesses to call GROWABLE_HEAP_* helper functions instead, which allows
 // pthreads + memory growth to work (we check if the memory was grown on another thread
 // in each access), see #8365.
@@ -813,19 +931,9 @@ function growableHeap(ast) {
   recursiveWalk(ast, {
     AssignmentExpression: function(node) {
       if (node.left.type === 'Identifier' &&
-          node.left.name.startsWith('HEAP')
-      ) {
+          isEmscriptenHEAP(node.left.name)) {
         // Don't transform initial setup of the arrays.
-        switch (node.left.name) {
-          case 'HEAP8':  case 'HEAPU8':
-          case 'HEAP16': case 'HEAPU16':
-          case 'HEAP32': case 'HEAPU32':
-          case 'HEAPF32': case 'HEAPF64': {
-            return;
-          }
-          default: {
-          }
-        }
+        return;
       }
       growableHeap(node.left);
       growableHeap(node.right);
@@ -883,6 +991,81 @@ function growableHeap(ast) {
   });
 }
 
+// Make all JS pointers unsigned. We do this by modifying things like
+// HEAP32[X >> 2] to HEAP32[X >>> 2]. We also need to handle the case of
+// HEAP32[X] and make that HEAP32[X >>> 0], things like subarray(), etc.
+function unsignPointers(ast) {
+  // Aside from the standard emscripten HEAP*s, also identify just "HEAP"/"heap"
+  // as representing a heap. This can be used in JS library code in order
+  // to get this pass to fix it up.
+  function isHeap(name) {
+    return isEmscriptenHEAP(name) || name === 'heap' || name === 'HEAP';
+  }
+
+  function unsign(node) {
+    // The pointer is often a >> shift, which we can just turn into >>>
+    if (node.type === 'BinaryExpression') {
+      if (node.operator === '>>') {
+        node.operator = '>>>';
+        return node;
+      }
+    }
+    // If nothing else worked out, add a new shift.
+    return {
+      type: 'BinaryExpression',
+      left: node,
+      operator: ">>>",
+      right: {
+        type: "Literal",
+        value: 0,
+        raw: "0",
+        start: 0,
+        end: 0,
+      },
+      start: 0,
+      end: 0,
+    };
+  }
+
+  fullWalk(ast, function(node) {
+    if (node.type === 'MemberExpression') {
+      // Check if this is HEAP*[?]
+      if (node.object.type === 'Identifier' &&
+          isHeap(node.object.name) &&
+          node.computed) {
+        node.property = unsign(node.property);
+      }
+    } else if (node.type === 'CallExpression') {
+      if (node.callee.type === 'MemberExpression' &&
+          node.callee.object.type === 'Identifier' &&
+          isHeap(node.callee.object.name) &&
+          node.callee.property.type === 'Identifier' &&
+          !node.computed) {
+        // This is a call on HEAP*.?. Specific things we need to fix up are
+        // subarray, set, and copyWithin. TODO more?
+        if (node.callee.property.name === 'set') {
+          if (node.arguments.length >= 2) {
+            node.arguments[1] = unsign(node.arguments[1]);
+          }
+        } else if (node.callee.property.name === 'subarray') {
+          if (node.arguments.length >= 1) {
+            node.arguments[0] = unsign(node.arguments[0]);
+            if (node.arguments.length >= 2) {
+              node.arguments[1] = unsign(node.arguments[1]);
+            }
+          }
+        } else if (node.callee.property.name === 'copyWithin') {
+          node.arguments[0] = unsign(node.arguments[0]);
+          node.arguments[1] = unsign(node.arguments[1]);
+          if (node.arguments.length >= 3) {
+            node.arguments[2] = unsign(node.arguments[2]);
+          }
+        }
+      }
+    }
+  });
+}
+
 function reattachComments(ast, comments) {
   var symbols = [];
 
@@ -901,10 +1084,12 @@ function reattachComments(ast, comments) {
   // Walk through all comments in ascending line number, and match each
   // comment to the appropriate code block.
   for(var i = 0, j = 0; i < comments.length; ++i) {
-    while(j < symbols.length && symbols[j].start.pos < comments[i].end)
+    while(j < symbols.length && symbols[j].start.pos < comments[i].end) {
       ++j;
-    if (j >= symbols.length)
+    }
+    if (j >= symbols.length) {
       break;
+    }
     if (symbols[j].start.pos - comments[i].end > 20) {
       // This comment is too far away to refer to the given symbol. Drop
       // the comment altogether.
@@ -974,6 +1159,7 @@ var registry = {
   noPrint: function() { noPrint = true },
   dump: function() { dump(ast) },
   growableHeap: growableHeap,
+  unsignPointers: unsignPointers,
 };
 
 passes.forEach(function(pass) {

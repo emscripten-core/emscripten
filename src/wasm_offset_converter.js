@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 function WasmOffsetConverter(wasmBytes, wasmModule) {
   // This class parses a WASM binary file, and constructs a mapping from
   // function indices to the start of their code in the binary file, as well
@@ -49,10 +55,11 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
   }
 
   function skipLimits() {
-    // skip `offset` over a WASM limits object
-    switch (buffer[offset++]) {
-      case 1: unsignedLEB128(); // has both initial and maximum, fall through
-      case 0: unsignedLEB128(); // just initial
+    var flags = unsignedLEB128();
+    unsignedLEB128(); // initial size
+    var hasMax = (flags & 1) != 0;
+    if (hasMax) {
+      unsignedLEB128();
     }
   }
 
@@ -79,7 +86,7 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
               unsignedLEB128(); // skip function type
               break;
             case 1: // table import
-              ++offset;
+              ++offset; // FIXME: should be SLEB128
               skipLimits();
               break;
             case 2: // memory import
@@ -88,6 +95,9 @@ function WasmOffsetConverter(wasmBytes, wasmModule) {
             case 3: // global import
               offset += 2; // skip type id byte and mutability byte
               break;
+#if ASSERTIONS
+            default: throw 'bad import kind';
+#endif
           }
         }
         this.import_functions = funcidx;

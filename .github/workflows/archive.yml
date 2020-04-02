@@ -1,0 +1,24 @@
+name: CI
+
+on:
+  create:
+    tags:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v1
+    - name: make dist
+      run: |
+        make dist
+        version=`cat emscripten-version.txt | sed s/\"//g`
+        echo "::set-env name=VERSION::$version"
+    - uses: actions/upload-artifact@v1
+      with:
+        name: emscripten-${{ env.VERSION }}
+        path: emscripten-${{ env.VERSION }}.tar.bz2

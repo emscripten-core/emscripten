@@ -1,7 +1,8 @@
-// Copyright 2017 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2017 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // {{PREAMBLE_ADDITIONS}}
 
@@ -338,10 +339,10 @@ function relocateExports(exports, memoryBase, tableBase, moduleLocal) {
 #if EMULATE_FUNCTION_POINTER_CASTS
       // it may be a function pointer
       if (e.substr(0, 3) == 'fp$' && typeof exports[e.substr(3)] === 'function') {
-        value = value + tableBase;
+        value += tableBase;
       } else {
 #endif
-        value = value + memoryBase;
+        value += memoryBase;
 #if EMULATE_FUNCTION_POINTER_CASTS
       }
 #endif
@@ -415,12 +416,6 @@ function loadWebAssemblyModule(binary, flags) {
 #endif
     // prepare memory
     var memoryBase = alignMemory(getMemory(memorySize + memoryAlign), memoryAlign); // TODO: add to cleanups
-    // The static area consists of explicitly initialized data, followed by zero-initialized data.
-    // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
-    // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
-    // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
-    // from uninitialized memory.
-    for (var i = memoryBase; i < memoryBase + memorySize; ++i) HEAP8[i] = 0;
     // prepare env imports
     var env = asmLibraryArg;
     // TODO: use only __memory_base and __table_base, need to update asm.js backend
@@ -430,7 +425,11 @@ function loadWebAssemblyModule(binary, flags) {
     table.grow(tableSize);
     assert(table === originalTable);
     // zero-initialize memory and table
-    // TODO: in some cases we can tell it is already zero initialized
+    // The static area consists of explicitly initialized data, followed by zero-initialized data.
+    // The latter may need zeroing out if the MAIN_MODULE has already used this memory area before
+    // dlopen'ing the SIDE_MODULE.  Since we don't know the size of the explicitly initialized data
+    // here, we just zero the whole thing, which is suboptimal, but should at least resolve bugs
+    // from uninitialized memory.
     for (var i = memoryBase; i < memoryBase + memorySize; i++) {
       HEAP8[i] = 0;
     }

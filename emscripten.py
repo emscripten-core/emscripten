@@ -21,6 +21,7 @@ import logging
 import pprint
 from collections import OrderedDict
 
+from tools import diagnostics
 from tools import shared
 from tools import gen_struct_info
 from tools import jsrun
@@ -208,7 +209,7 @@ def fixup_functions(funcs, metadata):
     # undercounts by one, but that is what we want
     table_sizes[k] = str(v.count(','))
     # if shared.Settings.ASSERTIONS >= 2 and table_sizes[k] == 0:
-    #   shared.warning('no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
+    #   diagnostics.warning('emcc', 'no function pointers with signature ' + k + ', but there is a call, which will abort if it occurs (this can result from undefined behavior, check for compiler warnings on your source files and consider -Werror)'
   funcs = re.sub(r"#FM_(\w+)#", lambda m: table_sizes[m.groups(0)[0]], funcs)
 
   # fix +float into float.0, if not running js opts
@@ -637,13 +638,15 @@ def optimize_syscalls(declares, DEBUG):
     # without filesystem support, it doesn't matter what syscalls need
     shared.Settings.SYSCALLS_REQUIRE_FILESYSTEM = 0
   else:
-    syscall_prefixes = ('__syscall', 'fd_', '__wasi_fd_')
+    syscall_prefixes = ('__sys', 'fd_', '__wasi_fd_')
     syscalls = [d for d in declares if d.startswith(syscall_prefixes)]
     # check if the only filesystem syscalls are in: close, ioctl, llseek, write
     # (without open, etc.. nothing substantial can be done, so we can disable
     # extra filesystem support in that case)
     if set(syscalls).issubset(set([
-      '__syscall6', '__syscall54', '__syscall140',
+      '__sys_ioctl',
+      # legacy/fastcomp name for __sys_ioctl
+      '__syscall6',
       'fd_seek', '__wasi_fd_seek',
       'fd_write', '__wasi_fd_write',
       'fd_close', '__wasi_fd_close',
@@ -683,7 +686,7 @@ def update_settings_glue(metadata, DEBUG):
     shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = []
 
   if metadata.get('cantValidate') and shared.Settings.ASM_JS != 2:
-    shared.WarningManager.warn('almost-asm', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
+    diagnostics.warning('almost-asm', 'disabling asm.js validation due to use of non-supported features: ' + metadata['cantValidate'])
     shared.Settings.ASM_JS = 2
 
   all_funcs = shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE + [shared.JS.to_nice_ident(d) for d in metadata['declares']]
@@ -695,7 +698,7 @@ def update_settings_glue(metadata, DEBUG):
   if metadata['simd']:
     shared.Settings.SIMD = 1
     if shared.Settings.ASM_JS != 2:
-      shared.WarningManager.warn('almost-asm', 'disabling asm.js validation due to use of SIMD')
+      diagnostics.warning('almost-asm', 'disabling asm.js validation due to use of SIMD')
       shared.Settings.ASM_JS = 2
 
   shared.Settings.MAX_GLOBAL_ALIGN = metadata['maxGlobalAlign']
@@ -915,10 +918,7 @@ def report_missing_symbols(all_implemented, pre):
     # trivial allocator and warn at runtime if used in ASSERTIONS
     if missing == '_malloc':
       continue
-    if shared.Settings.ERROR_ON_UNDEFINED_SYMBOLS:
-      exit_with_error('undefined exported function: "%s"', requested)
-    elif shared.Settings.WARN_ON_UNDEFINED_SYMBOLS:
-      shared.warning('undefined exported function: "%s"', requested)
+    diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
@@ -1898,7 +1898,7 @@ function asmJsEstablishStackFrame(stackBase, stackMax) {
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
   tempDoublePtr = STACKTOP;
-  STACKTOP = (STACKTOP + 8)|0;
+  STACKTOP = (STACKTOP + 16)|0;
 }
 ''')
 
@@ -2539,7 +2539,7 @@ def add_standard_wasm_imports(send_items_map):
       return low;
     }'''
     send_items_map['load_val_f32'] = '''function(loc, value) {
-      console.log('loaload_val_i32d_ptr ' + [loc, value]);
+      console.log('load_val_f32 ' + [loc, value]);
       return value;
     }'''
     send_items_map['load_val_f64'] = '''function(loc, value) {
@@ -2560,7 +2560,7 @@ def add_standard_wasm_imports(send_items_map):
       return low;
     }'''
     send_items_map['store_val_f32'] = '''function(loc, value) {
-      console.log('loastore_val_i32d_ptr ' + [loc, value]);
+      console.log('store_val_f32 ' + [loc, value]);
       return value;
     }'''
     send_items_map['store_val_f64'] = '''function(loc, value) {

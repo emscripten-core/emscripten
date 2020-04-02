@@ -59,9 +59,6 @@ def get(ports, settings, shared):
       for include in cocos2dx_includes:
         command.append('-I' + include)
 
-      if src.endswith('.cpp'):
-        command.append('-std=c++11')
-
       commands.append(command)
       o_s.append(o)
     shared.safe_ensure_dirs(os.path.dirname(o_s[0]))

@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 #if STRICT_JS
 "use strict";
@@ -26,7 +27,9 @@
 var /** @type {{
   noImageDecoding: boolean,
   noAudioDecoding: boolean,
-  canvas: HTMLCanvasElement
+  canvas: HTMLCanvasElement,
+  dataFileDownloads: Object,
+  preloadResults: Object
 }}
  */ Module;
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};

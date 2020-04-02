@@ -91,3 +91,17 @@ ___cxa_find_matching_catch_after();
 var dotMath = Math.something;
 var dotOther = Side.effect;
 
+function allocate() {
+}
+var FS = {
+ foo: function(stream, offset, length) {
+  stream.allocate; // this should not keep allocate() alive
+  FS; // keep FS alive itself
+  // test we leave [] operations alone
+  for (var __exportedFunc in asm) {
+    var jsname = __exportedFunc;
+    global_object[jsname] = Module[jsname] = asm[__exportedFunc];
+  }
+ },
+};
+

@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -300,16 +301,14 @@ LibraryManager.library = {
     switch(name) {
       case {{{ cDefine('_SC_PAGE_SIZE') }}}: return {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_PHYS_PAGES') }}}:
-#if WASM
-        var maxHeapSize = 2*1024*1024*1024 - 65536;
+#if ALLOW_MEMORY_GROWTH
+#if MAXIMUM_MEMORY == -1 // no maximum set, assume the best
+        var maxHeapSize = 4*1024*1024*1024;
 #else
-        var maxHeapSize = 2*1024*1024*1024 - 16777216;
+        var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #endif
-#if MAXIMUM_MEMORY != -1
-        maxHeapSize = {{{ MAXIMUM_MEMORY }}};
-#endif
-#if !ALLOW_MEMORY_GROWTH
-        maxHeapSize = HEAPU8.length;
+#else // no growth
+        var maxHeapSize = HEAPU8.length;
 #endif
         return maxHeapSize / {{{ POSIX_PAGE_SIZE }}};
       case {{{ cDefine('_SC_ADVISORY_INFO') }}}:
@@ -489,7 +488,7 @@ LibraryManager.library = {
     try {
 #if WASM
       // round size grow request up to wasm page size (fixed 64KB per spec)
-      wasmMemory.grow((size - buffer.byteLength + 65535) >> 16); // .grow() takes a delta compared to the previous size
+      wasmMemory.grow((size - buffer.byteLength + 65535) >>> 16); // .grow() takes a delta compared to the previous size
       updateGlobalBufferAndViews(wasmMemory.buffer);
 #else // asm.js:
       var newBuffer = new ArrayBuffer(size);
@@ -524,6 +523,9 @@ LibraryManager.library = {
 #endif
   ],
   emscripten_resize_heap: function(requestedSize) {
+#if CAN_ADDRESS_2GB
+    requestedSize = requestedSize >>> 0;
+#endif
 #if ALLOW_MEMORY_GROWTH == 0
 #if ABORTING_MALLOC
     abortOnCannotGrowMemory(requestedSize);
@@ -565,7 +567,7 @@ LibraryManager.library = {
     // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
     var maxHeapSize = {{{ MAXIMUM_MEMORY }}};
 #else
-    var maxHeapSize = 2147483648 - PAGE_MULTIPLE;
+    var maxHeapSize = {{{ CAN_ADDRESS_2GB ? 4294967296 : 2147483648 }}} - PAGE_MULTIPLE;
 #endif
     if (requestedSize > maxHeapSize) {
 #if ASSERTIONS
@@ -692,30 +694,6 @@ LibraryManager.library = {
   // stdlib.h
   // ==========================================================================
 
-#if !MINIMAL_RUNTIME && MALLOC != 'none'
-  // tiny, fake malloc/free implementation. If the program actually uses malloc,
-  // a compiled version will be used; this will only be used if the runtime
-  // needs to allocate something, for which this is good enough if otherwise
-  // no malloc is needed.
-  malloc: function(bytes) {
-    /* Over-allocate to make sure it is byte-aligned by 8.
-     * This will leak memory, but this is only the dummy
-     * implementation (replaced by dlmalloc normally) so
-     * not an issue.
-     */
-#if ASSERTIONS == 2
-    warnOnce('using stub malloc (reference it from C to have the real one included)');
-#endif
-    var ptr = dynamicAlloc(bytes + 8);
-    return (ptr+8) & 0xFFFFFFF8;
-  },
-  free: function() {
-#if ASSERTIONS == 2
-    warnOnce('using stub free (reference it from C to have the real one included)');
-#endif
-  },
-#endif
-
   abs: 'Math_abs',
   labs: 'Math_abs',
 
@@ -763,6 +741,7 @@ LibraryManager.library = {
   // in both fastcomp and upstream.
   $ENV: {},
 
+#if !WASM_BACKEND
   // This implementation of environ/getenv/etc. is used for fastcomp, due
   // to limitations in the system libraries (we can't easily add a global
   // ctor to create the environment without it always being linked in with
@@ -823,7 +802,11 @@ LibraryManager.library = {
     }
     {{{ makeSetValue('envPtr', 'strings.length * ptrSize', '0', 'i8*') }}};
   },
-  getenv__deps: ['$ENV'],
+  getenv__deps: ['$ENV',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   getenv__proxy: 'sync',
   getenv__sig: 'ii',
   getenv: function(name) {
@@ -837,8 +820,6 @@ LibraryManager.library = {
     _getenv.ret = allocateUTF8(ENV[name]);
     return _getenv.ret;
   },
-  // Alias for sanitizers which intercept getenv.
-  emscripten_get_env: 'getenv',
   clearenv__deps: ['$ENV', '__buildEnvironment'],
   clearenv__proxy: 'sync',
   clearenv__sig: 'i',
@@ -918,6 +899,7 @@ LibraryManager.library = {
     }
     return 0;
   },
+#endif
 
   getloadavg: function(loadavg, nelem) {
     // int getloadavg(double loadavg[], int nelem);
@@ -929,11 +911,6 @@ LibraryManager.library = {
     }
     return limit;
   },
-
-  // For compatibility, call to rand() when code requests arc4random(), although this is *not* at all
-  // as strong as rc4 is. See https://man.openbsd.org/arc4random
-  arc4random__sig: 'i',
-  arc4random: 'rand',
 
   // ==========================================================================
   // string.h
@@ -4343,16 +4320,11 @@ LibraryManager.library = {
   },
 
   emscripten_log__deps: ['_formatString', 'emscripten_log_js'],
-  emscripten_log: function(flags, varargs) {
-    // Extract the (optionally-existing) printf format specifier field from varargs.
-    var format = {{{ makeGetValue('varargs', '0', 'i32', undefined, undefined, true) }}};
-    varargs += {{{ Math.max(Runtime.getNativeFieldSize('i32'), Runtime.getAlignSize('i32', null, true)) }}};
+  emscripten_log: function(flags, format, varargs) {
     var str = '';
-    if (format) {
-      var result = __formatString(format, varargs);
-      for(var i = 0 ; i < result.length; ++i) {
-        str += String.fromCharCode(result[i]);
-      }
+    var result = __formatString(format, varargs);
+    for (var i = 0 ; i < result.length; ++i) {
+      str += String.fromCharCode(result[i]);
     }
     _emscripten_log_js(flags, str);
   },
@@ -4577,7 +4549,11 @@ LibraryManager.library = {
   },
 
   // Look up the file name from our stack frame cache with our PC representation.
-  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc'],
+  emscripten_pc_get_file__deps: ['emscripten_pc_get_source_js', 'emscripten_with_builtin_malloc',
+#if MINIMAL_RUNTIME
+    '$allocateUTF8',
+#endif
+  ],
   emscripten_pc_get_file: function (pc) {
     var result = _emscripten_pc_get_source_js(pc);
     if (!result) return 0;
@@ -4720,9 +4696,9 @@ LibraryManager.library = {
   // handling (returns a NaN on error). E.g. jstoi_q("123abc") returns 123.
   // Note that "smart" radix handling is employed for input string:
   // "0314" is parsed as octal, and "0x1234" is parsed as base-16.
+  $jstoi_q__docs: '/** @suppress {checkTypes} */',
   $jstoi_q: function(str) {
-    // TODO: If issues below are resolved, add a suitable suppression or remove this comment.
-    return parseInt(str, undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+    return parseInt(str);
   },
 
   // Converts a JS string to an integer base-10, with signaling error

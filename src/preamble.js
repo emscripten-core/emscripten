@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in:
@@ -97,7 +103,8 @@ function getCFunc(ident) {
 }
 
 // C calling interface.
-/** @param {Array=} argTypes
+/** @param {string|null=} returnType
+    @param {Array=} argTypes
     @param {Arguments|Array=} args
     @param {Object=} opts */
 function ccall(ident, returnType, argTypes, args, opts) {
@@ -192,7 +199,8 @@ function ccall(ident, returnType, argTypes, args, opts) {
   return ret;
 }
 
-/** @param {Array=} argTypes
+/** @param {string=} returnType
+    @param {Array=} argTypes
     @param {Object=} opts */
 function cwrap(ident, returnType, argTypes, opts) {
 #if !ASSERTIONS

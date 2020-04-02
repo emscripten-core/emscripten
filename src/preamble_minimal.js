@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if SEPARATE_ASM && ASSERTIONS && WASM == 0 && MODULARIZE
 if (!({{{ASM_MODULE_NAME}}})) throw 'Must load asm.js Module in to variable {{{ASM_MODULE_NAME}}} before adding compiled output .js script to the DOM';
 #endif
@@ -76,15 +82,15 @@ var GLOBAL_BASE = {{{ GLOBAL_BASE }}},
 #if WASM
 
 #if ALLOW_MEMORY_GROWTH && MAXIMUM_MEMORY != -1
-var wasmMaximumMemory = {{{ MAXIMUM_MEMORY }}};
+var wasmMaximumMemory = {{{ MAXIMUM_MEMORY >>> 16 }}};
 #else
-var wasmMaximumMemory = {{{ INITIAL_MEMORY }}};
+var wasmMaximumMemory = {{{ INITIAL_MEMORY >>> 16}}};
 #endif
 
 var wasmMemory = new WebAssembly.Memory({
-  'initial': {{{ INITIAL_MEMORY }}} >> 16
+  'initial': {{{ INITIAL_MEMORY >>> 16 }}}
 #if USE_PTHREADS || !ALLOW_MEMORY_GROWTH || MAXIMUM_MEMORY != -1
-  , 'maximum': wasmMaximumMemory >> 16
+  , 'maximum': wasmMaximumMemory
 #endif
 #if USE_PTHREADS
   , 'shared': true

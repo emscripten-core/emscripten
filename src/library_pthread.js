@@ -1,7 +1,8 @@
-// Copyright 2015 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 var LibraryPThread = {
   $PThread__postset: 'if (!ENVIRONMENT_IS_PTHREAD) PThread.initMainThreadBlock(); else PThread.initWorker();',
@@ -1112,13 +1113,11 @@ var LibraryPThread = {
   emscripten_futex_wait__deps: ['_main_thread_futex_wait_address', 'emscripten_main_thread_process_queued_calls'],
   emscripten_futex_wait: function(addr, val, timeout) {
     if (addr <= 0 || addr > HEAP8.length || addr&3 != 0) return -{{{ cDefine('EINVAL') }}};
-//    dump('futex_wait addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
     if (ENVIRONMENT_IS_WORKER) {
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}}, {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}});
 #endif
       var ret = Atomics.wait(HEAP32, addr >> 2, val, timeout);
-//    dump('futex_wait done by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
 #if PTHREADS_PROFILING
       PThread.setThreadStatusConditional(_pthread_self(), {{{ cDefine('EM_THREAD_STATUS_WAITFUTEX') }}}, {{{ cDefine('EM_THREAD_STATUS_RUNNING') }}});
 #endif
@@ -1169,7 +1168,6 @@ var LibraryPThread = {
     // Waking (at least) INT_MAX waiters is defined to mean wake all callers.
     // For Atomics.notify() API Infinity is to be passed in that case.
     if (count >= {{{ cDefine('INT_MAX') }}}) count = Infinity;
-//    dump('futex_wake addr:' + addr + ' by thread: ' + _pthread_self() + (ENVIRONMENT_IS_PTHREAD?'(pthread)':'') + '\n');
 
     // See if main thread is waiting on this address? If so, wake it up by resetting its wake location to zero.
     // Note that this is not a fair procedure, since we always wake main thread first before any workers, so
@@ -1269,6 +1267,7 @@ var LibraryPThread = {
 #if MINIMAL_RUNTIME && !WASM_BACKEND
   emscripten_proxy_to_main_thread_js__deps: ['$stackSave', '$stackAlloc', '$stackRestore'],
 #endif
+  emscripten_proxy_to_main_thread_js__docs: '/** @type{function(number, (number|boolean), ...(number|boolean))} */',
   emscripten_proxy_to_main_thread_js: function(index, sync) {
     // Additional arguments are passed after those two, which are the actual
     // function arguments.
@@ -1334,10 +1333,10 @@ var LibraryPThread = {
     // the stack by the bytes used.
     tempDoublePtr = STACK_BASE;
 #if ASSERTIONS
-    assert(tempDoublePtr % 8 == 0);
+    assert(tempDoublePtr % 16 == 0);
 #endif
-    STACK_BASE += 8;
-    STACKTOP += 8;
+    STACK_BASE += 16;
+    STACKTOP += 16;
 #endif
 
 #if WASM_BACKEND && STACK_OVERFLOW_CHECK >= 2

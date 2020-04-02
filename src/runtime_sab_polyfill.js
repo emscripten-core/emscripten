@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if USE_PTHREADS && !WASM
 if (typeof SharedArrayBuffer !== 'undefined') {
   // Currently SharedArrayBuffer does not have a slice() operation, so polyfill it in.

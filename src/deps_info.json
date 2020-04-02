@@ -1,5 +1,4 @@
 {
-  "arc4random": ["rand"],
   "freopen": ["free"],
   "munmap": ["free"],
   "getenv": ["malloc", "free", "_get_environ"],
@@ -73,8 +72,6 @@
   "__cxa_free_exception": ["free"],
   "__cxa_throw": ["setThrew"],
   "_formatString": ["strlen"],
-  "setjmp": ["realloc"],
-  "saveSetjmp": ["realloc"],
   "glfwSleep": ["sleep"],
   "glBegin": ["malloc", "free"],
   "bind": ["htonl", "htons", "ntohs"],
@@ -105,7 +102,7 @@
   "_embind_register_std_wstring": ["malloc", "free"],
   "pthread_create": ["malloc", "free", "emscripten_main_thread_process_queued_calls"],
   "$getTypeName": ["free"],
-  "__syscall77": ["memset"],
+  "__sys_getrusage": ["memset"],
   "_embind_register_std_string": ["free"],
   "_embind_register_std_wstring": ["free"],
   "_embind_register_function": ["free"],

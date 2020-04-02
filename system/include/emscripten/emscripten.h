@@ -21,6 +21,7 @@
  */
 
 #include "em_asm.h"
+#include "em_macros.h"
 #include "em_js.h"
 
 #ifdef __cplusplus
@@ -57,8 +58,6 @@ typedef double __attribute__((aligned(1))) emscripten_align1_double;
 typedef void (*em_callback_func)(void);
 typedef void (*em_arg_callback_func)(void*);
 typedef void (*em_str_callback_func)(const char *);
-
-#define EMSCRIPTEN_KEEPALIVE __attribute__((used))
 
 extern void emscripten_run_script(const char *script);
 extern int emscripten_run_script_int(const char *script);
@@ -225,7 +224,7 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 // misc.
 
 int emscripten_get_compiler_setting(const char *name);
-int emscripten_has_asyncify();
+int emscripten_has_asyncify(void);
 
 void emscripten_debugger(void);
 
@@ -247,7 +246,7 @@ char *emscripten_get_preloaded_image_data_from_FILE(FILE *file, int *w, int *h);
 #define EM_LOG_DEBUG    256
 #define EM_LOG_INFO     512
 
-void emscripten_log(int flags, ...);
+void emscripten_log(int flags, const char* format, ...);
 
 int emscripten_get_callstack(int flags, char *out, int maxbytes);
 

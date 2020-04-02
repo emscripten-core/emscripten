@@ -1,5 +1,5 @@
 __map_file
-__syscall91
+__sys_munmap
 abort
 emscripten_memcpy_big
 emscripten_resize_heap

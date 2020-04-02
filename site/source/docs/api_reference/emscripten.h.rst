@@ -1050,12 +1050,13 @@ Functions
   This is inline in the code, which tells the JavaScript engine to invoke the debugger if it gets there.
 
 
-.. c:function:: void emscripten_log(int flags, ...)
+.. c:function:: void emscripten_log(int flags, const char* format, ...)
 
   Prints out a message to the console, optionally with the callstack information.
 
   :param int flags: A binary OR of items from the list of :c:data:`EM_LOG_xxx <EM_LOG_CONSOLE>` flags that specify printing options.
-  :param ...: A ``printf``-style "format, ..." parameter list that is parsed according to the ``printf`` formatting rules.
+  :param const char* format: A ``printf``-style format string.
+  :param ...: A ``printf``-style "..." parameter list that is parsed according to the ``printf`` formatting rules.
 
 
 .. c:function:: int emscripten_get_callstack(int flags, char *out, int maxbytes)

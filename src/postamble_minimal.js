@@ -1,3 +1,8 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 // === Auto-generated postamble setup entry stuff ===
 
@@ -45,6 +50,15 @@ function initRuntime(asm) {
 #endif
 
 #if USE_PTHREADS
+  // Export needed variables that worker.js needs to Module.
+#if WASM_BACKEND
+  Module['_emscripten_tls_init'] = _emscripten_tls_init;
+#endif
+  Module['HEAPU32'] = HEAPU32;
+  Module['dynCall_ii'] = dynCall_ii;
+  Module['__register_pthread_ptr'] = __register_pthread_ptr;
+  Module['_pthread_self'] = _pthread_self;
+
   if (ENVIRONMENT_IS_PTHREAD) return;
   // Pass the thread address inside the asm.js scope to store it for fast access that avoids the need for a FFI out.
   __register_pthread_ptr(PThread.mainThreadBlock, /*isMainBrowserThread=*/!ENVIRONMENT_IS_WORKER, /*isMainRuntimeThread=*/1);
@@ -186,17 +200,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(function(output) {
   exportAsmFunctions(asm);
 #else
   /*** ASM_MODULE_EXPORTS ***/
-#endif
-
-#if USE_PTHREADS
-  //Export needed variables that worker.js needs to Module.
-#if WASM_BACKEND
-  Module['_emscripten_tls_init'] = _emscripten_tls_init;
-#endif
-  Module['HEAPU32'] = HEAPU32;
-  Module['dynCall_ii'] = dynCall_ii;
-  Module['__register_pthread_ptr'] = __register_pthread_ptr;
-  Module['_pthread_self'] = _pthread_self;
 #endif
 
   initRuntime(asm);

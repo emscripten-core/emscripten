@@ -1,11 +1,7 @@
-/*
- * Copyright 2010 The Emscripten Authors.  All rights reserved.
- * Emscripten is available under two separate licenses, the MIT license and the
- * University of Illinois/NCSA Open Source License.  Both these licenses can be
- * found in the LICENSE file.
- *
- * GL support. See http://kripken.github.io/emscripten-site/docs/porting/multimedia_and_graphics/OpenGL-support.html
- * for current status.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
  */
 
 var LibraryGL = {
@@ -2429,11 +2425,13 @@ var LibraryGL = {
       var view = GL.miniTempBufferFloatViews[4*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      for (var i = 0; i < 4*count; i += 4) {
-        view[i] = heap[value + 4*i >> 2];
-        view[i+1] = heap[value + 4*i+4 >> 2];
-        view[i+2] = heap[value + 4*i+8 >> 2];
-        view[i+3] = heap[value + 4*i+12 >> 2];
+      value >>= 2;
+      for (var i = 0; i < 4 * count; i += 4) {
+        var dst = value + i;
+        view[i] = heap[dst];
+        view[i + 1] = heap[dst + 1];
+        view[i + 2] = heap[dst + 2];
+        view[i + 3] = heap[dst + 3];
       }
     } else
 #endif
@@ -2541,23 +2539,25 @@ var LibraryGL = {
       var view = GL.miniTempBufferFloatViews[16*count-1];
       // hoist the heap out of the loop for size and for pthreads+growth.
       var heap = HEAPF32;
-      for (var i = 0; i < 16*count; i += 16) {
-        view[i] = heap[value + 4*i >> 2];
-        view[i+1] = heap[value + 4*i+4 >> 2];
-        view[i+2] = heap[value + 4*i+8 >> 2];
-        view[i+3] = heap[value + 4*i+12 >> 2];
-        view[i+4] = heap[value + 4*i+16 >> 2];
-        view[i+5] = heap[value + 4*i+20 >> 2];
-        view[i+6] = heap[value + 4*i+24 >> 2];
-        view[i+7] = heap[value + 4*i+28 >> 2];
-        view[i+8] = heap[value + 4*i+32 >> 2];
-        view[i+9] = heap[value + 4*i+36 >> 2];
-        view[i+10] = heap[value + 4*i+40 >> 2];
-        view[i+11] = heap[value + 4*i+44 >> 2];
-        view[i+12] = heap[value + 4*i+48 >> 2];
-        view[i+13] = heap[value + 4*i+52 >> 2];
-        view[i+14] = heap[value + 4*i+56 >> 2];
-        view[i+15] = heap[value + 4*i+60 >> 2];
+      value >>= 2;
+      for (var i = 0; i < 16 * count; i += 16) {
+        var dst = value + i;
+        view[i] = heap[dst];
+        view[i + 1] = heap[dst + 1];
+        view[i + 2] = heap[dst + 2];
+        view[i + 3] = heap[dst + 3];
+        view[i + 4] = heap[dst + 4];
+        view[i + 5] = heap[dst + 5];
+        view[i + 6] = heap[dst + 6];
+        view[i + 7] = heap[dst + 7];
+        view[i + 8] = heap[dst + 8];
+        view[i + 9] = heap[dst + 9];
+        view[i + 10] = heap[dst + 10];
+        view[i + 11] = heap[dst + 11];
+        view[i + 12] = heap[dst + 12];
+        view[i + 13] = heap[dst + 13];
+        view[i + 14] = heap[dst + 14];
+        view[i + 15] = heap[dst + 15];
       }
     } else
 #endif

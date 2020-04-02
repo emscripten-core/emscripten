@@ -1,6 +1,6 @@
 __cxa_atexit
 __map_file
-__syscall91
+__sys_munmap
 abort
 emscripten_get_sbrk_ptr
 emscripten_memcpy_big

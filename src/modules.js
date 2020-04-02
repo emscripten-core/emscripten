@@ -1,7 +1,8 @@
-// Copyright 2011 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2011 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -156,7 +157,9 @@ var LibraryManager = {
       libraries.push('library_webgpu.js');
     }
 
-    if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    if (BOOTSTRAPPING_STRUCT_INFO) {
+      libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    }
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter(function(item, pos) {
@@ -212,7 +215,6 @@ var LibraryManager = {
           if (lib[target].indexOf('Math_') == 0) continue libloop;
           target = lib[target];
         }
-        if (lib[target + '__asm']) continue; // This is an alias of an asm library function. Also needs to be fully optimized.
         if (!isNaN(target)) continue; // This is a number, and so cannot be an alias target.
         if (typeof lib[target] === 'undefined' || typeof lib[target] === 'function') {
           // When functions are aliased, the alias target must provide a signature for the function so that an efficient form of forwarding can be implemented.
