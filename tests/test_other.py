@@ -4769,30 +4769,25 @@ main()
     ''')
     run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1'])
 
-  def test_only_force_stdlibs(self):
-    def test(name, fail=False):
-      print(name)
+  @parameterized({
+    'none': [{'EMCC_FORCE_STDLIBS': None}, False],
+    # forced libs is ok, they were there anyhow
+    'normal': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False],
+    # partial list, but ok since we grab them as needed
+    'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
+    # fail! not enough stdlibs
+    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
+    # force all the needed stdlibs, so this works even though we ignore the input file
+    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
+  })
+  def test_only_force_stdlibs(self, env, fail):
+    with env_modify(env):
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
         proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
         self.assertNotEqual(proc.returncode, 0)
       else:
-        self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
-
-    with env_modify({'EMCC_FORCE_STDLIBS': None}):
-      test('normal') # normally is ok
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}):
-      test('forced libs is ok, they were there anyhow')
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc'}):
-      test('partial list, but ok since we grab them as needed')
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      test('fail! not enough stdlibs', fail=True)
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      test('force all the needed stdlibs, so this works even though we ignore the input file')
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_only_force_stdlibs_2(self):
     create_test_file('src.cpp', r'''
