@@ -454,12 +454,7 @@ function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
     if (typeof callback == 'function') {
-// In modularize mode, we pass the module as the first argument.
-#if MODULARIZE
-      callback(Module);
-#else
-      callback();
-#endif
+      callback(Module); // Pass the module as the first argument.
       continue;
     }
     var func = callback.func;
