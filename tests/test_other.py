@@ -10559,10 +10559,16 @@ int main() {
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def is_object_file(self, filename):
+    if self.is_wasm_backend():
+      return shared.Building.is_wasm('-')
+    else:
+      return shared.Building.is_bitcode('-')
+
   def test_stdout_link(self):
     # linking to stdout `-` doesn't work, and just produces a file on disc called `-`
     run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
-    self.assertTrue(shared.Building.is_wasm('-'))
+    self.assertTrue(self.is_object_file('-'))
 
   def test_output_to_nowhere(self):
     nowhere = 'NULL' if WINDOWS else '/dev/null'

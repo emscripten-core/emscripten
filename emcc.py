@@ -987,7 +987,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # counter for the next index that should be used.
     next_arg_index = len(newargs)
 
-    has_source_inputs = False
     has_header_inputs = False
     lib_dirs = []
 
@@ -1037,7 +1036,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           newargs[i] = ''
           if file_suffix.endswith(SOURCE_ENDINGS) or (has_dash_c and file_suffix == '.bc'):
             input_files.append((i, arg))
-            has_source_inputs = True
           elif file_suffix.endswith(HEADER_ENDINGS):
             input_files.append((i, arg))
             has_header_inputs = True
@@ -2153,11 +2151,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
               temp_file = in_temp(unsuffixed(uniquename(input_file)) + '.o')
               shared.Building.llvm_as(input_file, temp_file)
               temp_files.append((i, temp_file))
+          elif has_fixed_language_mode:
+            compile_source_file(i, input_file)
           elif input_file == '-':
-            if has_fixed_language_mode:
-              compile_source_file(i, input_file)
-            else:
-              exit_with_error('-E or -x required when input is from standard input')
+            exit_with_error('-E or -x required when input is from standard input')
           else:
             exit_with_error(input_file + ': unknown input file suffix')
 
