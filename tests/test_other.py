@@ -10566,7 +10566,7 @@ int main() {
       return shared.Building.is_bitcode('-')
 
   def test_stdout_link(self):
-    # linking to stdout `-` doesn't work, and just produces a file on disc called `-`
+    # linking to stdout `-` doesn't work, and just produces a file on disk called `-`
     run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
     self.assertTrue(self.is_object_file('-'))
 
