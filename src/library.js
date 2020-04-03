@@ -5214,6 +5214,24 @@ LibraryManager.library = {
     return thisProgram || './this.program';
 #endif
   },
+
+  $autoResumeAudioContext: function(ctx) {
+    ['keydown', 'mousedown'].forEach(function(event) {
+      // Browsers will only allow audio to play after a user interaction. Listen
+      // for a mouse click on the document and on a canvas, if one exists.
+      document.addEventListener(event, function resumeAudioOnDocument() {
+        ctx.resume();
+        document.removeEventListener(event, resumeAudioOnDocument);
+      });
+      var canvas = document.getElementById('canvas');
+      if (canvas) {
+        canvas.addEventListener(event, function resumeAudioOnCanvas() {
+          ctx.resume();
+          canvas.removeEventListener(event, resumeAudioOnCanvas);
+        });
+      }
+    });
+  },
 };
 
 function autoAddDeps(object, name) {

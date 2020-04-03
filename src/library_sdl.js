@@ -1179,6 +1179,7 @@ var LibrarySDL = {
       if (!SDL.audioContext) {
         if (typeof(AudioContext) !== 'undefined') SDL.audioContext = new AudioContext();
         else if (typeof(webkitAudioContext) !== 'undefined') SDL.audioContext = new webkitAudioContext();
+        autoResumeAudioContext(SDL.audioContext);
       }
     },
 
@@ -2410,9 +2411,11 @@ var LibrarySDL = {
 
   // SDL_Audio
 
+  SDL_OpenAudio__deps: ['$autoResumeAudioContext'
 #if EMTERPRETIFY_ASYNC
-  SDL_OpenAudio__deps: ['$EmterpreterAsync'],
+  , '$EmterpreterAsync'
 #endif
+  ],
   SDL_OpenAudio__proxy: 'sync',
   SDL_OpenAudio__sig: 'iii',
   SDL_OpenAudio: function(desired, obtained) {
@@ -2713,6 +2716,7 @@ var LibrarySDL = {
   },
   Mix_Quit: function(){},
 
+  Mix_OpenAudio__deps: ['$autoResumeAudioContext'],
   Mix_OpenAudio__proxy: 'sync',
   Mix_OpenAudio__sig: 'iiiii',
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
