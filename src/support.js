@@ -753,8 +753,6 @@ function getCompilerSetting(name) {
 #endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
-var Runtime = {};
-
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.
 // Then the stack.
