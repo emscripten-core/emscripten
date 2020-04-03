@@ -753,14 +753,7 @@ function getCompilerSetting(name) {
 #endif // ASSERTIONS
 #endif // RETAIN_COMPILER_SETTINGS
 
-var Runtime = {
-#if ASSERTIONS
-  // helpful errors
-  getTempRet0: function() { abort('getTempRet0() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
-  staticAlloc: function() { abort('staticAlloc() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
-  stackAlloc: function() { abort('stackAlloc() is now a top-level function, after removing the Runtime object. Remove "Runtime."') },
-#endif
-};
+var Runtime = {};
 
 // The address globals begin at. Very low in memory, for code size and optimization opportunities.
 // Above 0 is static memory, starting with globals.
