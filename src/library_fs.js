@@ -1066,7 +1066,7 @@ FS.staticInit();` +
         FS.truncate(node, 0);
       }
       // we've already handled these, don't pass down to the underlying vfs
-      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}});
+      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_NOFOLLOW') }}});
 
       // register the stream with the filesystem
       var stream = FS.createStream({
