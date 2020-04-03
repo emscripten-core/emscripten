@@ -38,7 +38,8 @@ __pycache__
 
 
 def add_revision_file(target):
-  git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+  # text=True would be better than encoding here, but its only supported in 3.7+
+  git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], encoding='utf-8').strip()
   with open(os.path.join(target, 'emscripten-revision.txt'), 'w') as f:
     f.write(git_hash + '\n')
 
