@@ -941,10 +941,17 @@ var LINKABLE = 0;
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
+//   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 // [compile+link]
 var STRICT = 0;
+
+// Allow program to link with or without `main` symbol.
+// If this is disabled then one must provide a `main` symbol or explicitly
+// opt out by passing `--no-entry` or an EXPORTED_FUNCTIONS list that doesn't
+// include `_main`.
+var IGNORE_MISSING_MAIN = 1;
 
 // Automatically attempt to add archive indexes at link time to archives that 
 // don't already have them.  This can happen when GNU ar or GNU ranlib is used

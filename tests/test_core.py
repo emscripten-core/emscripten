@@ -1613,17 +1613,17 @@ int main() {
     self.do_run_in_out_file_test('tests', 'core', 'test_inherit')
 
   def test_isdigit_l(self):
-      # needs to flush stdio streams
-      self.set_setting('EXIT_RUNTIME', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_isdigit_l')
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_isdigit_l')
 
   def test_iswdigit(self):
-      # needs to flush stdio streams
-      self.set_setting('EXIT_RUNTIME', 1)
-      self.do_run_in_out_file_test('tests', 'core', 'test_iswdigit')
+    # needs to flush stdio streams
+    self.set_setting('EXIT_RUNTIME', 1)
+    self.do_run_in_out_file_test('tests', 'core', 'test_iswdigit')
 
   def test_polymorph(self):
-      self.do_run_in_out_file_test('tests', 'core', 'test_polymorph')
+    self.do_run_in_out_file_test('tests', 'core', 'test_polymorph')
 
   def test_complex(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_complex')
@@ -8861,6 +8861,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('RESERVED_FUNCTION_POINTERS', 2)
     self.emcc_args += ['-lexports.js', '-s', 'MINIMAL_RUNTIME=1']
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
+
+  def test_auto_detect_main(self):
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+
+    # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
+    self.set_setting('IGNORE_MISSING_MAIN', 0)
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+    self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
+
+    # We can fix the error either by adding --no-entry or by setting EXPORTED_FUNCTIONS to empty
+    self.emcc_args.append('--no-entry')
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+
+    self.emcc_args.remove('--no-entry')
+    self.set_setting('EXPORTED_FUNCTIONS', [])
+    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
 
 # Generate tests for everything
