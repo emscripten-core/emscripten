@@ -1,4 +1,3 @@
-# coding=utf-8
 # Copyright 2013 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
@@ -8,7 +7,6 @@
 
 from __future__ import print_function
 from functools import wraps
-import difflib
 import glob
 import gzip
 import itertools
@@ -9933,19 +9931,26 @@ int main () {
 
   @no_fastcomp('depends on wasm backend .a linking')
   def test_jsmath(self):
-    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'normal.js'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'normal.js', '--closure', '0'])
     normal_js_size = os.path.getsize('normal.js')
     normal_wasm_size = os.path.getsize('normal.wasm')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'jsmath.js', '-s', 'JS_MATH'])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'jsmath.js', '-s', 'JS_MATH', '--closure', '0'])
     jsmath_js_size = os.path.getsize('jsmath.js')
     jsmath_wasm_size = os.path.getsize('jsmath.wasm')
     # js math increases JS size, but decreases wasm, and wins overall
+    # it would win more with closure, but no point in making the test slower)
     self.assertLess(normal_js_size, jsmath_js_size)
     self.assertLess(jsmath_wasm_size, normal_wasm_size)
-    self.assertLess(jsmath_js_size + jsmath_wasm_size, 0.85 * (normal_js_size + normal_wasm_size))
-    # js math has different output, following JS semantics
-    diff = difflib.unified_diff(run_js('normal.js').splitlines(), run_js('jsmath.js').splitlines())
-    self.assertGreater(len([x for x in diff]), 32)
+    self.assertLess(jsmath_js_size + jsmath_wasm_size, 0.90 * (normal_js_size + normal_wasm_size))
+    # js math has almost identical output, but misses some corner cases, 4 out of 34
+    normal = run_js('normal.js').splitlines()
+    jsmath = run_js('jsmath.js').splitlines()
+    assert len(normal) == len(jsmath)
+    diff = 0
+    for i in range(len(normal)):
+      if normal[i] != jsmath[i]:
+        diff += 1
+    self.assertEqual(diff, 4)
 
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both

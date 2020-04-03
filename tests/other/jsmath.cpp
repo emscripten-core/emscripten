@@ -1,17 +1,25 @@
+#include <emscripten.h>
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 
+// Get values through a call to JS, so the optimizer can't hardcode results.
+EM_JS(double, get_number, (), {
+  return 2.1828;
+});
+
+EM_JS(double, get_another_number, (), {
+  return 3.1415;
+});
+
 int main() {
   #define TEST_1_TRIPLE(name) \
-    printf("float       %s => %f\n", #name, name##f(2.1828f)); \
-    printf("double      %s => %f\n", #name, name(2.1828)); \
-    printf("long double %s => %Lf\n", #name, name##l(2.1828L));
+    printf("float       %s => %f\n", #name, name##f((float)get_number())); \
+    printf("double      %s => %f\n", #name, name(get_number()));
 
   #define TEST_2_TRIPLE(name) \
-    printf("float       %s => %f\n", #name, name##f(2.1828f, 3.14159f)); \
-    printf("double      %s => %f\n", #name, name(2.1828, 3.14159)); \
-    printf("long double %s => %Lf\n", #name, name##l(2.1828L, 3.14159L));
+    printf("float       %s => %f\n", #name, name##f((float)get_number(), get_another_number())); \
+    printf("double      %s => %f\n", #name, name(get_number(), get_another_number()));
 
   TEST_1_TRIPLE(cos)
   TEST_1_TRIPLE(sin)
