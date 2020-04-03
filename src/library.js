@@ -5220,13 +5220,13 @@ LibraryManager.library = {
       // Browsers will only allow audio to play after a user interaction. Listen
       // for a mouse click on the document and on a canvas, if one exists.
       document.addEventListener(event, function resumeAudioOnDocument() {
-        ctx.resume();
+        if (ctx.state === 'suspended') ctx.resume();
         document.removeEventListener(event, resumeAudioOnDocument);
       });
       var canvas = document.getElementById('canvas');
       if (canvas) {
         canvas.addEventListener(event, function resumeAudioOnCanvas() {
-          ctx.resume();
+          if (ctx.state === 'suspended') ctx.resume();
           canvas.removeEventListener(event, resumeAudioOnCanvas);
         });
       }
