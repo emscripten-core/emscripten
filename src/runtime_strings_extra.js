@@ -39,7 +39,8 @@ var UTF16Decoder = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-16l
 #endif // TEXTDECODER
 #endif // TEXTDECODER == 2
 
-function UTF16ToString(ptr) {
+function UTF16ToString(ptr, maxCharsToRead) {
+  if (maxCharsToRead === undefined) maxCharsToRead = Infinity;
 #if ASSERTIONS
   assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
@@ -48,7 +49,8 @@ function UTF16ToString(ptr) {
   // TextDecoder needs to know the byte length in advance, it doesn't stop on null terminator by itself.
   // Also, use the length info to avoid running tiny strings through TextDecoder, since .subarray() allocates garbage.
   var idx = endPtr >> 1;
-  while (HEAP16[idx]) ++idx;
+  var maxIdx = idx + maxCharsToRead;
+  while (idx < maxIdx && HEAPU16[idx]) ++idx;
   endPtr = idx << 1;
 
 #if TEXTDECODER != 2
@@ -64,7 +66,7 @@ function UTF16ToString(ptr) {
     var str = '';
     while (1) {
       var codeUnit = {{{ makeGetValue('ptr', 'i*2', 'i16') }}};
-      if (codeUnit == 0) return str;
+      if (codeUnit == 0 || i == maxCharsToRead) return str;
       ++i;
       // fromCharCode constructs a character from a UTF-16 code unit, so we can pass the UTF16 string right through.
       str += String.fromCharCode(codeUnit);
@@ -117,16 +119,17 @@ function lengthBytesUTF16(str) {
   return str.length*2;
 }
 
-function UTF32ToString(ptr) {
+function UTF32ToString(ptr, maxCharsToRead) {
 #if ASSERTIONS
   assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
 #endif
   var i = 0;
+  if (maxCharsToRead === undefined) maxCharsToRead = Infinity;
 
   var str = '';
   while (1) {
     var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
-    if (utf32 == 0) return str;
+    if (utf32 == 0 || i >= maxCharsToRead) return str;
     ++i;
     // Gotcha: fromCharCode constructs a character from a UTF-16 encoded code (pair), not from a Unicode code point! So encode the code point to UTF-16 for constructing.
     // See http://unicode.org/faq/utf_bom.html#utf16-3
