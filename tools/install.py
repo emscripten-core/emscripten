@@ -65,7 +65,7 @@ def copy_emscripten(target):
       os.makedirs(os.path.join(target, fulldir))
 
     for d in remove_dirs:
-      # Prevent recurion in excluded dirs
+      # Prevent recursion in excluded dirs
       # print('skipping dir: ' + os.path.join(root, d))
       dirs.remove(d)
 
