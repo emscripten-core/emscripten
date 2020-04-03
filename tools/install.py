@@ -5,7 +5,7 @@
 # found in the LICENSE file.
 
 """Install the parts of emscripten needed for end users. This works like
-a traditional `make dist` target but is writtin python to it can be portable
+a traditional `make dist` target but is written in python so it can be portable
 and run on non-unix platforms (basically windows).
 """
 
