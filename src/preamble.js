@@ -858,9 +858,10 @@ function getBinary() {
 }
 
 function getBinaryPromise() {
-  // if we don't have the binary yet, and have the Fetch api, use that
+  // If we don't have the binary yet, and have the Fetch api, use that;
   // in some environments, like Electron's render process, Fetch api may be present, but have a different context than expected, let's only use it on the Web
-  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function') {
+  // Also let's not use fetch to get objects over file:// as it's most likely Cordova which doesn't support fetch for file://
+  if (!wasmBinary && (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) && typeof fetch === 'function' && !isFileURI(wasmBinaryFile)) {
     return fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function(response) {
       if (!response['ok']) {
         throw "failed to load wasm binary file at '" + wasmBinaryFile + "'";
@@ -1017,11 +1018,13 @@ function createWasm() {
   }
 
   // Prefer streaming instantiation if available.
+  // Don't use streaming for file:// delivered objects, though.
 #if WASM_ASYNC_COMPILATION
   function instantiateAsync() {
     if (!wasmBinary &&
         typeof WebAssembly.instantiateStreaming === 'function' &&
         !isDataURI(wasmBinaryFile) &&
+        !isFileURI(wasmBinaryFile) &&
         typeof fetch === 'function') {
       fetch(wasmBinaryFile, { credentials: 'same-origin' }).then(function (response) {
         var result = WebAssembly.instantiateStreaming(response, info);
