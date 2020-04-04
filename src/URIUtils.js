@@ -14,3 +14,11 @@ function isDataURI(filename) {
       filename.indexOf(dataURIPrefix) === 0;
 }
 
+var fileURIPrefix = "file://";
+
+// Indicates whether filename is delivered via file protocol (as opposed to http/https)
+function isFileURI(filename) {
+  return String.prototype.startsWith ?
+      filename.startsWith(fileURIPrefix) :
+      filename.indexOf(fileURIPrefix) === 0;
+}
