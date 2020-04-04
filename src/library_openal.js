@@ -1672,7 +1672,7 @@ var LibraryOpenAL = {
       }
     }
 
-    autoResumeAudioContext(ac);
+    autoResumeAudioContext(AL.sharedCaptureAudioCtx);
 
     var outputChannelCount;
 

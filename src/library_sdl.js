@@ -1179,7 +1179,6 @@ var LibrarySDL = {
       if (!SDL.audioContext) {
         if (typeof(AudioContext) !== 'undefined') SDL.audioContext = new AudioContext();
         else if (typeof(webkitAudioContext) !== 'undefined') SDL.audioContext = new webkitAudioContext();
-        autoResumeAudioContext(SDL.audioContext);
       }
     },
 
@@ -2562,6 +2561,7 @@ var LibrarySDL = {
       // since initializing multiple times fails on Chrome saying 'audio resources have been exhausted'.
       SDL.openAudioContext();
       if (!SDL.audioContext) throw 'Web Audio API is not available!';
+      autoResumeAudioContext(SDL.audioContext);
       SDL.audio.nextPlayTime = 0; // Time in seconds when the next audio block is due to start.
 
       // The pushAudio function with a new audio buffer whenever there is new audio data to schedule to be played back on the device.
@@ -2721,6 +2721,7 @@ var LibrarySDL = {
   Mix_OpenAudio__sig: 'iiiii',
   Mix_OpenAudio: function(frequency, format, channels, chunksize) {
     SDL.openAudioContext();
+    autoResumeAudioContext(SDL.audioContext);
     SDL.allocateChannels(32);
     // Just record the values for a later call to Mix_QuickLoad_RAW
     SDL.mixerFrequency = frequency;
