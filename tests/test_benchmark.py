@@ -248,21 +248,8 @@ class CheerpBenchmarker(Benchmarker):
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
     suffix = filename.split('.')[-1]
-    cheerp_temp = filename[:-len(suffix) - 1] + '.cheerp.cpp'
-    code = open(filename).read()
-    open(cheerp_temp, 'w').write('''
-      %(code)s
-#include <cheerp/client.h>
-void webMain() {
-  main();
-}\n''' % {
-      'code': code,
-    })
     cheerp_args = [
-      '-target', 'cheerp',
       '-fno-math-errno',
-      '-Wno-c++11-narrowing',
-      '-cheerp-mode=wasm'
     ]
     cheerp_args += self.args
     self.parent = parent
@@ -276,9 +263,8 @@ void webMain() {
         'LD': CHEERP_BIN + 'clang',
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
-        'RANLIB': CHEERP_BIN + 'llvm-ranlib',
-        'CFLAGS': ' '.join(cheerp_args),
-        'CXXFLAGS': ' '.join(cheerp_args),
+        'RANLIB': CHEERP_BIN + '../libexec/cheerp-unknown-none-ranlib',
+        'CXXFLAGS': "-Wno-c++11-narrowing",
         'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     if PROFILING:
@@ -296,16 +282,13 @@ void webMain() {
         compiler = CHEERP_BIN + '/clang++'
       cmd = [compiler] + cheerp_args + [
         '-cheerp-linear-heap-size=256',
-        '-cheerp-wasm-loader=' + final,
-        cheerp_temp,
-        '-Wno-writable-strings', # for how we set up webMain
-        '-o', final.replace('.js', '.wasm')
+        '-cheerp-secondary-output-file=' + final.replace('.js', '.wasm'),
+        filename,
+        '-o', final
       ] + shared_args
       # print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
-      # Inject command line arguments
-      run_process(['sed', '-i', 's/"use strict";/"use strict";var args=typeof(scriptArgs) !== "undefined" ? scriptArgs : arguments;/', self.filename])
       if self.binaryen_opts:
         run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
@@ -345,7 +328,7 @@ if shared.NODE_JS and shared.NODE_JS in shared.JS_ENGINES:
   ]
 if os.path.exists(CHEERP_BIN):
   benchmarkers += [
-    # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE + ['--no-wasm-baseline']),
+    # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
     # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
   ]
 
