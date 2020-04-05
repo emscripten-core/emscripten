@@ -247,7 +247,6 @@ class CheerpBenchmarker(Benchmarker):
     self.binaryen_opts = binaryen_opts[:]
 
   def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
-    suffix = filename.split('.')[-1]
     cheerp_args = [
       '-fno-math-errno',
     ]
