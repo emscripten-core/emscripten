@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2011 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 // === Auto-generated preamble library stuff ===
 
 //========================================

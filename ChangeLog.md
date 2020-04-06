@@ -18,12 +18,21 @@ See docs/process.md for how version tagging works.
 Current Trunk
 -------------
 - `emscripten_async_queue_on_thread` has been renamed to
-  `emscripten_call_on_thread_maybe_async` which properly reflects that is is
-  synchronous if already on the right thread. A new
-  `emscripten_call_on_thread_async` function is added which is always
-  async.
+  `emscripten_dispatch_to_thread` which no longer implies that it is async -
+  the operation is in fact only async if it is sent to another thread, while it
+  is sync if on the same one. A new `emscripten_dispatch_to_thread_async`
+  function is added which is always async.
+- Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
+  flags explcitly.  If there are other flags that it would be useful for us
+  to ignore we can add them to the list of ignored flags.
+- Optionally support 2GB+ heap sizes. To do this we make the JS code have unsigned
+  pointers (we need all 32 bits in them now), which can slightly increase code
+  size (>>> instead of >>). This only happens when the heap size may be over
+  2GB, which you must opt into explicity, by setting `MAXIMUM_MEMORY` to a
+  higher value (i.e. by default you do not get support for 2GB+ heaps).
+  See #10601
 - `--llvm-lto` flag is now ignored when using the upstream llvm backend.
-  With the upstrema backend LTO is controlled via `-flto`.
+  With the upstream backend LTO is controlled via `-flto`.
 - Require format string for emscripten_log.
 - Program entry points without extensions are now shell scripts rather than
   python programs. See #10729.  This means that `python emcc` no longer works.

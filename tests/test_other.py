@@ -1812,7 +1812,7 @@ int f() {
   def test_libjpeg(self):
     shutil.copyfile(path_from_root('tests', 'screenshot.jpg'), 'screenshot.jpg')
     Building.emcc(path_from_root('tests', 'jpeg_test.c'), ['--embed-file', 'screenshot.jpg', '-s', 'USE_LIBJPEG=1'], output_filename='a.out.js')
-    self.assertContained('Image is 600 by 450 with 3 components', run_process(JS_ENGINES[0] + ['a.out.js', 'screenshot.jpg'], stdout=PIPE, stderr=PIPE).stdout)
+    self.assertContained('Image is 600 by 450 with 3 components', run_js('a.out.js', args=['screenshot.jpg'], stdout=PIPE, stderr=PIPE))
 
   def test_bullet(self):
     Building.emcc(path_from_root('tests', 'bullet_hello_world.cpp'), ['-s', 'USE_BULLET=1'], output_filename='a.out.js')
@@ -2085,7 +2085,7 @@ int f() {
           assert 'hello, world!' in run_js('two.js')
 
   def test_js_optimizer(self):
-    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap']
+    ACORN_PASSES = ['JSDCE', 'AJSDCE', 'applyImportAndExportNameChanges', 'emitDCEGraph', 'applyDCEGraphRemovals', 'growableHeap', 'unsignPointers']
     for input, expected, passes in [
       (path_from_root('tests', 'optimizer', 'eliminateDeadGlobals.js'), open(path_from_root('tests', 'optimizer', 'eliminateDeadGlobals-output.js')).read(),
        ['eliminateDeadGlobals']),
@@ -2187,6 +2187,8 @@ int f() {
        ['asm']),
       (path_from_root('tests', 'optimizer', 'test-growableHeap.js'), open(path_from_root('tests', 'optimizer', 'test-growableHeap-output.js')).read(),
        ['growableHeap']),
+      (path_from_root('tests', 'optimizer', 'test-unsignPointers.js'), open(path_from_root('tests', 'optimizer', 'test-unsignPointers-output.js')).read(),
+       ['unsignPointers']),
       (path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals.js'), open(path_from_root('tests', 'optimizer', 'test-js-optimizer-minifyGlobals-output.js')).read(),
        ['minifyGlobals']),
     ]:
@@ -4767,30 +4769,25 @@ main()
     ''')
     run_process([PYTHON, EMCC, 'src.cpp', '-O2', '-s', 'SAFE_HEAP=1'])
 
-  def test_only_force_stdlibs(self):
-    def test(name, fail=False):
-      print(name)
+  @parameterized({
+    'none': [{'EMCC_FORCE_STDLIBS': None}, False],
+    # forced libs is ok, they were there anyhow
+    'normal': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False],
+    # partial list, but ok since we grab them as needed
+    'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
+    # fail! not enough stdlibs
+    'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
+    # force all the needed stdlibs, so this works even though we ignore the input file
+    'full_only': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread,libmalloc', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, False],
+  })
+  def test_only_force_stdlibs(self, env, fail):
+    with env_modify(env):
       run_process([PYTHON, EMXX, path_from_root('tests', 'hello_libcxx.cpp'), '-s', 'WARN_ON_UNDEFINED_SYMBOLS=0'])
       if fail:
         proc = run_process(NODE_JS + ['a.out.js'], stdout=PIPE, stderr=PIPE, check=False)
         self.assertNotEqual(proc.returncode, 0)
       else:
-        self.assertContained('hello, world!', run_js('a.out.js', stderr=PIPE))
-
-    with env_modify({'EMCC_FORCE_STDLIBS': None}):
-      test('normal') # normally is ok
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}):
-      test('forced libs is ok, they were there anyhow')
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc'}):
-      test('partial list, but ok since we grab them as needed')
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc++', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      test('fail! not enough stdlibs', fail=True)
-
-    with env_modify({'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++,libpthread', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
-      test('force all the needed stdlibs, so this works even though we ignore the input file')
+        self.assertContained('hello, world!', run_js('a.out.js'))
 
   def test_only_force_stdlibs_2(self):
     create_test_file('src.cpp', r'''
@@ -7176,6 +7173,46 @@ Resolved: "/" => "/"
     run([])
     run(['-O2'])
 
+  @no_fastcomp("fastcomp doesn't support 2GB+")
+  def test_emmalloc_2GB(self):
+    def test(args, text=None):
+      if text:
+        stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
+        self.assertContained(text, stderr)
+      else:
+        run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'MALLOC=emmalloc'] + args)
+
+    test(['-s', 'INITIAL_MEMORY=2GB'], 'INITIAL_MEMORY must be less than 2GB due to current spec limitations')
+    # emmalloc allows growth by default (as the max size is fine), but not if
+    # a too-high max is set
+    test(['-s', 'ALLOW_MEMORY_GROWTH'])
+    test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=1GB'])
+    test(['-s', 'ALLOW_MEMORY_GROWTH', '-s', 'MAXIMUM_MEMORY=3GB'], 'emmalloc only works on <2GB of memory. Use the default allocator, or decrease MAXIMUM_MEMORY')
+
+  @no_fastcomp("fastcomp doesn't support 2GB+")
+  def test_2GB_plus(self):
+    # when the heap size can be over 2GB, we rewrite pointers to be unsigned
+    def test(page_diff):
+      args = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-O2', '-s', 'ALLOW_MEMORY_GROWTH']
+      if page_diff is not None:
+        args += ['-s', 'MAXIMUM_MEMORY=%d' % (2**31 + page_diff * 64 * 1024)]
+      print(args)
+      run_process(args)
+      return os.path.getsize('a.out.js')
+
+    less = test(-1)
+    equal = test(0)
+    more = test(1)
+    none = test(None)
+
+    # exactly 2GB still doesn't require unsigned pointers, as we can't address
+    # the 2GB location in memory
+    self.assertEqual(less, equal)
+    self.assertLess(equal, more)
+    # not specifying maximum memory does not result in unsigned pointers, as the
+    # default maximum memory is 2GB.
+    self.assertEqual(less, none)
+
   def test_sixtyfour_bit_return_value(self):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
@@ -7557,13 +7594,24 @@ mergeInto(LibraryManager.library, {
     create_test_file('src.cpp', r'''
       #include <stdlib.h>
       #include <stdio.h>
-      extern char **environ;
       int main() {
         printf("|%s|\n", getenv("hello"));
       }
     ''')
     run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js'])
     self.assertContained('|world|', run_js('a.out.js'))
+
+    create_test_file('pre.js', r'''
+      var Module = {
+        preRun: [function(module) { module.ENV.hello = 'world' }]
+      };
+    ''')
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ENV"]'])
+    self.assertContained('|world|', run_js('a.out.js'))
+
+    run_process([PYTHON, EMCC, 'src.cpp', '--pre-js', 'pre.js', '-s', 'EXTRA_EXPORTED_RUNTIME_METHODS=["ENV"]', '-s', 'MODULARIZE=1'])
+    output = run_process(NODE_JS + ['-e', 'require("./a.out.js")();'], stdout=PIPE, stderr=PIPE)
+    self.assertContained('|world|', output.stdout)
 
   def test_warn_no_filesystem(self):
     WARNING = 'Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with  -s FORCE_FILESYSTEM=1'
@@ -8460,11 +8508,8 @@ int main() {
 
     run([], 1024)
     run(['-s', 'INITIAL_MEMORY=32MB'], 2048)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024 - 16777216) // 16384)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'BINARYEN=1'], 2048)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1'], (2 * 1024 * 1024 * 1024 - 65536) // 16384)
-    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'BINARYEN=1', '-s', 'MAXIMUM_MEMORY=128MB'], 2048 * 4)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1'], (2 * 1024 * 1024 * 1024) // 16384)
+    run(['-s', 'INITIAL_MEMORY=32MB', '-s', 'ALLOW_MEMORY_GROWTH=1', '-s', 'WASM=0'], (2 * 1024 * 1024 * 1024) // 16384)
 
   def test_wasm_target_and_STANDALONE_WASM(self):
     # STANDALONE_WASM means we never minify imports and exports.
@@ -8893,10 +8938,10 @@ end
   def test_noderawfs_disables_embedding(self):
     expected = '--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem'
     base = [PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'NODERAWFS=1']
-    err = self.expect_fail(base + ['--preload-files', 'somefile'])
-    assert expected in err
-    err = self.expect_fail(base + ['--embed-files', 'somefile'])
-    assert expected in err
+    err = self.expect_fail(base + ['--preload-file', 'somefile'])
+    self.assertContained(expected, err)
+    err = self.expect_fail(base + ['--embed-file', 'somefile'])
+    self.assertContained(expected, err)
 
   def test_node_code_caching(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
@@ -9659,6 +9704,25 @@ int main () {
     ret = run_process(NODE_JS + ['hello_world.js'], stdout=PIPE).stdout
     self.assertTextDataIdentical('hello, world!\n', ret)
 
+  @parameterized({
+    'O2': (False, ['-O2']), # noqa
+    'O2_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE']), # noqa
+    'O2_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '-s', 'WASM=0']), # noqa
+    'O2_closure_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1']), # noqa
+    'O2_closure_js_emit': (True, ['-O2', '-s', 'EMIT_EMSCRIPTEN_LICENSE', '--closure', '1', '-s', 'WASM=0']), # noqa
+  })
+  def test_emscripten_license(self, expect_license, args):
+    # fastcomp does not support the new license flag
+    if not self.is_wasm_backend():
+      expect_license = False
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c')] + args)
+    with open('a.out.js') as f:
+      js = f.read()
+    self.assertContainedIf('Copyright 2010 Emscripten authors', js, expect_license)
+    self.assertContainedIf('SPDX-License-Identifier: MIT', js, expect_license)
+    if expect_license:
+      self.assertEqual(js.count('Copyright 2010 Emscripten authors'), 1)
+
   def test_add_emscripten_metadata_not_emitted(self):
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'),
                  '-o', 'hello_world.js'])
@@ -10381,11 +10445,23 @@ Module.arguments has been replaced with plain arguments_
 
   @no_fastcomp('lld-specific')
   def test_supported_linker_flags(self):
-    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,waka'], stderr=PIPE).stderr
-    self.assertContained('warning: ignoring unsupported linker flag: `waka', out)
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--print-map'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
+
+    out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--print-map'], stderr=PIPE).stderr
+    self.assertContained('warning: ignoring unsupported linker flag: `--print-map`', out)
+
     out = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'),
-                       '-Wl,--no-check-features,--no-threads,-mllvm,-debug,--trace,--trace-symbol=main'], stderr=PIPE).stderr
+                       '-Wl,--no-check-features,-mllvm,-debug'], stderr=PIPE).stderr
     self.assertNotContained('warning: ignoring unsupported linker flag', out)
+
+  @no_fastcomp('lld-specific')
+  def test_linker_flags_pass_through(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Wl,--waka'])
+    self.assertContained('wasm-ld: error: unknown argument: --waka', err)
+
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-Xlinker', '--waka'])
+    self.assertContained('wasm-ld: error: unknown argument: --waka', err)
 
   def test_non_wasm_without_wasm_in_vm(self):
     # Test that our non-wasm output does not depend on wasm support in the vm.
@@ -10474,19 +10550,45 @@ int main() {
 ''')
     run_process([PYTHON, EMCC, 'pthread.c'])
 
-  def test_preprocess_stdin(self):
+  def test_stdin_preprocess(self):
     create_test_file('temp.h', '#include <string>')
     outputStdin = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout
     outputFile = run_process([PYTHON, EMCC, '-x', 'c++', '-dM', '-E', 'temp.h'], stdout=PIPE).stdout
     self.assertTextDataIdentical(outputStdin, outputFile)
 
-  def test_compile_stdin(self):
+  def test_stdin_compile_only(self):
+    # Should fail without -x lang specifier
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      err = self.expect_fail([PYTHON, EMCC, '-c', '-'], input=f.read())
+    self.assertContained('error: -E or -x required when input is from standard input', err)
+
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-c', '-o', 'out.o', '-x', 'c++', '-'], input=f.read())
+    self.assertExists('out.o')
+
+    # Same again but without an explicit output filename
+    with open(path_from_root('tests', 'hello_world.cpp')) as f:
+      run_process([PYTHON, EMCC, '-c', '-x', 'c++', '-'], input=f.read())
+    self.assertExists('-.o')
+
+  def test_stdin_compile_and_link(self):
     with open(path_from_root('tests', 'hello_world.cpp')) as f:
       run_process([PYTHON, EMCC, '-x', 'c++', '-'], input=f.read())
     self.assertContained('hello, world!', run_js('a.out.js'))
 
+  def is_object_file(self, filename):
+    if self.is_wasm_backend():
+      return shared.Building.is_wasm('-')
+    else:
+      return shared.Building.is_bitcode('-')
+
+  def test_stdout_link(self):
+    # linking to stdout `-` doesn't work, and just produces a file on disk called `-`
+    run_process([PYTHON, EMCC, '-o', '-', path_from_root('tests', 'hello_world.cpp')])
+    self.assertTrue(self.is_object_file('-'))
+
   def test_output_to_nowhere(self):
-    nowhere = '/dev/null' if not WINDOWS else 'NUL'
+    nowhere = 'NULL' if WINDOWS else '/dev/null'
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', nowhere, '-c'])
 
   # Test that passing -s MIN_X_VERSION=-1 on the command line will result in browser X being not supported at all.
@@ -10555,7 +10657,7 @@ int main() {
     self.assertContained('wasm-ld: error:', stderr)
     self.assertContained('main_0.o: undefined symbol: foo', stderr)
 
-  @no_fastcomp('lld only')
+  @no_fastcomp('wasm backend only')
   def test_4GB(self):
     stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'INITIAL_MEMORY=2GB'])
     self.assertContained('INITIAL_MEMORY must be less than 2GB due to current spec limitations', stderr)
@@ -10586,9 +10688,20 @@ int main() {
     self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib']))
     self.assertContained('undefined symbol:', self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs']))
 
-    # Buil again but with explit system libraries
+    # Build again but with explit system libraries
     libs = ['-lc', '-lcompiler_rt']
     if self.is_wasm_backend():
       libs.append('-lc_rt_wasm')
     run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nostdlib'] + libs)
     run_process([PYTHON, EMCC, path_from_root('tests', 'unistd', 'close.c'), '-nodefaultlibs'] + libs)
+
+  def test_argument_match(self):
+    # Verify that emcc arguments match precisely.  We had a bug where only the prefix
+    # was matched
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts', '10'])
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-optsXX'])
+    self.assertContained("error: unsupported option '--js-optsXX'", err)
+
+  def test_missing_argument(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts'])
+    self.assertContained("error: option '--js-opts' requires an argument", err)

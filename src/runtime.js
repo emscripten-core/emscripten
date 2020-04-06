@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -49,25 +50,16 @@ function alignMemory(size, factor) {
 
 var Runtime = {
   getNativeTypeSize: getNativeTypeSize,
-  alignMemory: alignMemory,
 
   //! Returns the size of a structure field, as C/C++ would have it (in 32-bit,
   //! for now).
   //! @param type The type, by name.
   getNativeFieldSize: function(type) {
-    return Math.max(Runtime.getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
+    return Math.max(getNativeTypeSize(type), Runtime.QUANTUM_SIZE);
   },
 
-  STACK_ALIGN: {{{ STACK_ALIGN }}},
   POINTER_SIZE: 4,
-
-  // type can be a native type or a struct (or null, for structs we only look at size here)
-  getAlignSize: function(type, size, vararg) {
-    // we align i64s and doubles on 64-bit boundaries, unlike x86
-    if (!vararg && (type == 'i64' || type == 'double')) return 8;
-    if (!type) return Math.min(size, 8); // align structures internally to 64 bits
-    return Math.min(size || (type ? Runtime.getNativeFieldSize(type) : 0), Runtime.QUANTUM_SIZE);
-  }
+  QUANTUM_SIZE: 4,
 };
 
 // Additional runtime elements, that need preprocessing

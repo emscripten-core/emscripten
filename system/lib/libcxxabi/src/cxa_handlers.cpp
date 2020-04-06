@@ -21,10 +21,11 @@
 
 namespace __cxxabiv1 {
 
-// XXX EMSCRIPTEN: Copied from cxa_exception.cpp since we don't compile that file.
-//                 Note that in no-exceptions builds we include cxa_noexception
-//                 which provides stubs of those anyhow.
-#if defined(__EMSCRIPTEN__) && !defined(_LIBCXXABI_NO_EXCEPTIONS)
+#ifdef __USING_EMSCRIPTEN_EXCEPTIONS__
+// XXX EMSCRIPTEN: Copied from cxa_exception.cpp since we don't compile that
+// file in Emscripten EH mode. Note that in no-exceptions builds we include
+// cxa_noexception.cpp which provides stubs of those anyhow.
+
 //  Is it one of ours?
 uint64_t __getExceptionClass(const _Unwind_Exception* unwind_exception) {
 //	On x86 and some ARM unwinders, unwind_exception->exception_class is

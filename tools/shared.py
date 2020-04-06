@@ -227,7 +227,9 @@ def generate_config(path, first_time=False):
 
   abspath = os.path.abspath(os.path.expanduser(path))
   # write
-  open(abspath, 'w').write(config_file)
+  with open(abspath, 'w') as f:
+    f.write(config_file)
+
   if first_time:
     print('''
 ==============================================================================
@@ -548,13 +550,17 @@ def check_node_version():
     return False
 
 
-def get_emscripten_version(path):
-  return open(path).read().strip().replace('"', '')
+def set_version_globals():
+  global EMSCRIPTEN_VERSION, EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY
+  filename = path_from_root('emscripten-version.txt')
+  with open(filename) as f:
+    EMSCRIPTEN_VERSION = f.read().strip().replace('"', '')
+  parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
+  EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
 
 
-EMSCRIPTEN_VERSION = get_emscripten_version(path_from_root('emscripten-version.txt'))
-parts = [int(x) for x in EMSCRIPTEN_VERSION.split('.')]
-EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
+set_version_globals()
+
 # For the Emscripten-specific WASM metadata section, follows semver, changes
 # whenever metadata section changes structure.
 # NB: major version 0 implies no compatibility
@@ -1806,12 +1812,17 @@ class Building(object):
         '--initial-memory=%d' % Settings.INITIAL_MEMORY,
       ]
       use_start_function = Settings.STANDALONE_WASM
+
       if not use_start_function:
-        cmd += ['--no-entry']
-      if Settings.MAXIMUM_MEMORY != -1:
-        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
-      elif not Settings.ALLOW_MEMORY_GROWTH:
+        expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
+        if expect_main and not Settings.IGNORE_MISSING_MAIN:
+          cmd += ['--entry=main']
+        else:
+          cmd += ['--no-entry']
+      if not Settings.ALLOW_MEMORY_GROWTH:
         cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
+      elif Settings.MAXIMUM_MEMORY != -1:
+        cmd.append('--max-memory=%d' % Settings.MAXIMUM_MEMORY)
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
@@ -2179,7 +2190,27 @@ class Building(object):
       return '-O' + str(min(opt_level, 3))
 
   @staticmethod
-  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[]):
+  def maybe_add_license(filename=None, code=None):
+    # EMIT_EMSCRIPTEN_LICENSE is not supported in fastcomp since the JS
+    # optimization pipeline there is much more complex, and fastcomp is
+    # deprecated anyhow
+    if Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND:
+      if filename:
+        with open(filename) as f:
+          code = f.read()
+      code = JS.emscripten_license + code
+      if filename:
+        with open(filename, 'w') as f:
+          f.write(code)
+      else:
+        code = JS.emscripten_license + code
+    if filename:
+      return filename
+    else:
+      return code
+
+  @staticmethod
+  def js_optimizer(filename, passes, debug=False, extra_info=None, output_filename=None, just_split=False, just_concat=False, extra_closure_args=[], no_license=False):
     from . import js_optimizer
     try:
       ret = js_optimizer.run(filename, passes, NODE_JS, debug, extra_info, just_split, just_concat, extra_closure_args)
@@ -2188,6 +2219,8 @@ class Building(object):
     if output_filename:
       safe_move(ret, output_filename)
       ret = output_filename
+    if not no_license:
+      ret = Building.maybe_add_license(filename=ret)
     return ret
 
   # run JS optimizer on some JS, ignoring asm.js contents if any - just run on it all
@@ -2214,9 +2247,12 @@ class Building(object):
       next = original_filename + '.jso.js'
       configuration.get_temp_files().note(next)
       check_call(cmd, stdout=open(next, 'w'))
+      next = Building.maybe_add_license(filename=next)
       return next
     else:
-      return check_call(cmd, stdout=PIPE).stdout
+      output = check_call(cmd, stdout=PIPE).stdout
+      output = Building.maybe_add_license(code=output)
+      return output
 
   @staticmethod
   def acorn_optimizer(filename, passes, extra_info=None, return_output=False):
@@ -2440,6 +2476,19 @@ class Building(object):
 
         if Settings.CLOSURE_WARNINGS == 'error':
           exit_with_error('closure compiler produced warnings and -s CLOSURE_WARNINGS=error enabled')
+
+      # closure compiler will automatically preserve @license blocks, but we
+      # have an explicit flag for that (EMIT_EMSCRIPTEN_LICENSE), which we
+      # don't have a way to tell closure about. remove the comment here if we
+      # don't want it (closure will aggregate all such comments into a single
+      # big one at the top of the file)
+      if not(Settings.EMIT_EMSCRIPTEN_LICENSE and Settings.WASM_BACKEND):
+        with open(outfile) as f:
+          code = f.read()
+        if code.startswith('/*'):
+          code = code[code.find('*/') + 2:]
+          with open(outfile, 'w') as f:
+            f.write(code)
 
       return outfile
 
@@ -2665,7 +2714,9 @@ class Building(object):
         temp = configuration.get_temp_files().get('.js').name
         with open(temp, 'w') as f:
           f.write(wasm2js_js)
-        temp = Building.js_optimizer(temp, passes)
+        # pass no_license since we are only optimizing a subset of the JS. if
+        # a license is needed, the js as a whole will have it anyhow.
+        temp = Building.js_optimizer(temp, passes, no_license=True)
         with open(temp) as f:
           wasm2js_js = f.read()
     # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
@@ -2733,6 +2784,11 @@ class Building(object):
         with open(path_from_root('src', 'growableHeap.js')) as support_code_f:
           ret_f.write(support_code_f.read() + '\n' + fixed_f.read())
     return ret
+
+  @staticmethod
+  def use_unsigned_pointers_in_js(js_file):
+    logger.debug('using unsigned pointers in JS')
+    return Building.acorn_optimizer(js_file, ['unsignPointers'])
 
   @staticmethod
   def handle_final_wasm_symbols(wasm_file, symbols_file, debug_info):
@@ -2956,6 +3012,14 @@ class JS(object):
   memory_staticbump_pattern = r'STATICTOP = STATIC_BASE \+ (\d+);'
 
   global_initializers_pattern = r'/\* global initializers \*/ __ATINIT__.push\((.+)\);'
+
+  emscripten_license = '''\
+/**
+ * @license
+ * Copyright 2010 Emscripten authors
+ * SPDX-License-Identifier: MIT
+ */
+'''
 
   @staticmethod
   def to_nice_ident(ident): # limited version of the JS function toNiceIdent

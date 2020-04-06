@@ -1,7 +1,8 @@
-// Copyright 2013 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2013 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 mergeInto(LibraryManager.library, {
   $FS__deps: ['__setErrNo', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
@@ -1065,7 +1066,7 @@ FS.staticInit();` +
         FS.truncate(node, 0);
       }
       // we've already handled these, don't pass down to the underlying vfs
-      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}});
+      flags &= ~({{{ cDefine('O_EXCL') }}} | {{{ cDefine('O_TRUNC') }}} | {{{ cDefine('O_NOFOLLOW') }}});
 
       // register the stream with the filesystem
       var stream = FS.createStream({
@@ -1140,6 +1141,9 @@ FS.staticInit();` +
       return stream.position;
     },
     read: function(stream, buffer, offset, length, position) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
@@ -1166,6 +1170,9 @@ FS.staticInit();` +
       return bytesRead;
     },
     write: function(stream, buffer, offset, length, position, canOwn) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefine('EINVAL') }}});
       }
@@ -1219,6 +1226,9 @@ FS.staticInit();` +
       stream.stream_ops.allocate(stream, offset, length);
     },
     mmap: function(stream, buffer, offset, length, position, prot, flags) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       // User requests writing to file (prot & PROT_WRITE != 0).
       // Checking if we have permissions to write to the file unless
       // MAP_PRIVATE flag is set. According to POSIX spec it is possible
@@ -1239,6 +1249,9 @@ FS.staticInit();` +
       return stream.stream_ops.mmap(stream, buffer, offset, length, position, prot, flags);
     },
     msync: function(stream, buffer, offset, length, mmapFlags) {
+#if CAN_ADDRESS_2GB
+      offset >>>= 0;
+#endif
       if (!stream || !stream.stream_ops.msync) {
         return 0;
       }

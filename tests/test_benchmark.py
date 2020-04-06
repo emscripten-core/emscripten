@@ -914,10 +914,10 @@ class benchmark(runner.RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None, args_processor=None):
     self.emcc_args.remove('-Werror')
-    shutil.copyfile(path_from_root('tests', 'lua', benchmark + '.lua'), benchmark + '.lua')
+    shutil.copyfile(path_from_root('tests', 'third_party', 'lua', benchmark + '.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
-      ret = self.get_library('lua_native' if native else 'lua', [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      ret = self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
       if native:
         return ret
       shutil.copyfile(ret[0], ret[0] + '.bc')
@@ -942,13 +942,13 @@ class benchmark(runner.RunnerCore):
 
   def test_zzz_zlib(self):
     self.emcc_args.remove('-Werror')
-    src = open(path_from_root('tests', 'zlib', 'benchmark.c'), 'r').read()
+    src = open(path_from_root('tests', 'benchmark', 'test_zlib_benchmark.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library('zlib', os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('zlib', src, '''ok.''',
-                      force_c=True, shared_args=['-I' + path_from_root('tests', 'zlib')], lib_builder=lib_builder)
+    self.do_benchmark('zlib', src, 'ok.',
+                      force_c=True, shared_args=['-I' + path_from_root('tests', 'third_party', 'zlib')], lib_builder=lib_builder)
 
   def test_zzz_coremark(self): # Called thus so it runs late in the alphabetical cycle... it is long
     src = open(path_from_root('tests', 'third_party', 'coremark', 'core_main.c'), 'r').read()
@@ -963,23 +963,25 @@ class benchmark(runner.RunnerCore):
     self.do_benchmark('coremark', src, 'Correct operation validated.', shared_args=['-I' + path_from_root('tests', 'third_party', 'coremark')], lib_builder=lib_builder, output_parser=output_parser, force_c=True)
 
   def test_zzz_box2d(self): # Called thus so it runs late in the alphabetical cycle... it is long
-    src = open(path_from_root('tests', 'box2d', 'Benchmark.cpp'), 'r').read()
+    src = open(path_from_root('tests', 'benchmark', 'test_box2d_benchmark.cpp')).read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library('box2d', [os.path.join('box2d.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'box2d'), ['box2d.a'], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'box2d')], lib_builder=lib_builder)
+    self.do_benchmark('box2d', src, 'frame averages', shared_args=['-I' + path_from_root('tests', 'third_party', 'box2d')], lib_builder=lib_builder)
 
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_zzz_bullet(self):
     self.emcc_args.remove('-Werror')
-    src = open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read()
-    src += open(path_from_root('tests', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
+    self.emcc_args += ['-Wno-c++11-narrowing', '-Wno-deprecated-register', '-Wno-writable-strings']
+    src = open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks', 'BenchmarkDemo.cpp'), 'r').read()
+    src += open(path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks', 'main.cpp'), 'r').read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library('bullet', [os.path.join('src', '.libs', 'libBulletDynamics.a'),
-                                         os.path.join('src', '.libs', 'libBulletCollision.a'),
-                                         os.path.join('src', '.libs', 'libLinearMath.a')],
+      return self.get_library(os.path.join('third_party', 'bullet'),
+                              [os.path.join('src', '.libs', 'libBulletDynamics.a'),
+                               os.path.join('src', '.libs', 'libBulletCollision.a'),
+                               os.path.join('src', '.libs', 'libLinearMath.a')],
                               # The --host parameter is needed for 2 reasons:
                               # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
                               # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
@@ -988,21 +990,21 @@ class benchmark(runner.RunnerCore):
                               configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
-                      shared_args=['-I' + path_from_root('tests', 'bullet', 'src'), '-I' + path_from_root('tests', 'bullet', 'Demos', 'Benchmarks')],
+                      shared_args=['-I' + path_from_root('tests', 'third_party', 'bullet', 'src'), '-I' + path_from_root('tests', 'third_party', 'bullet', 'Demos', 'Benchmarks')],
                       lib_builder=lib_builder)
 
   def test_zzz_lzma(self):
-    src = open(path_from_root('tests', 'lzma', 'benchmark.c'), 'r').read()
+    src = open(path_from_root('tests', 'benchmark', 'test_lzma_benchmark.c'), 'r').read()
 
     def lib_builder(name, native, env_init):
-      return self.get_library('lzma', [os.path.join('lzma.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'lzma'), [os.path.join('lzma.a')], configure=None, native=native, cache_name_extra=name, env_init=env_init)
 
-    self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'lzma')], lib_builder=lib_builder)
+    self.do_benchmark('lzma', src, 'ok.', shared_args=['-I' + path_from_root('tests', 'third_party', 'lzma')], lib_builder=lib_builder)
 
   def test_zzz_sqlite(self):
-    src = open(path_from_root('tests', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
+    src = open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
+    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'third_party', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
 
   def test_zzz_poppler(self):
     with open('pre.js', 'w') as f:

@@ -94,7 +94,6 @@
   "emscripten_websocket_new": ["malloc"],
   "emscripten_wget_data": ["malloc"],
   "emscripten_webgl_destroy_context": ["emscripten_webgl_make_context_current", "emscripten_webgl_get_current_context"],
-  "emscripten_webgl_create_context": ["malloc", "free"],
   "emscripten_idb_async_load": ["malloc", "free"],
   "emscripten_idb_load": ["malloc", "free"],
   "wgpuDeviceCreateBuffer": ["malloc", "free"],

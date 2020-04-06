@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 function WasmSourceMap(sourceMap) {
   this.version = sourceMap.version;
   this.sources = sourceMap.sources;

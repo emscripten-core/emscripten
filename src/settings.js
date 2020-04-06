@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+//
+// @license
+// Copyright 2010 The Emscripten Authors
+// SPDX-License-Identifier: MIT
+//
 
 //
 // Various compiler settings. These are simply variables present when the
@@ -48,6 +49,9 @@
 //
 // The [fastcomp-only] annotation means that a flag only affects code generation
 // in fastcomp.
+//
+// The [upstream-only] annotation means that a flag only affects code generation
+// in upstream.
 //
 
 // Tuning
@@ -141,16 +145,29 @@ var FAST_UNROLLED_MEMCPY_AND_MEMSET = 1;
 // (This option was formerly called TOTAL_MEMORY.)
 var INITIAL_MEMORY = 16777216;
 
-// Set the maximum size of memory in the wasm module (in bytes). Without this,
-// INITIAL_MEMORY is used (as it is used for the initial value), or if memory
-// growth is enabled, the default value here (-1) is to have no limit, but you
-// can set this to set a maximum size that growth will stop at.
+// Set the maximum size of memory in the wasm module (in bytes). This is only
+// relevant when ALLOW_MEMORY_GROWTH is set, as without growth, the size of
+// INITIAL_MEMORY is the final size of memory anyhow.
 //
-// This setting only matters for wasm, as in asm.js there is no place to set
-// a maximum, and only when ALLOW_MEMORY_GROWTH is set.
+// If this value is -1, it means there is no specified limit.
+//
+// This setting only matters for wasm and wasm2js, as in asm.js with fastcomp
+// there is no place to set a maximum.
+//
+// Note that the default value here is 2GB, which means that by default if you
+// enable memory growth then we can grow up to 2GB but no higher. 2GB is a
+// natural limit for several reasons:
+//
+//   * If the maximum heap size is over 2GB, then pointers must be unsigned in
+//     JavaScript, which increases code size. We don't want memory growth builds
+//     to be larger unless someone explicitly opts in to >2GB+ heaps.
+//   * Historically no VM has supported more >2GB+, and only recently (Mar 2020)
+//     has support started to appear. As support is limited, it's safer for
+//     people to opt into >2GB+ heaps rather than get a build that may not
+//     work on all VMs.
 //
 // (This option was formerly called WASM_MEM_MAX and BINARYEN_MEM_MAX.)
-var MAXIMUM_MEMORY = -1;
+var MAXIMUM_MEMORY = 2147483648;
 
 // If false, we abort with an error if we try to allocate more memory than
 // we can (INITIAL_MEMORY). If true, we will grow the memory arrays at
@@ -589,6 +606,10 @@ var ENVIRONMENT = '';
 //   * LZ4 files are read-only.
 var LZ4 = 0;
 
+// Emscripten exception handling options.
+// These options only pertain to Emscripten exception handling and do not
+// control the experimental native wasm exception handling option.
+
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
 // currently (in the future, wasm should improve that). When exceptions are
@@ -920,10 +941,17 @@ var LINKABLE = 0;
 //   * The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
 //     is the correct thing to use).
 //   * STRICT_JS is enabled.
+//   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
 // [compile+link]
 var STRICT = 0;
+
+// Allow program to link with or without `main` symbol.
+// If this is disabled then one must provide a `main` symbol or explicitly
+// opt out by passing `--no-entry` or an EXPORTED_FUNCTIONS list that doesn't
+// include `_main`.
+var IGNORE_MISSING_MAIN = 1;
 
 // Automatically attempt to add archive indexes at link time to archives that 
 // don't already have them.  This can happen when GNU ar or GNU ranlib is used
@@ -1292,6 +1320,15 @@ var WASM_ASYNC_COMPILATION = 1;
 //       created it)
 var EMIT_PRODUCERS_SECTION = 0;
 
+// If set then generated WASM files will contain a custom
+// "emscripten_metadata" section that contains information necessary
+// to execute the file without the accompanying JS file.
+var EMIT_EMSCRIPTEN_METADATA = 0;
+
+// Emits emscripten license info in the JS output.
+// [upstream-only]
+var EMIT_EMSCRIPTEN_LICENSE = 0;
+
 // Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 // to automatically demote i64 to i32 and promote f32 to f64. This is necessary
 // in order to interface with JavaScript, both for asm.js and wasm.  For
@@ -1568,11 +1605,6 @@ var ASMFS = 0;
 // then you can safely ignore this warning.
 var SINGLE_FILE = 0;
 
-// if set to 1, then generated WASM files will contain a custom
-// "emscripten_metadata" section that contains information necessary
-// to execute the file without the accompanying JS file.
-var EMIT_EMSCRIPTEN_METADATA = 0;
-
 // If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
 // need to explicitly specify -lfoo.js in at link time in order to access
@@ -1734,6 +1766,8 @@ var USE_OFFSET_CONVERTER = 0;
 // report undefined symbols within the binary.  Without this option that linker
 // doesn't know which symmbols might be defined JS and so reporting of undefined
 // symbols is deleyed until the JS compiler is run.
+// There are some known issues with this flag.  e.g. EM_JS function:
+// https://github.com/emscripten-core/emscripten/issues/10779
 // [link]
 var LLD_REPORT_UNDEFINED = 0;
 

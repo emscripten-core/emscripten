@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2015 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if MEMORYPROFILER
 
 // Copyright 2015 The Emscripten Authors.  All rights reserved.

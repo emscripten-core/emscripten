@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -202,6 +203,12 @@ function isArray(x) {
   } catch(e) {
     return false;
   }
+}
+
+// Functions that start with '$' should not be imported to asm.js/wasm module.
+// They are intended to be exclusive to JS code only.
+function isJsOnlyIdentifier(ident) {
+  return ident[0] == '$';
 }
 
 function isJsLibraryConfigIdentifier(ident) {

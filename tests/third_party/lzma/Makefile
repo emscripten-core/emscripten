@@ -1,6 +1,6 @@
 # Makefile for generating an LZMA library using Emscripten.
 
-O = lzma
+O = .
 OBJECTS = \
   $(O)/Alloc.o \
   $(O)/LzFind.o \
