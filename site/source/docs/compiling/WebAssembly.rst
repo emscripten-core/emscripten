@@ -59,12 +59,13 @@ upgrade from fastcomp to upstream:
     codegen. The simple and safe thing is to pass all ``-s`` flags at both
     compile and link time.
 
-  * You can enable LTO object files with the usual llvm compiler flags (-flto,
-    -flto=full, -flto=thin, -emit-llvm).  These flags will make the wasm backend
-    behave more like fastcomp. With fastcomp LTO optimization passes will not
-    be run by default; for that you must pass ``--llvm-lto 1``.  With the llvm
-    backend LTO passes will be run on any object files that are in bitcode
-    format.
+  * You can enable Link Time Optimization (LTO) with the usual llvm flags
+    (``-flto``, ``-flto=full``, ``-flto=thin``, at both compile and link times).
+    These flags will make the wasm backend behave more like fastcomp.
+
+  * With fastcomp LTO optimization passes will not be run by default;
+    for that you must pass ``--llvm-lto 1``.  With the llvm backend
+    LTO passes will be run on any object files that are in bitcode format.
 
   * Another thing you might notice is that fastcomp's link stage is able to
     perform some minor types of link time optimization even without LTO being
