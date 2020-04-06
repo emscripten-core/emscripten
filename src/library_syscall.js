@@ -1522,7 +1522,8 @@ var SyscallsLibrary = {
     return 0;
   },
   fd_seek__sig: 'iiiiii',
-  fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
+  fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
+    {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
     // use an unsigned operator on low and shift high by 32-bits
