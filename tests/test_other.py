@@ -498,8 +498,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Combining object files into another object should also work, using the `-r` flag
     run_process([PYTHON, EMCC, '-r', 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'])
     # We also support building without the `-r` flag but expect a warning
-    err = run_process([PYTHON, EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'],
-        stderr=PIPE).stderr
+    err = run_process([PYTHON, EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
     self.assertBinaryEqual('combined.o', 'combined2.o')
     self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
 

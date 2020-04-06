@@ -1745,7 +1745,6 @@ class Building(object):
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
 
-
     if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
                                      not Settings.PROFILING_FUNCS and
                                      not Settings.ASYNCIFY):
