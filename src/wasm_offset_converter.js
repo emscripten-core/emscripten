@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2019 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 function WasmOffsetConverter(wasmBytes, wasmModule) {
   // This class parses a WASM binary file, and constructs a mapping from
   // function indices to the start of their code in the binary file, as well

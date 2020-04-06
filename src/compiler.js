@@ -1,7 +1,8 @@
-// Copyright 2010 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -186,8 +187,7 @@ if (VERBOSE) printErr('VERBOSE is on, this generates a lot of output and can slo
 load('modules.js');
 load('parseTools.js');
 load('jsifier.js');
-globalEval(processMacros(preprocess(read('runtime.js'), 'runtime.js')));
-Runtime.QUANTUM_SIZE = 4;
+load('runtime.js');
 
 // State computations
 

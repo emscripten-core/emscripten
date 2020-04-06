@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2020 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 #if !WASM_BACKEND && EMULATED_FUNCTION_POINTERS == 0
 var jsCallStartIndex = 1;
 var functionPointers = new Array({{{ RESERVED_FUNCTION_POINTERS }}});

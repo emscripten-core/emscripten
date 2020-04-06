@@ -1,7 +1,8 @@
-// Copyright 2011 The Emscripten Authors.  All rights reserved.
-// Emscripten is available under two separate licenses, the MIT license and the
-// University of Illinois/NCSA Open Source License.  Both these licenses can be
-// found in the LICENSE file.
+/**
+ * @license
+ * Copyright 2011 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
 
 //"use strict";
 
@@ -156,7 +157,9 @@ var LibraryManager = {
       libraries.push('library_webgpu.js');
     }
 
-    if (BOOTSTRAPPING_STRUCT_INFO) libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    if (BOOTSTRAPPING_STRUCT_INFO) {
+      libraries = ['library_bootstrap_structInfo.js', 'library_formatString.js'];
+    }
 
     // Deduplicate libraries to avoid processing any library file multiple times
     libraries = libraries.filter(function(item, pos) {

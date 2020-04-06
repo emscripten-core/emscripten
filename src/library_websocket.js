@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2018 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 var LibraryWebSocket = {
   $WS: {
     sockets: [null],

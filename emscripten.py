@@ -920,6 +920,13 @@ def report_missing_symbols(all_implemented, pre):
       continue
     diagnostics.warning('undefined', 'undefined exported function: "%s"', requested)
 
+  # Handle main specially, unless IGNORE_MISSING_MAIN is set
+  if not shared.Settings.IGNORE_MISSING_MAIN:
+    if '_main' in shared.Settings.EXPORTED_FUNCTIONS and '_main' not in all_implemented:
+      # For compatibility with the output of wasm-ld we use the same wording here in our
+      # error message as if wasm-ld had failed (i.e. in LLD_REPORT_UNDEFINED mode).
+      exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
+
 
 def get_exported_implemented_functions(all_exported_functions, all_implemented, metadata):
   funcs = set(metadata['exports'])
@@ -1898,7 +1905,7 @@ function asmJsEstablishStackFrame(stackBase, stackMax) {
   STACKTOP = stackBase;
   STACK_MAX = stackMax;
   tempDoublePtr = STACKTOP;
-  STACKTOP = (STACKTOP + 8)|0;
+  STACKTOP = (STACKTOP + 16)|0;
 }
 ''')
 

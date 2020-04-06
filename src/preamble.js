@@ -1,3 +1,9 @@
+/**
+ * @license
+ * Copyright 2010 The Emscripten Authors
+ * SPDX-License-Identifier: MIT
+ */
+
 // === Preamble library stuff ===
 
 // Documentation for the public APIs defined in this file must be updated in:
@@ -454,7 +460,7 @@ function callRuntimeCallbacks(callbacks) {
   while(callbacks.length > 0) {
     var callback = callbacks.shift();
     if (typeof callback == 'function') {
-      callback();
+      callback(Module); // Pass the module as the first argument.
       continue;
     }
     var func = callback.func;
