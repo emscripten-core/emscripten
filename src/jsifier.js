@@ -415,7 +415,7 @@ function JSify(data, functionsOnly) {
           print('for (var i = gb; i < gb + {{{ STATIC_BUMP }}}; ++i) HEAP8[i] = 0;\n');
         }
         // emit "metadata" in a comment. FIXME make this nicer
-        print('// STATICTOP = STATIC_BASE + ' + Runtime.alignMemory(Variables.nextIndexedOffset) + ';\n');
+        print('// STATICTOP = STATIC_BASE + ' + alignMemory(Variables.nextIndexedOffset) + ';\n');
       }
       var generated = itemsDict.function.concat(itemsDict.type).concat(itemsDict.GlobalVariableStub).concat(itemsDict.GlobalVariable);
       print(generated.map(function(item) { return item.JS; }).join('\n'));

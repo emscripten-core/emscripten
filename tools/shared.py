@@ -1812,8 +1812,13 @@ class Building(object):
         '--initial-memory=%d' % Settings.INITIAL_MEMORY,
       ]
       use_start_function = Settings.STANDALONE_WASM
+
       if not use_start_function:
-        cmd += ['--no-entry']
+        expect_main = '_main' in Settings.EXPORTED_FUNCTIONS
+        if expect_main and not Settings.IGNORE_MISSING_MAIN:
+          cmd += ['--entry=main']
+        else:
+          cmd += ['--no-entry']
       if not Settings.ALLOW_MEMORY_GROWTH:
         cmd.append('--max-memory=%d' % Settings.INITIAL_MEMORY)
       elif Settings.MAXIMUM_MEMORY != -1:
