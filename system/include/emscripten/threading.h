@@ -334,9 +334,9 @@ void emscripten_async_waitable_close(em_queued_call *call);
 
 int _emscripten_call_on_thread(int force_async, pthread_t target_thread, EM_FUNC_SIGNATURE sig, void *func_ptr, void *satellite, ...); // internal
 
-// Queues the given function call to be performed on the specified thread. If
-// it is already on the thread to be called on, it will just execute it; otherwise it
-// will queue it on the right thread asynchronously.
+// Runs the given function on the specified thread. If we are currently on
+// that target thread then we just execute the call synchronously; otherwise it
+// is queued on that thread to execute asynchronously.
 // Returns 1 if it executed the code (i.e., it was on the target thread), and 0
 // otherwise.
 #define emscripten_dispatch_to_thread(target_thread, sig, func_ptr, satellite, ...) _emscripten_call_on_thread(0, (target_thread), (sig), (void*)(func_ptr), (satellite),##__VA_ARGS__)
