@@ -25,10 +25,11 @@ int main() {
   assert(state == 0);
   // This maybe_async call will be synchronous since we are on the right
   // thread already.
-  emscripten_call_on_thread_maybe_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &increment, 0);
+  int called_now = emscripten_dispatch_to_thread(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &increment, 0);
+  assert(called_now);
   assert(state == 1);
   // This async call will actually be async.
-  emscripten_call_on_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &increment, 0);
+  emscripten_dispatch_to_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &increment, 0);
   assert(state == 1);
-  emscripten_call_on_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &finish, 0);
+  emscripten_dispatch_to_thread_async(emscripten_main_browser_thread_id(), EM_FUNC_SIG_V, &finish, 0);
 }

@@ -449,7 +449,7 @@ pthread_t EMSCRIPTEN_KEEPALIVE emscripten_main_browser_thread_id() {
   return main_browser_thread_id_;
 }
 
-void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
+int EMSCRIPTEN_KEEPALIVE do_emscripten_dispatch_to_thread(
   pthread_t target_thread, em_queued_call* call) {
   assert(call);
 
@@ -469,7 +469,7 @@ void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
   if (target_thread == EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ||
       target_thread == pthread_self()) {
     _do_call(call);
-    return;
+    return 1;
   }
 
   // Add the operation to the call queue of the main runtime thread.
@@ -501,7 +501,7 @@ void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
       //message to thread. ' + new Error().stack));
       // #endif
       em_queued_call_free(call);
-      return;
+      return 0;
     }
   }
 
@@ -516,17 +516,19 @@ void EMSCRIPTEN_KEEPALIVE do_emscripten_call_on_thread_maybe_async(
     if (!success) {
       em_queued_call_free(call);
       pthread_mutex_unlock(&call_queue_lock);
-      return;
+      return 0;
     }
   }
 
   emscripten_atomic_store_u32((void*)&q->call_queue_tail, new_tail);
 
   pthread_mutex_unlock(&call_queue_lock);
+
+  return 0;
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_async_run_in_main_thread(em_queued_call* call) {
-  do_emscripten_call_on_thread_maybe_async(emscripten_main_browser_thread_id(), call);
+  do_emscripten_dispatch_to_thread(emscripten_main_browser_thread_id(), call);
 }
 
 void EMSCRIPTEN_KEEPALIVE emscripten_sync_run_in_main_thread(em_queued_call* call) {
@@ -846,7 +848,7 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
   return q;
 }
 
-void EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
+int EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   int forceAsync,
   pthread_t targetThread, EM_FUNC_SIGNATURE sig, void* func_ptr, void* satellite, ...) {
   int numArguments = EM_FUNC_SIG_NUM_FUNC_ARGUMENTS(sig);
@@ -889,11 +891,12 @@ void EMSCRIPTEN_KEEPALIVE _emscripten_call_on_thread(
   if (forceAsync) {
     EM_ASM({
       setTimeout(function() {
-        _do_emscripten_call_on_thread_maybe_async($0, $1);
+        _do_emscripten_dispatch_to_thread($0, $1);
       }, 0);
     }, targetThread, q);
+    return 0;
   } else {
-    do_emscripten_call_on_thread_maybe_async(targetThread, q);
+    return do_emscripten_dispatch_to_thread(targetThread, q);
   }
 }
 
