@@ -5215,19 +5215,29 @@ LibraryManager.library = {
 #endif
   },
 
+  $listenOnce: function(object, event, func) {
+#if MIN_CHROME_VERSION < 55 || MIN_EDGE_VERSION < 18 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
+    object.addEventListener(event, function handler() {
+      func();
+      document.removeEventListener(event, handler);
+    });
+#else
+    object.addEventListener(event, func, { 'once': true });
+#endif
+  },
+
+  $autoResumeAudioContext__deps: ['$listenOnce'],
   $autoResumeAudioContext: function(ctx) {
+    var canvas = document.getElementById('canvas');
     ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
       // Browsers will only allow audio to play after a user interaction. Listen
-      // for a mouse click on the document and on a canvas, if one exists.
-      document.addEventListener(event, function resumeAudioOnDocument() {
+      // for a mouse click etc.
+      listenOnce(document, event, function() {
         if (ctx.state === 'suspended') ctx.resume();
-        document.removeEventListener(event, resumeAudioOnDocument);
       });
-      var canvas = document.getElementById('canvas');
       if (canvas) {
-        canvas.addEventListener(event, function resumeAudioOnCanvas() {
+        listenOnce(canvas, event, function() {
           if (ctx.state === 'suspended') ctx.resume();
-          canvas.removeEventListener(event, resumeAudioOnCanvas);
         });
       }
     });
