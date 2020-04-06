@@ -1710,7 +1710,7 @@ class Building(object):
     # code (necessary for asm.js, for wasm bitcode see
     # https://bugs.llvm.org/show_bug.cgi?id=40654)
     if Settings.WASM_BACKEND and not Settings.LTO:
-      Building.link_lld(linker_inputs, target, ['--relocatable'])
+      Building.link_lld(linker_inputs + ['--relocatable'], target)
     else:
       Building.link(linker_inputs, target)
 
@@ -1725,34 +1725,12 @@ class Building(object):
     return target
 
   @staticmethod
-  def link_lld(args, target, opts=[], all_external_symbols=None):
-    if not os.path.exists(WASM_LD):
-      exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
-    # runs lld to link things.
-    # lld doesn't currently support --start-group/--end-group since the
-    # semantics are more like the windows linker where there is no need for
-    # grouping.
-    args = [a for a in args if a not in ('--start-group', '--end-group')]
-
-    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
-    # include all archive contents.
-    if Settings.LINKABLE:
-      args.insert(0, '--whole-archive')
-      args.append('--no-whole-archive')
-
-    if Settings.STRICT:
-      args.append('--fatal-warnings')
-
-    cmd = [
-        WASM_LD,
-        '-o',
-        target,
-    ] + args
-
-    if all_external_symbols:
+  def calc_lld_flags(external_symbol_list):
+    cmd = []
+    if external_symbol_list:
       undefs = configuration.get_temp_files().get('.undefined').name
       with open(undefs, 'w') as f:
-        f.write('\n'.join(all_external_symbols))
+        f.write('\n'.join(external_symbol_list))
       cmd.append('--allow-undefined-file=%s' % undefs)
     else:
       cmd.append('--allow-undefined')
@@ -1767,8 +1745,6 @@ class Building(object):
     if Settings.USE_PTHREADS:
       cmd.append('--shared-memory')
 
-    for a in Building.llvm_backend_args():
-      cmd += ['-mllvm', a]
 
     if Settings.DEBUG_LEVEL < 2 and (not Settings.EMIT_SYMBOL_MAP and
                                      not Settings.PROFILING_FUNCS and
@@ -1794,9 +1770,9 @@ class Building(object):
       c_exports = [e for e in Settings.EXPORTED_FUNCTIONS if is_c_symbol(e)]
       # Strip the leading underscores
       c_exports = [demangle_c_symbol_name(e) for e in c_exports]
-      if all_external_symbols:
+      if external_symbol_list:
         # Filter out symbols external/JS symbols
-        c_exports = [e for e in c_exports if e not in all_external_symbols]
+        c_exports = [e for e in c_exports if e not in external_symbol_list]
       for export in c_exports:
         cmd += ['--export', export]
 
@@ -1826,7 +1802,35 @@ class Building(object):
       if not Settings.RELOCATABLE:
         cmd.append('--global-base=%s' % Settings.GLOBAL_BASE)
 
-    cmd += opts
+    return cmd
+
+  @staticmethod
+  def link_lld(args, target, external_symbol_list=None):
+    if not os.path.exists(WASM_LD):
+      exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
+    # runs lld to link things.
+    # lld doesn't currently support --start-group/--end-group since the
+    # semantics are more like the windows linker where there is no need for
+    # grouping.
+    args = [a for a in args if a not in ('--start-group', '--end-group')]
+
+    # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
+    # include all archive contents.
+    if Settings.LINKABLE:
+      args.insert(0, '--whole-archive')
+      args.append('--no-whole-archive')
+
+    if Settings.STRICT:
+      args.append('--fatal-warnings')
+
+    cmd = [WASM_LD, '-o', target] + args
+    for a in Building.llvm_backend_args():
+      cmd += ['-mllvm', a]
+
+    # For relocatable output (generating an object file) we don't pass any of the normal linker
+    # flags that are used when building and exectuable
+    if '--relocatable' not in args and '-r' not in args:
+      cmd += Building.calc_lld_flags(external_symbol_list)
 
     print_compiler_stage(cmd)
     cmd = Building.get_command_with_possible_response_file(cmd)
