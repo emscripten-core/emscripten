@@ -4463,11 +4463,9 @@ res64 - external 64\n''', header='''
       }
     ''', expected=['starting main\nBase\nDerived\nOK'])
 
-  # TODO Enable @with_both_exception_handling (wasm-ld error)
   @needs_dlfcn
-  def test_dylink_raii_exceptions(self):
-    self.emcc_args += ['-s', 'DISABLE_EXCEPTION_CATCHING=0']
-
+  @with_both_exception_handling
+  def test_dylink_raii_exceptions(self, js_engines):
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern int side();
@@ -4494,7 +4492,8 @@ res64 - external 64\n''', header='''
         volatile ifdi p = func_with_special_sig;
         return p(2.18281, 3.14159, 42);
       }
-    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'])
+    ''', expected=['special 2.182810 3.141590 42\ndestroy\nfrom side: 1337.\n'],
+      js_engines=js_engines)
 
   @needs_dlfcn
   @no_wasm_backend('wasm backend resolves symbols greedily on startup')

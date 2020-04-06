@@ -956,7 +956,6 @@ class libcxxabi(CXXLibrary, NoExceptLibrary, MTLibrary):
     elif self.eh_mode == exceptions.wasm:
       filenames += [
         'cxa_exception.cpp',
-        'cxa_noexception.cpp',
         'cxa_personality.cpp'
       ]
 
