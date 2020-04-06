@@ -67,12 +67,8 @@ upgrade from fastcomp to upstream:
     format.
 
   * Another thing you might notice is that fastcomp's link stage is able to
-    perform some types of link time optimization by default that the LLVM
-    backend requires flags for (for example,
-    `propagate the "noexcept" property <https://github.com/emscripten-core/emscripten/issues/9817#issuecomment-553459496>`_,
-    but that specific regression has been fixed meanwhile),
-    which can have an impact on performance. Building with LTO in the wasm
-    backend can achieve similar things, see the previous bullet point.
+    perform some minor types of link time optimization even without LTO being
+    set. The LLVM backend requires actually setting LTO for those things.
 
 * `wasm-ld`, the linker used by the wasm backend, requires libraries (`.a`
   archives) to contain symbol indexes.  This matches the behaviour the native
@@ -91,8 +87,9 @@ upgrade from fastcomp to upstream:
   has been stuck on LLVM 6, upstream is many releases after). This affects
   optimizations, usually by making the upstream version faster and smaller.
   However, in rare cases you may see a regression (for example, in some cases
-  UNoptimized code may be
-  `less optimal in upstream <https://github.com/emscripten-core/emscripten/issues/10753#issuecomment-603486677>`_).
+  *UN*-optimized code may be
+  `less optimal in upstream <https://github.com/emscripten-core/emscripten/issues/10753#issuecomment-603486677>`_,
+  so make sure to optimize both when compiling and when linking).
 
 * Also see the `blocker bugs on the wasm backend <https://github.com/emscripten-core/emscripten/projects/1>`_, and the `wasm backend tagged issues <https://github.com/emscripten-core/emscripten/issues?utf8=✓&q=is%3Aissue+is%3Aopen+label%3A"LLVM+wasm+backend">`_.
 
