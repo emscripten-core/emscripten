@@ -1492,6 +1492,10 @@ var LibraryGLEmulation = {
           return s_requiredTexUnitsForPass;
         },
 
+        getActiveTexture: function () {
+          return s_activeTexture;
+        },
+
         traverseState: function(keyView) {
           for (var i = 0; i < s_texUnits.length; i++) {
             s_texUnits[i].traverseState(keyView);
@@ -1509,6 +1513,11 @@ var LibraryGLEmulation = {
         // Hooks:
         hook_activeTexture: function(texture) {
           s_activeTexture = texture - GL_TEXTURE0;
+          // Check if the current matrix mode is GL_TEXTURE.
+          if (GLImmediate.currentMatrix >= 2) {
+            // Switch to the corresponding texture matrix stack.
+            GLImmediate.currentMatrix = 2 + s_activeTexture;
+          }
         },
 
         hook_enable: function(cap) {
@@ -3243,7 +3252,7 @@ var LibraryGLEmulation = {
       GLImmediate.currentMatrix = 1/*p*/;
     } else if (mode == 0x1702) { // GL_TEXTURE
       GLImmediate.useTextureMatrix = true;
-      GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.clientActiveTexture;
+      GLImmediate.currentMatrix = 2/*t*/ + GLImmediate.TexEnvJIT.getActiveTexture();
     } else {
       throw "Wrong mode " + mode + " passed to glMatrixMode";
     }
