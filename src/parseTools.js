@@ -1682,7 +1682,7 @@ function hasExportedFunction(func) {
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 function defineI64Param(name) {
   if (WASM_BIGINT) {
-    return name;
+    return name + '_bigint';
   } else {
     return name + '_low, ' + name + '_high';
   }
@@ -1690,7 +1690,7 @@ function defineI64Param(name) {
 
 function receiveI64ParamAsI32s(name) {
   if (WASM_BIGINT) {
-    return 'var ' + name + '_low = Number(' + name + ' & 0xffffffffn) | 0, ' + name + '_high = Number(' + name + ' >> 32n) | 0;';
+    return 'var ' + name + '_low = Number(' + name + '_bigint & 0xffffffffn) | 0, ' + name + '_high = Number(' + name + '_bigint >> 32n) | 0;';
   } else {
     return '';
   }
