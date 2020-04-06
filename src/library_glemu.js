@@ -3125,6 +3125,9 @@ var LibraryGLEmulation = {
   glClientActiveTexture__sig: 'vi',
   glClientActiveTexture: function(texture) {
     GLImmediate.clientActiveTexture = texture - 0x84C0; // GL_TEXTURE0
+    if (GLImmediate.currentMatrix >= 2) { // Update the matrix stack when matrix mode is GL_TEXTURE.
+      GLImmediate.currentMatrix = 2 + GLImmediate.clientActiveTexture;
+    }
   },
 
   // Replace some functions with immediate-mode aware versions. If there are no client
