@@ -5216,7 +5216,7 @@ LibraryManager.library = {
   },
 
   $autoResumeAudioContext: function(ctx) {
-    ['keydown', 'mousedown'].forEach(function(event) {
+    ['keydown', 'mousedown', 'touchstart'].forEach(function(event) {
       // Browsers will only allow audio to play after a user interaction. Listen
       // for a mouse click on the document and on a canvas, if one exists.
       document.addEventListener(event, function resumeAudioOnDocument() {
