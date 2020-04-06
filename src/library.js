@@ -5219,7 +5219,7 @@ LibraryManager.library = {
 #if MIN_CHROME_VERSION < 55 || MIN_EDGE_VERSION < 18 || MIN_FIREFOX_VERSION < 50 || MIN_IE_VERSION != TARGET_NOT_SUPPORTED // https://developer.mozilla.org/en-US/docs/Web/API/EventTarget/addEventListener
     object.addEventListener(event, function handler() {
       func();
-      document.removeEventListener(event, handler);
+      object.removeEventListener(event, handler);
     });
 #else
     object.addEventListener(event, func, { 'once': true });
