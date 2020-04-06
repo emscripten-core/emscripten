@@ -92,7 +92,6 @@ class Cache(object):
       self.release_cache_lock()
 
   def erase(self):
-    return
     tempfiles.try_delete(self.root_dirname)
     self.filelock = None
     tempfiles.try_delete(self.filelock_name)

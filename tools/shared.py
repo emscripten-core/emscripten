@@ -3131,6 +3131,9 @@ class JS(object):
 
   @staticmethod
   def is_legal_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
