@@ -8,14 +8,20 @@ var Module = {
 };
 
 Module['runtest'] = function() {
-    // Use eval to create BigInt, as no support for Xn notation yet in JS
-    // optimizer.
-    var bigint = _test_return64(eval('0xaabbccdd11223344n'));
-    var low = Number(bigint & BigInt(0xffffffff));
-    var high = Number(bigint >> BigInt(32));
+  // Use eval to create BigInt, as no support for Xn notation yet in JS
+  // optimizer.
+  var bigint = _test_return64(eval('0xaabbccdd11223344n'));
+  var low = Number(bigint & BigInt(0xffffffff));
+  var high = Number(bigint >> BigInt(32));
+  console.log("low = " + low);
+  console.log("high = " + high);
 
-    console.log("low = " + low);
-    console.log("high = " + high);
+  var ptr = _get_ptr();
+  bigint = dynCall_jj(ptr, eval('0xabcdef1912345678n'));
+  low = Number(bigint & BigInt(0xffffffff));
+  high = Number(bigint >> BigInt(32));
+  console.log("low = " + low);
+  console.log("high = " + high);
 };
 
 

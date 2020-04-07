@@ -5,10 +5,16 @@
  * found in the LICENSE file.
  */
 
+#include <emscripten.h>
 #include <stdio.h>
 
 long long test_return64(long long input) {
   long long x = ((long long)1234 << 32) + 5678;
   printf("input = 0x%llx\n", input);
   return x;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void* get_ptr() {
+  return &test_return64;
 }

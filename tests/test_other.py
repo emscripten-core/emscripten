@@ -7239,9 +7239,14 @@ Resolved: "/" => "/"
 
     # Run the test and confirm the output is as expected.
     out = run_js('testrun.js', full_output=True, engine=NODE_JS + ['--experimental-wasm-bigint'])
-    self.assertContained('low = 5678', out)
-    self.assertContained('high = 1234', out)
-    self.assertContained('input = 0xaabbccdd11223344', out)
+    self.assertContained('''\
+input = 0xaabbccdd11223344
+low = 5678
+high = 1234
+input = 0xabcdef1912345678
+low = 5678
+high = 1234
+''', out)
 
   def test_lib_include_flags(self):
     run_process([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
