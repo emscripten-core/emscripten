@@ -1390,7 +1390,9 @@ var SyscallsLibrary = {
     FS.utime(path, atime, mtime);
     return 0;  
   },
-  __sys_fallocate: function(fd, mode, off_low, off_high, len_low, len_high) {
+  __sys_fallocate: function(fd, mode, {{{ defineI64Param('off') }}}, {{{ defineI64Param('len') }}}) {
+    {{{ receiveI64ParamAsI32s('off') }}}
+    {{{ receiveI64ParamAsI32s('len') }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(off_low, off_high);
     var len = SYSCALLS.get64(len_low, len_high);

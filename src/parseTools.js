@@ -1700,3 +1700,11 @@ function receiveI64ParamAsI32s(name) {
     return '';
   }
 }
+
+function sendI64Argument(low, high) {
+  if (WASM_BIGINT) {
+    return 'BigInt(low) | (BigInt(high) << BigInt(32))';
+  } else {
+    return low + ', ' + high;
+  }
+}
