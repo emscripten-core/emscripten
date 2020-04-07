@@ -74,8 +74,6 @@ def bleeding_edge_wasm_backend(f):
   return decorated
 
 
-# Tests exception handling in emscripten exception handling mode, and if
-# possible, new wasm EH mode.
 def also_with_wasm_bigint(f):
   def decorated(self):
     self.set_setting('WASM_BIGINT', 0)
