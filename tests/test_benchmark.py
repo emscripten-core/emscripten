@@ -202,7 +202,7 @@ class EmscriptenBenchmarker(Benchmarker):
       '-s', 'INITIAL_MEMORY=256MB',
       '-s', 'FILESYSTEM=0',
       '--closure', '1',
-      '-s', 'MINIMAL_RUNTIME=0',
+      '-s', 'MINIMAL_RUNTIME=1',
       '-s', 'BENCHMARK=%d' % (1 if IGNORE_COMPILATION and not has_output_parser else 0),
       '-o', final
     ] + shared_args + emcc_args + LLVM_FEATURE_FLAGS + self.extra_args
@@ -222,7 +222,7 @@ class EmscriptenBenchmarker(Benchmarker):
   def get_output_files(self):
     ret = [self.filename]
     if 'WASM=0' in self.cmd:
-      if 'MINIMAL_RUNTIME=1' in self.cmd:
+      if 'MINIMAL_RUNTIME=0' not in self.cmd:
         ret.append(self.filename[:-3] + '.asm.js')
         ret.append(self.filename[:-3] + '.mem')
       else:
@@ -444,7 +444,7 @@ class benchmark(runner.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [], emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
+    self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
 
   # Also interesting to test it without the printfs which allow checking the output. Without
   # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
@@ -482,7 +482,7 @@ class benchmark(runner.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('memops', src, 'final:', emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
+    self.do_benchmark('memops', src, 'final:')
 
   def zzztest_files(self):
     src = r'''
@@ -660,7 +660,7 @@ class benchmark(runner.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS, emcc_args=['-s', 'MINIMAL_RUNTIME=0'])
+    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
 
   def test_fannkuch(self):
     src = open(path_from_root('tests', 'fannkuch.cpp'), 'r').read().replace(
@@ -908,7 +908,7 @@ class benchmark(runner.RunnerCore):
 
     self.do_benchmark('lua_' + benchmark, '', expected,
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
-                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1'],
+                      emcc_args=['--embed-file', benchmark + '.lua', '-s', 'FORCE_FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser, args_processor=args_processor)
 
@@ -986,7 +986,9 @@ class benchmark(runner.RunnerCore):
   def test_zzz_sqlite(self):
     src = open(path_from_root('tests', 'third_party', 'sqlite', 'sqlite3.c'), 'r').read() + open(path_from_root('tests', 'sqlite', 'speedtest1.c'), 'r').read()
 
-    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'third_party', 'sqlite')], emcc_args=['-s', 'FILESYSTEM=1'], force_c=True)
+    self.do_benchmark('sqlite', src, 'TOTAL...', native_args=['-ldl', '-pthread'], shared_args=['-I' + path_from_root('tests', 'third_party', 'sqlite')],
+                      emcc_args=['-s', 'FILESYSTEM=1', '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
+                      force_c=True)
 
   def test_zzz_poppler(self):
     with open('pre.js', 'w') as f:
@@ -1034,5 +1036,7 @@ class benchmark(runner.RunnerCore):
     # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + path_from_root('tests', 'poppler', 'include'), '-I' + path_from_root('tests', 'freetype', 'include')],
-                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file', path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0'],
+                      emcc_args=['-s', 'FILESYSTEM=1', '--pre-js', 'pre.js', '--embed-file',
+                                 path_from_root('tests', 'poppler', 'emscripten_html5.pdf') + '@input.pdf', '-s', 'ERROR_ON_UNDEFINED_SYMBOLS=0',
+                                 '-s', 'MINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, skip_native=True)
