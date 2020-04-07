@@ -994,3 +994,7 @@ var threadInfoStruct;
 var selfThreadId;
 /** @suppress {duplicate} */
 var noExitRuntime;
+
+// No BigInt in closure yet
+//    https://github.com/google/closure-compiler/issues/3167
+var BigInt;
