@@ -7213,7 +7213,11 @@ Resolved: "/" => "/"
     # default maximum memory is 2GB.
     self.assertEqual(less, none)
 
-  def test_sixtyfour_bit_return_value(self):
+  @parameterized({
+    'normal': (['-s', 'WASM_BIGINT=0'], 'testbind.js'),
+    'bigint': (['-s', 'WASM_BIGINT=1'], 'testbind_bigint.js'),
+  })
+  def test_sixtyfour_bit_return_value(self, args, bind_js):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
     # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
@@ -7221,10 +7225,10 @@ Resolved: "/" => "/"
     # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
     run_process([PYTHON, EMCC, path_from_root('tests', 'return64bit', 'test.c'),
                  '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'),
-                 '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'),
+                 '--pre-js', path_from_root('tests', 'return64bit', bind_js),
                  '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
                  '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', '-O2',
-                 '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'])
+                 '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
 
     # Simple test program to load the test.js binding library and call the binding to the
     # C function returning the 64 bit long.
