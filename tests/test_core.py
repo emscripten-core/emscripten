@@ -79,10 +79,11 @@ def bleeding_edge_wasm_backend(f):
 def also_with_wasm_bigint(f):
   def decorated(self):
     self.set_setting('WASM_BIGINT', 0)
-    f(self)
-    if self.is_wasm_backend() and self.get_setting('WASM'):
+    f(self, None)
+    if self.is_wasm_backend() and V8_ENGINE and \
+       V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
-      f(self)
+      f(self, [V8_ENGINE + ['--experimental-wasm-bigint']])
   return decorated
 
 
@@ -4113,7 +4114,6 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
-  @also_with_wasm_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <cstdio>
@@ -5256,10 +5256,11 @@ main( int argv, char ** argc ) {
                        ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
-  def test_utf8_textdecoder(self):
+  @also_with_wasm_bigint
+  def test_utf8_textdecoder(self, js_engines):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.', js_engines=js_engines)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
