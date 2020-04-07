@@ -80,10 +80,9 @@ def also_with_wasm_bigint(f):
   def decorated(self):
     self.set_setting('WASM_BIGINT', 0)
     f(self, None)
-    if self.is_wasm_backend() and V8_ENGINE and \
-       V8_ENGINE in JS_ENGINES and self.get_setting('WASM'):
+    if self.is_wasm_backend() and self.get_setting('WASM'):
       self.set_setting('WASM_BIGINT', 1)
-      f(self, [V8_ENGINE + ['--experimental-wasm-bigint']])
+      f(self, [NODE_JS + ['--experimental-wasm-bigint']])
   return decorated
 
 
@@ -4114,7 +4113,8 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
-  def test_dylink_i64_c(self):
+  @also_with_wasm_bigint
+  def test_dylink_i64_c(self, js_engines):
     self.dylink_test(r'''
       #include <cstdio>
       #include <cinttypes>
@@ -4162,7 +4162,7 @@ res64 - external 64\n''', header='''
       #include <cstdint>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''')
+    ''', js_engines=js_engines)
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -5572,18 +5572,19 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'sleep.out')).read()
     self.do_run(src, expected)
 
-  def test_unistd_io(self):
+  @also_with_wasm_bigint
+  def test_unistd_io(self, js_engines):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
-    self.clear()
     orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
+      self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run(src, expected, js_engines=js_engines)
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
