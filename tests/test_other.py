@@ -7213,6 +7213,7 @@ Resolved: "/" => "/"
     # default maximum memory is 2GB.
     self.assertEqual(less, none)
 
+  @no_fastcomp('depends on wasm-emscripten-finalize')
   @parameterized({
     'normal': (['-s', 'WASM_BIGINT=0'], 'testbind.js'),
     'bigint': (['-s', 'WASM_BIGINT=1'], 'testbind_bigint.js'),
