@@ -74,6 +74,18 @@ def bleeding_edge_wasm_backend(f):
   return decorated
 
 
+# Tests exception handling in emscripten exception handling mode, and if
+# possible, new wasm EH mode.
+def also_with_wasm_bigint(f):
+  def decorated(self):
+    self.set_setting('WASM_BIGINT', 0)
+    f(self)
+    if self.is_wasm_backend() and self.get_setting('WASM'):
+      self.set_setting('WASM_BIGINT', 1)
+      f(self)
+  return decorated
+
+
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
@@ -4101,6 +4113,7 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
+  @also_with_wasm_bigint
   def test_dylink_i64_c(self):
     self.dylink_test(r'''
       #include <cstdio>
