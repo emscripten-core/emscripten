@@ -1725,7 +1725,7 @@ class Building(object):
     return target
 
   @staticmethod
-  def calc_lld_flags(external_symbol_list):
+  def lld_flags_for_executable(external_symbol_list):
     cmd = []
     if external_symbol_list:
       undefs = configuration.get_temp_files().get('.undefined').name
@@ -1829,7 +1829,7 @@ class Building(object):
     # For relocatable output (generating an object file) we don't pass any of the normal linker
     # flags that are used when building and exectuable
     if '--relocatable' not in args and '-r' not in args:
-      cmd += Building.calc_lld_flags(external_symbol_list)
+      cmd += Building.lld_flags_for_executable(external_symbol_list)
 
     print_compiler_stage(cmd)
     cmd = Building.get_command_with_possible_response_file(cmd)
