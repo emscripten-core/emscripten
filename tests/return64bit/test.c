@@ -5,8 +5,10 @@
  * found in the LICENSE file.
  */
 
-// This is just a trivial test function, the key bit of interest is that it returns a 64 bit long.
-long long test_return64() {
-    long long x = ((long long)1234 << 32) + 5678;
-    return x;
+#include <stdio.h>
+
+long long test_return64(long long input) {
+  long long x = ((long long)1234 << 32) + 5678;
+  printf("input = 0x%llx\n", input);
+  return x;
 }

@@ -8,7 +8,9 @@ var Module = {
 };
 
 Module['runtest'] = function() {
-    var bigint = _test_return64();
+    // Use eval to create BigInt, as no support for Xn notation yet in JS
+    // optimizer.
+    var bigint = _test_return64(eval('0xaabbccdd11223344n'));
     var low = Number(bigint & BigInt(0xffffffff));
     var high = Number(bigint >> BigInt(32));
 
