@@ -2347,12 +2347,6 @@ class Building(object):
 
   @staticmethod
   def closure_compiler(filename, pretty=True, advanced=True, extra_closure_args=None):
-    # Closure lacks support for BigInt literals (1n, 2n, etc.)
-    # https://github.com/google/closure-compiler/issues/3167
-    if Settings.WASM_BIGINT:
-      logging.warning('skipping closure compiler because of WASM_BIGINT')
-      return filename
-
     with ToolchainProfiler.profile_block('closure_compiler'):
       env = env_with_node_in_path()
       user_args = []
