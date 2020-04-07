@@ -5,9 +5,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
 #include "tick.h"
 
 // Naively computes dst = a * b, where a is a matrix of size YxI, and b is a matrix of size IxX. The output matrix dst will be of size YxX.
@@ -82,10 +79,6 @@ void Tick()
   if (++NumFramesDone >= NumFrames)
   {
     Done();
-#ifdef __EMSCRIPTEN__
-    if (ENVIRONMENT_IS_WEB)
-      emscripten_cancel_main_loop();
-#endif
     exit(0);
   }
 }
@@ -113,9 +106,6 @@ int main(int argc, char **argv)
     ItersPerFrame = atoi(argv[5]);
     Method = atoi(argv[6]);
   }
-#ifdef __EMSCRIPTEN__
-  ENVIRONMENT_IS_WEB = EM_ASM_INT(return ENVIRONMENT_IS_WEB);
-#endif
   printf("Performing %d multiplications of matrices of size %dx%d and %dx%d. Distributing multiplication across %d animation frames (matrix muls per frame=%d).\n", NumFrames*ItersPerFrame, A, B, B, C, NumFrames, ItersPerFrame);
 
 // #define EM_TIMING_SETTIMEOUT 0
@@ -127,21 +117,6 @@ int main(int argc, char **argv)
   mDst = new float[A*C];
   Init(mA, A, B);
   Init(mB, B, C);
-
-#ifdef __EMSCRIPTEN__
-  if (ENVIRONMENT_IS_WEB)
-  {
-    switch(Method)
-    {
-      case EM_TIMING_SETTIMEOUT: printf("Using setTimeout(0) to schedule frames.\n"); break;
-      case EM_TIMING_RAF: printf("Using requestAnimationFrame() to schedule frames.\n"); break;
-      case EM_TIMING_SETIMMEDIATE: printf("Using setImmediate/postMessage() to schedule frames.\n"); break;
-      default: printf("Invalid frame scheduling method %d specifiec!\n", Method); exit(1);
-    }
-    emscripten_set_main_loop(Tick, 0, 0);
-    emscripten_set_main_loop_timing(Method, 0);
-  }
-#endif
 
   t0 = tick();
 
