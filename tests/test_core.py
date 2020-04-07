@@ -1624,6 +1624,7 @@ int main() {
 
   @also_with_standalone_wasm
   def test_ctors_no_main(self):
+    self.emcc_args.append('--no-entry')
     self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
   def test_class(self):
@@ -3752,7 +3753,7 @@ ok
     if need_reverse:
       # test the reverse as well
       print('flip')
-      self.dylink_test(side, main, expected, header, main_emcc_args, force_c, need_reverse=False, **kwargs)
+      self.dylink_test(side, main, expected, header, main_emcc_args + ['--no-entry'], force_c, need_reverse=False, **kwargs)
 
   def do_basic_dylink_test(self, need_reverse=True):
     self.dylink_test(r'''
@@ -6951,8 +6952,8 @@ return malloc(size);
     self.emcc_args += extra_args
     self.set_setting('DEMANGLE_SUPPORT', 1)
     self.set_setting('ASSERTIONS', 1)
-    # when optimizing function names are not preserved by default.
-    if '-O' in str(self.emcc_args):
+    # unless `-g` is pass function names are not preserved by default.
+    if '-g' not in str(self.emcc_args):
       self.emcc_args += ['--profiling-funcs', '--llvm-opts', '0']
     # in the emterpreter, we interpret code execution and control flow,
     # so there is nothing on the browser-visible stack for meaningful
@@ -8837,6 +8838,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm
   def test_undefined_main(self):
+    if self.get_setting('LLD_REPORT_UNDEFINED'):
+      self.skipTest('LLD_REPORT_UNDEFINED does not allow implicit undefined main')
     # By default in emscripten we allow main to be undefined.  Its used when
     # building library code that has no main.
     # TODO(sbc): Simplify the code by making this an opt-in feature.
@@ -8888,12 +8891,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('tests', 'core', 'test_get_exported_function')
 
   def test_auto_detect_main(self):
-    self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
+    if not self.get_setting('LLD_REPORT_UNDEFINED'):
+      self.do_run_in_out_file_test('tests', 'core', 'test_ctors_no_main')
 
-    # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
-    self.set_setting('IGNORE_MISSING_MAIN', 0)
-    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
-    self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
+      # Disabling IGNORE_MISSING_MAIN should cause link to fail due to missing main
+      self.set_setting('IGNORE_MISSING_MAIN', 0)
+      err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'core', 'test_ctors_no_main.cpp')] + self.get_emcc_args())
+      self.assertContained('error: entry symbol not defined (pass --no-entry to suppress): main', err)
 
     # We can fix the error either by adding --no-entry or by setting EXPORTED_FUNCTIONS to empty
     self.emcc_args.append('--no-entry')
@@ -9005,6 +9009,7 @@ if shared.Settings.WASM_BACKEND:
   asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
   asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
                    settings={'ALLOW_MEMORY_GROWTH': 1})
+  lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
