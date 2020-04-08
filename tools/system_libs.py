@@ -1462,7 +1462,7 @@ class libjsmath(Library):
   name = 'libjsmath'
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-  src_files = ['jsmath.cpp']
+  src_files = ['jsmath.c']
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
