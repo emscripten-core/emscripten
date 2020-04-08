@@ -5689,12 +5689,6 @@ PORT: 3979
 
   # libc++ tests
 
-  def assertBinaryEqual(self, file1, file2):
-    self.assertEqual(os.path.getsize(file1),
-                     os.path.getsize(file2))
-    self.assertEqual(open(file1, 'rb').read(),
-                     open(file2, 'rb').read())
-
   def test_iostream_and_determinism(self):
     src = '''
       #include <iostream>

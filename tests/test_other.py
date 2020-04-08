@@ -482,31 +482,35 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     self.assertNotExists(path_from_root('tests', 'twopart_side.o'))
 
   def test_combining_object_files(self):
-    # Compiling two source files into a final JS.
-    run_process([PYTHON, EMCC, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp')])
-    self.assertContained('side got: hello from main, over', run_js('a.out.js'))
-
     # Compiling two files with -c will generate separate object files
-    self.clear()
     run_process([PYTHON, EMCC, path_from_root('tests', 'twopart_main.cpp'), path_from_root('tests', 'twopart_side.cpp'), '-c'])
     self.assertExists('twopart_main.o')
     self.assertExists('twopart_side.o')
 
-    # Compiling one of them alone is expected to fail
+    # Linking with just one of them is expected to fail
     err = self.expect_fail([PYTHON, EMCC, 'twopart_main.o'])
     self.assertContained('undefined symbol: _Z7theFuncPKc', err)
 
-    # Combining both object files into js should work
+    # Linking with both should work
     run_process([PYTHON, EMCC, 'twopart_main.o', 'twopart_side.o'])
     self.assertContained('side got: hello from main, over', run_js('a.out.js'))
 
-    # Combining object files into another object should also work
-    try_delete('a.out.js')
-    run_process([PYTHON, EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'])
+    # Combining object files into another object should also work, using the `-r` flag
+    run_process([PYTHON, EMCC, '-r', 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'])
+    # We also support building without the `-r` flag but expect a warning
+    err = run_process([PYTHON, EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
+    self.assertBinaryEqual('combined.o', 'combined2.o')
+    self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
+
+    # Should be two symbols (and in the wasm backend, also __original_main)
     syms = Building.llvm_nm('combined.o')
-    assert len(syms.defs) in (2, 3) and 'main' in syms.defs, 'Should be two functions (and in the wasm backend, also __original_main)'
+    self.assertIn('main', syms.defs)
+    if self.is_wasm_backend():
+      self.assertEqual(len(syms.defs), 3)
+    else:
+      self.assertEqual(len(syms.defs), 2)
+
     run_process([PYTHON, EMCC, 'combined.o', '-o', 'combined.o.js'])
-    self.assertExists('combined.o.js')
     self.assertContained('side got: hello from main, over', run_js('combined.o.js'))
 
   def test_js_transform(self):
@@ -10484,19 +10488,14 @@ Module.arguments has been replaced with plain arguments_
     for engine in JS_ENGINES:
       self.assertContained('hello, world!', run_js('a.out.js', engine=engine))
 
-  def test_link_to_object(self):
+  def test_compile_only_with_object_extension(self):
     # Emscripten supports compiling to an object file when the output has an
     # object extension.
+    # Most compilers require the `-c` to be explict.
     run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-c', '-o', 'hello1.o'])
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'])
-    content1 = open('hello1.o', 'rb').read()
-    content2 = open('hello2.o', 'rb').read()
-    self.assertEqual(content1, content2)
-
-    # We allow support linking object files together into other object files
-    run_process([PYTHON, EMCC, 'hello1.o', '-o', 'hello3.o'])
-    content3 = open('hello2.o', 'rb').read()
-    self.assertEqual(content1, content3)
+    err = run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-o', 'hello2.o'], stderr=PIPE).stderr
+    self.assertContained('warning: Assuming object file output in the absence of `-c`', err)
+    self.assertBinaryEqual('hello1.o', 'hello2.o')
 
   def test_backwards_deps_in_archive(self):
     # Test that JS dependencies from deps_info.json work for code linked via
