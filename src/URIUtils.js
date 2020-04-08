@@ -15,12 +15,12 @@ var dataURIPrefix = 'data:application/octet-stream;base64,';
 
 // Indicates whether filename is a base64 data URI.
 function isDataURI(filename) {
-  return hasPrefix(dataURIPrefix);
+  return hasPrefix(filename, dataURIPrefix);
 }
 
 var fileURIPrefix = "file://";
 
 // Indicates whether filename is delivered via file protocol (as opposed to http/https)
 function isFileURI(filename) {
-  return hasPrefix(fileURIPrefix);
+  return hasPrefix(filename, fileURIPrefix);
 }
