@@ -1457,6 +1457,13 @@ class libstandalonewasm(MuslInternalLibrary):
     return super(libstandalonewasm, self).can_build() and shared.Settings.WASM_BACKEND
 
 
+class libjsmath(Library):
+  name = 'libjsmath'
+  cflags = ['-Os']
+  src_dir = ['system', 'lib']
+  src_files = ['jsmath.c']
+
+
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
 # confusing, so issue a warning.
 def warn_on_unexported_main(symbolses):
@@ -1662,6 +1669,11 @@ def calculate(temp_files, in_temp, stdout_, stderr_, forced=[]):
   # is first then it would "win", breaking exception throwing from those string
   # header methods. To avoid that, we link libc++abi last.
   libs_to_link.sort(key=lambda x: x[0].endswith('libc++abi.bc'))
+
+  # JS math must come before anything else, so that it overrides the normal
+  # libc math.
+  if shared.Settings.JS_MATH:
+    libs_to_link = [(system_libs_map['libjsmath'].get_path(), True)] + libs_to_link
 
   # Wrap libraries in --whole-archive, as needed.  We need to do this last
   # since otherwise the abort sorting won't make sense.
