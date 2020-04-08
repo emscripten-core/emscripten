@@ -431,8 +431,12 @@ def apply_settings(changes):
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
 
+    # Do some basic type checking by comparing to the existing settings.
+    # Sadly we can't do this generically in the SettingsManager since there are settings
+    # that so change types internally over time.
     existing = getattr(shared.Settings, user_key, None)
-    if existing != None:
+    if existing is not None:
+      # We only currently worry about lists vs non-lists.
       if (type(existing) == list) != (type(value) == list):
         exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
     setattr(shared.Settings, user_key, value)
