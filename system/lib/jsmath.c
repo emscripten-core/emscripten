@@ -1,3 +1,7 @@
+//
+// See JS_MATH setting in settings.js for details.
+//
+
 #include <emscripten.h>
 #include <math.h>
 #include <stdlib.h>
