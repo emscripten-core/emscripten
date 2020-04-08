@@ -1460,14 +1460,9 @@ class libstandalonewasm(MuslInternalLibrary):
 
 class libjsmath(Library):
   name = 'libjsmath'
-
   cflags = ['-Os']
   src_dir = ['system', 'lib']
-
-  def get_files(self):
-    return files_in_path(
-        path_components=['system', 'lib'],
-        filenames=['js_math.cpp'])
+  src_files = ['jsmath.cpp']
 
 
 # If main() is not in EXPORTED_FUNCTIONS, it may be dce'd out. This can be
