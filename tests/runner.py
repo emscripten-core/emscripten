@@ -867,6 +867,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     else:
       self.assertNotContained(value, string)
 
+  def assertBinaryEqual(self, file1, file2):
+    self.assertEqual(os.path.getsize(file1),
+                     os.path.getsize(file2))
+    self.assertEqual(open(file1, 'rb').read(),
+                     open(file2, 'rb').read())
+
   library_cache = {}
 
   def get_build_dir(self):
