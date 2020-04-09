@@ -449,6 +449,14 @@ class TestCoreBase(RunnerCore):
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
 
+  @no_fastcomp('wasm bigint')
+  @no_wasm2js('wasm_bigint')
+  def test_i64_invoke_bigint(self):
+    self.set_setting('WASM_BIGINT', 1)
+    self.emcc_args += ['-fexceptions']
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint',
+                                 js_engines=[NODE_JS + ['--experimental-wasm-bigint']])
+
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
 

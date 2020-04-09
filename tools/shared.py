@@ -3112,6 +3112,8 @@ class JS(object):
 
   @staticmethod
   def legalize_sig(sig):
+    if Settings.WASM_BIGINT:
+      return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
     # accessible on the side through getTempRet0).
