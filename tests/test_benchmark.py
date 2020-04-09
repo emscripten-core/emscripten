@@ -194,7 +194,7 @@ class EmscriptenBenchmarker(Benchmarker):
       # Note that we need to pass in all the flags here because some build
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
-      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + emcc_args + self.extra_args)
+      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
