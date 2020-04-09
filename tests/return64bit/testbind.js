@@ -19,5 +19,3 @@ Module['runtest'] = function() {
   console.log("low = " + low);
   console.log("high = " + high);
 };
-
-
