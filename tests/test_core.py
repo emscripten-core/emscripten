@@ -5329,6 +5329,11 @@ main( int argv, char ** argc ) {
     src = open(path_from_root('tests', 'fs', 'test_nodefs_home.c')).read()
     self.do_run(src, 'success', js_engines=[NODE_JS])
 
+  def test_fs_nodefs_nofollow(self):
+    self.emcc_args += ['-lnodefs.js']
+    src = open(path_from_root('tests', 'fs', 'test_nodefs_nofollow.c')).read()
+    self.do_run(src, 'success', js_engines=[NODE_JS])
+
   def test_fs_trackingdelegate(self):
     src = path_from_root('tests', 'fs', 'test_trackingdelegate.c')
     out = path_from_root('tests', 'fs', 'test_trackingdelegate.out')
@@ -5670,12 +5675,6 @@ PORT: 3979
     self.do_run_in_out_file_test('tests', 'core', 'test_main_module_static_align')
 
   # libc++ tests
-
-  def assertBinaryEqual(self, file1, file2):
-    self.assertEqual(os.path.getsize(file1),
-                     os.path.getsize(file2))
-    self.assertEqual(open(file1, 'rb').read(),
-                     open(file2, 'rb').read())
 
   def test_iostream_and_determinism(self):
     src = '''

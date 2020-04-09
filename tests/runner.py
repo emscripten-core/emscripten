@@ -818,7 +818,7 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
     for x in values:
       if x == y:
         return # success
-    diff_lines = difflib.unified_diff(x.split('\n'), y.split('\n'),
+    diff_lines = difflib.unified_diff(x.splitlines(), y.splitlines(),
                                       fromfile=fromfile, tofile=tofile)
     diff = ''.join([a.rstrip() + '\n' for a in diff_lines])
     if EMTEST_VERBOSE:
@@ -866,6 +866,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       self.assertContained(value, string)
     else:
       self.assertNotContained(value, string)
+
+  def assertBinaryEqual(self, file1, file2):
+    self.assertEqual(os.path.getsize(file1),
+                     os.path.getsize(file2))
+    self.assertEqual(open(file1, 'rb').read(),
+                     open(file2, 'rb').read())
 
   library_cache = {}
 

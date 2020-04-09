@@ -420,13 +420,25 @@ def apply_settings(changes):
 
     if value[0] == '@':
       if key not in DEFERRED_RESPONSE_FILES:
-        value = open(value[1:]).read()
+        filename = value[1:]
+        if not os.path.exists(filename):
+          exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
+        value = open(filename).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
       value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+
+    # Do some basic type checking by comparing to the existing settings.
+    # Sadly we can't do this generically in the SettingsManager since there are settings
+    # that so change types internally over time.
+    existing = getattr(shared.Settings, user_key, None)
+    if existing is not None:
+      # We only currently worry about lists vs non-lists.
+      if (type(existing) == list) != (type(value) == list):
+        exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
     setattr(shared.Settings, user_key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
@@ -2318,7 +2330,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             # TODO(sbc): This is an incomplete list of __invoke functions.  Perhaps add
             # support for wildcard to wasm-ld.
             all_externals += ['emscripten_longjmp_jmpbuf', '__invoke_void', '__invoke_i32_i8*_...']
-          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, all_external_symbols=all_externals)
+          final = shared.Building.link_lld(linker_inputs, DEFAULT_FINAL, external_symbol_list=all_externals)
         else:
           final = shared.Building.link(linker_inputs, DEFAULT_FINAL, force_archive_contents=force_archive_contents, just_calculate=just_calculate)
       else:
