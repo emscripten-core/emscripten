@@ -16,6 +16,6 @@ int64_t test_return64(int64_t input) {
 }
 
 EMSCRIPTEN_KEEPALIVE
-void* get_ptr() {
+void* get_func_ptr() {
   return &test_return64;
 }

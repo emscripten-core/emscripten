@@ -16,7 +16,7 @@ Module['runtest'] = function() {
   console.log("low = " + low);
   console.log("high = " + high);
 
-  var ptr = _get_ptr();
+  var ptr = _get_func_ptr();
   bigint = dynCall_jj(ptr, eval('0xabcdef1912345678n'));
   low = Number(bigint & BigInt(0xffffffff));
   high = Number(bigint >> BigInt(32));

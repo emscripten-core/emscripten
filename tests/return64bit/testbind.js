@@ -13,7 +13,7 @@ Module['runtest'] = function() {
   console.log("low = " + low);
   console.log("high = " + high);
 
-  var ptr = _get_ptr();
+  var ptr = _get_func_ptr();
   low = dynCall_jj(ptr, 0x12345678, 0xabcdef19);
   high = getTempRet0();
   console.log("low = " + low);
