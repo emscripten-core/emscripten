@@ -5010,16 +5010,6 @@ Truncating file=/tmp/file to length=32
 Size of file is: 32
 ''', run_js('a.out.js'))
 
-  def test_emcc_s_typo(self):
-    # with suggestions
-    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
-    self.assertContained("Attempt to set a non-existent setting: 'DISABLE_EXCEPTION_CATCH'", stderr)
-    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
-    # no suggestions
-    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
-    self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
-    self.assertContained('(see src/settings.js for valid values)', stderr)
-
   def test_create_readonly(self):
     create_test_file('src.cpp', r'''
 #include <cerrno>
@@ -7262,13 +7252,15 @@ high = 1234
 
   def test_dash_s_response_file_string(self):
     create_test_file('response_file', '"MyModule"\n')
-    response_file = os.path.join(os.getcwd(), "response_file")
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORT_NAME=@%s' % response_file])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORT_NAME=@response_file'])
 
   def test_dash_s_response_file_list(self):
     create_test_file('response_file', '["_main", "_malloc"]\n')
-    response_file = os.path.abspath('response_file')
-    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@' + response_file])
+    run_process([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@response_file'])
+
+  def test_dash_s_response_file_misssing(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=@foo'])
+    self.assertContained('error: foo: file not found parsing argument: EXPORTED_FUNCTIONS=@foo', err)
 
   def test_dash_s_unclosed_quote(self):
     # Unclosed quote
@@ -7291,6 +7283,22 @@ high = 1234
   def test_dash_s_valid_list(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), "-s", "TEST_KEY=[Value1, \"Value2\"]"])
     self.assertNotContained('a problem occured in evaluating the content after a "-s", specifically', err)
+
+  def test_dash_s_wrong_type(self):
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXPORTED_FUNCTIONS=foo'])
+    self.assertContained("error: setting `EXPORTED_FUNCTIONS` expects `<class 'list'>` but got `<class 'str'>`", err)
+    err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.cpp'), '-s', 'EXIT_RUNTIME=[foo,bar]'])
+    self.assertContained("error: setting `EXIT_RUNTIME` expects `<class 'int'>` but got `<class 'list'>`", err)
+
+  def test_dash_s_typo(self):
+    # with suggestions
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'DISABLE_EXCEPTION_CATCH=1'])
+    self.assertContained("Attempt to set a non-existent setting: 'DISABLE_EXCEPTION_CATCH'", stderr)
+    self.assertContained('did you mean one of DISABLE_EXCEPTION_CATCHING', stderr)
+    # no suggestions
+    stderr = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '-s', 'CHEEZ=1'])
+    self.assertContained("perhaps a typo in emcc\'s  -s X=Y  notation?", stderr)
+    self.assertContained('(see src/settings.js for valid values)', stderr)
 
   def test_python_2_3(self):
     # check emcc/em++ can be called by any python
@@ -9955,6 +9963,29 @@ int main () {
 
     run_process([PYTHON, EMCC, '-s', 'MEMFS_APPEND_TO_TYPED_ARRAYS=1', path_from_root('tests', 'hello_world.c')])
     run_process([PYTHON, EMCC, '-s', 'PRECISE_I64_MATH=2', path_from_root('tests', 'hello_world.c')])
+
+  @no_fastcomp('depends on wasm backend .a linking')
+  def test_jsmath(self):
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'normal.js', '--closure', '0'])
+    normal_js_size = os.path.getsize('normal.js')
+    normal_wasm_size = os.path.getsize('normal.wasm')
+    run_process([PYTHON, EMCC, path_from_root('tests', 'other', 'jsmath.cpp'), '-Os', '-o', 'jsmath.js', '-s', 'JS_MATH', '--closure', '0'])
+    jsmath_js_size = os.path.getsize('jsmath.js')
+    jsmath_wasm_size = os.path.getsize('jsmath.wasm')
+    # js math increases JS size, but decreases wasm, and wins overall
+    # it would win more with closure, but no point in making the test slower)
+    self.assertLess(normal_js_size, jsmath_js_size)
+    self.assertLess(jsmath_wasm_size, normal_wasm_size)
+    self.assertLess(jsmath_js_size + jsmath_wasm_size, 0.90 * (normal_js_size + normal_wasm_size))
+    # js math has almost identical output, but misses some corner cases, 4 out of 34
+    normal = run_js('normal.js').splitlines()
+    jsmath = run_js('jsmath.js').splitlines()
+    assert len(normal) == len(jsmath)
+    diff = 0
+    for i in range(len(normal)):
+      if normal[i] != jsmath[i]:
+        diff += 1
+    self.assertEqual(diff, 4)
 
   def test_strict_mode_hello_world(self):
     # Verify that strict mode can be used for simple hello world program both

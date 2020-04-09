@@ -420,13 +420,25 @@ def apply_settings(changes):
 
     if value[0] == '@':
       if key not in DEFERRED_RESPONSE_FILES:
-        value = open(value[1:]).read()
+        filename = value[1:]
+        if not os.path.exists(filename):
+          exit_with_error('%s: file not found parsing argument: %s' % (filename, change))
+        value = open(filename).read()
     else:
       value = value.replace('\\', '\\\\')
     try:
       value = parse_value(value)
     except Exception as e:
       exit_with_error('a problem occured in evaluating the content after a "-s", specifically "%s": %s', change, str(e))
+
+    # Do some basic type checking by comparing to the existing settings.
+    # Sadly we can't do this generically in the SettingsManager since there are settings
+    # that so change types internally over time.
+    existing = getattr(shared.Settings, user_key, None)
+    if existing is not None:
+      # We only currently worry about lists vs non-lists.
+      if (type(existing) == list) != (type(value) == list):
+        exit_with_error('setting `%s` expects `%s` but got `%s`' % (user_key, type(existing), type(value)))
     setattr(shared.Settings, user_key, value)
 
     if shared.Settings.WASM_BACKEND and key == 'BINARYEN_TRAP_MODE':
