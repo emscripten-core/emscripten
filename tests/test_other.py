@@ -7233,7 +7233,7 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    out = run_js('testrun.js', full_output=True, engine=NODE_JS + ['--experimental-wasm-bigint'])
+    out = run_js('testrun.js', engine=NODE_JS + ['--experimental-wasm-bigint'])
     self.assertContained('''\
 input = 0xaabbccdd11223344
 low = 5678
