@@ -7,9 +7,10 @@
 
 #include <emscripten.h>
 #include <stdio.h>
+#include <stdint.h>
 
-long long test_return64(long long input) {
-  long long x = ((long long)1234 << 32) + 5678;
+int64_t test_return64(int64_t input) {
+  int64_t x = ((int64_t)1234 << 32) + 5678;
   printf("input = 0x%llx\n", input);
   return x;
 }

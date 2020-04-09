@@ -1,11 +1,12 @@
 
 #include <emscripten.h>
 #include <stdio.h>
+#include <stdint.h>
 
-long long big = 0x12345678aabbccddL;
+int64_t big = 0x12345678aabbccddL;
 
 __attribute__((noinline))
-long long foobar(long long x, int y) {
+int64_t foobar(int64_t x, int y) {
   x += EM_ASM_INT({
     return 0; // prevents llvm from seeing the final value
   });
@@ -16,7 +17,7 @@ long long foobar(long long x, int y) {
 }
   
 int main() {
-  long long x;
+  int64_t x;
   try {
     puts("try");
     x = foobar(big, 1);
