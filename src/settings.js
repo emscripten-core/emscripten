@@ -590,14 +590,17 @@ var LEGACY_VM_SUPPORT = 0;
 // in node.js, or in a JS shell like d8, js, or jsc. You can set this option to
 // specify that the output should only run in one particular environment, which
 // must be one of
-//    'web'    - the normal web environment.
-//    'worker' - a web worker environment.
-//    'node'   - Node.js.
-//    'shell'  - a JS shell like d8, js, or jsc.
+//    'web'     - the normal web environment.
+//    'webview' - just like web, but in a webview like Cordova;
+//                considered to be same as "web" in almost every place
+//    'worker'  - a web worker environment.
+//    'node'    - Node.js.
+//    'shell'   - a JS shell like d8, js, or jsc.
 // Or it can be a comma-separated list of them, e.g., "web,worker". If this is
 // the empty string, then all runtime environments are supported.
 // (There is also a 'pthread' environment, see shell.js, but it cannot be specified
 // manually yet TODO)
+// Note that putting only "webview" is not supported, you must specify that as "web,webview"
 var ENVIRONMENT = '';
 
 // Enable this to support lz4-compressed file packages. They are stored compressed in memory, and

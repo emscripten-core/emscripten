@@ -148,6 +148,7 @@ var ENVIRONMENT_MAY_BE_WEB = 1;
 var ENVIRONMENT_MAY_BE_WORKER = 1;
 var ENVIRONMENT_MAY_BE_NODE = 1;
 var ENVIRONMENT_MAY_BE_SHELL = 1;
+var ENVIRONMENT_MAY_BE_WEBVIEW = 1;
 
 // Whether to minify import and export names in the minify_wasm_js stage.
 var MINIFY_WASM_IMPORTS_AND_EXPORTS = 0;
