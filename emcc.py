@@ -584,6 +584,8 @@ def filter_link_flags(flags, using_lld):
   return results
 
 
+run_via_emxx = False
+
 #
 # Main run() function
 #
@@ -607,12 +609,6 @@ def run(args):
 
   if DEBUG and LEAVE_INPUTS_RAW:
     logger.warning('leaving inputs raw')
-
-  if '--emscripten-cxx' in args:
-    run_via_emxx = True
-    args = [x for x in args if x != '--emscripten-cxx']
-  else:
-    run_via_emxx = False
 
   misc_temp_files = shared.configuration.get_temp_files()
 
@@ -701,40 +697,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
 
-  # Default to using C++ even when run as `emcc`.
-  # This means that emcc will act as a C++ linker when no source files are
-  # specified.  However, when a C source is specified we do default to C.
-  # This differs to clang and gcc where the default is always C unless run as
-  # clang++/g++.
-  use_cxx = True
-
-  def get_language_mode(args):
-    return_next = False
-    for item in args:
-      if return_next:
-        return item
-      if item == '-x':
-        return_next = True
-        continue
-      if item.startswith('-x'):
-        return item[2:]
-    return None
-
-  def has_c_source(args):
-    for a in args:
-      if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
-        return True
-    return False
-
-  language_mode = get_language_mode(args)
-  has_fixed_language_mode = language_mode is not None
-  if language_mode == 'c':
-    use_cxx = False
-
-  if not has_fixed_language_mode:
-    if not run_via_emxx and has_c_source(args):
-      use_cxx = False
-
   def is_minus_s_for_emcc(args, i):
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
     # -s by itself is a linker option (alias for --strip-all)
@@ -750,7 +712,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # If this is a configure-type thing, do not compile to JavaScript, instead use clang
   # to compile to a native binary (using our headers, so things make sense later)
   CONFIGURE_CONFIG = (os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in args) and not os.environ.get('EMMAKEN_JUST_CONFIGURE_RECURSE')
-  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)# or 'CMakeCCompilerId' in ' '.join(args)
+  CMAKE_CONFIG = 'CMakeFiles/cmTryCompileExec.dir' in ' '.join(args)
   if CONFIGURE_CONFIG or CMAKE_CONFIG:
     # XXX use this to debug configure stuff. ./configure's generally hide our
     # normal output including stderr so we write to a file
@@ -773,7 +735,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     # if CONFIGURE_CC is defined, use that. let's you use local gcc etc. if you need that
     compiler = os.environ.get('CONFIGURE_CC') or shared.EMXX
-    if 'CXXCompiler' not in ' '.join(args) and not use_cxx:
+    if run_via_emxx:
       compiler = shared.to_cc(compiler)
 
     def filter_emscripten_options(argv):
@@ -914,13 +876,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
     options, settings_changes, newargs = parse_args(newargs)
 
-    if use_cxx:
-      clang_compiler = CXX
-    else:
-      clang_compiler = CC
-
     if '-print-search-dirs' in newargs:
-      return run_process([clang_compiler, '-print-search-dirs'], check=False).returncode
+      return run_process([CC, '-print-search-dirs'], check=False).returncode
 
     if options.emrun:
       options.pre_js += open(shared.path_from_root('src', 'emrun_prejs.js')).read() + '\n'
@@ -1301,6 +1258,41 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Reconfigure the cache now that settings have been applied. Some settings
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
+
+    def get_language_mode(args):
+      return_next = False
+      for item in args:
+        if return_next:
+          return item
+        if item == '-x':
+          return_next = True
+          continue
+        if item.startswith('-x'):
+          return item[2:]
+      return None
+
+    def has_c_source(args):
+      for a in args:
+        if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
+          return True
+      return False
+
+    language_mode = get_language_mode(args)
+    has_fixed_language_mode = language_mode is not None
+
+    use_cxx = False
+    if has_fixed_language_mode:
+      if 'c++' in language_mode:
+        use_cxx = True
+    elif run_via_emxx:
+      use_cxx = True
+    elif shared.Settings.DEFAULT_TO_CXX and not has_c_source(args):
+      # Default to using C++ even when run as `emcc`.
+      # This means that emcc will act as a C++ linker when no source files are
+      # specified.
+      # This differs to clang and gcc where the default is always C unless run as
+      # clang++/g++.
+      use_cxx = True
 
     if not compile_only:
       ldflags = shared.emsdk_ldflags(newargs)
@@ -2081,6 +2073,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   try:
     with ToolchainProfiler.profile_block('compile inputs'):
+      if use_cxx:
+        clang_compiler = CXX
+      else:
+        clang_compiler = CC
       # Precompiled headers support
       if has_header_inputs:
         headers = [header for _, header in input_files]

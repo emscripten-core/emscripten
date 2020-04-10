@@ -8994,6 +8994,7 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+strict = make_run('strict', emcc_args=['-O2'], settings={'STRICT': 1})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter
