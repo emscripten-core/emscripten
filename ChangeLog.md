@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+- Support for WebAssembly BigInt integration with a new `WASM_BIGINT` flag. With
+  that the VM will use a JS BigInt for a wasm i64, avoiding the need for JS
+  legalization. See #10860.
 
 v1.39.12: 04/09/2020
 --------------------
