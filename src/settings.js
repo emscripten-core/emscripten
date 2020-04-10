@@ -951,7 +951,7 @@ var LINKABLE = 0;
 //   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
-//   * CXX_BY_DEFAULT is disabled.
+//   * DEFAULT_TO_CXX is disabled.
 // [compile+link]
 var STRICT = 0;
 
@@ -1785,7 +1785,7 @@ var USE_OFFSET_CONVERTER = 0;
 var LLD_REPORT_UNDEFINED = 0;
 
 // Default to c++ mode even when run as `emcc` rather then `emc++`.
-// When this is disabled `em++` is required when compileing and linking C++
+// When this is disabled `em++` is required when compiling and linking C++
 // programs. This which matches the behaviour of gcc/g++ and clang/clang++.
 var DEFAULT_TO_CXX = 1;
 

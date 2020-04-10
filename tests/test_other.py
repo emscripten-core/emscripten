@@ -10746,3 +10746,26 @@ int main() {
   def test_missing_argument(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts'])
     self.assertContained("error: option '--js-opts' requires an argument", err)
+
+  def test_default_to_cxx(self):
+    create_test_file('foo.h', '#include <string.h>')
+    create_test_file('cxxfoo.h', '#include <string>')
+
+    # The default bahviour is to default to C++, which means the C++ header can be compiled even
+    # with emcc.
+    run_process([PYTHON, EMCC, '-c', 'cxxfoo.h'])
+
+    # But this means that C flags can't be passed (since we are assuming C++)
+    err = self.expect_fail([PYTHON, EMCC, '-std=gnu11', '-c', 'foo.h'])
+    self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
+
+    # If we disable DEFAULT_TO_CXX the emcc can be used with cflags, but can't be used to build
+    # C++ headers
+    run_process([PYTHON, EMCC, '-std=gnu11', '-c', 'foo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    err = self.expect_fail([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    self.assertContained("'string' file not found", err)
+
+    # Using em++ should alwasy work for C++ headers
+    run_process([PYTHON, EMXX, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    # Or using emcc with `-x c++`
+    run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++'])
