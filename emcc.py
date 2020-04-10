@@ -1851,13 +1851,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += parse_passes(shared.Settings.BINARYEN_PASSES)
         else:
           # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
-          # however, in a side module, we must import it from the outside since it is defined
-          # in the main module, so do that after
-          if shared.Settings.SAFE_HEAP and not shared.Settings.SIDE_MODULE:
+          if shared.Settings.SAFE_HEAP:
             passes += ['--safe-heap']
           passes += ['--post-emscripten']
-          if shared.Settings.SAFE_HEAP and shared.Settings.SIDE_MODULE:
-            passes += ['--safe-heap']
           # always inline __original_main into main, as otherwise it makes debugging confusing,
           # and doing so is never bad for code size
           # FIXME however, don't do it with DWARF for now, as inlining is not
@@ -3244,10 +3240,12 @@ def do_binaryen(target, asm_target, options, memfile, wasm_binary_target,
         os.unlink(memfile)
     log_time('asm2wasm')
   if options.binaryen_passes:
-    if '--post-emscripten' in options.binaryen_passes:
+    if '--post-emscripten' in options.binaryen_passes and not shared.Settings.SIDE_MODULE:
       # the value of the sbrk pointer has been computed by the JS compiler, and we can apply it in the wasm
       # (we can't add this value when we placed post-emscripten in the proper position in the list of
       # passes because that was before the value was computed)
+      # note that we don't pass this for a side module, as the value can't be applied - it must be
+      # imported
       options.binaryen_passes += ['--pass-arg=emscripten-sbrk-ptr@%d' % shared.Settings.DYNAMICTOP_PTR]
       if shared.Settings.STANDALONE_WASM:
         options.binaryen_passes += ['--pass-arg=emscripten-sbrk-val@%d' % shared.Settings.DYNAMIC_BASE]
