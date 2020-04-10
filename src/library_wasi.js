@@ -103,7 +103,8 @@ var WasiLibrary = {
   // either wait for BigInt support or to legalize on the client.
   clock_time_get__sig: 'iiiii',
   clock_time_get__deps: ['emscripten_get_now', 'emscripten_get_now_is_monotonic', '__setErrNo'],
-  clock_time_get: function(clk_id, precision_l, precision_h, ptime) {
+  clock_time_get: function(clk_id, {{{ defineI64Param('precision') }}}, ptime) {
+    {{{ receiveI64ParamAsI32s('precision') }}}
     var now;
     if (clk_id === {{{ cDefine('__WASI_CLOCKID_REALTIME') }}}) {
       now = Date.now();

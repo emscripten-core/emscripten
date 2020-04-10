@@ -2019,6 +2019,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # requires JS legalization
       shared.Settings.LEGALIZE_JS_FFI = 0
 
+    if shared.Settings.WASM_BIGINT:
+      shared.Settings.LEGALIZE_JS_FFI = 0
+
     if shared.Settings.WASM_BACKEND:
       if shared.Settings.SIMD:
         newargs.append('-msimd128')

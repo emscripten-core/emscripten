@@ -74,6 +74,16 @@ def bleeding_edge_wasm_backend(f):
   return decorated
 
 
+def also_with_wasm_bigint(f):
+  def decorated(self):
+    self.set_setting('WASM_BIGINT', 0)
+    f(self, None)
+    if self.is_wasm_backend() and self.get_setting('WASM'):
+      self.set_setting('WASM_BIGINT', 1)
+      f(self, [NODE_JS + ['--experimental-wasm-bigint']])
+  return decorated
+
+
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
@@ -438,6 +448,14 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_varargs',
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
+
+  @no_fastcomp('wasm bigint')
+  @no_wasm2js('wasm_bigint')
+  def test_i64_invoke_bigint(self):
+    self.set_setting('WASM_BIGINT', 1)
+    self.emcc_args += ['-fexceptions']
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint',
+                                 js_engines=[NODE_JS + ['--experimental-wasm-bigint']])
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
@@ -4101,7 +4119,8 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
-  def test_dylink_i64_c(self):
+  @also_with_wasm_bigint
+  def test_dylink_i64_c(self, js_engines):
     self.dylink_test(r'''
       #include <cstdio>
       #include <cinttypes>
@@ -4149,7 +4168,7 @@ res64 - external 64\n''', header='''
       #include <cstdint>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''')
+    ''', js_engines=js_engines)
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -5243,10 +5262,11 @@ main( int argv, char ** argc ) {
                        ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
-  def test_utf8_textdecoder(self):
+  @also_with_wasm_bigint
+  def test_utf8_textdecoder(self, js_engines):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.', js_engines=js_engines)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -5558,18 +5578,19 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'sleep.out')).read()
     self.do_run(src, expected)
 
-  def test_unistd_io(self):
+  @also_with_wasm_bigint
+  def test_unistd_io(self, js_engines):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
-    self.clear()
     orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
+      self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run(src, expected, js_engines=js_engines)
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):

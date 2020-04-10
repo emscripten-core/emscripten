@@ -5,8 +5,17 @@
  * found in the LICENSE file.
  */
 
-// This is just a trivial test function, the key bit of interest is that it returns a 64 bit long.
-long long test_return64() {
-    long long x = ((long long)1234 << 32) + 5678;
-    return x;
+#include <emscripten.h>
+#include <stdio.h>
+#include <stdint.h>
+
+int64_t test_return64(int64_t input) {
+  int64_t x = ((int64_t)1234 << 32) + 5678;
+  printf("input = 0x%llx\n", input);
+  return x;
+}
+
+EMSCRIPTEN_KEEPALIVE
+void* get_func_ptr() {
+  return &test_return64;
 }
