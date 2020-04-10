@@ -3768,6 +3768,11 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dlfcn
+  def test_dylink_safe_heap(self):
+    self.set_setting('SAFE_HEAP', 1)
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>

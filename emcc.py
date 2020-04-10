@@ -1851,9 +1851,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
             passes += parse_passes(shared.Settings.BINARYEN_PASSES)
         else:
           # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
-          if shared.Settings.SAFE_HEAP:
+          # however, in a side module, we must import it from the outside since it is defined
+          # in the main module, so do that after
+          if shared.Settings.SAFE_HEAP and not shared.Settings.SIDE_MODULE:
             passes += ['--safe-heap']
           passes += ['--post-emscripten']
+          if shared.Settings.SAFE_HEAP and shared.Settings.SIDE_MODULE:
+            passes += ['--safe-heap']
           # always inline __original_main into main, as otherwise it makes debugging confusing,
           # and doing so is never bad for code size
           # FIXME however, don't do it with DWARF for now, as inlining is not
