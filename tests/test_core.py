@@ -300,8 +300,9 @@ class TestCoreBase(RunnerCore):
 
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
-    # wasm does this when optimizing anyhow
-    if self.is_wasm():
+    # wasm does this when optimizing anyhow, and the wasm backend always
+    # optimizes the wasm even if it does wasm2js later
+    if self.is_wasm() or self.is_wasm_backend():
       return False
     supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
     for opt_level in supported_opt_levels:
@@ -798,7 +799,8 @@ class TestCoreBase(RunnerCore):
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=None)
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() and \
+       not self.is_wasm_backend():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=None)
@@ -5675,15 +5677,13 @@ PORT: 3979
     self.emcc_args += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() \
+       and not self.is_wasm_backend():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
-    # TODO
-    # elif self.is_wasm_backend():
-    #   print('pthreads')
-    #   self.set_setting('USE_PTHREADS', 1)
-    #   self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
+
+    # TODO: test with USE_PTHREADS in wasm backend as well
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
