@@ -2666,6 +2666,11 @@ class Building(object):
                                 [pass_name],
                                 debug=debug_info,
                                 stdout=PIPE)
+    # TODO this is the last tool we run, after normal opts and metadce. it
+    # might make sense to run Stack IR optimizations here or even -O (as
+    # metadce which runs before us might open up new general optimization
+    # opportunities). however, the benefit is less than 0.5%.
+
     # get the mapping
     SEP = ' => '
     mapping = {}
@@ -2944,7 +2949,19 @@ class Building(object):
 
   @staticmethod
   def run_binaryen_command(tool, infile, outfile=None, args=[], debug=False, stdout=None):
-    cmd = [os.path.join(Building.get_binaryen_bin(), tool)] + args
+    cmd = [os.path.join(Building.get_binaryen_bin(), tool)]
+    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
+      # remove any dwarf debug info sections, if the debug level is <3, as
+      # we don't need them; also remove them if we the level is 4, as then we
+      # want a source map, which is implemented separately from dwarf.
+      # note that we add this pass first, so that it doesn't interfere with
+      # the final set of passes (which may generate stack IR, and nothing
+      # should be run after that)
+      # TODO: once fastcomp is gone, either remove source maps entirely, or
+      #       support them by emitting a source map at the end from the dwarf,
+      #       and use llvm-objcpy to remove that final dwarf
+      cmd += ['--strip-dwarf']
+    cmd += args
     if infile:
       cmd += [infile]
     if outfile:
@@ -2961,15 +2978,6 @@ class Building(object):
     if emit_source_map:
       cmd += ['--input-source-map=' + infile + '.map']
       cmd += ['--output-source-map=' + outfile + '.map']
-    if outfile and tool == 'wasm-opt' and Settings.DEBUG_LEVEL != 3:
-      # remove any dwarf debug info sections, if the debug level is <3, as
-      # we don't need them; also remove them if we the level is 4, as then we
-      # want a source map, which is implemented separately from dwarf
-      # TODO: once fastcomp is gone, either remove source maps entirely, or
-      #       support them by emitting a source map at the end from the dwarf,
-      #       and use llvm-objcpy to remove that final dwarf
-      cmd += ['--strip-dwarf']
-
     ret = check_call(cmd, stdout=stdout).stdout
     if outfile:
       Building.save_intermediate(outfile, '%s.wasm' % tool)
