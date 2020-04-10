@@ -586,6 +586,7 @@ def filter_link_flags(flags, using_lld):
 
 run_via_emxx = False
 
+
 #
 # Main run() function
 #
@@ -696,6 +697,21 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
       print(' '.join(shared.Building.doublequote_spaces(parts[1:])))
     return 0
+
+  def get_language_mode(args):
+    return_next = False
+    for item in args:
+      if return_next:
+        return item
+      if item == '-x':
+        return_next = True
+        continue
+      if item.startswith('-x'):
+        return item[2:]
+    return None
+
+  language_mode = get_language_mode(args)
+  has_fixed_language_mode = language_mode is not None
 
   def is_minus_s_for_emcc(args, i):
     # -s OPT=VALUE or -s OPT are interpreted as emscripten flags.
@@ -1259,26 +1275,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # such as LTO and SIDE_MODULE/MAIN_MODULE effect which cache directory we use.
     shared.reconfigure_cache()
 
-    def get_language_mode(args):
-      return_next = False
-      for item in args:
-        if return_next:
-          return item
-        if item == '-x':
-          return_next = True
-          continue
-        if item.startswith('-x'):
-          return item[2:]
-      return None
-
     def has_c_source(args):
       for a in args:
         if a[0] != '-' and a.endswith(C_ENDINGS + OBJC_ENDINGS):
           return True
       return False
-
-    language_mode = get_language_mode(args)
-    has_fixed_language_mode = language_mode is not None
 
     use_cxx = False
     if has_fixed_language_mode:
