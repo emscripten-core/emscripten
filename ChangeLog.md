@@ -17,6 +17,9 @@ See docs/process.md for how version tagging works.
 
 Current Trunk
 -------------
+
+v1.39.12: 04/09/2020
+--------------------
 - Pass linker flags dirctly to wasm-ld by default.  We still filter out certain
   flags explcitly.  If there are other flags that it would be useful for us
   to ignore we can add them to the list of ignored flags.
@@ -39,6 +42,14 @@ Current Trunk
   undefined symbols can come from JS, but in the future we hope to mark such
   symbols explicitly to allow the linker to report on genuinely undefined
   symbols.
+- Dynamic linking optimizations: Stop emitting unnecessary `fp$` and `g$`
+  accessors in main modules, possible in Binaryen thanks to ensuring function
+  table indexes are unique (#10741).
+- New `JS_MATH` option to use `Math.*` in JS instead of compiled musl (#10821).
+- Pass `Module` to Module callback functions like `Module.preRun` (#10777).
+- Support not having ports, for packagers of emscripten that don't want
+  them (#10810).
+- Rename syscalls to have meaningful names (#10750).
 
 v1.39.11: 03/20/2020
 --------------------

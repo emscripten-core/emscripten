@@ -59,7 +59,7 @@ __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(__rootpath__)
 
 import parallel_runner
-from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
+from tools.shared import EM_CONFIG, TEMP_DIR, EMCC, EMXX, DEBUG, PYTHON, LLVM_TARGET, ASM_JS_TARGET, EMSCRIPTEN_TEMP_DIR, WASM_TARGET, SPIDERMONKEY_ENGINE, WINDOWS, EM_BUILD_VERBOSE
 from tools.shared import asstr, get_canonical_temp_dir, Building, run_process, try_delete, to_cc, asbytes, safe_copy, Settings
 from tools import jsrun, shared, line_endings
 
@@ -620,18 +620,24 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       os.chdir(self.get_dir())
 
     suffix = '.o.js' if js_outfile else '.o.wasm'
+    all_sources = [filename] + additional_files
+    if any(os.path.splitext(s)[1] in ('.cc', '.cxx', '.cpp') for s in all_sources):
+      compiler = EMXX
+    else:
+      compiler = EMCC
+
     if build_ll_hook:
       # "slow", old path: build to bc, then build to JS
 
       # C++ => LLVM binary
 
-      for f in [filename] + additional_files:
+      for f in all_sources:
         try:
           # Make sure we notice if compilation steps failed
           os.remove(f + '.o')
         except OSError:
           pass
-        args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
+        args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
                ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
                ['-I' + include for include in includes] + \
                ['-c', f, '-o', f + '.o']
@@ -655,12 +661,12 @@ class RunnerCore(RunnerMeta('TestCase', (unittest.TestCase,), {})):
       Building.emcc(object_file, self.get_emcc_args(main_file=True), object_file + '.js')
     else:
       # "fast", new path: just call emcc and go straight to JS
-      all_files = [filename] + additional_files + libraries
+      all_files = all_sources + libraries
       for i in range(len(all_files)):
         if '.' not in all_files[i]:
           shutil.move(all_files[i], all_files[i] + '.bc')
           all_files[i] += '.bc'
-      args = [PYTHON, EMCC] + self.get_emcc_args(main_file=True) + \
+      args = [PYTHON, compiler] + self.get_emcc_args(main_file=True) + \
           ['-I' + dirname, '-I' + os.path.join(dirname, 'include')] + \
           ['-I' + include for include in includes] + \
           all_files + ['-o', filename + suffix]

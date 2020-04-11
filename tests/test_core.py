@@ -74,6 +74,16 @@ def bleeding_edge_wasm_backend(f):
   return decorated
 
 
+def also_with_wasm_bigint(f):
+  def decorated(self):
+    self.set_setting('WASM_BIGINT', 0)
+    f(self, None)
+    if self.is_wasm_backend() and self.get_setting('WASM'):
+      self.set_setting('WASM_BIGINT', 1)
+      f(self, [NODE_JS + ['--experimental-wasm-bigint']])
+  return decorated
+
+
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
@@ -290,8 +300,9 @@ class TestCoreBase(RunnerCore):
 
   # whether the test mode supports duplicate function elimination in js
   def supports_js_dfe(self):
-    # wasm does this when optimizing anyhow
-    if self.is_wasm():
+    # wasm does this when optimizing anyhow, and the wasm backend always
+    # optimizes the wasm even if it does wasm2js later
+    if self.is_wasm() or self.is_wasm_backend():
       return False
     supported_opt_levels = ['-O2', '-O3', '-Oz', '-Os']
     for opt_level in supported_opt_levels:
@@ -438,6 +449,14 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('tests', 'core', 'test_i64_varargs',
                                  args='waka fleefl asdfasdfasdfasdf'
                                       .split(' '))
+
+  @no_fastcomp('wasm bigint')
+  @no_wasm2js('wasm_bigint')
+  def test_i64_invoke_bigint(self):
+    self.set_setting('WASM_BIGINT', 1)
+    self.emcc_args += ['-fexceptions']
+    self.do_run_in_out_file_test('tests', 'core', 'test_i64_invoke_bigint',
+                                 js_engines=[NODE_JS + ['--experimental-wasm-bigint']])
 
   def test_vararg_copy(self):
     self.do_run_in_out_file_test('tests', 'va_arg', 'test_va_copy')
@@ -780,7 +799,8 @@ class TestCoreBase(RunnerCore):
   def test_math_lgamma(self):
     self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=None)
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() and \
+       not self.is_wasm_backend():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'math', 'lgamma', assert_returncode=None)
@@ -3768,6 +3788,11 @@ ok
     self.do_basic_dylink_test()
 
   @needs_dlfcn
+  def test_dylink_safe_heap(self):
+    self.set_setting('SAFE_HEAP', 1)
+    self.do_basic_dylink_test()
+
+  @needs_dlfcn
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -4101,7 +4126,8 @@ ok
     ''', 'other says -1311768467750121224.\nmy fp says: 43.\nmy second fp says: 43.')
 
   @needs_dlfcn
-  def test_dylink_i64_c(self):
+  @also_with_wasm_bigint
+  def test_dylink_i64_c(self, js_engines):
     self.dylink_test(r'''
       #include <cstdio>
       #include <cinttypes>
@@ -4149,7 +4175,7 @@ res64 - external 64\n''', header='''
       #include <cstdint>
       EMSCRIPTEN_KEEPALIVE int32_t function_ret_32(int32_t i, int32_t j, int32_t k);
       EMSCRIPTEN_KEEPALIVE int64_t function_ret_64(int32_t i, int32_t j, int32_t k);
-    ''')
+    ''', js_engines=js_engines)
 
   @needs_dlfcn
   def test_dylink_class(self):
@@ -5242,10 +5268,11 @@ main( int argv, char ** argc ) {
                        ['UTF8ToString', 'stringToUTF8', 'AsciiToString', 'stringToAscii'])
     self.do_run(open(path_from_root('tests', 'utf8.cpp')).read(), 'OK.')
 
-  def test_utf8_textdecoder(self):
+  @also_with_wasm_bigint
+  def test_utf8_textdecoder(self, js_engines):
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['UTF8ToString', 'stringToUTF8'])
     self.emcc_args += ['--embed-file', path_from_root('tests/utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.')
+    self.do_run(open(path_from_root('tests', 'benchmark_utf8.cpp')).read(), 'OK.', js_engines=js_engines)
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   def test_utf8_invalid(self):
@@ -5557,18 +5584,19 @@ main( int argv, char ** argc ) {
     expected = open(path_from_root('tests', 'unistd', 'sleep.out')).read()
     self.do_run(src, expected)
 
-  def test_unistd_io(self):
+  @also_with_wasm_bigint
+  def test_unistd_io(self, js_engines):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1) # uses constants from ERRNO_CODES
     self.set_setting('ERROR_ON_UNDEFINED_SYMBOLS', 0) # avoid errors when linking in full library
-    self.clear()
     orig_compiler_opts = self.emcc_args[:]
     src = open(path_from_root('tests', 'unistd', 'io.c')).read()
     expected = open(path_from_root('tests', 'unistd', 'io.out')).read()
     for fs in ['MEMFS', 'NODEFS']:
+      self.clear()
       self.emcc_args = orig_compiler_opts + ['-D' + fs]
       if fs == 'NODEFS':
         self.emcc_args += ['-lnodefs.js']
-      self.do_run(src, expected, js_engines=[NODE_JS])
+      self.do_run(src, expected, js_engines=js_engines)
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_unistd_misc(self):
@@ -5648,15 +5676,13 @@ PORT: 3979
     self.emcc_args += ['-DIS_64BIT_LOCK_FREE=%d' % is_lock_free]
     self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
 
-    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm():
+    if self.get_setting('ALLOW_MEMORY_GROWTH') == 0 and not self.is_wasm() \
+       and not self.is_wasm_backend():
       print('main module')
       self.set_setting('MAIN_MODULE', 1)
       self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
-    # TODO
-    # elif self.is_wasm_backend():
-    #   print('pthreads')
-    #   self.set_setting('USE_PTHREADS', 1)
-    #   self.do_run_in_out_file_test('tests', 'core', 'test_atomic_cxx')
+
+    # TODO: test with USE_PTHREADS in wasm backend as well
 
   def test_phiundef(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_phiundef')
@@ -8967,6 +8993,7 @@ asm2nn = make_run('asm2nn', emcc_args=['-O2'], settings={'WASM': 0}, env={'EMCC_
 # wasm
 wasm2s = make_run('wasm2s', emcc_args=['-O2'], settings={'SAFE_HEAP': 1})
 wasm2ss = make_run('wasm2ss', emcc_args=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
+strict = make_run('strict', emcc_args=['-O2'], settings={'DEFAULT_TO_CXX': 0})
 
 if not shared.Settings.WASM_BACKEND:
   # emterpreter

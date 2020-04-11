@@ -77,7 +77,7 @@ mergeInto(LibraryManager.library, {
       getattr: function(node) {
         return {
           dev: 1,
-          ino: undefined,
+          ino: node.id,
           mode: node.mode,
           nlink: 1,
           uid: 0,

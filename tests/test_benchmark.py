@@ -191,7 +191,10 @@ class EmscriptenBenchmarker(Benchmarker):
     llvm_root = self.env.get('LLVM') or LLVM_ROOT
     if lib_builder:
       env_init = self.env.copy()
-      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS)
+      # Note that we need to pass in all the flags here because some build
+      # systems (like zlib) if they see a CFLAGS it will override all their
+      # default flags, including optimizations.
+      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
@@ -313,22 +316,35 @@ if CLANG_CC and CLANG:
     # NativeBenchmarker('clang', CLANG_CC, CLANG),
     # NativeBenchmarker('gcc',   'gcc',    'g++')
   ]
+
+if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
+  # avoid the baseline compiler running, because it adds a lot of noise
+  # (the nondeterministic time it takes to get to the full compiler ends up
+  # mattering as much as the actual benchmark)
+  aot_v8 = V8_ENGINE + ['--no-liftoff']
+  default_v8_name = os.environ.get('EMBENCH_NAME') or 'v8'
+  benchmarkers += [
+    EmscriptenBenchmarker(default_v8_name, aot_v8),
+    EmscriptenBenchmarker(default_v8_name + '-lto', aot_v8, ['-flto']),
+  ]
+  if os.path.exists(CHEERP_BIN):
+    benchmarkers += [
+      # CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
+    ]
+
 if SPIDERMONKEY_ENGINE and SPIDERMONKEY_ENGINE in shared.JS_ENGINES:
+  # TODO: ensure no baseline compiler is used, see v8
   benchmarkers += [
     # EmscriptenBenchmarker('sm', SPIDERMONKEY_ENGINE),
   ]
-if V8_ENGINE and V8_ENGINE in shared.JS_ENGINES:
-  benchmarkers += [
-    EmscriptenBenchmarker(os.environ.get('EMBENCH_NAME') or 'v8', V8_ENGINE),
-  ]
+  if os.path.exists(CHEERP_BIN):
+    benchmarkers += [
+      # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
+    ]
+
 if shared.NODE_JS and shared.NODE_JS in shared.JS_ENGINES:
   benchmarkers += [
-    EmscriptenBenchmarker('Node.js', shared.NODE_JS),
-  ]
-if os.path.exists(CHEERP_BIN):
-  benchmarkers += [
-    # CheerpBenchmarker('cheerp-sm-wasm', SPIDERMONKEY_ENGINE),
-    # CheerpBenchmarker('cheerp-v8-wasm', V8_ENGINE),
+    # EmscriptenBenchmarker('Node.js', shared.NODE_JS),
   ]
 
 

@@ -7207,7 +7207,12 @@ Resolved: "/" => "/"
     # default maximum memory is 2GB.
     self.assertEqual(less, none)
 
-  def test_sixtyfour_bit_return_value(self):
+  @no_fastcomp('depends on wasm-emscripten-finalize')
+  @parameterized({
+    'normal': (['-s', 'WASM_BIGINT=0'], 'testbind.js'),
+    'bigint': (['-s', 'WASM_BIGINT=1'], 'testbind_bigint.js'),
+  })
+  def test_sixtyfour_bit_return_value(self, args, bind_js):
     # This test checks that the most significant 32 bits of a 64 bit long are correctly made available
     # to native JavaScript applications that wish to interact with compiled code returning 64 bit longs.
     # The MS 32 bits should be available in Runtime.getTempRet0() even when compiled with -O2 --closure 1
@@ -7215,10 +7220,10 @@ Resolved: "/" => "/"
     # Compile test.c and wrap it in a native JavaScript binding so we can call our compiled function from JS.
     run_process([PYTHON, EMCC, path_from_root('tests', 'return64bit', 'test.c'),
                  '--pre-js', path_from_root('tests', 'return64bit', 'testbindstart.js'),
-                 '--pre-js', path_from_root('tests', 'return64bit', 'testbind.js'),
+                 '--pre-js', path_from_root('tests', 'return64bit', bind_js),
                  '--post-js', path_from_root('tests', 'return64bit', 'testbindend.js'),
                  '-s', 'EXPORTED_FUNCTIONS=["_test_return64"]', '-o', 'test.js', '-O2',
-                 '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'])
+                 '--closure', '1', '-g1', '-s', 'WASM_ASYNC_COMPILATION=0'] + args)
 
     # Simple test program to load the test.js binding library and call the binding to the
     # C function returning the 64 bit long.
@@ -7228,9 +7233,15 @@ Resolved: "/" => "/"
     ''')
 
     # Run the test and confirm the output is as expected.
-    out = run_js('testrun.js', full_output=True)
-    self.assertContained('low = 5678', out)
-    self.assertContained('high = 1234', out)
+    out = run_js('testrun.js', engine=NODE_JS + ['--experimental-wasm-bigint'])
+    self.assertContained('''\
+input = 0xaabbccdd11223344
+low = 5678
+high = 1234
+input = 0xabcdef1912345678
+low = 5678
+high = 1234
+''', out)
 
   def test_lib_include_flags(self):
     run_process([PYTHON, EMCC] + '-l m -l c -I'.split() + [path_from_root('tests', 'include_test'), path_from_root('tests', 'lib_include_flags.c')])
@@ -10735,3 +10746,26 @@ int main() {
   def test_missing_argument(self):
     err = self.expect_fail([PYTHON, EMCC, path_from_root('tests', 'hello_world.c'), '--js-opts'])
     self.assertContained("error: option '--js-opts' requires an argument", err)
+
+  def test_default_to_cxx(self):
+    create_test_file('foo.h', '#include <string.h>')
+    create_test_file('cxxfoo.h', '#include <string>')
+
+    # The default bahviour is to default to C++, which means the C++ header can be compiled even
+    # with emcc.
+    run_process([PYTHON, EMCC, '-c', 'cxxfoo.h'])
+
+    # But this means that C flags can't be passed (since we are assuming C++)
+    err = self.expect_fail([PYTHON, EMCC, '-std=gnu11', '-c', 'foo.h'])
+    self.assertContained("'-std=gnu11' not allowed with 'C++'", err)
+
+    # If we disable DEFAULT_TO_CXX the emcc can be used with cflags, but can't be used to build
+    # C++ headers
+    run_process([PYTHON, EMCC, '-std=gnu11', '-c', 'foo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    err = self.expect_fail([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    self.assertContained("'string' file not found", err)
+
+    # Using em++ should alwasy work for C++ headers
+    run_process([PYTHON, EMXX, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0'])
+    # Or using emcc with `-x c++`
+    run_process([PYTHON, EMCC, '-c', 'cxxfoo.h', '-s', 'DEFAULT_TO_CXX=0', '-x', 'c++-header'])

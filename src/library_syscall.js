@@ -1390,7 +1390,9 @@ var SyscallsLibrary = {
     FS.utime(path, atime, mtime);
     return 0;  
   },
-  __sys_fallocate: function(fd, mode, off_low, off_high, len_low, len_high) {
+  __sys_fallocate: function(fd, mode, {{{ defineI64Param('off') }}}, {{{ defineI64Param('len') }}}) {
+    {{{ receiveI64ParamAsI32s('off') }}}
+    {{{ receiveI64ParamAsI32s('len') }}}
     var stream = SYSCALLS.getStreamFromFD(fd)
     var offset = SYSCALLS.get64(off_low, off_high);
     var len = SYSCALLS.get64(len_low, len_high);
@@ -1522,7 +1524,8 @@ var SyscallsLibrary = {
     return 0;
   },
   fd_seek__sig: 'iiiiii',
-  fd_seek: function(fd, offset_low, offset_high, whence, newOffset) {
+  fd_seek: function(fd, {{{ defineI64Param('offset') }}}, whence, newOffset) {
+    {{{ receiveI64ParamAsI32s('offset') }}}
     var stream = SYSCALLS.getStreamFromFD(fd);
     var HIGH_OFFSET = 0x100000000; // 2^32
     // use an unsigned operator on low and shift high by 32-bits

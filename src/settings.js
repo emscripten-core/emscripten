@@ -951,6 +951,7 @@ var LINKABLE = 0;
 //   * IGNORE_MISSING_MAIN is disabled.
 //   * AUTO_JS_LIBRARIES is disabled.
 //   * AUTO_ARCHIVE_INDEXES is disabled.
+//   * DEFAULT_TO_CXX is disabled.
 // [compile+link]
 var STRICT = 0;
 
@@ -1316,6 +1317,11 @@ var BINARYEN_EXTRA_PASSES = "";
 //
 // (This option was formerly called BINARYEN_ASYNC_COMPILATION)
 var WASM_ASYNC_COMPILATION = 1;
+
+// WebAssembly integration with JavaScript BigInt. When enabled we don't need
+// to legalize i64s into pairs of i32s, as the wasm VM will use a BigInt where
+// an i64 is used.
+var WASM_BIGINT = 0;
 
 // WebAssembly defines a "producers section" which compilers and tools can
 // annotate themselves in. Emscripten does not emit this by default, as it
@@ -1777,6 +1783,11 @@ var USE_OFFSET_CONVERTER = 0;
 // https://github.com/emscripten-core/emscripten/issues/10779
 // [link]
 var LLD_REPORT_UNDEFINED = 0;
+
+// Default to c++ mode even when run as `emcc` rather then `emc++`.
+// When this is disabled `em++` is required when compiling and linking C++
+// programs. This which matches the behaviour of gcc/g++ and clang/clang++.
+var DEFAULT_TO_CXX = 1;
 
 //===========================================
 // Internal, used for testing only, from here

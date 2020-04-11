@@ -916,7 +916,9 @@ def emsdk_cflags():
     return result
 
   # libcxx include paths must be defined before libc's include paths otherwise libcxx will not build
-  return c_opts + include_directive(cxx_include_paths) + include_directive(c_include_paths)
+  if Settings.USE_CXX:
+    c_opts += include_directive(cxx_include_paths)
+  return c_opts + include_directive(c_include_paths)
 
 
 def get_cflags(user_args):
@@ -3112,6 +3114,9 @@ class JS(object):
 
   @staticmethod
   def legalize_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return sig
     legal = [sig[0]]
     # a return of i64 is legalized into an i32 (and the high bits are
     # accessible on the side through getTempRet0).
@@ -3128,6 +3133,9 @@ class JS(object):
 
   @staticmethod
   def is_legal_sig(sig):
+    # with BigInt support all sigs are legal since we can use i64s.
+    if Settings.WASM_BIGINT:
+      return True
     return sig == JS.legalize_sig(sig)
 
   @staticmethod
