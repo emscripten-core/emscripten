@@ -9009,7 +9009,10 @@ if shared.Settings.WASM_BACKEND:
   asan = make_run('asan', emcc_args=['-fsanitize=address'], settings={'ALLOW_MEMORY_GROWTH': 1, 'ASAN_SHADOW_SIZE': 128 * 1024 * 1024})
   asani = make_run('asani', emcc_args=['-fsanitize=address', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
                    settings={'ALLOW_MEMORY_GROWTH': 1})
+
+  # Experimental modes (not tested by CI)
   lld = make_run('lld', emcc_args=[], settings={'LLD_REPORT_UNDEFINED': 1})
+  strict = make_run('strict', emcc_args=[], settings={'STRICT': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
 del TestCoreBase # noqa
