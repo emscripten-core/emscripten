@@ -931,9 +931,10 @@ def get_cflags(user_args):
             '-D__EMSCRIPTEN_tiny__=' + str(EMSCRIPTEN_VERSION_TINY),
             '-D_LIBCPP_ABI_VERSION=2']
 
-  if get_llvm_target() == WASM_TARGET:
-    # wasm target does not automatically define emscripten stuff, so do it here.
-    c_opts += ['-Dunix',
+  if Settings.WASM_BACKEND:
+    # Use `mvp` features for max compatability.
+    c_opts += ['-mcpu=mvp',
+               '-Dunix',
                '-D__unix',
                '-D__unix__']
 
