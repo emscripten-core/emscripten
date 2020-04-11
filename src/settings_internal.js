@@ -188,3 +188,6 @@ var SEPARATE_DWARF = 0;
 
 // New WebAssembly exception handling (experimental)
 var EXCEPTION_HANDLING = 0;
+
+// Enabled when building C++ code (for example via em++ or via -c c++)
+var USE_CXX = 0;
