@@ -721,22 +721,12 @@ var ASYNCIFY_LAZY_LOAD_CODE = 0;
 // Runtime debug logging from asyncify internals.
 var ASYNCIFY_DEBUG = 0;
 
-// Runtime elements that are exported on Module by default. We used to export
-// quite a lot here, but have removed them all, so this option is redundant
-// given that EXTRA_EXPORTED_RUNTIME_METHODS exists, and so this option exists
-// only for backwards compatibility. You should use
-// EXTRA_EXPORTED_RUNTIME_METHODS for things you want to export from the
-// runtime.  Note that methods on this list are only exported if they are
-// included (either automatically from linking, or due to being in
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).
-// Note that the name may be slightly misleading, as this is for any JS library
+// Runtime elements that are exported on Module by default.  Note that methods
+// on this list are only exported if they are included (either automatically
+// from linking, or due to being in DEFAULT_LIBRARY_FUNCS_TO_INCLUDE).  Note
+// that the name may be slightly misleading, as this is for any JS library
 // element, and not just methods. For example, we can export the FS object by
 // having "FS" in this list.
-var EXPORTED_RUNTIME_METHODS = [];
-
-// Additional methods to those in EXPORTED_RUNTIME_METHODS. Adjusting that list
-// lets you remove methods that would be exported by default; setting values in
-// this list lets you add to the default list without modifying it.
 var EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
 // A list of incoming values on the Module object in JS that we care about. If
@@ -1841,4 +1831,5 @@ var LEGACY_SETTINGS = [
   ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
   ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
   ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
+  ['EXPORTED_RUNTIME_METHODS', 'EXTRA_EXPORTED_RUNTIME_METHODS'],
 ];

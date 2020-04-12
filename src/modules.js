@@ -316,7 +316,7 @@ function cDefine(key) {
 	throw 'Missing C define ' + key + '! If you just added it to struct_info.json, you need to ./emcc --clear-cache';
 }
 
-var EXPORTED_RUNTIME_METHODS_SET = set(EXPORTED_RUNTIME_METHODS.concat(EXTRA_EXPORTED_RUNTIME_METHODS));
+var EXPORTED_RUNTIME_METHODS_SET = set(EXTRA_EXPORTED_RUNTIME_METHODS);
 EXPORTED_RUNTIME_METHODS = unset(EXPORTED_RUNTIME_METHODS_SET);
 EXTRA_EXPORTED_RUNTIME_METHODS = [];
 
