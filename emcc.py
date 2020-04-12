@@ -544,11 +544,6 @@ def get_all_js_syms(temp_files):
     shared.Settings.ONLY_CALC_JS_SYMBOLS = False
     shared.Settings.INCLUDE_FULL_LIBRARY = old_full
 
-  # Some of these functions are actually not JS functions at all but fallbacks
-  # missing undefined native symbols.  Ignore these.
-  for f in ['__cxa_call_unexpected', '_ZSt18uncaught_exceptionv']:
-    if f in library_fns_list:
-      library_fns_list.remove(f)
   return library_fns_list
 
 
