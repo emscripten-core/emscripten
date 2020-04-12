@@ -1234,7 +1234,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if options.emrun:
       if shared.Settings.MINIMAL_RUNTIME:
         exit_with_error('--emrun is not compatible with -s MINIMAL_RUNTIME=1')
-      shared.Settings.EXPORTED_RUNTIME_METHODS.append('addOnExit')
+      shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS.append('addOnExit')
 
     if options.use_closure_compiler:
       shared.Settings.USE_CLOSURE_COMPILER = options.use_closure_compiler
@@ -1264,7 +1264,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       shared.Settings.RELOCATABLE = 1
       assert not options.use_closure_compiler, 'cannot use closure compiler on shared modules'
       # shared modules need memory utilities to allocate their memory
-      shared.Settings.EXPORTED_RUNTIME_METHODS += [
+      shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += [
         'allocate',
         'getMemory',
       ]
@@ -1320,9 +1320,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     if shared.Settings.STACK_OVERFLOW_CHECK:
       if shared.Settings.MINIMAL_RUNTIME:
         shared.Settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$abortStackOverflow']
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+        shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
       else:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
+        shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie', 'abortStackOverflow']
 
     if shared.Settings.MODULARIZE_INSTANCE:
       shared.Settings.MODULARIZE = 1
@@ -1544,7 +1544,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       # file packages not built together with emcc, but that are loaded at runtime
       # separately, and they need emcc's output to contain the support they need)
       if not shared.Settings.ASMFS:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += [
+        shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += [
           'FS_createFolder',
           'FS_createPath',
           'FS_createDataFile',
@@ -1555,7 +1555,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
           'FS_unlink'
         ]
 
-      shared.Settings.EXPORTED_RUNTIME_METHODS += [
+      shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += [
         'getMemory',
         'addRunDependency',
         'removeRunDependency',
@@ -1591,16 +1591,16 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
         # can access them:
 
         # general threading variables:
-        shared.Settings.EXPORTED_RUNTIME_METHODS += ['PThread']
+        shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += ['PThread']
 
         # To keep code size to minimum, MINIMAL_RUNTIME does not utilize the global ExitStatus
         # object, only regular runtime has it.
         if not shared.Settings.MINIMAL_RUNTIME:
-          shared.Settings.EXPORTED_RUNTIME_METHODS += ['ExitStatus']
+          shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += ['ExitStatus']
 
         # stack check:
         if shared.Settings.STACK_OVERFLOW_CHECK:
-          shared.Settings.EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
+          shared.Settings.EXTRA_EXPORTED_RUNTIME_METHODS += ['writeStackCookie', 'checkStackCookie']
 
       if shared.Settings.LINKABLE:
         exit_with_error('-s LINKABLE=1 is not supported with -s USE_PTHREADS>0!')
